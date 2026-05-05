@@ -45,4 +45,4 @@ jobs:
 
       - name: Lint commits
         run: |
-          npx commitlint --from=origin/master --to=HEAD --config ./.github/workflows/configs/commitlint.config.js
+          npx commitlint --from=origin/${{ github.base_ref }} --to=HEAD --config ./.github/workflows/configs/commitlint.config.js

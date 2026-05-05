@@ -8,7 +8,7 @@ on:
 jobs:
   create_pr:
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]' && !github.event.deleted
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -22,7 +22,7 @@ jobs:
         run: |
           EXISTING_PR=$(gh pr list \
             --repo HiromiShikata/termux-app \
-            --head "${{ steps.branch_name.outputs.branch }}" \
+            --head "${{ github.repository_owner }}:${{ steps.branch_name.outputs.branch }}" \
             --base master \
             --json number \
             --jq '.[0].number // empty')
@@ -37,7 +37,7 @@ jobs:
           PR_URL=$(gh pr create \
             --repo HiromiShikata/termux-app \
             --base master \
-            --head "${{ steps.branch_name.outputs.branch }}" \
+            --head "${{ github.repository_owner }}:${{ steps.branch_name.outputs.branch }}" \
             --title "${{ steps.branch_name.outputs.branch }}" \
             --body ":magic_wand: :sparkles:")
           PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
@@ -59,7 +59,7 @@ jobs:
       - name: Assign PR to author
         if: steps.resolve_pr.outputs.pr_number
         run: |
-          curl -s -X POST \
+          curl -sf -X POST \
             -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d '{"assignees":["${{ github.actor }}"]}' \
