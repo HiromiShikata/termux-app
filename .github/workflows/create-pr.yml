@@ -22,10 +22,10 @@ jobs:
         run: |
           EXISTING_PR=$(gh pr list \
             --repo HiromiShikata/termux-app \
-            --head "${{ github.repository_owner }}:${{ steps.branch_name.outputs.branch }}" \
+            --head "${{ steps.branch_name.outputs.branch }}" \
             --base master \
-            --json number \
-            --jq '.[0].number // empty')
+            --json number,headRepositoryOwner \
+            --jq '.[] | select(.headRepositoryOwner.login == "${{ github.repository_owner }}") | .number' | head -1)
           echo "existing_pr=$EXISTING_PR" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
