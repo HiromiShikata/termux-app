@@ -163,7 +163,7 @@ jobs:
             const apkArtifacts = artifacts.filter(a => !a.name.endsWith('_sha256sums'));
             const abis = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86', 'universal'];
             const artifactsByAbi = Object.fromEntries(
-              abis.map(abi => [abi, apkArtifacts.filter(a => a.name.includes(`_${abi}`))])
+              abis.map(abi => [abi, apkArtifacts.filter(a => a.name.endsWith(`_${abi}`))])
             );
 
             const makeLinks = (list) => list.map(a => `- [${a.name}](${makeUrl(a)})`).join('\n');
