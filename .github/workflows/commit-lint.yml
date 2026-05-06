@@ -1,0 +1,48 @@
+name: Lint Commit Messages
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+concurrency:
+  group: commitlint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commit-lint:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+
+      - name: Check for DONTMERGE
+        run: |
+          result=$(find . \
+            -type f \
+            ! -path './.github/workflows/commit-lint.yml' \
+            ! -name '*.snap' \
+            -exec grep -Hn 'DONTMERGE' {} \;)
+          if [[ ! -z "$result" ]]; then
+            echo "$result"
+            exit 1
+          fi
+
+      - name: Install commitlint
+        run: |
+          npm install --save-dev @commitlint/{config-conventional,cli}
+
+      - name: Lint commits
+        run: |
+          npx commitlint --from=origin/${{ github.base_ref }} --to=HEAD --config ./.github/workflows/configs/commitlint.config.js

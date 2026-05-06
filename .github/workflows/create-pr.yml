@@ -1,0 +1,66 @@
+name: Create PR
+
+on:
+  push:
+    branches-ignore:
+      - master
+
+jobs:
+  create_pr:
+    runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]' && !github.event.deleted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set branch name as output
+        id: branch_name
+        run: echo "branch=${GITHUB_REF#refs/heads/}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if PR already exists
+        id: check_pr
+        run: |
+          EXISTING_PR=$(gh pr list \
+            --repo HiromiShikata/termux-app \
+            --head "${{ steps.branch_name.outputs.branch }}" \
+            --base master \
+            --json number,headRepositoryOwner \
+            --jq '.[] | select(.headRepositoryOwner.login == "${{ github.repository_owner }}") | .number' | head -1)
+          echo "existing_pr=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Create Pull Request
+        id: create_pr
+        if: steps.check_pr.outputs.existing_pr == ''
+        run: |
+          PR_URL=$(gh pr create \
+            --repo HiromiShikata/termux-app \
+            --base master \
+            --head "${{ github.repository_owner }}:${{ steps.branch_name.outputs.branch }}" \
+            --title "${{ steps.branch_name.outputs.branch }}" \
+            --body ":magic_wand: :sparkles:")
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Resolve PR number
+        id: resolve_pr
+        run: |
+          PR_NUMBER="${{ steps.create_pr.outputs.pr_number }}"
+          if [ -z "$PR_NUMBER" ]; then
+            PR_NUMBER="${{ steps.check_pr.outputs.existing_pr }}"
+          fi
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Assign PR to author
+        if: steps.resolve_pr.outputs.pr_number
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d '{"assignees":["${{ github.actor }}"]}' \
+            "https://api.github.com/repos/HiromiShikata/termux-app/issues/${{ steps.resolve_pr.outputs.pr_number }}/assignees"
