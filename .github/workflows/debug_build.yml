@@ -135,6 +135,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: post-artifact-links-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       pull-requests: write
       actions: read
@@ -160,7 +163,7 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const makeUrl = (a) => `https://github.com/${context.repo.owner}/${context.repo.repo}/suites/${suiteId}/artifacts/${a.id}`;
 
-            const apkArtifacts = artifacts.filter(a => !a.name.endsWith('_sha256sums'));
+            const apkArtifacts = artifacts.filter(a => !a.name.endsWith('_sha256sums')).sort((a, b) => a.name.localeCompare(b.name));
             const abis = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86', 'universal'];
             const artifactsByAbi = Object.fromEntries(
               abis.map(abi => [abi, apkArtifacts.filter(a => a.name.endsWith(`_${abi}`))])
