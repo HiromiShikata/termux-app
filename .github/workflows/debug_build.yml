@@ -134,7 +134,7 @@ jobs:
   post_artifact_links:
     runs-on: ubuntu-latest
     needs: [build]
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       pull-requests: write
       actions: read
@@ -161,8 +161,10 @@ jobs:
             const makeUrl = (a) => `https://github.com/${context.repo.owner}/${context.repo.repo}/suites/${suiteId}/artifacts/${a.id}`;
 
             const apkArtifacts = artifacts.filter(a => !a.name.endsWith('_sha256sums'));
-            const arm64Artifacts = apkArtifacts.filter(a => a.name.includes('arm64-v8a'));
-            const universalArtifacts = apkArtifacts.filter(a => a.name.includes('universal'));
+            const abis = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86', 'universal'];
+            const artifactsByAbi = Object.fromEntries(
+              abis.map(abi => [abi, apkArtifacts.filter(a => a.name.includes(`_${abi}`))])
+            );
 
             const makeLinks = (list) => list.map(a => `- [${a.name}](${makeUrl(a)})`).join('\n');
 
@@ -173,10 +175,19 @@ jobs:
               '## APK Download Links',
               '',
               '### Recommended for Pixel 9 (arm64-v8a)',
-              makeLinks(arm64Artifacts),
+              makeLinks(artifactsByAbi['arm64-v8a']),
+              '',
+              '### armeabi-v7a',
+              makeLinks(artifactsByAbi['armeabi-v7a']),
+              '',
+              '### x86_64',
+              makeLinks(artifactsByAbi['x86_64']),
+              '',
+              '### x86',
+              makeLinks(artifactsByAbi['x86']),
               '',
               '### Universal (all architectures)',
-              makeLinks(universalArtifacts),
+              makeLinks(artifactsByAbi['universal']),
               '',
               `Full build: ${runUrl}`,
               '',
