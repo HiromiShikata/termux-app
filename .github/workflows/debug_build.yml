@@ -163,34 +163,17 @@ jobs:
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const makeUrl = (a) => `https://github.com/${context.repo.owner}/${context.repo.repo}/suites/${suiteId}/artifacts/${a.id}`;
 
-            const apkArtifacts = artifacts.filter(a => !a.name.endsWith('_sha256sums')).sort((a, b) => a.name.localeCompare(b.name));
-            const abis = ['arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86', 'universal'];
-            const artifactsByAbi = Object.fromEntries(
-              abis.map(abi => [abi, apkArtifacts.filter(a => a.name.endsWith(`_${abi}`))])
-            );
-
-            const makeLinks = (list) => list.map(a => `- [${a.name}](${makeUrl(a)})`).join('\n');
+            const arm64Artifact = artifacts
+              .filter(a => a.name.includes('apt-android-7') && a.name.endsWith('_arm64-v8a'))
+              .sort((a, b) => a.name.localeCompare(b.name))[0];
 
             const startMarker = '<!-- apk-artifact-links -->';
             const endMarker = '<!-- /apk-artifact-links -->';
             const section = [
               startMarker,
-              '## APK Download Links',
+              '## APK Download Link',
               '',
-              '### Recommended for Pixel 9 (arm64-v8a)',
-              makeLinks(artifactsByAbi['arm64-v8a']),
-              '',
-              '### armeabi-v7a',
-              makeLinks(artifactsByAbi['armeabi-v7a']),
-              '',
-              '### x86_64',
-              makeLinks(artifactsByAbi['x86_64']),
-              '',
-              '### x86',
-              makeLinks(artifactsByAbi['x86']),
-              '',
-              '### Universal (all architectures)',
-              makeLinks(artifactsByAbi['universal']),
+              arm64Artifact ? `- [${arm64Artifact.name}](${makeUrl(arm64Artifact)})` : '(artifact not found)',
               '',
               `Full build: ${runUrl}`,
               '',
