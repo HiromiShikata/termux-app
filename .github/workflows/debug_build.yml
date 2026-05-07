@@ -176,8 +176,6 @@ jobs:
               arm64Artifact ? `- [${arm64Artifact.name}](${makeUrl(arm64Artifact)})` : '(artifact not found)',
               '',
               `Full build: ${runUrl}`,
-              '',
-              '> GitHub login required to download.',
               endMarker
             ].join('\n');
 
