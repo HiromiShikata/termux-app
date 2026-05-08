@@ -7,6 +7,7 @@ import android.text.Selection;
 import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.ViewGroup.LayoutParams;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
@@ -27,10 +28,20 @@ public final class TextInputDialogUtils {
         final EditText input1 = new EditText(activity);
         input1.setSingleLine();
         input1.setHint(hint1Text);
+        input1.setImeOptions(EditorInfo.IME_ACTION_NEXT);
 
         final EditText input2 = new EditText(activity);
         input2.setSingleLine();
         input2.setHint(hint2Text);
+        input2.setImeOptions(EditorInfo.IME_ACTION_DONE);
+
+        final AlertDialog[] dialogHolder = new AlertDialog[1];
+        input2.setImeActionLabel(activity.getResources().getString(positiveButtonText), KeyEvent.KEYCODE_ENTER);
+        input2.setOnEditorActionListener((v, actionId, event) -> {
+            onPositive.onTextsSet(input1.getText().toString(), input2.getText().toString());
+            dialogHolder[0].dismiss();
+            return true;
+        });
 
         float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, activity.getResources().getDisplayMetrics());
         int paddingTopAndSides = Math.round(16 * dipInPixels);
@@ -51,9 +62,9 @@ public final class TextInputDialogUtils {
         if (onDismiss != null)
             builder.setOnDismissListener(onDismiss);
 
-        AlertDialog dialog = builder.create();
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.show();
+        dialogHolder[0] = builder.create();
+        dialogHolder[0].setCanceledOnTouchOutside(false);
+        dialogHolder[0].show();
     }
 
     public static void textInput(Activity activity, int titleText, String initialText,

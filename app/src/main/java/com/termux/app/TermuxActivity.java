@@ -581,7 +581,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 R.string.hint_session_url,
                 R.string.hint_session_short_name,
                 R.string.action_create_named_session_confirm,
-                (url, shortName) -> mTermuxTerminalSessionActivityClient.addNewSession(false, url + " " + shortName),
+                (url, shortName) -> mTermuxTerminalSessionActivityClient.addNewSession(false, (url.trim() + " " + shortName.trim()).trim()),
                 null);
         });
         newSessionButton.setOnLongClickListener(v -> {
