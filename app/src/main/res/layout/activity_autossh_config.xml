@@ -8,10 +8,11 @@
     <EditText
         android:id="@+id/autossh_command_input"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:hint="@string/hint_autossh_command"
-        android:inputType="text"
-        android:singleLine="false"
+        android:inputType="textMultiLine"
+        android:gravity="top"
         android:minLines="3" />
 
     <com.google.android.material.button.MaterialButton
