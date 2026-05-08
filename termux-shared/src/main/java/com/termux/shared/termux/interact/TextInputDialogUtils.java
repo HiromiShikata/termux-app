@@ -16,6 +16,46 @@ public final class TextInputDialogUtils {
         void onTextSet(String text);
     }
 
+    public interface TwoTextsSetListener {
+        void onTextsSet(String text1, String text2);
+    }
+
+    public static void twoTextInputs(Activity activity, int titleText,
+                                     int hint1Text, int hint2Text,
+                                     int positiveButtonText, final TwoTextsSetListener onPositive,
+                                     final DialogInterface.OnDismissListener onDismiss) {
+        final EditText input1 = new EditText(activity);
+        input1.setSingleLine();
+        input1.setHint(hint1Text);
+
+        final EditText input2 = new EditText(activity);
+        input2.setSingleLine();
+        input2.setHint(hint2Text);
+
+        float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, activity.getResources().getDisplayMetrics());
+        int paddingTopAndSides = Math.round(16 * dipInPixels);
+        int paddingBottom = Math.round(24 * dipInPixels);
+
+        LinearLayout layout = new LinearLayout(activity);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+        layout.setPadding(paddingTopAndSides, paddingTopAndSides, paddingTopAndSides, paddingBottom);
+        layout.addView(input1);
+        layout.addView(input2);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity)
+            .setTitle(titleText).setView(layout)
+            .setPositiveButton(positiveButtonText, (d, whichButton) -> onPositive.onTextsSet(input1.getText().toString(), input2.getText().toString()))
+            .setNegativeButton(android.R.string.cancel, null);
+
+        if (onDismiss != null)
+            builder.setOnDismissListener(onDismiss);
+
+        AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.show();
+    }
+
     public static void textInput(Activity activity, int titleText, String initialText,
                                  int positiveButtonText, final TextSetListener onPositive,
                                  int neutralButtonText, final TextSetListener onNeutral,

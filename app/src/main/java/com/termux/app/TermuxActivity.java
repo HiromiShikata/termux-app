@@ -575,7 +575,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setNewSessionButtonView() {
         View newSessionButton = findViewById(R.id.new_session_button);
-        newSessionButton.setOnClickListener(v -> mTermuxTerminalSessionActivityClient.addNewSession(false, null));
+        newSessionButton.setOnClickListener(v -> {
+            TextInputDialogUtils.twoTextInputs(TermuxActivity.this,
+                R.string.title_new_session_with_url,
+                R.string.hint_session_url,
+                R.string.hint_session_short_name,
+                R.string.action_create_named_session_confirm,
+                (url, shortName) -> mTermuxTerminalSessionActivityClient.addNewSession(false, url + " " + shortName),
+                null);
+        });
         newSessionButton.setOnLongClickListener(v -> {
             TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,
                 R.string.action_create_named_session_confirm, text -> mTermuxTerminalSessionActivityClient.addNewSession(false, text),
