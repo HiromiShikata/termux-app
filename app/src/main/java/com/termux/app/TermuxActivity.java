@@ -39,6 +39,7 @@ import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
+import com.termux.app.activities.AutosshConfigActivity;
 import com.termux.app.activities.HelpActivity;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
@@ -250,6 +251,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setNewSessionButtonView();
 
         setToggleKeyboardView();
+
+        setAutosshConfigButtonView();
 
         registerForContextMenu(mTerminalView);
 
@@ -591,6 +594,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.toggle_keyboard_button).setOnLongClickListener(v -> {
             toggleTerminalToolbar();
             return true;
+        });
+    }
+
+    private void setAutosshConfigButtonView() {
+        findViewById(R.id.autossh_config_button).setOnClickListener(v -> {
+            ActivityUtils.startActivity(this, new Intent(this, AutosshConfigActivity.class));
+            getDrawer().closeDrawers();
         });
     }
 
