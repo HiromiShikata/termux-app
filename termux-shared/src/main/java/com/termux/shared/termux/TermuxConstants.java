@@ -347,7 +347,7 @@ public final class TermuxConstants {
      */
 
     /** Termux app name */
-    public static final String TERMUX_APP_NAME = "Termux"; // Default: "Termux"
+    public static final String TERMUX_APP_NAME = "HS Termux"; // Default: "HS Termux"
     /** Termux package name */
     public static final String TERMUX_PACKAGE_NAME = "com.termux.hs.shortcut"; // Default: "com.termux.hs.shortcut"
     /** Termux GitHub repo name */
