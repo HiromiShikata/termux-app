@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.ContextMenu;
@@ -142,6 +143,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
      */
     private final BroadcastReceiver mTermuxActivityBroadcastReceiver = new TermuxActivityBroadcastReceiver();
+
+    private BroadcastReceiver mTermuxCrashNotificationReceiver;
 
     /**
      * The last toast shown, used cancel current toast before showing new in {@link #showToast(String, boolean)}.
@@ -916,16 +919,34 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void registerTermuxActivityBroadcastReceiver() {
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(TERMUX_ACTIVITY.ACTION_NOTIFY_APP_CRASH);
-        intentFilter.addAction(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE);
-        intentFilter.addAction(TERMUX_ACTIVITY.ACTION_REQUEST_PERMISSIONS);
+        IntentFilter internalFilter = new IntentFilter();
+        internalFilter.addAction(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE);
+        internalFilter.addAction(TERMUX_ACTIVITY.ACTION_REQUEST_PERMISSIONS);
 
-        registerReceiver(mTermuxActivityBroadcastReceiver, intentFilter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(mTermuxActivityBroadcastReceiver, internalFilter, RECEIVER_NOT_EXPORTED);
+            mTermuxCrashNotificationReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (!mIsVisible) return;
+                    Logger.logDebug(LOG_TAG, "Received intent to notify app crash");
+                    TermuxCrashUtils.notifyAppCrashFromCrashLogFile(context, LOG_TAG);
+                }
+            };
+            registerReceiver(mTermuxCrashNotificationReceiver,
+                new IntentFilter(TERMUX_ACTIVITY.ACTION_NOTIFY_APP_CRASH), RECEIVER_EXPORTED);
+        } else {
+            internalFilter.addAction(TERMUX_ACTIVITY.ACTION_NOTIFY_APP_CRASH);
+            registerReceiver(mTermuxActivityBroadcastReceiver, internalFilter);
+        }
     }
 
     private void unregisterTermuxActivityBroadcastReceiver() {
         unregisterReceiver(mTermuxActivityBroadcastReceiver);
+        if (mTermuxCrashNotificationReceiver != null) {
+            unregisterReceiver(mTermuxCrashNotificationReceiver);
+            mTermuxCrashNotificationReceiver = null;
+        }
     }
 
     private void fixTermuxActivityBroadcastReceiverIntent(Intent intent) {
