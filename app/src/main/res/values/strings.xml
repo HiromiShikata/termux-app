@@ -52,7 +52,6 @@
     <string name="title_create_named_session">New named session</string>
     <string name="action_create_named_session_confirm">Create</string>
 
-    <string name="title_new_session_with_url">New session</string>
     <string name="hint_session_url">URL</string>
     <string name="hint_session_short_name">Short name</string>
 

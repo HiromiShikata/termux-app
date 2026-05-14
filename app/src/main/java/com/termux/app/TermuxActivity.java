@@ -577,7 +577,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View newSessionButton = findViewById(R.id.new_session_button);
         newSessionButton.setOnClickListener(v -> {
             TextInputDialogUtils.twoTextInputs(TermuxActivity.this,
-                R.string.title_new_session_with_url,
+                R.string.action_new_session,
                 R.string.hint_session_url,
                 R.string.hint_session_short_name,
                 R.string.action_create_named_session_confirm,
