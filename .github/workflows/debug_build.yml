@@ -169,13 +169,10 @@ jobs:
 
             const startMarker = '<!-- apk-artifact-links -->';
             const endMarker = '<!-- /apk-artifact-links -->';
+            const artifactPart = arm64Artifact ? `[${arm64Artifact.name}](${makeUrl(arm64Artifact)})` : '(artifact not found)';
             const section = [
               startMarker,
-              '## APK Download Link',
-              '',
-              arm64Artifact ? `- [${arm64Artifact.name}](${makeUrl(arm64Artifact)})` : '(artifact not found)',
-              '',
-              `Full build: ${runUrl}`,
+              `- APK: ${artifactPart} ([Full build](${runUrl}))`,
               endMarker
             ].join('\n');
 
