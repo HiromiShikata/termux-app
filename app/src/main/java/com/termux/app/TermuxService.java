@@ -205,7 +205,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private void runStartForeground() {
         setupNotificationChannel();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+            startForeground(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
         } else {
             startForeground(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, buildNotification());
         }
