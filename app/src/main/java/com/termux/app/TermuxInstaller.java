@@ -25,6 +25,7 @@ import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
@@ -189,10 +190,24 @@ final class TermuxInstaller {
                                 }
 
                                 if (!isDirectory) {
-                                    try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
+                                    int firstRead = zipInput.read(buffer);
+                                    if (firstRead > 1 && buffer[0] == '#' && buffer[1] == '!') {
+                                        ByteArrayOutputStream contentBuffer = new ByteArrayOutputStream();
+                                        contentBuffer.write(buffer, 0, firstRead);
                                         int readBytes;
                                         while ((readBytes = zipInput.read(buffer)) != -1)
-                                            outStream.write(buffer, 0, readBytes);
+                                            contentBuffer.write(buffer, 0, readBytes);
+                                        byte[] fileBytes = patchShebangIfNeeded(contentBuffer.toByteArray());
+                                        try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
+                                            outStream.write(fileBytes);
+                                        }
+                                    } else {
+                                        try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
+                                            if (firstRead > 0) outStream.write(buffer, 0, firstRead);
+                                            int readBytes;
+                                            while ((readBytes = zipInput.read(buffer)) != -1)
+                                                outStream.write(buffer, 0, readBytes);
+                                        }
                                     }
                                     if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
                                         zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods")) {
@@ -369,6 +384,30 @@ final class TermuxInstaller {
                 }
             }
         }.start();
+    }
+
+    private static byte[] patchShebangIfNeeded(byte[] fileBytes) {
+        int i = 2;
+        while (i < fileBytes.length && fileBytes[i] == ' ') i++;
+        int pathStart = i;
+        while (i < fileBytes.length && fileBytes[i] != ' ' && fileBytes[i] != '\n' && fileBytes[i] != '\r') i++;
+        int pathEnd = i;
+        if (pathEnd <= pathStart) return fileBytes;
+
+        String interpreterPath = new String(fileBytes, pathStart, pathEnd - pathStart);
+        if (!interpreterPath.startsWith("/data/data/") ||
+            interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH)) {
+            return fileBytes;
+        }
+
+        String binary = new File(interpreterPath).getName();
+        byte[] correctedPath = (TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/" + binary).getBytes();
+        byte[] result = new byte[2 + correctedPath.length + (fileBytes.length - pathEnd)];
+        result[0] = '#';
+        result[1] = '!';
+        System.arraycopy(correctedPath, 0, result, 2, correctedPath.length);
+        System.arraycopy(fileBytes, pathEnd, result, 2 + correctedPath.length, fileBytes.length - pathEnd);
+        return result;
     }
 
     private static Error ensureDirectoryExists(File directory) {
