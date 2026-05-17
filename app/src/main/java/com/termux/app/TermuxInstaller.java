@@ -404,30 +404,31 @@ final class TermuxInstaller {
             return fileBytes;
         }
 
-        String binary = new File(interpreterPath).getName();
-        byte[] correctedPath = (TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/" + binary).getBytes();
-        byte[] result = new byte[2 + correctedPath.length + (fileBytes.length - pathEnd)];
-        result[0] = '#';
-        result[1] = '!';
-        System.arraycopy(correctedPath, 0, result, 2, correctedPath.length);
-        System.arraycopy(fileBytes, pathEnd, result, 2 + correctedPath.length, fileBytes.length - pathEnd);
-        return result;
+        int pkgEnd = interpreterPath.indexOf('/', "/data/data/".length());
+        if (pkgEnd < 0) return fileBytes;
+        String oldPkgDataPath = interpreterPath.substring(0, pkgEnd + 1);
+        String newPkgDataPath = TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/";
+        String content = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
+        String patched = content.replace(oldPkgDataPath, newPkgDataPath);
+        if (patched.equals(content)) return fileBytes;
+        return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static boolean bootstrapLoginShebangMatchesCurrentPackage() {
         File loginFile = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/login");
         if (!loginFile.isFile() || !loginFile.canRead()) return true;
         try (FileInputStream fis = new FileInputStream(loginFile)) {
-            byte[] buf = new byte[256];
+            byte[] buf = new byte[65536];
             int bytesRead = fis.read(buf);
             if (bytesRead < 2 || buf[0] != '#' || buf[1] != '!') return true;
-            int i = 2;
-            while (i < bytesRead && buf[i] == ' ') i++;
-            int pathStart = i;
-            while (i < bytesRead && buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\r') i++;
-            String interpreterPath = new String(buf, pathStart, i - pathStart);
-            if (!interpreterPath.startsWith("/data/data/")) return true;
-            return interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
+            String content = new String(buf, 0, bytesRead, java.nio.charset.StandardCharsets.UTF_8);
+            if (!content.contains("/data/data/")) return true;
+            int dataDataIdx = content.indexOf("/data/data/");
+            int pkgEnd = content.indexOf('/', dataDataIdx + "/data/data/".length());
+            if (pkgEnd < 0) return true;
+            String oldPkgDataPath = content.substring(dataDataIdx, pkgEnd + 1);
+            if (!oldPkgDataPath.startsWith("/data/data/")) return true;
+            return oldPkgDataPath.equals(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
         } catch (IOException e) {
             return true;
         }
