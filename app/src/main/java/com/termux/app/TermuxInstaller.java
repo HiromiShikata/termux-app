@@ -27,7 +27,9 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -107,6 +109,8 @@ final class TermuxInstaller {
         if (FileUtils.directoryFileExists(TERMUX_PREFIX_DIR_PATH, true)) {
             if (TermuxFileUtils.isTermuxPrefixDirectoryEmpty()) {
                 Logger.logInfo(LOG_TAG, "The termux prefix directory \"" + TERMUX_PREFIX_DIR_PATH + "\" exists but is empty or only contains specific unimportant files.");
+            } else if (!bootstrapLoginShebangMatchesCurrentPackage()) {
+                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: login shebang path does not match current package.");
             } else {
                 whenDone.run();
                 return;
@@ -408,6 +412,25 @@ final class TermuxInstaller {
         System.arraycopy(correctedPath, 0, result, 2, correctedPath.length);
         System.arraycopy(fileBytes, pathEnd, result, 2 + correctedPath.length, fileBytes.length - pathEnd);
         return result;
+    }
+
+    private static boolean bootstrapLoginShebangMatchesCurrentPackage() {
+        File loginFile = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/login");
+        if (!loginFile.isFile() || !loginFile.canRead()) return true;
+        try (FileInputStream fis = new FileInputStream(loginFile)) {
+            byte[] buf = new byte[256];
+            int bytesRead = fis.read(buf);
+            if (bytesRead < 2 || buf[0] != '#' || buf[1] != '!') return true;
+            int i = 2;
+            while (i < bytesRead && buf[i] == ' ') i++;
+            int pathStart = i;
+            while (i < bytesRead && buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\r') i++;
+            String interpreterPath = new String(buf, pathStart, i - pathStart);
+            if (!interpreterPath.startsWith("/data/data/")) return true;
+            return interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
+        } catch (IOException e) {
+            return true;
+        }
     }
 
     private static Error ensureDirectoryExists(File directory) {
