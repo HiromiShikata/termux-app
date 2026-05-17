@@ -400,7 +400,7 @@ final class TermuxInstaller {
 
         String interpreterPath = new String(fileBytes, pathStart, pathEnd - pathStart);
         if (!interpreterPath.startsWith("/data/data/") ||
-            interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH)) {
+            interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/")) {
             return fileBytes;
         }
 
@@ -427,7 +427,7 @@ final class TermuxInstaller {
             while (i < bytesRead && buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\r') i++;
             String interpreterPath = new String(buf, pathStart, i - pathStart);
             if (!interpreterPath.startsWith("/data/data/")) return true;
-            return interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
+            return interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
         } catch (IOException e) {
             return true;
         }
