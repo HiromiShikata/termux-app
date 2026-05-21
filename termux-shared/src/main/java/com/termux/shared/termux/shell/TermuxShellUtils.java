@@ -1,5 +1,7 @@
 package com.termux.shared.termux.shell;
 
+import android.os.Build;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -23,9 +25,25 @@ public class TermuxShellUtils {
 
     private static final String LOG_TAG = "TermuxShellUtils";
 
+    public static final String SYSTEM_LINKER_64_PATH = "/system/bin/linker64";
+
+    public static final String SYSTEM_LINKER_PATH = "/system/bin/linker";
+
     /**
      * Setup shell command arguments for the execute. The file interpreter may be prefixed to
      * command arguments if needed.
+     *
+     * On Android 10 (API 29) and above, the platform blocks execve() on files inside the app's
+     * private data directory when targetSdkVersion is also 29 or above. The Termux bootstrap
+     * binaries are installed under the app data directory, so a direct execve() of any such file
+     * is rejected by the kernel with EACCES ("Permission denied"). The fork raises
+     * targetSdkVersion to 35 for Android 15 compatibility, which triggers this restriction.
+     *
+     * To work around this, any executable or shebang interpreter that resolves to a file inside
+     * the Termux private data directory is wrapped by the system dynamic linker
+     * ({@link #SYSTEM_LINKER_64_PATH} on 64-bit Android, {@link #SYSTEM_LINKER_PATH} on 32-bit).
+     * The kernel allows the exec because the executed file is the system linker, and the linker
+     * then loads the original Termux binary in user space, which is permitted.
      */
     @NonNull
     public static String[] setupShellCommandArguments(@NonNull String executable, @Nullable String[] arguments) {
@@ -81,7 +99,50 @@ public class TermuxShellUtils {
         if (interpreter != null) result.add(interpreter);
         result.add(executable);
         if (arguments != null) Collections.addAll(result, arguments);
-        return result.toArray(new String[0]);
+        return wrapWithSystemLinkerIfRequired(result.toArray(new String[0]));
+    }
+
+    /**
+     * Wrap the first element of {@code commandArguments} with the system dynamic linker when it
+     * resolves to a file inside the Termux private app data directory and the running platform
+     * applies the Android 10+ app-data exec restriction.
+     *
+     * @param commandArguments The command arguments. The first element is the executable.
+     * @return The command arguments with the system linker prepended if required, otherwise the
+     *         original array.
+     */
+    @NonNull
+    public static String[] wrapWithSystemLinkerIfRequired(@NonNull String[] commandArguments) {
+        if (commandArguments.length == 0) return commandArguments;
+        if (!isAppDataFileExecRestricted()) return commandArguments;
+
+        String executable = commandArguments[0];
+        if (!isPathInsideTermuxAppDataDir(executable)) return commandArguments;
+
+        String systemLinker = resolveSystemLinkerPath();
+        if (systemLinker == null) return commandArguments;
+
+        String[] wrapped = new String[commandArguments.length + 1];
+        wrapped[0] = systemLinker;
+        System.arraycopy(commandArguments, 0, wrapped, 1, commandArguments.length);
+        return wrapped;
+    }
+
+    public static boolean isAppDataFileExecRestricted() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+    }
+
+    public static boolean isPathInsideTermuxAppDataDir(@NonNull String path) {
+        return path.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
+    }
+
+    @Nullable
+    public static String resolveSystemLinkerPath() {
+        File linker64 = new File(SYSTEM_LINKER_64_PATH);
+        if (linker64.exists()) return SYSTEM_LINKER_64_PATH;
+        File linker32 = new File(SYSTEM_LINKER_PATH);
+        if (linker32.exists()) return SYSTEM_LINKER_PATH;
+        return null;
     }
 
     /** Clear files under {@link TermuxConstants#TERMUX_TMP_PREFIX_DIR_PATH}. */
