@@ -15,7 +15,6 @@ import com.termux.shared.termux.TermuxBootstrap;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.shell.TermuxShellUtils;
 
-import java.io.File;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 
@@ -28,22 +27,6 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
     /** Environment variable for the termux {@link TermuxConstants#TERMUX_PREFIX_DIR_PATH}. */
     public static final String ENV_PREFIX = "PREFIX";
-
-    public static final String ENV_TERMUX_ROOTFS = "TERMUX__ROOTFS";
-
-    public static final String ENV_TERMUX_PREFIX = "TERMUX__PREFIX";
-
-    public static final String ENV_TERMUX_APP_DATA_DIR = "TERMUX_APP__DATA_DIR";
-
-    public static final String ENV_TERMUX_APP_LEGACY_DATA_DIR = "TERMUX_APP__LEGACY_DATA_DIR";
-
-    public static final String ENV_TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE = "TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE";
-
-    public static final String ENV_LD_PRELOAD = "LD_PRELOAD";
-
-    public static final String TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE_FORCE = "force";
-
-    public static final String LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME = "libtermux-exec-ld-preload.so";
 
     public TermuxShellEnvironment() {
         super();
@@ -101,28 +84,15 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
             if (TermuxBootstrap.isAppPackageVariantAPTAndroid5()) {
                 // Termux in android 5/6 era shipped busybox binaries in applets directory
                 environment.put(ENV_PATH, TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + ":" + TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/applets");
-                environment.put(ENV_LD_LIBRARY_PATH, TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH);
             } else {
-                // Termux binaries on Android 7+ rely on DT_RUNPATH, so LD_LIBRARY_PATH should be unset by default
                 environment.put(ENV_PATH, TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH);
-                environment.remove(ENV_LD_LIBRARY_PATH);
             }
 
-            // Tell libtermux-exec-ld-preload.so where this fork's data directory lives. Without
-            // these variables the library falls back to the upstream-compiled defaults that point
-            // at /data/data/com.termux/... which does not exist for this fork. Both the user-0
-            // path and the legacy path are exported because the library matches the executable path
-            // against both when deciding whether to apply system linker exec.
-            environment.put(ENV_TERMUX_ROOTFS, TermuxConstants.TERMUX_FILES_DIR_PATH);
-            environment.put(ENV_TERMUX_PREFIX, TermuxConstants.TERMUX_PREFIX_DIR_PATH);
-            environment.put(ENV_TERMUX_APP_DATA_DIR, TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH_USER_0);
-            environment.put(ENV_TERMUX_APP_LEGACY_DATA_DIR, TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
-            environment.put(ENV_TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE, TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE_FORCE);
-
-            File termuxExecLib = new File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH + "/" + LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME);
-            if (termuxExecLib.isFile()) {
-                environment.put(ENV_LD_PRELOAD, termuxExecLib.getAbsolutePath());
-            }
+            // Bootstrap ELF binaries have a DT_RUNPATH baked at upstream build time pointing at the
+            // upstream prefix, which does not exist for this fork's package name. LD_LIBRARY_PATH is
+            // searched before DT_RUNPATH by the bionic linker, so it makes shared libraries such as
+            // libmd.so resolvable regardless of the wrong baked path.
+            environment.put(ENV_LD_LIBRARY_PATH, TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH);
         }
 
         return environment;
@@ -144,8 +114,7 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
     @NonNull
     @Override
     public String[] setupShellCommandArguments(@NonNull String executable, String[] arguments) {
-        return TermuxShellUtils.wrapWithSystemLinkerIfRequired(
-            TermuxShellUtils.setupShellCommandArguments(executable, arguments));
+        return TermuxShellUtils.setupShellCommandArguments(executable, arguments);
     }
 
 }
