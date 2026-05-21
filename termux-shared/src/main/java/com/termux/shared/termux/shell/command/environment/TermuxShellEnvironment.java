@@ -29,6 +29,22 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
     /** Environment variable for the termux {@link TermuxConstants#TERMUX_PREFIX_DIR_PATH}. */
     public static final String ENV_PREFIX = "PREFIX";
 
+    public static final String ENV_TERMUX_ROOTFS = "TERMUX__ROOTFS";
+
+    public static final String ENV_TERMUX_PREFIX = "TERMUX__PREFIX";
+
+    public static final String ENV_TERMUX_APP_DATA_DIR = "TERMUX_APP__DATA_DIR";
+
+    public static final String ENV_TERMUX_APP_LEGACY_DATA_DIR = "TERMUX_APP__LEGACY_DATA_DIR";
+
+    public static final String ENV_TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE = "TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE";
+
+    public static final String ENV_LD_PRELOAD = "LD_PRELOAD";
+
+    public static final String TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE_FORCE = "force";
+
+    public static final String LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME = "libtermux-exec-ld-preload.so";
+
     public TermuxShellEnvironment() {
         super();
         shellCommandShellEnvironment = new TermuxShellCommandShellEnvironment();
@@ -94,16 +110,18 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
             // Tell libtermux-exec-ld-preload.so where this fork's data directory lives. Without
             // these variables the library falls back to the upstream-compiled defaults that point
-            // at /data/data/com.termux/... which does not exist for this fork.
-            environment.put("TERMUX__ROOTFS", TermuxConstants.TERMUX_FILES_DIR_PATH);
-            environment.put("TERMUX__PREFIX", TermuxConstants.TERMUX_PREFIX_DIR_PATH);
-            environment.put("TERMUX_APP__DATA_DIR", TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
-            environment.put("TERMUX_APP__LEGACY_DATA_DIR", "/data/data/com.termux");
-            environment.put("TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE", "force");
+            // at /data/data/com.termux/... which does not exist for this fork. Both the user-0
+            // path and the legacy path are exported because the library matches the executable path
+            // against both when deciding whether to apply system linker exec.
+            environment.put(ENV_TERMUX_ROOTFS, TermuxConstants.TERMUX_FILES_DIR_PATH);
+            environment.put(ENV_TERMUX_PREFIX, TermuxConstants.TERMUX_PREFIX_DIR_PATH);
+            environment.put(ENV_TERMUX_APP_DATA_DIR, TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH_USER_0);
+            environment.put(ENV_TERMUX_APP_LEGACY_DATA_DIR, TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
+            environment.put(ENV_TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE, TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE_FORCE);
 
-            File termuxExecLib = new File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH + "/libtermux-exec-ld-preload.so");
+            File termuxExecLib = new File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH + "/" + LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME);
             if (termuxExecLib.isFile()) {
-                environment.put("LD_PRELOAD", termuxExecLib.getAbsolutePath());
+                environment.put(ENV_LD_PRELOAD, termuxExecLib.getAbsolutePath());
             }
         }
 
@@ -126,7 +144,8 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
     @NonNull
     @Override
     public String[] setupShellCommandArguments(@NonNull String executable, String[] arguments) {
-        return TermuxShellUtils.setupShellCommandArguments(executable, arguments);
+        return TermuxShellUtils.wrapWithSystemLinkerIfRequired(
+            TermuxShellUtils.setupShellCommandArguments(executable, arguments));
     }
 
 }

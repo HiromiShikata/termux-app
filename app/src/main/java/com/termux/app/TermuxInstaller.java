@@ -172,7 +172,7 @@ final class TermuxInstaller {
                                     String[] parts = line.split("←");
                                     if (parts.length != 2)
                                         throw new RuntimeException("Malformed symlink line: " + line);
-                                    String oldPath = parts[0];
+                                    String oldPath = patchPackagePathString(parts[0]);
                                     String newPath = TERMUX_STAGING_PREFIX_DIR_PATH + "/" + parts[1];
                                     symlinks.add(Pair.create(oldPath, newPath));
 
@@ -195,22 +195,22 @@ final class TermuxInstaller {
 
                                 if (!isDirectory) {
                                     int firstRead = zipInput.read(buffer);
-                                    if (firstRead > 1 && buffer[0] == '#' && buffer[1] == '!') {
-                                        ByteArrayOutputStream contentBuffer = new ByteArrayOutputStream();
-                                        contentBuffer.write(buffer, 0, firstRead);
-                                        int readBytes;
-                                        while ((readBytes = zipInput.read(buffer)) != -1)
-                                            contentBuffer.write(buffer, 0, readBytes);
-                                        byte[] fileBytes = patchShebangIfNeeded(contentBuffer.toByteArray());
-                                        try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
-                                            outStream.write(fileBytes);
-                                        }
-                                    } else {
+                                    if (isElfHeader(buffer, firstRead)) {
                                         try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
                                             if (firstRead > 0) outStream.write(buffer, 0, firstRead);
                                             int readBytes;
                                             while ((readBytes = zipInput.read(buffer)) != -1)
                                                 outStream.write(buffer, 0, readBytes);
+                                        }
+                                    } else {
+                                        ByteArrayOutputStream contentBuffer = new ByteArrayOutputStream();
+                                        if (firstRead > 0) contentBuffer.write(buffer, 0, firstRead);
+                                        int readBytes;
+                                        while ((readBytes = zipInput.read(buffer)) != -1)
+                                            contentBuffer.write(buffer, 0, readBytes);
+                                        byte[] fileBytes = patchPackagePathsIfNeeded(contentBuffer.toByteArray());
+                                        try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
+                                            outStream.write(fileBytes);
                                         }
                                     }
                                     if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
@@ -390,28 +390,36 @@ final class TermuxInstaller {
         }.start();
     }
 
-    private static byte[] patchShebangIfNeeded(byte[] fileBytes) {
-        int i = 2;
-        while (i < fileBytes.length && fileBytes[i] == ' ') i++;
-        int pathStart = i;
-        while (i < fileBytes.length && fileBytes[i] != ' ' && fileBytes[i] != '\n' && fileBytes[i] != '\r') i++;
-        int pathEnd = i;
-        if (pathEnd <= pathStart) return fileBytes;
+    static boolean isElfHeader(byte[] buffer, int length) {
+        return length >= 4 && buffer[0] == 0x7F && buffer[1] == 'E' && buffer[2] == 'L' && buffer[3] == 'F';
+    }
 
-        String interpreterPath = new String(fileBytes, pathStart, pathEnd - pathStart);
-        if (!interpreterPath.startsWith("/data/data/") ||
-            interpreterPath.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/")) {
-            return fileBytes;
-        }
-
-        int pkgEnd = interpreterPath.indexOf('/', "/data/data/".length());
-        if (pkgEnd < 0) return fileBytes;
-        String oldPkgDataPath = interpreterPath.substring(0, pkgEnd + 1);
-        String newPkgDataPath = TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/";
+    static byte[] patchPackagePathsIfNeeded(byte[] fileBytes) {
         String content = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
-        String patched = content.replace(oldPkgDataPath, newPkgDataPath);
+        String patched = patchPackagePathString(content);
         if (patched.equals(content)) return fileBytes;
         return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    static String patchPackagePathString(String content) {
+        String dataDataPrefix = "/data/data/";
+        String newPkgDataPath = TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/";
+        String patched = content;
+        int searchFrom = 0;
+        while (true) {
+            int dataDataIdx = patched.indexOf(dataDataPrefix, searchFrom);
+            if (dataDataIdx < 0) break;
+            int pkgEnd = patched.indexOf('/', dataDataIdx + dataDataPrefix.length());
+            if (pkgEnd < 0) break;
+            String oldPkgDataPath = patched.substring(dataDataIdx, pkgEnd + 1);
+            if (oldPkgDataPath.equals(newPkgDataPath)) {
+                searchFrom = pkgEnd + 1;
+                continue;
+            }
+            patched = patched.replace(oldPkgDataPath, newPkgDataPath);
+            searchFrom = dataDataIdx + newPkgDataPath.length();
+        }
+        return patched;
     }
 
     private static boolean bootstrapLoginShebangMatchesCurrentPackage() {

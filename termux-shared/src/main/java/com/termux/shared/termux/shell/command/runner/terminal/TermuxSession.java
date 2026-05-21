@@ -16,6 +16,7 @@ import com.termux.shared.errors.Errno;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.shell.command.environment.IShellEnvironment;
 import com.termux.shared.shell.ShellUtils;
+import com.termux.shared.termux.shell.TermuxShellUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 
@@ -122,7 +123,8 @@ public class TermuxSession {
         String[] commandArgs = shellEnvironmentClient.setupShellCommandArguments(executionCommand.executable, executionCommand.arguments);
 
         executionCommand.executable = commandArgs[0];
-        String processName = (isLoginShell ? "-" : "") + ShellUtils.getExecutableBasename(executionCommand.executable);
+        int processNameIndex = TermuxShellUtils.isSystemLinkerPath(executionCommand.executable) && commandArgs.length > 1 ? 1 : 0;
+        String processName = (isLoginShell ? "-" : "") + ShellUtils.getExecutableBasename(commandArgs[processNameIndex]);
 
         String[] arguments = new String[commandArgs.length];
         arguments[0] = processName;

@@ -582,6 +582,10 @@ public final class TermuxConstants {
     /** Termux app internal private app data directory */
     public static final File TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR = new File(TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
 
+    /** Termux app internal private app data directory path that Android assigns under the primary user (user 0) */
+    @SuppressLint("SdCardPath")
+    public static final String TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH_USER_0 = "/data/user/0/" + TERMUX_PACKAGE_NAME; // Default: "/data/user/0/com.termux"
+
 
 
     /** Termux app Files directory path */
