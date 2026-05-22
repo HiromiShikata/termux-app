@@ -10,16 +10,16 @@ on:
       termux_packages_ref:
         description: 'termux/termux-packages git ref to build from'
         required: true
-        default: 'bootstrap-2026.02.12-r1+apt.android-7'
+        default: 'bootstrap-2026.05.17-r1+apt.android-7'
       release_tag:
         description: 'Release tag to publish the fork bootstrap zips under'
         required: true
-        default: 'bootstrap-com.termux.hs.shortcut-2026.02.12-r1'
+        default: 'bootstrap-com.termux.hs.shortcut-2026.05.17-r1'
 
 env:
   TERMUX_APP_PACKAGE_NAME: com.termux.hs.shortcut
-  TERMUX_PACKAGES_REF: ${{ github.event.inputs.termux_packages_ref || 'bootstrap-2026.02.12-r1+apt.android-7' }}
-  RELEASE_TAG: ${{ github.event.inputs.release_tag || 'bootstrap-com.termux.hs.shortcut-2026.02.12-r1' }}
+  TERMUX_PACKAGES_REF: ${{ github.event.inputs.termux_packages_ref || 'bootstrap-2026.05.17-r1+apt.android-7' }}
+  RELEASE_TAG: ${{ github.event.inputs.release_tag || 'bootstrap-com.termux.hs.shortcut-2026.05.17-r1' }}
 
 jobs:
   build:
