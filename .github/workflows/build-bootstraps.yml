@@ -1,0 +1,120 @@
+name: Build Bootstraps
+
+on:
+  workflow_dispatch:
+    inputs:
+      termux_packages_ref:
+        description: 'termux/termux-packages git ref to build from'
+        required: true
+        default: 'bootstrap-2026.02.12-r1+apt.android-7'
+      release_tag:
+        description: 'Release tag to publish the fork bootstrap zips under'
+        required: true
+        default: 'bootstrap-com.termux.hs.shortcut-2026.02.12-r1'
+
+env:
+  TERMUX_APP_PACKAGE_NAME: com.termux.hs.shortcut
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ aarch64, arm, i686, x86_64 ]
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Clone termux-packages
+        uses: actions/checkout@v6
+        with:
+          repository: termux/termux-packages
+          ref: ${{ github.event.inputs.termux_packages_ref }}
+          path: termux-packages
+
+      - name: Set fork package name in properties.sh
+        working-directory: termux-packages
+        run: |
+          sed -i -E "s/^TERMUX_APP__PACKAGE_NAME=\"com.termux\"/TERMUX_APP__PACKAGE_NAME=\"${TERMUX_APP_PACKAGE_NAME}\"/" scripts/properties.sh
+          echo "Verifying package name was set:"
+          grep -E "^TERMUX_APP__PACKAGE_NAME=" scripts/properties.sh
+          if ! grep -qE "^TERMUX_APP__PACKAGE_NAME=\"${TERMUX_APP_PACKAGE_NAME}\"$" scripts/properties.sh; then
+            echo "Failed to set TERMUX_APP__PACKAGE_NAME in scripts/properties.sh"
+            exit 1
+          fi
+
+      - name: Build bootstrap for ${{ matrix.arch }}
+        working-directory: termux-packages
+        run: |
+          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh -f --architectures ${{ matrix.arch }}
+
+      - name: Verify fork prefix is baked into the bootstrap
+        working-directory: termux-packages
+        run: |
+          ZIP="bootstrap-${{ matrix.arch }}.zip"
+          test -f "$ZIP" || { echo "Bootstrap zip $ZIP not found"; ls -la; exit 1; }
+          WORKDIR="$(mktemp -d)"
+          unzip -q "$ZIP" -d "$WORKDIR"
+          UPSTREAM_HITS="$(grep -rIl "/data/data/com.termux/files" "$WORKDIR" || true)"
+          if [ -n "$UPSTREAM_HITS" ]; then
+            echo "Files still reference the upstream prefix /data/data/com.termux/files:"
+            echo "$UPSTREAM_HITS"
+            exit 1
+          fi
+          if ! grep -rIl "/data/data/${TERMUX_APP_PACKAGE_NAME}/files" "$WORKDIR" >/dev/null; then
+            echo "No file references the fork prefix /data/data/${TERMUX_APP_PACKAGE_NAME}/files"
+            exit 1
+          fi
+          echo "Verified: bootstrap-${{ matrix.arch }}.zip carries the fork prefix only."
+          rm -rf "$WORKDIR"
+
+      - name: Compute checksum
+        working-directory: termux-packages
+        run: |
+          sha256sum "bootstrap-${{ matrix.arch }}.zip" | tee "bootstrap-${{ matrix.arch }}.zip.sha256"
+
+      - name: Upload bootstrap artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: bootstrap-${{ matrix.arch }}
+          path: |
+            termux-packages/bootstrap-${{ matrix.arch }}.zip
+            termux-packages/bootstrap-${{ matrix.arch }}.zip.sha256
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: write
+    steps:
+      - name: Download all bootstrap artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: bootstraps
+
+      - name: Collect zips and checksums
+        run: |
+          mkdir -p release
+          find bootstraps -name 'bootstrap-*.zip' -exec cp {} release/ \;
+          cd release
+          sha256sum bootstrap-*.zip | tee SHA256SUMS.txt
+          ls -la
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/* -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" release/* \
+              -R "$GITHUB_REPOSITORY" \
+              --title "Fork bootstrap ($RELEASE_TAG)" \
+              --notes "Termux bootstrap archives built from termux/termux-packages with TERMUX_APP__PACKAGE_NAME=${TERMUX_APP_PACKAGE_NAME} so the prefix /data/data/${TERMUX_APP_PACKAGE_NAME}/files/usr is baked into every binary and text file. Built by .github/workflows/build-bootstraps.yml."
+          fi
+          echo "Release assets:"
+          gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
