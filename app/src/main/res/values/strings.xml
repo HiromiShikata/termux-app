@@ -56,7 +56,7 @@
     <string name="hint_session_short_name">Short name</string>
 
     <string name="action_open_autossh_config">AutoSSH Config</string>
-    <string name="title_autossh_config">Autossh Config</string>
+    <string name="title_autossh_config">AutoSSH Config</string>
     <string name="hint_autossh_command">Command template (use {url} and {name} as placeholders)</string>
     <string name="action_autossh_config_save">Save</string>
 

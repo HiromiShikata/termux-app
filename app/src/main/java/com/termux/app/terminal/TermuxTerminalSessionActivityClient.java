@@ -388,6 +388,34 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
     }
 
+    public void addNewAutosshSession(String sessionName, String command) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
+            new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
+                .setPositiveButton(android.R.string.ok, null).show();
+        } else {
+            TerminalSession currentSession = mActivity.getCurrentSession();
+
+            String workingDirectory;
+            if (currentSession == null) {
+                workingDirectory = mActivity.getProperties().getDefaultWorkingDirectory();
+            } else {
+                workingDirectory = currentSession.getCwd();
+            }
+
+            String bashPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/bash";
+            TermuxSession newTermuxSession = service.createTermuxSession(bashPath, new String[]{"-c", command}, null, workingDirectory, false, sessionName);
+            if (newTermuxSession == null) return;
+
+            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+            setCurrentSession(newTerminalSession);
+
+            mActivity.getDrawer().closeDrawers();
+        }
+    }
+
     public void setCurrentStoredSession() {
         TerminalSession currentSession = mActivity.getCurrentSession();
         if (currentSession != null)

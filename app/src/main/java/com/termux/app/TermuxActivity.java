@@ -591,12 +591,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     String sessionName = (trimmedUrl + " " + trimmedShortName).trim();
                     SharedPreferences prefs = getSharedPreferences(AutosshConfigActivity.PREFS_NAME, MODE_PRIVATE);
                     String commandTemplate = prefs.getString(AutosshConfigActivity.KEY_COMMAND, "");
-                    if (commandTemplate.isEmpty()) {
+                    if (commandTemplate.trim().isEmpty()) {
                         mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
                     } else {
                         String command = commandTemplate
-                            .replace("{url}", trimmedUrl)
-                            .replace("{name}", trimmedShortName);
+                            .replace("{url}", shellQuote(trimmedUrl))
+                            .replace("{name}", shellQuote(trimmedShortName));
                         runAutosshSession(sessionName, command);
                     }
                 },
@@ -614,11 +614,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void runAutosshSession(String sessionName, String command) {
         TermuxService service = mTermuxService;
         if (service == null) return;
-        String workingDirectory = mProperties.getDefaultWorkingDirectory();
-        TerminalSession currentSession = getCurrentSession();
-        if (currentSession != null) workingDirectory = currentSession.getCwd();
-        String bashPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/bash";
-        service.createTermuxSession(bashPath, new String[]{"-c", command}, null, workingDirectory, false, sessionName);
+        mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
+    }
+
+    static String shellQuote(String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private void setAutosshConfigButtonView() {
