@@ -52,6 +52,27 @@ jobs:
             exit 1
           fi
 
+      - name: Replace bzip2 with libbz2 in PACKAGES list
+        working-directory: termux-packages
+        run: |
+          # bzip2 is a subpackage of libbz2 and has no own source dir.
+          # When deps download is disabled (forced because the fork app name differs
+          # from the repo app name), build-package.sh cannot resolve bzip2 by name
+          # and aborts with "No package bzip2 found in any of the enabled repositories".
+          # Building libbz2 from source produces both libbz2.deb and bzip2.deb,
+          # so the bootstrap still receives bzip2 through the normal extract_debs step.
+          sed -i 's/PACKAGES+=("bzip2")/PACKAGES+=("libbz2")/' scripts/build-bootstraps.sh
+          echo "Verifying patch:"
+          grep -nE 'PACKAGES\+=\("(libbz2|bzip2)"\)' scripts/build-bootstraps.sh
+          if grep -qE 'PACKAGES\+=\("bzip2"\)' scripts/build-bootstraps.sh; then
+            echo "Failed to replace bzip2 with libbz2"
+            exit 1
+          fi
+          if ! grep -qE 'PACKAGES\+=\("libbz2"\)' scripts/build-bootstraps.sh; then
+            echo "libbz2 not present after patch"
+            exit 1
+          fi
+
       - name: Build bootstrap for ${{ matrix.arch }}
         working-directory: termux-packages
         run: |
