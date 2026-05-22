@@ -1,5 +1,7 @@
 package com.termux.shared.termux.shell;
 
+import android.os.Build;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -22,6 +24,10 @@ import java.util.List;
 public class TermuxShellUtils {
 
     private static final String LOG_TAG = "TermuxShellUtils";
+
+    public static final String SYSTEM_LINKER_64_PATH = "/system/bin/linker64";
+
+    public static final String SYSTEM_LINKER_PATH = "/system/bin/linker";
 
     /**
      * Setup shell command arguments for the execute. The file interpreter may be prefixed to
@@ -54,7 +60,7 @@ public class TermuxShellUtils {
                                 } else {
                                     // End of shebang.
                                     String shebangExecutable = builder.toString();
-                                    if (shebangExecutable.startsWith("/usr") || shebangExecutable.startsWith("/bin")) {
+                                    if (shebangExecutable.startsWith("/usr") || shebangExecutable.startsWith("/bin") || shebangExecutable.startsWith("/data/data/")) {
                                         String[] parts = shebangExecutable.split("/");
                                         String binary = parts[parts.length - 1];
                                         interpreter = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/" + binary;
@@ -80,6 +86,56 @@ public class TermuxShellUtils {
         result.add(executable);
         if (arguments != null) Collections.addAll(result, arguments);
         return result.toArray(new String[0]);
+    }
+
+    /**
+     * Prepend the Android system dynamic linker to {@code commandArguments} so the first element can
+     * be executed on Android 10 (API 29) and above, where the platform blocks execve() on files
+     * inside the app private data directory when targetSdkVersion is also 29 or above. The Termux
+     * bootstrap binaries live under the app data directory, so a direct execve() of the first
+     * process is rejected by the kernel with EACCES ("Permission denied"). The kernel allows
+     * execve() of {@link #SYSTEM_LINKER_64_PATH} (or {@link #SYSTEM_LINKER_PATH} on 32-bit), and the
+     * linker then loads the original Termux binary in user space, which is permitted. Subsequent
+     * child execs are handled by libtermux-exec-ld-preload.so loaded via LD_PRELOAD.
+     *
+     * @param commandArguments The command arguments. The first element is the executable.
+     * @return The command arguments with the system linker prepended when wrapping is required,
+     *         otherwise the original array.
+     */
+    @NonNull
+    public static String[] wrapWithSystemLinkerIfRequired(@NonNull String[] commandArguments) {
+        if (commandArguments.length == 0) return commandArguments;
+        if (!isAppDataFileExecRestricted()) return commandArguments;
+        if (!isPathInsideTermuxAppDataDir(commandArguments[0])) return commandArguments;
+
+        String systemLinker = resolveSystemLinkerPath();
+        if (systemLinker == null) return commandArguments;
+
+        String[] wrapped = new String[commandArguments.length + 1];
+        wrapped[0] = systemLinker;
+        System.arraycopy(commandArguments, 0, wrapped, 1, commandArguments.length);
+        return wrapped;
+    }
+
+    public static boolean isAppDataFileExecRestricted() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+    }
+
+    public static boolean isPathInsideTermuxAppDataDir(@NonNull String path) {
+        return path.startsWith(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
+    }
+
+    public static boolean isSystemLinkerPath(@NonNull String path) {
+        return SYSTEM_LINKER_64_PATH.equals(path) || SYSTEM_LINKER_PATH.equals(path);
+    }
+
+    @Nullable
+    public static String resolveSystemLinkerPath() {
+        File linker64 = new File(SYSTEM_LINKER_64_PATH);
+        if (linker64.exists()) return SYSTEM_LINKER_64_PATH;
+        File linker32 = new File(SYSTEM_LINKER_PATH);
+        if (linker32.exists()) return SYSTEM_LINKER_PATH;
+        return null;
     }
 
     /** Clear files under {@link TermuxConstants#TERMUX_TMP_PREFIX_DIR_PATH}. */
