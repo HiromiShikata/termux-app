@@ -263,6 +263,7 @@ Commit messages **must** use the [Conventional Commits](https://www.conventional
 
 - Check [`TermuxConstants`](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java) javadocs for instructions on what changes to make in the app to change package name.
 - You also need to recompile bootstrap zip for the new package name. Check [building bootstrap](https://github.com/termux/termux-packages/wiki/For-maintainers#build-bootstrap-archives), [here](https://github.com/termux/termux-app/issues/1983) and [here](https://github.com/termux/termux-app/issues/2081#issuecomment-865280111).
+- This fork builds its own bootstrap archives for the package name `com.termux.hs.shortcut` via the [`build-bootstraps`](.github/workflows/build-bootstraps.yml) workflow, which sets `TERMUX_APP__PACKAGE_NAME` in `termux/termux-packages` so the prefix `/data/data/com.termux.hs.shortcut/files/usr` is baked into every binary, and publishes the four arch zips as a GitHub Release that `app/build.gradle` downloads for the `apt-android-7` variant.
 - Currently, not all plugins use `TermuxConstants` from `termux-shared` library and have hardcoded `com.termux` values and will need to be manually patched.
 - If forking termux plugins, check [Forking and Local Development](https://github.com/termux/termux-app/wiki/Termux-Libraries#forking-and-local-development) for info on how to use termux libraries for plugins.
 ##
