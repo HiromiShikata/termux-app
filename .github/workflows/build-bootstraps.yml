@@ -1,6 +1,10 @@
 name: Build Bootstraps
 
 on:
+  push:
+    paths:
+      - '.github/workflows/build-bootstraps.yml'
+      - '.github/workflows/build-bootstraps-trigger'
   workflow_dispatch:
     inputs:
       termux_packages_ref:
@@ -14,6 +18,8 @@ on:
 
 env:
   TERMUX_APP_PACKAGE_NAME: com.termux.hs.shortcut
+  TERMUX_PACKAGES_REF: ${{ github.event.inputs.termux_packages_ref || 'bootstrap-2026.02.12-r1+apt.android-7' }}
+  RELEASE_TAG: ${{ github.event.inputs.release_tag || 'bootstrap-com.termux.hs.shortcut-2026.02.12-r1' }}
 
 jobs:
   build:
@@ -32,7 +38,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: termux/termux-packages
-          ref: ${{ github.event.inputs.termux_packages_ref }}
+          ref: ${{ env.TERMUX_PACKAGES_REF }}
           path: termux-packages
 
       - name: Set fork package name in properties.sh
@@ -106,7 +112,6 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
         run: |
           if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release/* -R "$GITHUB_REPOSITORY" --clobber
