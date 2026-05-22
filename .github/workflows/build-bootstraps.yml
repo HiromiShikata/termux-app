@@ -55,7 +55,7 @@ jobs:
       - name: Build bootstrap for ${{ matrix.arch }}
         working-directory: termux-packages
         run: |
-          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh -f --architectures ${{ matrix.arch }}
+          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures ${{ matrix.arch }}
 
       - name: Verify fork prefix is baked into the bootstrap
         working-directory: termux-packages
