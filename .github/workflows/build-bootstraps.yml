@@ -1,10 +1,6 @@
 name: Build Bootstraps
 
 on:
-  push:
-    paths:
-      - '.github/workflows/build-bootstraps.yml'
-      - '.github/workflows/build-bootstraps-trigger'
   workflow_dispatch:
     inputs:
       termux_packages_ref:
@@ -72,21 +68,6 @@ jobs:
             echo "libbz2 not present after patch"
             exit 1
           fi
-
-      - name: Pre-install Android SDK components needed by termux-am
-        working-directory: termux-packages
-        run: |
-          ./scripts/run-docker.sh bash -lc '
-            set -e
-            SDK_ROOT="$HOME/lib/android-sdk-9123335"
-            SDK_MANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-            if [ ! -x "$SDK_MANAGER" ]; then
-              SDK_MANAGER="$SDK_ROOT/cmdline-tools/bin/sdkmanager"
-            fi
-            mkdir -p "$HOME/.android"
-            yes | "$SDK_MANAGER" --sdk_root="$SDK_ROOT" --licenses >/dev/null
-            "$SDK_MANAGER" --sdk_root="$SDK_ROOT" "platforms;android-33" "build-tools;30.0.3"
-          '
 
       - name: Build bootstrap for ${{ matrix.arch }}
         working-directory: termux-packages
