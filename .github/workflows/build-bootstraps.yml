@@ -76,18 +76,14 @@ jobs:
             exit 1
           fi
 
-      - name: Replace upstream AppArmor profile with unconfined in run-docker.sh
+      - name: Disable upstream AppArmor confinement in run-docker.sh
         working-directory: termux-packages
         run: |
-          sed -i 's| --security-opt apparmor=_custom-termux-package-builder-\$CONTAINER_NAME| --security-opt apparmor=unconfined|' scripts/run-docker.sh
-          echo "Verifying AppArmor opt was rewritten in SEC_OPT:"
+          sed -i 's| --security-opt apparmor=_custom-termux-package-builder-\$CONTAINER_NAME||' scripts/run-docker.sh
+          echo "Verifying AppArmor opt was removed from SEC_OPT:"
           grep -n 'SEC_OPT=' scripts/run-docker.sh
           if grep -qE 'apparmor=_custom-termux-package-builder' scripts/run-docker.sh; then
-            echo "Failed to strip custom AppArmor security-opt from scripts/run-docker.sh"
-            exit 1
-          fi
-          if ! grep -qE 'apparmor=unconfined' scripts/run-docker.sh; then
-            echo "apparmor=unconfined not present after patch"
+            echo "Failed to strip AppArmor security-opt from scripts/run-docker.sh"
             exit 1
           fi
 
