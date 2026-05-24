@@ -29,6 +29,12 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
     /** Environment variable for the termux {@link TermuxConstants#TERMUX_PREFIX_DIR_PATH}. */
     public static final String ENV_PREFIX = "PREFIX";
 
+    public static final String ENV_TERMUX_APP_PACKAGE_MANAGER = "TERMUX_APP_PACKAGE_MANAGER";
+
+    public static final String ENV_DPKG_ADMINDIR = "DPKG_ADMINDIR";
+
+    public static final String TERMUX_DPKG_ADMINDIR_PATH = TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg";
+
     public static final String ENV_TERMUX_ROOTFS = "TERMUX__ROOTFS";
 
     public static final String ENV_TERMUX_PREFIX = "TERMUX__PREFIX";
@@ -112,11 +118,9 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
                 environment.put(ENV_LD_LIBRARY_PATH, TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH);
             }
 
-            // Tell libtermux-exec-ld-preload.so where this fork's data directory lives. Without
-            // these variables the library falls back to the upstream-compiled defaults that point
-            // at /data/data/com.termux/... which does not exist for this fork. Both the user-0
-            // path and the legacy path are exported because the library matches the executable path
-            // against both when deciding whether to apply system linker exec.
+            environment.put(ENV_TERMUX_APP_PACKAGE_MANAGER, "apt");
+            environment.put(ENV_DPKG_ADMINDIR, TERMUX_DPKG_ADMINDIR_PATH);
+
             environment.put(ENV_TERMUX_ROOTFS, TermuxConstants.TERMUX_FILES_DIR_PATH);
             environment.put(ENV_TERMUX_PREFIX, TermuxConstants.TERMUX_PREFIX_DIR_PATH);
             environment.put(ENV_TERMUX_APP_DATA_DIR, TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH_USER_0);

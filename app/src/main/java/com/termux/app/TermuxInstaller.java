@@ -237,6 +237,8 @@ final class TermuxInstaller {
 
                     Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
 
+                    ensureHomeDirectoryConfigFiles();
+
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
 
@@ -439,6 +441,33 @@ final class TermuxInstaller {
             return oldPkgDataPath.equals(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
         } catch (IOException e) {
             return true;
+        }
+    }
+
+    private static void ensureHomeDirectoryConfigFiles() {
+        String homeDirPath = TermuxConstants.TERMUX_HOME_DIR_PATH;
+        String prefixDirPath = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
+
+        new File(homeDirPath).mkdirs();
+
+        File bashProfile = new File(homeDirPath, ".bash_profile");
+        if (!bashProfile.exists()) {
+            try (FileOutputStream fos = new FileOutputStream(bashProfile)) {
+                String content = "[ -f \"" + prefixDirPath + "/etc/profile\" ] && . \"" + prefixDirPath + "/etc/profile\"\n";
+                fos.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                Logger.logStackTraceWithMessage(LOG_TAG, "Failed to create ~/.bash_profile", e);
+            }
+        }
+
+        File dpkgCfg = new File(homeDirPath, ".dpkg.cfg");
+        if (!dpkgCfg.exists()) {
+            try (FileOutputStream fos = new FileOutputStream(dpkgCfg)) {
+                String content = "admindir " + prefixDirPath + "/var/lib/dpkg\n";
+                fos.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                Logger.logStackTraceWithMessage(LOG_TAG, "Failed to create ~/.dpkg.cfg", e);
+            }
         }
     }
 
