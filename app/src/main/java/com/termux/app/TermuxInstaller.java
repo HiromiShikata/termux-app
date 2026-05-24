@@ -112,6 +112,7 @@ final class TermuxInstaller {
             } else if (!bootstrapLoginShebangMatchesCurrentPackage()) {
                 Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: login shebang path does not match current package.");
             } else {
+                ensureHomeDirectoryConfigFiles();
                 whenDone.run();
                 return;
             }
