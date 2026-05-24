@@ -597,7 +597,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                         String command = commandTemplate
                             .replace("{url}", shellQuote(trimmedUrl))
                             .replace("{name}", shellQuote(trimmedShortName));
-                        runAutosshSession(sessionName, command);
+                        mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
                     }
                 },
                 null);
@@ -609,12 +609,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 -1, null, null);
             return true;
         });
-    }
-
-    private void runAutosshSession(String sessionName, String command) {
-        TermuxService service = mTermuxService;
-        if (service == null) return;
-        mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
     }
 
     static String shellQuote(String value) {
