@@ -611,7 +611,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         });
     }
 
-    static String shellQuote(String value) {
+    private static String shellQuote(String value) {
         return "'" + value.replace("'", "'\\''") + "'";
     }
 

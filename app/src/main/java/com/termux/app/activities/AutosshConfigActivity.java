@@ -7,6 +7,8 @@ import android.widget.EditText;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.termux.R;
+import com.termux.shared.activity.media.AppCompatActivityUtils;
+import com.termux.shared.theme.NightMode;
 
 public class AutosshConfigActivity extends AppCompatActivity {
 
@@ -16,6 +18,9 @@ public class AutosshConfigActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        AppCompatActivityUtils.setNightMode(this, NightMode.getAppNightMode().getName(), true);
+
         setContentView(R.layout.activity_autossh_config);
         setTitle(R.string.title_autossh_config);
 

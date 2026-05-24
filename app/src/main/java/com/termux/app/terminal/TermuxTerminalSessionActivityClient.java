@@ -405,8 +405,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 workingDirectory = currentSession.getCwd();
             }
 
-            String bashPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/bash";
-            TermuxSession newTermuxSession = service.createTermuxSession(bashPath, new String[]{"-c", command}, null, workingDirectory, false, sessionName);
+            TermuxSession newTermuxSession = service.createTermuxSession(null, new String[]{"-c", command}, null, workingDirectory, false, sessionName);
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
