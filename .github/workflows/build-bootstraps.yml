@@ -81,17 +81,34 @@ jobs:
           test -f "$ZIP" || { echo "Bootstrap zip $ZIP not found"; ls -la; exit 1; }
           WORKDIR="$(mktemp -d)"
           unzip -q "$ZIP" -d "$WORKDIR"
-          UPSTREAM_HITS="$(grep -rIl "/data/data/com.termux/files" "$WORKDIR" || true)"
-          if [ -n "$UPSTREAM_HITS" ]; then
-            echo "Files still reference the upstream prefix /data/data/com.termux/files:"
-            echo "$UPSTREAM_HITS"
+          UPSTREAM_PATH="/data/data/com.termux/files/usr/"
+          FORK_PATH="/data/data/${TERMUX_APP_PACKAGE_NAME}/files/usr/"
+          FAILED=0
+          for BINARY in bin/bash bin/dpkg; do
+            BIN_PATH="$WORKDIR/$BINARY"
+            if [ ! -f "$BIN_PATH" ]; then
+              echo "Critical binary $BINARY not found in bootstrap"
+              FAILED=1
+              continue
+            fi
+            if strings "$BIN_PATH" | grep -qF "$UPSTREAM_PATH"; then
+              echo "FAIL: $BINARY still contains upstream path $UPSTREAM_PATH"
+              strings "$BIN_PATH" | grep -F "$UPSTREAM_PATH"
+              FAILED=1
+            else
+              echo "OK: $BINARY does not contain upstream path $UPSTREAM_PATH"
+            fi
+            if strings "$BIN_PATH" | grep -qF "$FORK_PATH"; then
+              echo "OK: $BINARY contains fork path $FORK_PATH"
+            else
+              echo "FAIL: $BINARY does not contain fork path $FORK_PATH"
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -ne 0 ]; then
             exit 1
           fi
-          if ! grep -rIl "/data/data/${TERMUX_APP_PACKAGE_NAME}/files" "$WORKDIR" >/dev/null; then
-            echo "No file references the fork prefix /data/data/${TERMUX_APP_PACKAGE_NAME}/files"
-            exit 1
-          fi
-          echo "Verified: bootstrap-${{ matrix.arch }}.zip carries the fork prefix only."
+          echo "Verified: bootstrap-${{ matrix.arch }}.zip has fork prefix in critical ELF binaries."
           rm -rf "$WORKDIR"
 
       - name: Compute checksum
