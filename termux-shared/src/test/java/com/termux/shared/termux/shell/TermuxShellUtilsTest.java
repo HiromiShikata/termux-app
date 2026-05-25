@@ -65,6 +65,11 @@ public class TermuxShellUtilsTest {
     }
 
     @Test
+    public void termuxPackageNameIsNotStandardTermux() {
+        assertFalse(TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux"));
+    }
+
+    @Test
     public void wrapWithSystemLinkerIfRequiredReturnsEmptyArrayUnchanged() {
         String[] empty = new String[0];
 

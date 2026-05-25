@@ -16,6 +16,7 @@ import com.termux.shared.errors.Errno;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.shell.command.environment.IShellEnvironment;
 import com.termux.shared.shell.ShellUtils;
+import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.shell.TermuxShellUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
@@ -129,6 +130,16 @@ public class TermuxSession {
         String[] arguments = new String[commandArgs.length];
         arguments[0] = processName;
         if (commandArgs.length > 1) System.arraycopy(commandArgs, 1, arguments, 1, commandArgs.length - 1);
+
+        if (isLoginShell
+                && ShellUtils.getExecutableBasename(commandArgs[processNameIndex]).equals("bash")
+                && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
+            arguments = new String[commandArgs.length + 2];
+            arguments[0] = ShellUtils.getExecutableBasename(commandArgs[processNameIndex]);
+            if (commandArgs.length > 1) System.arraycopy(commandArgs, 1, arguments, 1, commandArgs.length - 1);
+            arguments[commandArgs.length] = "--init-file";
+            arguments[commandArgs.length + 1] = TermuxConstants.TERMUX_HOME_DIR_PATH + "/.bash_profile";
+        }
 
         executionCommand.arguments = arguments;
 
