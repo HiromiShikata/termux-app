@@ -69,6 +69,24 @@ jobs:
             exit 1
           fi
 
+      - name: Install missing Android SDK components for termux-am build
+        working-directory: termux-packages
+        run: |
+          ./scripts/run-docker.sh bash -c '
+            ANDROID_HOME="${HOME}/lib/android-sdk-9123335"
+            if [ -x "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" ]; then
+              SDK_MANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+            elif [ -x "${ANDROID_HOME}/cmdline-tools/bin/sdkmanager" ]; then
+              SDK_MANAGER="${ANDROID_HOME}/cmdline-tools/bin/sdkmanager"
+            else
+              echo "ERROR: sdkmanager not found in ${ANDROID_HOME}" >&2
+              find "${ANDROID_HOME}" -name sdkmanager 2>/dev/null >&2
+              exit 1
+            fi
+            echo "Using sdkmanager: ${SDK_MANAGER}"
+            yes | "${SDK_MANAGER}" --sdk_root="${ANDROID_HOME}" "platforms;android-33" "build-tools;30.0.3"
+          '
+
       - name: Build bootstrap for ${{ matrix.arch }}
         working-directory: termux-packages
         run: |
