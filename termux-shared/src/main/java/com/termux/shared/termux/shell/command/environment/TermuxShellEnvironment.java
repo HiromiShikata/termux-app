@@ -33,6 +33,8 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
     public static final String ENV_DPKG_ADMINDIR = "DPKG_ADMINDIR";
 
+    public static final String ENV_DPKG_ROOT = "DPKG_ROOT";
+
     public static final String TERMUX_DPKG_ADMINDIR_PATH = TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg";
 
     public static final String ENV_TERMUX_ROOTFS = "TERMUX__ROOTFS";
@@ -120,6 +122,7 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
             environment.put(ENV_TERMUX_APP_PACKAGE_MANAGER, "apt");
             environment.put(ENV_DPKG_ADMINDIR, TERMUX_DPKG_ADMINDIR_PATH);
+            environment.put(ENV_DPKG_ROOT, TermuxConstants.TERMUX_PREFIX_DIR_PATH);
 
             environment.put(ENV_TERMUX_ROOTFS, TermuxConstants.TERMUX_FILES_DIR_PATH);
             environment.put(ENV_TERMUX_PREFIX, TermuxConstants.TERMUX_PREFIX_DIR_PATH);

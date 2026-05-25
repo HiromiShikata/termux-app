@@ -451,24 +451,36 @@ final class TermuxInstaller {
 
         new File(homeDirPath).mkdirs();
 
+        String bashProfileContent = "[ -f \"" + prefixDirPath + "/etc/profile\" ] && . \"" + prefixDirPath + "/etc/profile\"\n";
         File bashProfile = new File(homeDirPath, ".bash_profile");
-        if (!bashProfile.exists()) {
+        if (!bashProfile.exists() || !fileContentMatches(bashProfile, bashProfileContent)) {
             try (FileOutputStream fos = new FileOutputStream(bashProfile)) {
-                String content = "[ -f \"" + prefixDirPath + "/etc/profile\" ] && . \"" + prefixDirPath + "/etc/profile\"\n";
-                fos.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                fos.write(bashProfileContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             } catch (IOException e) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to create ~/.bash_profile", e);
             }
         }
 
+        String dpkgCfgContent = "admindir " + prefixDirPath + "/var/lib/dpkg\n";
         File dpkgCfg = new File(homeDirPath, ".dpkg.cfg");
-        if (!dpkgCfg.exists()) {
+        if (!dpkgCfg.exists() || !fileContentMatches(dpkgCfg, dpkgCfgContent)) {
             try (FileOutputStream fos = new FileOutputStream(dpkgCfg)) {
-                String content = "admindir " + prefixDirPath + "/var/lib/dpkg\n";
-                fos.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                fos.write(dpkgCfgContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             } catch (IOException e) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to create ~/.dpkg.cfg", e);
             }
+        }
+    }
+
+    private static boolean fileContentMatches(File file, String expectedContent) {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] buf = new byte[(int) file.length()];
+            int bytesRead = fis.read(buf);
+            if (bytesRead < 0) return false;
+            String content = new String(buf, 0, bytesRead, java.nio.charset.StandardCharsets.UTF_8);
+            return content.equals(expectedContent);
+        } catch (IOException e) {
+            return false;
         }
     }
 
