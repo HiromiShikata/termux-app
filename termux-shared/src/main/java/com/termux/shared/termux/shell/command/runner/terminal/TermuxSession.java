@@ -131,16 +131,6 @@ public class TermuxSession {
         arguments[0] = processName;
         if (commandArgs.length > 1) System.arraycopy(commandArgs, 1, arguments, 1, commandArgs.length - 1);
 
-        if (isLoginShell
-                && ShellUtils.getExecutableBasename(commandArgs[processNameIndex]).equals("bash")
-                && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
-            arguments = new String[commandArgs.length + 2];
-            arguments[0] = ShellUtils.getExecutableBasename(commandArgs[processNameIndex]);
-            if (commandArgs.length > 1) System.arraycopy(commandArgs, 1, arguments, 1, commandArgs.length - 1);
-            arguments[commandArgs.length] = "--init-file";
-            arguments[commandArgs.length + 1] = TermuxConstants.TERMUX_HOME_DIR_PATH + "/.bash_profile";
-        }
-
         executionCommand.arguments = arguments;
 
         if (executionCommand.commandLabel == null)

@@ -69,11 +69,13 @@ jobs:
             exit 1
           fi
 
-      - name: Install missing Android SDK components for termux-am build
+      - name: Build bootstrap for ${{ matrix.arch }}
         working-directory: termux-packages
         run: |
           ./scripts/run-docker.sh bash -c '
-            ANDROID_HOME="${HOME}/lib/android-sdk-9123335"
+            cd ~/termux-packages
+            source scripts/properties.sh
+            echo "ANDROID_HOME=$ANDROID_HOME"
             if [ -x "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" ]; then
               SDK_MANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
             elif [ -x "${ANDROID_HOME}/cmdline-tools/bin/sdkmanager" ]; then
@@ -85,12 +87,8 @@ jobs:
             fi
             echo "Using sdkmanager: ${SDK_MANAGER}"
             yes | "${SDK_MANAGER}" --sdk_root="${ANDROID_HOME}" "platforms;android-33" "build-tools;30.0.3"
+            scripts/build-bootstraps.sh --architectures ${{ matrix.arch }}
           '
-
-      - name: Build bootstrap for ${{ matrix.arch }}
-        working-directory: termux-packages
-        run: |
-          ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --architectures ${{ matrix.arch }}
 
       - name: Verify fork prefix is baked into the bootstrap
         working-directory: termux-packages

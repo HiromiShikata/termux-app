@@ -110,7 +110,7 @@ final class TermuxInstaller {
             if (TermuxFileUtils.isTermuxPrefixDirectoryEmpty()) {
                 Logger.logInfo(LOG_TAG, "The termux prefix directory \"" + TERMUX_PREFIX_DIR_PATH + "\" exists but is empty or only contains specific unimportant files.");
             } else if (!bootstrapLoginShebangMatchesCurrentPackage()) {
-                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: login shebang path does not match current package.");
+                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: login script requires update for current package.");
             } else {
                 ensureHomeDirectoryConfigFiles();
                 whenDone.run();
@@ -210,6 +210,9 @@ final class TermuxInstaller {
                                         while ((readBytes = zipInput.read(buffer)) != -1)
                                             contentBuffer.write(buffer, 0, readBytes);
                                         byte[] fileBytes = patchPackagePathsIfNeeded(contentBuffer.toByteArray());
+                                        if (zipEntryName.equals("bin/login") && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
+                                            fileBytes = patchLoginScriptForFork(fileBytes);
+                                        }
                                         try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
                                             outStream.write(fileBytes);
                                         }
@@ -425,6 +428,19 @@ final class TermuxInstaller {
         return patched;
     }
 
+    static byte[] patchLoginScriptForFork(byte[] fileBytes) {
+        String content = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
+        String loginShellExecLine = "\texec \"$SHELL\" -l \"$@\"";
+        if (!content.contains(loginShellExecLine)) return fileBytes;
+        String replacement = "\tif [ \"${SHELL##*/}\" = bash ]; then\n"
+            + "\t\texec \"$SHELL\" --init-file \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/profile\" \"$@\"\n"
+            + "\telse\n"
+            + "\t\texec \"$SHELL\" -l \"$@\"\n"
+            + "\tfi";
+        String patched = content.replace(loginShellExecLine, replacement);
+        return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     private static boolean bootstrapLoginShebangMatchesCurrentPackage() {
         File loginFile = new File(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/login");
         if (!loginFile.isFile() || !loginFile.canRead()) return true;
@@ -439,7 +455,9 @@ final class TermuxInstaller {
             if (pkgEnd < 0) return true;
             String oldPkgDataPath = content.substring(dataDataIdx, pkgEnd + 1);
             if (!oldPkgDataPath.startsWith("/data/data/")) return true;
-            return oldPkgDataPath.equals(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/");
+            if (!oldPkgDataPath.equals(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/")) return false;
+            if (!TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux") && !content.contains("--init-file")) return false;
+            return true;
         } catch (IOException e) {
             return true;
         }
