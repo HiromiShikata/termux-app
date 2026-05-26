@@ -81,4 +81,30 @@ public class TermuxInstallerTest {
         assertFalse(TermuxInstaller.isElfHeader(shebang, shebang.length));
         assertFalse(TermuxInstaller.isElfHeader(new byte[]{0x7F, 'E', 'L'}, 3));
     }
+
+    @Test
+    public void patchLoginScriptForForkReplacesLoginShellExecWithInitFileForBash() {
+        String loginScript = "#!/data/data/com.termux.hs.shortcut/files/usr/bin/sh\n"
+            + "export SHELL=/data/data/com.termux.hs.shortcut/files/usr/bin/bash\n"
+            + "if [ -n \"$TERM\" ]; then\n"
+            + "\texec \"$SHELL\" -l \"$@\"\n"
+            + "else\n"
+            + "\texec \"$SHELL\" \"$@\"\n"
+            + "fi\n";
+
+        byte[] patched = TermuxInstaller.patchLoginScriptForFork(loginScript.getBytes(StandardCharsets.UTF_8));
+        String patchedContent = new String(patched, StandardCharsets.UTF_8);
+
+        assertTrue(patchedContent.contains("--init-file"));
+        assertTrue(patchedContent.contains(TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/profile"));
+        assertFalse(patchedContent.contains("if [ -n \"$TERM\" ]; then\n\texec \"$SHELL\" -l"));
+        assertTrue(patchedContent.contains("${SHELL##*/}\" = bash"));
+    }
+
+    @Test
+    public void patchLoginScriptForForkReturnsSameBytesWhenLoginShellExecLineAbsent() {
+        byte[] noExecLine = "#!/bin/sh\nexport SHELL=/usr/bin/bash\n".getBytes(StandardCharsets.UTF_8);
+
+        assertSame(noExecLine, TermuxInstaller.patchLoginScriptForFork(noExecLine));
+    }
 }
