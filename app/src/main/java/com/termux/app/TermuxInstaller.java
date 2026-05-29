@@ -64,6 +64,12 @@ final class TermuxInstaller {
 
     private static final String LOG_TAG = "TermuxInstaller";
 
+    static final String SECOND_STAGE_SCRIPT_RELATIVE_PATH = "etc/termux/termux-bootstrap/second-stage/termux-bootstrap-second-stage.sh";
+
+    static final String SECOND_STAGE_DPKG_VERSION_INVOCATION = "dpkg_version=$(dpkg --version | head -n 1 | sed -E 's/.*version ([^ ]+) .*/\\1/')";
+
+    static final String SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN = "termux-app-fork-dpkg-version-from-status";
+
     /** Performs bootstrap setup if necessary. */
     static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
         String bootstrapErrorMessage;
@@ -111,6 +117,8 @@ final class TermuxInstaller {
                 Logger.logInfo(LOG_TAG, "The termux prefix directory \"" + TERMUX_PREFIX_DIR_PATH + "\" exists but is empty or only contains specific unimportant files.");
             } else if (!bootstrapLoginShebangMatchesCurrentPackage()) {
                 Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: login script requires update for current package.");
+            } else if (!bootstrapSecondStageScriptIsPatchedForFork()) {
+                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: second-stage script requires update to bypass dpkg --version on fork installs.");
             } else {
                 ensureHomeDirectoryConfigFiles();
                 whenDone.run();
@@ -212,6 +220,9 @@ final class TermuxInstaller {
                                         byte[] fileBytes = patchPackagePathsIfNeeded(contentBuffer.toByteArray());
                                         if (zipEntryName.equals("bin/login") && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
                                             fileBytes = patchLoginScriptForFork(fileBytes);
+                                        }
+                                        if (zipEntryName.equals(SECOND_STAGE_SCRIPT_RELATIVE_PATH) && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
+                                            fileBytes = patchSecondStageScriptForFork(fileBytes);
                                         }
                                         try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
                                             outStream.write(fileBytes);
@@ -439,6 +450,32 @@ final class TermuxInstaller {
             + "\tfi";
         String patched = content.replace(loginShellExecLine, replacement);
         return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    static byte[] patchSecondStageScriptForFork(byte[] fileBytes) {
+        String content = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
+        if (!content.contains(SECOND_STAGE_DPKG_VERSION_INVOCATION)) return fileBytes;
+        String replacement = "dpkg_version=$(awk '/^Package: dpkg$/{f=1;next} f&&/^Version:/{sub(/^Version: */,\"\");print;exit}' \"${TERMUX_PREFIX}/var/lib/dpkg/status\" 2>/dev/null) # " + SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN;
+        String patched = content.replace(SECOND_STAGE_DPKG_VERSION_INVOCATION, replacement);
+        return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static boolean bootstrapSecondStageScriptIsPatchedForFork() {
+        if (TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) return true;
+        File secondStageScript = new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/" + SECOND_STAGE_SCRIPT_RELATIVE_PATH);
+        if (!secondStageScript.isFile() || !secondStageScript.canRead()) return true;
+        try (FileInputStream fis = new FileInputStream(secondStageScript)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int readBytes;
+            while ((readBytes = fis.read(buf)) != -1) {
+                out.write(buf, 0, readBytes);
+            }
+            String content = new String(out.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+            return content.contains(SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN);
+        } catch (IOException e) {
+            return true;
+        }
     }
 
     private static boolean bootstrapLoginShebangMatchesCurrentPackage() {

@@ -107,4 +107,43 @@ public class TermuxInstallerTest {
 
         assertSame(noExecLine, TermuxInstaller.patchLoginScriptForFork(noExecLine));
     }
+
+    @Test
+    public void patchSecondStageScriptForForkReplacesDpkgVersionInvocationWithStatusFileLookup() {
+        String secondStageScript = "if [ -d \"${TERMUX_PREFIX}/var/lib/dpkg/info\" ]; then\n"
+            + "\tlocal dpkg_version\n"
+            + "\n"
+            + "\t" + TermuxInstaller.SECOND_STAGE_DPKG_VERSION_INVOCATION + "\n"
+            + "\tif [[ ! \"$dpkg_version\" =~ ^[0-9].*$ ]]; then\n"
+            + "\t\tlog_error \"Failed to find the 'dpkg' version\"\n"
+            + "\t\treturn 1\n"
+            + "\tfi\n"
+            + "fi\n";
+
+        byte[] patched = TermuxInstaller.patchSecondStageScriptForFork(secondStageScript.getBytes(StandardCharsets.UTF_8));
+        String patchedContent = new String(patched, StandardCharsets.UTF_8);
+
+        assertFalse(patchedContent.contains(TermuxInstaller.SECOND_STAGE_DPKG_VERSION_INVOCATION));
+        assertTrue(patchedContent.contains("awk '/^Package: dpkg$/"));
+        assertTrue(patchedContent.contains("${TERMUX_PREFIX}/var/lib/dpkg/status"));
+        assertTrue(patchedContent.contains(TermuxInstaller.SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN));
+        assertTrue(patchedContent.contains("\tif [[ ! \"$dpkg_version\" =~ ^[0-9].*$ ]]; then"));
+    }
+
+    @Test
+    public void patchSecondStageScriptForForkReturnsSameBytesWhenDpkgVersionInvocationAbsent() {
+        byte[] noInvocation = "#!/data/data/com.termux/files/usr/bin/bash\necho hello\n".getBytes(StandardCharsets.UTF_8);
+
+        assertSame(noInvocation, TermuxInstaller.patchSecondStageScriptForFork(noInvocation));
+    }
+
+    @Test
+    public void patchSecondStageScriptForForkPreservesLeadingIndentation() {
+        String secondStageScript = "\t\t\t" + TermuxInstaller.SECOND_STAGE_DPKG_VERSION_INVOCATION + "\n";
+
+        byte[] patched = TermuxInstaller.patchSecondStageScriptForFork(secondStageScript.getBytes(StandardCharsets.UTF_8));
+        String patchedContent = new String(patched, StandardCharsets.UTF_8);
+
+        assertTrue(patchedContent.startsWith("\t\t\tdpkg_version="));
+    }
 }
