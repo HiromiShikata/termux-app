@@ -70,6 +70,12 @@ final class TermuxInstaller {
 
     static final String SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN = "termux-app-fork-dpkg-version-from-status";
 
+    static final String UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN = "termux-app-fork-update-alternatives-altdir";
+
+    static final String MAINTAINER_SCRIPT_INSTALL_INVOCATION = "update-alternatives \\\n      --install";
+
+    static final String MAINTAINER_SCRIPT_REMOVE_INVOCATION = "update-alternatives --remove";
+
     /** Performs bootstrap setup if necessary. */
     static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
         String bootstrapErrorMessage;
@@ -119,6 +125,8 @@ final class TermuxInstaller {
                 Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: login script requires update for current package.");
             } else if (!bootstrapSecondStageScriptIsPatchedForFork()) {
                 Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: second-stage script requires update to bypass dpkg --version on fork installs.");
+            } else if (!bootstrapMaintainerScriptsArePatchedForFork()) {
+                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: maintainer scripts require update-alternatives --altdir / --admindir injection for fork installs.");
             } else {
                 ensureHomeDirectoryConfigFiles();
                 whenDone.run();
@@ -223,6 +231,9 @@ final class TermuxInstaller {
                                         }
                                         if (zipEntryName.equals(SECOND_STAGE_SCRIPT_RELATIVE_PATH) && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
                                             fileBytes = patchSecondStageScriptForFork(fileBytes);
+                                        }
+                                        if (isDpkgMaintainerScriptEntry(zipEntryName) && !TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) {
+                                            fileBytes = patchUpdateAlternativesInvocations(fileBytes);
                                         }
                                         try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
                                             outStream.write(fileBytes);
@@ -458,6 +469,64 @@ final class TermuxInstaller {
         String replacement = "dpkg_version=$(awk '/^Package: dpkg$/{f=1;next} f&&/^Version:/{sub(/^Version: */,\"\");print;exit}' \"${TERMUX_PREFIX}/var/lib/dpkg/status\" 2>/dev/null) # " + SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN;
         String patched = content.replace(SECOND_STAGE_DPKG_VERSION_INVOCATION, replacement);
         return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    static boolean isDpkgMaintainerScriptEntry(String zipEntryName) {
+        if (!zipEntryName.startsWith("var/lib/dpkg/info/")) return false;
+        return zipEntryName.endsWith(".postinst") || zipEntryName.endsWith(".prerm")
+            || zipEntryName.endsWith(".preinst") || zipEntryName.endsWith(".postrm");
+    }
+
+    static byte[] patchUpdateAlternativesInvocations(byte[] fileBytes) {
+        String content = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
+        boolean hasInstall = content.contains(MAINTAINER_SCRIPT_INSTALL_INVOCATION);
+        boolean hasRemove = content.contains(MAINTAINER_SCRIPT_REMOVE_INVOCATION);
+        if (!hasInstall && !hasRemove) return fileBytes;
+        String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
+        String flags = "--altdir \"" + prefix + "/etc/alternatives\""
+            + " --admindir \"" + prefix + "/var/lib/dpkg/alternatives\""
+            + " # " + UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN;
+        String patched = content;
+        if (hasInstall) {
+            String installReplacement = "update-alternatives " + flags + " \\\n      --install";
+            patched = patched.replace(MAINTAINER_SCRIPT_INSTALL_INVOCATION, installReplacement);
+        }
+        if (hasRemove) {
+            String removeReplacement = "update-alternatives " + flags + " --remove";
+            patched = patched.replace(MAINTAINER_SCRIPT_REMOVE_INVOCATION, removeReplacement);
+        }
+        return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static boolean bootstrapMaintainerScriptsArePatchedForFork() {
+        if (TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) return true;
+        File dpkgInfoDir = new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg/info");
+        if (!dpkgInfoDir.isDirectory()) return true;
+        File[] entries = dpkgInfoDir.listFiles();
+        if (entries == null) return true;
+        for (File entry : entries) {
+            String name = entry.getName();
+            if (!entry.isFile() || !entry.canRead()) continue;
+            if (!name.endsWith(".postinst") && !name.endsWith(".prerm")
+                && !name.endsWith(".preinst") && !name.endsWith(".postrm")) continue;
+            try (FileInputStream fis = new FileInputStream(entry)) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int readBytes;
+                while ((readBytes = fis.read(buf)) != -1) {
+                    out.write(buf, 0, readBytes);
+                }
+                String content = new String(out.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+                boolean callsUpdateAlternatives = content.contains(MAINTAINER_SCRIPT_INSTALL_INVOCATION)
+                    || content.contains(MAINTAINER_SCRIPT_REMOVE_INVOCATION);
+                if (callsUpdateAlternatives && !content.contains(UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN)) {
+                    return false;
+                }
+            } catch (IOException e) {
+                return true;
+            }
+        }
+        return true;
     }
 
     private static boolean bootstrapSecondStageScriptIsPatchedForFork() {

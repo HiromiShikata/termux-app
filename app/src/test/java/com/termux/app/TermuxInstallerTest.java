@@ -146,4 +146,65 @@ public class TermuxInstallerTest {
 
         assertTrue(patchedContent.startsWith("\t\t\tdpkg_version="));
     }
+
+    @Test
+    public void isDpkgMaintainerScriptEntryAcceptsInfoMaintainerSuffixes() {
+        assertTrue(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info/coreutils.postinst"));
+        assertTrue(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info/coreutils.prerm"));
+        assertTrue(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info/coreutils.preinst"));
+        assertTrue(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info/coreutils.postrm"));
+    }
+
+    @Test
+    public void isDpkgMaintainerScriptEntryRejectsOtherDpkgInfoFiles() {
+        assertFalse(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info/coreutils.list"));
+        assertFalse(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info/coreutils.md5sums"));
+    }
+
+    @Test
+    public void isDpkgMaintainerScriptEntryRejectsPathsOutsideDpkgInfo() {
+        assertFalse(TermuxInstaller.isDpkgMaintainerScriptEntry("etc/profile"));
+        assertFalse(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/dpkg/info"));
+        assertFalse(TermuxInstaller.isDpkgMaintainerScriptEntry("var/lib/other/info/coreutils.postinst"));
+    }
+
+    @Test
+    public void patchUpdateAlternativesInvocationsInjectsAltdirAndAdmindirForInstallInvocation() {
+        String script = "if [ -x \"" + FORK_DATA_DIR + "/files/usr/bin/update-alternatives\" ]; then\n"
+            + "    # pager\n"
+            + "    update-alternatives \\\n"
+            + "      --install \"" + FORK_DATA_DIR + "/files/usr/bin/pager\" \"pager\" \"" + FORK_DATA_DIR + "/files/usr/libexec/coreutils/cat\" 1 \\\n"
+            + "      --slave \"" + FORK_DATA_DIR + "/files/usr/share/man/man1/pager.1.gz\" \"pager.1.gz\" \"" + FORK_DATA_DIR + "/files/usr/share/man/man1/cat.1.gz\"\n"
+            + "fi\n";
+
+        byte[] patched = TermuxInstaller.patchUpdateAlternativesInvocations(script.getBytes(StandardCharsets.UTF_8));
+        String patchedContent = new String(patched, StandardCharsets.UTF_8);
+
+        assertTrue(patchedContent.contains("--altdir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/alternatives\""));
+        assertTrue(patchedContent.contains("--admindir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg/alternatives\""));
+        assertTrue(patchedContent.contains(TermuxInstaller.UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN));
+        assertTrue(patchedContent.contains("\\\n      --install"));
+    }
+
+    @Test
+    public void patchUpdateAlternativesInvocationsInjectsAltdirAndAdmindirForRemoveInvocation() {
+        String script = "if [ -x \"" + FORK_DATA_DIR + "/files/usr/bin/update-alternatives\" ]; then\n"
+            + "    update-alternatives --remove \"pager\" \"" + FORK_DATA_DIR + "/files/usr/libexec/coreutils/cat\"\n"
+            + "fi\n";
+
+        byte[] patched = TermuxInstaller.patchUpdateAlternativesInvocations(script.getBytes(StandardCharsets.UTF_8));
+        String patchedContent = new String(patched, StandardCharsets.UTF_8);
+
+        assertTrue(patchedContent.contains("--altdir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/alternatives\""));
+        assertTrue(patchedContent.contains("--admindir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg/alternatives\""));
+        assertTrue(patchedContent.contains(TermuxInstaller.UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN));
+        assertTrue(patchedContent.contains("--remove \"pager\""));
+    }
+
+    @Test
+    public void patchUpdateAlternativesInvocationsReturnsSameBytesWhenNeitherInvocationPresent() {
+        byte[] script = "#!/bin/sh\n# Automatically added by termux_step_update_alternatives\necho hello\n".getBytes(StandardCharsets.UTF_8);
+
+        assertSame(script, TermuxInstaller.patchUpdateAlternativesInvocations(script));
+    }
 }
