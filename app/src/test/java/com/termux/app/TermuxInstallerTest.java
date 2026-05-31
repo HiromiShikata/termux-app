@@ -207,4 +207,41 @@ public class TermuxInstallerTest {
 
         assertSame(script, TermuxInstaller.patchUpdateAlternativesInvocations(script));
     }
+
+    @Test
+    public void patchUpdateAlternativesInvocationsKeepsInstallFlagOnContinuedLineNotBehindComment() {
+        String script = "if [ -x \"" + FORK_DATA_DIR + "/files/usr/bin/update-alternatives\" ]; then\n"
+            + "    update-alternatives \\\n"
+            + "      --install \"" + FORK_DATA_DIR + "/files/usr/bin/pager\" \"pager\" \"" + FORK_DATA_DIR + "/files/usr/libexec/coreutils/cat\" 1\n"
+            + "fi\n";
+
+        String patchedContent = new String(
+            TermuxInstaller.patchUpdateAlternativesInvocations(script.getBytes(StandardCharsets.UTF_8)),
+            StandardCharsets.UTF_8);
+
+        for (String line : patchedContent.split("\n", -1)) {
+            int hashIndex = line.indexOf('#');
+            int backslashAtEnd = line.endsWith("\\") ? line.length() - 1 : -1;
+            assertFalse(
+                "Line continues with backslash after a shell comment, breaking multi-line invocation: " + line,
+                hashIndex >= 0 && backslashAtEnd > hashIndex);
+        }
+    }
+
+    @Test
+    public void patchUpdateAlternativesInvocationsKeepsRemoveFlagOutsideOfComment() {
+        String script = "    update-alternatives --remove \"pager\" \"" + FORK_DATA_DIR + "/files/usr/libexec/coreutils/cat\"\n";
+
+        String patchedContent = new String(
+            TermuxInstaller.patchUpdateAlternativesInvocations(script.getBytes(StandardCharsets.UTF_8)),
+            StandardCharsets.UTF_8);
+
+        for (String line : patchedContent.split("\n", -1)) {
+            int hashIndex = line.indexOf('#');
+            int removeIndex = line.indexOf("--remove");
+            assertFalse(
+                "Line places --remove after a shell comment, disabling the flag: " + line,
+                hashIndex >= 0 && removeIndex > hashIndex);
+        }
+    }
 }

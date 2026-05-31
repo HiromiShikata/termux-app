@@ -484,15 +484,15 @@ final class TermuxInstaller {
         if (!hasInstall && !hasRemove) return fileBytes;
         String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
         String flags = "--altdir \"" + prefix + "/etc/alternatives\""
-            + " --admindir \"" + prefix + "/var/lib/dpkg/alternatives\""
-            + " # " + UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN;
+            + " --admindir \"" + prefix + "/var/lib/dpkg/alternatives\"";
+        String tokenComment = "# " + UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN;
         String patched = content;
         if (hasInstall) {
-            String installReplacement = "update-alternatives " + flags + " \\\n      --install";
+            String installReplacement = tokenComment + "\n    update-alternatives " + flags + " \\\n      --install";
             patched = patched.replace(MAINTAINER_SCRIPT_INSTALL_INVOCATION, installReplacement);
         }
         if (hasRemove) {
-            String removeReplacement = "update-alternatives " + flags + " --remove";
+            String removeReplacement = tokenComment + "\n    update-alternatives " + flags + " --remove";
             patched = patched.replace(MAINTAINER_SCRIPT_REMOVE_INVOCATION, removeReplacement);
         }
         return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
