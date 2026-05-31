@@ -55,6 +55,11 @@
     <string name="hint_session_url">URL</string>
     <string name="hint_session_short_name">Short name</string>
 
+    <string name="action_open_autossh_config">AutoSSH Config</string>
+    <string name="title_autossh_config">AutoSSH Config</string>
+    <string name="hint_autossh_command">Command template (use {url} and {name} as placeholders)</string>
+    <string name="action_autossh_config_save">Save</string>
+
     <string name="action_toggle_soft_keyboard">Keyboard</string>
 
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>
