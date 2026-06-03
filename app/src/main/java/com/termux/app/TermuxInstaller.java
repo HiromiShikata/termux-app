@@ -76,6 +76,10 @@ final class TermuxInstaller {
 
     static final String MAINTAINER_SCRIPT_REMOVE_INVOCATION = "update-alternatives --remove";
 
+    static final String FORK_EACCES_SHIM_LIBRARY_NAME = "libtermux-fork-eacces-shim.so";
+
+    static final String FORK_EACCES_SHIM_PREFIX_RELATIVE_PATH = "lib/" + FORK_EACCES_SHIM_LIBRARY_NAME;
+
     /** Performs bootstrap setup if necessary. */
     static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
         String bootstrapErrorMessage;
@@ -129,6 +133,7 @@ final class TermuxInstaller {
                 Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: maintainer scripts require update-alternatives --altdir / --admindir injection for fork installs.");
             } else {
                 ensureHomeDirectoryConfigFiles();
+                ensureForkEaccesShim(activity);
                 whenDone.run();
                 return;
             }
@@ -264,6 +269,7 @@ final class TermuxInstaller {
                     Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
 
                     ensureHomeDirectoryConfigFiles();
+                    ensureForkEaccesShim(activity);
 
                     // Recreate env file since termux prefix was wiped earlier
                     TermuxShellEnvironment.writeEnvironmentToFile(activity);
@@ -593,6 +599,43 @@ final class TermuxInstaller {
             } catch (IOException e) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to create ~/.dpkg.cfg", e);
             }
+        }
+    }
+
+    private static void ensureForkEaccesShim(Activity activity) {
+        if (TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")) return;
+        String nativeLibraryDir = activity.getApplicationInfo().nativeLibraryDir;
+        if (nativeLibraryDir == null) {
+            Logger.logError(LOG_TAG, "nativeLibraryDir is null; cannot stage fork EACCES shim.");
+            return;
+        }
+        File sourceLib = new File(nativeLibraryDir, FORK_EACCES_SHIM_LIBRARY_NAME);
+        File targetLibDir = new File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH);
+        stageForkEaccesShim(sourceLib, targetLibDir);
+    }
+
+    static void stageForkEaccesShim(File sourceLib, File targetLibDir) {
+        if (!sourceLib.isFile()) {
+            Logger.logError(LOG_TAG, "Fork EACCES shim not found at " + sourceLib.getAbsolutePath());
+            return;
+        }
+        if (!targetLibDir.isDirectory() && !targetLibDir.mkdirs()) {
+            Logger.logError(LOG_TAG, "Failed to create fork prefix lib directory " + targetLibDir.getAbsolutePath());
+            return;
+        }
+        File targetLib = new File(targetLibDir, FORK_EACCES_SHIM_LIBRARY_NAME);
+        if (targetLib.exists() && targetLib.length() == sourceLib.length() && targetLib.lastModified() >= sourceLib.lastModified()) {
+            return;
+        }
+        try (FileInputStream in = new FileInputStream(sourceLib);
+             FileOutputStream out = new FileOutputStream(targetLib)) {
+            byte[] buf = new byte[8192];
+            int readBytes;
+            while ((readBytes = in.read(buf)) != -1) {
+                out.write(buf, 0, readBytes);
+            }
+        } catch (IOException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to stage fork EACCES shim to " + targetLib.getAbsolutePath(), e);
         }
     }
 

@@ -9,9 +9,12 @@ import static org.junit.Assert.assertTrue;
 import com.termux.shared.termux.TermuxConstants;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
 import java.nio.charset.StandardCharsets;
 
+@RunWith(RobolectricTestRunner.class)
 public class TermuxInstallerTest {
 
     private static final String FORK_DATA_DIR = TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH;
@@ -243,5 +246,78 @@ public class TermuxInstallerTest {
                 "Line places --remove after a shell comment, disabling the flag: " + line,
                 hashIndex >= 0 && removeIndex > hashIndex);
         }
+    }
+
+    @org.junit.Rule
+    public org.junit.rules.TemporaryFolder forkEaccesShimTempFolder = new org.junit.rules.TemporaryFolder();
+
+    @Test
+    public void stageForkEaccesShimCopiesSourceLibraryToTargetWhenTargetMissing() throws java.io.IOException {
+        java.io.File sourceDir = forkEaccesShimTempFolder.newFolder("nativeLibs");
+        java.io.File sourceLib = new java.io.File(sourceDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME);
+        byte[] payload = new byte[]{0x7F, 'E', 'L', 'F', 0x42, 0x43};
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(sourceLib)) {
+            out.write(payload);
+        }
+        java.io.File targetDir = forkEaccesShimTempFolder.newFolder("prefixLib");
+
+        TermuxInstaller.stageForkEaccesShim(sourceLib, targetDir);
+
+        java.io.File targetLib = new java.io.File(targetDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME);
+        assertTrue(targetLib.isFile());
+        byte[] copied = new byte[payload.length];
+        try (java.io.FileInputStream in = new java.io.FileInputStream(targetLib)) {
+            int read = in.read(copied);
+            assertEquals(payload.length, read);
+        }
+        assertArrayEquals(payload, copied);
+    }
+
+    @Test
+    public void stageForkEaccesShimCreatesTargetDirectoryWhenAbsent() throws java.io.IOException {
+        java.io.File sourceDir = forkEaccesShimTempFolder.newFolder("nativeLibs");
+        java.io.File sourceLib = new java.io.File(sourceDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME);
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(sourceLib)) {
+            out.write(new byte[]{1, 2, 3});
+        }
+        java.io.File rootDir = forkEaccesShimTempFolder.newFolder("root");
+        java.io.File targetDir = new java.io.File(rootDir, "lib/usr/lib");
+
+        TermuxInstaller.stageForkEaccesShim(sourceLib, targetDir);
+
+        assertTrue(targetDir.isDirectory());
+        assertTrue(new java.io.File(targetDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME).isFile());
+    }
+
+    @Test
+    public void stageForkEaccesShimSkipsCopyWhenTargetUpToDate() throws java.io.IOException {
+        java.io.File sourceDir = forkEaccesShimTempFolder.newFolder("nativeLibs");
+        java.io.File sourceLib = new java.io.File(sourceDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME);
+        byte[] payload = new byte[]{9, 9, 9};
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(sourceLib)) {
+            out.write(payload);
+        }
+        java.io.File targetDir = forkEaccesShimTempFolder.newFolder("prefixLib");
+        java.io.File targetLib = new java.io.File(targetDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME);
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(targetLib)) {
+            out.write(payload);
+        }
+        sourceLib.setLastModified(1_000_000L);
+        targetLib.setLastModified(2_000_000L);
+
+        TermuxInstaller.stageForkEaccesShim(sourceLib, targetDir);
+
+        assertEquals(2_000_000L, targetLib.lastModified());
+    }
+
+    @Test
+    public void stageForkEaccesShimDoesNothingWhenSourceLibraryMissing() throws java.io.IOException {
+        java.io.File sourceDir = forkEaccesShimTempFolder.newFolder("nativeLibs");
+        java.io.File missingSource = new java.io.File(sourceDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME);
+        java.io.File targetDir = forkEaccesShimTempFolder.newFolder("prefixLib");
+
+        TermuxInstaller.stageForkEaccesShim(missingSource, targetDir);
+
+        assertFalse(new java.io.File(targetDir, TermuxInstaller.FORK_EACCES_SHIM_LIBRARY_NAME).exists());
     }
 }

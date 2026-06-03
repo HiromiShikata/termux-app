@@ -53,6 +53,8 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
 
     public static final String LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME = "libtermux-exec-ld-preload.so";
 
+    public static final String LIBTERMUX_FORK_EACCES_SHIM_FILE_NAME = "libtermux-fork-eacces-shim.so";
+
     public TermuxShellEnvironment() {
         super();
         shellCommandShellEnvironment = new TermuxShellCommandShellEnvironment();
@@ -130,15 +132,29 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
             environment.put(ENV_TERMUX_APP_LEGACY_DATA_DIR, TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH);
             environment.put(ENV_TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE, TERMUX_EXEC_SYSTEM_LINKER_EXEC_MODE_FORCE);
 
-            File termuxExecLib = new File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH + "/" + LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME);
-            if (termuxExecLib.isFile()) {
-                environment.put(ENV_LD_PRELOAD, termuxExecLib.getAbsolutePath());
+            String ldPreloadValue = buildLdPreloadValue(new File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH));
+            if (ldPreloadValue != null) {
+                environment.put(ENV_LD_PRELOAD, ldPreloadValue);
             }
         }
 
         return environment;
     }
 
+
+    static String buildLdPreloadValue(File libPrefixDir) {
+        StringBuilder builder = new StringBuilder();
+        File forkEaccesShim = new File(libPrefixDir, LIBTERMUX_FORK_EACCES_SHIM_FILE_NAME);
+        if (forkEaccesShim.isFile()) {
+            builder.append(forkEaccesShim.getAbsolutePath());
+        }
+        File termuxExecLib = new File(libPrefixDir, LIBTERMUX_EXEC_LD_PRELOAD_FILE_NAME);
+        if (termuxExecLib.isFile()) {
+            if (builder.length() > 0) builder.append(' ');
+            builder.append(termuxExecLib.getAbsolutePath());
+        }
+        return builder.length() == 0 ? null : builder.toString();
+    }
 
     @NonNull
     @Override
