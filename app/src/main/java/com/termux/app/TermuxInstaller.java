@@ -80,6 +80,8 @@ final class TermuxInstaller {
 
     static final String FORK_EACCES_SHIM_PREFIX_RELATIVE_PATH = "lib/" + FORK_EACCES_SHIM_LIBRARY_NAME;
 
+    static final String LOGIN_PRESERVE_LD_PRELOAD_TOKEN = "termux-app-fork-preserve-ld-preload";
+
     /** Performs bootstrap setup if necessary. */
     static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
         String bootstrapErrorMessage;
@@ -458,15 +460,35 @@ final class TermuxInstaller {
 
     static byte[] patchLoginScriptForFork(byte[] fileBytes) {
         String content = new String(fileBytes, java.nio.charset.StandardCharsets.UTF_8);
+        boolean changed = false;
         String loginShellExecLine = "\texec \"$SHELL\" -l \"$@\"";
-        if (!content.contains(loginShellExecLine)) return fileBytes;
-        String replacement = "\tif [ \"${SHELL##*/}\" = bash ]; then\n"
-            + "\t\texec \"$SHELL\" --init-file \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/profile\" \"$@\"\n"
-            + "\telse\n"
-            + "\t\texec \"$SHELL\" -l \"$@\"\n"
-            + "\tfi";
-        String patched = content.replace(loginShellExecLine, replacement);
-        return patched.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (content.contains(loginShellExecLine)) {
+            String replacement = "\tif [ \"${SHELL##*/}\" = bash ]; then\n"
+                + "\t\texec \"$SHELL\" --init-file \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/profile\" \"$@\"\n"
+                + "\telse\n"
+                + "\t\texec \"$SHELL\" -l \"$@\"\n"
+                + "\tfi";
+            content = content.replace(loginShellExecLine, replacement);
+            changed = true;
+        }
+        String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
+        String[] ldPreloadExportLines = {
+            "\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec-ld-preload.so\"",
+            "\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec.so\""
+        };
+        if (!content.contains(LOGIN_PRESERVE_LD_PRELOAD_TOKEN)) {
+            for (String exportLine : ldPreloadExportLines) {
+                if (content.contains(exportLine)) {
+                    String guardedExport = "\t[ -n \"$LD_PRELOAD\" ] || "
+                        + exportLine.substring(1)
+                        + " # " + LOGIN_PRESERVE_LD_PRELOAD_TOKEN;
+                    content = content.replace(exportLine, guardedExport);
+                    changed = true;
+                }
+            }
+        }
+        if (!changed) return fileBytes;
+        return content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     static byte[] patchSecondStageScriptForFork(byte[] fileBytes) {
@@ -569,6 +591,9 @@ final class TermuxInstaller {
             if (!oldPkgDataPath.startsWith("/data/data/")) return true;
             if (!oldPkgDataPath.equals(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH + "/")) return false;
             if (!TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux") && !content.contains("--init-file")) return false;
+            if (!TermuxConstants.TERMUX_PACKAGE_NAME.equals("com.termux")
+                && content.contains("export LD_PRELOAD=\"")
+                && !content.contains(LOGIN_PRESERVE_LD_PRELOAD_TOKEN)) return false;
             return true;
         } catch (IOException e) {
             return true;

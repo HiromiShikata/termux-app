@@ -112,6 +112,47 @@ public class TermuxInstallerTest {
     }
 
     @Test
+    public void patchLoginScriptForForkGuardsLdPreloadExportSoShimIsPreserved() {
+        String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
+        String loginScript = "#!" + FORK_DATA_DIR + "/files/usr/bin/sh\n"
+            + "if [ -f \"" + prefix + "/lib/libtermux-exec-ld-preload.so\" ]; then\n"
+            + "\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec-ld-preload.so\"\n"
+            + "\t$SHELL -c \"coreutils --coreutils-prog=true\" > /dev/null 2>&1 || unset LD_PRELOAD\n"
+            + "elif [ -f \"" + prefix + "/lib/libtermux-exec.so\" ]; then\n"
+            + "\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec.so\"\n"
+            + "\t$SHELL -c \"coreutils --coreutils-prog=true\" > /dev/null 2>&1 || unset LD_PRELOAD\n"
+            + "fi\n"
+            + "if [ -n \"$TERM\" ]; then\n"
+            + "\texec \"$SHELL\" -l \"$@\"\n"
+            + "fi\n";
+
+        byte[] patched = TermuxInstaller.patchLoginScriptForFork(loginScript.getBytes(StandardCharsets.UTF_8));
+        String patchedContent = new String(patched, StandardCharsets.UTF_8);
+
+        assertTrue(patchedContent.contains(TermuxInstaller.LOGIN_PRESERVE_LD_PRELOAD_TOKEN));
+        assertTrue(patchedContent.contains("[ -n \"$LD_PRELOAD\" ] || export LD_PRELOAD=\""
+            + prefix + "/lib/libtermux-exec-ld-preload.so\""));
+        assertTrue(patchedContent.contains("[ -n \"$LD_PRELOAD\" ] || export LD_PRELOAD=\""
+            + prefix + "/lib/libtermux-exec.so\""));
+        assertFalse(patchedContent.contains("\n\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec-ld-preload.so\"\n"));
+        assertFalse(patchedContent.contains("\n\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec.so\"\n"));
+    }
+
+    @Test
+    public void patchLoginScriptForForkIsIdempotentForLdPreloadGuard() {
+        String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
+        String loginScript = "#!" + FORK_DATA_DIR + "/files/usr/bin/sh\n"
+            + "if [ -f \"" + prefix + "/lib/libtermux-exec-ld-preload.so\" ]; then\n"
+            + "\texport LD_PRELOAD=\"" + prefix + "/lib/libtermux-exec-ld-preload.so\"\n"
+            + "fi\n";
+
+        byte[] firstPass = TermuxInstaller.patchLoginScriptForFork(loginScript.getBytes(StandardCharsets.UTF_8));
+        byte[] secondPass = TermuxInstaller.patchLoginScriptForFork(firstPass);
+
+        assertArrayEquals(firstPass, secondPass);
+    }
+
+    @Test
     public void patchSecondStageScriptForForkReplacesDpkgVersionInvocationWithStatusFileLookup() {
         String secondStageScript = "if [ -d \"${TERMUX_PREFIX}/var/lib/dpkg/info\" ]; then\n"
             + "\tlocal dpkg_version\n"
