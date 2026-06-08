@@ -213,7 +213,7 @@ public class TermuxInstallerTest {
     }
 
     @Test
-    public void patchUpdateAlternativesInvocationsInjectsAltdirAndAdmindirForInstallInvocation() {
+    public void patchUpdateAlternativesInvocationsInjectsAltdirAndAdmindirAndLogForInstallInvocation() {
         String script = "if [ -x \"" + FORK_DATA_DIR + "/files/usr/bin/update-alternatives\" ]; then\n"
             + "    # pager\n"
             + "    update-alternatives \\\n"
@@ -226,12 +226,13 @@ public class TermuxInstallerTest {
 
         assertTrue(patchedContent.contains("--altdir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/alternatives\""));
         assertTrue(patchedContent.contains("--admindir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg/alternatives\""));
+        assertTrue(patchedContent.contains("--log \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/log/alternatives.log\""));
         assertTrue(patchedContent.contains(TermuxInstaller.UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN));
         assertTrue(patchedContent.contains("\\\n      --install"));
     }
 
     @Test
-    public void patchUpdateAlternativesInvocationsInjectsAltdirAndAdmindirForRemoveInvocation() {
+    public void patchUpdateAlternativesInvocationsInjectsAltdirAndAdmindirAndLogForRemoveInvocation() {
         String script = "if [ -x \"" + FORK_DATA_DIR + "/files/usr/bin/update-alternatives\" ]; then\n"
             + "    update-alternatives --remove \"pager\" \"" + FORK_DATA_DIR + "/files/usr/libexec/coreutils/cat\"\n"
             + "fi\n";
@@ -241,6 +242,7 @@ public class TermuxInstallerTest {
 
         assertTrue(patchedContent.contains("--altdir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/etc/alternatives\""));
         assertTrue(patchedContent.contains("--admindir \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/lib/dpkg/alternatives\""));
+        assertTrue(patchedContent.contains("--log \"" + TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/var/log/alternatives.log\""));
         assertTrue(patchedContent.contains(TermuxInstaller.UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN));
         assertTrue(patchedContent.contains("--remove \"pager\""));
     }

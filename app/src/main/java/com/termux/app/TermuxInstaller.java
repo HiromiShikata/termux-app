@@ -70,7 +70,7 @@ final class TermuxInstaller {
 
     static final String SECOND_STAGE_DPKG_VERSION_REPLACEMENT_TOKEN = "termux-app-fork-dpkg-version-from-status";
 
-    static final String UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN = "termux-app-fork-update-alternatives-altdir";
+    static final String UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN = "termux-app-fork-update-alternatives-altdir-log";
 
     static final String MAINTAINER_SCRIPT_INSTALL_INVOCATION = "update-alternatives \\\n      --install";
 
@@ -132,7 +132,7 @@ final class TermuxInstaller {
             } else if (!bootstrapSecondStageScriptIsPatchedForFork()) {
                 Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: second-stage script requires update to bypass dpkg --version on fork installs.");
             } else if (!bootstrapMaintainerScriptsArePatchedForFork()) {
-                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: maintainer scripts require update-alternatives --altdir / --admindir injection for fork installs.");
+                Logger.logInfo(LOG_TAG, "Reinstalling bootstrap: maintainer scripts require update-alternatives --altdir / --admindir / --log injection for fork installs.");
             } else {
                 ensureHomeDirectoryConfigFiles();
                 ensureForkEaccesShim(activity);
@@ -512,7 +512,8 @@ final class TermuxInstaller {
         if (!hasInstall && !hasRemove) return fileBytes;
         String prefix = TermuxConstants.TERMUX_PREFIX_DIR_PATH;
         String flags = "--altdir \"" + prefix + "/etc/alternatives\""
-            + " --admindir \"" + prefix + "/var/lib/dpkg/alternatives\"";
+            + " --admindir \"" + prefix + "/var/lib/dpkg/alternatives\""
+            + " --log \"" + prefix + "/var/log/alternatives.log\"";
         String tokenComment = "# " + UPDATE_ALTERNATIVES_FORK_FLAGS_TOKEN;
         String patched = content;
         if (hasInstall) {
