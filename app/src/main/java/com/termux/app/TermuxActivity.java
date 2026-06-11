@@ -9,7 +9,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -192,9 +191,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
     private static final String ARG_ACTIVITY_RECREATED = "activity_recreated";
-
-    private static final String AUTOSSH_PREFS_NAME = "autossh_config";
-    private static final String AUTOSSH_KEY_COMMAND = "command";
 
     private static final String LOG_TAG = "TermuxActivity";
 
@@ -587,8 +583,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     String trimmedShortName = shortName.trim();
                     String combined = (trimmedUrl + " " + trimmedShortName).trim();
                     String sessionName = combined.isEmpty() ? null : combined;
-                    SharedPreferences prefs = getSharedPreferences(AUTOSSH_PREFS_NAME, MODE_PRIVATE);
-                    String commandTemplate = prefs.getString(AUTOSSH_KEY_COMMAND, "");
+                    String commandTemplate = mPreferences.getAutosshCommand();
                     if (commandTemplate.trim().isEmpty()) {
                         mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
                     } else {
