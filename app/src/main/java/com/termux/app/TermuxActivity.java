@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -191,6 +192,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
     private static final String ARG_ACTIVITY_RECREATED = "activity_recreated";
+
+    private static final String AUTOSSH_PREFS_NAME = "autossh_config";
+    private static final String AUTOSSH_KEY_COMMAND = "command";
 
     private static final String LOG_TAG = "TermuxActivity";
 
@@ -572,7 +576,30 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setNewSessionButtonView() {
         View newSessionButton = findViewById(R.id.new_session_button);
-        newSessionButton.setOnClickListener(v -> mTermuxTerminalSessionActivityClient.addNewSession(false, null));
+        newSessionButton.setOnClickListener(v -> {
+            TextInputDialogUtils.twoTextInputs(TermuxActivity.this,
+                R.string.action_new_session,
+                R.string.hint_session_url,
+                R.string.hint_session_short_name,
+                R.string.action_create_named_session_confirm,
+                (url, shortName) -> {
+                    String trimmedUrl = url.trim();
+                    String trimmedShortName = shortName.trim();
+                    String combined = (trimmedUrl + " " + trimmedShortName).trim();
+                    String sessionName = combined.isEmpty() ? null : combined;
+                    SharedPreferences prefs = getSharedPreferences(AUTOSSH_PREFS_NAME, MODE_PRIVATE);
+                    String commandTemplate = prefs.getString(AUTOSSH_KEY_COMMAND, "");
+                    if (commandTemplate.trim().isEmpty()) {
+                        mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
+                    } else {
+                        String command = commandTemplate
+                            .replace("{url}", shellQuote(trimmedUrl))
+                            .replace("{name}", shellQuote(trimmedShortName));
+                        mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
+                    }
+                },
+                null);
+        });
         newSessionButton.setOnLongClickListener(v -> {
             TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,
                 R.string.action_create_named_session_confirm, text -> mTermuxTerminalSessionActivityClient.addNewSession(false, text),
@@ -580,6 +607,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 -1, null, null);
             return true;
         });
+    }
+
+    private static String shellQuote(String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private void setToggleKeyboardView() {
