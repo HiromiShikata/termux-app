@@ -584,7 +584,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     String combined = (trimmedUrl + " " + trimmedShortName).trim();
                     String sessionName = combined.isEmpty() ? null : combined;
                     String commandTemplate = mPreferences.getAutosshCommand();
-                    if (commandTemplate.trim().isEmpty()) {
+                    if (commandTemplate.trim().isEmpty() || trimmedUrl.isEmpty()) {
                         mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
                     } else {
                         String command = commandTemplate
