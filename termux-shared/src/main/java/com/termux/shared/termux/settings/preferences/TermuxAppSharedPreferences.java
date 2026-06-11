@@ -258,4 +258,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_CRASH_REPORT_NOTIFICATIONS_ENABLED, value, false);
     }
 
+
+
+    public String getAutosshCommand() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_AUTOSSH_COMMAND, TERMUX_APP.DEFAULT_VALUE_KEY_AUTOSSH_COMMAND, false);
+    }
+
+    public void setAutosshCommand(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_AUTOSSH_COMMAND, value, false);
+    }
+
 }
