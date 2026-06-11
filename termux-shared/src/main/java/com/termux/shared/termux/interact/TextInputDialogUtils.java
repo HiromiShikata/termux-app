@@ -36,7 +36,6 @@ public final class TextInputDialogUtils {
         input2.setImeOptions(EditorInfo.IME_ACTION_DONE);
 
         final AlertDialog[] dialogHolder = new AlertDialog[1];
-        input2.setImeActionLabel(activity.getResources().getString(positiveButtonText), KeyEvent.KEYCODE_ENTER);
         input2.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId != EditorInfo.IME_ACTION_DONE) return false;
             onPositive.onTextsSet(input1.getText().toString(), input2.getText().toString());

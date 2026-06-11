@@ -585,7 +585,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 (url, shortName) -> {
                     String trimmedUrl = url.trim();
                     String trimmedShortName = shortName.trim();
-                    String sessionName = (trimmedUrl + " " + trimmedShortName).trim();
+                    String combined = (trimmedUrl + " " + trimmedShortName).trim();
+                    String sessionName = combined.isEmpty() ? null : combined;
                     SharedPreferences prefs = getSharedPreferences(AUTOSSH_PREFS_NAME, MODE_PRIVATE);
                     String commandTemplate = prefs.getString(AUTOSSH_KEY_COMMAND, "");
                     if (commandTemplate.trim().isEmpty()) {
