@@ -197,7 +197,7 @@ public final class TermuxBrowserController {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
             return;
         }
-        BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, url);
+        BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, normalizeUrl(url));
         if (tab == null) {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
             return;

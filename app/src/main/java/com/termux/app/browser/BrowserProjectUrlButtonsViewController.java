@@ -36,6 +36,8 @@ public final class BrowserProjectUrlButtonsViewController {
 
     private List<SessionDefinitionEntry> mCachedEntries = Collections.emptyList();
 
+    private String mPendingSessionName;
+
     public BrowserProjectUrlButtonsViewController(@NonNull TermuxActivity activity,
                                                   @NonNull TermuxBrowserController browserController) {
         this(activity, browserController,
@@ -52,6 +54,8 @@ public final class BrowserProjectUrlButtonsViewController {
     }
 
     public void showProjectUrlsForSession(@Nullable String sessionName) {
+        mPendingSessionName = sessionName;
+
         if (sessionName == null || sessionName.isEmpty()) {
             renderButtons(Collections.emptyList());
             return;
@@ -77,13 +81,21 @@ public final class BrowserProjectUrlButtonsViewController {
                 List<SessionDefinitionEntry> entries = mLoader.load(baseUrl);
                 mActivity.runOnUiThread(() -> {
                     mCachedEntries = entries;
+                    if (isStaleRequest(sessionName)) return;
                     renderButtonsForSession(sessionName);
                 });
             } catch (Exception exception) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load project URLs from " + baseUrl, exception);
-                mActivity.runOnUiThread(() -> renderButtons(Collections.emptyList()));
+                mActivity.runOnUiThread(() -> {
+                    if (isStaleRequest(sessionName)) return;
+                    renderButtons(Collections.emptyList());
+                });
             }
         }).start();
+    }
+
+    private boolean isStaleRequest(@NonNull String sessionName) {
+        return !sessionName.equals(mPendingSessionName);
     }
 
     private void renderButtonsForSession(@NonNull String sessionName) {
