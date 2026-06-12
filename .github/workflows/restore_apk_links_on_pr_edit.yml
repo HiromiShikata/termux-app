@@ -46,7 +46,9 @@ jobs:
               status: 'completed',
               per_page: 10
             });
-            const runs = allRuns.filter(r => r.conclusion === 'success');
+            const runs = allRuns
+              .filter(r => r.conclusion === 'success')
+              .sort((a, b) => b.run_number - a.run_number);
 
             if (runs.length === 0) {
               console.log('No successful Build run found for head commit, skipping.');
