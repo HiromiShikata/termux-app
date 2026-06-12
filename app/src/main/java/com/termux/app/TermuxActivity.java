@@ -906,6 +906,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return (ViewPager) findViewById(R.id.terminal_toolbar_view_pager);
     }
 
+    @Nullable
+    public EditText getTerminalToolbarTextInput() {
+        return findViewById(R.id.terminal_toolbar_text_input);
+    }
+
+    @Nullable
+    public TerminalToolbarViewPager.PageAdapter getTerminalToolbarViewPagerAdapter() {
+        ViewPager viewPager = getTerminalToolbarViewPager();
+        if (viewPager == null) return null;
+        return (TerminalToolbarViewPager.PageAdapter) viewPager.getAdapter();
+    }
+
     public float getTerminalToolbarDefaultHeight() {
         return mTerminalToolbarDefaultHeight;
     }
