@@ -366,6 +366,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mIsInvalidState) return;
 
+        if (mTermuxBrowserController != null)
+            mTermuxBrowserController.onActivityDestroy();
+
         if (mTermuxService != null) {
             // Do not leave service and session clients with references to activity.
             mTermuxService.unsetTermuxTerminalSessionClient();

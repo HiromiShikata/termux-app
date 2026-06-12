@@ -37,5 +37,7 @@
         android:layout_height="36dp"
         android:background="@null"
         android:contentDescription="@string/action_browser_close_tab"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:src="@drawable/ic_browser_close_tab" />
 </LinearLayout>

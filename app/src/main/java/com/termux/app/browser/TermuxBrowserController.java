@@ -57,6 +57,8 @@ public final class TermuxBrowserController {
         settings.setDisplayZoomControls(false);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
@@ -84,7 +86,6 @@ public final class TermuxBrowserController {
     private void configureCookies() {
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(mWebView, true);
     }
 
     private void configureDrawerControls() {
@@ -254,5 +255,13 @@ public final class TermuxBrowserController {
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to flush cookies", e);
         }
+    }
+
+    public void onActivityDestroy() {
+        mWebView.stopLoading();
+        mWebView.setWebViewClient(new WebViewClient());
+        mWebView.loadUrl("about:blank");
+        mWebView.removeAllViews();
+        mWebView.destroy();
     }
 }

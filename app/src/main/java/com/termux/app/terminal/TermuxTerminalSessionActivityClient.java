@@ -139,9 +139,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onSessionFinished(@NonNull TerminalSession finishedSession) {
         TermuxService service = mActivity.getTermuxService();
 
-        if (mActivity.getTermuxBrowserController() != null)
-            mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
-
         if (service == null || service.wantsToStop()) {
             // The service wants to stop as soon as possible.
             mActivity.finishActivityIfNotFinishing();
@@ -468,6 +465,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // Return pressed with finished session - remove it.
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
 
         int index = service.removeTermuxSession(finishedSession);
 

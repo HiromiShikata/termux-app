@@ -1,7 +1,6 @@
 package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
-import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +17,8 @@ import com.termux.app.TermuxActivity;
 import java.util.List;
 
 public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> implements AdapterView.OnItemClickListener {
+
+    private static final int ACTIVE_TAB_TITLE_COLOR = 0xFF03A9F4;
 
     final TermuxActivity mActivity;
 
@@ -53,7 +54,7 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
 
         boolean isActive = tab == mBrowserController.getActiveTab();
         tabRowView.setActivated(isActive);
-        titleView.setTextColor(isActive ? Color.parseColor("#03A9F4") : titleView.getTextColors().getDefaultColor());
+        titleView.setTextColor(isActive ? ACTIVE_TAB_TITLE_COLOR : titleView.getTextColors().getDefaultColor());
 
         closeButton.setOnClickListener(v -> mBrowserController.closeTab(tab));
 
