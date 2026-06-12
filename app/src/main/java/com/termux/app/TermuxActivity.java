@@ -262,6 +262,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setBrowserView();
 
+        setKeyboardToggleBarView();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -649,6 +651,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.toggle_browser_button).setOnLongClickListener(v -> {
             mTermuxBrowserController.openTabsDrawer();
             return true;
+        });
+    }
+
+    private void setKeyboardToggleBarView() {
+        findViewById(R.id.terminal_toolbar_keyboard_toggle_button).setOnClickListener(v -> {
+            mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
         });
     }
 

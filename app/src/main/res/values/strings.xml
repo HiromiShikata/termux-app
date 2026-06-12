@@ -55,6 +55,7 @@
     <string name="hint_session_short_name">Short name</string>
 
     <string name="action_toggle_soft_keyboard">Keyboard</string>
+    <string name="action_toggle_soft_keyboard_bar">Toggle soft keyboard</string>
 
     <!-- In-app browser -->
     <string name="action_toggle_browser">Browser</string>
