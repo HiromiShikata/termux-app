@@ -267,4 +267,13 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_AUTOSSH_COMMAND, value, false);
     }
 
+
+    public String getSessionDefinitionUrl() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_URL, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL, false);
+    }
+
+    public void setSessionDefinitionUrl(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_URL, value, false);
+    }
+
 }

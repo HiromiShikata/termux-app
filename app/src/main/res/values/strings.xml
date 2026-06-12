@@ -72,6 +72,15 @@
     <string name="hint_autossh_command">Command template (use {url} and {name} as placeholders)</string>
     <string name="action_autossh_config_save">Save</string>
 
+    <string name="action_open_session_definition_config">Session Definition Config</string>
+    <string name="title_session_definition_config">Session Definition Config</string>
+    <string name="hint_session_definition_url">Session definition index URL</string>
+    <string name="action_session_definition_config_save">Save</string>
+    <string name="action_load_session_definition">Load Sessions</string>
+    <string name="msg_session_definition_url_not_set">Set the session definition URL first.</string>
+    <string name="msg_session_definition_load_failed">Failed to load session definition.</string>
+    <string name="msg_session_definition_no_entries">No sessions found in the session definition.</string>
+
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>
     <string name="msg_disabling_terminal_toolbar">Disabling Terminal Toolbar</string>
 
