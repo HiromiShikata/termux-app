@@ -148,7 +148,6 @@ public class TerminalToolbarViewPager {
                 });
 
                 editText.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_recent_history, 0);
-                editText.setContentDescription(mActivity.getString(R.string.title_toolbar_text_input_history_dialog));
                 editText.setOnTouchListener((v, event) -> {
                     if (event.getAction() != MotionEvent.ACTION_UP) return false;
                     Drawable recallIcon = editText.getCompoundDrawablesRelative()[2];
