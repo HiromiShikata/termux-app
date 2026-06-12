@@ -1,5 +1,6 @@
 package com.termux.app.terminal.io;
 
+import android.app.AlertDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,8 +12,12 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.terminal.TerminalSession;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 public class TerminalToolbarViewPager {
 
@@ -21,9 +26,37 @@ public class TerminalToolbarViewPager {
         final TermuxActivity mActivity;
         String mSavedTextInput;
 
+        static final int SUBMITTED_TEXT_INPUT_HISTORY_SIZE = 5;
+        private final Deque<String> mSubmittedTextInputHistory = new ArrayDeque<>(SUBMITTED_TEXT_INPUT_HISTORY_SIZE);
+
         public PageAdapter(TermuxActivity activity, String savedTextInput) {
             this.mActivity = activity;
             this.mSavedTextInput = savedTextInput;
+        }
+
+        void addSubmittedTextInputToHistory(String submittedTextInput) {
+            if (submittedTextInput == null || submittedTextInput.length() == 0) return;
+            mSubmittedTextInputHistory.remove(submittedTextInput);
+            mSubmittedTextInputHistory.addFirst(submittedTextInput);
+            while (mSubmittedTextInputHistory.size() > SUBMITTED_TEXT_INPUT_HISTORY_SIZE) {
+                mSubmittedTextInputHistory.removeLast();
+            }
+        }
+
+        void showSubmittedTextInputHistory(final EditText editText) {
+            if (mSubmittedTextInputHistory.isEmpty()) {
+                Logger.showToast(mActivity, mActivity.getString(R.string.msg_toolbar_text_input_history_empty), true);
+                return;
+            }
+
+            final CharSequence[] history = mSubmittedTextInputHistory.toArray(new CharSequence[0]);
+            new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.title_toolbar_text_input_history_dialog)
+                .setItems(history, (dialog, which) -> {
+                    editText.setText(history[which]);
+                    editText.setSelection(editText.getText().length());
+                })
+                .show();
         }
 
         @Override
@@ -67,8 +100,10 @@ public class TerminalToolbarViewPager {
                 editText.setOnEditorActionListener((v, actionId, event) -> {
                     TerminalSession session = mActivity.getCurrentSession();
                     if (session != null) {
+                        String submittedTextInput = editText.getText().toString();
+                        addSubmittedTextInputToHistory(submittedTextInput);
                         if (session.isRunning()) {
-                            String textToSend = editText.getText().toString();
+                            String textToSend = submittedTextInput;
                             if (textToSend.length() == 0) textToSend = "\r";
                             session.write(textToSend);
                         } else {
@@ -76,6 +111,11 @@ public class TerminalToolbarViewPager {
                         }
                         editText.setText("");
                     }
+                    return true;
+                });
+
+                editText.setOnLongClickListener(v -> {
+                    showSubmittedTextInputHistory(editText);
                     return true;
                 });
             }
