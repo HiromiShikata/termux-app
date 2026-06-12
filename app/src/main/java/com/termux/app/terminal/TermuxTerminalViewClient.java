@@ -706,7 +706,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         final CharSequence[] urls = urlSet.toArray(new CharSequence[0]);
         Collections.reverse(Arrays.asList(urls)); // Latest first.
 
-        // Click to open url in browser:
+        // Click to open url with the system handler (ACTION_VIEW):
         final AlertDialog dialog = new AlertDialog.Builder(mActivity).setItems(urls, (di, which) -> {
             String url = (String) urls[which];
             ShareUtils.openUrl(mActivity, url);
