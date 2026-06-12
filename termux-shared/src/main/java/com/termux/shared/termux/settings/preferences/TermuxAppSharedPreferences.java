@@ -121,11 +121,6 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
-    public String getAutosshCommand() {
-        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_AUTOSSH_COMMAND, TERMUX_APP.DEFAULT_VALUE_KEY_AUTOSSH_COMMAND, false);
-    }
-
-
     public static int[] getDefaultFontSizes(Context context) {
         float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, context.getResources().getDisplayMetrics());
 

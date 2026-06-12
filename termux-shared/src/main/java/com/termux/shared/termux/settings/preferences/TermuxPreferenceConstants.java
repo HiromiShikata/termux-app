@@ -187,9 +187,6 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_CRASH_REPORT_NOTIFICATIONS_ENABLED = "crash_report_notifications_enabled";
         public static final boolean DEFAULT_VALUE_CRASH_REPORT_NOTIFICATIONS_ENABLED = true;
 
-        public static final String KEY_AUTOSSH_COMMAND = "autossh_command";
-        public static final String DEFAULT_VALUE_KEY_AUTOSSH_COMMAND = "";
-
     }
 
 
