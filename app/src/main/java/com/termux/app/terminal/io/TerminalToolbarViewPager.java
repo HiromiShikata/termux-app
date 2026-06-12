@@ -1,7 +1,9 @@
 package com.termux.app.terminal.io;
 
 import android.app.AlertDialog;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -145,8 +147,20 @@ public class TerminalToolbarViewPager {
                     return true;
                 });
 
-                editText.setOnLongClickListener(v -> {
+                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_recent_history, 0);
+                editText.setContentDescription(mActivity.getString(R.string.title_toolbar_text_input_history_dialog));
+                editText.setOnTouchListener((v, event) -> {
+                    if (event.getAction() != MotionEvent.ACTION_UP) return false;
+                    Drawable recallIcon = editText.getCompoundDrawablesRelative()[2];
+                    if (recallIcon == null) return false;
+                    boolean isRightToLeft = editText.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+                    int iconWidth = recallIcon.getBounds().width();
+                    boolean touchedRecallIcon = isRightToLeft
+                        ? event.getX() <= editText.getPaddingLeft() + iconWidth
+                        : event.getX() >= editText.getWidth() - editText.getPaddingRight() - iconWidth;
+                    if (!touchedRecallIcon) return false;
                     showSubmittedTextInputHistory(editText);
+                    v.performClick();
                     return true;
                 });
             }
