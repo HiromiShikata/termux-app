@@ -706,19 +706,19 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         final CharSequence[] urls = urlSet.toArray(new CharSequence[0]);
         Collections.reverse(Arrays.asList(urls)); // Latest first.
 
-        // Click to copy url to clipboard:
+        // Click to open url with the system handler (ACTION_VIEW):
         final AlertDialog dialog = new AlertDialog.Builder(mActivity).setItems(urls, (di, which) -> {
             String url = (String) urls[which];
-            ShareUtils.copyTextToClipboard(mActivity, url, mActivity.getString(R.string.msg_select_url_copied_to_clipboard));
+            ShareUtils.openUrl(mActivity, url);
         }).setTitle(R.string.title_select_url_dialog).create();
 
-        // Long press to open URL:
+        // Long press to copy URL to clipboard:
         dialog.setOnShowListener(di -> {
             ListView lv = dialog.getListView(); // this is a ListView with your "buds" in it
             lv.setOnItemLongClickListener((parent, view, position, id) -> {
                 dialog.dismiss();
                 String url = (String) urls[position];
-                ShareUtils.openUrl(mActivity, url);
+                ShareUtils.copyTextToClipboard(mActivity, url, mActivity.getString(R.string.msg_select_url_copied_to_clipboard));
                 return true;
             });
         });
