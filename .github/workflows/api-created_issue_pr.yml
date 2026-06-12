@@ -1,0 +1,97 @@
+# DO NOT EDIT DIRECTLY.
+# This file is auto-synchronized from HiromiShikata/repositories-management.
+# Direct edits in downstream repositories will be overwritten by the next sync.
+# Update the source file in HiromiShikata/repositories-management instead.
+
+name: Add to Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_or_pr_url:
+        description: 'Issue or PR URL (https://github.com/<owner>/<repo>/issues/<number> or .../pull/<number>)'
+        required: true
+        default: ''
+
+env:
+  PROJECT_V2_ID: PVT_kwHOAGJHa84AFWnr
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Generate hs-bot-gh-ap installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
+          private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
+          owner: HiromiShikata
+      - name: Add to Project
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          ISSUE_OR_PR_URL="${{ github.event.inputs.issue_or_pr_url }}"
+          ISSUE_OR_PR_URL="${ISSUE_OR_PR_URL%%\?*}"
+          ISSUE_OR_PR_URL="${ISSUE_OR_PR_URL%/}"
+
+          if ! echo "$ISSUE_OR_PR_URL" | grep -qE '^https://github\.com/[^/]+/[^/]+/(issues|pull)/[0-9]+$'; then
+            echo "Invalid URL format. Expected: https://github.com/<owner>/<repo>/issues/<number> or .../pull/<number>"
+            echo "Got: $ISSUE_OR_PR_URL"
+            exit 1
+          fi
+
+          REPO_PATH=$(echo "$ISSUE_OR_PR_URL" | awk -F'/' '{print $4"/"$5}')
+          NUMBER=$(echo "$ISSUE_OR_PR_URL" | grep -oE '[0-9]+$')
+
+          if echo "$ISSUE_OR_PR_URL" | grep -q "/pull/"; then
+            RESOURCE_TYPE="pulls"
+          else
+            RESOURCE_TYPE="issues"
+          fi
+
+          REST_RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO_PATH/$RESOURCE_TYPE/$NUMBER")
+          HTTP_STATUS=$(echo "$REST_RESPONSE" | tail -n1)
+          REST_BODY=$(echo "$REST_RESPONSE" | sed '$d')
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "REST API returned HTTP $HTTP_STATUS"
+            echo "$REST_BODY"
+            exit 1
+          fi
+
+          NODE_ID=$(echo "$REST_BODY" | jq -r '.node_id')
+
+          if [ -z "$NODE_ID" ] || [ "$NODE_ID" = "null" ]; then
+            echo "Failed to get node ID. REST response:"
+            echo "$REST_BODY"
+            exit 1
+          fi
+
+          echo "Node ID: $NODE_ID"
+
+          GRAPHQL_PAYLOAD=$(jq -n \
+            --arg nodeId "$NODE_ID" \
+            --arg projectId "$PROJECT_V2_ID" \
+            '{"query": "mutation($contentId: ID!, $projectId: ID!) { addProjectV2ItemById(input: { contentId: $contentId, projectId: $projectId }) { item { id } } }", "variables": {"contentId": $nodeId, "projectId": $projectId}}')
+
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: bearer $GH_TOKEN" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/graphql \
+            -d "$GRAPHQL_PAYLOAD")
+          echo "$RESPONSE"
+
+          if ! echo "$RESPONSE" | jq '.' > /dev/null 2>&1; then
+            echo "Non-JSON response received"
+            exit 1
+          fi
+
+          if echo "$RESPONSE" | jq -e '.errors' > /dev/null; then
+            echo "GraphQL error occurred"
+            exit 1
+          fi
