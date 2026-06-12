@@ -198,6 +198,16 @@
                 android:textColor="@color/white"
                 android:contentDescription="@string/action_toggle_soft_keyboard_bar"
                 android:text="@string/action_toggle_soft_keyboard" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/terminal_toolbar_drawer_toggle_button"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/black"
+                android:textColor="@color/white"
+                android:contentDescription="@string/action_toggle_drawer_bar"
+                android:text="@string/action_toggle_drawer_bar" />
         </LinearLayout>
 
         <ImageButton
