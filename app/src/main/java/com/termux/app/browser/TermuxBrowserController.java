@@ -35,6 +35,8 @@ public final class TermuxBrowserController {
 
     private BrowserTabsListViewController mTabsListViewController;
 
+    private final BrowserProjectUrlButtonsViewController mProjectUrlButtonsViewController;
+
     private String mCurrentSessionHandle;
 
     private boolean mBrowserVisible;
@@ -43,6 +45,7 @@ public final class TermuxBrowserController {
         this.mActivity = activity;
         this.mWebView = activity.findViewById(R.id.browser_web_view);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
+        this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity, this);
         configureWebView();
         configureCookies();
         configureDrawerControls();
@@ -108,6 +111,7 @@ public final class TermuxBrowserController {
     private void rebindTabsList(@Nullable TerminalSession session) {
         if (mCurrentSessionHandle == null) {
             mTabsListView.setAdapter(null);
+            mProjectUrlButtonsViewController.showProjectUrlsForSession(null);
             return;
         }
 
@@ -119,6 +123,9 @@ public final class TermuxBrowserController {
         mTabsListViewController = new BrowserTabsListViewController(mActivity, this, tabs);
         mTabsListView.setAdapter(mTabsListViewController);
         mTabsListView.setOnItemClickListener(mTabsListViewController);
+
+        String sessionName = (session == null) ? null : session.mSessionName;
+        mProjectUrlButtonsViewController.showProjectUrlsForSession(sessionName);
     }
 
     private String sessionDisplayName(@Nullable TerminalSession session) {
@@ -182,6 +189,20 @@ public final class TermuxBrowserController {
         } else if (mBrowserVisible) {
             loadActiveTab();
         }
+    }
+
+    public void openUrlInNewTab(@NonNull String url) {
+        if (mCurrentSessionHandle == null) return;
+        if (!mTabManager.canAddTab(mCurrentSessionHandle)) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
+            return;
+        }
+        BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, url);
+        if (tab == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
+            return;
+        }
+        openTab(tab);
     }
 
     private void promptNewTab() {
