@@ -149,6 +149,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_LAST_NOTIFICATION_ID = "last_notification_id";
         public static final int DEFAULT_VALUE_KEY_LAST_NOTIFICATION_ID = 0;
 
+        public static final String KEY_AUTOSSH_COMMAND = "autossh_command";
+        public static final String DEFAULT_VALUE_KEY_AUTOSSH_COMMAND = "";
+
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
          */

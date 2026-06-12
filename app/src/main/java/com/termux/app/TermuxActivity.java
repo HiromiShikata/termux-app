@@ -572,7 +572,29 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setNewSessionButtonView() {
         View newSessionButton = findViewById(R.id.new_session_button);
-        newSessionButton.setOnClickListener(v -> mTermuxTerminalSessionActivityClient.addNewSession(false, null));
+        newSessionButton.setOnClickListener(v -> {
+            TextInputDialogUtils.twoTextInputs(TermuxActivity.this,
+                R.string.action_new_session,
+                R.string.hint_session_url,
+                R.string.hint_session_short_name,
+                R.string.action_create_named_session_confirm,
+                (url, shortName) -> {
+                    String trimmedUrl = url.trim();
+                    String trimmedShortName = shortName.trim();
+                    String combined = (trimmedUrl + " " + trimmedShortName).trim();
+                    String sessionName = combined.isEmpty() ? null : combined;
+                    String commandTemplate = mPreferences.getAutosshCommand();
+                    if (commandTemplate.trim().isEmpty() || trimmedUrl.isEmpty()) {
+                        mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
+                    } else {
+                        String command = commandTemplate
+                            .replace("{url}", shellQuote(trimmedUrl))
+                            .replace("{name}", shellQuote(trimmedShortName));
+                        mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
+                    }
+                },
+                null);
+        });
         newSessionButton.setOnLongClickListener(v -> {
             TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,
                 R.string.action_create_named_session_confirm, text -> mTermuxTerminalSessionActivityClient.addNewSession(false, text),
@@ -580,6 +602,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 -1, null, null);
             return true;
         });
+    }
+
+    private static String shellQuote(String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private void setToggleKeyboardView() {
