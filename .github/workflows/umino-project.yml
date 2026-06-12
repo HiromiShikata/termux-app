@@ -1,0 +1,301 @@
+# DO NOT EDIT DIRECTLY.
+# This file is auto-synchronized from HiromiShikata/repositories-management.
+# Direct edits in downstream repositories will be overwritten by the next sync.
+# Update the source file in HiromiShikata/repositories-management instead.
+
+name: UMINO Project
+
+permissions:
+  contents: read
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - assigned
+      - unassigned
+      - labeled
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - review_requested
+      - assigned
+      - unassigned
+      - labeled
+      - opened
+      - edited
+      - reopened
+      - synchronize
+  issue_comment:
+    types:
+      - created
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+
+env:
+  unread: Unread
+  in_progress: In Progress
+  user: HiromiShikata
+  project_id: 48
+  project_v2_id: PVT_kwHOAGJHa84AFWnr
+  field_id: PVTF_lAHOAGJHa84AFWnrzgIk_H0
+  team_repo: '7sea.world, blog-tech, media-pinpoint-research, instagram-beauty-aesthetics-review, umino-corporait-operation, instagram-14LBaggageTraveler, hashigoya-project'
+
+jobs:
+  umino-job:
+    if: >-
+      ((github.event_name != 'issue_comment') ||
+       (github.event.comment.user.login == 'HiromiShikata' &&
+        (contains(github.event.comment.body, '/createissue') ||
+         contains(github.event.comment.body, '/close') ||
+         contains(github.event.comment.body, '/done') ||
+         contains(github.event.comment.body, '/movenextactiondateto') ||
+         contains(github.event.comment.body, '/changeassignee ')))) &&
+      github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Generate hs-bot-gh-ap installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
+          private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
+          owner: HiromiShikata
+      - name: Move issue to ${{ env.unread }}
+        run: |
+          RESOURCE_NODE_ID="${{ github.event.pull_request.node_id || github.event.issue.node_id }}"
+          PROJECT_V2_ID="${{ env.project_v2_id }}"
+
+          echo "RESOURCE_NODE_ID=$RESOURCE_NODE_ID"
+          echo "PROJECT_V2_ID=$PROJECT_V2_ID"
+
+          ADD_RESPONSE=$(gh api graphql \
+            -f query='mutation($projectId:ID!,$contentId:ID!){addProjectV2ItemById(input:{projectId:$projectId,contentId:$contentId}){item{id}}}' \
+            -f projectId="$PROJECT_V2_ID" \
+            -f contentId="$RESOURCE_NODE_ID" 2>&1 || true)
+
+          echo "addProjectV2ItemById response: $ADD_RESPONSE"
+
+          ITEM_ID=$(echo "$ADD_RESPONSE" | jq -r '.data.addProjectV2ItemById.item.id // empty' 2>/dev/null || echo "")
+
+          if [ -z "$ITEM_ID" ]; then
+            FALLBACK_RESPONSE=$(gh api graphql \
+              -f query='query($nodeId:ID!){node(id:$nodeId){...on PullRequest{projectItems(first:10){nodes{id project{id}}}}...on Issue{projectItems(first:10){nodes{id project{id}}}}}}' \
+              -f nodeId="$RESOURCE_NODE_ID" 2>&1 || true)
+            echo "projectItems fallback response: $FALLBACK_RESPONSE"
+            ITEM_ID=$(echo "$FALLBACK_RESPONSE" | jq -r ".data.node.projectItems.nodes[]? | select(.project.id == \"$PROJECT_V2_ID\") | .id" 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$ITEM_ID" ]; then
+            echo "Failed to resolve project item ID for $RESOURCE_NODE_ID in project $PROJECT_V2_ID"
+            exit 1
+          fi
+
+          echo "Resolved ITEM_ID=$ITEM_ID"
+
+          gh api graphql \
+            -f query='mutation($projectId:ID!,$itemId:ID!,$fieldId:ID!,$optionId:String!){updateProjectV2ItemFieldValue(input:{projectId:$projectId,itemId:$itemId,fieldId:$fieldId,value:{singleSelectOptionId:$optionId}}){projectV2Item{id}}}' \
+            -f projectId="$PROJECT_V2_ID" \
+            -f itemId="$ITEM_ID" \
+            -f fieldId="PVTSSF_lAHOAGJHa84AFWnrzgDFcxE" \
+            -f optionId="f75ad846"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        continue-on-error: true
+        if: >-
+          ((github.event_name == 'issues' && github.event.issue.state == 'open') ||
+          (github.event_name == 'pull_request' && github.event.pull_request.state == 'open')) &&
+          (github.event.action == 'opened' || github.event.action == 'reopened' ||
+          github.event.action == 'assigned' || github.event.action == 'unassigned')
+      - run: |
+          OWNER=$(echo ${{ github.repository }} | cut -d '/' -f 1)
+          REPO=$(echo ${{ github.repository }} | cut -d '/' -f 2)
+          ENTITY_TYPE=$(echo ${{ github.event_name }} | grep -q "pull_request" && echo "pullRequest" || echo "issue")
+          NUMBER=$(echo ${{ github.event_name }} | grep -q "pull_request" && echo ${{ github.event.pull_request.number }} || echo ${{ github.event.issue.number }})
+
+          QUERY_DATA='{ "query": "query { repository(owner: \"'$OWNER'\", name: \"'$REPO'\") { '${ENTITY_TYPE}'(number: '$NUMBER') { projectItems(first: 10) { nodes { id } } } } }" }'
+          RESPONSE=$(curl -X POST -H "Authorization: Bearer $GH_PROJECT_TOKEN" -H "Content-Type: application/json" --data "$QUERY_DATA" https://api.github.com/graphql)
+
+          if echo $RESPONSE | grep -q "errors"; then
+            echo "Error in GraphQL query"
+            echo "GraphQL Response: $RESPONSE"
+            exit 1
+          fi
+
+          if [ "$ENTITY_TYPE" = "pullRequest" ]; then
+            ITEM_ID=$(echo $RESPONSE | jq -r '.data.repository.pullRequest.projectItems.nodes[0].id')
+          else
+            ITEM_ID=$(echo $RESPONSE | jq -r '.data.repository.issue.projectItems.nodes[0].id')
+          fi
+
+          if [ "$ITEM_ID" = "null" ] || [ -z "$ITEM_ID" ]; then
+            echo "No valid item ID found, cannot proceed"
+            exit 1
+          fi
+
+          CLEAR_FIELD_DATA="{\"query\":\"mutation { clearProjectV2ItemFieldValue(input: {projectId: \\\"${{ env.project_v2_id }}\\\", fieldId: \\\"${{ env.field_id }}\\\", itemId: \\\"$ITEM_ID\\\"}) { clientMutationId }}\"}"
+          CLEAR_RESPONSE=$(curl --request POST \
+            --url https://api.github.com/graphql \
+            --header "Authorization: Bearer $GH_PROJECT_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$CLEAR_FIELD_DATA")
+
+          if echo $CLEAR_RESPONSE | grep -q "errors"; then
+            echo "Error in clearing field"
+            echo "Clear Field Response: $CLEAR_RESPONSE"
+            exit 1
+          fi
+        continue-on-error: true
+        env:
+          GH_PROJECT_TOKEN: ${{ secrets.GH_TOKEN }}
+        if: >-
+          ((github.event_name == 'issues' && github.event.issue.state == 'open') ||
+          (github.event_name == 'pull_request' && github.event.pull_request.state == 'open')) &&
+          (github.event.action == 'opened' || github.event.action == 'reopened' ||
+          github.event.action == 'assigned' || github.event.action == 'unassigned')
+
+      - name: Create Issue
+        if: ${{ github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.comment.user.login == 'HiromiShikata' && contains(github.event.comment.body, '/createissue') }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const commentBody = context.payload.comment.body;
+            const commandMatch = /(^|\n)\s*\/createissue\b/m.exec(commentBody);
+            if (!commandMatch) return;
+            const createIssueIndex = commentBody.indexOf('/createissue', commandMatch.index);
+            const issueTitle = commentBody.slice(createIssueIndex + 12).split('\n')[0].trim();
+            const issueNumber = context.issue.number;
+            const commentId = context.payload.comment.id;
+            const commentLink = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${issueNumber}#issuecomment-${commentId}`;
+            const issueBody = `
+            ${commentBody.slice(createIssueIndex + 12).trim()}
+            Created from a comment: ${commentLink}
+            `;
+            const newIssue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              assignees: ['HiromiShikata']
+            });
+      - name: Close Issue
+        if: ${{ github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.comment.user.login == 'HiromiShikata' && (contains(github.event.comment.body, '/close') || contains(github.event.comment.body, '/done')) }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const body = context.payload.comment.body;
+            if (!/(^|\n)\s*\/(close|done)\b/m.test(body)) return;
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed'
+            });
+      - name: Update Date Field
+        if: ${{ github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.comment.user.login == 'HiromiShikata' && contains(github.event.comment.body, '/movenextactiondateto') }}
+        uses: actions/github-script@v9
+        env:
+          PROJECT_V2_ID: ${{ env.project_v2_id }}
+          FIELD_ID: ${{ env.field_id }}
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const commentBody = context.payload.comment.body;
+            const commandMatch = /(^|\n)\s*\/movenextactiondateto\b/m.exec(commentBody);
+            if (!commandMatch) return;
+            const dateMatch = /\/movenextactiondateto\s+(\d{8})/.exec(commentBody.slice(commandMatch.index));
+            if (!dateMatch) return;
+            const dateString = dateMatch[1];
+            const projectId = process.env.PROJECT_V2_ID;
+            const fieldId = process.env.FIELD_ID;
+            const itemIdResult = await github.graphql(
+              `query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    projectItems(first: 10) { nodes { id } }
+                  }
+                }
+              }`,
+              { owner: context.repo.owner, repo: context.repo.repo, number: context.issue.number }
+            );
+            const itemId = itemIdResult.repository.issue.projectItems.nodes[0]?.id;
+            if (!itemId) { core.setFailed('No project item found for this issue'); return; }
+            await github.graphql(
+              `mutation($projectId: ID!, $fieldId: ID!, $itemId: ID!, $date: Date!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId, fieldId: $fieldId, itemId: $itemId,
+                  value: { date: $date }
+                }) { clientMutationId }
+              }`,
+              { projectId, fieldId, itemId, date: dateString }
+            );
+      - name: Change Assignee
+        if: ${{ github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.comment.user.login == 'HiromiShikata' && contains(github.event.comment.body, '/changeassignee ') }}
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const commentBody = context.payload.comment.body;
+            const commandMatch = /(^|\n)\s*\/changeassignee\s+(\S+)/m.exec(commentBody);
+            if (!commandMatch) return;
+            const assigneeName = commandMatch[2].trim();
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              assignees: [assigneeName]
+            });
+      - name: Auto assign issue to owner
+        if: >-
+          github.event_name == 'issues' &&
+          github.event.action == 'opened'
+        uses: pozil/auto-assign-issue@70adb98ca8b3941524e9ecde48e89067c4f96736
+        with:
+          assignees: HiromiShikata
+          repo-token: ${{ steps.app-token.outputs.token }}
+      - name: Auto assign PR to owner
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.action == 'opened'
+        uses: pozil/auto-assign-issue@70adb98ca8b3941524e9ecde48e89067c4f96736
+        with:
+          assignees: HiromiShikata
+          repo-token: ${{ steps.app-token.outputs.token }}
+
+  check_pull_requests_to_link_issues:
+    runs-on: ubuntu-latest
+    name: Check linked issues in pull requests
+    if: >-
+      (github.event_name == 'pull_request')
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Generate hs-bot-gh-ap installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
+          private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
+          owner: HiromiShikata
+      - uses: nearform-actions/github-action-check-linked-issues@7140e2e01aa0c18b8ac61bddf5e89abde1ca760e
+        id: check-linked-issues
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        with:
+          exclude-branches: 'release/**, dependabot/**, project-common/**, renovate/**'
+          github-token: ${{ steps.app-token.outputs.token }}
+          loose-matching: true
+          skip-linked-issues-check-label: ''
+      - name: Get the output
+        run: echo "How many linked issues? ${{ steps.check-linked-issues.outputs.linked_issues_count }}"

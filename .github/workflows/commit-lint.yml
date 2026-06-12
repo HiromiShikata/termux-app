@@ -1,3 +1,8 @@
+# DO NOT EDIT DIRECTLY.
+# This file is auto-synchronized from HiromiShikata/repositories-management.
+# Direct edits in downstream repositories will be overwritten by the next sync.
+# Update the source file in HiromiShikata/repositories-management instead.
+
 name: Lint Commit Messages
 on:
   pull_request:
@@ -19,6 +24,9 @@ jobs:
       pull-requests: write
       contents: read
     steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -38,11 +46,15 @@ jobs:
             echo "$result"
             exit 1
           fi
-
+      - uses: nearform-actions/github-action-check-linked-issues@v1
+        id: check-linked-issues
+        if: false
+        with:
+          exclude-branches: 'release/**, dependabot/**, project-common/**'
+          loose-matching: true
       - name: Install commitlint
         run: |
           npm install --save-dev @commitlint/{config-conventional,cli}
-
       - name: Lint commits
         run: |
-          npx commitlint --from=origin/${{ github.base_ref }} --to=HEAD --config ./.github/workflows/configs/commitlint.config.js
+          npx commitlint --from=origin/main --to=HEAD --config ./.github/workflows/configs/commitlint.config.js
