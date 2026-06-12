@@ -41,6 +41,8 @@ import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.activities.AutosshConfigActivity;
+import com.termux.app.activities.SessionDefinitionConfigActivity;
+import com.termux.app.sessiondefinition.SessionDefinitionController;
 import com.termux.app.activities.HelpActivity;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
@@ -255,6 +257,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setSettingsButtonView();
 
         setAutosshConfigButtonView();
+
+        setSessionDefinitionConfigButtonView();
+
+        setSessionDefinitionLoadButtonView();
 
         setNewSessionButtonView();
 
@@ -591,6 +597,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.autossh_config_button).setOnClickListener(v -> {
             ActivityUtils.startActivity(this, new Intent(this, AutosshConfigActivity.class));
         });
+    }
+
+    private void setSessionDefinitionConfigButtonView() {
+        findViewById(R.id.session_definition_config_button).setOnClickListener(v -> {
+            ActivityUtils.startActivity(this, new Intent(this, SessionDefinitionConfigActivity.class));
+        });
+    }
+
+    private void setSessionDefinitionLoadButtonView() {
+        findViewById(R.id.session_definition_load_button).setOnClickListener(v ->
+            new SessionDefinitionController(this).loadAndBuildSessions());
     }
 
     private void setNewSessionButtonView() {

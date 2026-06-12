@@ -156,6 +156,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_AUTOSSH_COMMAND = "autossh_command";
         public static final String DEFAULT_VALUE_KEY_AUTOSSH_COMMAND = "";
 
+        public static final String KEY_SESSION_DEFINITION_URL = "session_definition_url";
+        public static final String DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL = "";
+
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
          */
