@@ -1,15 +1,30 @@
+# DO NOT EDIT DIRECTLY.
+# This file is auto-synchronized from HiromiShikata/repositories-management.
+# Direct edits in downstream repositories will be overwritten by the next sync.
+# Update the source file in HiromiShikata/repositories-management instead.
+
 name: Create PR
 
 on:
   push:
     branches-ignore:
-      - master
+      - main
 
 jobs:
-  create_pr:
+  create_and_enable_automerge:
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]' && !github.event.deleted
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Generate hs-bot-gh-ap installation token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
+          private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v6
 
@@ -20,30 +35,24 @@ jobs:
       - name: Check if PR already exists
         id: check_pr
         run: |
-          EXISTING_PR=$(gh pr list \
-            --repo HiromiShikata/termux-app \
-            --head "${{ steps.branch_name.outputs.branch }}" \
-            --base master \
-            --json number,headRepositoryOwner \
-            --jq '.[] | select(.headRepositoryOwner.login == "${{ github.repository_owner }}") | .number' | head -1)
+          EXISTING_PR=$(gh pr list --head "${{ steps.branch_name.outputs.branch }}" --base main --json number --jq '.[0].number // empty')
           echo "existing_pr=$EXISTING_PR" >> "$GITHUB_OUTPUT"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Create Pull Request
         id: create_pr
         if: steps.check_pr.outputs.existing_pr == ''
-        run: |
-          PR_URL=$(gh pr create \
-            --repo HiromiShikata/termux-app \
-            --base master \
-            --head "${{ github.repository_owner }}:${{ steps.branch_name.outputs.branch }}" \
-            --title "${{ steps.branch_name.outputs.branch }}" \
-            --body ":magic_wand: :sparkles:")
-          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
-          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        uses: repo-sync/pull-request@7e79a9f5dc3ad0ce53138f01df2fad14a04831c5
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          destination_branch: 'main'
+          source_branch: ''
+          pr_title: '${{ steps.branch_name.outputs.branch }}'
+          pr_body: |
+            :magic_wand: :sparkles:
+
+          pr_draft: false
 
       - name: Resolve PR number
         id: resolve_pr
@@ -54,13 +63,31 @@ jobs:
           fi
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
-      - name: Assign PR to author
+      - name: Get PR Node ID
+        if: steps.resolve_pr.outputs.pr_number
+        id: get_pr_id
+        run: |
+          PR_DATA=$(curl -s -H "Authorization: token ${{ steps.app-token.outputs.token }}" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.resolve_pr.outputs.pr_number }}")
+          PR_ID=$(echo "$PR_DATA" | jq -r '.node_id')
+          echo "node_id=$PR_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Enable Auto Merge for PR
         if: steps.resolve_pr.outputs.pr_number
         run: |
-          curl -sf -X POST \
-            -H "Authorization: token ${{ secrets.GH_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            -d '{"assignees":["${{ github.actor }}"]}' \
-            "https://api.github.com/repos/HiromiShikata/termux-app/issues/${{ steps.resolve_pr.outputs.pr_number }}/assignees"
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: bearer ${{ steps.app-token.outputs.token }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id }) { clientMutationId } }",
+              "variables": {
+                "id": "'"${{ steps.get_pr_id.outputs.node_id }}"'"
+              }
+            }' \
+            "https://api.github.com/graphql")
+          echo "$RESPONSE"
+          if echo "$RESPONSE" | jq -e '.errors' >/dev/null; then
+            echo "Failed to enable auto merge"
+            exit 1
+          fi
