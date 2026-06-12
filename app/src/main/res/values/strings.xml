@@ -56,6 +56,7 @@
 
     <string name="action_toggle_soft_keyboard">Keyboard</string>
     <string name="action_toggle_soft_keyboard_bar">Toggle soft keyboard</string>
+    <string name="action_toggle_drawer_bar">Drawer</string>
 
     <!-- In-app browser -->
     <string name="action_toggle_browser">Browser</string>

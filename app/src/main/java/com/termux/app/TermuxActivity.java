@@ -271,6 +271,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setKeyboardToggleBarView();
 
+        setDrawerToggleBarView();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -671,6 +673,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setKeyboardToggleBarView() {
         findViewById(R.id.terminal_toolbar_keyboard_toggle_button).setOnClickListener(v -> {
             mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
+        });
+    }
+
+    @SuppressLint("RtlHardcoded")
+    private void setDrawerToggleBarView() {
+        findViewById(R.id.terminal_toolbar_drawer_toggle_button).setOnClickListener(v -> {
+            DrawerLayout drawerLayout = getDrawer();
+            if (drawerLayout.isDrawerOpen(Gravity.LEFT))
+                drawerLayout.closeDrawer(Gravity.LEFT);
+            else
+                drawerLayout.openDrawer(Gravity.LEFT);
         });
     }
 
