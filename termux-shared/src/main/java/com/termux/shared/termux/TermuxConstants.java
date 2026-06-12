@@ -12,7 +12,7 @@ import java.util.Formatter;
 import java.util.List;
 
 /*
- * Version: v0.53.0
+ * Version: v0.54.0
  * SPDX-License-Identifier: MIT
  *
  * Changelog
@@ -282,6 +282,9 @@ import java.util.List;
  * - 0.53.0 (2025-01-12)
  *      - Renamed `TERMUX_API`, `TERMUX_STYLING`, `TERMUX_TASKER`, `TERMUX_WIDGET` classes with `_APP` suffix added.
  *      - Added `TERMUX_*_MAIN_ACTIVITY_NAME` and `TERMUX_*_LAUNCHER_ACTIVITY_NAME` constants to each app class.
+ *
+ * - 0.54.0 (2026-06-12)
+ *      - Changed `TERMUX_APP_NAME` value to "HS Termux".
  */
 
 /**
@@ -347,7 +350,7 @@ public final class TermuxConstants {
      */
 
     /** Termux app name */
-    public static final String TERMUX_APP_NAME = "Termux"; // Default: "Termux"
+    public static final String TERMUX_APP_NAME = "HS Termux"; // Default: "HS Termux"
     /** Termux package name */
     public static final String TERMUX_PACKAGE_NAME = "com.termux"; // Default: "com.termux"
     /** Termux GitHub repo name */
