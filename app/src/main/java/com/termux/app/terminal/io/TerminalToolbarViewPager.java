@@ -1,6 +1,9 @@
 package com.termux.app.terminal.io;
 
+import android.app.AlertDialog;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -12,9 +15,12 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.terminal.TerminalSession;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,6 +32,9 @@ public class TerminalToolbarViewPager {
         String mSavedTextInput;
 
         private final Map<TerminalSession, String> mSessionTextInputs = new HashMap<>();
+
+        static final int SUBMITTED_TEXT_INPUT_HISTORY_SIZE = 5;
+        private final Deque<String> mSubmittedTextInputHistory = new ArrayDeque<>(SUBMITTED_TEXT_INPUT_HISTORY_SIZE);
 
         public PageAdapter(TermuxActivity activity, String savedTextInput) {
             this.mActivity = activity;
@@ -49,6 +58,31 @@ public class TerminalToolbarViewPager {
         public void removeTextInputForSession(@Nullable TerminalSession session) {
             if (session == null) return;
             mSessionTextInputs.remove(session);
+        }
+
+        void addSubmittedTextInputToHistory(String submittedTextInput) {
+            if (submittedTextInput == null || submittedTextInput.length() == 0) return;
+            mSubmittedTextInputHistory.remove(submittedTextInput);
+            mSubmittedTextInputHistory.addFirst(submittedTextInput);
+            while (mSubmittedTextInputHistory.size() > SUBMITTED_TEXT_INPUT_HISTORY_SIZE) {
+                mSubmittedTextInputHistory.removeLast();
+            }
+        }
+
+        void showSubmittedTextInputHistory(final EditText editText) {
+            if (mSubmittedTextInputHistory.isEmpty()) {
+                Logger.showToast(mActivity, mActivity.getString(R.string.msg_toolbar_text_input_history_empty), true);
+                return;
+            }
+
+            final CharSequence[] history = mSubmittedTextInputHistory.toArray(new CharSequence[0]);
+            new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.title_toolbar_text_input_history_dialog)
+                .setItems(history, (dialog, which) -> {
+                    editText.setText(history[which]);
+                    editText.setSelection(editText.getText().length());
+                })
+                .show();
         }
 
         @Override
@@ -98,8 +132,10 @@ public class TerminalToolbarViewPager {
                 editText.setOnEditorActionListener((v, actionId, event) -> {
                     TerminalSession session = mActivity.getCurrentSession();
                     if (session != null) {
+                        String submittedTextInput = editText.getText().toString();
+                        addSubmittedTextInputToHistory(submittedTextInput);
                         if (session.isRunning()) {
-                            String textToSend = editText.getText().toString();
+                            String textToSend = submittedTextInput;
                             if (textToSend.length() == 0) textToSend = "\r";
                             session.write(textToSend);
                         } else {
@@ -108,6 +144,22 @@ public class TerminalToolbarViewPager {
                         editText.setText("");
                         mSessionTextInputs.remove(session);
                     }
+                    return true;
+                });
+
+                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_recent_history, 0);
+                editText.setOnTouchListener((v, event) -> {
+                    if (event.getAction() != MotionEvent.ACTION_UP) return false;
+                    Drawable recallIcon = editText.getCompoundDrawablesRelative()[2];
+                    if (recallIcon == null) return false;
+                    boolean isRightToLeft = editText.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+                    int iconWidth = recallIcon.getBounds().width();
+                    boolean touchedRecallIcon = isRightToLeft
+                        ? event.getX() <= editText.getPaddingLeft() + iconWidth
+                        : event.getX() >= editText.getWidth() - editText.getPaddingRight() - iconWidth;
+                    if (!touchedRecallIcon) return false;
+                    showSubmittedTextInputHistory(editText);
+                    v.performClick();
                     return true;
                 });
             }
