@@ -1,5 +1,6 @@
 package com.termux.app.sessiondefinition;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -12,7 +13,7 @@ public final class SessionDefinitionEntry {
     public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls) {
         this.groupLabel = groupLabel;
         this.entryLabel = entryLabel;
-        this.urls = Collections.unmodifiableList(urls);
+        this.urls = Collections.unmodifiableList(new ArrayList<>(urls));
     }
 
     public String getGroupLabel() {

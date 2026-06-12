@@ -27,4 +27,13 @@ public class SessionDefinitionEntryTest {
             "groupLabel", "entryLabel", new java.util.ArrayList<>(Collections.singletonList("https://example.test/x")));
         entry.getUrls().add("https://example.test/y");
     }
+
+    @Test
+    public void urlsAreDefensivelyCopiedFromTheSourceList() {
+        java.util.List<String> source = new java.util.ArrayList<>(Collections.singletonList("https://example.test/x"));
+        SessionDefinitionEntry entry = new SessionDefinitionEntry("groupLabel", "entryLabel", source);
+        source.add("https://example.test/y");
+        Assert.assertEquals(1, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/x", entry.getUrls().get(0));
+    }
 }

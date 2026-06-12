@@ -12,14 +12,16 @@ public final class SessionDefinitionController {
 
     private final TermuxActivity activity;
     private final SessionDefinitionLoader loader;
+    private final SessionDefinitionPlanner planner;
 
     public SessionDefinitionController(TermuxActivity activity) {
-        this(activity, new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
+        this(activity, new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()), new SessionDefinitionPlanner());
     }
 
-    public SessionDefinitionController(TermuxActivity activity, SessionDefinitionLoader loader) {
+    public SessionDefinitionController(TermuxActivity activity, SessionDefinitionLoader loader, SessionDefinitionPlanner planner) {
         this.activity = activity;
         this.loader = loader;
+        this.planner = planner;
     }
 
     public void loadAndBuildSessions() {
@@ -42,13 +44,20 @@ public final class SessionDefinitionController {
     }
 
     private void buildSessions(List<SessionDefinitionEntry> entries) {
-        if (entries.isEmpty()) {
+        String commandTemplate = activity.getPreferences().getAutosshCommand();
+        List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, commandTemplate);
+
+        if (plannedSessions.isEmpty()) {
             activity.showToast(activity.getString(R.string.msg_session_definition_no_entries), true);
             return;
         }
 
-        for (SessionDefinitionEntry entry : entries) {
-            activity.getTermuxTerminalSessionClient().addNewSession(false, entry.getSessionName());
+        for (SessionDefinitionPlannedSession plannedSession : plannedSessions) {
+            if (plannedSession.hasCommand()) {
+                activity.getTermuxTerminalSessionClient().addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand());
+            } else {
+                activity.getTermuxTerminalSessionClient().addNewSession(false, plannedSession.getName());
+            }
         }
 
         activity.getDrawer().closeDrawers();

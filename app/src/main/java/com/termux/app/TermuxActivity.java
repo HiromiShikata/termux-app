@@ -43,6 +43,7 @@ import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.activities.AutosshConfigActivity;
 import com.termux.app.activities.SessionDefinitionConfigActivity;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
+import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.activities.HelpActivity;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
@@ -628,8 +629,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                         mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
                     } else {
                         String command = commandTemplate
-                            .replace("{url}", shellQuote(trimmedUrl))
-                            .replace("{name}", shellQuote(trimmedShortName));
+                            .replace("{url}", SessionDefinitionPlanner.shellQuote(trimmedUrl))
+                            .replace("{name}", SessionDefinitionPlanner.shellQuote(trimmedShortName));
                         mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
                     }
                 },
@@ -642,10 +643,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 -1, null, null);
             return true;
         });
-    }
-
-    private static String shellQuote(String value) {
-        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     private void setToggleKeyboardView() {

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 
 public final class HttpSessionDefinitionDocumentFetcher implements SessionDefinitionDocumentFetcher {
@@ -14,7 +15,11 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
     @Override
     public String fetch(String url) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+        URLConnection urlConnection = new URL(url).openConnection();
+        if (!(urlConnection instanceof HttpURLConnection)) {
+            throw new IOException("Unsupported protocol for session definition URL: " + url);
+        }
+        HttpURLConnection connection = (HttpURLConnection) urlConnection;
         try {
             connection.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
             connection.setReadTimeout(READ_TIMEOUT_MILLIS);
