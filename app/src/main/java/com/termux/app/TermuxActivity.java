@@ -30,6 +30,7 @@ import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.activity.ActivityUtils;
@@ -138,6 +139,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The termux sessions list controller.
      */
     TermuxSessionsListViewController mTermuxSessionListViewController;
+
+    /**
+     * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
+     */
+    TermuxBrowserController mTermuxBrowserController;
 
     /**
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
@@ -254,6 +260,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setToggleKeyboardView();
 
+        setBrowserView();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -345,6 +353,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         unregisterTermuxActivityBroadcastReceiver();
         getDrawer().closeDrawers();
+
+        if (mTermuxBrowserController != null)
+            mTermuxBrowserController.onActivityStop();
     }
 
     @Override
@@ -354,6 +365,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logDebug(LOG_TAG, "onDestroy");
 
         if (mIsInvalidState) return;
+
+        if (mTermuxBrowserController != null)
+            mTermuxBrowserController.onActivityDestroy();
 
         if (mTermuxService != null) {
             // Do not leave service and session clients with references to activity.
@@ -629,6 +643,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         });
     }
 
+    private void setBrowserView() {
+        mTermuxBrowserController = new TermuxBrowserController(this);
+        findViewById(R.id.toggle_browser_button).setOnClickListener(v -> mTermuxBrowserController.toggleBrowser());
+        findViewById(R.id.toggle_browser_button).setOnLongClickListener(v -> {
+            mTermuxBrowserController.openTabsDrawer();
+            return true;
+        });
+    }
+
 
 
 
@@ -636,8 +659,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @SuppressLint("RtlHardcoded")
     @Override
     public void onBackPressed() {
-        if (getDrawer().isDrawerOpen(Gravity.LEFT)) {
+        if (getDrawer().isDrawerOpen(Gravity.LEFT) || getDrawer().isDrawerOpen(Gravity.RIGHT)) {
             getDrawer().closeDrawers();
+        } else if (mTermuxBrowserController != null && mTermuxBrowserController.onBackPressed()) {
+            // Browser handled the back press (navigated back or returned to terminal).
         } else {
             finishActivityIfNotFinishing();
         }
@@ -870,6 +895,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public DrawerLayout getDrawer() {
         return (DrawerLayout) findViewById(R.id.drawer_layout);
+    }
+
+    public TermuxBrowserController getTermuxBrowserController() {
+        return mTermuxBrowserController;
     }
 
 

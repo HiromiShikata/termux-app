@@ -1,0 +1,43 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/session_background_selected"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="6dip">
+
+    <LinearLayout
+        android:id="@+id/browser_tab_content"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/browser_tab_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/browser_tab_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/browser_tab_close_button"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@null"
+        android:contentDescription="@string/action_browser_close_tab"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:src="@drawable/ic_browser_close_tab" />
+</LinearLayout>

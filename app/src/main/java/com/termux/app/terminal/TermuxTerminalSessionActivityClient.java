@@ -302,6 +302,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // be stale, like current session not selected or scrolled to.
         checkAndScrollToSession(session);
         updateBackgroundColor();
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionChanged(session);
     }
 
     void notifyOfSessionChange() {
@@ -462,6 +465,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // Return pressed with finished session - remove it.
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
 
         int index = service.removeTermuxSession(finishedSession);
 
