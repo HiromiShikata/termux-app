@@ -67,7 +67,6 @@ jobs:
               return;
             }
 
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${latestRun.id}`;
             const suiteId = latestRun.check_suite_id;
 
             const { data: { artifacts } } = await github.rest.actions.listWorkflowRunArtifacts({
@@ -85,11 +84,7 @@ jobs:
 
             const section = [
               startMarker,
-              '## APK Download Link',
-              '',
-              arm64Artifact ? `- [${arm64Artifact.name}](${makeUrl(arm64Artifact)})` : '(artifact not found)',
-              '',
-              `Full build: ${runUrl}`,
+              arm64Artifact ? `APK: ${makeUrl(arm64Artifact)}` : '(artifact not found)',
               endMarker
             ].join('\n');
 
