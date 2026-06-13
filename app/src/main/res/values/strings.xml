@@ -109,8 +109,11 @@
     <string name="title_share_transcript_with">Send transcript to:</string>
 
     <string name="action_share_selected_text">Share selected text</string>
+    <string name="action_translate_selected_text">Translate</string>
     <string name="title_share_selected_text">Terminal Text</string>
     <string name="title_share_selected_text_with">Send selected text to:</string>
+    <string name="title_translate_selected_text_with">Translate selected text with:</string>
+    <string name="msg_no_translation_app_found">No translation app found</string>
 
     <string name="action_autofill_username">Autofill username</string>
     <string name="action_autofill_password">Autofill password</string>
