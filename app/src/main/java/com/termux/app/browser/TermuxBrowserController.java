@@ -49,6 +49,8 @@ public final class TermuxBrowserController {
 
     private String mCurrentSessionHandle;
 
+    private BrowserTab mDisplayedTab;
+
     private boolean mBrowserVisible;
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
@@ -80,9 +82,9 @@ public final class TermuxBrowserController {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                BrowserTab activeTab = getActiveTab();
-                if (activeTab != null) {
-                    activeTab.setUrl(url);
+                BrowserTab loadingTab = mDisplayedTab;
+                if (loadingTab != null) {
+                    loadingTab.setUrl(url);
                     notifyTabsUpdated();
                 }
             }
@@ -91,10 +93,10 @@ public final class TermuxBrowserController {
             public void onPageFinished(WebView view, String url) {
                 mSwipeRefreshLayout.setRefreshing(false);
                 CookieManager.getInstance().flush();
-                BrowserTab activeTab = getActiveTab();
-                if (activeTab != null) {
-                    activeTab.setUrl(url);
-                    activeTab.setTitle(view.getTitle());
+                BrowserTab loadingTab = mDisplayedTab;
+                if (loadingTab != null) {
+                    loadingTab.setUrl(url);
+                    loadingTab.setTitle(view.getTitle());
                     notifyTabsUpdated();
                 }
             }
@@ -126,6 +128,7 @@ public final class TermuxBrowserController {
         activeTab.setDesktopMode(!activeTab.isDesktopMode());
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
+        mDisplayedTab = activeTab;
         mWebView.reload();
     }
 
@@ -182,6 +185,8 @@ public final class TermuxBrowserController {
     }
 
     public void onSessionRemoved(@NonNull TerminalSession session) {
+        if (mDisplayedTab != null && session.mHandle.equals(mDisplayedTab.getSessionHandle()))
+            mDisplayedTab = null;
         mTabManager.removeSession(session.mHandle);
     }
 
@@ -230,6 +235,7 @@ public final class TermuxBrowserController {
 
     public void closeTab(@NonNull BrowserTab tab) {
         mTabManager.removeTab(tab);
+        if (tab == mDisplayedTab) mDisplayedTab = null;
         notifyTabsUpdated();
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) {
@@ -303,10 +309,9 @@ public final class TermuxBrowserController {
         if (activeTab == null) return;
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
-        String currentUrl = mWebView.getUrl();
-        if (forceReload || currentUrl == null || !currentUrl.equals(activeTab.getUrl())) {
-            mWebView.loadUrl(activeTab.getUrl());
-        }
+        if (!forceReload && activeTab == mDisplayedTab) return;
+        mDisplayedTab = activeTab;
+        mWebView.loadUrl(activeTab.getUrl());
     }
 
     @Nullable
