@@ -1,0 +1,40 @@
+// DO NOT EDIT DIRECTLY.
+// This file is auto-synchronized from HiromiShikata/repositories-management.
+// Direct edits in downstream repositories will be overwritten by the next sync.
+// Update the source file in HiromiShikata/repositories-management instead.
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "automerge": true,
+  "platformAutomerge": true,
+  "rebaseWhen": "auto",
+  "prConcurrentLimit": 2,
+  "schedule": ["every weekend"],
+  "ignorePresets": [],
+  "dependencyDashboard": false,
+  "branchConcurrentLimit": 2,
+  "ignorePaths": ["**/generated/*", "**/_gen/*"],
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "matchPackageNames": ["eslint"],
+      "allowedVersions": "<9.0.0"
+    },
+    {
+      "matchPackageNames": ["@typescript-eslint/eslint-plugin"],
+      "allowedVersions": "<6.0.0"
+    },
+    {
+      "matchPackageNames": ["@typescript-eslint/parser"],
+      "allowedVersions": "<6.0.0"
+    },
+    {
+      "matchPackageNames": ["eslint-plugin-unused-imports"],
+      "allowedVersions": "<4.0.0"
+    },
+    {
+      "matchPackageNames": ["@google/clasp"],
+      "allowedVersions": "3.1.0"
+    }
+  ]
+}
