@@ -11,7 +11,9 @@ import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.text.TextUtils;
+import android.view.View;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -316,6 +318,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionChanged(session);
+
+        updateSessionNameOverlay();
+    }
+
+    private void updateSessionNameOverlay() {
+        TextView overlay = mActivity.findViewById(R.id.session_name_overlay);
+        if (overlay == null) return;
+
+        TerminalSession session = mActivity.getCurrentSession();
+        String sessionName = (session == null) ? null : session.mSessionName;
+        if (TextUtils.isEmpty(sessionName)) {
+            overlay.setText("");
+            overlay.setVisibility(View.GONE);
+        } else {
+            overlay.setText(sessionName);
+            overlay.setVisibility(View.VISIBLE);
+        }
     }
 
     void notifyOfSessionChange() {
@@ -373,6 +392,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (termuxSession != null)
                 termuxSession.getExecutionCommand().shellName = text;
         }
+
+        if (sessionToRename == mActivity.getCurrentSession())
+            updateSessionNameOverlay();
     }
 
     public void addNewSession(boolean isFailSafe, String sessionName) {

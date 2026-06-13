@@ -43,6 +43,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/session_name_overlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:longClickable="false"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="2dp"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
             </FrameLayout>
 
             <LinearLayout
