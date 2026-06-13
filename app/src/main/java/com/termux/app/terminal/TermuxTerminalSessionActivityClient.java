@@ -346,10 +346,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (TextUtils.isEmpty(sessionName)) {
             sessionNameBar.setText("");
             sessionNameBar.setVisibility(View.GONE);
+            sessionNameBar.setOnClickListener(null);
+            sessionNameBar.setClickable(false);
         } else {
             sessionNameBar.setText(sessionName);
             sessionNameBar.setVisibility(View.VISIBLE);
+            sessionNameBar.setOnClickListener(view -> copyCurrentSessionNameToClipboard());
         }
+    }
+
+    private void copyCurrentSessionNameToClipboard() {
+        TerminalSession session = mActivity.getCurrentSession();
+        String sessionName = (session == null) ? null : session.mSessionName;
+        if (TextUtils.isEmpty(sessionName)) return;
+
+        ShareUtils.copyTextToClipboard(mActivity, sessionName,
+            mActivity.getString(R.string.msg_session_name_copied_to_clipboard));
     }
 
     void notifyOfSessionChange() {

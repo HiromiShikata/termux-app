@@ -93,6 +93,7 @@
     <string name="title_select_url_dialog">Tap URL to open or long press to copy</string>
     <string name="title_select_url_none_found">No URL found in the terminal.</string>
     <string name="msg_select_url_copied_to_clipboard">URL copied to clipboard</string>
+    <string name="msg_session_name_copied_to_clipboard">Session name copied to clipboard</string>
 
     <!-- Terminal Toolbar Text Input History -->
     <string name="title_toolbar_text_input_history_dialog">Tap to restore a recent submission</string>
