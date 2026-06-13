@@ -1,6 +1,7 @@
 package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -11,6 +12,9 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
@@ -174,6 +178,46 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
         mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
             enqueueDownload(url, userAgent, contentDisposition, mimetype));
+
+        mWebView.setOnLongClickListener(view -> onWebViewLongPress());
+    }
+
+    private boolean onWebViewLongPress() {
+        WebView.HitTestResult hitTestResult = mWebView.getHitTestResult();
+        if (hitTestResult == null) return false;
+        int hitTestType = hitTestResult.getType();
+        if (!BrowserLinkLongPress.isLinkHit(hitTestType)) return false;
+        if (BrowserLinkLongPress.requiresHrefLookup(hitTestType)) {
+            requestLinkHrefThenShowMenu();
+            return true;
+        }
+        String linkUrl = hitTestResult.getExtra();
+        if (!BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) return false;
+        showLinkContextMenu(linkUrl);
+        return true;
+    }
+
+    private void requestLinkHrefThenShowMenu() {
+        Handler hrefHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(@NonNull Message message) {
+                String linkUrl = message.getData().getString("url");
+                if (BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
+                    showLinkContextMenu(linkUrl);
+                }
+            }
+        };
+        mWebView.requestFocusNodeHref(hrefHandler.obtainMessage());
+    }
+
+    private void showLinkContextMenu(@NonNull String linkUrl) {
+        CharSequence[] actions = {
+            mActivity.getString(R.string.action_browser_open_link_in_new_tab)
+        };
+        new AlertDialog.Builder(mActivity)
+            .setTitle(linkUrl)
+            .setItems(actions, (dialog, which) -> openUrlInNewTab(linkUrl))
+            .show();
     }
 
     private void applyDarkModeRendering(@NonNull WebSettings settings) {
