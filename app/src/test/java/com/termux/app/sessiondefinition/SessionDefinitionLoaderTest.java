@@ -61,6 +61,33 @@ public class SessionDefinitionLoaderTest {
         Assert.assertEquals("https://example.test/base/groupTwo.json", fetcher.fetchedUrls.get(2));
     }
 
+    @Test
+    public void loadVersionTwoIndexResolvesVersionTwoProjectFilesAndCarriesTitles() throws Exception {
+        RecordingFetcher fetcher = new RecordingFetcher();
+        fetcher.register("https://example.test/base/index.v2.json",
+            "{\"version\":2,\"projects\":[\"alpha\"]}");
+        fetcher.register("https://example.test/base/alpha.v2.json", "["
+            + "{\"story\":\"story-one\",\"urls\":["
+            + "{\"url\":\"https://example.test/a\",\"title\":\"Task A\"},"
+            + "\"https://example.test/b\""
+            + "]}"
+            + "]");
+
+        SessionDefinitionLoader loader =
+            new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
+
+        List<SessionDefinitionEntry> entries = loader.load("https://example.test/base/index.v2.json");
+
+        Assert.assertEquals(1, entries.size());
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("alpha/story-one", entry.getSessionName());
+        Assert.assertEquals("Task A", entry.getTitleForUrl("https://example.test/a"));
+        Assert.assertNull(entry.getTitleForUrl("https://example.test/b"));
+
+        Assert.assertEquals("https://example.test/base/index.v2.json", fetcher.fetchedUrls.get(0));
+        Assert.assertEquals("https://example.test/base/alpha.v2.json", fetcher.fetchedUrls.get(1));
+    }
+
     @Test(expected = IOException.class)
     public void loadPropagatesFetchFailure() throws Exception {
         RecordingFetcher fetcher = new RecordingFetcher();

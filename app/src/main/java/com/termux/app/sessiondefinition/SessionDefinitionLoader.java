@@ -18,7 +18,7 @@ public final class SessionDefinitionLoader {
 
     public List<SessionDefinitionEntry> load(String baseUrl) throws IOException, JSONException {
         String indexJson = fetcher.fetch(baseUrl);
-        List<SessionDefinitionGroupReference> groupReferences = parser.parseIndex(indexJson);
+        List<SessionDefinitionGroupReference> groupReferences = parser.parseIndex(indexJson, baseUrl);
 
         List<SessionDefinitionEntry> entries = new ArrayList<>();
         for (SessionDefinitionGroupReference groupReference : groupReferences) {

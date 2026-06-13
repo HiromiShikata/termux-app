@@ -77,6 +77,37 @@ public class SessionDefinitionEntryMatcherTest {
     }
 
     @Test
+    public void findTitleReturnsTitleOfMatchedUrl() {
+        java.util.Map<String, String> titlesByUrl = new java.util.HashMap<>();
+        titlesByUrl.put("https://example.test/a2", "Task A");
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("groupOne", "entryA",
+                Arrays.asList("https://example.test/a1", "https://example.test/a2"), titlesByUrl));
+
+        Assert.assertEquals("Task A", matcher.findTitleForSessionName(entries, "https://example.test/a2"));
+    }
+
+    @Test
+    public void findTitleReturnsNullWhenMatchedUrlHasNoTitle() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("groupOne", "entryA",
+                Collections.singletonList("https://example.test/a1")));
+
+        Assert.assertNull(matcher.findTitleForSessionName(entries, "https://example.test/a1"));
+    }
+
+    @Test
+    public void findTitleReturnsNullWhenNoEntryContainsTheUrl() {
+        java.util.Map<String, String> titlesByUrl = new java.util.HashMap<>();
+        titlesByUrl.put("https://example.test/a1", "Task A");
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("groupOne", "entryA",
+                Collections.singletonList("https://example.test/a1"), titlesByUrl));
+
+        Assert.assertNull(matcher.findTitleForSessionName(entries, "https://example.test/other"));
+    }
+
+    @Test
     public void doesNotMatchOnPartialUrl() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",

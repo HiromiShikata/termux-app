@@ -8,6 +8,8 @@ import android.graphics.Typeface;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -23,6 +25,7 @@ import androidx.core.content.ContextCompat;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
+import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
@@ -43,6 +46,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
 
+    private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
+    private static final int DEFINITION_TITLE_ALPHA = 0xA6;
+
     final TermuxActivity mActivity;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
@@ -51,6 +57,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private final List<TermuxSession> mSessionList;
 
     private final SessionHierarchyBuilder mHierarchyBuilder = new SessionHierarchyBuilder();
+
+    private final SessionDefinitionEntryMatcher mEntryMatcher = new SessionDefinitionEntryMatcher();
 
     private List<SessionDefinitionEntry> mEntries = Collections.emptyList();
 
@@ -191,15 +199,48 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
+        String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
 
         String numberPart = "[" + (sessionIndex + 1) + "] ";
         String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
-        String sessionTitlePart = (TextUtils.isEmpty(sessionTitle) ? "" : ((sessionNamePart.isEmpty() ? "" : "\n") + sessionTitle));
+        String namePart = numberPart + sessionNamePart;
 
-        String fullSessionTitle = numberPart + sessionNamePart + sessionTitlePart;
+        StringBuilder fullSessionTitleBuilder = new StringBuilder(namePart);
+        boolean hasSecondaryLine = !sessionNamePart.isEmpty();
+        int definitionTitleStart = -1;
+        int definitionTitleEnd = -1;
+        if (!TextUtils.isEmpty(definitionTitle)) {
+            if (hasSecondaryLine) {
+                fullSessionTitleBuilder.append("\n");
+            }
+            definitionTitleStart = fullSessionTitleBuilder.length();
+            fullSessionTitleBuilder.append(definitionTitle);
+            definitionTitleEnd = fullSessionTitleBuilder.length();
+            hasSecondaryLine = true;
+        }
+        int sessionTitleStart = -1;
+        int sessionTitleEnd = -1;
+        if (!TextUtils.isEmpty(sessionTitle)) {
+            if (hasSecondaryLine) {
+                fullSessionTitleBuilder.append("\n");
+            }
+            sessionTitleStart = fullSessionTitleBuilder.length();
+            fullSessionTitleBuilder.append(sessionTitle);
+            sessionTitleEnd = fullSessionTitleBuilder.length();
+        }
+
+        String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        fullSessionTitleStyled.setSpan(boldSpan, 0, numberPart.length() + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        fullSessionTitleStyled.setSpan(italicSpan, numberPart.length() + sessionNamePart.length(), fullSessionTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        fullSessionTitleStyled.setSpan(boldSpan, 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (definitionTitleStart >= 0) {
+            int definitionTitleColor = (DEFINITION_TITLE_ALPHA << 24)
+                | ((shouldEnableDarkTheme ? Color.WHITE : Color.BLACK) & 0x00FFFFFF);
+            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(DEFINITION_TITLE_RELATIVE_SIZE), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(definitionTitleColor), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (sessionTitleStart >= 0) {
+            fullSessionTitleStyled.setSpan(italicSpan, sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
 
         sessionTitleView.setText(fullSessionTitleStyled);
 
