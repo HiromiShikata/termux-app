@@ -10,30 +10,19 @@ public final class SessionDefinitionPlanner {
         String template = commandTemplate == null ? "" : commandTemplate.trim();
 
         for (SessionDefinitionEntry entry : entries) {
-            List<String> urls = entry.getUrls();
-            if (urls.isEmpty()) {
-                plannedSessions.add(new SessionDefinitionPlannedSession(entry.getSessionName(), null));
-                continue;
-            }
-
-            boolean multipleUrls = urls.size() > 1;
-            for (int index = 0; index < urls.size(); index++) {
-                String url = urls.get(index);
-                String name = multipleUrls ? entry.getSessionName() + " " + (index + 1) : entry.getSessionName();
-                String command = buildCommand(template, url, name);
-                plannedSessions.add(new SessionDefinitionPlannedSession(name, command));
+            for (String url : entry.getUrls()) {
+                String command = buildCommand(template, url);
+                plannedSessions.add(new SessionDefinitionPlannedSession(url, command));
             }
         }
         return plannedSessions;
     }
 
-    private String buildCommand(String template, String url, String name) {
+    private String buildCommand(String template, String name) {
         if (template.isEmpty()) {
             return null;
         }
-        return template
-            .replace("{url}", shellQuote(url))
-            .replace("{name}", shellQuote(name));
+        return template.replace("{name}", shellQuote(name));
     }
 
     public static String shellQuote(String value) {

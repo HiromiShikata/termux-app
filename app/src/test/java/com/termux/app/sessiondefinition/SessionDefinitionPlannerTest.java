@@ -13,7 +13,7 @@ public class SessionDefinitionPlannerTest {
     private final SessionDefinitionPlanner planner = new SessionDefinitionPlanner();
 
     @Test
-    public void planCreatesOnePlannedSessionPerUrlPreservingOrder() {
+    public void planCreatesOnePlannedSessionPerUrlNamedByUrlPreservingOrder() {
         List<SessionDefinitionEntry> entries = new ArrayList<>();
         entries.add(new SessionDefinitionEntry("groupOne", "entryA",
             Arrays.asList("https://example.test/a1", "https://example.test/a2")));
@@ -23,9 +23,9 @@ public class SessionDefinitionPlannerTest {
         List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "");
 
         Assert.assertEquals(3, plannedSessions.size());
-        Assert.assertEquals("groupOne/entryA 1", plannedSessions.get(0).getName());
-        Assert.assertEquals("groupOne/entryA 2", plannedSessions.get(1).getName());
-        Assert.assertEquals("groupTwo/entryB", plannedSessions.get(2).getName());
+        Assert.assertEquals("https://example.test/a1", plannedSessions.get(0).getName());
+        Assert.assertEquals("https://example.test/a2", plannedSessions.get(1).getName());
+        Assert.assertEquals("https://example.test/b1", plannedSessions.get(2).getName());
         Assert.assertFalse(plannedSessions.get(0).hasCommand());
     }
 
@@ -38,37 +38,37 @@ public class SessionDefinitionPlannerTest {
         List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "   ");
 
         Assert.assertEquals(1, plannedSessions.size());
+        Assert.assertEquals("https://example.test/a1", plannedSessions.get(0).getName());
         Assert.assertNull(plannedSessions.get(0).getCommand());
         Assert.assertFalse(plannedSessions.get(0).hasCommand());
     }
 
     @Test
-    public void planWithTemplateSubstitutesShellQuotedUrlAndName() {
+    public void planWithTemplateSubstitutesShellQuotedUrlIntoNamePlaceholder() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",
                 Collections.singletonList("https://example.test/a1")));
 
         List<SessionDefinitionPlannedSession> plannedSessions =
-            planner.plan(entries, "connect {url} as {name}");
+            planner.plan(entries, "connect {name}");
 
         Assert.assertEquals(1, plannedSessions.size());
+        Assert.assertEquals("https://example.test/a1", plannedSessions.get(0).getName());
         Assert.assertTrue(plannedSessions.get(0).hasCommand());
         Assert.assertEquals(
-            "connect 'https://example.test/a1' as 'groupOne/entryA'",
+            "connect 'https://example.test/a1'",
             plannedSessions.get(0).getCommand());
     }
 
     @Test
-    public void planCreatesPlainSessionForEntryWithoutUrls() {
+    public void planSkipsEntryWithoutUrls() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA", Collections.emptyList()));
 
         List<SessionDefinitionPlannedSession> plannedSessions =
-            planner.plan(entries, "connect {url}");
+            planner.plan(entries, "connect {name}");
 
-        Assert.assertEquals(1, plannedSessions.size());
-        Assert.assertEquals("groupOne/entryA", plannedSessions.get(0).getName());
-        Assert.assertFalse(plannedSessions.get(0).hasCommand());
+        Assert.assertTrue(plannedSessions.isEmpty());
     }
 
     @Test

@@ -14,27 +14,11 @@ public final class SessionDefinitionEntryMatcher {
             return null;
         }
 
-        SessionDefinitionEntry bestMatch = null;
-        int bestMatchLength = -1;
         for (SessionDefinitionEntry entry : entries) {
-            String entrySessionName = entry.getSessionName();
-            if (!matches(sessionName, entrySessionName)) {
-                continue;
-            }
-            int length = entrySessionName.length();
-            if (length > bestMatchLength) {
-                bestMatch = entry;
-                bestMatchLength = length;
+            if (entry.getUrls().contains(sessionName)) {
+                return entry;
             }
         }
-        return bestMatch;
-    }
-
-    private boolean matches(@NonNull String sessionName, @Nullable String entrySessionName) {
-        if (entrySessionName == null || entrySessionName.isEmpty()) {
-            return false;
-        }
-        return sessionName.equals(entrySessionName)
-            || sessionName.startsWith(entrySessionName + " ");
+        return null;
     }
 }
