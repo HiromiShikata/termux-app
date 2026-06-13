@@ -165,16 +165,16 @@ public class TerminalToolbarViewPager {
                     return false;
                 });
 
-                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_recent_history, 0);
+                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(android.R.drawable.ic_menu_recent_history, 0, 0, 0);
                 editText.setOnTouchListener((v, event) -> {
                     if (event.getAction() != MotionEvent.ACTION_UP) return false;
-                    Drawable recallIcon = editText.getCompoundDrawablesRelative()[2];
+                    Drawable recallIcon = editText.getCompoundDrawablesRelative()[0];
                     if (recallIcon == null) return false;
                     boolean isRightToLeft = editText.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
                     int iconWidth = recallIcon.getBounds().width();
                     boolean touchedRecallIcon = isRightToLeft
-                        ? event.getX() <= editText.getPaddingLeft() + iconWidth
-                        : event.getX() >= editText.getWidth() - editText.getPaddingRight() - iconWidth;
+                        ? event.getX() >= editText.getWidth() - editText.getPaddingRight() - iconWidth
+                        : event.getX() <= editText.getPaddingLeft() + iconWidth;
                     if (!touchedRecallIcon) return false;
                     showSubmittedTextInputHistory(editText);
                     v.performClick();
