@@ -60,7 +60,7 @@
     <string name="action_toggle_right_drawer_bar">Tabs drawer</string>
 
     <!-- In-app browser -->
-    <string name="action_toggle_browser">Browser</string>
+    <string name="action_toggle_browser">Toggle browser</string>
     <string name="action_browser_new_tab">New tab</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_close_tab">Close tab</string>
