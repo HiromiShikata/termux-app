@@ -51,6 +51,10 @@
 
     <string name="title_rename_session">Set session name</string>
     <string name="action_rename_session_confirm">Set</string>
+    <string name="action_rename_session">Rename</string>
+    <string name="action_delete_session">Delete</string>
+    <string name="title_confirm_delete_session">Delete this session?</string>
+    <string name="msg_confirm_delete_session">This closes the local session only. Any remote session it is connected to (such as a tmux session over autossh) keeps running on the server.</string>
     <string name="title_create_named_session">New named session</string>
     <string name="action_create_named_session_confirm">Create</string>
 
