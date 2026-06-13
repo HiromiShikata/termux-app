@@ -92,6 +92,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return mRows.size();
     }
 
+    public int getRowPositionForSessionIndex(int sessionIndex) {
+        for (int position = 0; position < mRows.size(); position++) {
+            SessionHierarchyRow row = mRows.get(position);
+            if (!row.isHeader() && row.getSessionIndex() == sessionIndex) {
+                return position;
+            }
+        }
+        return -1;
+    }
+
     @Override
     public Object getItem(int position) {
         return mRows.get(position);

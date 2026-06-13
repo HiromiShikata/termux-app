@@ -13,6 +13,7 @@ import android.media.SoundPool;
 import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
+import android.widget.Adapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -707,7 +708,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         termuxSessionsListView.clearChoices();
         termuxSessionListNotifyUpdated();
-        termuxSessionsListView.postDelayed(() -> termuxSessionsListView.smoothScrollToPosition(indexOfSession), 1000);
+
+        Adapter adapter = termuxSessionsListView.getAdapter();
+        if (!(adapter instanceof TermuxSessionsListViewController)) return;
+        final int rowPosition = ((TermuxSessionsListViewController) adapter).getRowPositionForSessionIndex(indexOfSession);
+        if (rowPosition < 0) return;
+        termuxSessionsListView.postDelayed(() -> termuxSessionsListView.smoothScrollToPosition(rowPosition), 1000);
     }
 
 
