@@ -203,11 +203,12 @@ public final class TermuxBrowserController {
     }
 
     public void openTab(@NonNull BrowserTab tab) {
+        boolean browserWasHidden = !mBrowserVisible;
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
         mWebView.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
-        loadActiveTab();
+        loadActiveTab(browserWasHidden);
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
     }
@@ -271,12 +272,16 @@ public final class TermuxBrowserController {
     }
 
     private void loadActiveTab() {
+        loadActiveTab(false);
+    }
+
+    private void loadActiveTab(boolean forceReload) {
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) return;
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
         String currentUrl = mWebView.getUrl();
-        if (currentUrl == null || !currentUrl.equals(activeTab.getUrl())) {
+        if (forceReload || currentUrl == null || !currentUrl.equals(activeTab.getUrl())) {
             mWebView.loadUrl(activeTab.getUrl());
         }
     }
