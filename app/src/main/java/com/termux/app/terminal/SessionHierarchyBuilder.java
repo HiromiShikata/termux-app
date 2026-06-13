@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class SessionHierarchyBuilder {
 
@@ -55,6 +56,25 @@ public final class SessionHierarchyBuilder {
             }
         }
         return rows;
+    }
+
+    @NonNull
+    public List<SessionHierarchyRow> filterCollapsedProjects(@NonNull List<SessionHierarchyRow> rows,
+                                                             @NonNull Set<String> collapsedProjectKeys) {
+        if (collapsedProjectKeys.isEmpty()) {
+            return rows;
+        }
+        List<SessionHierarchyRow> visibleRows = new ArrayList<>(rows.size());
+        boolean currentProjectCollapsed = false;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                currentProjectCollapsed = collapsedProjectKeys.contains(row.getLabel());
+                visibleRows.add(row);
+            } else if (!currentProjectCollapsed) {
+                visibleRows.add(row);
+            }
+        }
+        return visibleRows;
     }
 
     @NonNull
