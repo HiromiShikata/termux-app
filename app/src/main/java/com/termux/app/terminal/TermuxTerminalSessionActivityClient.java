@@ -410,6 +410,25 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }, -1, null, -1, null, null);
     }
 
+    public void deleteSession(final TerminalSession sessionToDelete) {
+        if (sessionToDelete == null) return;
+
+        new AlertDialog.Builder(mActivity)
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .setTitle(R.string.title_confirm_delete_session)
+            .setMessage(R.string.msg_confirm_delete_session)
+            .setPositiveButton(android.R.string.yes, (dialog, id) -> {
+                dialog.dismiss();
+                if (sessionToDelete.isRunning()) {
+                    sessionToDelete.finishIfRunning();
+                } else {
+                    removeFinishedSession(sessionToDelete);
+                }
+            })
+            .setNegativeButton(android.R.string.no, null)
+            .show();
+    }
+
     private void renameSession(TerminalSession sessionToRename, String text) {
         if (sessionToRename == null) return;
         sessionToRename.mSessionName = text;

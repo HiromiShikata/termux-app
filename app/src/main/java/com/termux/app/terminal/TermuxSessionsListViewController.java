@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
@@ -238,8 +239,32 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return false;
         }
         final TermuxSession selectedSession = mSessionList.get(row.getSessionIndex());
-        mActivity.getTermuxTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
+        showSessionActionChooser(selectedSession.getTerminalSession());
         return true;
+    }
+
+    private void showSessionActionChooser(final TerminalSession session) {
+        if (session == null) {
+            return;
+        }
+
+        CharSequence[] actions = {
+            mActivity.getString(R.string.action_rename_session),
+            mActivity.getString(R.string.action_delete_session)
+        };
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
+        if (!TextUtils.isEmpty(session.mSessionName)) {
+            builder.setTitle(session.mSessionName);
+        }
+        builder.setItems(actions, (dialog, which) -> {
+            if (which == 0) {
+                mActivity.getTermuxTerminalSessionClient().renameSession(session);
+            } else {
+                mActivity.getTermuxTerminalSessionClient().deleteSession(session);
+            }
+        });
+        builder.show();
     }
 
 }
