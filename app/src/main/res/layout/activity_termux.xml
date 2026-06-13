@@ -204,19 +204,6 @@
                 android:tint="@color/white" />
         </LinearLayout>
 
-        <ImageButton
-            android:id="@+id/toggle_browser_button"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_above="@+id/terminal_toolbar_bottom_container"
-            android:layout_alignParentEnd="true"
-            android:layout_marginEnd="6dp"
-            android:layout_marginBottom="6dp"
-            android:alpha="0.7"
-            android:background="@drawable/session_background_selected"
-            android:contentDescription="@string/action_toggle_browser"
-            android:src="@drawable/ic_browser_toggle" />
-
         <ProgressBar
             android:id="@+id/session_definition_loading_progress_bar"
             style="?android:attr/progressBarStyleHorizontal"
