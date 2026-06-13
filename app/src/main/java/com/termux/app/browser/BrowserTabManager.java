@@ -10,8 +10,6 @@ import java.util.Map;
 
 public final class BrowserTabManager {
 
-    public static final int MAX_TABS_PER_SESSION = 10;
-
     private final Map<String, List<BrowserTab>> mTabsBySessionHandle = new HashMap<>();
 
     private final Map<String, BrowserTab> mActiveTabBySessionHandle = new HashMap<>();
@@ -26,14 +24,9 @@ public final class BrowserTabManager {
         return tabs;
     }
 
-    public boolean canAddTab(@NonNull String sessionHandle) {
-        return getTabs(sessionHandle).size() < MAX_TABS_PER_SESSION;
-    }
-
-    @Nullable
+    @NonNull
     public BrowserTab addTab(@NonNull String sessionHandle, @NonNull String url) {
         List<BrowserTab> tabs = getTabs(sessionHandle);
-        if (tabs.size() >= MAX_TABS_PER_SESSION) return null;
         BrowserTab tab = new BrowserTab(sessionHandle, url);
         tabs.add(tab);
         mActiveTabBySessionHandle.put(sessionHandle, tab);

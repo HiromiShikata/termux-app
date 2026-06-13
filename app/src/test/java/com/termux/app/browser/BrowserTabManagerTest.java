@@ -20,6 +20,22 @@ public class BrowserTabManagerTest {
     }
 
     @Test
+    public void oneSessionTabListNeverContainsAnotherSessionTabs() {
+        BrowserTabManager manager = new BrowserTabManager();
+        for (int i = 0; i < 5; i++) manager.addTab(SESSION_A, "https://a.example/" + i);
+        for (int i = 0; i < 3; i++) manager.addTab(SESSION_B, "https://b.example/" + i);
+
+        Assert.assertEquals(5, manager.getTabs(SESSION_A).size());
+        Assert.assertEquals(3, manager.getTabs(SESSION_B).size());
+        for (BrowserTab tab : manager.getTabs(SESSION_A)) {
+            Assert.assertEquals(SESSION_A, tab.getSessionHandle());
+        }
+        for (BrowserTab tab : manager.getTabs(SESSION_B)) {
+            Assert.assertEquals(SESSION_B, tab.getSessionHandle());
+        }
+    }
+
+    @Test
     public void activeTabIsScopedPerSession() {
         BrowserTabManager manager = new BrowserTabManager();
         BrowserTab tabInSessionA = manager.addTab(SESSION_A, "https://a.example/");
@@ -38,14 +54,13 @@ public class BrowserTabManagerTest {
     }
 
     @Test
-    public void perSessionTabCountIsCappedAtMaximum() {
+    public void manyTabsCanBeOpenedWithoutCap() {
         BrowserTabManager manager = new BrowserTabManager();
-        for (int i = 0; i < BrowserTabManager.MAX_TABS_PER_SESSION; i++) {
+        int tabCount = 100;
+        for (int i = 0; i < tabCount; i++) {
             Assert.assertNotNull(manager.addTab(SESSION_A, "https://a.example/" + i));
         }
-        Assert.assertFalse(manager.canAddTab(SESSION_A));
-        Assert.assertNull(manager.addTab(SESSION_A, "https://a.example/overflow"));
-        Assert.assertEquals(BrowserTabManager.MAX_TABS_PER_SESSION, manager.getTabs(SESSION_A).size());
+        Assert.assertEquals(tabCount, manager.getTabs(SESSION_A).size());
     }
 
     @Test
@@ -103,5 +118,19 @@ public class BrowserTabManagerTest {
         manager.removeSession(SESSION_A);
         Assert.assertTrue(manager.getTabs(SESSION_A).isEmpty());
         Assert.assertNull(manager.getActiveTab(SESSION_A));
+    }
+
+    @Test
+    public void removingSessionDoesNotAffectOtherSessions() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://a.example/1");
+        manager.addTab(SESSION_A, "https://a.example/2");
+        BrowserTab tabInSessionB = manager.addTab(SESSION_B, "https://b.example/");
+
+        manager.removeSession(SESSION_A);
+
+        Assert.assertTrue(manager.getTabs(SESSION_A).isEmpty());
+        Assert.assertEquals(1, manager.getTabs(SESSION_B).size());
+        Assert.assertSame(tabInSessionB, manager.getActiveTab(SESSION_B));
     }
 }

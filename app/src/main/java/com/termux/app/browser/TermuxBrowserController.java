@@ -328,40 +328,24 @@ public final class TermuxBrowserController {
 
     public void openUrlInNewTab(@NonNull String url) {
         if (mCurrentSessionHandle == null) return;
-        if (!mTabManager.canAddTab(mCurrentSessionHandle)) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
-            return;
-        }
         BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, normalizeUrl(url));
-        if (tab == null) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
-            return;
-        }
         openTab(tab);
     }
 
     public void attachBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
         String normalizedUrl = normalizeUrl(url);
         if (mTabManager.findTabByUrl(sessionHandle, normalizedUrl) != null) return;
-        if (!mTabManager.canAddTab(sessionHandle)) return;
         mTabManager.addTab(sessionHandle, normalizedUrl);
         if (sessionHandle.equals(mCurrentSessionHandle)) notifyTabsUpdated();
     }
 
     private void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
-        if (!mTabManager.canAddTab(mCurrentSessionHandle)) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
-            return;
-        }
         TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
             R.string.action_browser_open_url_confirm, text -> {
+                if (mCurrentSessionHandle == null) return;
                 String url = normalizeUrl(text);
                 BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, url);
-                if (tab == null) {
-                    mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
-                    return;
-                }
                 openTab(tab);
             },
             -1, null, android.R.string.cancel, null, null);
