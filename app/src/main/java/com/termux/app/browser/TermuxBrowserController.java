@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -12,6 +13,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.CheckBox;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -37,6 +39,8 @@ public final class TermuxBrowserController {
 
     private final SwipeRefreshLayout mSwipeRefreshLayout;
 
+    private final ProgressBar mPageLoadProgressBar;
+
     private final ListView mTabsListView;
 
     private CheckBox mDesktopModeToggle;
@@ -55,6 +59,7 @@ public final class TermuxBrowserController {
         this.mActivity = activity;
         this.mWebView = activity.findViewById(R.id.browser_web_view);
         this.mSwipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
+        this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity, this);
         configureWebView();
@@ -80,6 +85,7 @@ public final class TermuxBrowserController {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                showPageLoadProgress(0);
                 BrowserTab activeTab = getActiveTab();
                 if (activeTab != null) {
                     activeTab.setUrl(url);
@@ -89,6 +95,7 @@ public final class TermuxBrowserController {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                hidePageLoadProgress();
                 mSwipeRefreshLayout.setRefreshing(false);
                 CookieManager.getInstance().flush();
                 BrowserTab activeTab = getActiveTab();
@@ -101,9 +108,30 @@ public final class TermuxBrowserController {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                hidePageLoadProgress();
                 mSwipeRefreshLayout.setRefreshing(false);
             }
         });
+
+        mWebView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                if (newProgress < 100) {
+                    showPageLoadProgress(newProgress);
+                } else {
+                    hidePageLoadProgress();
+                }
+            }
+        });
+    }
+
+    private void showPageLoadProgress(int progress) {
+        mPageLoadProgressBar.setProgress(progress);
+        mPageLoadProgressBar.setVisibility(View.VISIBLE);
+    }
+
+    private void hidePageLoadProgress() {
+        mPageLoadProgressBar.setVisibility(View.GONE);
     }
 
     private void configureCookies() {
