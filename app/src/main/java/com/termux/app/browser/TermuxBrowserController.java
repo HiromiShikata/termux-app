@@ -126,7 +126,7 @@ public final class TermuxBrowserController {
         activeTab.setDesktopMode(!activeTab.isDesktopMode());
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
-        mWebView.loadUrl(activeTab.getUrl());
+        mWebView.reload();
     }
 
     private void applyUserAgent(@NonNull BrowserTab tab) {
