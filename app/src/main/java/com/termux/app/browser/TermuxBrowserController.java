@@ -277,6 +277,7 @@ public final class TermuxBrowserController {
     }
 
     private void openDownloadsView() {
+        if (!mActivity.isVisible()) return;
         try {
             mActivity.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
             mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
