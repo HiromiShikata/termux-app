@@ -408,6 +408,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (sessionToRename == mActivity.getCurrentSession())
             updateSessionNameOverlay();
+
+        updatePersistedSessionName(sessionToRename, text);
     }
 
     public void addNewSession(boolean isFailSafe, String sessionName) {
@@ -543,6 +545,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void recordPersistedSession(TerminalSession terminalSession, PersistedSession persistedSession) {
         mPersistedSessionBySession.put(terminalSession, persistedSession);
+        savePersistedSessions();
+    }
+
+    private void updatePersistedSessionName(TerminalSession terminalSession, String name) {
+        PersistedSession existing = mPersistedSessionBySession.get(terminalSession);
+        if (existing == null) return;
+
+        mPersistedSessionBySession.put(terminalSession, new PersistedSession(name, existing.getExecutablePath(),
+            existing.getArguments(), existing.isFailSafe(), existing.getWorkingDirectory()));
         savePersistedSessions();
     }
 
