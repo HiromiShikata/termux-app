@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.TypedValue;
@@ -44,6 +45,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
+
+    private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
+    private static final int DEFINITION_TITLE_ALPHA = 0xA6;
 
     final TermuxActivity mActivity;
 
@@ -214,21 +218,28 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             definitionTitleEnd = fullSessionTitleBuilder.length();
             hasSecondaryLine = true;
         }
+        int sessionTitleStart = -1;
+        int sessionTitleEnd = -1;
         if (!TextUtils.isEmpty(sessionTitle)) {
             if (hasSecondaryLine) {
                 fullSessionTitleBuilder.append("\n");
             }
+            sessionTitleStart = fullSessionTitleBuilder.length();
             fullSessionTitleBuilder.append(sessionTitle);
+            sessionTitleEnd = fullSessionTitleBuilder.length();
         }
 
         String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
         fullSessionTitleStyled.setSpan(boldSpan, 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (definitionTitleStart >= 0) {
-            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(0.85f), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            int definitionTitleColor = (DEFINITION_TITLE_ALPHA << 24)
+                | ((shouldEnableDarkTheme ? Color.WHITE : Color.BLACK) & 0x00FFFFFF);
+            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(DEFINITION_TITLE_RELATIVE_SIZE), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(definitionTitleColor), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        if (namePart.length() < fullSessionTitle.length()) {
-            fullSessionTitleStyled.setSpan(italicSpan, namePart.length(), fullSessionTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (sessionTitleStart >= 0) {
+            fullSessionTitleStyled.setSpan(italicSpan, sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
         sessionTitleView.setText(fullSessionTitleStyled);
