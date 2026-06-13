@@ -30,11 +30,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewFeature;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
+import com.termux.shared.theme.ThemeUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
 
@@ -109,6 +112,8 @@ public final class TermuxBrowserController {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
 
+        applyDarkModeRendering(settings);
+
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
 
         mWebView.setWebViewClient(new WebViewClient() {
@@ -168,6 +173,17 @@ public final class TermuxBrowserController {
 
         mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
             enqueueDownload(url, userAgent, contentDisposition, mimetype));
+    }
+
+    private void applyDarkModeRendering(@NonNull WebSettings settings) {
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+            WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, true);
+        } else if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
+            int forceDarkMode = ThemeUtils.isNightModeEnabled(mActivity)
+                ? WebSettingsCompat.FORCE_DARK_ON
+                : WebSettingsCompat.FORCE_DARK_OFF;
+            WebSettingsCompat.setForceDark(settings, forceDarkMode);
+        }
     }
 
     private void onMainFrameError() {
