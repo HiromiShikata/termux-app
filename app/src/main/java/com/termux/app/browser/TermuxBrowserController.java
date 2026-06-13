@@ -1,7 +1,10 @@
 package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -19,6 +22,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
@@ -28,6 +32,8 @@ import java.util.List;
 public final class TermuxBrowserController {
 
     private static final String LOG_TAG = "TermuxBrowserController";
+
+    private static final String CHROME_PACKAGE_NAME = "com.android.chrome";
 
     private final TermuxActivity mActivity;
 
@@ -115,8 +121,24 @@ public final class TermuxBrowserController {
 
     private void configureDrawerControls() {
         mActivity.findViewById(R.id.browser_new_tab_button).setOnClickListener(v -> promptNewTab());
+        mActivity.findViewById(R.id.browser_open_in_chrome_button).setOnClickListener(v -> openCurrentPageInChrome());
         mDesktopModeToggle = mActivity.findViewById(R.id.browser_desktop_mode_toggle);
         mDesktopModeToggle.setOnClickListener(v -> toggleActiveTabDesktopMode());
+    }
+
+    private void openCurrentPageInChrome() {
+        String currentUrl = mWebView.getUrl();
+        if (currentUrl == null || currentUrl.trim().isEmpty()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        Intent chromeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl));
+        chromeIntent.setPackage(CHROME_PACKAGE_NAME);
+        try {
+            mActivity.startActivity(chromeIntent);
+        } catch (ActivityNotFoundException e) {
+            ShareUtils.openUrl(mActivity, currentUrl);
+        }
     }
 
     private void toggleActiveTabDesktopMode() {

@@ -67,12 +67,14 @@
     <string name="action_toggle_browser">Toggle browser</string>
     <string name="action_browser_new_tab">New tab</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
+    <string name="action_browser_open_in_chrome">Open in Chrome</string>
     <string name="action_browser_close_tab">Close tab</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_open_url">Open URL</string>
     <string name="hint_browser_url">https://example.com</string>
     <string name="action_browser_open_url_confirm">Open</string>
     <string name="msg_browser_max_tabs_reached">Maximum browser tabs reached for this session.</string>
+    <string name="msg_browser_no_current_url">No page to open.</string>
 
     <string name="action_open_autossh_config">AutoSSH Config</string>
     <string name="title_autossh_config">AutoSSH Config</string>
