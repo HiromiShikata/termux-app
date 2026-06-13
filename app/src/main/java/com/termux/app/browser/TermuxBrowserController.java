@@ -116,6 +116,7 @@ public final class TermuxBrowserController {
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (!request.isForMainFrame()) return;
                 hidePageLoadProgress();
                 mSwipeRefreshLayout.setRefreshing(false);
             }
@@ -263,6 +264,7 @@ public final class TermuxBrowserController {
 
     public void showTerminal() {
         mBrowserVisible = false;
+        hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
         mSwipeRefreshLayout.setVisibility(View.GONE);
         mActivity.getTerminalView().setVisibility(View.VISIBLE);
