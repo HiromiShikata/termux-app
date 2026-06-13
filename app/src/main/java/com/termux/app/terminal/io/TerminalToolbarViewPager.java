@@ -165,7 +165,7 @@ public class TerminalToolbarViewPager {
                     return false;
                 });
 
-                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(android.R.drawable.ic_menu_recent_history, 0, 0, 0);
+                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_toolbar_input_history, 0, R.drawable.ic_toolbar_input_edit, 0);
                 editText.setOnTouchListener((v, event) -> {
                     if (event.getAction() != MotionEvent.ACTION_UP) return false;
                     Drawable recallIcon = editText.getCompoundDrawablesRelative()[0];
