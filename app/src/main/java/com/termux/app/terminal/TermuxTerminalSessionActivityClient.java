@@ -323,17 +323,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void updateSessionNameOverlay() {
-        TextView overlay = mActivity.findViewById(R.id.session_name_overlay);
-        if (overlay == null) return;
+        TextView sessionNameBar = mActivity.findViewById(R.id.session_name_bar);
+        if (sessionNameBar == null) return;
 
         TerminalSession session = mActivity.getCurrentSession();
         String sessionName = (session == null) ? null : session.mSessionName;
         if (TextUtils.isEmpty(sessionName)) {
-            overlay.setText("");
-            overlay.setVisibility(View.GONE);
+            sessionNameBar.setText("");
+            sessionNameBar.setVisibility(View.GONE);
         } else {
-            overlay.setText(sessionName);
-            overlay.setVisibility(View.VISIBLE);
+            sessionNameBar.setText(sessionName);
+            sessionNameBar.setVisibility(View.VISIBLE);
         }
     }
 
