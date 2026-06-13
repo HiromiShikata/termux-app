@@ -117,8 +117,13 @@ public final class TermuxBrowserController {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (!request.isForMainFrame()) return;
-                hidePageLoadProgress();
-                mSwipeRefreshLayout.setRefreshing(false);
+                onMainFrameError();
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                onMainFrameError();
             }
         });
 
@@ -134,7 +139,13 @@ public final class TermuxBrowserController {
         });
     }
 
+    private void onMainFrameError() {
+        hidePageLoadProgress();
+        mSwipeRefreshLayout.setRefreshing(false);
+    }
+
     private void showPageLoadProgress(int progress) {
+        if (!mBrowserVisible) return;
         mPageLoadProgressBar.setProgress(progress);
         mPageLoadProgressBar.setVisibility(View.VISIBLE);
     }
