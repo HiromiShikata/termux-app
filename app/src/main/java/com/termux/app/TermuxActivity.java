@@ -40,12 +40,17 @@ import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
+import com.termux.app.sessiondefinition.HttpSessionDefinitionDocumentFetcher;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
+import com.termux.app.sessiondefinition.SessionDefinitionEntry;
+import com.termux.app.sessiondefinition.SessionDefinitionLoader;
+import com.termux.app.sessiondefinition.SessionDefinitionParser;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.activities.HelpActivity;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -69,6 +74,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * A terminal emulator activity.
@@ -140,6 +146,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The termux sessions list controller.
      */
     TermuxSessionsListViewController mTermuxSessionListViewController;
+
+    private final SessionDefinitionEntriesProvider mSessionDefinitionEntriesProvider =
+        new SessionDefinitionEntriesProvider(new SessionDefinitionLoader(
+            new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
 
     /**
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
@@ -528,6 +538,22 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         termuxSessionsListView.setAdapter(mTermuxSessionListViewController);
         termuxSessionsListView.setOnItemClickListener(mTermuxSessionListViewController);
         termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
+        loadSessionDefinitionEntriesForGrouping();
+    }
+
+    private void loadSessionDefinitionEntriesForGrouping() {
+        if (mTermuxSessionListViewController == null) return;
+        List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionEntriesProvider.getEntries();
+        if (!cachedEntries.isEmpty()) {
+            mTermuxSessionListViewController.setEntries(cachedEntries);
+            return;
+        }
+        String baseUrl = getPreferences().getSessionDefinitionUrl().trim();
+        mSessionDefinitionEntriesProvider.load(baseUrl, () -> {
+            if (mTermuxSessionListViewController != null) {
+                mTermuxSessionListViewController.setEntries(mSessionDefinitionEntriesProvider.getEntries());
+            }
+        });
     }
 
 

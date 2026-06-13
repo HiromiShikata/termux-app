@@ -8,11 +8,12 @@ import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.StyleSpan;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -20,29 +21,146 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
 import com.termux.terminal.TerminalSession;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession> implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+
+    private static final int VIEW_TYPE_SESSION = 0;
+    private static final int VIEW_TYPE_PROJECT_HEADER = 1;
+    private static final int VIEW_TYPE_STORY_HEADER = 2;
+    private static final int VIEW_TYPE_COUNT = 3;
+
+    private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
+    private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
+    private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
 
     final TermuxActivity mActivity;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
 
+    private final List<TermuxSession> mSessionList;
+
+    private final SessionHierarchyBuilder mHierarchyBuilder = new SessionHierarchyBuilder();
+
+    private List<SessionDefinitionEntry> mEntries = Collections.emptyList();
+
+    private List<SessionHierarchyRow> mRows = Collections.emptyList();
+
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
-        super(activity.getApplicationContext(), R.layout.item_terminal_sessions_list, sessionList);
         this.mActivity = activity;
+        this.mSessionList = sessionList;
+        rebuildRows();
+    }
+
+    public void setEntries(@NonNull List<SessionDefinitionEntry> entries) {
+        this.mEntries = entries;
+        notifyDataSetChanged();
+    }
+
+    @Override
+    public void notifyDataSetChanged() {
+        rebuildRows();
+        super.notifyDataSetChanged();
+    }
+
+    private void rebuildRows() {
+        List<String> sessionNames = new ArrayList<>(mSessionList.size());
+        for (TermuxSession session : mSessionList) {
+            TerminalSession terminalSession = session.getTerminalSession();
+            sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
+        }
+        mRows = mHierarchyBuilder.build(sessionNames, mEntries,
+            mActivity.getString(R.string.session_list_other_group_header));
+    }
+
+    private boolean isGrouped() {
+        return !mEntries.isEmpty();
+    }
+
+    @Override
+    public int getCount() {
+        return mRows.size();
+    }
+
+    @Override
+    public Object getItem(int position) {
+        return mRows.get(position);
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
+
+    @Override
+    public int getViewTypeCount() {
+        return VIEW_TYPE_COUNT;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        switch (mRows.get(position).getType()) {
+            case PROJECT_HEADER:
+                return VIEW_TYPE_PROJECT_HEADER;
+            case STORY_HEADER:
+                return VIEW_TYPE_STORY_HEADER;
+            default:
+                return VIEW_TYPE_SESSION;
+        }
+    }
+
+    @Override
+    public boolean areAllItemsEnabled() {
+        return false;
+    }
+
+    @Override
+    public boolean isEnabled(int position) {
+        return !mRows.get(position).isHeader();
     }
 
     @SuppressLint("SetTextI18n")
     @NonNull
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+        SessionHierarchyRow row = mRows.get(position);
+        switch (row.getType()) {
+            case PROJECT_HEADER:
+                return getHeaderView(row, convertView, parent,
+                    R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
+            case STORY_HEADER:
+                return getHeaderView(row, convertView, parent,
+                    R.layout.item_terminal_sessions_story_header, R.id.session_story_header_title);
+            default:
+                return getSessionView(row, convertView, parent);
+        }
+    }
+
+    private View getHeaderView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent,
+                              int layoutResId, int titleViewId) {
+        View headerRowView = convertView;
+        if (headerRowView == null) {
+            LayoutInflater inflater = mActivity.getLayoutInflater();
+            headerRowView = inflater.inflate(layoutResId, parent, false);
+        }
+        TextView headerTitleView = headerRowView.findViewById(titleViewId);
+        headerTitleView.setText(row.getLabel());
+        boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
+        headerTitleView.setTextColor(shouldEnableDarkTheme ? Color.WHITE : Color.BLACK);
+        return headerRowView;
+    }
+
+    @SuppressLint("SetTextI18n")
+    private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent) {
         View sessionRowView = convertView;
         if (sessionRowView == null) {
             LayoutInflater inflater = mActivity.getLayoutInflater();
@@ -51,7 +169,12 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
 
         TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
 
-        TerminalSession sessionAtRow = getItem(position).getTerminalSession();
+        int verticalPadding = dpToPx(SESSION_ROW_VERTICAL_PADDING_DP);
+        int startPadding = dpToPx(isGrouped() ? SESSION_ROW_GROUPED_INDENT_DP : SESSION_ROW_FLAT_INDENT_DP);
+        sessionTitleView.setPadding(startPadding, verticalPadding, verticalPadding, verticalPadding);
+
+        int sessionIndex = row.getSessionIndex();
+        TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
         if (sessionAtRow == null) {
             sessionTitleView.setText("null session");
             return sessionRowView;
@@ -68,7 +191,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
 
-        String numberPart = "[" + (position + 1) + "] ";
+        String numberPart = "[" + (sessionIndex + 1) + "] ";
         String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
         String sessionTitlePart = (TextUtils.isEmpty(sessionTitle) ? "" : ((sessionNamePart.isEmpty() ? "" : "\n") + sessionTitle));
 
@@ -92,16 +215,29 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         return sessionRowView;
     }
 
+    private int dpToPx(int dp) {
+        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp,
+            mActivity.getResources().getDisplayMetrics()));
+    }
+
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        TermuxSession clickedSession = getItem(position);
+        SessionHierarchyRow row = mRows.get(position);
+        if (row.isHeader()) {
+            return;
+        }
+        TermuxSession clickedSession = mSessionList.get(row.getSessionIndex());
         mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
         mActivity.getDrawer().closeDrawers();
     }
 
     @Override
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        final TermuxSession selectedSession = getItem(position);
+        SessionHierarchyRow row = mRows.get(position);
+        if (row.isHeader()) {
+            return false;
+        }
+        final TermuxSession selectedSession = mSessionList.get(row.getSessionIndex());
         mActivity.getTermuxTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
         return true;
     }
