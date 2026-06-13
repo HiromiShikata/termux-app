@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -13,6 +15,7 @@ import android.widget.ListView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -32,6 +35,8 @@ public final class TermuxBrowserController {
 
     private final WebView mWebView;
 
+    private final SwipeRefreshLayout mSwipeRefreshLayout;
+
     private final ListView mTabsListView;
 
     private CheckBox mDesktopModeToggle;
@@ -49,6 +54,7 @@ public final class TermuxBrowserController {
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
         this.mWebView = activity.findViewById(R.id.browser_web_view);
+        this.mSwipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity, this);
         configureWebView();
@@ -69,6 +75,8 @@ public final class TermuxBrowserController {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
 
+        mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
+
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -81,6 +89,7 @@ public final class TermuxBrowserController {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                mSwipeRefreshLayout.setRefreshing(false);
                 CookieManager.getInstance().flush();
                 BrowserTab activeTab = getActiveTab();
                 if (activeTab != null) {
@@ -88,6 +97,11 @@ public final class TermuxBrowserController {
                     activeTab.setTitle(view.getTitle());
                     notifyTabsUpdated();
                 }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                mSwipeRefreshLayout.setRefreshing(false);
             }
         });
     }
@@ -187,14 +201,15 @@ public final class TermuxBrowserController {
             return;
         }
         mBrowserVisible = true;
-        mWebView.setVisibility(View.VISIBLE);
+        mSwipeRefreshLayout.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
         loadActiveTab();
     }
 
     public void showTerminal() {
         mBrowserVisible = false;
-        mWebView.setVisibility(View.GONE);
+        mSwipeRefreshLayout.setRefreshing(false);
+        mSwipeRefreshLayout.setVisibility(View.GONE);
         mActivity.getTerminalView().setVisibility(View.VISIBLE);
     }
 
@@ -205,7 +220,7 @@ public final class TermuxBrowserController {
     public void openTab(@NonNull BrowserTab tab) {
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
-        mWebView.setVisibility(View.VISIBLE);
+        mSwipeRefreshLayout.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
         loadActiveTab();
         notifyTabsUpdated();
