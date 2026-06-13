@@ -1,5 +1,8 @@
 package com.termux.app.sessiondefinition;
 
+import android.view.View;
+import android.widget.ProgressBar;
+
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
@@ -35,16 +38,36 @@ public final class SessionDefinitionController {
             return;
         }
 
+        setLoadingProgressVisible(true);
+
         new Thread(() -> {
             try {
                 List<SessionDefinitionEntry> entries = loader.load(baseUrl);
-                activity.runOnUiThread(() -> buildSessions(entries));
+                activity.runOnUiThread(() -> {
+                    try {
+                        buildSessions(entries);
+                    } finally {
+                        setLoadingProgressVisible(false);
+                    }
+                });
             } catch (Exception exception) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
-                activity.runOnUiThread(() ->
-                    activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true));
+                activity.runOnUiThread(() -> {
+                    try {
+                        activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
+                    } finally {
+                        setLoadingProgressVisible(false);
+                    }
+                });
             }
         }).start();
+    }
+
+    private void setLoadingProgressVisible(boolean visible) {
+        ProgressBar progressBar = activity.getSessionDefinitionLoadingProgressBar();
+        if (progressBar != null) {
+            progressBar.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void buildSessions(List<SessionDefinitionEntry> entries) {

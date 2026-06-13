@@ -217,6 +217,18 @@
             android:contentDescription="@string/action_toggle_browser"
             android:src="@drawable/ic_browser_toggle" />
 
+        <ProgressBar
+            android:id="@+id/session_definition_loading_progress_bar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/terminal_toolbar_bottom_container"
+            android:layout_alignParentStart="true"
+            android:clickable="false"
+            android:focusable="false"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
     </RelativeLayout>
 
     <View
