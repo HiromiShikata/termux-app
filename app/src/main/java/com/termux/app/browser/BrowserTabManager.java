@@ -59,6 +59,14 @@ public final class BrowserTabManager {
     }
 
     @Nullable
+    public BrowserTab findTabByUrl(@NonNull String sessionHandle, @NonNull String url) {
+        for (BrowserTab tab : getTabs(sessionHandle)) {
+            if (tab.getUrl().equals(url)) return tab;
+        }
+        return null;
+    }
+
+    @Nullable
     public BrowserTab getActiveTab(@NonNull String sessionHandle) {
         return mActiveTabBySessionHandle.get(sessionHandle);
     }

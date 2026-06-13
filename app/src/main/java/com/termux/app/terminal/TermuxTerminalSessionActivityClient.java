@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.text.TextUtils;
+import android.util.Patterns;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -23,6 +24,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
@@ -449,6 +451,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             if (!isFailSafe)
                 recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, null, null, false, workingDirectory));
+            attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             setCurrentSession(newTerminalSession);
 
             mActivity.getDrawer().closeDrawers();
@@ -479,10 +482,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, shellPath, arguments, false, workingDirectory));
+            attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             setCurrentSession(newTerminalSession);
 
             mActivity.getDrawer().closeDrawers();
         }
+    }
+
+    private void attachBrowserTabForUrlSessionName(@NonNull TerminalSession session, @Nullable String sessionName) {
+        if (sessionName == null) return;
+        String trimmedSessionName = sessionName.trim();
+        if (trimmedSessionName.isEmpty()) return;
+        if (!Patterns.WEB_URL.matcher(trimmedSessionName).matches()) return;
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) return;
+        browserController.attachBackgroundTab(session.mHandle, trimmedSessionName);
     }
 
     public void setCurrentStoredSession() {

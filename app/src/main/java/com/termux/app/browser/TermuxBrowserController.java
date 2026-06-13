@@ -240,6 +240,14 @@ public final class TermuxBrowserController {
         openTab(tab);
     }
 
+    public void attachBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
+        String normalizedUrl = normalizeUrl(url);
+        if (mTabManager.findTabByUrl(sessionHandle, normalizedUrl) != null) return;
+        if (!mTabManager.canAddTab(sessionHandle)) return;
+        mTabManager.addTab(sessionHandle, normalizedUrl);
+        if (sessionHandle.equals(mCurrentSessionHandle)) notifyTabsUpdated();
+    }
+
     private void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
         if (!mTabManager.canAddTab(mCurrentSessionHandle)) {
