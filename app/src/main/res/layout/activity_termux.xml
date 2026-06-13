@@ -70,6 +70,13 @@
                     android:divider="@android:color/transparent"
                     android:dividerHeight="0dp" />
 
+                <CheckBox
+                    android:id="@+id/browser_desktop_mode_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:text="@string/action_browser_desktop_mode" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/browser_new_tab_button"
                     style="?android:attr/buttonBarButtonStyle"

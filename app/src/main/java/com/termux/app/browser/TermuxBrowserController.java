@@ -8,6 +8,7 @@ import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.CheckBox;
 import android.widget.ListView;
 
 import androidx.annotation.NonNull;
@@ -33,6 +34,10 @@ public final class TermuxBrowserController {
 
     private final ListView mTabsListView;
 
+    private CheckBox mDesktopModeToggle;
+
+    private String mDefaultUserAgent;
+
     private BrowserTabsListViewController mTabsListViewController;
 
     private final BrowserProjectUrlButtonsViewController mProjectUrlButtonsViewController;
@@ -54,6 +59,7 @@ public final class TermuxBrowserController {
     @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView() {
         WebSettings settings = mWebView.getSettings();
+        mDefaultUserAgent = settings.getUserAgentString();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
@@ -93,11 +99,37 @@ public final class TermuxBrowserController {
 
     private void configureDrawerControls() {
         mActivity.findViewById(R.id.browser_new_tab_button).setOnClickListener(v -> promptNewTab());
+        mDesktopModeToggle = mActivity.findViewById(R.id.browser_desktop_mode_toggle);
+        mDesktopModeToggle.setOnClickListener(v -> toggleActiveTabDesktopMode());
+    }
+
+    private void toggleActiveTabDesktopMode() {
+        BrowserTab activeTab = getActiveTab();
+        if (activeTab == null) {
+            updateDesktopModeToggleState();
+            return;
+        }
+        activeTab.setDesktopMode(!activeTab.isDesktopMode());
+        applyUserAgent(activeTab);
+        updateDesktopModeToggleState();
+        mWebView.loadUrl(activeTab.getUrl());
+    }
+
+    private void applyUserAgent(@NonNull BrowserTab tab) {
+        mWebView.getSettings().setUserAgentString(
+            BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
+    }
+
+    private void updateDesktopModeToggleState() {
+        if (mDesktopModeToggle == null) return;
+        BrowserTab activeTab = getActiveTab();
+        mDesktopModeToggle.setChecked(activeTab != null && activeTab.isDesktopMode());
     }
 
     public void onSessionChanged(@Nullable TerminalSession session) {
         mCurrentSessionHandle = (session == null) ? null : session.mHandle;
         rebindTabsList(session);
+        updateDesktopModeToggleState();
         BrowserTab activeTab = getActiveTab();
         if (mBrowserVisible) {
             if (activeTab != null) {
@@ -185,9 +217,12 @@ public final class TermuxBrowserController {
         notifyTabsUpdated();
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) {
+            updateDesktopModeToggleState();
             showTerminal();
         } else if (mBrowserVisible) {
             loadActiveTab();
+        } else {
+            updateDesktopModeToggleState();
         }
     }
 
@@ -238,6 +273,8 @@ public final class TermuxBrowserController {
     private void loadActiveTab() {
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) return;
+        applyUserAgent(activeTab);
+        updateDesktopModeToggleState();
         String currentUrl = mWebView.getUrl();
         if (currentUrl == null || !currentUrl.equals(activeTab.getUrl())) {
             mWebView.loadUrl(activeTab.getUrl());
