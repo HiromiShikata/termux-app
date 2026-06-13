@@ -2,9 +2,13 @@ package com.termux.app.sessiondefinition;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.shared.logger.Logger;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class SessionDefinitionController {
 
@@ -52,7 +56,10 @@ public final class SessionDefinitionController {
             return;
         }
 
-        for (SessionDefinitionPlannedSession plannedSession : plannedSessions) {
+        List<SessionDefinitionPlannedSession> sessionsToCreate =
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, collectExistingSessionNames());
+
+        for (SessionDefinitionPlannedSession plannedSession : sessionsToCreate) {
             if (plannedSession.hasCommand()) {
                 activity.getTermuxTerminalSessionClient().addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand());
             } else {
@@ -61,5 +68,17 @@ public final class SessionDefinitionController {
         }
 
         activity.getDrawer().closeDrawers();
+    }
+
+    private Set<String> collectExistingSessionNames() {
+        Set<String> existingSessionNames = new HashSet<>();
+        TermuxService service = activity.getTermuxService();
+        if (service == null) {
+            return existingSessionNames;
+        }
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            existingSessionNames.add(termuxSession.getTerminalSession().mSessionName);
+        }
+        return existingSessionNames;
     }
 }
