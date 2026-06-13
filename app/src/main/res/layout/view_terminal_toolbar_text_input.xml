@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:imeOptions="actionSend|flagNoFullscreen"
     android:maxLines="3"
-    android:inputType="textMultiLine"
+    android:inputType="text"
     android:textSize="12sp"
     android:importantForAutofill="no"
     android:textColor="@android:color/white"
