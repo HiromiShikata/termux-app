@@ -187,19 +187,22 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:orientation="vertical">
+            android:background="@color/black"
+            android:gravity="end|center_vertical"
+            android:orientation="horizontal">
 
             <androidx.viewpager.widget.ViewPager
                 android:id="@+id/terminal_toolbar_view_pager"
                 android:visibility="gone"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="37.5dp"
+                android:layout_weight="1"
                 android:background="@color/black" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/terminal_toolbar_keyboard_toggle_button"
                 style="?android:attr/buttonBarButtonStyle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@color/black"
                 android:textColor="@color/white"
@@ -209,7 +212,7 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/terminal_toolbar_drawer_toggle_button"
                 style="?android:attr/buttonBarButtonStyle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@color/black"
                 android:textColor="@color/white"
