@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -48,6 +50,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
+    private static final int SESSION_ROW_BELL_ICON_PADDING_DP = 4;
+
+    private static final long RELATIVE_TIME_REFRESH_INTERVAL_MS = 5000L;
 
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
@@ -56,6 +61,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
 
     final TermuxActivity mActivity;
+
+    private final Handler mPeriodicRefreshHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable mPeriodicRefreshRunnable = new Runnable() {
+        @Override
+        public void run() {
+            notifyDataSetChanged();
+            mPeriodicRefreshHandler.postDelayed(this, RELATIVE_TIME_REFRESH_INTERVAL_MS);
+        }
+    };
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
@@ -244,7 +259,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
         String namePart = numberPart + sessionNamePart;
 
+        String bellNotificationLabelPart = buildBellNotificationLabel(sessionAtRow);
+
         StringBuilder fullSessionTitleBuilder = new StringBuilder(namePart);
+        int bellNotificationLabelStart = -1;
+        int bellNotificationLabelEnd = -1;
+        if (!bellNotificationLabelPart.isEmpty()) {
+            bellNotificationLabelStart = fullSessionTitleBuilder.length();
+            fullSessionTitleBuilder.append(bellNotificationLabelPart);
+            bellNotificationLabelEnd = fullSessionTitleBuilder.length();
+        }
         boolean hasSecondaryLine = !sessionNamePart.isEmpty();
         int definitionTitleStart = -1;
         int definitionTitleEnd = -1;
@@ -271,6 +295,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
         fullSessionTitleStyled.setSpan(boldSpan, 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (bellNotificationLabelStart >= 0) {
+            fullSessionTitleStyled.setSpan(italicSpan, bellNotificationLabelStart, bellNotificationLabelEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
         if (definitionTitleStart >= 0) {
             int definitionTitleColor = (DEFINITION_TITLE_ALPHA << 24)
                 | ((shouldEnableDarkTheme ? Color.WHITE : Color.BLACK) & 0x00FFFFFF);
@@ -283,6 +310,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         sessionTitleView.setText(fullSessionTitleStyled);
 
+        applyBellNotificationIcon(sessionTitleView, sessionAtRow);
+
         boolean sessionRunning = sessionAtRow.isRunning();
 
         if (sessionRunning) {
@@ -294,6 +323,41 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
         sessionTitleView.setTextColor(color);
         return sessionRowView;
+    }
+
+    private String buildBellNotificationLabel(@NonNull TerminalSession session) {
+        Long bellArrivalTimeMillis = getBellArrivalTimeMillis(session);
+        if (bellArrivalTimeMillis == null) {
+            return "";
+        }
+        return "  " + SessionBellNotificationStore.formatRelativeTime(System.currentTimeMillis() - bellArrivalTimeMillis);
+    }
+
+    private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull TerminalSession session) {
+        if (getBellArrivalTimeMillis(session) != null) {
+            sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_session_bell_notification, 0, 0, 0);
+            sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
+        } else {
+            sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
+        }
+    }
+
+    @Nullable
+    private Long getBellArrivalTimeMillis(@NonNull TerminalSession session) {
+        String sessionHandle = session.mHandle;
+        if (sessionHandle == null) {
+            return null;
+        }
+        return mActivity.getSessionBellNotificationStore().getBellArrivalTimeMillis(sessionHandle);
+    }
+
+    public void startPeriodicRefresh() {
+        mPeriodicRefreshHandler.removeCallbacks(mPeriodicRefreshRunnable);
+        mPeriodicRefreshHandler.postDelayed(mPeriodicRefreshRunnable, RELATIVE_TIME_REFRESH_INTERVAL_MS);
+    }
+
+    public void stopPeriodicRefresh() {
+        mPeriodicRefreshHandler.removeCallbacks(mPeriodicRefreshRunnable);
     }
 
     private int dpToPx(int dp) {
