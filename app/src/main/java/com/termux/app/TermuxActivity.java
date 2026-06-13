@@ -277,6 +277,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setDrawerToggleBarView();
 
+        setRightDrawerToggleBarView();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -674,6 +676,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 drawerLayout.closeDrawer(Gravity.LEFT);
             else
                 drawerLayout.openDrawer(Gravity.LEFT);
+        });
+    }
+
+    private void setRightDrawerToggleBarView() {
+        findViewById(R.id.terminal_toolbar_right_drawer_toggle_button).setOnClickListener(v -> {
+            getTermuxBrowserController().openTabsDrawer();
         });
     }
 
