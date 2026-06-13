@@ -619,27 +619,22 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setNewSessionButtonView() {
         View newSessionButton = findViewById(R.id.new_session_button);
         newSessionButton.setOnClickListener(v -> {
-            TextInputDialogUtils.twoTextInputs(TermuxActivity.this,
-                R.string.action_new_session,
-                R.string.hint_session_url,
-                R.string.hint_session_short_name,
+            TextInputDialogUtils.textInput(TermuxActivity.this,
+                R.string.action_new_session, null,
                 R.string.action_create_named_session_confirm,
-                (url, shortName) -> {
-                    String trimmedUrl = url.trim();
-                    String trimmedShortName = shortName.trim();
-                    String combined = (trimmedUrl + " " + trimmedShortName).trim();
-                    String sessionName = combined.isEmpty() ? null : combined;
+                text -> {
+                    String trimmedName = text.trim();
+                    String sessionName = trimmedName.isEmpty() ? null : trimmedName;
                     String commandTemplate = mPreferences.getAutosshCommand();
-                    if (commandTemplate.trim().isEmpty() || trimmedUrl.isEmpty()) {
+                    if (commandTemplate.trim().isEmpty() || sessionName == null) {
                         mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
                     } else {
                         String command = commandTemplate
-                            .replace("{url}", SessionDefinitionPlanner.shellQuote(trimmedUrl))
-                            .replace("{name}", SessionDefinitionPlanner.shellQuote(trimmedShortName));
+                            .replace("{name}", SessionDefinitionPlanner.shellQuote(sessionName));
                         mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
                     }
                 },
-                null);
+                -1, null, -1, null, null);
         });
         newSessionButton.setOnLongClickListener(v -> {
             TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,

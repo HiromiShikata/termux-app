@@ -12,52 +12,50 @@ public class SessionDefinitionEntryMatcherTest {
     private final SessionDefinitionEntryMatcher matcher = new SessionDefinitionEntryMatcher();
 
     @Test
-    public void matchesEntryWhenSessionNameEqualsEntrySessionName() {
+    public void matchesEntryWhenSessionNameEqualsOneOfEntryUrls() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",
                 Arrays.asList("https://example.test/a1", "https://example.test/a2")));
 
-        SessionDefinitionEntry matched = matcher.findEntryForSessionName(entries, "groupOne/entryA");
+        SessionDefinitionEntry matched = matcher.findEntryForSessionName(entries, "https://example.test/a1");
 
         Assert.assertNotNull(matched);
-        Assert.assertEquals("groupOne/entryA", matched.getSessionName());
         Assert.assertEquals(Arrays.asList("https://example.test/a1", "https://example.test/a2"), matched.getUrls());
     }
 
     @Test
-    public void matchesEntryWhenSessionNameHasIndexSuffix() {
+    public void matchesEntryForAnyUrlInTheEntry() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",
                 Arrays.asList("https://example.test/a1", "https://example.test/a2")));
 
-        SessionDefinitionEntry matched = matcher.findEntryForSessionName(entries, "groupOne/entryA 2");
+        SessionDefinitionEntry matched = matcher.findEntryForSessionName(entries, "https://example.test/a2");
 
         Assert.assertNotNull(matched);
-        Assert.assertEquals("groupOne/entryA", matched.getSessionName());
+        Assert.assertEquals(Arrays.asList("https://example.test/a1", "https://example.test/a2"), matched.getUrls());
     }
 
     @Test
-    public void prefersTheLongestMatchingEntrySessionName() {
-        SessionDefinitionEntry shortEntry = new SessionDefinitionEntry("groupOne", "entryA",
-            Collections.singletonList("https://example.test/short"));
-        SessionDefinitionEntry longEntry = new SessionDefinitionEntry("groupOne", "entryA extra",
-            Collections.singletonList("https://example.test/long"));
+    public void selectsTheEntryThatContainsTheUrlAmongMultipleEntries() {
+        SessionDefinitionEntry firstEntry = new SessionDefinitionEntry("groupOne", "entryA",
+            Collections.singletonList("https://example.test/a1"));
+        SessionDefinitionEntry secondEntry = new SessionDefinitionEntry("groupTwo", "entryB",
+            Collections.singletonList("https://example.test/b1"));
 
         SessionDefinitionEntry matched = matcher.findEntryForSessionName(
-            Arrays.asList(shortEntry, longEntry), "groupOne/entryA extra 1");
+            Arrays.asList(firstEntry, secondEntry), "https://example.test/b1");
 
         Assert.assertNotNull(matched);
-        Assert.assertEquals("groupOne/entryA extra", matched.getSessionName());
-        Assert.assertEquals(Collections.singletonList("https://example.test/long"), matched.getUrls());
+        Assert.assertEquals(Collections.singletonList("https://example.test/b1"), matched.getUrls());
     }
 
     @Test
-    public void returnsNullWhenNoEntryMatches() {
+    public void returnsNullWhenNoEntryContainsTheUrl() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",
                 Collections.singletonList("https://example.test/a1")));
 
-        Assert.assertNull(matcher.findEntryForSessionName(entries, "groupTwo/entryB"));
+        Assert.assertNull(matcher.findEntryForSessionName(entries, "https://example.test/other"));
     }
 
     @Test
@@ -79,11 +77,11 @@ public class SessionDefinitionEntryMatcherTest {
     }
 
     @Test
-    public void doesNotMatchOnPartialTokenWithoutSpaceBoundary() {
+    public void doesNotMatchOnPartialUrl() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",
                 Collections.singletonList("https://example.test/a1")));
 
-        Assert.assertNull(matcher.findEntryForSessionName(entries, "groupOne/entryAB"));
+        Assert.assertNull(matcher.findEntryForSessionName(entries, "https://example.test/a"));
     }
 }
