@@ -126,58 +126,19 @@
                     android:choiceMode="singleChoice"
                     android:longClickable="true" />
 
-                <LinearLayout
-                    style="?android:attr/buttonBarStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/toggle_keyboard_button"
-                        style="?android:attr/buttonBarButtonStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/action_toggle_soft_keyboard" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/new_session_button"
-                        style="?android:attr/buttonBarButtonStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/action_new_session" />
-                </LinearLayout>
-
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/autossh_config_button"
+                    android:id="@+id/new_session_button"
                     style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/action_open_autossh_config" />
+                    android:text="@string/action_new_session" />
 
-                <LinearLayout
-                    style="?android:attr/buttonBarStyle"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/session_definition_load_button"
+                    style="?android:attr/buttonBarButtonStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/session_definition_config_button"
-                        style="?android:attr/buttonBarButtonStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/action_open_session_definition_config" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/session_definition_load_button"
-                        style="?android:attr/buttonBarButtonStyle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/action_load_session_definition" />
-                </LinearLayout>
+                    android:text="@string/action_load_session_definition" />
             </LinearLayout>
 
         </androidx.drawerlayout.widget.DrawerLayout>

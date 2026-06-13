@@ -35,6 +35,21 @@
         app:fragment="com.termux.app.fragments.settings.TermuxWidgetPreferencesFragment"/>
 
     <Preference
+        app:key="autossh_config"
+        app:title="@string/action_open_autossh_config"
+        app:persistent="false"/>
+
+    <Preference
+        app:key="session_definition_config"
+        app:title="@string/action_open_session_definition_config"
+        app:persistent="false"/>
+
+    <Preference
+        app:key="update_apk"
+        app:title="@string/update_apk_preference_title"
+        app:persistent="false"/>
+
+    <Preference
         app:key="about"
         app:title="@string/about_preference_title"
         app:persistent="false"/>

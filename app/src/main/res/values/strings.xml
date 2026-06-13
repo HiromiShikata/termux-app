@@ -269,4 +269,7 @@
     <!-- Donate Preference -->
     <string name="donate_preference_title">Donate</string>
 
+    <!-- Update APK Preference -->
+    <string name="update_apk_preference_title">Update APK</string>
+
 </resources>
