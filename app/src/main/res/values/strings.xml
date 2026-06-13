@@ -103,6 +103,7 @@
     <string name="title_share_transcript_with">Send transcript to:</string>
 
     <string name="action_share_selected_text">Share selected text</string>
+    <string name="action_open_selected_url_in_browser">Open in this session\'s browser</string>
     <string name="title_share_selected_text">Terminal Text</string>
     <string name="title_share_selected_text_with">Send selected text to:</string>
 
