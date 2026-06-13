@@ -117,7 +117,7 @@ public class TextSelectionCursorController implements CursorController {
 
                 ClipboardManager clipboard = (ClipboardManager) terminalView.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
                 menu.add(Menu.NONE, ACTION_COPY, Menu.NONE, R.string.copy_text).setShowAsAction(show);
-                if (isSelectedTextUrl()) {
+                if (isWebUrl(getSelectedText())) {
                     menu.add(Menu.NONE, ACTION_OPEN_URL, Menu.NONE, R.string.open_url).setShowAsAction(show);
                 }
                 menu.add(Menu.NONE, ACTION_PASTE, Menu.NONE, R.string.paste_text).setEnabled(clipboard != null && clipboard.hasPrimaryClip()).setShowAsAction(show);
@@ -158,7 +158,8 @@ public class TextSelectionCursorController implements CursorController {
                         terminalView.showContextMenu();
                         break;
                     case ACTION_OPEN_URL:
-                        if (isSelectedTextUrl() && terminalView.mClient.onOpenSelectedUrlRequested(getSelectedText())) {
+                        String url = getSelectedText();
+                        if (isWebUrl(url) && terminalView.mClient.onOpenSelectedUrlRequested(url)) {
                             terminalView.stopTextSelectionMode();
                         }
                         break;
@@ -385,10 +386,9 @@ public class TextSelectionCursorController implements CursorController {
         return terminalView.mEmulator.getSelectedText(mSelX1, mSelY1, mSelX2, mSelY2);
     }
 
-    /** Whether the currently selected text is a web URL. */
-    private boolean isSelectedTextUrl() {
-        String selectedText = getSelectedText();
-        return !TextUtils.isEmpty(selectedText) && Patterns.WEB_URL.matcher(selectedText).matches();
+    /** Whether the given text is a web URL. */
+    private static boolean isWebUrl(String text) {
+        return !TextUtils.isEmpty(text) && Patterns.WEB_URL.matcher(text).matches();
     }
 
     /** Get the selected text stored before "MORE" button was pressed on the context menu. */
