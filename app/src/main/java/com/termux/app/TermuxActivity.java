@@ -199,6 +199,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
     private static final int CONTEXT_MENU_SHARE_TRANSCRIPT_ID = 1;
     private static final int CONTEXT_MENU_SHARE_SELECTED_TEXT = 10;
+    private static final int CONTEXT_MENU_SEND_SELECTED_TEXT_TO_TERMINAL = 12;
     private static final int CONTEXT_MENU_AUTOFILL_USERNAME = 11;
     private static final int CONTEXT_MENU_AUTOFILL_PASSWORD = 2;
     private static final int CONTEXT_MENU_RESET_TERMINAL_ID = 3;
@@ -737,10 +738,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         menu.add(Menu.NONE, CONTEXT_MENU_SELECT_URL_ID, Menu.NONE, R.string.action_select_url);
         menu.add(Menu.NONE, CONTEXT_MENU_SHARE_TRANSCRIPT_ID, Menu.NONE, R.string.action_share_transcript);
-        if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText()))
+        if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText())) {
             menu.add(Menu.NONE, CONTEXT_MENU_SHARE_SELECTED_TEXT, Menu.NONE, R.string.action_share_selected_text);
-        if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText()))
             menu.add(Menu.NONE, CONTEXT_MENU_TRANSLATE_SELECTED_TEXT, Menu.NONE, R.string.action_translate_selected_text);
+            menu.add(Menu.NONE, CONTEXT_MENU_SEND_SELECTED_TEXT_TO_TERMINAL, Menu.NONE, R.string.action_send_selected_text_to_terminal);
+        }
         if (autoFillEnabled)
             menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_USERNAME, Menu.NONE, R.string.action_autofill_username);
         if (autoFillEnabled)
@@ -777,6 +779,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 return true;
             case CONTEXT_MENU_TRANSLATE_SELECTED_TEXT:
                 translateSelectedText();
+                return true;
+            case CONTEXT_MENU_SEND_SELECTED_TEXT_TO_TERMINAL:
+                sendSelectedTextToTerminal(session);
                 return true;
             case CONTEXT_MENU_AUTOFILL_USERNAME:
                 mTerminalView.requestAutoFillUsername();
@@ -836,6 +841,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         } catch (ActivityNotFoundException e) {
             showToast(getString(R.string.msg_no_translation_app_found), true);
         }
+    }
+
+    private void sendSelectedTextToTerminal(TerminalSession session) {
+        if (session == null) return;
+        if (!session.isRunning()) return;
+        String selectedText = mTerminalView.getStoredSelectedText();
+        if (DataUtils.isNullOrEmpty(selectedText)) return;
+        session.getEmulator().paste(selectedText);
     }
 
     private void showKillSessionDialog(TerminalSession session) {
