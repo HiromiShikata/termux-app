@@ -60,11 +60,17 @@
                         android:scrollbars="vertical"
                         tools:ignore="UnusedAttribute" />
 
-                    <WebView
-                        android:id="@+id/browser_web_view"
+                    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                        android:id="@+id/browser_swipe_refresh"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:visibility="gone" />
+                        android:visibility="gone">
+
+                        <WebView
+                            android:id="@+id/browser_web_view"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
+                    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
                 </FrameLayout>
             </LinearLayout>
 
