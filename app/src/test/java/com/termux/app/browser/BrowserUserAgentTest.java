@@ -29,5 +29,6 @@ public class BrowserUserAgentTest {
     public void desktopUserAgentDoesNotAdvertiseMobile() {
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Mobile"));
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Android"));
+        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("wv"));
     }
 }

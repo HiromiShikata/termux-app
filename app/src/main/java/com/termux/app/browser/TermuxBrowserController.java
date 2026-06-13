@@ -144,6 +144,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     loadingTab.setTitle(view.getTitle());
                     notifyTabsUpdated();
                 }
+                applyDesktopViewport(view, loadingTab);
             }
 
             @Override
@@ -345,6 +346,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private void applyUserAgent(@NonNull BrowserTab tab) {
         mWebView.getSettings().setUserAgentString(
             BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
+    }
+
+    private void applyDesktopViewport(@NonNull WebView view, @Nullable BrowserTab tab) {
+        if (tab == null || !tab.isDesktopMode()) return;
+        view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
     }
 
     private void updateDesktopModeToggleState() {
