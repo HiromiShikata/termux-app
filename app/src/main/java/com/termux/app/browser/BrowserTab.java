@@ -17,7 +17,7 @@ public final class BrowserTab {
 
     private String mTitle;
 
-    private boolean mDesktopMode = false;
+    private boolean mDesktopMode = true;
 
     public BrowserTab(@NonNull String sessionHandle, @NonNull String url) {
         this.mSessionHandle = sessionHandle;
