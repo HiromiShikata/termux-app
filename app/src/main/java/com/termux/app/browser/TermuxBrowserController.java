@@ -31,7 +31,7 @@ import com.termux.shared.logger.Logger;
 
 import java.util.List;
 
-public final class TermuxBrowserController {
+public final class TermuxBrowserController implements BrowserTabSelectionListener {
 
     private static final String LOG_TAG = "TermuxBrowserController";
 
