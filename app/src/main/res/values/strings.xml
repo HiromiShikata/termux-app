@@ -75,6 +75,9 @@
     <string name="action_browser_open_url_confirm">Open</string>
     <string name="msg_browser_max_tabs_reached">Maximum browser tabs reached for this session.</string>
     <string name="msg_browser_no_current_url">No page to open.</string>
+    <string name="msg_browser_download_started">Downloading %1$s</string>
+    <string name="msg_browser_download_complete">Download complete. Opening Downloads.</string>
+    <string name="msg_browser_download_failed">Could not start download.</string>
 
     <string name="action_open_autossh_config">AutoSSH Config</string>
     <string name="title_autossh_config">AutoSSH Config</string>

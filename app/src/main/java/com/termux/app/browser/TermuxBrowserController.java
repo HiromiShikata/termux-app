@@ -1,13 +1,19 @@
 package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Environment;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -20,6 +26,7 @@ import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
@@ -29,7 +36,9 @@ import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class TermuxBrowserController {
 
@@ -66,6 +75,12 @@ public final class TermuxBrowserController {
     private boolean mBrowserVisible;
 
     private boolean mClearingDisplayedPage;
+
+    private final Set<Long> mEnqueuedDownloadIds = new HashSet<>();
+
+    private BroadcastReceiver mDownloadCompleteReceiver;
+
+    private boolean mDownloadReceiverRegistered;
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -148,6 +163,9 @@ public final class TermuxBrowserController {
                 }
             }
         });
+
+        mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
+            enqueueDownload(url, contentDisposition, mimetype));
     }
 
     private void onMainFrameError() {
@@ -167,6 +185,67 @@ public final class TermuxBrowserController {
 
     private void hidePageLoadProgress() {
         mPageLoadProgressBar.setVisibility(View.GONE);
+    }
+
+    private void enqueueDownload(@Nullable String url, @Nullable String contentDisposition, @Nullable String mimetype) {
+        DownloadManager downloadManager =
+            (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager == null || url == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+            return;
+        }
+        try {
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setMimeType(mimetype);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            long downloadId = downloadManager.enqueue(request);
+            mEnqueuedDownloadIds.add(downloadId);
+            registerDownloadCompleteReceiver();
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_started, fileName), false);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to enqueue browser download", e);
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+        }
+    }
+
+    private void registerDownloadCompleteReceiver() {
+        if (mDownloadReceiverRegistered) return;
+        mDownloadCompleteReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (mEnqueuedDownloadIds.remove(completedId)) {
+                    openDownloadsView();
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
+            ContextCompat.RECEIVER_EXPORTED);
+        mDownloadReceiverRegistered = true;
+    }
+
+    private void unregisterDownloadCompleteReceiver() {
+        if (!mDownloadReceiverRegistered) return;
+        try {
+            mActivity.unregisterReceiver(mDownloadCompleteReceiver);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to unregister download receiver", e);
+        }
+        mDownloadReceiverRegistered = false;
+    }
+
+    private void openDownloadsView() {
+        mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
+        try {
+            Intent intent = new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mActivity.startActivity(intent);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open downloads view", e);
+        }
     }
 
     private void configureCookies() {
@@ -435,6 +514,7 @@ public final class TermuxBrowserController {
     }
 
     public void onActivityDestroy() {
+        unregisterDownloadCompleteReceiver();
         mWebView.stopLoading();
         mWebView.setWebViewClient(new WebViewClient());
         mWebView.loadUrl("about:blank");
