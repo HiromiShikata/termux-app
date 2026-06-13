@@ -658,11 +658,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
-        findViewById(R.id.toggle_browser_button).setOnClickListener(v -> mTermuxBrowserController.toggleBrowser());
-        findViewById(R.id.toggle_browser_button).setOnLongClickListener(v -> {
-            mTermuxBrowserController.openTabsDrawer();
-            return true;
-        });
     }
 
     private void setKeyboardToggleBarView() {
