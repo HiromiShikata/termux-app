@@ -38,6 +38,32 @@ public class BrowserTabManagerTest {
     }
 
     @Test
+    public void findTabByUrlReturnsMatchingTab() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://a.example/1");
+        BrowserTab second = manager.addTab(SESSION_A, "https://a.example/2");
+
+        Assert.assertSame(second, manager.findTabByUrl(SESSION_A, "https://a.example/2"));
+    }
+
+    @Test
+    public void findTabByUrlReturnsNullWhenUrlAbsent() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://a.example/1");
+
+        Assert.assertNull(manager.findTabByUrl(SESSION_A, "https://a.example/missing"));
+    }
+
+    @Test
+    public void findTabByUrlIsScopedPerSession() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://shared.example/");
+
+        Assert.assertNotNull(manager.findTabByUrl(SESSION_A, "https://shared.example/"));
+        Assert.assertNull(manager.findTabByUrl(SESSION_B, "https://shared.example/"));
+    }
+
+    @Test
     public void removingActiveTabSelectsAdjacentTab() {
         BrowserTabManager manager = new BrowserTabManager();
         BrowserTab first = manager.addTab(SESSION_A, "https://a.example/1");
