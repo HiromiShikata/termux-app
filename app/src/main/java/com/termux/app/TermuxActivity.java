@@ -52,6 +52,7 @@ import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
+import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -147,6 +148,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The termux sessions list controller.
      */
     TermuxSessionsListViewController mTermuxSessionListViewController;
+
+    private final SessionBellNotificationStore mSessionBellNotificationStore = new SessionBellNotificationStore();
 
     private final SessionDefinitionEntriesProvider mSessionDefinitionEntriesProvider =
         new SessionDefinitionEntriesProvider(new SessionDefinitionLoader(
@@ -542,7 +545,24 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         termuxSessionsListView.setAdapter(mTermuxSessionListViewController);
         termuxSessionsListView.setOnItemClickListener(mTermuxSessionListViewController);
         termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
+        setLeftDrawerSessionListPeriodicRefresh();
         loadSessionDefinitionEntriesForGrouping();
+    }
+
+    private void setLeftDrawerSessionListPeriodicRefresh() {
+        getDrawer().addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerOpened(@NonNull View drawerView) {
+                if (drawerView.getId() == R.id.left_drawer && mTermuxSessionListViewController != null)
+                    mTermuxSessionListViewController.startPeriodicRefresh();
+            }
+
+            @Override
+            public void onDrawerClosed(@NonNull View drawerView) {
+                if (drawerView.getId() == R.id.left_drawer && mTermuxSessionListViewController != null)
+                    mTermuxSessionListViewController.stopPeriodicRefresh();
+            }
+        });
     }
 
     private void loadSessionDefinitionEntriesForGrouping() {
@@ -939,6 +959,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public DrawerLayout getDrawer() {
         return (DrawerLayout) findViewById(R.id.drawer_layout);
+    }
+
+    public SessionBellNotificationStore getSessionBellNotificationStore() {
+        return mSessionBellNotificationStore;
     }
 
     public TermuxBrowserController getTermuxBrowserController() {

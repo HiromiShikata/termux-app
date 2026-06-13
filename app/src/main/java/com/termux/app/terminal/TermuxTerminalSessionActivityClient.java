@@ -218,6 +218,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onBell(@NonNull TerminalSession session) {
+        recordBellNotificationIfBackgroundSession(session);
+
         if (!mActivity.isVisible()) return;
 
         switch (mActivity.getProperties().getBellBehaviour()) {
@@ -233,6 +235,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 // Ignore the bell character.
                 break;
         }
+    }
+
+    private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
+        if (session == mActivity.getCurrentSession()) return;
+        if (session.mHandle == null) return;
+
+        mActivity.getSessionBellNotificationStore().recordBell(session.mHandle, System.currentTimeMillis());
+        termuxSessionListNotifyUpdated();
+    }
+
+    private void clearBellNotification(@NonNull TerminalSession session) {
+        if (session.mHandle == null) return;
+        if (!mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle)) return;
+
+        mActivity.getSessionBellNotificationStore().clearBell(session.mHandle);
+        termuxSessionListNotifyUpdated();
     }
 
     @Override
@@ -312,6 +330,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /** Try switching to session. */
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
+
+        clearBellNotification(session);
 
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
