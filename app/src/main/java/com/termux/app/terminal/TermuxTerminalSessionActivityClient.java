@@ -419,11 +419,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             .setMessage(R.string.msg_confirm_delete_session)
             .setPositiveButton(android.R.string.yes, (dialog, id) -> {
                 dialog.dismiss();
-                if (sessionToDelete.isRunning()) {
-                    sessionToDelete.finishIfRunning();
-                } else {
-                    removeFinishedSession(sessionToDelete);
-                }
+                TerminalSession currentSession = mActivity.getCurrentSession();
+                sessionToDelete.finishIfRunning();
+                removeFinishedSession(sessionToDelete);
+                if (currentSession != null && currentSession != sessionToDelete)
+                    setCurrentSession(currentSession);
             })
             .setNegativeButton(android.R.string.no, null)
             .show();

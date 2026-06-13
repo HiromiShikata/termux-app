@@ -260,7 +260,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         builder.setItems(actions, (dialog, which) -> {
             if (which == 0) {
                 mActivity.getTermuxTerminalSessionClient().renameSession(session);
-            } else {
+            } else if (which == 1) {
                 mActivity.getTermuxTerminalSessionClient().deleteSession(session);
             }
         });
