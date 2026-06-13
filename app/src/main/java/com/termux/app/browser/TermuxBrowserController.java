@@ -29,6 +29,17 @@ public final class TermuxBrowserController {
 
     private static final String LOG_TAG = "TermuxBrowserController";
 
+    private static final int DESKTOP_LAYOUT_VIEWPORT_WIDTH_PX = 1024;
+
+    private static final String DESKTOP_VIEWPORT_SCRIPT =
+        "(function(){var content='width=" + DESKTOP_LAYOUT_VIEWPORT_WIDTH_PX + "';"
+        + "var meta=document.querySelector('meta[name=\"viewport\"]');"
+        + "if(meta){meta.setAttribute('content',content);}"
+        + "else{meta=document.createElement('meta');meta.setAttribute('name','viewport');"
+        + "meta.setAttribute('content',content);"
+        + "var head=document.head||document.getElementsByTagName('head')[0];"
+        + "if(head){head.appendChild(meta);}}})();";
+
     private final TermuxActivity mActivity;
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
@@ -97,6 +108,7 @@ public final class TermuxBrowserController {
                     activeTab.setTitle(view.getTitle());
                     notifyTabsUpdated();
                 }
+                applyDesktopViewport(view);
             }
 
             @Override
@@ -132,6 +144,12 @@ public final class TermuxBrowserController {
     private void applyUserAgent(@NonNull BrowserTab tab) {
         mWebView.getSettings().setUserAgentString(
             BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
+    }
+
+    private void applyDesktopViewport(@NonNull WebView view) {
+        BrowserTab activeTab = getActiveTab();
+        if (activeTab == null || !activeTab.isDesktopMode()) return;
+        view.evaluateJavascript(DESKTOP_VIEWPORT_SCRIPT, null);
     }
 
     private void updateDesktopModeToggleState() {

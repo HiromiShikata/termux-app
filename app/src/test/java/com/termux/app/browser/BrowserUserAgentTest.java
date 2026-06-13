@@ -29,5 +29,13 @@ public class BrowserUserAgentTest {
     public void desktopUserAgentDoesNotAdvertiseMobile() {
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Mobile"));
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Android"));
+        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("wv"));
+    }
+
+    @Test
+    public void desktopUserAgentIsGenuineDesktopChrome() {
+        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("X11; Linux x86_64"));
+        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/"));
+        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Safari/537.36"));
     }
 }
