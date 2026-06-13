@@ -100,6 +100,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return mRows.size();
     }
 
+    public int getRowPositionForSessionIndex(int sessionIndex) {
+        for (int position = 0; position < mRows.size(); position++) {
+            SessionHierarchyRow row = mRows.get(position);
+            if (!row.isHeader() && row.getSessionIndex() == sessionIndex) {
+                return position;
+            }
+        }
+        return -1;
+    }
+
     @Override
     public Object getItem(int position) {
         return mRows.get(position);
@@ -191,11 +201,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
 
-        if (shouldEnableDarkTheme) {
-            sessionTitleView.setBackground(
-                ContextCompat.getDrawable(mActivity, R.drawable.session_background_black_selected)
-            );
-        }
+        boolean isCurrentSession = sessionAtRow == mActivity.getCurrentSession();
+        int sessionBackgroundResId = isCurrentSession
+            ? (shouldEnableDarkTheme ? R.drawable.current_session_black : R.drawable.current_session)
+            : (shouldEnableDarkTheme ? R.drawable.session_background_black_selected : R.drawable.session_background_selected);
+        sessionTitleView.setBackground(ContextCompat.getDrawable(mActivity, sessionBackgroundResId));
 
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
