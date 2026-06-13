@@ -24,6 +24,8 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
+import com.termux.app.terminal.session.PersistedSession;
+import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.app.TermuxService;
@@ -35,15 +37,28 @@ import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 import com.termux.terminal.TextStyle;
 
+import org.json.JSONException;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 /** The {@link TerminalSessionClient} implementation that may require an {@link Activity} for its interface methods. */
 public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionClientBase {
 
     private final TermuxActivity mActivity;
+
+    private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
+
+    private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
     private static final int MAX_SESSIONS = 32;
 
@@ -395,6 +410,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (sessionToRename == mActivity.getCurrentSession())
             updateSessionNameOverlay();
+
+        updatePersistedSessionName(sessionToRename, text);
     }
 
     public void addNewSession(boolean isFailSafe, String sessionName) {
@@ -418,6 +435,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+            if (!isFailSafe)
+                recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, null, null, false, workingDirectory));
             setCurrentSession(newTerminalSession);
 
             mActivity.getDrawer().closeDrawers();
@@ -442,10 +461,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             }
 
             String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
-            TermuxSession newTermuxSession = service.createTermuxSession(shellPath, new String[]{"-c", command}, null, workingDirectory, false, sessionName);
+            String[] arguments = new String[]{"-c", command};
+            TermuxSession newTermuxSession = service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, shellPath, arguments, false, workingDirectory));
             setCurrentSession(newTerminalSession);
 
             mActivity.getDrawer().closeDrawers();
@@ -502,6 +523,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
 
+        if (mPersistedSessionBySession.remove(finishedSession) != null)
+            savePersistedSessions();
+
         int index = service.removeTermuxSession(finishedSession);
 
         int size = service.getTermuxSessionsSize();
@@ -520,6 +544,106 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
         if (toolbarAdapter != null)
             toolbarAdapter.removeTextInputForSession(finishedSession);
+    }
+
+    private void recordPersistedSession(TerminalSession terminalSession, PersistedSession persistedSession) {
+        mPersistedSessionBySession.put(terminalSession, persistedSession);
+        savePersistedSessions();
+    }
+
+    private void updatePersistedSessionName(TerminalSession terminalSession, String name) {
+        PersistedSession existing = mPersistedSessionBySession.get(terminalSession);
+        if (existing == null) return;
+
+        mPersistedSessionBySession.put(terminalSession, new PersistedSession(existing.getHandle(), name,
+            existing.getExecutablePath(), existing.getArguments(), existing.isFailSafe(), existing.getWorkingDirectory()));
+        savePersistedSessions();
+    }
+
+    private void savePersistedSessions() {
+        try {
+            String serialized = mPersistedSessionSerializer.serialize(new ArrayList<>(mPersistedSessionBySession.values()));
+            mActivity.getPreferences().setPersistedSessions(serialized);
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize persisted sessions", e);
+        }
+    }
+
+    private List<PersistedSession> loadPersistedSessions() {
+        try {
+            return mPersistedSessionSerializer.deserialize(mActivity.getPreferences().getPersistedSessions());
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to deserialize persisted sessions, clearing the store", e);
+            mActivity.getPreferences().setPersistedSessions(null);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Recreate the sessions persisted in shared preferences. Returns {@code true} if at least one
+     * session was restored, in which case the caller should not create the default session.
+     */
+    public boolean restorePersistedSessions() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+
+        List<PersistedSession> persistedSessions = loadPersistedSessions();
+        if (persistedSessions.isEmpty()) return false;
+
+        Set<String> restoredNames = new HashSet<>();
+        TerminalSession firstRestoredSession = null;
+
+        for (PersistedSession persistedSession : persistedSessions) {
+            String name = persistedSession.getName();
+            if (name != null && !restoredNames.add(name)) continue;
+            if (service.getTermuxSessionsSize() >= MAX_SESSIONS) break;
+
+            TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
+                persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
+                persistedSession.isFailSafe(), name);
+            if (newTermuxSession == null) continue;
+
+            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+            mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, name,
+                persistedSession.getExecutablePath(), persistedSession.getArguments(), persistedSession.isFailSafe(),
+                persistedSession.getWorkingDirectory()));
+            if (firstRestoredSession == null)
+                firstRestoredSession = newTerminalSession;
+        }
+
+        if (firstRestoredSession == null) return false;
+
+        savePersistedSessions();
+        setCurrentSession(firstRestoredSession);
+        mActivity.getDrawer().closeDrawers();
+        return true;
+    }
+
+    /**
+     * Rebuild the in-memory persisted session map from the live sessions when the activity reconnects
+     * to a service that already has running sessions, matching persisted records to live sessions by
+     * their stable handle. This keeps later create/rename/remove updates in sync and drops persisted
+     * records whose sessions are no longer running.
+     */
+    public void syncPersistedSessionsWithLiveSessions() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        Map<String, PersistedSession> persistedSessionByHandle = new HashMap<>();
+        for (PersistedSession persistedSession : loadPersistedSessions()) {
+            if (persistedSession.getHandle() != null)
+                persistedSessionByHandle.put(persistedSession.getHandle(), persistedSession);
+        }
+
+        mPersistedSessionBySession.clear();
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            PersistedSession persistedSession = persistedSessionByHandle.get(terminalSession.mHandle);
+            if (persistedSession != null)
+                mPersistedSessionBySession.put(terminalSession, persistedSession);
+        }
+
+        savePersistedSessions();
     }
 
     public void termuxSessionListNotifyUpdated() {
