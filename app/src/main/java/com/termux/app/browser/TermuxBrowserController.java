@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Environment;
@@ -227,8 +228,11 @@ public final class TermuxBrowserController {
             @Override
             public void onReceive(Context context, Intent intent) {
                 long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                if (mEnqueuedDownloadIds.remove(completedId)) {
+                if (!mEnqueuedDownloadIds.remove(completedId)) return;
+                if (isDownloadSuccessful(completedId)) {
                     openDownloadsView();
+                } else {
+                    mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
                 }
             }
         };
@@ -253,12 +257,25 @@ public final class TermuxBrowserController {
         mDownloadReceiverRegistered = false;
     }
 
+    private boolean isDownloadSuccessful(long downloadId) {
+        DownloadManager downloadManager =
+            (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager == null) return false;
+        try (Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) return false;
+            int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+            if (statusColumn < 0) return false;
+            return cursor.getInt(statusColumn) == DownloadManager.STATUS_SUCCESSFUL;
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to query download status", e);
+            return false;
+        }
+    }
+
     private void openDownloadsView() {
-        mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
         try {
-            Intent intent = new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            mActivity.startActivity(intent);
+            mActivity.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open downloads view", e);
         }
