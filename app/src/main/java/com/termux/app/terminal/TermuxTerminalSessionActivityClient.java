@@ -435,7 +435,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, null, null, isFailSafe, workingDirectory));
+            if (!isFailSafe)
+                recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, null, null, false, workingDirectory));
             setCurrentSession(newTerminalSession);
 
             mActivity.getDrawer().closeDrawers();

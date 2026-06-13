@@ -26,7 +26,7 @@ public final class PersistedSession {
         mHandle = handle;
         mName = name;
         mExecutablePath = executablePath;
-        mArguments = arguments;
+        mArguments = arguments == null ? null : arguments.clone();
         mIsFailSafe = isFailSafe;
         mWorkingDirectory = workingDirectory;
     }
@@ -48,7 +48,7 @@ public final class PersistedSession {
 
     @Nullable
     public String[] getArguments() {
-        return mArguments;
+        return mArguments == null ? null : mArguments.clone();
     }
 
     public boolean isFailSafe() {
