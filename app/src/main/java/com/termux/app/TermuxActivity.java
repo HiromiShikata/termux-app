@@ -23,6 +23,7 @@ import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
@@ -894,6 +895,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public View getTermuxActivityBottomSpaceView() {
         return mTermuxActivityBottomSpaceView;
+    }
+
+    public ProgressBar getSessionDefinitionLoadingProgressBar() {
+        return findViewById(R.id.session_definition_loading_progress_bar);
     }
 
     public ExtraKeysView getExtraKeysView() {
