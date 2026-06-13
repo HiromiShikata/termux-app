@@ -276,4 +276,13 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_URL, value, false);
     }
 
+
+    public String getPersistedSessions() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_PERSISTED_SESSIONS, false);
+    }
+
+    public void setPersistedSessions(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSIONS, value, false);
+    }
+
 }

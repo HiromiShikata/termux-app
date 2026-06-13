@@ -1,7 +1,7 @@
 package com.termux.shared.termux.settings.preferences;
 
 /*
- * Version: v0.17.0
+ * Version: v0.18.0
  *
  * Changelog
  *
@@ -73,6 +73,10 @@ package com.termux.shared.termux.settings.preferences;
  * - 0.17.0 (2026-06-11)
  *      - Added following to `TERMUX_APP`:
  *          `KEY_AUTOSSH_COMMAND` and `DEFAULT_VALUE_KEY_AUTOSSH_COMMAND`.
+ *
+ * - 0.18.0 (2026-06-13)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_PERSISTED_SESSIONS` and `DEFAULT_VALUE_KEY_PERSISTED_SESSIONS`.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -158,6 +162,9 @@ public final class TermuxPreferenceConstants {
 
         public static final String KEY_SESSION_DEFINITION_URL = "session_definition_url";
         public static final String DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL = "";
+
+        public static final String KEY_PERSISTED_SESSIONS = "persisted_sessions";
+        public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSIONS = "";
 
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
