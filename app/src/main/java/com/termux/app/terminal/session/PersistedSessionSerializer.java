@@ -9,6 +9,7 @@ import java.util.List;
 
 public final class PersistedSessionSerializer {
 
+    private static final String KEY_HANDLE = "handle";
     private static final String KEY_NAME = "name";
     private static final String KEY_EXECUTABLE_PATH = "executablePath";
     private static final String KEY_ARGUMENTS = "arguments";
@@ -19,6 +20,8 @@ public final class PersistedSessionSerializer {
         JSONArray array = new JSONArray();
         for (PersistedSession session : sessions) {
             JSONObject object = new JSONObject();
+            if (session.getHandle() != null)
+                object.put(KEY_HANDLE, session.getHandle());
             if (session.getName() != null)
                 object.put(KEY_NAME, session.getName());
             if (session.getExecutablePath() != null)
@@ -46,21 +49,22 @@ public final class PersistedSessionSerializer {
         for (int i = 0; i < array.length(); i++) {
             JSONObject object = array.getJSONObject(i);
 
-            String name = object.has(KEY_NAME) ? object.getString(KEY_NAME) : null;
-            String executablePath = object.has(KEY_EXECUTABLE_PATH) ? object.getString(KEY_EXECUTABLE_PATH) : null;
+            String handle = object.isNull(KEY_HANDLE) ? null : object.getString(KEY_HANDLE);
+            String name = object.isNull(KEY_NAME) ? null : object.getString(KEY_NAME);
+            String executablePath = object.isNull(KEY_EXECUTABLE_PATH) ? null : object.getString(KEY_EXECUTABLE_PATH);
 
             String[] arguments = null;
-            if (object.has(KEY_ARGUMENTS)) {
-                JSONArray argumentArray = object.getJSONArray(KEY_ARGUMENTS);
+            JSONArray argumentArray = object.optJSONArray(KEY_ARGUMENTS);
+            if (argumentArray != null) {
                 arguments = new String[argumentArray.length()];
                 for (int j = 0; j < argumentArray.length(); j++)
                     arguments[j] = argumentArray.getString(j);
             }
 
             boolean isFailSafe = object.optBoolean(KEY_IS_FAIL_SAFE, false);
-            String workingDirectory = object.has(KEY_WORKING_DIRECTORY) ? object.getString(KEY_WORKING_DIRECTORY) : null;
+            String workingDirectory = object.isNull(KEY_WORKING_DIRECTORY) ? null : object.getString(KEY_WORKING_DIRECTORY);
 
-            sessions.add(new PersistedSession(name, executablePath, arguments, isFailSafe, workingDirectory));
+            sessions.add(new PersistedSession(handle, name, executablePath, arguments, isFailSafe, workingDirectory));
         }
         return sessions;
     }

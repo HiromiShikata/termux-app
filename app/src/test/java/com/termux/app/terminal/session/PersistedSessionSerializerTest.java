@@ -29,12 +29,13 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesPlainSession() throws JSONException {
-        PersistedSession plainSession = new PersistedSession("shell-one", null, null, false, "/home/user");
+        PersistedSession plainSession = new PersistedSession("handle-1", "shell-one", null, null, false, "/home/user");
 
         List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(plainSession)));
 
         Assert.assertEquals(1, restored.size());
         PersistedSession result = restored.get(0);
+        Assert.assertEquals("handle-1", result.getHandle());
         Assert.assertEquals("shell-one", result.getName());
         Assert.assertNull(result.getExecutablePath());
         Assert.assertNull(result.getArguments());
@@ -44,13 +45,14 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesCommandSessionWithArguments() throws JSONException {
-        PersistedSession commandSession = new PersistedSession("shell-two", "/bin/sh",
+        PersistedSession commandSession = new PersistedSession("handle-2", "shell-two", "/bin/sh",
             new String[]{"-c", "sleep 1"}, false, "/home/user/project");
 
         List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(commandSession)));
 
         Assert.assertEquals(1, restored.size());
         PersistedSession result = restored.get(0);
+        Assert.assertEquals("handle-2", result.getHandle());
         Assert.assertEquals("shell-two", result.getName());
         Assert.assertEquals("/bin/sh", result.getExecutablePath());
         Assert.assertArrayEquals(new String[]{"-c", "sleep 1"}, result.getArguments());
@@ -60,12 +62,13 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesFailSafeFlagAndNullName() throws JSONException {
-        PersistedSession failSafeSession = new PersistedSession(null, null, null, true, null);
+        PersistedSession failSafeSession = new PersistedSession("handle-3", null, null, null, true, null);
 
         List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(failSafeSession)));
 
         Assert.assertEquals(1, restored.size());
         PersistedSession result = restored.get(0);
+        Assert.assertEquals("handle-3", result.getHandle());
         Assert.assertNull(result.getName());
         Assert.assertNull(result.getExecutablePath());
         Assert.assertNull(result.getArguments());
@@ -76,9 +79,9 @@ public class PersistedSessionSerializerTest {
     @Test
     public void roundTripPreservesOrderOfMultipleSessions() throws JSONException {
         List<PersistedSession> sessions = Arrays.asList(
-            new PersistedSession("first", null, null, false, "/home/user"),
-            new PersistedSession("second", "/bin/sh", new String[]{"-c", "echo hi"}, false, "/tmp"),
-            new PersistedSession("third", null, null, true, "/home/user"));
+            new PersistedSession("handle-a", "first", null, null, false, "/home/user"),
+            new PersistedSession("handle-b", "second", "/bin/sh", new String[]{"-c", "echo hi"}, false, "/tmp"),
+            new PersistedSession("handle-c", "third", null, null, true, "/home/user"));
 
         List<PersistedSession> restored = serializer.deserialize(serializer.serialize(sessions));
 
@@ -92,11 +95,33 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesEmptyArguments() throws JSONException {
-        PersistedSession session = new PersistedSession("empty-args", "/bin/sh", new String[]{}, false, "/tmp");
+        PersistedSession session = new PersistedSession("handle-4", "empty-args", "/bin/sh", new String[]{}, false, "/tmp");
 
         List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(session)));
 
         Assert.assertEquals(1, restored.size());
         Assert.assertArrayEquals(new String[]{}, restored.get(0).getArguments());
+    }
+
+    @Test
+    public void deserializeToleratesExplicitJsonNullFields() throws JSONException {
+        String serialized = "[{\"handle\":\"handle-5\",\"name\":null,\"executablePath\":null,"
+            + "\"arguments\":null,\"isFailSafe\":true,\"workingDirectory\":null}]";
+
+        List<PersistedSession> restored = serializer.deserialize(serialized);
+
+        Assert.assertEquals(1, restored.size());
+        PersistedSession result = restored.get(0);
+        Assert.assertEquals("handle-5", result.getHandle());
+        Assert.assertNull(result.getName());
+        Assert.assertNull(result.getExecutablePath());
+        Assert.assertNull(result.getArguments());
+        Assert.assertTrue(result.isFailSafe());
+        Assert.assertNull(result.getWorkingDirectory());
+    }
+
+    @Test(expected = JSONException.class)
+    public void deserializeRejectsMalformedJson() throws JSONException {
+        serializer.deserialize("not-json");
     }
 }

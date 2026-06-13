@@ -5,6 +5,9 @@ import androidx.annotation.Nullable;
 public final class PersistedSession {
 
     @Nullable
+    private final String mHandle;
+
+    @Nullable
     private final String mName;
 
     @Nullable
@@ -18,13 +21,19 @@ public final class PersistedSession {
     @Nullable
     private final String mWorkingDirectory;
 
-    public PersistedSession(@Nullable String name, @Nullable String executablePath, @Nullable String[] arguments,
-                            boolean isFailSafe, @Nullable String workingDirectory) {
+    public PersistedSession(@Nullable String handle, @Nullable String name, @Nullable String executablePath,
+                            @Nullable String[] arguments, boolean isFailSafe, @Nullable String workingDirectory) {
+        mHandle = handle;
         mName = name;
         mExecutablePath = executablePath;
         mArguments = arguments;
         mIsFailSafe = isFailSafe;
         mWorkingDirectory = workingDirectory;
+    }
+
+    @Nullable
+    public String getHandle() {
+        return mHandle;
     }
 
     @Nullable

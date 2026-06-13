@@ -424,7 +424,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                         if (intent != null && intent.getExtras() != null) {
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
-                        if (!mTermuxTerminalSessionActivityClient.restorePersistedSessions()) {
+                        if (launchFailsafe || !mTermuxTerminalSessionActivityClient.restorePersistedSessions()) {
                             mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
                         }
                     } catch (WindowManager.BadTokenException e) {
@@ -436,6 +436,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 finishActivityIfNotFinishing();
             }
         } else {
+            mTermuxTerminalSessionActivityClient.syncPersistedSessionsWithLiveSessions();
+
             // If termux was started from launcher "New session" shortcut and activity is recreated,
             // then the original intent will be re-delivered, resulting in a new session being re-added
             // each time.
