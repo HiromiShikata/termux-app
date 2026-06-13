@@ -207,7 +207,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_HELP_ID = 7;
     private static final int CONTEXT_MENU_SETTINGS_ID = 8;
     private static final int CONTEXT_MENU_REPORT_ID = 9;
-    private static final int CONTEXT_MENU_OPEN_IN_BROWSER_ID = 12;
 
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
     private static final String ARG_ACTIVITY_RECREATED = "activity_recreated";
@@ -730,8 +729,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         menu.add(Menu.NONE, CONTEXT_MENU_SHARE_TRANSCRIPT_ID, Menu.NONE, R.string.action_share_transcript);
         if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText()))
             menu.add(Menu.NONE, CONTEXT_MENU_SHARE_SELECTED_TEXT, Menu.NONE, R.string.action_share_selected_text);
-        if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText()))
-            menu.add(Menu.NONE, CONTEXT_MENU_OPEN_IN_BROWSER_ID, Menu.NONE, R.string.action_open_selected_url_in_browser);
         if (autoFillEnabled)
             menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_USERNAME, Menu.NONE, R.string.action_autofill_username);
         if (autoFillEnabled)
@@ -765,9 +762,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 return true;
             case CONTEXT_MENU_SHARE_SELECTED_TEXT:
                 mTermuxTerminalViewClient.shareSelectedText();
-                return true;
-            case CONTEXT_MENU_OPEN_IN_BROWSER_ID:
-                openSelectedTextInSessionBrowser();
                 return true;
             case CONTEXT_MENU_AUTOFILL_USERNAME:
                 mTerminalView.requestAutoFillUsername();
@@ -806,13 +800,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onContextMenuClosed(menu);
         // onContextMenuClosed() is triggered twice if back button is pressed to dismiss instead of tap for some reason
         mTerminalView.onContextMenuClosed(menu);
-    }
-
-    private void openSelectedTextInSessionBrowser() {
-        String selectedText = mTerminalView.getStoredSelectedText();
-        TermuxBrowserController browserController = getTermuxBrowserController();
-        if (DataUtils.isNullOrEmpty(selectedText) || browserController == null) return;
-        browserController.openUrlInNewTab(selectedText);
     }
 
     private void showKillSessionDialog(TerminalSession session) {

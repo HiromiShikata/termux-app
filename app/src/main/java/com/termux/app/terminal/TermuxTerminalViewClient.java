@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.interact.MessageDialogUtils;
 import com.termux.shared.interact.ShareUtils;
@@ -353,6 +354,15 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onLongPress(MotionEvent event) {
         return false;
+    }
+
+    @Override
+    public boolean onOpenSelectedUrlRequested(String url) {
+        if (DataUtils.isNullOrEmpty(url)) return false;
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) return false;
+        browserController.openUrlInNewTab(url);
+        return true;
     }
 
 

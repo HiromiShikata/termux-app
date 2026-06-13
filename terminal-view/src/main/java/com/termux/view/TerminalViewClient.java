@@ -48,6 +48,17 @@ public interface TerminalViewClient {
 
     boolean onLongPress(MotionEvent event);
 
+    /**
+     * Called when the user taps the "Open" action in the text-selection toolbar for a selected URL.
+     * Implementers should open the given URL and return true if it was handled.
+     *
+     * @param url the selected text that matched a web URL.
+     * @return true if the URL was handled by the client, false otherwise.
+     */
+    default boolean onOpenSelectedUrlRequested(String url) {
+        return false;
+    }
+
 
 
     boolean readControlKey();

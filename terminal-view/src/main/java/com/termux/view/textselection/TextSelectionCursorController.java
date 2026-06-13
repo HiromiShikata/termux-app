@@ -5,6 +5,7 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.os.Build;
 import android.text.TextUtils;
+import android.util.Patterns;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -33,6 +34,7 @@ public class TextSelectionCursorController implements CursorController {
     public final int ACTION_COPY = 1;
     public final int ACTION_PASTE = 2;
     public final int ACTION_MORE = 3;
+    public final int ACTION_OPEN_URL = 4;
 
     public TextSelectionCursorController(TerminalView terminalView) {
         this.terminalView = terminalView;
@@ -115,6 +117,9 @@ public class TextSelectionCursorController implements CursorController {
 
                 ClipboardManager clipboard = (ClipboardManager) terminalView.getContext().getSystemService(Context.CLIPBOARD_SERVICE);
                 menu.add(Menu.NONE, ACTION_COPY, Menu.NONE, R.string.copy_text).setShowAsAction(show);
+                if (isWebUrl(getSelectedText())) {
+                    menu.add(Menu.NONE, ACTION_OPEN_URL, Menu.NONE, R.string.open_url).setShowAsAction(show);
+                }
                 menu.add(Menu.NONE, ACTION_PASTE, Menu.NONE, R.string.paste_text).setEnabled(clipboard != null && clipboard.hasPrimaryClip()).setShowAsAction(show);
                 menu.add(Menu.NONE, ACTION_MORE, Menu.NONE, R.string.text_selection_more);
                 return true;
@@ -151,6 +156,12 @@ public class TextSelectionCursorController implements CursorController {
                         // otherwise handles will show above popup
                         terminalView.stopTextSelectionMode();
                         terminalView.showContextMenu();
+                        break;
+                    case ACTION_OPEN_URL:
+                        String url = getSelectedText();
+                        if (isWebUrl(url) && terminalView.mClient.onOpenSelectedUrlRequested(url)) {
+                            terminalView.stopTextSelectionMode();
+                        }
                         break;
                 }
 
@@ -373,6 +384,11 @@ public class TextSelectionCursorController implements CursorController {
     /** Get the currently selected text. */
     public String getSelectedText() {
         return terminalView.mEmulator.getSelectedText(mSelX1, mSelY1, mSelX2, mSelY2);
+    }
+
+    /** Whether the given text is a web URL. */
+    private static boolean isWebUrl(String text) {
+        return !TextUtils.isEmpty(text) && Patterns.WEB_URL.matcher(text).matches();
     }
 
     /** Get the selected text stored before "MORE" button was pressed on the context menu. */
