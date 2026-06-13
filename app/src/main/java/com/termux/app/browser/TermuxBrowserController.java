@@ -37,6 +37,8 @@ public final class TermuxBrowserController {
 
     private static final String CHROME_PACKAGE_NAME = "com.android.chrome";
 
+    private static final String BLANK_URL = "about:blank";
+
     private final TermuxActivity mActivity;
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
@@ -62,6 +64,8 @@ public final class TermuxBrowserController {
     private BrowserTab mDisplayedTab;
 
     private boolean mBrowserVisible;
+
+    private boolean mClearingDisplayedPage;
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -93,6 +97,8 @@ public final class TermuxBrowserController {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                if (isClearingBlankLoad(url)) return;
+                mClearingDisplayedPage = false;
                 showPageLoadProgress(0);
                 BrowserTab loadingTab = mDisplayedTab;
                 if (loadingTab != null) {
@@ -103,6 +109,10 @@ public final class TermuxBrowserController {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (isClearingBlankLoad(url)) {
+                    mClearingDisplayedPage = false;
+                    return;
+                }
                 hidePageLoadProgress();
                 mSwipeRefreshLayout.setRefreshing(false);
                 CookieManager.getInstance().flush();
@@ -130,6 +140,7 @@ public final class TermuxBrowserController {
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
+                if (mClearingDisplayedPage) return;
                 if (newProgress < 100) {
                     showPageLoadProgress(newProgress);
                 } else {
@@ -142,6 +153,10 @@ public final class TermuxBrowserController {
     private void onMainFrameError() {
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
+    }
+
+    private boolean isClearingBlankLoad(@Nullable String url) {
+        return mClearingDisplayedPage && BLANK_URL.equals(url);
     }
 
     private void showPageLoadProgress(int progress) {
@@ -268,9 +283,9 @@ public final class TermuxBrowserController {
             return;
         }
         mBrowserVisible = true;
+        loadActiveTab();
         mSwipeRefreshLayout.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
-        loadActiveTab();
     }
 
     public void showTerminal() {
@@ -289,9 +304,9 @@ public final class TermuxBrowserController {
         boolean browserWasHidden = !mBrowserVisible;
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
+        loadActiveTab(browserWasHidden);
         mSwipeRefreshLayout.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
-        loadActiveTab(browserWasHidden);
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
     }
@@ -373,8 +388,16 @@ public final class TermuxBrowserController {
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
         if (!forceReload && activeTab == mDisplayedTab) return;
+        boolean switchingDisplayedPage =
+            BrowserPageTransition.requiresBlankBeforeLoad(mDisplayedTab, activeTab);
         mDisplayedTab = activeTab;
+        if (switchingDisplayedPage) clearDisplayedPage();
         mWebView.loadUrl(activeTab.getUrl());
+    }
+
+    private void clearDisplayedPage() {
+        mClearingDisplayedPage = true;
+        mWebView.loadUrl(BLANK_URL);
     }
 
     @Nullable
