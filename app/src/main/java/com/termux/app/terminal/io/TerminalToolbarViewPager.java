@@ -2,6 +2,7 @@ package com.termux.app.terminal.io;
 
 import android.app.AlertDialog;
 import android.graphics.drawable.Drawable;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -69,6 +70,23 @@ public class TerminalToolbarViewPager {
             }
         }
 
+        void submitTextInput(final EditText editText) {
+            TerminalSession session = mActivity.getCurrentSession();
+            if (session != null) {
+                String submittedTextInput = editText.getText().toString();
+                addSubmittedTextInputToHistory(submittedTextInput);
+                if (session.isRunning()) {
+                    String textToSend = submittedTextInput;
+                    if (textToSend.length() == 0) textToSend = "\r";
+                    session.write(textToSend);
+                } else {
+                    mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
+                }
+                editText.setText("");
+                mSessionTextInputs.remove(session);
+            }
+        }
+
         void showSubmittedTextInputHistory(final EditText editText) {
             if (mSubmittedTextInputHistory.isEmpty()) {
                 Logger.showToast(mActivity, mActivity.getString(R.string.msg_toolbar_text_input_history_empty), true);
@@ -118,6 +136,9 @@ public class TerminalToolbarViewPager {
                 layout = inflater.inflate(R.layout.view_terminal_toolbar_text_input, collection, false);
                 final EditText editText = layout.findViewById(R.id.terminal_toolbar_text_input);
 
+                editText.setHorizontallyScrolling(false);
+                editText.setMaxLines(3);
+
                 if (mSavedTextInput != null) {
                     editText.setText(mSavedTextInput);
                     TerminalSession currentSession = mActivity.getCurrentSession();
@@ -130,21 +151,18 @@ public class TerminalToolbarViewPager {
                 }
 
                 editText.setOnEditorActionListener((v, actionId, event) -> {
-                    TerminalSession session = mActivity.getCurrentSession();
-                    if (session != null) {
-                        String submittedTextInput = editText.getText().toString();
-                        addSubmittedTextInputToHistory(submittedTextInput);
-                        if (session.isRunning()) {
-                            String textToSend = submittedTextInput;
-                            if (textToSend.length() == 0) textToSend = "\r";
-                            session.write(textToSend);
-                        } else {
-                            mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
-                        }
-                        editText.setText("");
-                        mSessionTextInputs.remove(session);
-                    }
+                    submitTextInput(editText);
                     return true;
+                });
+
+                editText.setOnKeyListener((v, keyCode, event) -> {
+                    if (keyCode == KeyEvent.KEYCODE_ENTER
+                        && event.getAction() == KeyEvent.ACTION_DOWN
+                        && event.hasNoModifiers()) {
+                        submitTextInput(editText);
+                        return true;
+                    }
+                    return false;
                 });
 
                 editText.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_recent_history, 0);
