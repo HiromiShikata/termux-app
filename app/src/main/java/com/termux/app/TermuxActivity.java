@@ -1009,6 +1009,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mTermuxTerminalSessionActivityClient;
     }
 
+    @NonNull
+    public List<SessionDefinitionEntry> getSessionDefinitionEntries() {
+        return mSessionDefinitionEntriesProvider.getEntries();
+    }
+
     @Nullable
     public TerminalSession getCurrentSession() {
         if (mTerminalView != null)

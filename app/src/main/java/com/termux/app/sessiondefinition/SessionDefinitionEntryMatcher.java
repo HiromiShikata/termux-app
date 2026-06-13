@@ -21,4 +21,14 @@ public final class SessionDefinitionEntryMatcher {
         }
         return null;
     }
+
+    @Nullable
+    public String findTitleForSessionName(@NonNull List<SessionDefinitionEntry> entries,
+                                          @Nullable String sessionName) {
+        SessionDefinitionEntry entry = findEntryForSessionName(entries, sessionName);
+        if (entry == null) {
+            return null;
+        }
+        return entry.getTitleForUrl(sessionName);
+    }
 }

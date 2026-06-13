@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -23,6 +24,7 @@ import androidx.core.content.ContextCompat;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
+import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
@@ -51,6 +53,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private final List<TermuxSession> mSessionList;
 
     private final SessionHierarchyBuilder mHierarchyBuilder = new SessionHierarchyBuilder();
+
+    private final SessionDefinitionEntryMatcher mEntryMatcher = new SessionDefinitionEntryMatcher();
 
     private List<SessionDefinitionEntry> mEntries = Collections.emptyList();
 
@@ -191,15 +195,39 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
+        String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
 
         String numberPart = "[" + (sessionIndex + 1) + "] ";
         String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
-        String sessionTitlePart = (TextUtils.isEmpty(sessionTitle) ? "" : ((sessionNamePart.isEmpty() ? "" : "\n") + sessionTitle));
+        String namePart = numberPart + sessionNamePart;
 
-        String fullSessionTitle = numberPart + sessionNamePart + sessionTitlePart;
+        StringBuilder fullSessionTitleBuilder = new StringBuilder(namePart);
+        int definitionTitleStart = -1;
+        int definitionTitleEnd = -1;
+        if (!TextUtils.isEmpty(definitionTitle)) {
+            if (fullSessionTitleBuilder.length() > 0) {
+                fullSessionTitleBuilder.append("\n");
+            }
+            definitionTitleStart = fullSessionTitleBuilder.length();
+            fullSessionTitleBuilder.append(definitionTitle);
+            definitionTitleEnd = fullSessionTitleBuilder.length();
+        }
+        if (!TextUtils.isEmpty(sessionTitle)) {
+            if (fullSessionTitleBuilder.length() > 0) {
+                fullSessionTitleBuilder.append("\n");
+            }
+            fullSessionTitleBuilder.append(sessionTitle);
+        }
+
+        String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        fullSessionTitleStyled.setSpan(boldSpan, 0, numberPart.length() + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        fullSessionTitleStyled.setSpan(italicSpan, numberPart.length() + sessionNamePart.length(), fullSessionTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        fullSessionTitleStyled.setSpan(boldSpan, 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (definitionTitleStart >= 0) {
+            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(0.85f), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (namePart.length() < fullSessionTitle.length()) {
+            fullSessionTitleStyled.setSpan(italicSpan, namePart.length(), fullSessionTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
 
         sessionTitleView.setText(fullSessionTitleStyled);
 

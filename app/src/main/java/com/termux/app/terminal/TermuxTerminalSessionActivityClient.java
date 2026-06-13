@@ -25,6 +25,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
@@ -59,6 +60,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final TermuxActivity mActivity;
 
     private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
+
+    private final SessionDefinitionEntryMatcher mSessionDefinitionEntryMatcher = new SessionDefinitionEntryMatcher();
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
@@ -351,7 +354,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setOnClickListener(null);
             sessionNameBar.setClickable(false);
         } else {
-            sessionNameBar.setText(sessionName);
+            String title = mSessionDefinitionEntryMatcher.findTitleForSessionName(
+                mActivity.getSessionDefinitionEntries(), sessionName);
+            String overlayText = TextUtils.isEmpty(title) ? sessionName : title + "\n" + sessionName;
+            sessionNameBar.setText(overlayText);
             sessionNameBar.setVisibility(View.VISIBLE);
             sessionNameBar.setOnClickListener(view -> copyCurrentSessionNameToClipboard());
         }
