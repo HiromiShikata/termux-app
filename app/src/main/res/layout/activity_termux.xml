@@ -181,6 +181,16 @@
             android:gravity="end|center_vertical"
             android:orientation="horizontal">
 
+            <ImageButton
+                android:id="@+id/terminal_toolbar_browser_toggle_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_toggle_browser"
+                android:padding="8dp"
+                android:src="@drawable/ic_browser_toggle"
+                android:tint="@color/white" />
+
             <androidx.viewpager.widget.ViewPager
                 android:id="@+id/terminal_toolbar_view_pager"
                 android:visibility="gone"
