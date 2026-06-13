@@ -1,13 +1,21 @@
 package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Environment;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.URLUtil;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -20,6 +28,7 @@ import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
@@ -29,7 +38,9 @@ import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class TermuxBrowserController {
 
@@ -66,6 +77,12 @@ public final class TermuxBrowserController {
     private boolean mBrowserVisible;
 
     private boolean mClearingDisplayedPage;
+
+    private final Set<Long> mEnqueuedDownloadIds = new HashSet<>();
+
+    private BroadcastReceiver mDownloadCompleteReceiver;
+
+    private boolean mDownloadReceiverRegistered;
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -148,6 +165,9 @@ public final class TermuxBrowserController {
                 }
             }
         });
+
+        mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
+            enqueueDownload(url, userAgent, contentDisposition, mimetype));
     }
 
     private void onMainFrameError() {
@@ -167,6 +187,103 @@ public final class TermuxBrowserController {
 
     private void hidePageLoadProgress() {
         mPageLoadProgressBar.setVisibility(View.GONE);
+    }
+
+    private void enqueueDownload(@Nullable String url, @Nullable String userAgent,
+                                 @Nullable String contentDisposition, @Nullable String mimetype) {
+        DownloadManager downloadManager =
+            (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager == null || url == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+            return;
+        }
+        try {
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            if (!TextUtils.isEmpty(mimetype)) {
+                request.setMimeType(mimetype);
+            }
+            if (!TextUtils.isEmpty(userAgent)) {
+                request.addRequestHeader("User-Agent", userAgent);
+            }
+            String cookie = CookieManager.getInstance().getCookie(url);
+            if (!TextUtils.isEmpty(cookie)) {
+                request.addRequestHeader("Cookie", cookie);
+            }
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            boolean receiverReady = registerDownloadCompleteReceiver();
+            long downloadId = downloadManager.enqueue(request);
+            if (receiverReady) {
+                mEnqueuedDownloadIds.add(downloadId);
+            }
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_started, fileName), false);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to enqueue browser download", e);
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+        }
+    }
+
+    private boolean registerDownloadCompleteReceiver() {
+        if (mDownloadReceiverRegistered) return true;
+        mDownloadCompleteReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (!mEnqueuedDownloadIds.remove(completedId)) return;
+                if (isDownloadSuccessful(completedId)) {
+                    openDownloadsView();
+                } else {
+                    mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        try {
+            ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED);
+            mDownloadReceiverRegistered = true;
+            return true;
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to register download receiver", e);
+            mDownloadCompleteReceiver = null;
+            return false;
+        }
+    }
+
+    private void unregisterDownloadCompleteReceiver() {
+        if (!mDownloadReceiverRegistered) return;
+        try {
+            mActivity.unregisterReceiver(mDownloadCompleteReceiver);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to unregister download receiver", e);
+        }
+        mDownloadReceiverRegistered = false;
+    }
+
+    private boolean isDownloadSuccessful(long downloadId) {
+        DownloadManager downloadManager =
+            (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+        if (downloadManager == null) return false;
+        try (Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) return false;
+            int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+            if (statusColumn < 0) return false;
+            return cursor.getInt(statusColumn) == DownloadManager.STATUS_SUCCESSFUL;
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to query download status", e);
+            return false;
+        }
+    }
+
+    private void openDownloadsView() {
+        if (!mActivity.isVisible()) return;
+        try {
+            mActivity.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open downloads view", e);
+        }
     }
 
     private void configureCookies() {
@@ -435,6 +552,7 @@ public final class TermuxBrowserController {
     }
 
     public void onActivityDestroy() {
+        unregisterDownloadCompleteReceiver();
         mWebView.stopLoading();
         mWebView.setWebViewClient(new WebViewClient());
         mWebView.loadUrl("about:blank");
