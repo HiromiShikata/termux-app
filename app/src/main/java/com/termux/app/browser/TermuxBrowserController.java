@@ -246,7 +246,7 @@ public final class TermuxBrowserController {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_max_tabs_reached), true);
             return;
         }
-        TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, BrowserTab.DEFAULT_URL,
+        TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
             R.string.action_browser_open_url_confirm, text -> {
                 String url = normalizeUrl(text);
                 BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, url);
