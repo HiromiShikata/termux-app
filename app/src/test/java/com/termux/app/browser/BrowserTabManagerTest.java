@@ -20,6 +20,17 @@ public class BrowserTabManagerTest {
     }
 
     @Test
+    public void activeTabIsScopedPerSession() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab tabInSessionA = manager.addTab(SESSION_A, "https://a.example/");
+        BrowserTab tabInSessionB = manager.addTab(SESSION_B, "https://b.example/");
+
+        Assert.assertSame(tabInSessionA, manager.getActiveTab(SESSION_A));
+        Assert.assertSame(tabInSessionB, manager.getActiveTab(SESSION_B));
+        Assert.assertNotSame(manager.getActiveTab(SESSION_A), manager.getActiveTab(SESSION_B));
+    }
+
+    @Test
     public void addedTabBecomesActiveTab() {
         BrowserTabManager manager = new BrowserTabManager();
         BrowserTab tab = manager.addTab(SESSION_A, "https://a.example/");
