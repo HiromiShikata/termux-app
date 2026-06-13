@@ -17,6 +17,8 @@ public final class BrowserTab {
 
     private String mTitle;
 
+    private boolean mDesktopMode = false;
+
     public BrowserTab(@NonNull String sessionHandle, @NonNull String url) {
         this.mSessionHandle = sessionHandle;
         this.mUrl = url;
@@ -49,5 +51,13 @@ public final class BrowserTab {
 
     public void setTitle(@Nullable String title) {
         this.mTitle = (title == null || title.isEmpty()) ? mUrl : title;
+    }
+
+    public boolean isDesktopMode() {
+        return mDesktopMode;
+    }
+
+    public void setDesktopMode(boolean desktopMode) {
+        this.mDesktopMode = desktopMode;
     }
 }

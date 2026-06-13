@@ -33,4 +33,19 @@ public class BrowserTabTest {
         BrowserTab second = new BrowserTab("session", "https://example.com/");
         Assert.assertNotEquals(first.getId(), second.getId());
     }
+
+    @Test
+    public void desktopModeDefaultsToFalse() {
+        BrowserTab tab = new BrowserTab("session", "https://example.com/");
+        Assert.assertFalse(tab.isDesktopMode());
+    }
+
+    @Test
+    public void desktopModeCanBeToggled() {
+        BrowserTab tab = new BrowserTab("session", "https://example.com/");
+        tab.setDesktopMode(true);
+        Assert.assertTrue(tab.isDesktopMode());
+        tab.setDesktopMode(false);
+        Assert.assertFalse(tab.isDesktopMode());
+    }
 }

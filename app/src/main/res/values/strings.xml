@@ -61,6 +61,7 @@
     <!-- In-app browser -->
     <string name="action_toggle_browser">Browser</string>
     <string name="action_browser_new_tab">New tab</string>
+    <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_close_tab">Close tab</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_open_url">Open URL</string>
