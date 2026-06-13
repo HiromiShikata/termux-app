@@ -1,6 +1,7 @@
 package com.termux.app.activities;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 
@@ -15,6 +16,7 @@ import com.termux.shared.file.FileUtils;
 import com.termux.shared.models.ReportInfo;
 import com.termux.app.models.UserAction;
 import com.termux.shared.interact.ShareUtils;
+import com.termux.shared.activity.ActivityUtils;
 import com.termux.shared.android.PackageUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAPIAppSharedPreferences;
 import com.termux.shared.termux.settings.preferences.TermuxFloatAppSharedPreferences;
@@ -67,6 +69,9 @@ public class SettingsActivity extends AppCompatActivity {
                     configureTermuxFloatPreference(context);
                     configureTermuxTaskerPreference(context);
                     configureTermuxWidgetPreference(context);
+                    configureAutosshConfigPreference(context);
+                    configureSessionDefinitionConfigPreference(context);
+                    configureUpdateApkPreference(context);
                     configureAboutPreference(context);
                     configureDonatePreference(context);
                 }
@@ -106,6 +111,36 @@ public class SettingsActivity extends AppCompatActivity {
                 TermuxWidgetAppSharedPreferences preferences = TermuxWidgetAppSharedPreferences.build(context, false);
                 // If failed to get app preferences, then likely app is not installed, so do not show its preference
                 termuxWidgetPreference.setVisible(preferences != null);
+            }
+        }
+
+        private void configureAutosshConfigPreference(@NonNull Context context) {
+            Preference autosshConfigPreference = findPreference("autossh_config");
+            if (autosshConfigPreference != null) {
+                autosshConfigPreference.setOnPreferenceClickListener(preference -> {
+                    ActivityUtils.startActivity(context, new Intent(context, AutosshConfigActivity.class));
+                    return true;
+                });
+            }
+        }
+
+        private void configureSessionDefinitionConfigPreference(@NonNull Context context) {
+            Preference sessionDefinitionConfigPreference = findPreference("session_definition_config");
+            if (sessionDefinitionConfigPreference != null) {
+                sessionDefinitionConfigPreference.setOnPreferenceClickListener(preference -> {
+                    ActivityUtils.startActivity(context, new Intent(context, SessionDefinitionConfigActivity.class));
+                    return true;
+                });
+            }
+        }
+
+        private void configureUpdateApkPreference(@NonNull Context context) {
+            Preference updateApkPreference = findPreference("update_apk");
+            if (updateApkPreference != null) {
+                updateApkPreference.setOnPreferenceClickListener(preference -> {
+                    ShareUtils.openUrl(context, "https://github.com/HiromiShikata/termux-app/actions/workflows/debug_build.yml?query=branch%3Amain");
+                    return true;
+                });
             }
         }
 
