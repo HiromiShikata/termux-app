@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Environment;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -165,7 +166,7 @@ public final class TermuxBrowserController {
         });
 
         mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
-            enqueueDownload(url, contentDisposition, mimetype));
+            enqueueDownload(url, userAgent, contentDisposition, mimetype));
     }
 
     private void onMainFrameError() {
@@ -187,7 +188,8 @@ public final class TermuxBrowserController {
         mPageLoadProgressBar.setVisibility(View.GONE);
     }
 
-    private void enqueueDownload(@Nullable String url, @Nullable String contentDisposition, @Nullable String mimetype) {
+    private void enqueueDownload(@Nullable String url, @Nullable String userAgent,
+                                 @Nullable String contentDisposition, @Nullable String mimetype) {
         DownloadManager downloadManager =
             (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
         if (downloadManager == null || url == null) {
@@ -197,7 +199,16 @@ public final class TermuxBrowserController {
         try {
             String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-            request.setMimeType(mimetype);
+            if (!TextUtils.isEmpty(mimetype)) {
+                request.setMimeType(mimetype);
+            }
+            if (!TextUtils.isEmpty(userAgent)) {
+                request.addRequestHeader("User-Agent", userAgent);
+            }
+            String cookie = CookieManager.getInstance().getCookie(url);
+            if (!TextUtils.isEmpty(cookie)) {
+                request.addRequestHeader("Cookie", cookie);
+            }
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
             long downloadId = downloadManager.enqueue(request);
@@ -222,9 +233,14 @@ public final class TermuxBrowserController {
             }
         };
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED);
-        mDownloadReceiverRegistered = true;
+        try {
+            ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
+                ContextCompat.RECEIVER_NOT_EXPORTED);
+            mDownloadReceiverRegistered = true;
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to register download receiver", e);
+            mDownloadCompleteReceiver = null;
+        }
     }
 
     private void unregisterDownloadCompleteReceiver() {
