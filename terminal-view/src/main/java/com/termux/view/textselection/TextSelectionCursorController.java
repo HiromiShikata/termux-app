@@ -158,9 +158,9 @@ public class TextSelectionCursorController implements CursorController {
                         terminalView.showContextMenu();
                         break;
                     case ACTION_OPEN_URL:
-                        String url = getSelectedText();
-                        terminalView.stopTextSelectionMode();
-                        terminalView.mClient.onOpenSelectedUrlRequested(url);
+                        if (isSelectedTextUrl() && terminalView.mClient.onOpenSelectedUrlRequested(getSelectedText())) {
+                            terminalView.stopTextSelectionMode();
+                        }
                         break;
                 }
 
