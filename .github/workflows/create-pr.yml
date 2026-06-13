@@ -75,6 +75,7 @@ jobs:
 
       - name: Enable Auto Merge for PR
         if: steps.resolve_pr.outputs.pr_number
+        continue-on-error: true
         run: |
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: bearer ${{ steps.app-token.outputs.token }}" \
