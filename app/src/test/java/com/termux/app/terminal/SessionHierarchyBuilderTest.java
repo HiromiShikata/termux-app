@@ -7,7 +7,9 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SessionHierarchyBuilderTest {
 
@@ -123,6 +125,76 @@ public class SessionHierarchyBuilderTest {
             Collections.emptyList(), entries, OTHER);
 
         Assert.assertTrue(rows.isEmpty());
+    }
+
+    @Test
+    public void filterCollapsedProjectsReturnsAllRowsWhenNoProjectIsCollapsed() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, OTHER);
+
+        List<SessionHierarchyRow> visibleRows =
+            builder.filterCollapsedProjects(rows, Collections.emptySet());
+
+        Assert.assertEquals(rows, visibleRows);
+    }
+
+    @Test
+    public void filterCollapsedProjectsHidesStoryHeadersAndSessionsOfACollapsedProject() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")),
+            new SessionDefinitionEntry("projectTwo", "storyB",
+                Collections.singletonList("https://example.test/b")));
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "https://example.test/b"), entries, OTHER);
+
+        Set<String> collapsed = new LinkedHashSet<>();
+        collapsed.add("projectOne");
+        List<SessionHierarchyRow> visibleRows = builder.filterCollapsedProjects(rows, collapsed);
+
+        Assert.assertEquals(4, visibleRows.size());
+        assertProjectHeader(visibleRows.get(0), "projectOne");
+        assertProjectHeader(visibleRows.get(1), "projectTwo");
+        assertStoryHeader(visibleRows.get(2), "storyB");
+        assertSession(visibleRows.get(3), 1);
+    }
+
+    @Test
+    public void filterCollapsedProjectsKeepsTheCollapsedProjectHeaderVisible() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Arrays.asList("https://example.test/a1", "https://example.test/a2")));
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a1", "https://example.test/a2"), entries, OTHER);
+
+        Set<String> collapsed = new LinkedHashSet<>();
+        collapsed.add("projectOne");
+        List<SessionHierarchyRow> visibleRows = builder.filterCollapsedProjects(rows, collapsed);
+
+        Assert.assertEquals(1, visibleRows.size());
+        assertProjectHeader(visibleRows.get(0), "projectOne");
+    }
+
+    @Test
+    public void filterCollapsedProjectsCollapsesTheUnmatchedOtherProjectGroup() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "manual-session"), entries, OTHER);
+
+        Set<String> collapsed = new LinkedHashSet<>();
+        collapsed.add(OTHER);
+        List<SessionHierarchyRow> visibleRows = builder.filterCollapsedProjects(rows, collapsed);
+
+        Assert.assertEquals(4, visibleRows.size());
+        assertProjectHeader(visibleRows.get(0), "projectOne");
+        assertStoryHeader(visibleRows.get(1), "storyA");
+        assertSession(visibleRows.get(2), 0);
+        assertProjectHeader(visibleRows.get(3), OTHER);
     }
 
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {

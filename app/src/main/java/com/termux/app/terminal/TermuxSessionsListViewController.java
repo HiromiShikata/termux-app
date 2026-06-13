@@ -20,6 +20,7 @@ import android.widget.BaseAdapter;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
 import com.termux.R;
@@ -33,7 +34,9 @@ import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
 
@@ -49,6 +52,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
 
+    private static final String PROJECT_EXPANDED_INDICATOR = "▾";
+    private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
+
     final TermuxActivity mActivity;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
@@ -63,6 +69,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private List<SessionDefinitionEntry> mEntries = Collections.emptyList();
 
     private List<SessionHierarchyRow> mRows = Collections.emptyList();
+
+    private final Set<String> mCollapsedProjectKeys = new LinkedHashSet<>();
 
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
         this.mActivity = activity;
@@ -87,8 +95,19 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             TerminalSession terminalSession = session.getTerminalSession();
             sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
         }
-        mRows = mHierarchyBuilder.build(sessionNames, mEntries,
+        List<SessionHierarchyRow> allRows = mHierarchyBuilder.build(sessionNames, mEntries,
             mActivity.getString(R.string.session_list_other_group_header));
+        mRows = mHierarchyBuilder.filterCollapsedProjects(allRows, mCollapsedProjectKeys);
+    }
+
+    private void toggleProjectCollapsed(@Nullable String projectKey) {
+        if (projectKey == null) {
+            return;
+        }
+        if (!mCollapsedProjectKeys.remove(projectKey)) {
+            mCollapsedProjectKeys.add(projectKey);
+        }
+        notifyDataSetChanged();
     }
 
     private boolean isGrouped() {
@@ -144,7 +163,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @Override
     public boolean isEnabled(int position) {
-        return !mRows.get(position).isHeader();
+        return mRows.get(position).getType() != SessionHierarchyRow.Type.STORY_HEADER;
     }
 
     @SuppressLint("SetTextI18n")
@@ -154,8 +173,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         SessionHierarchyRow row = mRows.get(position);
         switch (row.getType()) {
             case PROJECT_HEADER:
-                return getHeaderView(row, convertView, parent,
+                View projectHeaderView = getHeaderView(row, convertView, parent,
                     R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
+                bindProjectCollapseIndicator(projectHeaderView, row);
+                return projectHeaderView;
             case STORY_HEADER:
                 return getHeaderView(row, convertView, parent,
                     R.layout.item_terminal_sessions_story_header, R.id.session_story_header_title);
@@ -176,6 +197,14 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
         headerTitleView.setTextColor(shouldEnableDarkTheme ? Color.WHITE : Color.BLACK);
         return headerRowView;
+    }
+
+    private void bindProjectCollapseIndicator(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
+        TextView collapseIndicatorView = projectHeaderView.findViewById(R.id.session_project_header_collapse_indicator);
+        boolean collapsed = mCollapsedProjectKeys.contains(row.getLabel());
+        collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
+        boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
+        collapseIndicatorView.setTextColor(shouldEnableDarkTheme ? Color.WHITE : Color.BLACK);
     }
 
     @SuppressLint("SetTextI18n")
@@ -275,6 +304,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         SessionHierarchyRow row = mRows.get(position);
+        if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+            toggleProjectCollapsed(row.getLabel());
+            return;
+        }
         if (row.isHeader()) {
             return;
         }
