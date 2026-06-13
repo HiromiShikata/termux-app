@@ -23,41 +23,50 @@
             android:layout_above="@+id/terminal_toolbar_bottom_container"
             android:layout_height="match_parent">
 
-            <FrameLayout
-                android:id="@+id/main_content_container"
+            <LinearLayout
+                android:id="@+id/main_content_with_session_name_bar"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-
-                <com.termux.view.TerminalView
-                    android:id="@+id/terminal_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:defaultFocusHighlightEnabled="false"
-                    android:focusableInTouchMode="true"
-                    android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
-                    android:scrollbars="vertical"
-                    tools:ignore="UnusedAttribute" />
-
-                <WebView
-                    android:id="@+id/browser_web_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:visibility="gone" />
+                android:layout_height="match_parent"
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/session_name_overlay"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/session_name_bar"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="top|start"
                     android:clickable="false"
+                    android:ellipsize="end"
                     android:focusable="false"
                     android:longClickable="false"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="2dp"
+                    android:singleLine="true"
                     android:textColor="#80FFFFFF"
                     android:textSize="12sp"
                     android:visibility="gone" />
-            </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/main_content_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1">
+
+                    <com.termux.view.TerminalView
+                        android:id="@+id/terminal_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:defaultFocusHighlightEnabled="false"
+                        android:focusableInTouchMode="true"
+                        android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
+                        android:scrollbars="vertical"
+                        tools:ignore="UnusedAttribute" />
+
+                    <WebView
+                        android:id="@+id/browser_web_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/right_drawer"
