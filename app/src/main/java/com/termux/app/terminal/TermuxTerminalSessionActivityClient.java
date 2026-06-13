@@ -356,8 +356,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         } else {
             String title = mSessionDefinitionEntryMatcher.findTitleForSessionName(
                 mActivity.getSessionDefinitionEntries(), sessionName);
-            String overlayText = TextUtils.isEmpty(title) ? sessionName : title + "\n" + sessionName;
-            sessionNameBar.setText(overlayText);
+            if (TextUtils.isEmpty(title)) {
+                sessionNameBar.setSingleLine(true);
+                sessionNameBar.setMaxLines(1);
+                sessionNameBar.setText(sessionName);
+            } else {
+                sessionNameBar.setSingleLine(false);
+                sessionNameBar.setMaxLines(2);
+                sessionNameBar.setText(title + "\n" + sessionName);
+            }
             sessionNameBar.setVisibility(View.VISIBLE);
             sessionNameBar.setOnClickListener(view -> copyCurrentSessionNameToClipboard());
         }

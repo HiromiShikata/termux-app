@@ -75,6 +75,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -1011,7 +1012,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @NonNull
     public List<SessionDefinitionEntry> getSessionDefinitionEntries() {
-        return mSessionDefinitionEntriesProvider.getEntries();
+        return Collections.unmodifiableList(mSessionDefinitionEntriesProvider.getEntries());
     }
 
     @Nullable

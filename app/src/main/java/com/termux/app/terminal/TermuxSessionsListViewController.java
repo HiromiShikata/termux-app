@@ -202,18 +202,20 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String namePart = numberPart + sessionNamePart;
 
         StringBuilder fullSessionTitleBuilder = new StringBuilder(namePart);
+        boolean hasSecondaryLine = !sessionNamePart.isEmpty();
         int definitionTitleStart = -1;
         int definitionTitleEnd = -1;
         if (!TextUtils.isEmpty(definitionTitle)) {
-            if (fullSessionTitleBuilder.length() > 0) {
+            if (hasSecondaryLine) {
                 fullSessionTitleBuilder.append("\n");
             }
             definitionTitleStart = fullSessionTitleBuilder.length();
             fullSessionTitleBuilder.append(definitionTitle);
             definitionTitleEnd = fullSessionTitleBuilder.length();
+            hasSecondaryLine = true;
         }
         if (!TextUtils.isEmpty(sessionTitle)) {
-            if (fullSessionTitleBuilder.length() > 0) {
+            if (hasSecondaryLine) {
                 fullSessionTitleBuilder.append("\n");
             }
             fullSessionTitleBuilder.append(sessionTitle);
