@@ -113,6 +113,14 @@
                     android:layout_height="wrap_content"
                     android:text="@string/action_browser_new_tab" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/browser_open_in_chrome_button"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/action_browser_open_in_chrome"
+                    android:text="@string/action_browser_open_in_chrome" />
+
                 <LinearLayout
                     android:id="@+id/browser_project_url_buttons"
                     android:layout_width="match_parent"
