@@ -323,10 +323,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (toolbarAdapter != null && switchingSessions)
             toolbarAdapter.saveTextInputForSession(previousSession);
 
-        if (mActivity.getTerminalView().attachSession(session)) {
-            // notify about switched session if not already displaying the session
-            notifyOfSessionChange();
-        }
+        mActivity.getTerminalView().attachSession(session);
 
         if (toolbarAdapter != null && switchingSessions)
             toolbarAdapter.restoreTextInputForSession(session);
@@ -377,15 +374,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         ShareUtils.copyTextToClipboard(mActivity, sessionName,
             mActivity.getString(R.string.msg_session_name_copied_to_clipboard));
-    }
-
-    void notifyOfSessionChange() {
-        if (!mActivity.isVisible()) return;
-
-        if (!mActivity.getProperties().areTerminalSessionChangeToastsDisabled()) {
-            TerminalSession session = mActivity.getCurrentSession();
-            mActivity.showToast(toToastTitle(session), false);
-        }
     }
 
     public void switchToSession(boolean forward) {
