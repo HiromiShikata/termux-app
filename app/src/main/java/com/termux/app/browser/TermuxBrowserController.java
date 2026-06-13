@@ -212,9 +212,11 @@ public final class TermuxBrowserController {
             }
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            boolean receiverReady = registerDownloadCompleteReceiver();
             long downloadId = downloadManager.enqueue(request);
-            mEnqueuedDownloadIds.add(downloadId);
-            registerDownloadCompleteReceiver();
+            if (receiverReady) {
+                mEnqueuedDownloadIds.add(downloadId);
+            }
             mActivity.showToast(mActivity.getString(R.string.msg_browser_download_started, fileName), false);
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to enqueue browser download", e);
@@ -222,8 +224,8 @@ public final class TermuxBrowserController {
         }
     }
 
-    private void registerDownloadCompleteReceiver() {
-        if (mDownloadReceiverRegistered) return;
+    private boolean registerDownloadCompleteReceiver() {
+        if (mDownloadReceiverRegistered) return true;
         mDownloadCompleteReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
@@ -241,9 +243,11 @@ public final class TermuxBrowserController {
             ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
                 ContextCompat.RECEIVER_NOT_EXPORTED);
             mDownloadReceiverRegistered = true;
+            return true;
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to register download receiver", e);
             mDownloadCompleteReceiver = null;
+            return false;
         }
     }
 
