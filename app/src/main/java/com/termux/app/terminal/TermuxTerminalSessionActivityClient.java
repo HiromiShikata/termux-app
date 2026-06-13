@@ -705,8 +705,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         final ListView termuxSessionsListView = mActivity.findViewById(R.id.terminal_sessions_list);
         if (termuxSessionsListView == null) return;
 
-        termuxSessionsListView.setItemChecked(indexOfSession, true);
-        // Delay is necessary otherwise sometimes scroll to newly added session does not happen
+        termuxSessionsListView.clearChoices();
+        termuxSessionListNotifyUpdated();
         termuxSessionsListView.postDelayed(() -> termuxSessionsListView.smoothScrollToPosition(indexOfSession), 1000);
     }
 

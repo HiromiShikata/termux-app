@@ -183,11 +183,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
 
-        if (shouldEnableDarkTheme) {
-            sessionTitleView.setBackground(
-                ContextCompat.getDrawable(mActivity, R.drawable.session_background_black_selected)
-            );
-        }
+        boolean isCurrentSession = sessionAtRow == mActivity.getCurrentSession();
+        int sessionBackgroundResId = isCurrentSession
+            ? (shouldEnableDarkTheme ? R.drawable.current_session_black : R.drawable.current_session)
+            : (shouldEnableDarkTheme ? R.drawable.session_background_black_selected : R.drawable.session_background_selected);
+        sessionTitleView.setBackground(ContextCompat.getDrawable(mActivity, sessionBackgroundResId));
 
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
