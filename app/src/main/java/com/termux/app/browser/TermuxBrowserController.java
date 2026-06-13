@@ -223,7 +223,7 @@ public final class TermuxBrowserController {
         };
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
         ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
-            ContextCompat.RECEIVER_EXPORTED);
+            ContextCompat.RECEIVER_NOT_EXPORTED);
         mDownloadReceiverRegistered = true;
     }
 
