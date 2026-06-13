@@ -45,7 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class TermuxBrowserController {
+public final class TermuxBrowserController implements BrowserTabSelectionListener {
 
     private static final String LOG_TAG = "TermuxBrowserController";
 

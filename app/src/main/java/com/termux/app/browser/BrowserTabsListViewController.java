@@ -1,6 +1,7 @@
 package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,7 +13,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 
 import com.termux.R;
-import com.termux.app.TermuxActivity;
 
 import java.util.List;
 
@@ -20,16 +20,13 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
 
     private static final int ACTIVE_TAB_TITLE_COLOR = 0xFF03A9F4;
 
-    final TermuxActivity mActivity;
+    final BrowserTabSelectionListener mSelectionListener;
 
-    final TermuxBrowserController mBrowserController;
-
-    public BrowserTabsListViewController(@NonNull TermuxActivity activity,
-                                         @NonNull TermuxBrowserController browserController,
+    public BrowserTabsListViewController(@NonNull Context context,
+                                         @NonNull BrowserTabSelectionListener selectionListener,
                                          @NonNull List<BrowserTab> tabList) {
-        super(activity.getApplicationContext(), R.layout.item_browser_tabs_list, tabList);
-        this.mActivity = activity;
-        this.mBrowserController = browserController;
+        super(context.getApplicationContext(), R.layout.item_browser_tabs_list, tabList);
+        this.mSelectionListener = selectionListener;
     }
 
     @SuppressLint("SetTextI18n")
@@ -38,7 +35,7 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         View tabRowView = convertView;
         if (tabRowView == null) {
-            LayoutInflater inflater = mActivity.getLayoutInflater();
+            LayoutInflater inflater = LayoutInflater.from(parent.getContext());
             tabRowView = inflater.inflate(R.layout.item_browser_tabs_list, parent, false);
         }
 
@@ -52,11 +49,12 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
         titleView.setText(tab.getTitle());
         urlView.setText(tab.getUrl());
 
-        boolean isActive = tab == mBrowserController.getActiveTab();
+        boolean isActive = tab == mSelectionListener.getActiveTab();
         tabRowView.setActivated(isActive);
         titleView.setTextColor(isActive ? ACTIVE_TAB_TITLE_COLOR : titleView.getTextColors().getDefaultColor());
 
-        closeButton.setOnClickListener(v -> mBrowserController.closeTab(tab));
+        tabRowView.setOnClickListener(v -> mSelectionListener.openTab(tab));
+        closeButton.setOnClickListener(v -> mSelectionListener.closeTab(tab));
 
         return tabRowView;
     }
@@ -64,6 +62,6 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         BrowserTab clickedTab = getItem(position);
-        if (clickedTab != null) mBrowserController.openTab(clickedTab);
+        if (clickedTab != null) mSelectionListener.openTab(clickedTab);
     }
 }
