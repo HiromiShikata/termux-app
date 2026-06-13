@@ -7,6 +7,7 @@
     android:imeOptions="actionSend|flagNoFullscreen"
     android:maxLines="3"
     android:inputType="text"
+    android:drawablePadding="8dp"
     android:textSize="12sp"
     android:importantForAutofill="no"
     android:textColor="@android:color/white"
