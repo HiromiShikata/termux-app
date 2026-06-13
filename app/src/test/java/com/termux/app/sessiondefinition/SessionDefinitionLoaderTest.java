@@ -36,17 +36,15 @@ public class SessionDefinitionLoaderTest {
     @Test
     public void loadProducesEntriesInGroupThenEntryOrder() throws Exception {
         RecordingFetcher fetcher = new RecordingFetcher();
-        fetcher.register("https://example.test/base/index.json", "{\"groups\":["
-            + "{\"label\":\"groupOne\",\"url\":\"groupOne.json\"},"
-            + "{\"label\":\"groupTwo\",\"url\":\"groupTwo.json\"}"
-            + "]}");
-        fetcher.register("https://example.test/base/groupOne.json", "{\"entries\":["
-            + "{\"label\":\"entryA\",\"urls\":[\"https://example.test/a\"]},"
-            + "{\"label\":\"entryB\",\"urls\":[\"https://example.test/b\"]}"
-            + "]}");
-        fetcher.register("https://example.test/base/groupTwo.json", "{\"entries\":["
-            + "{\"label\":\"entryC\",\"urls\":[\"https://example.test/c\"]}"
-            + "]}");
+        fetcher.register("https://example.test/base/index.json",
+            "{\"projects\":[\"groupOne\",\"groupTwo\"]}");
+        fetcher.register("https://example.test/base/groupOne.json", "["
+            + "{\"story\":\"entryA\",\"urls\":[\"https://example.test/a\"]},"
+            + "{\"story\":\"entryB\",\"urls\":[\"https://example.test/b\"]}"
+            + "]");
+        fetcher.register("https://example.test/base/groupTwo.json", "["
+            + "{\"story\":\"entryC\",\"urls\":[\"https://example.test/c\"]}"
+            + "]");
 
         SessionDefinitionLoader loader =
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
