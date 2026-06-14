@@ -36,6 +36,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
@@ -700,8 +701,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return false;
     }
 
-    public void openTabsDrawer() {
-        mActivity.getDrawer().openDrawer(Gravity.END);
+    public void toggleTabsDrawer() {
+        DrawerLayout drawer = mActivity.getDrawer();
+        if (drawer.isDrawerOpen(Gravity.END))
+            drawer.closeDrawer(Gravity.END);
+        else
+            drawer.openDrawer(Gravity.END);
     }
 
     public void onActivityStop() {
