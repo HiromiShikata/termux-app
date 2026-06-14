@@ -93,6 +93,8 @@ public final class SessionDefinitionController {
                 activity.getTermuxTerminalSessionClient().addNewSession(false, plannedSession.getName(), false);
             }
         }
+
+        activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
     }
 
     private void removeProjectLinkedSessions(List<SessionDefinitionEntry> entries) {
@@ -101,7 +103,7 @@ public final class SessionDefinitionController {
             return;
         }
         List<TerminalSession> projectLinkedSessions = new ArrayList<>();
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == null) {
                 continue;
