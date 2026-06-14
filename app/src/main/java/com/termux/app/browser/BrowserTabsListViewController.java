@@ -2,6 +2,8 @@ package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,8 +13,11 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 
 import com.termux.R;
+import com.termux.shared.theme.NightMode;
+import com.termux.shared.theme.ThemeUtils;
 
 import java.util.List;
 
@@ -46,17 +51,35 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
         TextView urlView = tabRowView.findViewById(R.id.browser_tab_url);
         ImageButton closeButton = tabRowView.findViewById(R.id.browser_tab_close_button);
 
-        titleView.setText(tab.getTitle());
+        titleView.setText(displayTitle(tab));
         urlView.setText(tab.getUrl());
 
-        boolean isActive = tab == mSelectionListener.getActiveTab();
-        tabRowView.setActivated(isActive);
-        titleView.setTextColor(isActive ? ACTIVE_TAB_TITLE_COLOR : titleView.getTextColors().getDefaultColor());
+        boolean darkTheme = ThemeUtils.shouldEnableDarkTheme(getContext(), NightMode.getAppNightMode().getName());
+        applyThemeAwareColors(tabRowView, titleView, urlView, tab, darkTheme);
 
         tabRowView.setOnClickListener(v -> mSelectionListener.openTab(tab));
         closeButton.setOnClickListener(v -> mSelectionListener.closeTab(tab));
 
         return tabRowView;
+    }
+
+    @NonNull
+    private String displayTitle(@NonNull BrowserTab tab) {
+        String title = tab.getTitle();
+        return TextUtils.isEmpty(title) ? tab.getUrl() : title;
+    }
+
+    private void applyThemeAwareColors(@NonNull View tabRowView, @NonNull TextView titleView,
+                                       @NonNull TextView urlView, @NonNull BrowserTab tab, boolean darkTheme) {
+        boolean isActive = tab == mSelectionListener.getActiveTab();
+        tabRowView.setActivated(isActive);
+        tabRowView.setBackground(ContextCompat.getDrawable(getContext(), darkTheme
+            ? R.drawable.session_background_black_selected
+            : R.drawable.session_background_selected));
+
+        int readableTextColor = darkTheme ? Color.WHITE : Color.BLACK;
+        titleView.setTextColor(isActive ? ACTIVE_TAB_TITLE_COLOR : readableTextColor);
+        urlView.setTextColor(readableTextColor);
     }
 
     @Override
