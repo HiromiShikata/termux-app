@@ -12,6 +12,7 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
 import com.termux.app.apkupdate.ApkUpdateGuide;
+import com.termux.app.style.TermuxStyleLauncher;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.models.ReportInfo;
@@ -70,6 +71,7 @@ public class SettingsActivity extends AppCompatActivity {
                     configureTermuxFloatPreference(context);
                     configureTermuxTaskerPreference(context);
                     configureTermuxWidgetPreference(context);
+                    configureStylePreference(context);
                     configureAutosshConfigPreference(context);
                     configureSessionDefinitionConfigPreference(context);
                     configureUpdateApkPreference(context);
@@ -112,6 +114,16 @@ public class SettingsActivity extends AppCompatActivity {
                 TermuxWidgetAppSharedPreferences preferences = TermuxWidgetAppSharedPreferences.build(context, false);
                 // If failed to get app preferences, then likely app is not installed, so do not show its preference
                 termuxWidgetPreference.setVisible(preferences != null);
+            }
+        }
+
+        private void configureStylePreference(@NonNull Context context) {
+            Preference stylePreference = findPreference("style");
+            if (stylePreference != null) {
+                stylePreference.setOnPreferenceClickListener(preference -> {
+                    TermuxStyleLauncher.showStylingDialog(requireActivity());
+                    return true;
+                });
             }
         }
 

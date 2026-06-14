@@ -57,6 +57,9 @@ class TerminalViewPreferencesDataStore extends PreferenceDataStore {
             case "terminal_margin_adjustment":
                     mPreferences.setTerminalMarginAdjustment(value);
                 break;
+            case "screen_always_on":
+                    mPreferences.setKeepScreenOn(value);
+                break;
             default:
                 break;
         }
@@ -69,6 +72,8 @@ class TerminalViewPreferencesDataStore extends PreferenceDataStore {
         switch (key) {
             case "terminal_margin_adjustment":
                 return mPreferences.isTerminalMarginAdjustmentEnabled();
+            case "screen_always_on":
+                return mPreferences.shouldKeepScreenOn();
             default:
                 return false;
         }

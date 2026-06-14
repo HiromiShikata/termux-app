@@ -35,6 +35,11 @@
         app:fragment="com.termux.app.fragments.settings.TermuxWidgetPreferencesFragment"/>
 
     <Preference
+        app:key="style"
+        app:title="@string/action_style_terminal"
+        app:persistent="false"/>
+
+    <Preference
         app:key="autossh_config"
         app:title="@string/action_open_autossh_config"
         app:persistent="false"/>
