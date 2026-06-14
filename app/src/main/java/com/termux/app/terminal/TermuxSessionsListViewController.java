@@ -30,6 +30,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
@@ -113,7 +114,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         return mHierarchyBuilder.build(sessionNames, mEntries,
             mActivity.getString(R.string.session_list_na_group_header),
-            mActivity.getPreferences().getAlwaysNaSessionNames());
+            alwaysNaSessionNames());
+    }
+
+    @NonNull
+    private Set<String> alwaysNaSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return Collections.emptySet();
+        }
+        return preferences.getAlwaysNaSessionNames();
     }
 
     private void rebuildRows() {
