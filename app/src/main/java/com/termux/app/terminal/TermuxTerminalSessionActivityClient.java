@@ -12,8 +12,6 @@ import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.Adapter;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -391,9 +389,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (toolbarAdapter != null && switchingSessions)
             toolbarAdapter.restoreTextInputForSession(session);
 
-        // We call the following even when the session is already being displayed since config may
-        // be stale, like current session not selected or scrolled to.
-        checkAndScrollToSession(session);
+        termuxSessionListNotifyUpdated();
         updateBackgroundColor();
 
         if (mActivity.getTermuxBrowserController() != null)
@@ -840,26 +836,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     public void termuxSessionListNotifyUpdated() {
         mActivity.termuxSessionListNotifyUpdated();
-    }
-
-    public void checkAndScrollToSession(TerminalSession session) {
-        if (!mActivity.isVisible()) return;
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
-
-        final int indexOfSession = service.getIndexOfSession(session);
-        if (indexOfSession < 0) return;
-        final ListView termuxSessionsListView = mActivity.findViewById(R.id.terminal_sessions_list);
-        if (termuxSessionsListView == null) return;
-
-        termuxSessionsListView.clearChoices();
-        termuxSessionListNotifyUpdated();
-
-        Adapter adapter = termuxSessionsListView.getAdapter();
-        if (!(adapter instanceof TermuxSessionsListViewController)) return;
-        final int rowPosition = ((TermuxSessionsListViewController) adapter).getRowPositionForSessionIndex(indexOfSession);
-        if (rowPosition < 0) return;
-        termuxSessionsListView.postDelayed(() -> termuxSessionsListView.smoothScrollToPosition(rowPosition), 1000);
     }
 
 

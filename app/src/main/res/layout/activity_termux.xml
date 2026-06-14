@@ -252,28 +252,6 @@
                         app:tint="?attr/termuxActivityDrawerImageTint" />
                 </LinearLayout>
 
-                <ListView
-                    android:id="@+id/terminal_sessions_list"
-                    android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_gravity="top"
-                    android:layout_weight="1"
-                    android:choiceMode="singleChoice"
-                    android:longClickable="true" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/new_session_button"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/action_new_session" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/session_definition_load_button"
-                    style="?android:attr/buttonBarButtonStyle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/action_load_session_definition" />
             </LinearLayout>
 
         </androidx.drawerlayout.widget.DrawerLayout>
