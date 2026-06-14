@@ -1,7 +1,7 @@
 package com.termux.shared.termux.settings.preferences;
 
 /*
- * Version: v0.18.0
+ * Version: v0.19.0
  *
  * Changelog
  *
@@ -77,6 +77,10 @@ package com.termux.shared.termux.settings.preferences;
  * - 0.18.0 (2026-06-13)
  *      - Added following to `TERMUX_APP`:
  *          `KEY_PERSISTED_SESSIONS` and `DEFAULT_VALUE_KEY_PERSISTED_SESSIONS`.
+ *
+ * - 0.19.0 (2026-06-14)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_BROWSER_SPLIT_RATIO` and `DEFAULT_VALUE_BROWSER_SPLIT_RATIO`.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -109,6 +113,15 @@ public final class TermuxPreferenceConstants {
          */
         public static final String KEY_SHOW_TERMINAL_TOOLBAR = "show_extra_keys";
         public static final boolean DEFAULT_VALUE_SHOW_TERMINAL_TOOLBAR = true;
+
+
+        /**
+         * Defines the key for the fraction of the in-app browser content height occupied by the
+         * browser area while the in-app browser is open, with the terminal area occupying the
+         * remaining height.
+         */
+        public static final String KEY_BROWSER_SPLIT_RATIO = "browser_split_ratio";
+        public static final float DEFAULT_VALUE_BROWSER_SPLIT_RATIO = 2f / 3f;
 
 
         /**

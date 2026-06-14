@@ -83,6 +83,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public float getBrowserSplitRatio() {
+        return SharedPreferenceUtils.getFloat(mSharedPreferences, TERMUX_APP.KEY_BROWSER_SPLIT_RATIO, TERMUX_APP.DEFAULT_VALUE_BROWSER_SPLIT_RATIO);
+    }
+
+    public void setBrowserSplitRatio(float value) {
+        SharedPreferenceUtils.setFloat(mSharedPreferences, TERMUX_APP.KEY_BROWSER_SPLIT_RATIO, value, false);
+    }
+
+
 
     public boolean isTerminalMarginAdjustmentEnabled() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_TERMINAL_MARGIN_ADJUSTMENT, TERMUX_APP.DEFAULT_TERMINAL_MARGIN_ADJUSTMENT);

@@ -18,6 +18,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.URLUtil;
@@ -29,6 +30,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.CheckBox;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -61,6 +63,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final String CHROME_PACKAGE_NAME = "com.android.chrome";
 
+    private static final float MIN_BROWSER_SPLIT_RATIO = 0.2f;
+
+    private static final float MAX_BROWSER_SPLIT_RATIO = 0.85f;
+
     private final TermuxActivity mActivity;
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
@@ -68,6 +74,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final WebView mWebView;
 
     private final View mBrowserContentContainer;
+
+    private final View mBrowserTerminalDivider;
+
+    private float mSplitDragStartRawY;
+
+    private int mSplitDragStartBrowserHeight;
+
+    private int mSplitDragTotalHeight;
 
     private final TextView mPageTitleUrlHeaderView;
 
@@ -107,6 +121,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mActivity = activity;
         this.mWebView = activity.findViewById(R.id.browser_web_view);
         this.mBrowserContentContainer = activity.findViewById(R.id.browser_content_container);
+        this.mBrowserTerminalDivider = activity.findViewById(R.id.browser_terminal_divider);
         this.mPageTitleUrlHeaderView = activity.findViewById(R.id.browser_page_title_url_header);
         this.mSwipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
         this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
@@ -118,6 +133,57 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureCookies();
         configureDrawerControls();
         configureProjectOverviewActions();
+        configureBrowserSplitDivider();
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void configureBrowserSplitDivider() {
+        mBrowserTerminalDivider.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    mSplitDragStartRawY = event.getRawY();
+                    mSplitDragStartBrowserHeight = mBrowserContentContainer.getHeight();
+                    mSplitDragTotalHeight = mSplitDragStartBrowserHeight + mActivity.getTerminalView().getHeight();
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (mSplitDragTotalHeight <= 0) return true;
+                    float draggedBrowserHeight = mSplitDragStartBrowserHeight + (event.getRawY() - mSplitDragStartRawY);
+                    applyBrowserSplitRatio(draggedBrowserHeight / mSplitDragTotalHeight);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    LinearLayout.LayoutParams browserParams =
+                        (LinearLayout.LayoutParams) mBrowserContentContainer.getLayoutParams();
+                    mActivity.getPreferences().setBrowserSplitRatio(clampBrowserSplitRatio(browserParams.weight));
+                    return true;
+                default:
+                    return false;
+            }
+        });
+    }
+
+    private void applyBrowserSplitRatio(float ratio) {
+        float clampedRatio = clampBrowserSplitRatio(ratio);
+        LinearLayout.LayoutParams browserParams =
+            (LinearLayout.LayoutParams) mBrowserContentContainer.getLayoutParams();
+        browserParams.height = 0;
+        browserParams.weight = clampedRatio;
+        mBrowserContentContainer.setLayoutParams(browserParams);
+        View terminalView = mActivity.getTerminalView();
+        LinearLayout.LayoutParams terminalParams =
+            (LinearLayout.LayoutParams) terminalView.getLayoutParams();
+        terminalParams.height = 0;
+        terminalParams.weight = 1f - clampedRatio;
+        terminalView.setLayoutParams(terminalParams);
+    }
+
+    private float clampBrowserSplitRatio(float ratio) {
+        return Math.max(MIN_BROWSER_SPLIT_RATIO, Math.min(MAX_BROWSER_SPLIT_RATIO, ratio));
+    }
+
+    private void showBrowserSplitDivider() {
+        applyBrowserSplitRatio(mActivity.getPreferences().getBrowserSplitRatio());
+        mBrowserTerminalDivider.setVisibility(View.VISIBLE);
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -582,6 +648,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         loadActiveTab();
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
+        showBrowserSplitDivider();
     }
 
     public void showTerminal() {
@@ -590,6 +657,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
         mBrowserContentContainer.setVisibility(View.GONE);
+        mBrowserTerminalDivider.setVisibility(View.GONE);
         updateProjectOverviewActionsVisibility();
     }
 
@@ -604,6 +672,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         loadActiveTab(browserWasHidden);
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
+        showBrowserSplitDivider();
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
     }

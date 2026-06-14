@@ -68,6 +68,7 @@
 
     <!-- In-app browser -->
     <string name="action_toggle_browser">Toggle browser</string>
+    <string name="action_resize_browser_terminal_split">Drag to resize the browser and terminal areas</string>
     <string name="action_browser_new_tab">New tab</string>
     <string name="action_browser_open_link_in_new_tab">Open in new tab</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>

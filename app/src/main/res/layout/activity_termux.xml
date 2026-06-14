@@ -142,6 +142,24 @@
                         </FrameLayout>
                     </LinearLayout>
 
+                    <LinearLayout
+                        android:id="@+id/browser_terminal_divider"
+                        android:layout_width="match_parent"
+                        android:layout_height="18dp"
+                        android:background="?attr/termuxActivityDrawerBackground"
+                        android:clickable="true"
+                        android:contentDescription="@string/action_resize_browser_terminal_split"
+                        android:focusable="false"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="40dp"
+                            android:layout_height="4dp"
+                            android:background="@drawable/browser_terminal_divider_handle" />
+                    </LinearLayout>
+
                     <com.termux.view.TerminalView
                         android:id="@+id/terminal_view"
                         android:layout_width="match_parent"
