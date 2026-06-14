@@ -29,6 +29,7 @@
         <item name="buttonBarButtonStyle">@style/TermuxActivity.Drawer.ButtonBarStyle.Dark</item>
         <item name="termuxActivityDrawerBackground">@color/black</item>
         <item name="termuxActivityDrawerImageTint">@color/white</item>
+        <item name="termuxActivityBottomSeparatorColor">@color/grey_800</item>
 
         <!-- Extra keys colors. -->
         <item name="extraKeysButtonTextColor">@color/white</item>
