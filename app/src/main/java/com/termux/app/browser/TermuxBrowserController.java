@@ -62,8 +62,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final String LOG_TAG = "TermuxBrowserController";
 
-    private static final String CHROME_PACKAGE_NAME = "com.android.chrome";
-
     private static final float MIN_BROWSER_SPLIT_RATIO = 0.2f;
 
     private static final float MAX_BROWSER_SPLIT_RATIO = 0.85f;
@@ -321,11 +319,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void showLinkContextMenu(@NonNull String linkUrl) {
         CharSequence[] actions = {
-            mActivity.getString(R.string.action_browser_open_link_in_new_tab)
+            mActivity.getString(R.string.action_browser_open_link_in_new_tab),
+            mActivity.getString(R.string.action_browser_open_in_chrome)
         };
         new AlertDialog.Builder(mActivity)
             .setTitle(linkUrl)
-            .setItems(actions, (dialog, which) -> openUrlInNewTab(linkUrl))
+            .setItems(actions, (dialog, which) -> {
+                if (which == 0) {
+                    openUrlInNewTab(linkUrl);
+                } else {
+                    ShareUtils.openUrlInChrome(mActivity, linkUrl);
+                }
+            })
             .show();
     }
 
@@ -491,13 +496,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
             return;
         }
-        Intent chromeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl));
-        chromeIntent.setPackage(CHROME_PACKAGE_NAME);
-        try {
-            mActivity.startActivity(chromeIntent);
-        } catch (ActivityNotFoundException e) {
-            ShareUtils.openUrl(mActivity, currentUrl);
-        }
+        ShareUtils.openUrlInChrome(mActivity, currentUrl);
     }
 
     private void configureProjectOverviewActions() {

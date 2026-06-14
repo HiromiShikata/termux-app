@@ -716,10 +716,9 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         final CharSequence[] urls = urlSet.toArray(new CharSequence[0]);
         Collections.reverse(Arrays.asList(urls)); // Latest first.
 
-        // Click to open url with the system handler (ACTION_VIEW):
         final AlertDialog dialog = new AlertDialog.Builder(mActivity).setItems(urls, (di, which) -> {
             String url = (String) urls[which];
-            ShareUtils.openUrl(mActivity, url);
+            showUrlOpenChoice(url);
         }).setTitle(R.string.title_select_url_dialog).setCancelable(true).create();
         dialog.setCanceledOnTouchOutside(true);
 
@@ -735,6 +734,29 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         });
 
         dialog.show();
+    }
+
+    private void showUrlOpenChoice(String url) {
+        CharSequence[] actions = {
+            mActivity.getString(R.string.action_open_url_in_app),
+            mActivity.getString(R.string.action_browser_open_in_chrome)
+        };
+        new AlertDialog.Builder(mActivity)
+            .setTitle(url)
+            .setItems(actions, (di, which) -> {
+                if (which == 0) {
+                    openUrlInApp(url);
+                } else {
+                    ShareUtils.openUrlInChrome(mActivity, url);
+                }
+            })
+            .show();
+    }
+
+    private void openUrlInApp(String url) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) return;
+        browserController.openUrlInNewTab(url);
     }
 
     public void reportIssueFromTranscript() {
