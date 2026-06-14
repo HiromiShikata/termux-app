@@ -486,6 +486,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void addNewSession(boolean isFailSafe, String sessionName) {
+        addNewSession(isFailSafe, sessionName, true);
+    }
+
+    public void addNewSession(boolean isFailSafe, String sessionName, boolean closeDrawerAfter) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
@@ -511,11 +515,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             setCurrentSession(newTerminalSession);
 
-            mActivity.getDrawer().closeDrawers();
+            if (closeDrawerAfter)
+                mActivity.getDrawer().closeDrawers();
         }
     }
 
     public void addNewAutosshSession(String sessionName, String command) {
+        addNewAutosshSession(sessionName, command, true);
+    }
+
+    public void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
@@ -542,7 +551,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             setCurrentSession(newTerminalSession);
 
-            mActivity.getDrawer().closeDrawers();
+            if (closeDrawerAfter)
+                mActivity.getDrawer().closeDrawers();
         }
     }
 

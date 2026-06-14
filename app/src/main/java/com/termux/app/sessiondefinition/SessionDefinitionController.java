@@ -88,13 +88,11 @@ public final class SessionDefinitionController {
 
         for (SessionDefinitionPlannedSession plannedSession : sessionsToCreate) {
             if (plannedSession.hasCommand()) {
-                activity.getTermuxTerminalSessionClient().addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand());
+                activity.getTermuxTerminalSessionClient().addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), false);
             } else {
-                activity.getTermuxTerminalSessionClient().addNewSession(false, plannedSession.getName());
+                activity.getTermuxTerminalSessionClient().addNewSession(false, plannedSession.getName(), false);
             }
         }
-
-        activity.getDrawer().closeDrawers();
     }
 
     private void removeProjectLinkedSessions(List<SessionDefinitionEntry> entries) {
