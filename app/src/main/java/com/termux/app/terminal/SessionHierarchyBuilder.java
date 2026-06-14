@@ -42,16 +42,14 @@ public final class SessionHierarchyBuilder {
         List<Integer> unmatchedSessionIndexes = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
             String sessionName = sessionNames.get(sessionIndex);
-            if (sessionName != null) {
-                if (sessionIndexByName.containsKey(sessionName)) {
-                    continue;
-                }
-                sessionIndexByName.put(sessionName, sessionIndex);
-            }
             if (isAlwaysNaSessionName(sessionName, alwaysNaSessionNames)
                     || (mMatcher.findEntryForSessionName(entries, sessionName) == null
                         && !isOrphanedProjectSessionName(sessionName))) {
                 unmatchedSessionIndexes.add(sessionIndex);
+                continue;
+            }
+            if (sessionName != null && !sessionIndexByName.containsKey(sessionName)) {
+                sessionIndexByName.put(sessionName, sessionIndex);
             }
         }
 
