@@ -231,15 +231,31 @@ public final class TerminalSession extends TerminalOutput {
         notifyScreenUpdate();
     }
 
+    static final int NO_SHELL_PROCESS_GROUP_TARGET = 0;
+
+    /**
+     * The {@code kill(2)} target that terminates the started shell's process group, or
+     * {@link #NO_SHELL_PROCESS_GROUP_TARGET} when no started shell owns one. Only a real shell pid
+     * greater than 1 owns a killable process group: passing {@code kill(2)} a target of 0 broadcasts
+     * SIGKILL to this app's own process group and a target of 1 addresses init.
+     */
+    static int shellProcessGroupKillTarget(int shellPid) {
+        if (shellPid > 1) {
+            return -shellPid;
+        }
+        return NO_SHELL_PROCESS_GROUP_TARGET;
+    }
+
     /** Finish this terminal session by sending SIGKILL to the shell process group. */
     public void finishIfRunning() {
-        if (isRunning()) {
-            int shellProcessGroupTarget = mShellPid > 1 ? -mShellPid : mShellPid;
-            try {
-                Os.kill(shellProcessGroupTarget, OsConstants.SIGKILL);
-            } catch (ErrnoException e) {
-                Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL to process group: " + e.getMessage());
-            }
+        int shellProcessGroupTarget = shellProcessGroupKillTarget(mShellPid);
+        if (shellProcessGroupTarget == NO_SHELL_PROCESS_GROUP_TARGET) {
+            return;
+        }
+        try {
+            Os.kill(shellProcessGroupTarget, OsConstants.SIGKILL);
+        } catch (ErrnoException e) {
+            Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL to process group: " + e.getMessage());
         }
     }
 
