@@ -1,10 +1,14 @@
 package com.termux.app.terminal;
 
 import android.content.Context;
+import android.graphics.drawable.ColorDrawable;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+
+import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.terminal.TermuxSessionsListViewController.SessionRowActiveIndicator;
@@ -123,5 +127,65 @@ public class TermuxSessionsListViewControllerTest {
         Assert.assertNotNull(activeIndicatorBar);
         Assert.assertNotNull(sessionTitle);
         Assert.assertEquals(View.GONE, activeIndicatorBar.getVisibility());
+    }
+
+    @Test
+    public void currentSessionRowUsesTheCurrentSessionHighlightBackground() {
+        Assert.assertEquals(R.drawable.current_session,
+            TermuxSessionsListViewController.sessionRowBackgroundRes(true, false));
+        Assert.assertEquals(R.drawable.current_session_black,
+            TermuxSessionsListViewController.sessionRowBackgroundRes(true, true));
+    }
+
+    @Test
+    public void nonCurrentSessionRowUsesTheNormalRippleBackground() {
+        Assert.assertEquals(R.drawable.session_ripple,
+            TermuxSessionsListViewController.sessionRowBackgroundRes(false, false));
+        Assert.assertEquals(R.drawable.session_ripple_black,
+            TermuxSessionsListViewController.sessionRowBackgroundRes(false, true));
+    }
+
+    @Test
+    public void projectHeaderBackgroundIsDistinctFromTheListSurface() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        Assert.assertTrue(projectHeader.getBackground() instanceof ColorDrawable);
+        int headerColor = ((ColorDrawable) projectHeader.getBackground()).getColor();
+        Assert.assertEquals(ContextCompat.getColor(context, com.termux.shared.R.color.schema_surface_elevated), headerColor);
+        Assert.assertNotEquals(ContextCompat.getColor(context, com.termux.shared.R.color.schema_surface), headerColor);
+    }
+
+    @Test
+    public void projectHeaderHasSymmetricVerticalPadding() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        Assert.assertEquals(projectHeader.getPaddingTop(), projectHeader.getPaddingBottom());
+    }
+
+    private static Context themedContext() {
+        return new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
+            R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+    }
+
+    @Test
+    public void storyHeaderHasSymmetricVerticalPadding() {
+        Context context = RuntimeEnvironment.getApplication();
+        View storyHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_story_header, new FrameLayout(context), false);
+
+        Assert.assertEquals(storyHeader.getPaddingTop(), storyHeader.getPaddingBottom());
+    }
+
+    @Test
+    public void sessionRowDoesNotReserveAForcedMinimumHeightSoUntitledRowsStayCompact() {
+        Context context = RuntimeEnvironment.getApplication();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        Assert.assertEquals(0, row.getMinimumHeight());
     }
 }
