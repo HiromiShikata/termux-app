@@ -423,6 +423,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     public void startPeriodicRefresh() {
         mPeriodicRefreshHandler.removeCallbacks(mPeriodicRefreshRunnable);
+        notifyDataSetChanged();
         mPeriodicRefreshHandler.postDelayed(mPeriodicRefreshRunnable, RELATIVE_TIME_REFRESH_INTERVAL_MS);
     }
 
