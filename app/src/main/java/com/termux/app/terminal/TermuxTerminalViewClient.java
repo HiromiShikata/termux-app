@@ -720,7 +720,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         final AlertDialog dialog = new AlertDialog.Builder(mActivity).setItems(urls, (di, which) -> {
             String url = (String) urls[which];
             ShareUtils.openUrl(mActivity, url);
-        }).setTitle(R.string.title_select_url_dialog).create();
+        }).setTitle(R.string.title_select_url_dialog).setCancelable(true).create();
+        dialog.setCanceledOnTouchOutside(true);
 
         // Long press to copy URL to clipboard:
         dialog.setOnShowListener(di -> {
