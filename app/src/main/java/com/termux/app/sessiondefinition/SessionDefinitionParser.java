@@ -18,8 +18,10 @@ public final class SessionDefinitionParser {
 
     private static final String VERSION_TWO_INDEX_SUFFIX = ".v2.json";
     private static final String VERSION_THREE_INDEX_SUFFIX = ".v3.json";
+    private static final String VERSION_FOUR_INDEX_SUFFIX = ".v4.json";
     private static final String DEFAULT_PROJECT_FILE_SUFFIX = ".json";
     private static final int VERSION_THREE = 3;
+    private static final int VERSION_FOUR = 4;
 
     public List<SessionDefinitionGroupReference> parseIndex(String json) throws JSONException {
         return parseIndex(json, null);
@@ -30,6 +32,15 @@ public final class SessionDefinitionParser {
         JSONObject root = new JSONObject(json);
         JSONArray projects = root.getJSONArray("projects");
         int version = root.optInt("version", 0);
+        if (isVersionFourIndex(indexUrl, version)) {
+            for (int i = 0; i < projects.length(); i++) {
+                JSONObject project = projects.getJSONObject(i);
+                String name = project.getString("name");
+                String path = project.getString("path");
+                references.add(new SessionDefinitionGroupReference(name, path));
+            }
+            return references;
+        }
         String projectFileSuffix = projectFileSuffix(indexUrl, version);
         for (int i = 0; i < projects.length(); i++) {
             String name = projects.getString(i);
@@ -43,17 +54,19 @@ public final class SessionDefinitionParser {
         if (root instanceof JSONObject) {
             JSONObject projectObject = (JSONObject) root;
             String overviewUrl = nonEmptyOrNull(projectObject.optString("overviewUrl", null));
+            String tdpmConsoleUrl = nonEmptyOrNull(projectObject.optString("tdpmConsoleUrl", null));
             JSONArray groupArray = projectObject.getJSONArray("groups");
-            return parseEntryArray(groupLabel, groupArray, overviewUrl);
+            return parseEntryArray(groupLabel, groupArray, overviewUrl, tdpmConsoleUrl);
         }
         if (root instanceof JSONArray) {
-            return parseEntryArray(groupLabel, (JSONArray) root, null);
+            return parseEntryArray(groupLabel, (JSONArray) root, null, null);
         }
         throw new JSONException("Unexpected session definition group document");
     }
 
     private List<SessionDefinitionEntry> parseEntryArray(String groupLabel, JSONArray entryArray,
-                                                         @Nullable String overviewUrl) throws JSONException {
+                                                         @Nullable String overviewUrl,
+                                                         @Nullable String tdpmConsoleUrl) throws JSONException {
         List<SessionDefinitionEntry> entries = new ArrayList<>();
         for (int i = 0; i < entryArray.length(); i++) {
             JSONObject entry = entryArray.getJSONObject(i);
@@ -75,13 +88,24 @@ public final class SessionDefinitionParser {
                     urls.add(urlArray.getString(j));
                 }
             }
-            entries.add(new SessionDefinitionEntry(groupLabel, entryLabel, urls, titlesByUrl, overviewUrl));
+            entries.add(new SessionDefinitionEntry(groupLabel, entryLabel, urls, titlesByUrl, overviewUrl,
+                tdpmConsoleUrl));
         }
         return entries;
     }
 
     public String resolveUrl(String baseUrl, String reference) throws MalformedURLException {
         return new URL(new URL(baseUrl), reference).toString();
+    }
+
+    private static boolean isVersionFourIndex(@Nullable String indexUrl, int version) {
+        return version == VERSION_FOUR || (indexUrl != null && hasVersionFourSuffix(indexUrl));
+    }
+
+    private static boolean hasVersionFourSuffix(String indexUrl) {
+        int queryStart = indexUrl.indexOf('?');
+        String path = queryStart >= 0 ? indexUrl.substring(0, queryStart) : indexUrl;
+        return path.endsWith(VERSION_FOUR_INDEX_SUFFIX);
     }
 
     private static String projectFileSuffix(@Nullable String indexUrl, int version) {

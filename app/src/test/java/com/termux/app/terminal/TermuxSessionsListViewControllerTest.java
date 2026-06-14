@@ -24,23 +24,23 @@ import org.robolectric.RuntimeEnvironment;
 public class TermuxSessionsListViewControllerTest {
 
     @Test
-    public void hidesProjectOverviewBrowserIconWhenNoOverviewActionIsProvided() {
+    public void hidesProjectHeaderIconWhenNoActionIsProvided() {
         ImageView icon = new ImageView(RuntimeEnvironment.getApplication());
         icon.setVisibility(View.VISIBLE);
 
-        TermuxSessionsListViewController.applyProjectOverviewBrowserIconVisibility(icon, null);
+        TermuxSessionsListViewController.applyProjectHeaderIconVisibility(icon, null);
 
         Assert.assertEquals(View.GONE, icon.getVisibility());
         Assert.assertFalse(icon.hasOnClickListeners());
     }
 
     @Test
-    public void showsProjectOverviewBrowserIconAndInvokesActionOnClickWhenOverviewActionIsProvided() {
+    public void showsProjectHeaderIconAndInvokesActionOnClickWhenActionIsProvided() {
         ImageView icon = new ImageView(RuntimeEnvironment.getApplication());
         icon.setVisibility(View.GONE);
         boolean[] opened = {false};
 
-        TermuxSessionsListViewController.applyProjectOverviewBrowserIconVisibility(icon, () -> opened[0] = true);
+        TermuxSessionsListViewController.applyProjectHeaderIconVisibility(icon, () -> opened[0] = true);
 
         Assert.assertEquals(View.VISIBLE, icon.getVisibility());
         Assert.assertTrue(icon.hasOnClickListeners());
@@ -48,6 +48,21 @@ public class TermuxSessionsListViewControllerTest {
         icon.performClick();
 
         Assert.assertTrue(opened[0]);
+    }
+
+    @Test
+    public void projectHeaderLayoutHostsADistinctTdpmConsoleIconNextToTheOverviewIcon() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
+        View tdpmConsoleIcon = projectHeader.findViewById(R.id.session_project_header_tdpm_console_icon);
+
+        Assert.assertNotNull(overviewIcon);
+        Assert.assertNotNull(tdpmConsoleIcon);
+        Assert.assertNotEquals(overviewIcon.getId(), tdpmConsoleIcon.getId());
+        Assert.assertEquals(View.GONE, tdpmConsoleIcon.getVisibility());
     }
 
     @Test

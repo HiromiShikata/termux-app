@@ -106,6 +106,7 @@
     <string name="hint_always_na_session_names">One session name per line</string>
     <string name="action_always_na_session_names_config_save">Save</string>
     <string name="action_open_project_overview">Open project overview</string>
+    <string name="action_open_project_tdpm_console">Open project TDPM console</string>
 
     <string name="action_open_crash_log_viewer">Crash log</string>
     <string name="title_crash_log_viewer">Crash log</string>
