@@ -305,13 +305,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String sessionTitle = sessionAtRow.getTitle();
         String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
 
-        String numberPart = "[" + (sessionIndex + 1) + "] ";
         String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
-        String namePart = numberPart + sessionNamePart;
 
         String bellNotificationLabelPart = buildBellNotificationLabel(sessionAtRow);
 
-        StringBuilder fullSessionTitleBuilder = new StringBuilder(namePart);
+        StringBuilder fullSessionTitleBuilder = new StringBuilder(sessionNamePart);
         int bellNotificationLabelStart = -1;
         int bellNotificationLabelEnd = -1;
         if (!bellNotificationLabelPart.isEmpty()) {
@@ -344,9 +342,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        fullSessionTitleStyled.setSpan(boldSpan, 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        fullSessionTitleStyled.setSpan(boldSpan, 0, sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (activeIndicator.useAccentNameColor) {
-            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), 0, sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (bellNotificationLabelStart >= 0) {
             fullSessionTitleStyled.setSpan(italicSpan, bellNotificationLabelStart, bellNotificationLabelEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
