@@ -350,6 +350,35 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
+    public void projectHeaderCarriesTdpmConsoleUrlFromEntriesThatProvideIt() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a"),
+                Collections.emptyMap(), "https://github.com/HiromiShikata/projects/7",
+                "https://example.test/tdpm-console?k=TESTKEY"));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "projectOne");
+        Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", rows.get(0).getTdpmConsoleUrl());
+    }
+
+    @Test
+    public void projectHeaderHasNoTdpmConsoleUrlWhenEntriesProvideNone() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a"),
+                Collections.emptyMap(), "https://github.com/HiromiShikata/projects/7"));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "projectOne");
+        Assert.assertNull(rows.get(0).getTdpmConsoleUrl());
+    }
+
+    @Test
     public void forcesSessionNamedInAlwaysNaSetIntoNaBucketEvenWhenItMatchesAProject() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",

@@ -218,6 +218,82 @@ public class SessionDefinitionParserTest {
     }
 
     @Test
+    public void parseIndexReadsVersionFourProjectsAsObjectsWithNameAndPathReference() throws JSONException {
+        String json = "{\"version\":4,\"projects\":["
+            + "{\"name\":\"umino\",\"path\":\"/in-tmux-by-human/umino.v4.json?k=TESTKEY\"},"
+            + "{\"name\":\"xmile\",\"path\":\"/in-tmux-by-human/xmile.v4.json?k=TESTKEY\"}"
+            + "]}";
+
+        List<SessionDefinitionGroupReference> references = parser.parseIndex(json);
+
+        Assert.assertEquals(2, references.size());
+        Assert.assertEquals("umino", references.get(0).getLabel());
+        Assert.assertEquals("/in-tmux-by-human/umino.v4.json?k=TESTKEY", references.get(0).getUrl());
+        Assert.assertEquals("xmile", references.get(1).getLabel());
+        Assert.assertEquals("/in-tmux-by-human/xmile.v4.json?k=TESTKEY", references.get(1).getUrl());
+    }
+
+    @Test
+    public void parseIndexReadsVersionFourProjectsAsObjectsWhenIndexUrlIsVersionFourWithQueryKey() throws JSONException {
+        String json = "{\"projects\":["
+            + "{\"name\":\"umino\",\"path\":\"umino.v4.json?k=TESTKEY\"}"
+            + "]}";
+
+        List<SessionDefinitionGroupReference> references =
+            parser.parseIndex(json, "https://example.test/base/index.v4.json?k=TESTKEY");
+
+        Assert.assertEquals(1, references.size());
+        Assert.assertEquals("umino", references.get(0).getLabel());
+        Assert.assertEquals("umino.v4.json?k=TESTKEY", references.get(0).getUrl());
+    }
+
+    @Test
+    public void parseGroupReadsVersionFourObjectWithOverviewUrlTdpmConsoleUrlAndGroups() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"tdpmConsoleUrl\":\"https://example.test/tdpm-console?k=TESTKEY\","
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":["
+            + "{\"url\":\"https://example.test/a1\",\"title\":\"Task A\"}"
+            + "]},"
+            + "{\"story\":\"story-two\",\"urls\":[\"https://example.test/b1\"]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(2, entries.size());
+        SessionDefinitionEntry first = entries.get(0);
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", first.getOverviewUrl());
+        Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", first.getTdpmConsoleUrl());
+        Assert.assertEquals("Task A", first.getTitleForUrl("https://example.test/a1"));
+        SessionDefinitionEntry second = entries.get(1);
+        Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", second.getTdpmConsoleUrl());
+    }
+
+    @Test
+    public void parseGroupTreatsMissingOrEmptyTdpmConsoleUrlAsNoTdpmConsoleUrl() throws JSONException {
+        String missingJson = "{\"version\":4,\"overviewUrl\":\"https://example.test/o\",\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"
+            + "]}";
+        String emptyJson = "{\"version\":4,\"tdpmConsoleUrl\":\"\",\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"
+            + "]}";
+
+        Assert.assertNull(parser.parseGroup("umino", missingJson).get(0).getTdpmConsoleUrl());
+        Assert.assertNull(parser.parseGroup("umino", emptyJson).get(0).getTdpmConsoleUrl());
+    }
+
+    @Test
+    public void parseGroupLeavesTdpmConsoleUrlNullForVersionOneAndTwoArrays() throws JSONException {
+        String json = "[{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        Assert.assertNull(entries.get(0).getTdpmConsoleUrl());
+    }
+
+    @Test
     public void resolveUrlResolvesRelativeReferenceAgainstBase() throws Exception {
         String resolved = parser.resolveUrl("https://example.test/base/index.json", "groups/first.json");
         Assert.assertEquals("https://example.test/base/groups/first.json", resolved);
@@ -227,5 +303,21 @@ public class SessionDefinitionParserTest {
     public void resolveUrlKeepsAbsoluteReference() throws Exception {
         String resolved = parser.resolveUrl("https://example.test/base/index.json", "https://other.test/first.json");
         Assert.assertEquals("https://other.test/first.json", resolved);
+    }
+
+    @Test
+    public void resolveUrlPreservesQueryKeyOnAbsolutePathReference() throws Exception {
+        String resolved = parser.resolveUrl(
+            "https://example.test/in-tmux-by-human/index.v4.json?k=TESTKEY",
+            "/in-tmux-by-human/umino.v4.json?k=TESTKEY");
+        Assert.assertEquals("https://example.test/in-tmux-by-human/umino.v4.json?k=TESTKEY", resolved);
+    }
+
+    @Test
+    public void resolveUrlPreservesQueryKeyOnRelativeReference() throws Exception {
+        String resolved = parser.resolveUrl(
+            "https://example.test/in-tmux-by-human/index.v4.json?k=TESTKEY",
+            "umino.v4.json?k=TESTKEY");
+        Assert.assertEquals("https://example.test/in-tmux-by-human/umino.v4.json?k=TESTKEY", resolved);
     }
 }

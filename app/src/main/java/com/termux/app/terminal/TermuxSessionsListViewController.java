@@ -224,6 +224,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                     R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
                 bindProjectCollapseIndicator(projectHeaderView, row);
                 bindProjectOverviewBrowserIcon(projectHeaderView, row);
+                bindProjectTdpmConsoleIcon(projectHeaderView, row);
                 return projectHeaderView;
             case STORY_HEADER:
                 return getHeaderView(row, convertView, parent,
@@ -260,19 +261,28 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String overviewUrl = row.getOverviewUrl();
         Runnable openAction = (overviewUrl == null || overviewUrl.isEmpty())
             ? null
-            : () -> openProjectOverview(overviewUrl);
-        applyProjectOverviewBrowserIconVisibility(overviewBrowserIconView, openAction);
+            : () -> openProjectUrlInNewTab(overviewUrl);
+        applyProjectHeaderIconVisibility(overviewBrowserIconView, openAction);
     }
 
-    static void applyProjectOverviewBrowserIconVisibility(@NonNull View overviewBrowserIconView,
-                                                          @Nullable Runnable openAction) {
+    private void bindProjectTdpmConsoleIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
+        View tdpmConsoleIconView = projectHeaderView.findViewById(R.id.session_project_header_tdpm_console_icon);
+        String tdpmConsoleUrl = row.getTdpmConsoleUrl();
+        Runnable openAction = (tdpmConsoleUrl == null || tdpmConsoleUrl.isEmpty())
+            ? null
+            : () -> openProjectUrlInNewTab(tdpmConsoleUrl);
+        applyProjectHeaderIconVisibility(tdpmConsoleIconView, openAction);
+    }
+
+    static void applyProjectHeaderIconVisibility(@NonNull View projectHeaderIconView,
+                                                 @Nullable Runnable openAction) {
         if (openAction == null) {
-            overviewBrowserIconView.setVisibility(View.GONE);
-            overviewBrowserIconView.setOnClickListener(null);
+            projectHeaderIconView.setVisibility(View.GONE);
+            projectHeaderIconView.setOnClickListener(null);
             return;
         }
-        overviewBrowserIconView.setVisibility(View.VISIBLE);
-        overviewBrowserIconView.setOnClickListener(v -> openAction.run());
+        projectHeaderIconView.setVisibility(View.VISIBLE);
+        projectHeaderIconView.setOnClickListener(v -> openAction.run());
     }
 
     static void applyActiveIndicatorBarVisibility(@NonNull View activeIndicatorBar, boolean showAccentBar,
@@ -286,12 +296,12 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
     }
 
-    private void openProjectOverview(@NonNull String overviewUrl) {
+    private void openProjectUrlInNewTab(@NonNull String url) {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) {
             return;
         }
-        browserController.openUrlInNewTab(overviewUrl);
+        browserController.openUrlInNewTab(url);
     }
 
     @SuppressLint("SetTextI18n")

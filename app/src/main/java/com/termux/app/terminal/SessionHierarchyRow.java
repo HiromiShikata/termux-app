@@ -15,33 +15,36 @@ public final class SessionHierarchyRow {
     private final String label;
     private final int sessionIndex;
     private final String overviewUrl;
+    private final String tdpmConsoleUrl;
 
     private SessionHierarchyRow(@NonNull Type type, @Nullable String label, int sessionIndex,
-                               @Nullable String overviewUrl) {
+                               @Nullable String overviewUrl, @Nullable String tdpmConsoleUrl) {
         this.type = type;
         this.label = label;
         this.sessionIndex = sessionIndex;
         this.overviewUrl = overviewUrl;
+        this.tdpmConsoleUrl = tdpmConsoleUrl;
     }
 
     @NonNull
     public static SessionHierarchyRow projectHeader(@NonNull String label) {
-        return projectHeader(label, null);
+        return projectHeader(label, null, null);
     }
 
     @NonNull
-    public static SessionHierarchyRow projectHeader(@NonNull String label, @Nullable String overviewUrl) {
-        return new SessionHierarchyRow(Type.PROJECT_HEADER, label, -1, overviewUrl);
+    public static SessionHierarchyRow projectHeader(@NonNull String label, @Nullable String overviewUrl,
+                                                    @Nullable String tdpmConsoleUrl) {
+        return new SessionHierarchyRow(Type.PROJECT_HEADER, label, -1, overviewUrl, tdpmConsoleUrl);
     }
 
     @NonNull
     public static SessionHierarchyRow storyHeader(@NonNull String label) {
-        return new SessionHierarchyRow(Type.STORY_HEADER, label, -1, null);
+        return new SessionHierarchyRow(Type.STORY_HEADER, label, -1, null, null);
     }
 
     @NonNull
     public static SessionHierarchyRow session(int sessionIndex) {
-        return new SessionHierarchyRow(Type.SESSION, null, sessionIndex, null);
+        return new SessionHierarchyRow(Type.SESSION, null, sessionIndex, null, null);
     }
 
     @NonNull
@@ -65,5 +68,10 @@ public final class SessionHierarchyRow {
     @Nullable
     public String getOverviewUrl() {
         return overviewUrl;
+    }
+
+    @Nullable
+    public String getTdpmConsoleUrl() {
+        return tdpmConsoleUrl;
     }
 }

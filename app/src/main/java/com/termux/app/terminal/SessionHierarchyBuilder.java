@@ -54,10 +54,15 @@ public final class SessionHierarchyBuilder {
         }
 
         Map<String, String> overviewUrlByProject = new LinkedHashMap<>();
+        Map<String, String> tdpmConsoleUrlByProject = new LinkedHashMap<>();
         for (SessionDefinitionEntry entry : entries) {
             String overviewUrl = entry.getOverviewUrl();
             if (overviewUrl != null && !overviewUrlByProject.containsKey(entry.getGroupLabel())) {
                 overviewUrlByProject.put(entry.getGroupLabel(), overviewUrl);
+            }
+            String tdpmConsoleUrl = entry.getTdpmConsoleUrl();
+            if (tdpmConsoleUrl != null && !tdpmConsoleUrlByProject.containsKey(entry.getGroupLabel())) {
+                tdpmConsoleUrlByProject.put(entry.getGroupLabel(), tdpmConsoleUrl);
             }
         }
 
@@ -91,7 +96,8 @@ public final class SessionHierarchyBuilder {
             }
         }
         for (Map.Entry<String, Map<String, List<Integer>>> project : sessionIndexesByProjectAndStory.entrySet()) {
-            rows.add(SessionHierarchyRow.projectHeader(project.getKey(), overviewUrlByProject.get(project.getKey())));
+            rows.add(SessionHierarchyRow.projectHeader(project.getKey(),
+                overviewUrlByProject.get(project.getKey()), tdpmConsoleUrlByProject.get(project.getKey())));
             for (Map.Entry<String, List<Integer>> story : project.getValue().entrySet()) {
                 rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
                 for (int sessionIndex : story.getValue()) {
