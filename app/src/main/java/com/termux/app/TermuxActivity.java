@@ -1,7 +1,6 @@
 package com.termux.app;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -9,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.ContextMenu;
@@ -39,7 +37,6 @@ import com.termux.shared.activity.media.AppCompatActivityUtils;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
-import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.sessiondefinition.HttpSessionDefinitionDocumentFetcher;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
@@ -47,7 +44,6 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionLoader;
 import com.termux.app.sessiondefinition.SessionDefinitionParser;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
-import com.termux.app.activities.HelpActivity;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
@@ -206,13 +202,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_SEND_SELECTED_TEXT_TO_TERMINAL = 12;
     private static final int CONTEXT_MENU_AUTOFILL_USERNAME = 11;
     private static final int CONTEXT_MENU_AUTOFILL_PASSWORD = 2;
-    private static final int CONTEXT_MENU_RESET_TERMINAL_ID = 3;
-    private static final int CONTEXT_MENU_KILL_PROCESS_ID = 4;
-    private static final int CONTEXT_MENU_STYLING_ID = 5;
-    private static final int CONTEXT_MENU_TOGGLE_KEEP_SCREEN_ON = 6;
-    private static final int CONTEXT_MENU_HELP_ID = 7;
-    private static final int CONTEXT_MENU_SETTINGS_ID = 8;
-    private static final int CONTEXT_MENU_REPORT_ID = 9;
     private static final int CONTEXT_MENU_TRANSLATE_SELECTED_TEXT = 13;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
@@ -781,13 +770,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_USERNAME, Menu.NONE, R.string.action_autofill_username);
         if (autoFillEnabled)
             menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_PASSWORD, Menu.NONE, R.string.action_autofill_password);
-        menu.add(Menu.NONE, CONTEXT_MENU_RESET_TERMINAL_ID, Menu.NONE, R.string.action_reset_terminal);
-        menu.add(Menu.NONE, CONTEXT_MENU_KILL_PROCESS_ID, Menu.NONE, getResources().getString(R.string.action_kill_process, getCurrentSession().getPid())).setEnabled(currentSession.isRunning());
-        menu.add(Menu.NONE, CONTEXT_MENU_STYLING_ID, Menu.NONE, R.string.action_style_terminal);
-        menu.add(Menu.NONE, CONTEXT_MENU_TOGGLE_KEEP_SCREEN_ON, Menu.NONE, R.string.action_toggle_keep_screen_on).setCheckable(true).setChecked(mPreferences.shouldKeepScreenOn());
-        menu.add(Menu.NONE, CONTEXT_MENU_HELP_ID, Menu.NONE, R.string.action_open_help);
-        menu.add(Menu.NONE, CONTEXT_MENU_SETTINGS_ID, Menu.NONE, R.string.action_open_settings);
-        menu.add(Menu.NONE, CONTEXT_MENU_REPORT_ID, Menu.NONE, R.string.action_report_issue);
     }
 
     /** Hook system menu to show context menu instead. */
@@ -822,27 +804,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 return true;
             case CONTEXT_MENU_AUTOFILL_PASSWORD:
                 mTerminalView.requestAutoFillPassword();
-                return true;
-            case CONTEXT_MENU_RESET_TERMINAL_ID:
-                onResetTerminalSession(session);
-                return true;
-            case CONTEXT_MENU_KILL_PROCESS_ID:
-                showKillSessionDialog(session);
-                return true;
-            case CONTEXT_MENU_STYLING_ID:
-                showStylingDialog();
-                return true;
-            case CONTEXT_MENU_TOGGLE_KEEP_SCREEN_ON:
-                toggleKeepScreenOn();
-                return true;
-            case CONTEXT_MENU_HELP_ID:
-                ActivityUtils.startActivity(this, new Intent(this, HelpActivity.class));
-                return true;
-            case CONTEXT_MENU_SETTINGS_ID:
-                ActivityUtils.startActivity(this, new Intent(this, SettingsActivity.class));
-                return true;
-            case CONTEXT_MENU_REPORT_ID:
-                mTermuxTerminalViewClient.reportIssueFromTranscript();
                 return true;
             default:
                 return super.onContextItemSelected(item);
@@ -909,56 +870,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (DataUtils.isNullOrEmpty(selectedText)) return;
         session.getEmulator().paste(selectedText);
     }
-
-    private void showKillSessionDialog(TerminalSession session) {
-        if (session == null) return;
-
-        final AlertDialog.Builder b = new AlertDialog.Builder(this);
-        b.setIcon(android.R.drawable.ic_dialog_alert);
-        b.setMessage(R.string.title_confirm_kill_process);
-        b.setPositiveButton(android.R.string.yes, (dialog, id) -> {
-            dialog.dismiss();
-            session.finishIfRunning();
-        });
-        b.setNegativeButton(android.R.string.no, null);
-        b.show();
-    }
-
-    private void onResetTerminalSession(TerminalSession session) {
-        if (session != null) {
-            session.reset();
-            showToast(getResources().getString(R.string.msg_terminal_reset), true);
-
-            if (mTermuxTerminalSessionActivityClient != null)
-                mTermuxTerminalSessionActivityClient.onResetTerminalSession();
-        }
-    }
-
-    private void showStylingDialog() {
-        Intent stylingIntent = new Intent();
-        stylingIntent.setClassName(TermuxConstants.TERMUX_STYLING_PACKAGE_NAME, TermuxConstants.TERMUX_STYLING_APP.TERMUX_STYLING_ACTIVITY_NAME);
-        try {
-            startActivity(stylingIntent);
-        } catch (ActivityNotFoundException | IllegalArgumentException e) {
-            // The startActivity() call is not documented to throw IllegalArgumentException.
-            // However, crash reporting shows that it sometimes does, so catch it here.
-            new AlertDialog.Builder(this).setMessage(getString(R.string.error_styling_not_installed))
-                .setPositiveButton(R.string.action_styling_install,
-                    (dialog, which) -> ActivityUtils.startActivity(this, new Intent(Intent.ACTION_VIEW, Uri.parse(TermuxConstants.TERMUX_STYLING_FDROID_PACKAGE_URL))))
-                .setNegativeButton(android.R.string.cancel, null).show();
-        }
-    }
-    private void toggleKeepScreenOn() {
-        if (mTerminalView.getKeepScreenOn()) {
-            mTerminalView.setKeepScreenOn(false);
-            mPreferences.setKeepScreenOn(false);
-        } else {
-            mTerminalView.setKeepScreenOn(true);
-            mPreferences.setKeepScreenOn(true);
-        }
-    }
-
-
 
     /**
      * For processes to access primary external storage (/sdcard, /storage/emulated/0, ~/storage/shared),

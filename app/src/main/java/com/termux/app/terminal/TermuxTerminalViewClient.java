@@ -97,6 +97,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
      * Should be called when mActivity.onStart() is called
      */
     public void onStart() {
+        mActivity.getTerminalView().setKeepScreenOn(mActivity.getPreferences().shouldKeepScreenOn());
+
         // Set {@link TerminalView#TERMINAL_VIEW_KEY_LOGGING_ENABLED} value
         // Also required if user changed the preference from {@link TermuxSettings} activity and returns
         boolean isTerminalViewKeyLoggingEnabled = mActivity.getPreferences().isTerminalViewKeyLoggingEnabled();

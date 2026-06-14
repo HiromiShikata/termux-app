@@ -10,6 +10,12 @@
             app:summaryOn="@string/termux_terminal_view_terminal_margin_adjustment_on"
             app:title="@string/termux_terminal_view_terminal_margin_adjustment_title" />
 
+        <SwitchPreferenceCompat
+            app:key="screen_always_on"
+            app:summaryOff="@string/termux_terminal_view_keep_screen_on_off"
+            app:summaryOn="@string/termux_terminal_view_keep_screen_on_on"
+            app:title="@string/action_toggle_keep_screen_on" />
+
     </PreferenceCategory>
 
 </PreferenceScreen>

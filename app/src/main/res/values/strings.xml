@@ -133,18 +133,10 @@
     <string name="action_autofill_username">Autofill username</string>
     <string name="action_autofill_password">Autofill password</string>
 
-    <string name="action_reset_terminal">Reset</string>
-    <string name="msg_terminal_reset">Terminal reset</string>
-
-    <string name="action_kill_process">Kill process (%d)</string>
-    <string name="title_confirm_kill_process">Really kill this session?</string>
-
     <string name="action_style_terminal">Style</string>
     <string name="action_toggle_keep_screen_on">Keep screen on</string>
-    <string name="action_open_help">Help</string>
     <string name="action_open_settings">Settings</string>
 
-    <string name="action_report_issue">Report Issue</string>
     <string name="msg_generating_report">Generating Report</string>
     <string name="msg_add_termux_debug_info">Add termux debug info to report?</string>
 
@@ -259,6 +251,10 @@
                 <string name="termux_terminal_view_terminal_margin_adjustment_on">Terminal margin adjustment will be enabled.
                     It should be enabled to try to fix the issue where soft keyboard covers part of extra keys/terminal view.
                     If it causes screen flickering on your devices, then disable it. (Default)</string>
+
+                <!-- Keep Screen On -->
+                <string name="termux_terminal_view_keep_screen_on_off">The screen will turn off automatically after the device timeout.</string>
+                <string name="termux_terminal_view_keep_screen_on_on">The screen will stay on while the terminal is open.</string>
 
 
 
