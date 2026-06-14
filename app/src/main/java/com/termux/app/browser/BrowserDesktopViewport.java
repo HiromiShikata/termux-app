@@ -4,7 +4,7 @@ import androidx.annotation.Nullable;
 
 public final class BrowserDesktopViewport {
 
-    public static final int LAYOUT_WIDTH_CSS_PX = 1024;
+    public static final int LAYOUT_WIDTH_CSS_PX = 1280;
 
     public static final String INJECTION_SCRIPT =
         "(function(){"
