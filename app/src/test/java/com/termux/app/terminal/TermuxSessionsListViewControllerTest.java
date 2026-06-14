@@ -82,6 +82,36 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void staleRowIndexBeyondShrunkenSessionListIsTreatedAsOutOfRange() {
+        int sessionCountAfterDelete = 1;
+        int staleRowSessionIndex = 1;
+
+        Assert.assertFalse(
+            TermuxSessionsListViewController.isSessionIndexInRange(staleRowSessionIndex, sessionCountAfterDelete));
+    }
+
+    @Test
+    public void negativeSessionIndexIsTreatedAsOutOfRange() {
+        Assert.assertFalse(TermuxSessionsListViewController.isSessionIndexInRange(-1, 3));
+    }
+
+    @Test
+    public void anySessionIndexIsOutOfRangeWhenSessionListIsEmpty() {
+        Assert.assertFalse(TermuxSessionsListViewController.isSessionIndexInRange(0, 0));
+    }
+
+    @Test
+    public void sessionIndexWithinTheLiveSessionListIsInRange() {
+        Assert.assertTrue(TermuxSessionsListViewController.isSessionIndexInRange(0, 2));
+        Assert.assertTrue(TermuxSessionsListViewController.isSessionIndexInRange(1, 2));
+    }
+
+    @Test
+    public void sessionIndexEqualToSessionCountIsOutOfRange() {
+        Assert.assertFalse(TermuxSessionsListViewController.isSessionIndexInRange(2, 2));
+    }
+
+    @Test
     public void sessionRowLayoutHostsTheActiveIndicatorBarHiddenByDefaultAlongsideTheTitle() {
         Context context = RuntimeEnvironment.getApplication();
         View row = LayoutInflater.from(context)

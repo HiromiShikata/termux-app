@@ -231,13 +231,14 @@ public final class TerminalSession extends TerminalOutput {
         notifyScreenUpdate();
     }
 
-    /** Finish this terminal session by sending SIGKILL to the shell. */
+    /** Finish this terminal session by sending SIGKILL to the shell process group. */
     public void finishIfRunning() {
         if (isRunning()) {
+            int shellProcessGroupTarget = mShellPid > 1 ? -mShellPid : mShellPid;
             try {
-                Os.kill(mShellPid, OsConstants.SIGKILL);
+                Os.kill(shellProcessGroupTarget, OsConstants.SIGKILL);
             } catch (ErrnoException e) {
-                Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL: " + e.getMessage());
+                Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL to process group: " + e.getMessage());
             }
         }
     }
