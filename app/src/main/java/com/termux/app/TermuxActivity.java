@@ -214,6 +214,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_REPORT_ID = 9;
     private static final int CONTEXT_MENU_TRANSLATE_SELECTED_TEXT = 13;
 
+    static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
+
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
     private static final String ARG_ACTIVITY_RECREATED = "activity_recreated";
 
@@ -846,11 +848,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         String selectedText = mTerminalView.getStoredSelectedText();
         if (DataUtils.isNullOrEmpty(selectedText)) return;
 
-        Intent processTextIntent = new Intent(Intent.ACTION_PROCESS_TEXT);
-        processTextIntent.setType("text/plain");
-        processTextIntent.putExtra(Intent.EXTRA_PROCESS_TEXT, selectedText);
-        processTextIntent.putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true);
+        if (startGoogleTranslate(selectedText)) return;
 
+        Intent processTextIntent = createProcessTextIntent(selectedText);
         if (processTextIntent.resolveActivity(getPackageManager()) == null) {
             showToast(getString(R.string.msg_no_translation_app_found), true);
             return;
@@ -861,6 +861,33 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         } catch (ActivityNotFoundException e) {
             showToast(getString(R.string.msg_no_translation_app_found), true);
         }
+    }
+
+    private boolean startGoogleTranslate(String selectedText) {
+        Intent googleTranslateIntent = createGoogleTranslateProcessTextIntent(selectedText);
+        if (googleTranslateIntent.resolveActivity(getPackageManager()) == null) return false;
+
+        try {
+            startActivity(googleTranslateIntent);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to launch Google Translate directly for selected text translation", e);
+            return false;
+        }
+    }
+
+    static Intent createProcessTextIntent(String selectedText) {
+        Intent processTextIntent = new Intent(Intent.ACTION_PROCESS_TEXT);
+        processTextIntent.setType("text/plain");
+        processTextIntent.putExtra(Intent.EXTRA_PROCESS_TEXT, selectedText);
+        processTextIntent.putExtra(Intent.EXTRA_PROCESS_TEXT_READONLY, true);
+        return processTextIntent;
+    }
+
+    static Intent createGoogleTranslateProcessTextIntent(String selectedText) {
+        Intent googleTranslateIntent = createProcessTextIntent(selectedText);
+        googleTranslateIntent.setPackage(GOOGLE_TRANSLATE_PACKAGE_NAME);
+        return googleTranslateIntent;
     }
 
     private void sendSelectedTextToTerminal(TerminalSession session) {
