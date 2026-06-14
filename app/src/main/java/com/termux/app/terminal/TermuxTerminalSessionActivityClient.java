@@ -29,6 +29,7 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.PersistedSession;
+import com.termux.app.terminal.tts.SpeakTagTtsController;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
@@ -36,7 +37,9 @@ import com.termux.app.TermuxService;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.terminal.io.BellHandler;
 import com.termux.shared.logger.Logger;
+import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalColors;
+import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 import com.termux.terminal.TextStyle;
@@ -144,7 +147,29 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onTextChanged(@NonNull TerminalSession changedSession) {
         if (!mActivity.isVisible()) return;
 
-        if (mActivity.getCurrentSession() == changedSession) mActivity.getTerminalView().onScreenUpdated();
+        if (mActivity.getCurrentSession() == changedSession) {
+            mActivity.getTerminalView().onScreenUpdated();
+            readSpeakTagsForSession(changedSession);
+        }
+    }
+
+    private void readSpeakTagsForSession(TerminalSession session) {
+        if (session == null) return;
+
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        SpeakTagTtsController speakTagTtsController = service.getSpeakTagTtsController();
+        if (speakTagTtsController == null) return;
+        if (!speakTagTtsController.isAutoReadEnabled()) return;
+
+        TerminalEmulator emulator = session.getEmulator();
+        if (emulator == null) return;
+
+        TerminalBuffer screen = emulator.getScreen();
+        if (screen == null) return;
+
+        speakTagTtsController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
     }
 
     @Override
@@ -170,6 +195,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.finishActivityIfNotFinishing();
             return;
         }
+
+        if (service.getSpeakTagTtsController() != null)
+            service.getSpeakTagTtsController().forgetSession(finishedSession.mHandle);
 
         int index = service.getIndexOfSession(finishedSession);
 
@@ -348,6 +376,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionChanged(session);
+
+        readSpeakTagsForSession(session);
 
         updateSessionNameOverlay();
     }
