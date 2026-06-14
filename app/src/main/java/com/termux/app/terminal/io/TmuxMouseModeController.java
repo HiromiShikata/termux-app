@@ -15,11 +15,11 @@ public final class TmuxMouseModeController {
         return new String[]{"set", "-g", "mouse", targetEnabled ? "on" : "off"};
     }
 
-    public static boolean parseShowMouseOutput(String output, boolean fallbackEnabled) {
-        if (output == null) return fallbackEnabled;
+    public static Boolean parseMouseState(String output) {
+        if (output == null) return null;
         String trimmed = output.trim();
-        if ("on".equals(trimmed)) return true;
-        if ("off".equals(trimmed)) return false;
-        return fallbackEnabled;
+        if ("on".equals(trimmed)) return Boolean.TRUE;
+        if ("off".equals(trimmed)) return Boolean.FALSE;
+        return null;
     }
 }
