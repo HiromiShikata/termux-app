@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.Handler;
@@ -29,6 +30,7 @@ import android.webkit.WebViewClient;
 import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -41,6 +43,7 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
+import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
@@ -60,6 +63,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserTabManager mTabManager = new BrowserTabManager();
 
     private final WebView mWebView;
+
+    private final View mBrowserContentContainer;
+
+    private final TextView mPageTitleUrlHeaderView;
 
     private final SwipeRefreshLayout mSwipeRefreshLayout;
 
@@ -94,6 +101,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
         this.mWebView = activity.findViewById(R.id.browser_web_view);
+        this.mBrowserContentContainer = activity.findViewById(R.id.browser_content_container);
+        this.mPageTitleUrlHeaderView = activity.findViewById(R.id.browser_page_title_url_header);
         this.mSwipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
         this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
@@ -131,6 +140,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     loadingTab.setUrl(url);
                     notifyTabsUpdated();
                 }
+                updatePageHeader();
                 applyDesktopViewport(view, loadingTab);
             }
 
@@ -153,7 +163,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     loadingTab.setTitle(view.getTitle());
                     notifyTabsUpdated();
                 }
+                updatePageHeader();
                 applyDesktopViewport(view, loadingTab);
+            }
+
+            @Override
+            public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+                BrowserTab loadingTab = mDisplayedTab;
+                if (loadingTab != null) {
+                    loadingTab.setUrl(url);
+                    notifyTabsUpdated();
+                }
+                updatePageHeader();
             }
 
             @Override
@@ -177,6 +198,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 } else {
                     hidePageLoadProgress();
                 }
+            }
+
+            @Override
+            public void onReceivedTitle(WebView view, String title) {
+                BrowserTab loadingTab = mDisplayedTab;
+                if (loadingTab != null) {
+                    loadingTab.setTitle(title);
+                    notifyTabsUpdated();
+                }
+                updatePageHeader();
             }
         });
 
@@ -257,6 +288,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void hidePageLoadProgress() {
         mPageLoadProgressBar.setVisibility(View.GONE);
+    }
+
+    private void updatePageHeader() {
+        BrowserTab displayedTab = mDisplayedTab;
+        String headerText = (displayedTab == null)
+            ? ""
+            : BrowserPageHeaderText.format(displayedTab.getTitle(), displayedTab.getUrl());
+        mPageTitleUrlHeaderView.setText(headerText);
+        boolean darkTheme =
+            ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
+        mPageTitleUrlHeaderView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
     }
 
     private void enqueueDownload(@Nullable String url, @Nullable String userAgent,
@@ -482,7 +524,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         mBrowserVisible = true;
         loadActiveTab();
-        mSwipeRefreshLayout.setVisibility(View.VISIBLE);
+        updatePageHeader();
+        mBrowserContentContainer.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
     }
 
@@ -491,7 +534,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
-        mSwipeRefreshLayout.setVisibility(View.GONE);
+        mBrowserContentContainer.setVisibility(View.GONE);
         mActivity.getTerminalView().setVisibility(View.VISIBLE);
     }
 
@@ -504,7 +547,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
         loadActiveTab(browserWasHidden);
-        mSwipeRefreshLayout.setVisibility(View.VISIBLE);
+        updatePageHeader();
+        mBrowserContentContainer.setVisibility(View.VISIBLE);
         mActivity.getTerminalView().setVisibility(View.GONE);
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
@@ -576,6 +620,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             showWebViewCover();
         }
         mDisplayedTab = activeTab;
+        updatePageHeader();
         mWebView.loadUrl(targetUrl);
     }
 
