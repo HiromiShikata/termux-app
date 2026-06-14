@@ -134,6 +134,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return SessionHierarchyBuilder.firstSessionIndex(buildAllRows());
     }
 
+    public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
+        return SessionHierarchyBuilder.nextVisibleSessionIndex(
+            SessionHierarchyBuilder.visibleSessionIndexes(mRows), currentSessionIndex, forward);
+    }
+
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {
         return sessionIndex >= 0 && sessionIndex < sessionCount;
     }

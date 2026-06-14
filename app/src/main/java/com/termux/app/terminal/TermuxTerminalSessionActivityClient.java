@@ -462,17 +462,31 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         TerminalSession currentTerminalSession = mActivity.getCurrentSession();
-        int index = service.getIndexOfSession(currentTerminalSession);
-        int size = service.getTermuxSessionsSize();
+        int currentIndex = service.getIndexOfSession(currentTerminalSession);
+        int targetIndex = nextVisibleSessionIndexForSwitch(service, currentIndex, forward);
+
+        TermuxSession termuxSession = service.getTermuxSession(targetIndex);
+        if (termuxSession != null)
+            setCurrentSession(termuxSession.getTerminalSession());
+    }
+
+    private int nextVisibleSessionIndexForSwitch(TermuxService service, int currentIndex, boolean forward) {
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController != null) {
+            int visibleIndex = listViewController.getNextVisibleSessionIndex(currentIndex, forward);
+            if (visibleIndex >= 0) return visibleIndex;
+        }
+        return wrapAroundSessionIndex(currentIndex, service.getTermuxSessionsSize(), forward);
+    }
+
+    static int wrapAroundSessionIndex(int currentIndex, int size, boolean forward) {
+        int index = currentIndex;
         if (forward) {
             if (++index >= size) index = 0;
         } else {
             if (--index < 0) index = size - 1;
         }
-
-        TermuxSession termuxSession = service.getTermuxSession(index);
-        if (termuxSession != null)
-            setCurrentSession(termuxSession.getTerminalSession());
+        return index;
     }
 
     public void switchToSession(int index) {

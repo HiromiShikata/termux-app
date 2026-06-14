@@ -118,6 +118,59 @@ public final class SessionHierarchyBuilder {
     }
 
     @NonNull
+    public static List<Integer> visibleSessionIndexes(@NonNull List<SessionHierarchyRow> visibleRows) {
+        List<Integer> sessionIndexes = new ArrayList<>();
+        for (SessionHierarchyRow row : visibleRows) {
+            if (!row.isHeader()) {
+                sessionIndexes.add(row.getSessionIndex());
+            }
+        }
+        return sessionIndexes;
+    }
+
+    public static int nextVisibleSessionIndex(@NonNull List<Integer> visibleSessionIndexes,
+                                              int currentSessionIndex, boolean forward) {
+        if (visibleSessionIndexes.isEmpty()) {
+            return -1;
+        }
+        int currentPosition = visibleSessionIndexes.indexOf(currentSessionIndex);
+        if (currentPosition >= 0) {
+            int size = visibleSessionIndexes.size();
+            int nextPosition = forward
+                ? (currentPosition + 1) % size
+                : (currentPosition - 1 + size) % size;
+            return visibleSessionIndexes.get(nextPosition);
+        }
+        return nearestVisibleSessionIndex(visibleSessionIndexes, currentSessionIndex, forward);
+    }
+
+    private static int nearestVisibleSessionIndex(@NonNull List<Integer> visibleSessionIndexes,
+                                                  int currentSessionIndex, boolean forward) {
+        Integer wrapCandidate = null;
+        Integer directionalCandidate = null;
+        for (int sessionIndex : visibleSessionIndexes) {
+            if (forward) {
+                if (sessionIndex > currentSessionIndex
+                        && (directionalCandidate == null || sessionIndex < directionalCandidate)) {
+                    directionalCandidate = sessionIndex;
+                }
+                if (wrapCandidate == null || sessionIndex < wrapCandidate) {
+                    wrapCandidate = sessionIndex;
+                }
+            } else {
+                if (sessionIndex < currentSessionIndex
+                        && (directionalCandidate == null || sessionIndex > directionalCandidate)) {
+                    directionalCandidate = sessionIndex;
+                }
+                if (wrapCandidate == null || sessionIndex > wrapCandidate) {
+                    wrapCandidate = sessionIndex;
+                }
+            }
+        }
+        return directionalCandidate != null ? directionalCandidate : wrapCandidate;
+    }
+
+    @NonNull
     public List<SessionHierarchyRow> filterCollapsedProjects(@NonNull List<SessionHierarchyRow> rows,
                                                              @NonNull Set<String> collapsedProjectKeys) {
         if (collapsedProjectKeys.isEmpty()) {

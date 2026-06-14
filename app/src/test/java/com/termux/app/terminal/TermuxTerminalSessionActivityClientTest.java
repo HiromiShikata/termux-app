@@ -34,4 +34,28 @@ public class TermuxTerminalSessionActivityClientTest {
         Assert.assertNull(
             TermuxTerminalSessionActivityClient.resolveSessionNameForCopy("", ""));
     }
+
+    @Test
+    public void wrapAroundSessionIndexAdvancesForwardWithinRange() {
+        Assert.assertEquals(2,
+            TermuxTerminalSessionActivityClient.wrapAroundSessionIndex(1, 3, true));
+    }
+
+    @Test
+    public void wrapAroundSessionIndexWrapsToZeroPastTheEnd() {
+        Assert.assertEquals(0,
+            TermuxTerminalSessionActivityClient.wrapAroundSessionIndex(2, 3, true));
+    }
+
+    @Test
+    public void wrapAroundSessionIndexStepsBackwardWithinRange() {
+        Assert.assertEquals(0,
+            TermuxTerminalSessionActivityClient.wrapAroundSessionIndex(1, 3, false));
+    }
+
+    @Test
+    public void wrapAroundSessionIndexWrapsToLastBeforeTheStart() {
+        Assert.assertEquals(2,
+            TermuxTerminalSessionActivityClient.wrapAroundSessionIndex(0, 3, false));
+    }
 }
