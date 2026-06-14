@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -116,7 +117,7 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void sessionRowLayoutHostsTheActiveIndicatorBarHiddenByDefaultAlongsideTheTitle() {
+    public void sessionRowLayoutHostsTheActiveIndicatorBarReservingItsGutterByDefaultAlongsideTheTitle() {
         Context context = RuntimeEnvironment.getApplication();
         View row = LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
@@ -126,7 +127,31 @@ public class TermuxSessionsListViewControllerTest {
 
         Assert.assertNotNull(activeIndicatorBar);
         Assert.assertNotNull(sessionTitle);
-        Assert.assertEquals(View.GONE, activeIndicatorBar.getVisibility());
+        Assert.assertEquals(View.INVISIBLE, activeIndicatorBar.getVisibility());
+    }
+
+    @Test
+    public void currentSessionRowShowsTheAccentColoredIndicatorBar() {
+        View activeIndicatorBar = new View(RuntimeEnvironment.getApplication());
+        int accentColor = 0xFF8AB4C8;
+
+        TermuxSessionsListViewController.applyActiveIndicatorBarVisibility(activeIndicatorBar, true, accentColor);
+
+        Assert.assertEquals(View.VISIBLE, activeIndicatorBar.getVisibility());
+        Assert.assertTrue(activeIndicatorBar.getBackground() instanceof ColorDrawable);
+        Assert.assertEquals(accentColor, ((ColorDrawable) activeIndicatorBar.getBackground()).getColor());
+    }
+
+    @Test
+    public void nonCurrentSessionRowKeepsTheIndicatorBarInvisibleSoItStillReservesTheGutter() {
+        View activeIndicatorBar = new View(RuntimeEnvironment.getApplication());
+        int accentColor = 0xFF8AB4C8;
+
+        TermuxSessionsListViewController.applyActiveIndicatorBarVisibility(activeIndicatorBar, false, accentColor);
+
+        Assert.assertEquals(View.INVISIBLE, activeIndicatorBar.getVisibility());
+        Assert.assertTrue(activeIndicatorBar.getBackground() instanceof ColorDrawable);
+        Assert.assertEquals(Color.TRANSPARENT, ((ColorDrawable) activeIndicatorBar.getBackground()).getColor());
     }
 
     @Test
