@@ -93,8 +93,11 @@ public final class TerminalView extends View {
     private float mScrollThumbCornerRadiusPx;
     private int mScrollThumbGrabExtraPx;
     private boolean mScrollThumbDragging;
+    private boolean mScrollThumbDraggingRelative;
+    private float mScrollThumbDragLastY;
+    private float mScrollThumbRelativeDragRemainder;
     private int mScrollThumbAlpha;
-    private static final int SCROLL_THUMB_ALPHA_IDLE = 0;
+    private static final int SCROLL_THUMB_ALPHA_IDLE = 60;
     private static final int SCROLL_THUMB_ALPHA_VISIBLE = 200;
     private static final int SCROLL_THUMB_ALPHA_DRAGGING = 255;
     private static final long SCROLL_THUMB_AUTO_HIDE_DELAY_MS = 1500;
@@ -296,6 +299,7 @@ public final class TerminalView extends View {
         mScrollThumbCornerRadiusPx = thumbWidthPx / 2f;
         mScrollThumbGrabExtraPx = Math.round(16 * density);
         mScrollController = new TerminalScrollController(thumbWidthPx, trackPaddingPx, minThumbHeightPx);
+        mScrollThumbAlpha = SCROLL_THUMB_ALPHA_IDLE;
         mScrollThumbPaint.setColor(0xFFCCCCCC);
         AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
         mAccessibilityEnabled = am.isEnabled();
@@ -1091,14 +1095,22 @@ public final class TerminalView extends View {
     private void renderScrollThumb(Canvas canvas) {
         if (mScrollThumbAlpha <= 0) return;
         int transcriptRows = mEmulator.getScreen().getActiveTranscriptRows();
-        if (!mScrollController.isScrollable(transcriptRows)) return;
-        int visibleRows = mEmulator.mRows;
-        int totalRows = mEmulator.getScreen().getActiveRows();
+        boolean alternateScreenActive = mEmulator.isAlternateBufferActive();
+        if (!mScrollController.shouldRenderControl(transcriptRows, alternateScreenActive)) return;
         int viewWidth = getWidth();
         int viewHeight = getHeight();
         int thumbLeft = mScrollController.getThumbLeftPx(viewWidth);
-        int thumbTop = mScrollController.getThumbTopPx(viewHeight, visibleRows, totalRows, mTopRow, transcriptRows);
-        int thumbHeight = mScrollController.getThumbHeightPx(viewHeight, visibleRows, totalRows);
+        int thumbTop;
+        int thumbHeight;
+        if (mScrollController.isScrollable(transcriptRows)) {
+            int visibleRows = mEmulator.mRows;
+            int totalRows = mEmulator.getScreen().getActiveRows();
+            thumbTop = mScrollController.getThumbTopPx(viewHeight, visibleRows, totalRows, mTopRow, transcriptRows);
+            thumbHeight = mScrollController.getThumbHeightPx(viewHeight, visibleRows, totalRows);
+        } else {
+            thumbTop = mScrollController.getRelativeThumbTopPx(viewHeight);
+            thumbHeight = mScrollController.getRelativeThumbHeightPx(viewHeight);
+        }
         mScrollThumbRect.set(thumbLeft, thumbTop, thumbLeft + mScrollController.getThumbWidthPx(), thumbTop + thumbHeight);
         mScrollThumbPaint.setAlpha(mScrollThumbAlpha);
         canvas.drawRoundRect(mScrollThumbRect, mScrollThumbCornerRadiusPx, mScrollThumbCornerRadiusPx, mScrollThumbPaint);
@@ -1106,7 +1118,7 @@ public final class TerminalView extends View {
 
     private void showScrollThumb() {
         if (mEmulator == null) return;
-        if (!mScrollController.isScrollable(mEmulator.getScreen().getActiveTranscriptRows())) return;
+        if (!mScrollController.shouldRenderControl(mEmulator.getScreen().getActiveTranscriptRows(), mEmulator.isAlternateBufferActive())) return;
         mScrollThumbHandler.removeCallbacks(mScrollThumbAutoHideRunnable);
         if (mScrollThumbAlpha != SCROLL_THUMB_ALPHA_VISIBLE && !mScrollThumbDragging) {
             mScrollThumbAlpha = SCROLL_THUMB_ALPHA_VISIBLE;
@@ -1119,14 +1131,30 @@ public final class TerminalView extends View {
     private boolean handleScrollThumbTouchEvent(MotionEvent event) {
         if (mEmulator == null) return false;
         int transcriptRows = mEmulator.getScreen().getActiveTranscriptRows();
+        boolean alternateScreenActive = mEmulator.isAlternateBufferActive();
+        boolean absoluteScrollable = mScrollController.isScrollable(transcriptRows);
         int visibleRows = mEmulator.mRows;
         int totalRows = mEmulator.getScreen().getActiveRows();
         int viewWidth = getWidth();
         int viewHeight = getHeight();
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                if (mScrollController.isWithinThumbGrabArea(viewWidth, viewHeight, visibleRows, totalRows, mTopRow, transcriptRows, event.getX(), event.getY(), mScrollThumbGrabExtraPx)) {
+                if (absoluteScrollable
+                    && mScrollController.isWithinThumbGrabArea(viewWidth, viewHeight, visibleRows, totalRows, mTopRow, transcriptRows, event.getX(), event.getY(), mScrollThumbGrabExtraPx)) {
                     mScrollThumbDragging = true;
+                    mScrollThumbDraggingRelative = false;
+                    mScrollThumbHandler.removeCallbacks(mScrollThumbAutoHideRunnable);
+                    mScrollThumbAlpha = SCROLL_THUMB_ALPHA_DRAGGING;
+                    if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+                    invalidate();
+                    return true;
+                }
+                if (!absoluteScrollable && alternateScreenActive
+                    && mScrollController.isWithinRelativeThumbGrabArea(viewWidth, viewHeight, event.getX(), event.getY(), mScrollThumbGrabExtraPx)) {
+                    mScrollThumbDragging = true;
+                    mScrollThumbDraggingRelative = true;
+                    mScrollThumbDragLastY = event.getY();
+                    mScrollThumbRelativeDragRemainder = 0f;
                     mScrollThumbHandler.removeCallbacks(mScrollThumbAutoHideRunnable);
                     mScrollThumbAlpha = SCROLL_THUMB_ALPHA_DRAGGING;
                     if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
@@ -1136,6 +1164,20 @@ public final class TerminalView extends View {
                 return false;
             case MotionEvent.ACTION_MOVE:
                 if (!mScrollThumbDragging) return false;
+                if (mScrollThumbDraggingRelative) {
+                    float dragDelta = (event.getY() - mScrollThumbDragLastY) + mScrollThumbRelativeDragRemainder;
+                    int rowHeightPx = mRenderer.mFontLineSpacing;
+                    int wheelSteps = mScrollController.wheelStepsForDragDelta(dragDelta, rowHeightPx);
+                    if (wheelSteps != 0) {
+                        mScrollThumbRelativeDragRemainder = dragDelta - (float) wheelSteps * rowHeightPx;
+                        mScrollThumbDragLastY = event.getY();
+                        doScroll(event, wheelSteps);
+                    } else {
+                        mScrollThumbRelativeDragRemainder = dragDelta;
+                        mScrollThumbDragLastY = event.getY();
+                    }
+                    return true;
+                }
                 int targetTopRow = mScrollController.topRowForThumbCenter(viewHeight, visibleRows, totalRows, event.getY(), transcriptRows);
                 if (targetTopRow != mTopRow) {
                     mTopRow = targetTopRow;
@@ -1148,6 +1190,7 @@ public final class TerminalView extends View {
             case MotionEvent.ACTION_CANCEL:
                 if (!mScrollThumbDragging) return false;
                 mScrollThumbDragging = false;
+                mScrollThumbDraggingRelative = false;
                 mScrollThumbAlpha = SCROLL_THUMB_ALPHA_VISIBLE;
                 mScrollThumbHandler.postDelayed(mScrollThumbAutoHideRunnable, SCROLL_THUMB_AUTO_HIDE_DELAY_MS);
                 if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
