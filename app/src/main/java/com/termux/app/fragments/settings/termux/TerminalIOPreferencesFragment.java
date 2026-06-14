@@ -63,6 +63,9 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             case "speak_tag_auto_read_enabled":
                 mPreferences.setSpeakTagAutoReadEnabled(value);
                 break;
+            case "volume_keys_switch_sessions_enabled":
+                mPreferences.setVolumeKeysSwitchSessionsEnabled(value);
+                break;
             default:
                 break;
         }
@@ -79,6 +82,8 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
                 return mPreferences.isSoftKeyboardEnabledOnlyIfNoHardware();
             case "speak_tag_auto_read_enabled":
                 return mPreferences.isSpeakTagAutoReadEnabled();
+            case "volume_keys_switch_sessions_enabled":
+                return mPreferences.isVolumeKeysSwitchSessionsEnabled();
             default:
                 return false;
         }
