@@ -285,5 +285,7 @@
 
     <!-- Update APK Preference -->
     <string name="update_apk_preference_title">Update APK</string>
+    <string name="update_apk_preference_summary">Download the artifact named %1$s</string>
+    <string name="update_apk_open_builds_button">Open latest builds</string>
 
 </resources>

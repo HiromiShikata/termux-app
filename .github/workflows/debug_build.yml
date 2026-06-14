@@ -94,7 +94,7 @@ jobs:
       - name: Attach arm64-v8a APK file
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ env.APK_BASENAME_PREFIX }}_arm64-v8a
+          name: ${{ matrix.package_variant == 'apt-android-7' && 'termux-app-RECOMMENDED-INSTALL-THIS-arm64-v8a' || format('{0}_arm64-v8a', env.APK_BASENAME_PREFIX) }}
           path: |
             ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_arm64-v8a.apk
             ${{ env.APK_DIR_PATH }}/output-metadata.json
@@ -162,9 +162,8 @@ jobs:
             const suiteId = run.check_suite_id;
             const makeUrl = (a) => `https://github.com/${context.repo.owner}/${context.repo.repo}/suites/${suiteId}/artifacts/${a.id}`;
 
-            const arm64Artifact = artifacts
-              .filter(a => a.name.includes('apt-android-7') && a.name.endsWith('_arm64-v8a'))
-              .sort((a, b) => a.name.localeCompare(b.name))[0];
+            const recommendedArtifactName = 'termux-app-RECOMMENDED-INSTALL-THIS-arm64-v8a';
+            const arm64Artifact = artifacts.find(a => a.name === recommendedArtifactName);
 
             const startMarker = '<!-- apk-artifact-links -->';
             const endMarker = '<!-- /apk-artifact-links -->';
