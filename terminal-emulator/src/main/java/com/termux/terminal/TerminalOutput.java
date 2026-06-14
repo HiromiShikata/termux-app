@@ -27,6 +27,9 @@ public abstract class TerminalOutput {
     /** Notify the terminal client that a bell character (ASCII 7, bell, BEL, \a, ^G)) has been received. */
     public abstract void onBell();
 
+    /** Notify the client that an invisible OSC completion marker (OSC 9999;claude-done) was received. */
+    public abstract void onMarkerNotification();
+
     public abstract void onColorsChanged();
 
 }

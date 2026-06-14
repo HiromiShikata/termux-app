@@ -94,6 +94,12 @@ public final class TerminalEmulator {
     /** Needs to be large enough to contain reasonable OSC 52 pastes. */
     private static final int MAX_OSC_STRING_LENGTH = 8192;
 
+    /** Private OSC code carrying the invisible completion marker. */
+    private static final int MARKER_OSC_CODE = 9999;
+
+    /** Payload token required on {@link #MARKER_OSC_CODE} for the marker to fire. */
+    private static final String MARKER_OSC_PAYLOAD = "claude-done";
+
     /** DECSET 1 - application cursor keys. */
     private static final int DECSET_BIT_APPLICATION_CURSOR_KEYS = 1;
     private static final int DECSET_BIT_REVERSE_VIDEO = 1 << 1;
@@ -2147,6 +2153,11 @@ public final class TerminalEmulator {
                 mSession.onColorsChanged();
                 break;
             case 119: // Reset highlight color.
+                break;
+            case MARKER_OSC_CODE:
+                if (MARKER_OSC_PAYLOAD.equals(textParameter)) {
+                    mSession.onMarkerNotification();
+                }
                 break;
             default:
                 unknownParameter(value);
