@@ -25,4 +25,41 @@ public class BrowserDesktopViewportTest {
     public void injectionScriptCreatesViewportMetaWhenMissing() {
         Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT.contains("createElement('meta')"));
     }
+
+    @Test
+    public void injectionScriptReappliesOnSiteViewportChanges() {
+        Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT.contains("MutationObserver"));
+        Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT.contains(".observe(document.documentElement"));
+    }
+
+    @Test
+    public void injectionScriptForcesEveryViewportMeta() {
+        Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT
+            .contains("querySelectorAll('meta[name=\"viewport\"]')"));
+    }
+
+    @Test
+    public void injectionScriptSkipsRewriteWhenAlreadyDesktopWidth() {
+        Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT
+            .contains("getAttribute('content')!==desktopContent"));
+    }
+
+    @Test
+    public void appliesToDesktopModeTab() {
+        BrowserTab tab = new BrowserTab("session", "https://github.com/");
+        Assert.assertTrue(tab.isDesktopMode());
+        Assert.assertTrue(BrowserDesktopViewport.appliesTo(tab));
+    }
+
+    @Test
+    public void doesNotApplyToMobileModeTab() {
+        BrowserTab tab = new BrowserTab("session", "https://github.com/");
+        tab.setDesktopMode(false);
+        Assert.assertFalse(BrowserDesktopViewport.appliesTo(tab));
+    }
+
+    @Test
+    public void doesNotApplyToNullTab() {
+        Assert.assertFalse(BrowserDesktopViewport.appliesTo(null));
+    }
 }
