@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
@@ -9,10 +10,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 public final class SessionHierarchyBuilder {
+
+    private static final String HTTP_SCHEME_PREFIX = "http://";
+    private static final String HTTPS_SCHEME_PREFIX = "https://";
 
     private final SessionDefinitionEntryMatcher mMatcher = new SessionDefinitionEntryMatcher();
 
@@ -34,7 +39,8 @@ public final class SessionHierarchyBuilder {
                 }
                 sessionIndexByName.put(sessionName, sessionIndex);
             }
-            if (mMatcher.findEntryForSessionName(entries, sessionName) == null) {
+            if (mMatcher.findEntryForSessionName(entries, sessionName) == null
+                    && !isOrphanedProjectSessionName(sessionName)) {
                 unmatchedSessionIndexes.add(sessionIndex);
             }
         }
@@ -111,6 +117,15 @@ public final class SessionHierarchyBuilder {
             }
         }
         return visibleRows;
+    }
+
+    private static boolean isOrphanedProjectSessionName(@Nullable String sessionName) {
+        if (sessionName == null) {
+            return false;
+        }
+        String normalizedSessionName = sessionName.trim().toLowerCase(Locale.ROOT);
+        return normalizedSessionName.startsWith(HTTP_SCHEME_PREFIX)
+            || normalizedSessionName.startsWith(HTTPS_SCHEME_PREFIX);
     }
 
     @NonNull

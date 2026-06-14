@@ -105,6 +105,39 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
+    public void dropsOrphanedProjectUrlSessionsWhilePlacingAdHocSessionsUnderNa() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "https://example.test/dropped", "manual-session"),
+            entries, NA);
+
+        Assert.assertEquals(5, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 2);
+        assertProjectHeader(rows.get(2), "projectOne");
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
+    }
+
+    @Test
+    public void omitsNaHeaderWhenEveryUnmatchedSessionIsAnOrphanedProjectUrl() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "https://example.test/dropped"), entries, NA);
+
+        Assert.assertEquals(3, rows.size());
+        assertProjectHeader(rows.get(0), "projectOne");
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+    }
+
+    @Test
     public void ordersProjectSectionByDataStoryOrderWithTopStoryFirstRegardlessOfSessionOrder() {
         List<SessionDefinitionEntry> entries = Arrays.asList(
             new SessionDefinitionEntry("projectOne", "storyTop",
