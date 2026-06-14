@@ -275,6 +275,17 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         overviewBrowserIconView.setOnClickListener(v -> openAction.run());
     }
 
+    static void applyActiveIndicatorBarVisibility(@NonNull View activeIndicatorBar, boolean showAccentBar,
+                                                  int activeIndicatorColor) {
+        if (showAccentBar) {
+            activeIndicatorBar.setBackgroundColor(activeIndicatorColor);
+            activeIndicatorBar.setVisibility(View.VISIBLE);
+        } else {
+            activeIndicatorBar.setBackgroundColor(Color.TRANSPARENT);
+            activeIndicatorBar.setVisibility(View.INVISIBLE);
+        }
+    }
+
     private void openProjectOverview(@NonNull String overviewUrl) {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) {
@@ -320,12 +331,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         int activeIndicatorColor = ContextCompat.getColor(mActivity,
             shouldEnableDarkTheme ? R.color.session_active_indicator_dark : R.color.session_active_indicator_light);
         View activeIndicatorBar = sessionRowView.findViewById(R.id.session_active_indicator_bar);
-        if (activeIndicator.showAccentBar) {
-            activeIndicatorBar.setBackgroundColor(activeIndicatorColor);
-            activeIndicatorBar.setVisibility(View.VISIBLE);
-        } else {
-            activeIndicatorBar.setVisibility(View.GONE);
-        }
+        applyActiveIndicatorBarVisibility(activeIndicatorBar, activeIndicator.showAccentBar, activeIndicatorColor);
 
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
