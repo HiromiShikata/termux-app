@@ -249,12 +249,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         mActivity.getSessionBellNotificationStore().recordBell(session.mHandle, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
-
-        // The activity is bound but the bell came from a session the user is not currently viewing.
-        // Post a system notification so the bell surfaces even while the user is in another session or app.
-        TermuxService service = mActivity.getTermuxService();
-        if (service != null)
-            service.showSessionBellNotification(session);
     }
 
     private void clearBellNotification(@NonNull TerminalSession session) {

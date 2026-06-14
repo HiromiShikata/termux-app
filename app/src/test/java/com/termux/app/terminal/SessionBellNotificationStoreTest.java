@@ -65,6 +65,15 @@ public class SessionBellNotificationStoreTest {
     }
 
     @Test
+    public void recordingAgainForSameHandleUpdatesArrivalTime() {
+        SessionBellNotificationStore store = new SessionBellNotificationStore();
+        store.recordBell("handle-one", 1_000L);
+        store.recordBell("handle-one", 5_000L);
+
+        Assert.assertEquals(Long.valueOf(5_000L), store.getBellArrivalTimeMillis("handle-one"));
+    }
+
+    @Test
     public void tracksNotificationsForDistinctHandlesIndependently() {
         SessionBellNotificationStore store = new SessionBellNotificationStore();
         store.recordBell("handle-one", 1_000L);

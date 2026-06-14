@@ -25,9 +25,6 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     public void onBell(@NonNull TerminalSession session) {
         if (session.mHandle == null) return;
         mService.getSessionBellNotificationStore().recordBell(session.mHandle, System.currentTimeMillis());
-        // The activity is not bound (stopped or destroyed), so every session driven by this client is a
-        // background session. Post a system notification so the bell surfaces even with Termux backgrounded.
-        mService.showSessionBellNotification(session);
     }
 
     @Override
