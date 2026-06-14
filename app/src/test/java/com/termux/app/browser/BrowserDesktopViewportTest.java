@@ -6,14 +6,19 @@ import org.junit.Test;
 public class BrowserDesktopViewportTest {
 
     @Test
-    public void layoutWidthIsDesktopSized() {
-        Assert.assertTrue(BrowserDesktopViewport.LAYOUT_WIDTH_CSS_PX >= 1024);
+    public void layoutWidthIsFullDesktopBreakpoint() {
+        Assert.assertEquals(1280, BrowserDesktopViewport.LAYOUT_WIDTH_CSS_PX);
     }
 
     @Test
     public void injectionScriptForcesDesktopLayoutWidth() {
         Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT
             .contains("width=" + BrowserDesktopViewport.LAYOUT_WIDTH_CSS_PX));
+    }
+
+    @Test
+    public void injectionScriptForcesFullDesktopBreakpointWidth() {
+        Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT.contains("width=1280"));
     }
 
     @Test
