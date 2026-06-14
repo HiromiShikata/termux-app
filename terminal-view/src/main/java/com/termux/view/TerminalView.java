@@ -44,6 +44,7 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.scroll.TerminalScrollController;
 import com.termux.view.textselection.TextSelectionCursorController;
+import com.termux.view.url.TerminalUrlExtractor;
 
 /** View displaying and interacting with a {@link TerminalSession}. */
 public final class TerminalView extends View {
@@ -168,6 +169,9 @@ public final class TerminalView extends View {
             public boolean onUp(MotionEvent event) {
                 mScrollRemainder = 0.0f;
                 if (mEmulator != null && mEmulator.isMouseTrackingActive() && !event.isFromSource(InputDevice.SOURCE_MOUSE) && !isSelectingText() && !scrolledWithFinger) {
+                    if (openUrlAtTapIfEnabled(event)) {
+                        return true;
+                    }
                     // Quick event processing when mouse tracking is active - do not wait for check of double tapping
                     // for zooming.
                     sendMouseEventCode(event, TerminalEmulator.MOUSE_LEFT_BUTTON, true);
@@ -184,6 +188,9 @@ public final class TerminalView extends View {
 
                 if (isSelectingText()) {
                     stopTextSelectionMode();
+                    return true;
+                }
+                if (!mEmulator.isMouseTrackingActive() && openUrlAtTapIfEnabled(event)) {
                     return true;
                 }
                 requestFocus();
@@ -576,6 +583,24 @@ public final class TerminalView extends View {
      * true and 0 if relativeToScroll is false.
      * @return Array with the column and row.
      */
+    private boolean openUrlAtTapIfEnabled(MotionEvent event) {
+        if (mEmulator == null || mClient == null) return false;
+        if (!mClient.isTapToOpenUrlEnabled()) return false;
+
+        int[] columnAndRow = getColumnAndRow(event, true);
+        int column = columnAndRow[0];
+        int row = columnAndRow[1];
+
+        int activeTranscriptRows = mEmulator.getScreen().getActiveTranscriptRows();
+        if (row < -activeTranscriptRows || row >= mEmulator.mRows) return false;
+
+        String rowText = mEmulator.getScreen().getSelectedText(0, row, mEmulator.mColumns - 1, row);
+        String url = TerminalUrlExtractor.extractBrowsableUrlAt(rowText, column);
+        if (url == null) return false;
+
+        return mClient.onOpenSelectedUrlRequested(url);
+    }
+
     public int[] getColumnAndRow(MotionEvent event, boolean relativeToScroll) {
         int column = (int) (event.getX() / mRenderer.mFontWidth);
         int row = (int) ((event.getY() - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);

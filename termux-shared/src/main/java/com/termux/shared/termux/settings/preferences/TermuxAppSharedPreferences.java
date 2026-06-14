@@ -106,6 +106,16 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
 
 
+    public boolean isTapToOpenUrlEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_TAP_TO_OPEN_URL_ENABLED, TERMUX_APP.DEFAULT_VALUE_TAP_TO_OPEN_URL_ENABLED);
+    }
+
+    public void setTapToOpenUrlEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_TAP_TO_OPEN_URL_ENABLED, value, false);
+    }
+
+
+
     public boolean isSoftKeyboardEnabled() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SOFT_KEYBOARD_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_SOFT_KEYBOARD_ENABLED);
     }

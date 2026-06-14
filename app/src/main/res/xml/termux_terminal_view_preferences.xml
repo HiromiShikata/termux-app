@@ -16,6 +16,13 @@
             app:summaryOn="@string/termux_terminal_view_keep_screen_on_on"
             app:title="@string/action_toggle_keep_screen_on" />
 
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:key="tap_to_open_url_enabled"
+            app:summaryOff="@string/termux_terminal_view_tap_to_open_url_off"
+            app:summaryOn="@string/termux_terminal_view_tap_to_open_url_on"
+            app:title="@string/termux_terminal_view_tap_to_open_url_title" />
+
     </PreferenceCategory>
 
 </PreferenceScreen>

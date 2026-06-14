@@ -124,6 +124,15 @@ public final class TermuxPreferenceConstants {
 
 
         /**
+         * Defines the key for whether a single tap on a terminal cell that is on a URL opens that
+         * URL in the in-app browser, taking precedence over forwarding the tap to a program with
+         * mouse tracking active.
+         */
+        public static final String KEY_TAP_TO_OPEN_URL_ENABLED = "tap_to_open_url_enabled";
+        public static final boolean DEFAULT_VALUE_TAP_TO_OPEN_URL_ENABLED = true;
+
+
+        /**
          * Defines the key for the fraction of the in-app browser content height occupied by the
          * browser area while the in-app browser is open, with the terminal area occupying the
          * remaining height.
