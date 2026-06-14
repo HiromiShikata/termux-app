@@ -629,10 +629,24 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     public synchronized int removeTermuxSession(TerminalSession sessionToRemove) {
         int index = getIndexOfSession(sessionToRemove);
 
-        if (index >= 0)
+        if (index >= 0) {
             mShellManager.mTermuxSessions.get(index).finish();
+            if (removeFromTermuxSessions(mShellManager.mTermuxSessions, sessionToRemove)
+                && mTermuxTerminalSessionActivityClient != null)
+                mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
+        }
 
         return index;
+    }
+
+    static boolean removeFromTermuxSessions(List<TermuxSession> termuxSessions, TerminalSession sessionToRemove) {
+        for (int index = 0; index < termuxSessions.size(); index++) {
+            if (termuxSessions.get(index).getTerminalSession() == sessionToRemove) {
+                termuxSessions.remove(index);
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Callback received when a {@link TermuxSession} finishes. */
