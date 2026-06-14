@@ -316,7 +316,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:background="@color/black"
+            android:background="@color/schema_terminal_chrome_surface"
             android:elevation="6dp"
             android:gravity="end|center_vertical"
             android:orientation="horizontal">
@@ -327,7 +327,7 @@
                 android:layout_width="0dp"
                 android:layout_height="37.5dp"
                 android:layout_weight="1"
-                android:background="@color/black" />
+                android:background="@color/schema_terminal_chrome_surface" />
 
             <ImageButton
                 android:id="@+id/terminal_toolbar_browser_toggle_button"

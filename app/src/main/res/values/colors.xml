@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="session_active_indicator_light">#1565C0</color>
-    <color name="session_active_indicator_dark">#64B5F6</color>
+    <color name="session_active_indicator_light">#3A6F8F</color>
+    <color name="session_active_indicator_dark">#8AB4C8</color>
 </resources>

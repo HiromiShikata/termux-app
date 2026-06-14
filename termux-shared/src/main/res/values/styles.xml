@@ -22,7 +22,7 @@
     -->
     <style name="BaseDialog.Title.Panel" parent="@style/MaterialAlertDialog.MaterialComponents.Title.Panel">
         <!-- Title background. -->
-        <item name="android:background">@color/red_400</item>
+        <item name="android:background">@color/schema_accent</item>
 
         <!-- Center Title. -->
         <item name="android:paddingTop">14dp</item>
@@ -37,8 +37,8 @@
     -->
     <style name="BaseDialog.Message.Text.Light" parent="@style/MaterialAlertDialog.MaterialComponents.Body.Text">
         <!-- Text color. -->
-        <item name="android:textColorPrimary">@color/black</item>
-        <item name="android:textColorLink">@color/blue_link_light</item>
+        <item name="android:textColorPrimary">@color/schema_text_primary</item>
+        <item name="android:textColorLink">@color/schema_accent</item>
     </style>
 
     <!--
@@ -48,7 +48,7 @@
     -->
     <style name="BaseDialog.Message.Text.Dark" parent="@style/MaterialAlertDialog.MaterialComponents.Body.Text">
         <!-- Text color. -->
-        <item name="android:textColorLink">@color/blue_link_light</item>
+        <item name="android:textColorLink">@color/schema_accent</item>
     </style>
 
 
