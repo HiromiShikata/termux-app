@@ -74,6 +74,15 @@
                             android:background="?attr/termuxActivityDrawerBackground" />
                     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
+                    <View
+                        android:id="@+id/browser_web_view_cover"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="?attr/termuxActivityDrawerBackground"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:visibility="gone" />
+
                     <ProgressBar
                         android:id="@+id/browser_page_load_progress_bar"
                         style="?android:attr/progressBarStyleHorizontal"
