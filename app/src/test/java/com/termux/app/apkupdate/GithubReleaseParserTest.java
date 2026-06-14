@@ -54,4 +54,14 @@ public class GithubReleaseParserTest {
     public void throwsWhenTagNameMissing() throws JSONException {
         parser.parseLatestRelease("{\"assets\":[]}");
     }
+
+    @Test
+    public void parsesPerBuildPatchSchemeTag() throws JSONException {
+        String json = "{\"tag_name\":\"v0.118.119\",\"assets\":[]}";
+
+        ApkRelease release = parser.parseLatestRelease(json);
+
+        Assert.assertEquals("0.118.119", release.getVersionName());
+        Assert.assertEquals("v0.118.119", release.getTagName());
+    }
 }

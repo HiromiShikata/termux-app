@@ -16,15 +16,17 @@ public final class ApkUpdateUiController {
     private final Activity activity;
     private final ApkUpdateManager updateManager;
     private final ApkInstaller apkInstaller;
+    private final ApkUpdateNotificationPolicy notificationPolicy;
 
     public ApkUpdateUiController(Activity activity) {
         this.activity = activity;
         this.updateManager = new ApkUpdateManager(activity);
         this.apkInstaller = new ApkInstaller(activity);
+        this.notificationPolicy = new ApkUpdateNotificationPolicy();
     }
 
-    public void checkAndPrompt(boolean reportNoUpdate) {
-        if (reportNoUpdate) {
+    public void checkAndPrompt(boolean userInitiated) {
+        if (userInitiated) {
             Logger.showToast(activity, activity.getString(R.string.apk_update_checking), false);
         }
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
@@ -36,7 +38,7 @@ public final class ApkUpdateUiController {
 
             @Override
             public void onUpToDate(String latestVersionName) {
-                if (reportNoUpdate) {
+                if (notificationPolicy.shouldNotifyUpToDate(userInitiated)) {
                     Logger.showToast(activity,
                         activity.getString(R.string.apk_update_up_to_date, latestVersionName), false);
                 }
@@ -45,7 +47,7 @@ public final class ApkUpdateUiController {
             @Override
             public void onCheckFailed(String message) {
                 Logger.logError(LOG_TAG, "APK update check failed: " + message);
-                if (reportNoUpdate) {
+                if (notificationPolicy.shouldNotifyCheckFailed(userInitiated)) {
                     Logger.showToast(activity,
                         activity.getString(R.string.apk_update_check_failed, message), true);
                 }

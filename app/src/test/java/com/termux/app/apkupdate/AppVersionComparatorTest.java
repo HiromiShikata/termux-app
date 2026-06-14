@@ -43,4 +43,25 @@ public class AppVersionComparatorTest {
         Assert.assertTrue(comparator.isNewer("0.118", "0.117.9"));
         Assert.assertFalse(comparator.isNewer("0.118", "0.118.0"));
     }
+
+    @Test
+    public void detectsNewerBuildUnderPerBuildPatchScheme() {
+        Assert.assertTrue(comparator.isNewer("0.118.119", "0.118.118"));
+    }
+
+    @Test
+    public void reportsNoUpdateWhenPerBuildPatchSchemeVersionsAreEqual() {
+        Assert.assertFalse(comparator.isNewer("0.118.119", "0.118.119"));
+    }
+
+    @Test
+    public void staticInstalledBuildSeesFirstBumpedReleaseAsNewer() {
+        Assert.assertTrue(comparator.isNewer("0.118.1", "0.118.0"));
+    }
+
+    @Test
+    public void ignoresInstalledBuildMetadataUnderPerBuildPatchScheme() {
+        Assert.assertTrue(comparator.isNewer("0.118.130", "0.118.125+abcdef1"));
+        Assert.assertFalse(comparator.isNewer("0.118.125", "0.118.125+abcdef1"));
+    }
 }
