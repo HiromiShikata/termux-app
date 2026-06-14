@@ -75,4 +75,14 @@ public class SessionListBottomSheetControllerTest {
     public void togglingFromVisibleClosesSheet() {
         Assert.assertEquals(View.GONE, SessionListBottomSheetController.nextSheetVisibility(View.VISIBLE));
     }
+
+    @Test
+    public void capsSheetHeightToOneThirdOfScreen() {
+        Assert.assertEquals(640, SessionListBottomSheetController.computeSheetMaxHeight(1920));
+    }
+
+    @Test
+    public void capsSheetHeightWithFlooredDivisionForNonDivisibleScreen() {
+        Assert.assertEquals(800, SessionListBottomSheetController.computeSheetMaxHeight(2400));
+    }
 }
