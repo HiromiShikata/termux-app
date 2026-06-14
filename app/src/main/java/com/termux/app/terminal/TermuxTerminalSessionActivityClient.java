@@ -291,6 +291,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
     }
 
+    @Override
+    public void onMarkerNotification(@NonNull TerminalSession session) {
+        recordBellNotificationIfBackgroundSession(session);
+    }
+
     private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
         if (session == mActivity.getCurrentSession()) return;
         if (session.mHandle == null) return;

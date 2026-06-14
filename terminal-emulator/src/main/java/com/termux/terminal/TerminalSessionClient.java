@@ -22,6 +22,8 @@ public interface TerminalSessionClient {
 
     void onBell(@NonNull TerminalSession session);
 
+    void onMarkerNotification(@NonNull TerminalSession session);
+
     void onColorsChanged(@NonNull TerminalSession session);
 
     void onTerminalCursorStateChange(boolean state);

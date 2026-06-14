@@ -302,6 +302,11 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     @Override
+    public void onMarkerNotification() {
+        mClient.onMarkerNotification(this);
+    }
+
+    @Override
     public void onColorsChanged() {
         mClient.onColorsChanged(this);
     }
