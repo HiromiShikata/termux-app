@@ -2,6 +2,7 @@ package com.termux.app.terminal;
 
 import android.graphics.Color;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -47,6 +48,7 @@ public class SessionListBottomSheetController {
             return;
         }
         applyTitleColor();
+        applySheetHeightCap();
         bindSessionList(listController);
         mSheetView.setVisibility(View.VISIBLE);
     }
@@ -58,6 +60,15 @@ public class SessionListBottomSheetController {
     private void applyTitleColor() {
         boolean darkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
         mTitleView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
+    }
+
+    private void applySheetHeightCap() {
+        int maxHeight = computeSheetMaxHeight(mActivity.getResources().getDisplayMetrics().heightPixels);
+        ViewGroup.LayoutParams params = mSheetView.getLayoutParams();
+        if (params.height != maxHeight) {
+            params.height = maxHeight;
+            mSheetView.setLayoutParams(params);
+        }
     }
 
     private void bindSessionList(@NonNull TermuxSessionsListViewController listController) {
@@ -83,5 +94,9 @@ public class SessionListBottomSheetController {
 
     static int nextSheetVisibility(int currentVisibility) {
         return currentVisibility == View.VISIBLE ? View.GONE : View.VISIBLE;
+    }
+
+    static int computeSheetMaxHeight(int screenHeightPixels) {
+        return screenHeightPixels / 3;
     }
 }
