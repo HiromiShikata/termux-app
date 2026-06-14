@@ -51,6 +51,34 @@ public class ApkUpdatePlannerTest {
     }
 
     @Test
+    public void reportsUpdateAvailableWhenPerBuildReleaseIsNewerThanInstalledBuild() throws JSONException {
+        ApkUpdateAvailability availability =
+            planner.plan(releaseJson("v0.118.119"), "0.118.118", new String[]{"arm64-v8a"});
+
+        Assert.assertTrue(availability.isUpdateAvailable());
+        Assert.assertEquals("0.118.119", availability.getLatestVersionName());
+        Assert.assertEquals("https://example.com/arm64", availability.getDownloadUrl());
+    }
+
+    @Test
+    public void reportsUpdateAvailableForStaticInstalledBuildAgainstFirstBumpedRelease() throws JSONException {
+        ApkUpdateAvailability availability =
+            planner.plan(releaseJson("v0.118.1"), "0.118.0", new String[]{"arm64-v8a"});
+
+        Assert.assertTrue(availability.isUpdateAvailable());
+    }
+
+    @Test
+    public void reportsUpToDateWhenInstalledBuildMatchesPerBuildRelease() throws JSONException {
+        ApkUpdateAvailability availability =
+            planner.plan(releaseJson("v0.118.119"), "0.118.119", new String[]{"arm64-v8a"});
+
+        Assert.assertFalse(availability.isUpdateAvailable());
+        Assert.assertEquals("0.118.119", availability.getLatestVersionName());
+        Assert.assertNull(availability.getDownloadUrl());
+    }
+
+    @Test
     public void reportsUpToDateWhenNewerReleaseHasNoUsableAsset() throws JSONException {
         String json = "{\"tag_name\":\"v0.119.0\",\"assets\":["
             + "{\"name\":\"termux-app_arm64-v8a.apk\",\"browser_download_url\":\"https://example.com/arm64\"}"

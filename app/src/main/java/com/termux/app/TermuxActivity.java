@@ -27,6 +27,7 @@ import android.widget.Toast;
 
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
+import com.termux.app.apkupdate.ApkUpdateAutoCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.terminal.TermuxActivityRootView;
@@ -319,9 +320,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void maybeAutoCheckForApkUpdate() {
-        if (ApkUpdateManager.isAutoCheckEnabled(this)) {
-            new ApkUpdateUiController(this).checkAndPrompt(false);
+        if (!ApkUpdateManager.isAutoCheckEnabled(this)) {
+            return;
         }
+        ApkUpdateAutoCheckThrottle throttle = new ApkUpdateAutoCheckThrottle(this);
+        long nowMillis = System.currentTimeMillis();
+        if (!throttle.shouldCheckNow(nowMillis)) {
+            return;
+        }
+        throttle.recordCheckedAt(nowMillis);
+        new ApkUpdateUiController(this).checkAndPrompt(false);
     }
 
     @Override
