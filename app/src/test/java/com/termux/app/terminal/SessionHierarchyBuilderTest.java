@@ -490,6 +490,111 @@ public class SessionHierarchyBuilderTest {
         assertSession(rows.get(5), 0);
     }
 
+    @Test
+    public void visibleSessionIndexesExtractsOnlySessionRowsInOrder() {
+        List<SessionHierarchyRow> visibleRows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("projectOne"),
+            SessionHierarchyRow.storyHeader("storyA"),
+            SessionHierarchyRow.session(2),
+            SessionHierarchyRow.session(5),
+            SessionHierarchyRow.projectHeader("projectTwo"),
+            SessionHierarchyRow.storyHeader("storyB"),
+            SessionHierarchyRow.session(7));
+
+        Assert.assertEquals(Arrays.asList(2, 5, 7),
+            SessionHierarchyBuilder.visibleSessionIndexes(visibleRows));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexCyclesForwardWhenNothingIsCollapsed() {
+        List<Integer> visible = Arrays.asList(0, 1, 2);
+
+        Assert.assertEquals(1, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 0, true));
+        Assert.assertEquals(2, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 1, true));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexCyclesBackwardWhenNothingIsCollapsed() {
+        List<Integer> visible = Arrays.asList(0, 1, 2);
+
+        Assert.assertEquals(1, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 2, false));
+        Assert.assertEquals(0, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 1, false));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexWrapsAroundForwardAtTheEnd() {
+        List<Integer> visible = Arrays.asList(0, 1, 2);
+
+        Assert.assertEquals(0, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 2, true));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexWrapsAroundBackwardAtTheStart() {
+        List<Integer> visible = Arrays.asList(0, 1, 2);
+
+        Assert.assertEquals(2, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 0, false));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexSkipsCollapsedSessionsForward() {
+        List<Integer> visible = Arrays.asList(0, 3, 4);
+
+        Assert.assertEquals(3, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 0, true));
+        Assert.assertEquals(0, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 4, true));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexSkipsCollapsedSessionsBackward() {
+        List<Integer> visible = Arrays.asList(0, 3, 4);
+
+        Assert.assertEquals(0, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 3, false));
+        Assert.assertEquals(4, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 0, false));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexReturnsNegativeOneWhenAllProjectsCollapsed() {
+        Assert.assertEquals(-1,
+            SessionHierarchyBuilder.nextVisibleSessionIndex(Collections.emptyList(), 0, true));
+        Assert.assertEquals(-1,
+            SessionHierarchyBuilder.nextVisibleSessionIndex(Collections.emptyList(), 0, false));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexFromCollapsedCurrentPicksNearestForward() {
+        List<Integer> visible = Arrays.asList(0, 1, 5, 6);
+
+        Assert.assertEquals(5, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 3, true));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexFromCollapsedCurrentPicksNearestBackward() {
+        List<Integer> visible = Arrays.asList(0, 1, 5, 6);
+
+        Assert.assertEquals(1, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 3, false));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexFromCollapsedCurrentWrapsForwardWhenNoneGreater() {
+        List<Integer> visible = Arrays.asList(0, 1, 2);
+
+        Assert.assertEquals(0, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 9, true));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexFromCollapsedCurrentWrapsBackwardWhenNoneSmaller() {
+        List<Integer> visible = Arrays.asList(3, 4, 5);
+
+        Assert.assertEquals(5, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 1, false));
+    }
+
+    @Test
+    public void nextVisibleSessionIndexReturnsTheSoleVisibleSessionWhenItIsAlsoCurrent() {
+        List<Integer> visible = Collections.singletonList(2);
+
+        Assert.assertEquals(2, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 2, true));
+        Assert.assertEquals(2, SessionHierarchyBuilder.nextVisibleSessionIndex(visible, 2, false));
+    }
+
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {
         Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
         Assert.assertTrue(row.isHeader());
