@@ -234,6 +234,14 @@
                 <string name="termux_soft_keyboard_enabled_only_if_no_hardware_on">Soft keyboard will be enabled only if
                     no hardware keyboard is connected.</string>
 
+                <!-- Volume Keys Switch Sessions -->
+                <string name="termux_volume_keys_switch_sessions_enabled_title">Volume keys switch sessions</string>
+                <string name="termux_volume_keys_switch_sessions_enabled_off">Volume keys keep their default behavior:
+                    hardware volume control and Termux\'s Volume-Down-as-Ctrl and Volume-Up-as-Fn modifiers.</string>
+                <string name="termux_volume_keys_switch_sessions_enabled_on">While Termux is focused, Volume Up switches to
+                    the previous session and Volume Down switches to the next session. Hardware volume control and the
+                    Termux volume-key modifiers are unavailable while focused. (Default)</string>
+
             <!-- Read Aloud Category -->
             <string name="termux_read_aloud_header">Read Aloud</string>
 

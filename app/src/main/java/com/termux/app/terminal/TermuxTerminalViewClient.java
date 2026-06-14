@@ -231,6 +231,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @SuppressLint("RtlHardcoded")
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent e, TerminalSession currentSession) {
+        if (handleVolumeKeysSwitchSessions(keyCode, true)) return true;
+
         if (handleVirtualKeys(keyCode, e, true)) return true;
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {
@@ -289,7 +291,28 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             return true;
         }
 
+        if (handleVolumeKeysSwitchSessions(keyCode, false)) return true;
+
         return handleVirtualKeys(keyCode, e, false);
+    }
+
+    /**
+     * Switch sessions with the hardware volume keys while the app is focused, if the user enabled it.
+     * Volume Up switches to the previous session and Volume Down switches to the next session, with
+     * wrap-around at the ends of the session list. The event is consumed on both key down and key up
+     * so the system volume does not change and no system volume UI flashes.
+     */
+    private boolean handleVolumeKeysSwitchSessions(int keyCode, boolean down) {
+        if (!mActivity.getPreferences().isVolumeKeysSwitchSessionsEnabled()) {
+            return false;
+        }
+        if (keyCode != KeyEvent.KEYCODE_VOLUME_UP && keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) {
+            return false;
+        }
+        if (down) {
+            mTermuxTerminalSessionActivityClient.switchToSession(keyCode == KeyEvent.KEYCODE_VOLUME_DOWN);
+        }
+        return true;
     }
 
     /** Handle dedicated volume buttons as virtual keys if applicable. */

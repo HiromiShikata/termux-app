@@ -119,6 +119,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SOFT_KEYBOARD_ENABLED_ONLY_IF_NO_HARDWARE, value, false);
     }
 
+    public boolean isVolumeKeysSwitchSessionsEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_VOLUME_KEYS_SWITCH_SESSIONS_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_VOLUME_KEYS_SWITCH_SESSIONS_ENABLED);
+    }
+
+    public void setVolumeKeysSwitchSessionsEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_VOLUME_KEYS_SWITCH_SESSIONS_ENABLED, value, false);
+    }
+
     public boolean isSpeakTagAutoReadEnabled() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SPEAK_TAG_AUTO_READ_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_SPEAK_TAG_AUTO_READ_ENABLED);
     }
