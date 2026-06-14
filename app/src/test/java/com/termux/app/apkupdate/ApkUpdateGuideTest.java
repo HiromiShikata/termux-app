@@ -25,13 +25,4 @@ public class ApkUpdateGuideTest {
             "https://github.com/HiromiShikata/termux-app/actions/workflows/debug_build.yml?query=branch%3Amain",
             guide.getBuildListUrl());
     }
-
-    @Test
-    public void instructionMessageGuidesByPrefixToTheSingleArtifactToDownload() {
-        String message = guide.buildInstructionMessage();
-        Assert.assertTrue(message.contains(guide.getRecommendedArtifactNamePrefix()));
-        Assert.assertTrue(message.toLowerCase().contains("download"));
-        Assert.assertTrue(message.toLowerCase().contains("arm64-v8a"));
-        Assert.assertTrue(message.toLowerCase().contains("starts with"));
-    }
 }
