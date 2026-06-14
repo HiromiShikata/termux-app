@@ -114,6 +114,12 @@
     <string name="action_crash_log_copy">Copy</string>
     <string name="msg_crash_log_copied">Copied</string>
 
+    <string name="action_clear_saved_sessions">Clear saved sessions</string>
+    <string name="summary_clear_saved_sessions">Delete the saved session list restored on launch.</string>
+    <string name="title_confirm_clear_saved_sessions">Clear saved sessions</string>
+    <string name="msg_confirm_clear_saved_sessions">Delete the saved session list? Sessions will not be restored on next launch.</string>
+    <string name="msg_saved_sessions_cleared">Saved session list cleared.</string>
+
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>
     <string name="msg_disabling_terminal_toolbar">Disabling Terminal Toolbar</string>
 
