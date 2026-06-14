@@ -225,4 +225,38 @@ public class TerminalScrollControllerTest {
         TerminalScrollController controller = controller();
         assertEquals(0, controller.wheelStepsForDragDelta(100f, 0));
     }
+
+    @Test
+    public void scrollControlOnAlternateScreenEmitsMouseWheelNotArrowKeys() {
+        TerminalScrollController controller = controller();
+        assertEquals(TerminalScrollEvent.MOUSE_WHEEL,
+            controller.scrollEventType(false, true, true));
+    }
+
+    @Test
+    public void mouseTrackingAlwaysEmitsMouseWheel() {
+        TerminalScrollController controller = controller();
+        assertEquals(TerminalScrollEvent.MOUSE_WHEEL,
+            controller.scrollEventType(true, true, true));
+        assertEquals(TerminalScrollEvent.MOUSE_WHEEL,
+            controller.scrollEventType(true, true, false));
+        assertEquals(TerminalScrollEvent.MOUSE_WHEEL,
+            controller.scrollEventType(true, false, false));
+    }
+
+    @Test
+    public void fingerSwipeOnAlternateScreenStillEmitsArrowKeys() {
+        TerminalScrollController controller = controller();
+        assertEquals(TerminalScrollEvent.ARROW_KEY,
+            controller.scrollEventType(false, true, false));
+    }
+
+    @Test
+    public void scrollWithoutAlternateScreenEmitsLocalScrollback() {
+        TerminalScrollController controller = controller();
+        assertEquals(TerminalScrollEvent.LOCAL_SCROLLBACK,
+            controller.scrollEventType(false, false, false));
+        assertEquals(TerminalScrollEvent.LOCAL_SCROLLBACK,
+            controller.scrollEventType(false, false, true));
+    }
 }

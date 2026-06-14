@@ -110,4 +110,11 @@ public final class TerminalScrollController {
         if (rowHeightPx <= 0) return 0;
         return (int) (dragDeltaPx / rowHeightPx);
     }
+
+    public TerminalScrollEvent scrollEventType(boolean mouseTrackingActive, boolean alternateScreenActive, boolean fromScrollControl) {
+        if (mouseTrackingActive) return TerminalScrollEvent.MOUSE_WHEEL;
+        if (fromScrollControl && alternateScreenActive) return TerminalScrollEvent.MOUSE_WHEEL;
+        if (alternateScreenActive) return TerminalScrollEvent.ARROW_KEY;
+        return TerminalScrollEvent.LOCAL_SCROLLBACK;
+    }
 }
