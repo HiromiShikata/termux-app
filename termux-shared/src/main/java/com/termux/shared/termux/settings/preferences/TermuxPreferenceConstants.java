@@ -207,6 +207,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_SESSION_DEFINITION_URL = "session_definition_url";
         public static final String DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL = "";
 
+        public static final String KEY_ALWAYS_NA_SESSION_NAMES = "always_na_session_names";
+        public static final String DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES = "";
+
         public static final String KEY_PERSISTED_SESSIONS = "persisted_sessions";
         public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSIONS = "";
 

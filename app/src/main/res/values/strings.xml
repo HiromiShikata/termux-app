@@ -99,6 +99,12 @@
     <string name="msg_session_definition_url_not_set">Set the session definition URL first.</string>
     <string name="msg_session_definition_load_failed">Failed to load session definition.</string>
     <string name="msg_session_definition_no_entries">No sessions found in the session definition.</string>
+
+    <string name="action_open_always_na_session_names_config">Always N/A Session Names</string>
+    <string name="title_always_na_session_names_config">Always N/A Session Names</string>
+    <string name="summary_always_na_session_names_config">Sessions with these names are always shown in the N/A group, even if they would otherwise match a project. Enter one session name per line.</string>
+    <string name="hint_always_na_session_names">One session name per line</string>
+    <string name="action_always_na_session_names_config_save">Save</string>
     <string name="action_open_project_overview">Open project overview</string>
 
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>

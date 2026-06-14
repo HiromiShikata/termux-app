@@ -112,7 +112,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
         }
         return mHierarchyBuilder.build(sessionNames, mEntries,
-            mActivity.getString(R.string.session_list_na_group_header));
+            mActivity.getString(R.string.session_list_na_group_header),
+            mActivity.getPreferences().getAlwaysNaSessionNames());
     }
 
     private void rebuildRows() {

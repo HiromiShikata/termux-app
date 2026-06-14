@@ -74,6 +74,7 @@ public class SettingsActivity extends AppCompatActivity {
                     configureStylePreference(context);
                     configureAutosshConfigPreference(context);
                     configureSessionDefinitionConfigPreference(context);
+                    configureAlwaysNaSessionNamesPreference(context);
                     configureUpdateApkPreference(context);
                     configureAboutPreference(context);
                     configureDonatePreference(context);
@@ -142,6 +143,16 @@ public class SettingsActivity extends AppCompatActivity {
             if (sessionDefinitionConfigPreference != null) {
                 sessionDefinitionConfigPreference.setOnPreferenceClickListener(preference -> {
                     ActivityUtils.startActivity(context, new Intent(context, SessionDefinitionConfigActivity.class));
+                    return true;
+                });
+            }
+        }
+
+        private void configureAlwaysNaSessionNamesPreference(@NonNull Context context) {
+            Preference alwaysNaSessionNamesPreference = findPreference("always_na_session_names");
+            if (alwaysNaSessionNamesPreference != null) {
+                alwaysNaSessionNamesPreference.setOnPreferenceClickListener(preference -> {
+                    ActivityUtils.startActivity(context, new Intent(context, AlwaysNaSessionNamesConfigActivity.class));
                     return true;
                 });
             }
