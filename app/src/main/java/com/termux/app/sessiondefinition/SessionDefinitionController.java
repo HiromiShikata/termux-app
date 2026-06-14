@@ -8,10 +8,11 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalSession;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 public final class SessionDefinitionController {
 
@@ -20,6 +21,7 @@ public final class SessionDefinitionController {
     private final TermuxActivity activity;
     private final SessionDefinitionLoader loader;
     private final SessionDefinitionPlanner planner;
+    private final SessionDefinitionEntryMatcher matcher = new SessionDefinitionEntryMatcher();
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()), new SessionDefinitionPlanner());
@@ -80,7 +82,9 @@ public final class SessionDefinitionController {
         }
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, collectExistingSessionNames());
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, Collections.emptySet());
+
+        removeProjectLinkedSessions(entries);
 
         for (SessionDefinitionPlannedSession plannedSession : sessionsToCreate) {
             if (plannedSession.hasCommand()) {
@@ -93,15 +97,23 @@ public final class SessionDefinitionController {
         activity.getDrawer().closeDrawers();
     }
 
-    private Set<String> collectExistingSessionNames() {
-        Set<String> existingSessionNames = new HashSet<>();
+    private void removeProjectLinkedSessions(List<SessionDefinitionEntry> entries) {
         TermuxService service = activity.getTermuxService();
         if (service == null) {
-            return existingSessionNames;
+            return;
         }
+        List<TerminalSession> projectLinkedSessions = new ArrayList<>();
         for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            existingSessionNames.add(termuxSession.getTerminalSession().mSessionName);
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null) {
+                continue;
+            }
+            if (matcher.findEntryForSessionName(entries, terminalSession.mSessionName) != null) {
+                projectLinkedSessions.add(terminalSession);
+            }
         }
-        return existingSessionNames;
+        for (TerminalSession terminalSession : projectLinkedSessions) {
+            activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
+        }
     }
 }

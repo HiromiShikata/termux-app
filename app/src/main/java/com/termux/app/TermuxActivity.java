@@ -1074,6 +1074,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mTermuxTerminalSessionActivityClient;
     }
 
+    public TermuxSessionsListViewController getTermuxSessionListViewController() {
+        return mTermuxSessionListViewController;
+    }
+
     @NonNull
     public List<SessionDefinitionEntry> getSessionDefinitionEntries() {
         return Collections.unmodifiableList(mSessionDefinitionEntriesProvider.getEntries());

@@ -6,6 +6,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,28 +19,52 @@ public final class SessionHierarchyBuilder {
     @NonNull
     public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
                                            @NonNull List<SessionDefinitionEntry> entries,
-                                           @NonNull String otherProjectLabel) {
+                                           @NonNull String naProjectLabel) {
         if (entries.isEmpty()) {
             return flatten(sessionNames);
         }
 
-        Map<String, Map<String, List<Integer>>> sessionIndexesByProjectAndStory = new LinkedHashMap<>();
+        Map<String, Integer> sessionIndexByName = new LinkedHashMap<>();
         List<Integer> unmatchedSessionIndexes = new ArrayList<>();
-
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
-            SessionDefinitionEntry entry = mMatcher.findEntryForSessionName(entries, sessionNames.get(sessionIndex));
-            if (entry == null) {
-                unmatchedSessionIndexes.add(sessionIndex);
-                continue;
+            String sessionName = sessionNames.get(sessionIndex);
+            if (sessionName != null) {
+                if (sessionIndexByName.containsKey(sessionName)) {
+                    continue;
+                }
+                sessionIndexByName.put(sessionName, sessionIndex);
             }
-            Map<String, List<Integer>> storiesInProject =
-                sessionIndexesByProjectAndStory.computeIfAbsent(entry.getGroupLabel(), key -> new LinkedHashMap<>());
-            List<Integer> storySessionIndexes =
-                storiesInProject.computeIfAbsent(entry.getEntryLabel(), key -> new ArrayList<>());
-            storySessionIndexes.add(sessionIndex);
+            if (mMatcher.findEntryForSessionName(entries, sessionName) == null) {
+                unmatchedSessionIndexes.add(sessionIndex);
+            }
+        }
+
+        Map<String, Map<String, List<Integer>>> sessionIndexesByProjectAndStory = new LinkedHashMap<>();
+        Set<String> placedNames = new HashSet<>();
+        for (SessionDefinitionEntry entry : entries) {
+            for (String url : entry.getUrls()) {
+                Integer sessionIndex = sessionIndexByName.get(url);
+                if (sessionIndex == null) {
+                    continue;
+                }
+                if (!placedNames.add(url)) {
+                    continue;
+                }
+                Map<String, List<Integer>> storiesInProject =
+                    sessionIndexesByProjectAndStory.computeIfAbsent(entry.getGroupLabel(), key -> new LinkedHashMap<>());
+                List<Integer> storySessionIndexes =
+                    storiesInProject.computeIfAbsent(entry.getEntryLabel(), key -> new ArrayList<>());
+                storySessionIndexes.add(sessionIndex);
+            }
         }
 
         List<SessionHierarchyRow> rows = new ArrayList<>();
+        if (!unmatchedSessionIndexes.isEmpty()) {
+            rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
+            for (int sessionIndex : unmatchedSessionIndexes) {
+                rows.add(SessionHierarchyRow.session(sessionIndex));
+            }
+        }
         for (Map.Entry<String, Map<String, List<Integer>>> project : sessionIndexesByProjectAndStory.entrySet()) {
             rows.add(SessionHierarchyRow.projectHeader(project.getKey()));
             for (Map.Entry<String, List<Integer>> story : project.getValue().entrySet()) {
@@ -49,13 +74,16 @@ public final class SessionHierarchyBuilder {
                 }
             }
         }
-        if (!unmatchedSessionIndexes.isEmpty()) {
-            rows.add(SessionHierarchyRow.projectHeader(otherProjectLabel));
-            for (int sessionIndex : unmatchedSessionIndexes) {
-                rows.add(SessionHierarchyRow.session(sessionIndex));
+        return rows;
+    }
+
+    public static int firstSessionIndex(@NonNull List<SessionHierarchyRow> rows) {
+        for (SessionHierarchyRow row : rows) {
+            if (!row.isHeader()) {
+                return row.getSessionIndex();
             }
         }
-        return rows;
+        return -1;
     }
 
     @NonNull
