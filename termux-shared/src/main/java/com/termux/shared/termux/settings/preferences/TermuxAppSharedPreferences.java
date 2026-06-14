@@ -135,6 +135,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SPEAK_TAG_AUTO_READ_ENABLED, value, false);
     }
 
+    public boolean isOpenTagAutoOpenEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_OPEN_TAG_AUTO_OPEN_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED);
+    }
+
+    public void setOpenTagAutoOpenEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_OPEN_TAG_AUTO_OPEN_ENABLED, value, false);
+    }
+
 
 
     public boolean shouldKeepScreenOn() {

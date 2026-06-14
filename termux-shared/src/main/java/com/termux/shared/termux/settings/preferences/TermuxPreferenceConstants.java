@@ -85,6 +85,10 @@ package com.termux.shared.termux.settings.preferences;
  * - 0.20.0 (2026-06-14)
  *      - Added following to `TERMUX_APP`:
  *          `KEY_SPEAK_TAG_AUTO_READ_ENABLED` and `DEFAULT_VALUE_KEY_SPEAK_TAG_AUTO_READ_ENABLED`.
+ *
+ * - 0.21.0 (2026-06-14)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_OPEN_TAG_AUTO_OPEN_ENABLED` and `DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED`.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -134,6 +138,14 @@ public final class TermuxPreferenceConstants {
          */
         public static final String KEY_SPEAK_TAG_AUTO_READ_ENABLED = "speak_tag_auto_read_enabled";
         public static final boolean DEFAULT_VALUE_KEY_SPEAK_TAG_AUTO_READ_ENABLED = false;
+
+
+        /**
+         * Defines the key for whether an `http`/`https` URL inside `<open>...</open>` tags that appears
+         * in the terminal output is automatically opened in the in-app browser.
+         */
+        public static final String KEY_OPEN_TAG_AUTO_OPEN_ENABLED = "open_tag_auto_open_enabled";
+        public static final boolean DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED = false;
 
 
         /**
