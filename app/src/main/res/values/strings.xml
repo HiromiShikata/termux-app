@@ -250,6 +250,14 @@
                 <string name="termux_speak_tag_auto_read_enabled_off">Content inside &lt;speak&gt;…&lt;/speak&gt; tags in the terminal output will not be read aloud. (Default)</string>
                 <string name="termux_speak_tag_auto_read_enabled_on">Content inside &lt;speak&gt;…&lt;/speak&gt; tags in the terminal output will be read aloud with text-to-speech.</string>
 
+            <!-- Auto-Open Category -->
+            <string name="termux_auto_open_header">Auto-Open</string>
+
+                <!-- Open Tag Auto Open -->
+                <string name="termux_open_tag_auto_open_enabled_title">Auto-open &lt;open&gt; Tag URLs in the In-App Browser</string>
+                <string name="termux_open_tag_auto_open_enabled_off">A URL inside &lt;open&gt;…&lt;/open&gt; tags in the terminal output will not be opened automatically. (Default)</string>
+                <string name="termux_open_tag_auto_open_enabled_on">A URL inside &lt;open&gt;…&lt;/open&gt; tags in the terminal output will be opened automatically in the in-app browser.</string>
+
 
         <!-- Terminal View Preferences -->
         <string name="termux_terminal_view_preferences_title">Terminal View</string>

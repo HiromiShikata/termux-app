@@ -31,6 +31,7 @@ import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.shared.activities.ReportActivity;
@@ -159,6 +160,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
      */
     TermuxBrowserController mTermuxBrowserController;
+
+    /**
+     * Opens an `http`/`https` URL inside a `<open>...</open>` tag in the terminal output in the in-app browser.
+     */
+    OpenTagBrowserController mOpenTagBrowserController;
 
     /**
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
@@ -688,6 +694,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
+        mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInNewTab);
     }
 
     private void setBrowserToggleBarView() {
@@ -968,6 +975,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxBrowserController getTermuxBrowserController() {
         return mTermuxBrowserController;
+    }
+
+    public OpenTagBrowserController getOpenTagBrowserController() {
+        return mOpenTagBrowserController;
     }
 
 

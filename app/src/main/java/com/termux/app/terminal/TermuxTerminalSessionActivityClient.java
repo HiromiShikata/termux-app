@@ -24,6 +24,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
@@ -150,6 +151,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getCurrentSession() == changedSession) {
             mActivity.getTerminalView().onScreenUpdated();
             readSpeakTagsForSession(changedSession);
+            openTagsForSession(changedSession);
         }
     }
 
@@ -170,6 +172,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (screen == null) return;
 
         speakTagTtsController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+    }
+
+    private void openTagsForSession(TerminalSession session) {
+        if (session == null) return;
+
+        OpenTagBrowserController openTagBrowserController = mActivity.getOpenTagBrowserController();
+        if (openTagBrowserController == null) return;
+        if (!openTagBrowserController.isAutoOpenEnabled()) return;
+
+        TerminalEmulator emulator = session.getEmulator();
+        if (emulator == null) return;
+
+        TerminalBuffer screen = emulator.getScreen();
+        if (screen == null) return;
+
+        openTagBrowserController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
     }
 
     @Override
@@ -198,6 +216,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (service.getSpeakTagTtsController() != null)
             service.getSpeakTagTtsController().forgetSession(finishedSession.mHandle);
+
+        if (mActivity.getOpenTagBrowserController() != null)
+            mActivity.getOpenTagBrowserController().forgetSession(finishedSession.mHandle);
 
         int index = service.getIndexOfSession(finishedSession);
 
@@ -378,6 +399,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.getTermuxBrowserController().onSessionChanged(session);
 
         readSpeakTagsForSession(session);
+        openTagsForSession(session);
 
         updateSessionNameOverlay();
     }

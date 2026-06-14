@@ -36,4 +36,16 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory
+        app:key="auto_open"
+        app:title="@string/termux_auto_open_header">
+
+        <SwitchPreferenceCompat
+            app:key="open_tag_auto_open_enabled"
+            app:summaryOff="@string/termux_open_tag_auto_open_enabled_off"
+            app:summaryOn="@string/termux_open_tag_auto_open_enabled_on"
+            app:title="@string/termux_open_tag_auto_open_enabled_title" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

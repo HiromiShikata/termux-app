@@ -66,6 +66,9 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             case "volume_keys_switch_sessions_enabled":
                 mPreferences.setVolumeKeysSwitchSessionsEnabled(value);
                 break;
+            case "open_tag_auto_open_enabled":
+                mPreferences.setOpenTagAutoOpenEnabled(value);
+                break;
             default:
                 break;
         }
@@ -84,6 +87,8 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
                 return mPreferences.isSpeakTagAutoReadEnabled();
             case "volume_keys_switch_sessions_enabled":
                 return mPreferences.isVolumeKeysSwitchSessionsEnabled();
+            case "open_tag_auto_open_enabled":
+                return mPreferences.isOpenTagAutoOpenEnabled();
             default:
                 return false;
         }
