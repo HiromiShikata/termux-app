@@ -1,9 +1,6 @@
 package com.termux.app.terminal.io;
 
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
-import android.speech.RecognizerIntent;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -107,16 +104,6 @@ public class TerminalToolbarViewPager {
                 .show();
         }
 
-        void startVoiceInput() {
-            Intent voiceInputIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            try {
-                mActivity.startActivityForResult(voiceInputIntent, TermuxActivity.TERMINAL_TOOLBAR_TEXT_INPUT_VOICE_REQUEST_CODE);
-            } catch (ActivityNotFoundException e) {
-                Logger.showToast(mActivity, mActivity.getString(R.string.msg_toolbar_text_input_voice_unavailable), true);
-            }
-        }
-
         @Override
         public int getCount() {
             return 2;
@@ -183,9 +170,6 @@ public class TerminalToolbarViewPager {
 
                 ImageButton historyButton = layout.findViewById(R.id.terminal_toolbar_text_input_history_button);
                 historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
-
-                ImageButton voiceButton = layout.findViewById(R.id.terminal_toolbar_text_input_voice_button);
-                voiceButton.setOnClickListener(v -> startVoiceInput());
             }
             collection.addView(layout);
             return layout;

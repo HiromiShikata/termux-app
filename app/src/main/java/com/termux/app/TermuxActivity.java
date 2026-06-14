@@ -12,7 +12,6 @@ import android.content.ServiceConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.speech.RecognizerIntent;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
@@ -77,7 +76,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -216,8 +214,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_TRANSLATE_SELECTED_TEXT = 13;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
-
-    public static final int TERMINAL_TOOLBAR_TEXT_INPUT_VOICE_REQUEST_CODE = 2000;
 
     private static final String ARG_TERMINAL_TOOLBAR_TEXT_INPUT = "terminal_toolbar_text_input";
     private static final String ARG_ACTIVITY_RECREATED = "activity_recreated";
@@ -994,17 +990,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logVerbose(LOG_TAG, "onActivityResult: requestCode: " + requestCode + ", resultCode: "  + resultCode + ", data: "  + IntentUtils.getIntentString(data));
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
-        } else if (requestCode == TERMINAL_TOOLBAR_TEXT_INPUT_VOICE_REQUEST_CODE) {
-            if (resultCode == RESULT_OK && data != null) {
-                ArrayList<String> recognizedText = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
-                if (recognizedText != null && !recognizedText.isEmpty()) {
-                    EditText textInput = getTerminalToolbarTextInput();
-                    if (textInput != null) {
-                        textInput.setText(recognizedText.get(0));
-                        textInput.setSelection(textInput.getText().length());
-                    }
-                }
-            }
         }
     }
 

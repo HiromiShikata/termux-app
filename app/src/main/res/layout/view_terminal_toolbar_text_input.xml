@@ -17,17 +17,6 @@
         android:src="@drawable/ic_toolbar_input_history"
         android:tint="@android:color/white" />
 
-    <ImageButton
-        android:id="@+id/terminal_toolbar_text_input_voice_button"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/title_toolbar_text_input_voice_button"
-        android:paddingHorizontal="6dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_toolbar_input_voice"
-        android:tint="@android:color/white" />
-
     <EditText
         android:id="@+id/terminal_toolbar_text_input"
         android:layout_width="0dp"
