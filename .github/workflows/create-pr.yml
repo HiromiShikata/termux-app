@@ -76,18 +76,36 @@ jobs:
       - name: Enable Auto Merge for PR
         if: steps.resolve_pr.outputs.pr_number
         run: |
+          RULESET_METHOD=$(gh api "repos/${{ github.repository }}/rules/branches/main" \
+            --jq '[.[] | select(.type == "pull_request") | .parameters.allowed_merge_methods // empty][0][0]' 2>/dev/null || echo "")
+          if [ -n "$RULESET_METHOD" ] && [ "$RULESET_METHOD" != "null" ]; then
+            MERGE_METHOD=$(echo "$RULESET_METHOD" | tr '[:lower:]' '[:upper:]')
+          else
+            ALLOW_SQUASH=$(gh api "repos/${{ github.repository }}" --jq '.allow_squash_merge')
+            ALLOW_REBASE=$(gh api "repos/${{ github.repository }}" --jq '.allow_rebase_merge')
+            if [ "$ALLOW_SQUASH" = "true" ]; then
+              MERGE_METHOD="SQUASH"
+            elif [ "$ALLOW_REBASE" = "true" ]; then
+              MERGE_METHOD="REBASE"
+            else
+              MERGE_METHOD="MERGE"
+            fi
+          fi
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: bearer ${{ steps.app-token.outputs.token }}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id }) { clientMutationId } }",
-              "variables": {
-                "id": "'"${{ steps.get_pr_id.outputs.node_id }}"'"
+            -d "{
+              \"query\": \"mutation(\$id: ID!, \$mergeMethod: PullRequestMergeMethod!) { enablePullRequestAutoMerge(input: { pullRequestId: \$id, mergeMethod: \$mergeMethod }) { clientMutationId } }\",
+              \"variables\": {
+                \"id\": \"${{ steps.get_pr_id.outputs.node_id }}\",
+                \"mergeMethod\": \"$MERGE_METHOD\"
               }
-            }' \
+            }" \
             "https://api.github.com/graphql")
           echo "$RESPONSE"
           if echo "$RESPONSE" | jq -e '.errors' >/dev/null; then
             echo "Failed to enable auto merge"
             exit 1
           fi
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
