@@ -269,6 +269,16 @@
                 android:tint="@color/white" />
 
             <ImageButton
+                android:id="@+id/terminal_toolbar_session_sheet_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_open_session_sheet"
+                android:padding="8dp"
+                android:src="@drawable/ic_session_sheet_toggle"
+                android:tint="@color/white" />
+
+            <ImageButton
                 android:id="@+id/terminal_toolbar_drawer_toggle_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
