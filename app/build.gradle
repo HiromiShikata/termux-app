@@ -31,7 +31,7 @@ android {
         implementation "androidx.viewpager:viewpager:1.0.0"
         implementation "androidx.webkit:webkit:1.12.1"
         implementation "com.google.android.material:material:1.12.0"
-        implementation "com.google.guava:guava:24.1-jre"
+        implementation "com.google.guava:guava:24.1-android"
         implementation "io.noties.markwon:core:$markwonVersion"
         implementation "io.noties.markwon:ext-strikethrough:$markwonVersion"
         implementation "io.noties.markwon:linkify:$markwonVersion"
@@ -166,47 +166,97 @@ def validateVersionName(String versionName) {
         throw new GradleException("The versionName '"  + versionName + "' is not a valid version as per semantic version '2.0.0' spec in the format 'major.minor.patch(-prerelease)(+buildmetadata)'. https://semver.org/spec/v2.0.0.html.")
 }
 
-def downloadBootstrap(String arch, String expectedChecksum, String version) {
+def sha256Of(File file) {
     def digest = java.security.MessageDigest.getInstance("SHA-256")
-
-    def localUrl = "src/main/cpp/bootstrap-" + arch + ".zip"
-    def file = new File(projectDir, localUrl)
-    if (file.exists()) {
+    def input = new FileInputStream(file)
+    try {
         def buffer = new byte[8192]
-        def input = new FileInputStream(file)
         while (true) {
             def readBytes = input.read(buffer)
             if (readBytes < 0) break
             digest.update(buffer, 0, readBytes)
         }
-        def checksum = new BigInteger(1, digest.digest()).toString(16)
-        while (checksum.length() < 64) { checksum = "0" + checksum }
+    } finally {
+        input.close()
+    }
+    def checksum = new BigInteger(1, digest.digest()).toString(16)
+    while (checksum.length() < 64) { checksum = "0" + checksum }
+    return checksum
+}
+
+def stripBootstrap(String arch) {
+    def removePrefixes = ["share/info/", "share/doc/", "share/man/", "include/", "libexec/installed-tests/"]
+    def fixedEntryTime = new GregorianCalendar(1980, Calendar.FEBRUARY, 1, 0, 0, 0).getTimeInMillis()
+
+    def originalFile = new File(projectDir, "src/main/cpp/bootstrap-" + arch + ".zip")
+    def strippedFile = new File(projectDir, "src/main/cpp/bootstrap-" + arch + "-stripped.zip")
+
+    def input = new java.util.zip.ZipInputStream(new BufferedInputStream(new FileInputStream(originalFile)))
+    def output = new java.util.zip.ZipOutputStream(new BufferedOutputStream(new FileOutputStream(strippedFile)))
+    output.setMethod(java.util.zip.ZipOutputStream.DEFLATED)
+    output.setLevel(java.util.zip.Deflater.BEST_COMPRESSION)
+    try {
+        def buffer = new byte[8192]
+        def entry
+        while ((entry = input.getNextEntry()) != null) {
+            def name = entry.name
+            if (removePrefixes.any { name.startsWith(it) }) {
+                input.closeEntry()
+                continue
+            }
+            def newEntry = new java.util.zip.ZipEntry(name)
+            newEntry.setTime(fixedEntryTime)
+            output.putNextEntry(newEntry)
+            int readBytes
+            while ((readBytes = input.read(buffer)) != -1) {
+                output.write(buffer, 0, readBytes)
+            }
+            output.closeEntry()
+            input.closeEntry()
+        }
+    } finally {
+        input.close()
+        output.close()
+    }
+    logger.quiet("Stripped bootstrap-" + arch + ".zip (" + originalFile.length() + " bytes) -> bootstrap-" + arch + "-stripped.zip (" + strippedFile.length() + " bytes)")
+}
+
+def downloadBootstrap(String arch, String expectedChecksum, String version) {
+    def localUrl = "src/main/cpp/bootstrap-" + arch + ".zip"
+    def file = new File(projectDir, localUrl)
+    def needsDownload = true
+    if (file.exists()) {
+        def checksum = sha256Of(file)
         if (checksum == expectedChecksum) {
-            return
+            needsDownload = false
         } else {
             logger.quiet("Deleting old local file with wrong hash: " + localUrl + ": expected: " + expectedChecksum + ", actual: " + checksum)
             file.delete()
         }
     }
 
-    def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
-    logger.quiet("Downloading " + remoteUrl + " ...")
+    if (needsDownload) {
+        def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
+        logger.quiet("Downloading " + remoteUrl + " ...")
 
-    file.parentFile.mkdirs()
-    def out = new BufferedOutputStream(new FileOutputStream(file))
+        file.parentFile.mkdirs()
+        def digest = java.security.MessageDigest.getInstance("SHA-256")
+        def out = new BufferedOutputStream(new FileOutputStream(file))
+        def connection = new URL(remoteUrl).openConnection()
+        connection.setInstanceFollowRedirects(true)
+        def digestStream = new java.security.DigestInputStream(connection.inputStream, digest)
+        out << digestStream
+        out.close()
 
-    def connection = new URL(remoteUrl).openConnection()
-    connection.setInstanceFollowRedirects(true)
-    def digestStream = new java.security.DigestInputStream(connection.inputStream, digest)
-    out << digestStream
-    out.close()
-
-    def checksum = new BigInteger(1, digest.digest()).toString(16)
-    while (checksum.length() < 64) { checksum = "0" + checksum }
-    if (checksum != expectedChecksum) {
-        file.delete()
-        throw new GradleException("Wrong checksum for " + remoteUrl + ": expected: " + expectedChecksum + ", actual: " + checksum)
+        def checksum = new BigInteger(1, digest.digest()).toString(16)
+        while (checksum.length() < 64) { checksum = "0" + checksum }
+        if (checksum != expectedChecksum) {
+            file.delete()
+            throw new GradleException("Wrong checksum for " + remoteUrl + ": expected: " + expectedChecksum + ", actual: " + checksum)
+        }
     }
+
+    stripBootstrap(arch)
 }
 
 clean {
