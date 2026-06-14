@@ -391,12 +391,26 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void copyCurrentSessionNameToClipboard() {
-        TerminalSession session = mActivity.getCurrentSession();
-        String sessionName = (session == null) ? null : session.mSessionName;
-        if (TextUtils.isEmpty(sessionName)) return;
+        copySessionNameToClipboard(mActivity.getCurrentSession());
+    }
 
-        ShareUtils.copyTextToClipboard(mActivity, sessionName,
+    public void copySessionNameToClipboard(TerminalSession session) {
+        if (session == null) return;
+        String textToCopy = resolveSessionNameForCopy(session.mSessionName, session.getTitle());
+        if (TextUtils.isEmpty(textToCopy)) return;
+
+        ShareUtils.copyTextToClipboard(mActivity, textToCopy,
             mActivity.getString(R.string.msg_session_name_copied_to_clipboard));
+    }
+
+    static String resolveSessionNameForCopy(String sessionName, String sessionTitle) {
+        if (sessionName != null && !sessionName.isEmpty()) {
+            return sessionName;
+        }
+        if (sessionTitle != null && !sessionTitle.isEmpty()) {
+            return sessionTitle;
+        }
+        return null;
     }
 
     public void switchToSession(boolean forward) {

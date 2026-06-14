@@ -404,6 +404,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
 
         CharSequence[] actions = {
+            mActivity.getString(R.string.action_copy_session_name),
             mActivity.getString(R.string.action_rename_session),
             mActivity.getString(R.string.action_delete_session)
         };
@@ -414,8 +415,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         builder.setItems(actions, (dialog, which) -> {
             if (which == 0) {
-                mActivity.getTermuxTerminalSessionClient().renameSession(session);
+                mActivity.getTermuxTerminalSessionClient().copySessionNameToClipboard(session);
             } else if (which == 1) {
+                mActivity.getTermuxTerminalSessionClient().renameSession(session);
+            } else if (which == 2) {
                 mActivity.getTermuxTerminalSessionClient().deleteSession(session);
             }
         });
