@@ -1,18 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<EditText xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/terminal_toolbar_text_input"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:imeOptions="actionSend|flagNoFullscreen"
-    android:maxLines="3"
-    android:inputType="text"
-    android:drawablePadding="8dp"
-    android:textSize="12sp"
-    android:importantForAutofill="no"
-    android:textColor="@android:color/white"
-    android:textColorHighlight="@android:color/darker_gray"
-    android:paddingTop="0dp"
-    android:textCursorDrawable="@null"
-    android:paddingBottom="0dp"
-    tools:ignore="LabelFor" />
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageButton
+        android:id="@+id/terminal_toolbar_text_input_history_button"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/title_toolbar_text_input_history_dialog"
+        android:paddingHorizontal="6dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_toolbar_input_history"
+        android:tint="@android:color/white" />
+
+    <EditText
+        android:id="@+id/terminal_toolbar_text_input"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:imeOptions="actionSend|flagNoFullscreen"
+        android:maxLines="3"
+        android:inputType="text"
+        android:drawablePadding="8dp"
+        android:textSize="12sp"
+        android:importantForAutofill="no"
+        android:textColor="@android:color/white"
+        android:textColorHighlight="@android:color/darker_gray"
+        android:paddingTop="0dp"
+        android:textCursorDrawable="@null"
+        android:paddingBottom="0dp"
+        tools:ignore="LabelFor" />
+</LinearLayout>
