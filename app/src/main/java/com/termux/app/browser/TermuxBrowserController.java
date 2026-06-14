@@ -405,12 +405,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void onSessionChanged(@Nullable TerminalSession session) {
-        mCurrentSessionHandle = (session == null) ? null : session.mHandle;
+        String newSessionHandle = (session == null) ? null : session.mHandle;
+        boolean switchingSession =
+            BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
+        mCurrentSessionHandle = newSessionHandle;
         rebindTabsList(session);
         updateDesktopModeToggleState();
-        BrowserTab activeTab = getActiveTab();
+        if (switchingSession) {
+            showTerminal();
+            return;
+        }
         if (mBrowserVisible) {
-            if (activeTab != null) {
+            if (getActiveTab() != null) {
                 loadActiveTab();
             } else {
                 showTerminal();
