@@ -582,7 +582,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         loadActiveTab();
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
-        mActivity.getTerminalView().setVisibility(View.GONE);
     }
 
     public void showTerminal() {
@@ -591,7 +590,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
         mBrowserContentContainer.setVisibility(View.GONE);
-        mActivity.getTerminalView().setVisibility(View.VISIBLE);
         updateProjectOverviewActionsVisibility();
     }
 
@@ -606,7 +604,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         loadActiveTab(browserWasHidden);
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
-        mActivity.getTerminalView().setVisibility(View.GONE);
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
     }
