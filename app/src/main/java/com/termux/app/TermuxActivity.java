@@ -20,7 +20,6 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -273,10 +272,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setTerminalToolbarView(savedInstanceState);
 
         setSettingsButtonView();
-
-        setSessionDefinitionLoadButtonView();
-
-        setNewSessionButtonView();
 
         setBrowserView();
 
@@ -564,29 +559,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setTermuxSessionsListView() {
-        ListView termuxSessionsListView = findViewById(R.id.terminal_sessions_list);
         mTermuxSessionListViewController = new TermuxSessionsListViewController(this, mTermuxService.getTermuxSessions());
-        termuxSessionsListView.setAdapter(mTermuxSessionListViewController);
-        termuxSessionsListView.setOnItemClickListener(mTermuxSessionListViewController);
-        termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
-        setLeftDrawerSessionListPeriodicRefresh();
         loadSessionDefinitionEntriesForGrouping();
-    }
-
-    private void setLeftDrawerSessionListPeriodicRefresh() {
-        getDrawer().addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
-            @Override
-            public void onDrawerOpened(@NonNull View drawerView) {
-                if (drawerView.getId() == R.id.left_drawer && mTermuxSessionListViewController != null)
-                    mTermuxSessionListViewController.startPeriodicRefresh();
-            }
-
-            @Override
-            public void onDrawerClosed(@NonNull View drawerView) {
-                if (drawerView.getId() == R.id.left_drawer && mTermuxSessionListViewController != null)
-                    mTermuxSessionListViewController.stopPeriodicRefresh();
-            }
-        });
     }
 
     private void loadSessionDefinitionEntriesForGrouping() {
@@ -669,10 +643,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         });
     }
 
-    private void setSessionDefinitionLoadButtonView() {
-        findViewById(R.id.session_definition_load_button).setOnClickListener(v -> loadSessionsFromDefinition());
-    }
-
     public void loadSessionsFromDefinition() {
         new SessionDefinitionController(this).loadAndBuildSessions();
     }
@@ -694,18 +664,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 }
             },
             -1, null, -1, null, null);
-    }
-
-    private void setNewSessionButtonView() {
-        View newSessionButton = findViewById(R.id.new_session_button);
-        newSessionButton.setOnClickListener(v -> promptAndCreateNewSession());
-        newSessionButton.setOnLongClickListener(v -> {
-            TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,
-                R.string.action_create_named_session_confirm, text -> mTermuxTerminalSessionActivityClient.addNewSession(false, text),
-                R.string.action_new_session_failsafe, text -> mTermuxTerminalSessionActivityClient.addNewSession(true, text),
-                -1, null, null);
-            return true;
-        });
     }
 
     private void setBrowserView() {

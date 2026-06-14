@@ -5,8 +5,6 @@ import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -53,8 +51,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
     private static final int SESSION_ROW_BELL_ICON_PADDING_DP = 4;
 
-    private static final long RELATIVE_TIME_REFRESH_INTERVAL_MS = 5000L;
-
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
 
@@ -62,16 +58,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
 
     final TermuxActivity mActivity;
-
-    private final Handler mPeriodicRefreshHandler = new Handler(Looper.getMainLooper());
-
-    private final Runnable mPeriodicRefreshRunnable = new Runnable() {
-        @Override
-        public void run() {
-            notifyDataSetChanged();
-            mPeriodicRefreshHandler.postDelayed(this, RELATIVE_TIME_REFRESH_INTERVAL_MS);
-        }
-    };
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
@@ -168,16 +154,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     @Override
     public int getCount() {
         return mRows.size();
-    }
-
-    public int getRowPositionForSessionIndex(int sessionIndex) {
-        for (int position = 0; position < mRows.size(); position++) {
-            SessionHierarchyRow row = mRows.get(position);
-            if (!row.isHeader() && row.getSessionIndex() == sessionIndex) {
-                return position;
-            }
-        }
-        return -1;
     }
 
     @Override
@@ -443,16 +419,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return null;
         }
         return store.getBellArrivalTimeMillis(sessionHandle);
-    }
-
-    public void startPeriodicRefresh() {
-        mPeriodicRefreshHandler.removeCallbacks(mPeriodicRefreshRunnable);
-        notifyDataSetChanged();
-        mPeriodicRefreshHandler.postDelayed(mPeriodicRefreshRunnable, RELATIVE_TIME_REFRESH_INTERVAL_MS);
-    }
-
-    public void stopPeriodicRefresh() {
-        mPeriodicRefreshHandler.removeCallbacks(mPeriodicRefreshRunnable);
     }
 
     private int dpToPx(int dp) {
