@@ -7,6 +7,8 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Handler;
@@ -40,6 +42,7 @@ import androidx.annotation.RequiresApi;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
+import com.termux.view.scroll.TerminalScrollController;
 import com.termux.view.textselection.TextSelectionCursorController;
 
 /** View displaying and interacting with a {@link TerminalSession}. */
@@ -82,6 +85,28 @@ public final class TerminalView extends View {
 
     /** What was left in from scrolling movement. */
     float mScrollRemainder;
+
+    private TerminalScrollController mScrollController;
+    private final Paint mScrollThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF mScrollThumbRect = new RectF();
+    private float mScrollThumbCornerRadiusPx;
+    private int mScrollThumbGrabExtraPx;
+    private boolean mScrollThumbDragging;
+    private int mScrollThumbAlpha;
+    private static final int SCROLL_THUMB_ALPHA_IDLE = 0;
+    private static final int SCROLL_THUMB_ALPHA_VISIBLE = 200;
+    private static final int SCROLL_THUMB_ALPHA_DRAGGING = 255;
+    private static final long SCROLL_THUMB_AUTO_HIDE_DELAY_MS = 1500;
+    private final Handler mScrollThumbHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mScrollThumbAutoHideRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!mScrollThumbDragging) {
+                mScrollThumbAlpha = SCROLL_THUMB_ALPHA_IDLE;
+                invalidate();
+            }
+        }
+    };
 
     /** If non-zero, this is the last unicode code point received if that was a combining character. */
     int mCombiningAccent;
@@ -257,6 +282,14 @@ public final class TerminalView extends View {
             }
         });
         mScroller = new Scroller(context);
+        float density = context.getResources().getDisplayMetrics().density;
+        int thumbWidthPx = Math.round(6 * density);
+        int trackPaddingPx = Math.round(2 * density);
+        int minThumbHeightPx = Math.round(36 * density);
+        mScrollThumbCornerRadiusPx = thumbWidthPx / 2f;
+        mScrollThumbGrabExtraPx = Math.round(16 * density);
+        mScrollController = new TerminalScrollController(thumbWidthPx, trackPaddingPx, minThumbHeightPx);
+        mScrollThumbPaint.setColor(0xFFCCCCCC);
         AccessibilityManager am = (AccessibilityManager) context.getSystemService(Context.ACCESSIBILITY_SERVICE);
         mAccessibilityEnabled = am.isEnabled();
     }
@@ -460,9 +493,9 @@ public final class TerminalView extends View {
         int rowsInHistory = mEmulator.getScreen().getActiveTranscriptRows();
         if (mTopRow < -rowsInHistory) mTopRow = -rowsInHistory;
 
-        if (isSelectingText() || mEmulator.isAutoScrollDisabled()) {
+        if (isSelectingText() || mScrollThumbDragging || mEmulator.isAutoScrollDisabled()) {
 
-            // Do not scroll when selecting text.
+            // Do not scroll when selecting text or dragging the scroll thumb.
             int rowShift = mEmulator.getScrollCounter();
             if (-mTopRow + rowShift > rowsInHistory) {
                 // .. unless we're hitting the end of history transcript, in which
@@ -470,7 +503,7 @@ public final class TerminalView extends View {
                 if (isSelectingText())
                     stopTextSelectionMode();
 
-                if (mEmulator.isAutoScrollDisabled()) {
+                if (mScrollThumbDragging || mEmulator.isAutoScrollDisabled()) {
                     mTopRow = -rowsInHistory;
                     skipScrolling = true;
                 }
@@ -584,6 +617,7 @@ public final class TerminalView extends View {
             } else {
                 mTopRow = Math.min(0, Math.max(-(mEmulator.getScreen().getActiveTranscriptRows()), mTopRow + (up ? -1 : 1)));
                 if (!awakenScrollBars()) invalidate();
+                showScrollThumb();
             }
         }
     }
@@ -606,6 +640,10 @@ public final class TerminalView extends View {
     public boolean onTouchEvent(MotionEvent event) {
         if (mEmulator == null) return true;
         final int action = event.getAction();
+
+        if (!isSelectingText() && !event.isFromSource(InputDevice.SOURCE_MOUSE) && handleScrollThumbTouchEvent(event)) {
+            return true;
+        }
 
         if (isSelectingText()) {
             updateFloatingToolbarVisibility(event);
@@ -1020,7 +1058,78 @@ public final class TerminalView extends View {
 
             // render the text selection handles
             renderTextSelection();
+
+            renderScrollThumb(canvas);
         }
+    }
+
+    private void renderScrollThumb(Canvas canvas) {
+        if (mScrollThumbAlpha <= 0) return;
+        int transcriptRows = mEmulator.getScreen().getActiveTranscriptRows();
+        if (!mScrollController.isScrollable(transcriptRows)) return;
+        int visibleRows = mEmulator.mRows;
+        int totalRows = mEmulator.getScreen().getActiveRows();
+        int viewWidth = getWidth();
+        int viewHeight = getHeight();
+        int thumbLeft = mScrollController.getThumbLeftPx(viewWidth);
+        int thumbTop = mScrollController.getThumbTopPx(viewHeight, visibleRows, totalRows, mTopRow, transcriptRows);
+        int thumbHeight = mScrollController.getThumbHeightPx(viewHeight, visibleRows, totalRows);
+        mScrollThumbRect.set(thumbLeft, thumbTop, thumbLeft + mScrollController.getThumbWidthPx(), thumbTop + thumbHeight);
+        mScrollThumbPaint.setAlpha(mScrollThumbAlpha);
+        canvas.drawRoundRect(mScrollThumbRect, mScrollThumbCornerRadiusPx, mScrollThumbCornerRadiusPx, mScrollThumbPaint);
+    }
+
+    private void showScrollThumb() {
+        if (mEmulator == null) return;
+        if (!mScrollController.isScrollable(mEmulator.getScreen().getActiveTranscriptRows())) return;
+        mScrollThumbHandler.removeCallbacks(mScrollThumbAutoHideRunnable);
+        if (mScrollThumbAlpha != SCROLL_THUMB_ALPHA_VISIBLE && !mScrollThumbDragging) {
+            mScrollThumbAlpha = SCROLL_THUMB_ALPHA_VISIBLE;
+            invalidate();
+        }
+        if (!mScrollThumbDragging)
+            mScrollThumbHandler.postDelayed(mScrollThumbAutoHideRunnable, SCROLL_THUMB_AUTO_HIDE_DELAY_MS);
+    }
+
+    private boolean handleScrollThumbTouchEvent(MotionEvent event) {
+        if (mEmulator == null) return false;
+        int transcriptRows = mEmulator.getScreen().getActiveTranscriptRows();
+        int visibleRows = mEmulator.mRows;
+        int totalRows = mEmulator.getScreen().getActiveRows();
+        int viewWidth = getWidth();
+        int viewHeight = getHeight();
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                if (mScrollController.isWithinThumbGrabArea(viewWidth, viewHeight, visibleRows, totalRows, mTopRow, transcriptRows, event.getX(), event.getY(), mScrollThumbGrabExtraPx)) {
+                    mScrollThumbDragging = true;
+                    mScrollThumbHandler.removeCallbacks(mScrollThumbAutoHideRunnable);
+                    mScrollThumbAlpha = SCROLL_THUMB_ALPHA_DRAGGING;
+                    if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+                    invalidate();
+                    return true;
+                }
+                return false;
+            case MotionEvent.ACTION_MOVE:
+                if (!mScrollThumbDragging) return false;
+                int targetTopRow = mScrollController.topRowForThumbCenter(viewHeight, visibleRows, totalRows, event.getY(), transcriptRows);
+                if (targetTopRow != mTopRow) {
+                    mTopRow = targetTopRow;
+                    if (!awakenScrollBars()) invalidate();
+                } else {
+                    invalidate();
+                }
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (!mScrollThumbDragging) return false;
+                mScrollThumbDragging = false;
+                mScrollThumbAlpha = SCROLL_THUMB_ALPHA_VISIBLE;
+                mScrollThumbHandler.postDelayed(mScrollThumbAutoHideRunnable, SCROLL_THUMB_AUTO_HIDE_DELAY_MS);
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
+                invalidate();
+                return true;
+        }
+        return false;
     }
 
     public TerminalSession getCurrentSession() {
@@ -1442,6 +1551,8 @@ public final class TerminalView extends View {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+
+        mScrollThumbHandler.removeCallbacks(mScrollThumbAutoHideRunnable);
 
         if (mTextSelectionCursorController != null) {
             // Might solve the following exception
