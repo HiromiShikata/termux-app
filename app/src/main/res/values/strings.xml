@@ -107,6 +107,13 @@
     <string name="action_always_na_session_names_config_save">Save</string>
     <string name="action_open_project_overview">Open project overview</string>
 
+    <string name="action_open_crash_log_viewer">Crash log</string>
+    <string name="title_crash_log_viewer">Crash log</string>
+    <string name="summary_crash_log_viewer">View and copy the latest crash log.</string>
+    <string name="msg_crash_log_not_found">No crash log found.</string>
+    <string name="action_crash_log_copy">Copy</string>
+    <string name="msg_crash_log_copied">Copied</string>
+
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>
     <string name="msg_disabling_terminal_toolbar">Disabling Terminal Toolbar</string>
 

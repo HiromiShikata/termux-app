@@ -75,6 +75,7 @@ public class SettingsActivity extends AppCompatActivity {
                     configureAutosshConfigPreference(context);
                     configureSessionDefinitionConfigPreference(context);
                     configureAlwaysNaSessionNamesPreference(context);
+                    configureCrashLogViewerPreference(context);
                     configureUpdateApkPreference(context);
                     configureAboutPreference(context);
                     configureDonatePreference(context);
@@ -153,6 +154,16 @@ public class SettingsActivity extends AppCompatActivity {
             if (alwaysNaSessionNamesPreference != null) {
                 alwaysNaSessionNamesPreference.setOnPreferenceClickListener(preference -> {
                     ActivityUtils.startActivity(context, new Intent(context, AlwaysNaSessionNamesConfigActivity.class));
+                    return true;
+                });
+            }
+        }
+
+        private void configureCrashLogViewerPreference(@NonNull Context context) {
+            Preference crashLogViewerPreference = findPreference("crash_log_viewer");
+            if (crashLogViewerPreference != null) {
+                crashLogViewerPreference.setOnPreferenceClickListener(preference -> {
+                    ActivityUtils.startActivity(context, new Intent(context, CrashLogViewerActivity.class));
                     return true;
                 });
             }
