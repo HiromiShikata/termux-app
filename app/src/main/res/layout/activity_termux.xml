@@ -262,6 +262,38 @@
         </androidx.drawerlayout.widget.DrawerLayout>
 
         <LinearLayout
+            android:id="@+id/session_list_bottom_sheet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/terminal_toolbar_bottom_container"
+            android:layout_alignParentStart="true"
+            android:background="?attr/termuxActivityDrawerBackground"
+            android:elevation="6dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/session_list_bottom_sheet_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:text="@string/title_session_list_bottom_sheet"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <ListView
+                android:id="@+id/session_list_bottom_sheet_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:choiceMode="singleChoice"
+                android:divider="@android:color/transparent"
+                android:dividerHeight="0dp"
+                android:longClickable="true" />
+
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/terminal_toolbar_bottom_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
