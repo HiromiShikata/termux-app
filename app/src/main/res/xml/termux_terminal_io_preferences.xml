@@ -18,4 +18,16 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory
+        app:key="read_aloud"
+        app:title="@string/termux_read_aloud_header">
+
+        <SwitchPreferenceCompat
+            app:key="speak_tag_auto_read_enabled"
+            app:summaryOff="@string/termux_speak_tag_auto_read_enabled_off"
+            app:summaryOn="@string/termux_speak_tag_auto_read_enabled_on"
+            app:title="@string/termux_speak_tag_auto_read_enabled_title" />
+
+    </PreferenceCategory>
+
 </PreferenceScreen>

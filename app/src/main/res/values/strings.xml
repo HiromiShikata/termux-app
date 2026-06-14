@@ -245,6 +245,14 @@
                 <string name="termux_soft_keyboard_enabled_only_if_no_hardware_on">Soft keyboard will be enabled only if
                     no hardware keyboard is connected.</string>
 
+            <!-- Read Aloud Category -->
+            <string name="termux_read_aloud_header">Read Aloud</string>
+
+                <!-- Speak Tag Auto Read -->
+                <string name="termux_speak_tag_auto_read_enabled_title">Read &lt;speak&gt; Tag Content Aloud</string>
+                <string name="termux_speak_tag_auto_read_enabled_off">Content inside &lt;speak&gt;…&lt;/speak&gt; tags in the terminal output will not be read aloud. (Default)</string>
+                <string name="termux_speak_tag_auto_read_enabled_on">Content inside &lt;speak&gt;…&lt;/speak&gt; tags in the terminal output will be read aloud with text-to-speech.</string>
+
 
         <!-- Terminal View Preferences -->
         <string name="termux_terminal_view_preferences_title">Terminal View</string>

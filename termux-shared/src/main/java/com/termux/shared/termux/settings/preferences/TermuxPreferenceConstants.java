@@ -81,6 +81,10 @@ package com.termux.shared.termux.settings.preferences;
  * - 0.19.0 (2026-06-14)
  *      - Added following to `TERMUX_APP`:
  *          `KEY_BROWSER_SPLIT_RATIO` and `DEFAULT_VALUE_BROWSER_SPLIT_RATIO`.
+ *
+ * - 0.20.0 (2026-06-14)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_SPEAK_TAG_AUTO_READ_ENABLED` and `DEFAULT_VALUE_KEY_SPEAK_TAG_AUTO_READ_ENABLED`.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -122,6 +126,14 @@ public final class TermuxPreferenceConstants {
          */
         public static final String KEY_BROWSER_SPLIT_RATIO = "browser_split_ratio";
         public static final float DEFAULT_VALUE_BROWSER_SPLIT_RATIO = 2f / 3f;
+
+
+        /**
+         * Defines the key for whether the content inside `<speak>...</speak>` tags that appears in the
+         * terminal output is automatically read aloud via Android text-to-speech.
+         */
+        public static final String KEY_SPEAK_TAG_AUTO_READ_ENABLED = "speak_tag_auto_read_enabled";
+        public static final boolean DEFAULT_VALUE_KEY_SPEAK_TAG_AUTO_READ_ENABLED = false;
 
 
         /**
