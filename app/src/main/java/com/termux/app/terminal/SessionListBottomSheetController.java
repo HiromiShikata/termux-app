@@ -1,10 +1,11 @@
 package com.termux.app.terminal;
 
 import android.graphics.Color;
-import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -19,8 +20,7 @@ import com.termux.shared.theme.ThemeUtils;
 
 public class SessionListBottomSheetController {
 
-    static final int DISMISS_SWIPE_MIN_DISTANCE_PIXELS = 48;
-    static final int DISMISS_SWIPE_MIN_VELOCITY_PIXELS_PER_SECOND = 200;
+    static final long SLIDE_ANIMATION_DURATION_MILLISECONDS = 220;
 
     private final TermuxActivity mActivity;
     private final View mSheetView;
@@ -31,6 +31,8 @@ public class SessionListBottomSheetController {
     private final View mLoadSessionButton;
 
     private boolean mAdapterBound;
+    private float mDragStartRawY;
+    private VelocityTracker mVelocityTracker;
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -41,7 +43,7 @@ public class SessionListBottomSheetController {
         this.mNewSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_new_session_button);
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         bindActionButtons();
-        bindSwipeDownToDismiss();
+        bindDragToDismiss();
     }
 
     private void bindActionButtons() {
@@ -55,33 +57,77 @@ public class SessionListBottomSheetController {
         });
     }
 
-    private void bindSwipeDownToDismiss() {
-        GestureDetector gestureDetector =
-            new GestureDetector(mActivity, new SwipeDownGestureListener());
-        View.OnTouchListener swipeToDismissListener = (view, event) -> {
-            gestureDetector.onTouchEvent(event);
-            return true;
-        };
-        mDragHandleView.setOnTouchListener(swipeToDismissListener);
-        mTitleView.setOnTouchListener(swipeToDismissListener);
+    private void bindDragToDismiss() {
+        View.OnTouchListener dragListener = (view, event) -> handleDragTouch(event);
+        mDragHandleView.setOnTouchListener(dragListener);
+        mTitleView.setOnTouchListener(dragListener);
     }
 
-    private final class SwipeDownGestureListener extends GestureDetector.SimpleOnGestureListener {
-        @Override
-        public boolean onDown(@NonNull MotionEvent event) {
-            return true;
-        }
-
-        @Override
-        public boolean onFling(@Nullable MotionEvent start, @NonNull MotionEvent end,
-                               float velocityX, float velocityY) {
-            float verticalDistance = start == null ? end.getY() : end.getY() - start.getY();
-            if (isDownwardDismissSwipe(verticalDistance, velocityY)) {
-                hide();
+    private boolean handleDragTouch(@NonNull MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                mSheetView.animate().cancel();
+                mDragStartRawY = event.getRawY();
+                mVelocityTracker = VelocityTracker.obtain();
+                mVelocityTracker.addMovement(event);
                 return true;
-            }
-            return false;
+            case MotionEvent.ACTION_MOVE:
+                if (mVelocityTracker != null) {
+                    mVelocityTracker.addMovement(event);
+                }
+                float dragDelta = event.getRawY() - mDragStartRawY;
+                mSheetView.setTranslationY(
+                    SessionListBottomSheetDragDecision.clampDragTranslation(dragDelta, sheetHeightPixels()));
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                float verticalVelocity = computeVerticalVelocityAndRecycle();
+                if (SessionListBottomSheetDragDecision.shouldDismissAfterDrag(
+                        mSheetView.getTranslationY(), verticalVelocity, sheetHeightPixels())) {
+                    animateDismiss();
+                } else {
+                    animateSpringBack();
+                }
+                return true;
+            default:
+                return false;
         }
+    }
+
+    private float computeVerticalVelocityAndRecycle() {
+        if (mVelocityTracker == null) {
+            return 0f;
+        }
+        mVelocityTracker.computeCurrentVelocity(1000);
+        float verticalVelocity = mVelocityTracker.getYVelocity();
+        mVelocityTracker.recycle();
+        mVelocityTracker = null;
+        return verticalVelocity;
+    }
+
+    private float sheetHeightPixels() {
+        int measuredHeight = mSheetView.getHeight();
+        return measuredHeight > 0 ? measuredHeight : mSheetView.getLayoutParams().height;
+    }
+
+    private void animateSpringBack() {
+        mSheetView.animate()
+            .translationY(0f)
+            .setInterpolator(new DecelerateInterpolator())
+            .setDuration(SLIDE_ANIMATION_DURATION_MILLISECONDS)
+            .start();
+    }
+
+    private void animateDismiss() {
+        mSheetView.animate()
+            .translationY(sheetHeightPixels())
+            .setInterpolator(new DecelerateInterpolator())
+            .setDuration(SLIDE_ANIMATION_DURATION_MILLISECONDS)
+            .withEndAction(() -> {
+                mSheetView.setVisibility(View.GONE);
+                mSheetView.setTranslationY(0f);
+            })
+            .start();
     }
 
     public boolean isOpen() {
@@ -104,11 +150,21 @@ public class SessionListBottomSheetController {
         applyTitleColor();
         applySheetHeightCap();
         bindSessionList(listController);
+        mSheetView.animate().cancel();
         mSheetView.setVisibility(View.VISIBLE);
+        mSheetView.setTranslationY(sheetHeightPixels());
+        mSheetView.animate()
+            .translationY(0f)
+            .setInterpolator(new DecelerateInterpolator())
+            .setDuration(SLIDE_ANIMATION_DURATION_MILLISECONDS)
+            .start();
     }
 
     public void hide() {
-        mSheetView.setVisibility(View.GONE);
+        if (mSheetView.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        animateDismiss();
     }
 
     public static void hideIfPresent(@Nullable SessionListBottomSheetController controller) {
@@ -158,10 +214,5 @@ public class SessionListBottomSheetController {
 
     static int computeSheetMaxHeight(int screenHeightPixels) {
         return screenHeightPixels / 3;
-    }
-
-    static boolean isDownwardDismissSwipe(float verticalDistancePixels, float verticalVelocityPixelsPerSecond) {
-        return verticalDistancePixels >= DISMISS_SWIPE_MIN_DISTANCE_PIXELS
-            && verticalVelocityPixelsPerSecond >= DISMISS_SWIPE_MIN_VELOCITY_PIXELS_PER_SECOND;
     }
 }
