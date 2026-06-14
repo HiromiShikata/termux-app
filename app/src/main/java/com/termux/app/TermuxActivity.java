@@ -54,6 +54,7 @@ import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionBellNotificationStore;
+import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -289,6 +290,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setDrawerToggleBarView();
 
         setRightDrawerToggleBarView();
+
+        setSessionSheetToggleBarView();
 
         registerForContextMenu(mTerminalView);
 
@@ -716,6 +719,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setRightDrawerToggleBarView() {
         findViewById(R.id.terminal_toolbar_right_drawer_toggle_button).setOnClickListener(v -> {
             getTermuxBrowserController().openTabsDrawer();
+        });
+    }
+
+    private void setSessionSheetToggleBarView() {
+        findViewById(R.id.terminal_toolbar_session_sheet_button).setOnClickListener(v -> {
+            new SessionListBottomSheetController(this).show();
         });
     }
 
