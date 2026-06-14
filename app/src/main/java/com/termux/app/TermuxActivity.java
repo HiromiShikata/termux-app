@@ -982,6 +982,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return (DrawerLayout) findViewById(R.id.drawer_layout);
     }
 
+    public SessionListBottomSheetController getSessionListBottomSheetController() {
+        return mSessionListBottomSheetController;
+    }
+
     public SessionBellNotificationStore getSessionBellNotificationStore() {
         return mTermuxService.getSessionBellNotificationStore();
     }

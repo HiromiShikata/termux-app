@@ -50,6 +50,7 @@ import androidx.webkit.WebViewFeature;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.shared.theme.NightMode;
@@ -755,6 +756,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         dismissSoftKeyboardForBrowser();
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
+        hideSessionListBottomSheet();
+    }
+
+    private void hideSessionListBottomSheet() {
+        SessionListBottomSheetController.hideIfPresent(mActivity.getSessionListBottomSheetController());
     }
 
     public void closeTab(@NonNull BrowserTab tab) {
