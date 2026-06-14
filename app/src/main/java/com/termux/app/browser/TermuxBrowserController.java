@@ -52,6 +52,7 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.shared.theme.NightMode;
@@ -338,7 +339,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.getString(R.string.action_browser_open_link_in_new_tab),
             mActivity.getString(R.string.action_browser_open_in_chrome)
         };
-        new AlertDialog.Builder(mActivity)
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
             .setTitle(linkUrl)
             .setItems(actions, (dialog, which) -> {
                 if (which == 0) {
@@ -346,8 +347,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 } else {
                     ShareUtils.openUrlInChrome(mActivity, linkUrl);
                 }
-            })
-            .show();
+            }));
     }
 
     private void applyDarkModeRendering(@NonNull WebSettings settings) {

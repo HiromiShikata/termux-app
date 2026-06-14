@@ -16,6 +16,7 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.terminal.TerminalSession;
@@ -95,13 +96,12 @@ public class TerminalToolbarViewPager {
 
             final CharSequence[] history = mSubmittedTextInputHistory.toArray(new CharSequence[0]);
             ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(mActivity, R.layout.item_toolbar_text_input_history, history);
-            new AlertDialog.Builder(mActivity)
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
                 .setTitle(R.string.title_toolbar_text_input_history_dialog)
                 .setAdapter(adapter, (dialog, which) -> {
                     editText.setText(history[which]);
                     editText.setSelection(editText.getText().length());
-                })
-                .show();
+                }));
         }
 
         @Override

@@ -19,6 +19,7 @@ import android.widget.Toast;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.shell.ShellUtils;
 import com.termux.shared.termux.terminal.TermuxTerminalViewClientBase;
@@ -728,7 +729,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
         LinkedHashSet<CharSequence> urlSet = TermuxUrlUtils.extractUrls(text);
         if (urlSet.isEmpty()) {
-            new AlertDialog.Builder(mActivity).setMessage(R.string.title_select_url_none_found).show();
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setMessage(R.string.title_select_url_none_found));
             return;
         }
 
@@ -760,7 +761,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             mActivity.getString(R.string.action_open_url_in_app),
             mActivity.getString(R.string.action_browser_open_in_chrome)
         };
-        new AlertDialog.Builder(mActivity)
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
             .setTitle(url)
             .setItems(actions, (di, which) -> {
                 if (which == 0) {
@@ -768,8 +769,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 } else {
                     ShareUtils.openUrlInChrome(mActivity, url);
                 }
-            })
-            .show();
+            }));
     }
 
     private void openUrlInApp(String url) {

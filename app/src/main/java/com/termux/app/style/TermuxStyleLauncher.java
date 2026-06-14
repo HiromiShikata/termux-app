@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 
 import com.termux.R;
 import com.termux.shared.activity.ActivityUtils;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.termux.TermuxConstants;
 
 public final class TermuxStyleLauncher {
@@ -22,10 +23,10 @@ public final class TermuxStyleLauncher {
         try {
             activity.startActivity(stylingIntent);
         } catch (ActivityNotFoundException | IllegalArgumentException e) {
-            new AlertDialog.Builder(activity).setMessage(activity.getString(R.string.error_styling_not_installed))
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity).setMessage(activity.getString(R.string.error_styling_not_installed))
                 .setPositiveButton(R.string.action_styling_install,
                     (dialog, which) -> ActivityUtils.startActivity(activity, new Intent(Intent.ACTION_VIEW, Uri.parse(TermuxConstants.TERMUX_STYLING_FDROID_PACKAGE_URL))))
-                .setNegativeButton(android.R.string.cancel, null).show();
+                .setNegativeButton(android.R.string.cancel, null));
         }
     }
 

@@ -68,7 +68,7 @@ public final class TextInputDialogUtils {
             builder.setOnDismissListener(onDismiss);
 
         dialogHolder[0] = builder.create();
-        dialogHolder[0].setCanceledOnTouchOutside(false);
+        dialogHolder[0].setCanceledOnTouchOutside(true);
         dialogHolder[0].show();
     }
 
@@ -121,7 +121,7 @@ public final class TextInputDialogUtils {
             builder.setOnDismissListener(onDismiss);
 
         dialogHolder[0] = builder.create();
-        dialogHolder[0].setCanceledOnTouchOutside(false);
+        dialogHolder[0].setCanceledOnTouchOutside(true);
         dialogHolder[0].show();
     }
 
