@@ -188,6 +188,16 @@
             android:grantUriPermissions="true"
             android:permission="${TERMUX_PACKAGE_NAME}.permission.RUN_COMMAND" />
 
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${TERMUX_PACKAGE_NAME}.apkupdate.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/apk_update_file_paths" />
+        </provider>
+
 
         <receiver
             android:name=".app.TermuxOpenReceiver"

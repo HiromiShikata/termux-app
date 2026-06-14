@@ -27,6 +27,8 @@ import android.widget.Toast;
 
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
+import com.termux.app.apkupdate.ApkUpdateManager;
+import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.browser.TermuxBrowserController;
@@ -306,6 +308,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // Send the {@link TermuxConstants#BROADCAST_TERMUX_OPENED} broadcast to notify apps that Termux
         // app has been opened.
         TermuxUtils.sendTermuxOpenedBroadcast(this);
+
+        maybeAutoCheckForApkUpdate();
+    }
+
+    private void maybeAutoCheckForApkUpdate() {
+        if (ApkUpdateManager.isAutoCheckEnabled(this)) {
+            new ApkUpdateUiController(this).checkAndPrompt(false);
+        }
     }
 
     @Override

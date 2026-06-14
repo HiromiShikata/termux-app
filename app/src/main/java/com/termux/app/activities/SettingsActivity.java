@@ -11,7 +11,7 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
-import com.termux.app.apkupdate.ApkUpdateGuide;
+import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.style.TermuxStyleLauncher;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.file.FileUtils;
@@ -150,11 +150,8 @@ public class SettingsActivity extends AppCompatActivity {
         private void configureUpdateApkPreference(@NonNull Context context) {
             Preference updateApkPreference = findPreference("update_apk");
             if (updateApkPreference != null) {
-                ApkUpdateGuide apkUpdateGuide = new ApkUpdateGuide();
-                updateApkPreference.setSummary(getString(R.string.update_apk_preference_summary,
-                    apkUpdateGuide.getRecommendedArtifactNamePrefix()));
                 updateApkPreference.setOnPreferenceClickListener(preference -> {
-                    ShareUtils.openUrl(context, apkUpdateGuide.getBuildListUrl());
+                    new ApkUpdateUiController(requireActivity()).checkAndPrompt(true);
                     return true;
                 });
             }

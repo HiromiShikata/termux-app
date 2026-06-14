@@ -294,7 +294,20 @@
     <string name="donate_preference_title">Donate</string>
 
     <!-- Update APK Preference -->
-    <string name="update_apk_preference_title">Update APK</string>
-    <string name="update_apk_preference_summary">Download the artifact whose name starts with %1$s</string>
+    <string name="update_apk_preference_title">Check for updates now</string>
+    <string name="update_apk_preference_summary">Download and install the latest build from GitHub Releases</string>
+    <string name="auto_check_for_updates_title">Auto-check for updates on launch</string>
+    <string name="auto_check_for_updates_summary">Check GitHub Releases for a newer build each time the app starts</string>
+    <string name="apk_update_checking">Checking for updates…</string>
+    <string name="apk_update_up_to_date">You are already on the latest version (%1$s)</string>
+    <string name="apk_update_check_failed">Update check failed: %1$s</string>
+    <string name="apk_update_no_matching_asset">No matching APK found in the latest release</string>
+    <string name="apk_update_dialog_title">Update available</string>
+    <string name="apk_update_dialog_message">Version %1$s is available. Download and install it now?</string>
+    <string name="apk_update_dialog_install">Update</string>
+    <string name="apk_update_dialog_cancel">Later</string>
+    <string name="apk_update_downloading">Downloading update…</string>
+    <string name="apk_update_download_failed">Update download failed: %1$s</string>
+    <string name="apk_update_install_permission_required">Allow installing unknown apps, then tap update again</string>
 
 </resources>
