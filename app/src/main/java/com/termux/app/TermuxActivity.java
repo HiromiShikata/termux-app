@@ -718,7 +718,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setRightDrawerToggleBarView() {
         findViewById(R.id.terminal_toolbar_right_drawer_toggle_button).setOnClickListener(v -> {
-            getTermuxBrowserController().openTabsDrawer();
+            getTermuxBrowserController().toggleTabsDrawer();
         });
     }
 
