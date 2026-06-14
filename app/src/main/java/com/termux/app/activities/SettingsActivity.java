@@ -141,7 +141,7 @@ public class SettingsActivity extends AppCompatActivity {
             if (updateApkPreference != null) {
                 ApkUpdateGuide apkUpdateGuide = new ApkUpdateGuide();
                 updateApkPreference.setSummary(getString(R.string.update_apk_preference_summary,
-                    apkUpdateGuide.getRecommendedArtifactName()));
+                    apkUpdateGuide.getRecommendedArtifactNamePrefix()));
                 updateApkPreference.setOnPreferenceClickListener(preference -> {
                     new AlertDialog.Builder(context)
                         .setTitle(R.string.update_apk_preference_title)
