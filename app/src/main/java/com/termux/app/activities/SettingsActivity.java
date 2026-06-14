@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.os.Environment;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
@@ -143,13 +142,7 @@ public class SettingsActivity extends AppCompatActivity {
                 updateApkPreference.setSummary(getString(R.string.update_apk_preference_summary,
                     apkUpdateGuide.getRecommendedArtifactNamePrefix()));
                 updateApkPreference.setOnPreferenceClickListener(preference -> {
-                    new AlertDialog.Builder(context)
-                        .setTitle(R.string.update_apk_preference_title)
-                        .setMessage(apkUpdateGuide.buildInstructionMessage())
-                        .setPositiveButton(R.string.update_apk_open_builds_button,
-                            (dialog, which) -> ShareUtils.openUrl(context, apkUpdateGuide.getBuildListUrl()))
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show();
+                    ShareUtils.openUrl(context, apkUpdateGuide.getBuildListUrl());
                     return true;
                 });
             }
