@@ -70,6 +70,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
 
+    private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
+
     private final WebView mWebView;
 
     private final View mBrowserContentContainer;
@@ -580,11 +582,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         String newSessionHandle = (session == null) ? null : session.mHandle;
         boolean switchingSession =
             BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
+        if (switchingSession) {
+            mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mBrowserVisible);
+        }
         mCurrentSessionHandle = newSessionHandle;
         rebindTabsList(session);
         updateDesktopModeToggleState();
         if (switchingSession) {
-            showTerminal();
+            restoreSessionVisibility();
             return;
         }
         if (mBrowserVisible) {
@@ -593,6 +598,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             } else {
                 showTerminal();
             }
+        }
+    }
+
+    private void restoreSessionVisibility() {
+        boolean restoreBrowser = mSessionVisibilityState.shouldRestoreBrowserOnSessionChange(
+            mCurrentSessionHandle, getActiveTab() != null);
+        if (restoreBrowser) {
+            showBrowser();
+        } else {
+            showTerminal();
         }
     }
 
@@ -627,6 +642,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (mDisplayedTab != null && session.mHandle.equals(mDisplayedTab.getSessionHandle()))
             mDisplayedTab = null;
         mTabManager.removeSession(session.mHandle);
+        mSessionVisibilityState.clearSession(session.mHandle);
     }
 
     public void toggleBrowser() {
@@ -645,6 +661,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return;
         }
         mBrowserVisible = true;
+        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, true);
         loadActiveTab();
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
@@ -653,6 +670,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void showTerminal() {
         mBrowserVisible = false;
+        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, false);
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
@@ -669,6 +687,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         boolean browserWasHidden = !mBrowserVisible;
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
+        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, true);
         loadActiveTab(browserWasHidden);
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
