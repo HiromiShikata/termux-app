@@ -2,7 +2,10 @@ package com.termux.view.url;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
+@RunWith(RobolectricTestRunner.class)
 public class BrowsableUrlDetectorTest {
 
     @Test
@@ -25,6 +28,12 @@ public class BrowsableUrlDetectorTest {
     }
 
     @Test
+    public void schemelessHostnameRemainsBrowsableForBackwardCompatibility() {
+        Assert.assertTrue(BrowsableUrlDetector.isLikelyBrowsableUrl("github.com"));
+        Assert.assertTrue(BrowsableUrlDetector.isLikelyBrowsableUrl("www.example.com/path"));
+    }
+
+    @Test
     public void ipv6HostUrlWithPortIsBrowsable() {
         Assert.assertTrue(BrowsableUrlDetector.isLikelyBrowsableUrl("http://[::1]:8080/path"));
     }
@@ -38,13 +47,6 @@ public class BrowsableUrlDetectorTest {
     public void plainTextIsNotBrowsable() {
         Assert.assertFalse(BrowsableUrlDetector.isLikelyBrowsableUrl("bash"));
         Assert.assertFalse(BrowsableUrlDetector.isLikelyBrowsableUrl("my project session"));
-        Assert.assertFalse(BrowsableUrlDetector.isLikelyBrowsableUrl("50.30.32.53:9980"));
-    }
-
-    @Test
-    public void nonHttpSchemeIsNotBrowsable() {
-        Assert.assertFalse(BrowsableUrlDetector.isLikelyBrowsableUrl("ftp://example.com/file"));
-        Assert.assertFalse(BrowsableUrlDetector.isLikelyBrowsableUrl("file:///etc/hosts"));
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.termux.view.url;
 
+import android.util.Patterns;
+
 import androidx.annotation.Nullable;
 
 import java.net.URI;
@@ -15,6 +17,11 @@ public final class BrowsableUrlDetector {
         String trimmed = text.trim();
         if (trimmed.isEmpty()) return false;
         if (containsWhitespace(trimmed)) return false;
+        if (Patterns.WEB_URL.matcher(trimmed).matches()) return true;
+        return isHttpUrlWithHost(trimmed);
+    }
+
+    private static boolean isHttpUrlWithHost(String trimmed) {
         String lowerCased = trimmed.toLowerCase(Locale.ROOT);
         if (!lowerCased.startsWith("http://") && !lowerCased.startsWith("https://")) return false;
         try {
