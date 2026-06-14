@@ -1,7 +1,13 @@
 package com.termux.app.terminal;
 
+import android.content.Context;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+
+import com.termux.R;
+import com.termux.app.terminal.TermuxSessionsListViewController.SessionRowActiveIndicator;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -37,5 +43,55 @@ public class TermuxSessionsListViewControllerTest {
         icon.performClick();
 
         Assert.assertTrue(opened[0]);
+    }
+
+    @Test
+    public void currentRunningSessionShowsAccentBarAndAccentName() {
+        SessionRowActiveIndicator indicator =
+            TermuxSessionsListViewController.computeActiveIndicator(true, true);
+
+        Assert.assertTrue(indicator.showAccentBar);
+        Assert.assertTrue(indicator.useAccentNameColor);
+    }
+
+    @Test
+    public void currentFinishedSessionShowsAccentBarButKeepsFinishedNameColor() {
+        SessionRowActiveIndicator indicator =
+            TermuxSessionsListViewController.computeActiveIndicator(true, false);
+
+        Assert.assertTrue(indicator.showAccentBar);
+        Assert.assertFalse(indicator.useAccentNameColor);
+    }
+
+    @Test
+    public void nonCurrentRunningSessionHasNoActiveIndicator() {
+        SessionRowActiveIndicator indicator =
+            TermuxSessionsListViewController.computeActiveIndicator(false, true);
+
+        Assert.assertFalse(indicator.showAccentBar);
+        Assert.assertFalse(indicator.useAccentNameColor);
+    }
+
+    @Test
+    public void nonCurrentFinishedSessionHasNoActiveIndicator() {
+        SessionRowActiveIndicator indicator =
+            TermuxSessionsListViewController.computeActiveIndicator(false, false);
+
+        Assert.assertFalse(indicator.showAccentBar);
+        Assert.assertFalse(indicator.useAccentNameColor);
+    }
+
+    @Test
+    public void sessionRowLayoutHostsTheActiveIndicatorBarHiddenByDefaultAlongsideTheTitle() {
+        Context context = RuntimeEnvironment.getApplication();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View activeIndicatorBar = row.findViewById(R.id.session_active_indicator_bar);
+        View sessionTitle = row.findViewById(R.id.session_title);
+
+        Assert.assertNotNull(activeIndicatorBar);
+        Assert.assertNotNull(sessionTitle);
+        Assert.assertEquals(View.GONE, activeIndicatorBar.getVisibility());
     }
 }
