@@ -20,6 +20,8 @@ public class SessionListBottomSheetController {
     private final View mSheetView;
     private final TextView mTitleView;
     private final ListView mSessionListView;
+    private final View mNewSessionButton;
+    private final View mLoadSessionButton;
 
     private boolean mAdapterBound;
 
@@ -28,6 +30,20 @@ public class SessionListBottomSheetController {
         this.mSheetView = activity.findViewById(R.id.session_list_bottom_sheet);
         this.mTitleView = activity.findViewById(R.id.session_list_bottom_sheet_title);
         this.mSessionListView = activity.findViewById(R.id.session_list_bottom_sheet_list);
+        this.mNewSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_new_session_button);
+        this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
+        bindActionButtons();
+    }
+
+    private void bindActionButtons() {
+        mNewSessionButton.setOnClickListener(v -> {
+            hide();
+            mActivity.promptAndCreateNewSession();
+        });
+        mLoadSessionButton.setOnClickListener(v -> {
+            hide();
+            mActivity.loadSessionsFromDefinition();
+        });
     }
 
     public boolean isOpen() {
