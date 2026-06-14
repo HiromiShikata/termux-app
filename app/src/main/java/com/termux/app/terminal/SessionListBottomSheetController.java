@@ -2,13 +2,12 @@ package com.termux.app.terminal;
 
 import android.graphics.Color;
 import android.view.View;
+import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatDelegate;
 
-import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.theme.NightMode;
@@ -17,9 +16,29 @@ import com.termux.shared.theme.ThemeUtils;
 public class SessionListBottomSheetController {
 
     private final TermuxActivity mActivity;
+    private final View mSheetView;
+    private final TextView mTitleView;
+    private final ListView mSessionListView;
+
+    private boolean mAdapterBound;
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
+        this.mSheetView = activity.findViewById(R.id.session_list_bottom_sheet);
+        this.mTitleView = activity.findViewById(R.id.session_list_bottom_sheet_title);
+        this.mSessionListView = activity.findViewById(R.id.session_list_bottom_sheet_list);
+    }
+
+    public boolean isOpen() {
+        return mSheetView.getVisibility() == View.VISIBLE;
+    }
+
+    public void toggle() {
+        if (nextSheetVisibility(mSheetView.getVisibility()) == View.VISIBLE) {
+            show();
+        } else {
+            hide();
+        }
     }
 
     public void show() {
@@ -27,38 +46,42 @@ public class SessionListBottomSheetController {
         if (listController == null) {
             return;
         }
+        applyTitleColor();
+        bindSessionList(listController);
+        mSheetView.setVisibility(View.VISIBLE);
+    }
 
+    public void hide() {
+        mSheetView.setVisibility(View.GONE);
+    }
+
+    private void applyTitleColor() {
         boolean darkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
+        mTitleView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
+    }
 
-        BottomSheetDialog dialog = new BottomSheetDialog(mActivity);
-        dialog.getDelegate().setLocalNightMode(
-            darkTheme ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO);
-
-        View content = dialog.getLayoutInflater().inflate(R.layout.bottom_sheet_session_list, null);
-        content.setBackgroundColor(darkTheme ? Color.BLACK : Color.WHITE);
-        dialog.setContentView(content);
-
-        TextView titleView = content.findViewById(R.id.bottom_sheet_session_list_title);
-        titleView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
-
-        ListView sessionListView = content.findViewById(R.id.bottom_sheet_session_list);
-        ReversedListAdapter reversedAdapter = new ReversedListAdapter(listController);
-        sessionListView.setAdapter(reversedAdapter);
-
-        sessionListView.setOnItemClickListener((parent, view, position, id) -> {
-            int delegatePosition = reversedAdapter.toDelegatePosition(position);
-            boolean isSessionRow = !((SessionHierarchyRow) listController.getItem(delegatePosition)).isHeader();
-            listController.onItemClick(parent, view, delegatePosition, id);
+    private void bindSessionList(@NonNull TermuxSessionsListViewController listController) {
+        if (mAdapterBound) {
+            return;
+        }
+        bindSessionListAdapter(mSessionListView, listController);
+        mSessionListView.setOnItemClickListener((parent, view, position, id) -> {
+            boolean isSessionRow = !((SessionHierarchyRow) listController.getItem(position)).isHeader();
+            listController.onItemClick(parent, view, position, id);
             if (isSessionRow) {
-                dialog.dismiss();
+                hide();
             }
         });
+        mSessionListView.setOnItemLongClickListener((parent, view, position, id) ->
+            listController.onItemLongClick(parent, view, position, id));
+        mAdapterBound = true;
+    }
 
-        sessionListView.setOnItemLongClickListener((parent, view, position, id) ->
-            listController.onItemLongClick(parent, view, reversedAdapter.toDelegatePosition(position), id));
+    static void bindSessionListAdapter(@NonNull ListView listView, @NonNull BaseAdapter adapter) {
+        listView.setAdapter(adapter);
+    }
 
-        dialog.setOnDismissListener(d -> reversedAdapter.detach());
-
-        dialog.show();
+    static int nextSheetVisibility(int currentVisibility) {
+        return currentVisibility == View.VISIBLE ? View.GONE : View.VISIBLE;
     }
 }

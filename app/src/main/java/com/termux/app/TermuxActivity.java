@@ -151,6 +151,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     TermuxSessionsListViewController mTermuxSessionListViewController;
 
+    SessionListBottomSheetController mSessionListBottomSheetController;
+
     private final SessionDefinitionEntriesProvider mSessionDefinitionEntriesProvider =
         new SessionDefinitionEntriesProvider(new SessionDefinitionLoader(
             new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
@@ -719,8 +721,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setSessionSheetToggleBarView() {
+        mSessionListBottomSheetController = new SessionListBottomSheetController(this);
         findViewById(R.id.terminal_toolbar_session_sheet_button).setOnClickListener(v -> {
-            new SessionListBottomSheetController(this).show();
+            mSessionListBottomSheetController.toggle();
         });
     }
 
@@ -731,7 +734,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @SuppressLint("RtlHardcoded")
     @Override
     public void onBackPressed() {
-        if (getDrawer().isDrawerOpen(Gravity.LEFT) || getDrawer().isDrawerOpen(Gravity.RIGHT)) {
+        if (mSessionListBottomSheetController != null && mSessionListBottomSheetController.isOpen()) {
+            mSessionListBottomSheetController.hide();
+        } else if (getDrawer().isDrawerOpen(Gravity.LEFT) || getDrawer().isDrawerOpen(Gravity.RIGHT)) {
             getDrawer().closeDrawers();
         } else if (mTermuxBrowserController != null && mTermuxBrowserController.onBackPressed()) {
             // Browser handled the back press (navigated back or returned to terminal).
