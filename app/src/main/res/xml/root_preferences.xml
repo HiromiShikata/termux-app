@@ -49,9 +49,16 @@
         app:title="@string/action_open_session_definition_config"
         app:persistent="false"/>
 
+    <SwitchPreferenceCompat
+        app:key="auto_check_for_updates"
+        app:title="@string/auto_check_for_updates_title"
+        app:summary="@string/auto_check_for_updates_summary"
+        app:defaultValue="false"/>
+
     <Preference
         app:key="update_apk"
         app:title="@string/update_apk_preference_title"
+        app:summary="@string/update_apk_preference_summary"
         app:persistent="false"/>
 
     <Preference

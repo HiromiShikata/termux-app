@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -130,6 +132,42 @@ jobs:
           path: |
             ${{ env.APK_DIR_PATH }}/${{ env.APK_BASENAME_PREFIX }}_sha256sums
             ${{ env.APK_DIR_PATH }}/output-metadata.json
+
+      - name: Publish APKs to GitHub Release on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.package_variant == 'apt-android-7'
+        shell: bash {0}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          exit_on_error() { echo "$1"; exit 1; }
+
+          CURRENT_VERSION_NAME_REGEX='\s+versionName "([^"]+)"$'
+          CURRENT_VERSION_NAME="$(grep -m 1 -E "$CURRENT_VERSION_NAME_REGEX" ./app/build.gradle | sed -r "s/$CURRENT_VERSION_NAME_REGEX/\1/")"
+          RELEASE_TAG="v$CURRENT_VERSION_NAME"
+
+          STABLE_DIR="$APK_DIR_PATH/release-assets"
+          mkdir -p "$STABLE_DIR"
+          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
+            if ! cp "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk" "$STABLE_DIR/termux-app_$abi.apk"; then
+              exit_on_error "Failed to stage stable-named APK for '$abi'."
+            fi
+          done
+          cp "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_sha256sums" "$STABLE_DIR/termux-app_sha256sums"
+
+          RELEASE_NOTES="Automated build of main at ${GITHUB_SHA:0:7} (version $CURRENT_VERSION_NAME). Install the APK matching your device ABI; termux-app_arm64-v8a.apk is recommended. termux-app_universal.apk works on all ABIs. The in-app updater reads this release via the anonymous releases/latest API."
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            if ! gh release upload "$RELEASE_TAG" "$STABLE_DIR"/* --clobber; then
+              exit_on_error "Failed to upload assets to existing release '$RELEASE_TAG'."
+            fi
+            if ! gh release edit "$RELEASE_TAG" --title "$CURRENT_VERSION_NAME" --notes "$RELEASE_NOTES" --latest; then
+              exit_on_error "Failed to update existing release '$RELEASE_TAG'."
+            fi
+          else
+            if ! gh release create "$RELEASE_TAG" "$STABLE_DIR"/* --target "$GITHUB_SHA" --title "$CURRENT_VERSION_NAME" --notes "$RELEASE_NOTES" --latest; then
+              exit_on_error "Failed to create release '$RELEASE_TAG'."
+            fi
+          fi
 
   post_artifact_links:
     runs-on: ubuntu-latest

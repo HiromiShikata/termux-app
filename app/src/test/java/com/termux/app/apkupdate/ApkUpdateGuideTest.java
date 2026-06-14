@@ -25,4 +25,18 @@ public class ApkUpdateGuideTest {
             "https://github.com/HiromiShikata/termux-app/actions/workflows/debug_build.yml?query=branch%3Amain",
             guide.getBuildListUrl());
     }
+
+    @Test
+    public void releasesLatestApiUrlPointsAtTheAnonymousReleasesEndpoint() {
+        Assert.assertEquals(
+            "https://api.github.com/repos/HiromiShikata/termux-app/releases/latest",
+            guide.getReleasesLatestApiUrl());
+    }
+
+    @Test
+    public void releasesPageUrlPointsAtTheHumanReadableLatestRelease() {
+        Assert.assertEquals(
+            "https://github.com/HiromiShikata/termux-app/releases/latest",
+            guide.getReleasesPageUrl());
+    }
 }
