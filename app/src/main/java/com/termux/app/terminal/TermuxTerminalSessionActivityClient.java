@@ -667,6 +667,18 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return service.getTermuxSession(firstVisibleSessionIndex);
     }
 
+    public void ensureCurrentSessionValidAfterRebuild() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        if (currentSession != null && service.getIndexOfSession(currentSession) >= 0) return;
+
+        TermuxSession nextSession = selectNextVisibleSession();
+        if (nextSession != null)
+            setCurrentSession(nextSession.getTerminalSession());
+    }
+
     private void recordPersistedSession(TerminalSession terminalSession, PersistedSession persistedSession) {
         mPersistedSessionBySession.put(terminalSession, persistedSession);
         savePersistedSessions();
