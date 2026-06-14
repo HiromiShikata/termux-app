@@ -30,6 +30,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -49,6 +50,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
+import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
 
@@ -666,6 +668,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
         showBrowserSplitDivider();
+        dismissSoftKeyboardForBrowser();
+    }
+
+    private void dismissSoftKeyboardForBrowser() {
+        EditText toolbarTextInput = mActivity.getTerminalToolbarTextInput();
+        if (toolbarTextInput != null && toolbarTextInput.hasFocus())
+            toolbarTextInput.clearFocus();
+        View focusedView = mActivity.getCurrentFocus();
+        View keyboardTargetView = focusedView != null ? focusedView : mActivity.getTerminalView();
+        KeyboardUtils.hideSoftKeyboard(mActivity, keyboardTargetView);
     }
 
     public void showTerminal() {
@@ -692,6 +704,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
         showBrowserSplitDivider();
+        dismissSoftKeyboardForBrowser();
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
     }
