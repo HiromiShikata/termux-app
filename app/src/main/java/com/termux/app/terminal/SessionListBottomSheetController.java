@@ -8,6 +8,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -71,6 +72,12 @@ public class SessionListBottomSheetController {
 
     public void hide() {
         mSheetView.setVisibility(View.GONE);
+    }
+
+    public static void hideIfPresent(@Nullable SessionListBottomSheetController controller) {
+        if (controller != null) {
+            controller.hide();
+        }
     }
 
     private void applyTitleColor() {

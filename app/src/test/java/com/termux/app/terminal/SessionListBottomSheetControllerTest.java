@@ -85,4 +85,9 @@ public class SessionListBottomSheetControllerTest {
     public void capsSheetHeightWithFlooredDivisionForNonDivisibleScreen() {
         Assert.assertEquals(800, SessionListBottomSheetController.computeSheetMaxHeight(2400));
     }
+
+    @Test
+    public void hideIfPresentDoesNothingWhenControllerIsNull() {
+        SessionListBottomSheetController.hideIfPresent(null);
+    }
 }
