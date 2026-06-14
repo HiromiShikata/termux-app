@@ -8,15 +8,15 @@ public class ApkUpdateGuideTest {
     private final ApkUpdateGuide guide = new ApkUpdateGuide();
 
     @Test
-    public void recommendedArtifactNameIsTheClearStableCanonicalName() {
-        Assert.assertEquals("termux-app-RECOMMENDED-INSTALL-THIS-arm64-v8a", guide.getRecommendedArtifactName());
+    public void recommendedArtifactNamePrefixIsTheStableRecognizableMarker() {
+        Assert.assertEquals("termux-app-RECOMMENDED-INSTALL-THIS", guide.getRecommendedArtifactNamePrefix());
     }
 
     @Test
-    public void recommendedArtifactNameDoesNotContainVolatileVersionOrCommitHash() {
-        String name = guide.getRecommendedArtifactName();
-        Assert.assertFalse(name.contains("+"));
-        Assert.assertFalse(name.matches(".*\\bv?\\d+\\.\\d+\\.\\d+.*"));
+    public void recommendedArtifactNamePrefixDoesNotContainVolatileVersionOrCommitHash() {
+        String prefix = guide.getRecommendedArtifactNamePrefix();
+        Assert.assertFalse(prefix.contains("+"));
+        Assert.assertFalse(prefix.matches(".*\\bv?\\d+\\.\\d+\\.\\d+.*"));
     }
 
     @Test
@@ -27,10 +27,11 @@ public class ApkUpdateGuideTest {
     }
 
     @Test
-    public void instructionMessageNamesTheSingleArtifactToDownload() {
+    public void instructionMessageGuidesByPrefixToTheSingleArtifactToDownload() {
         String message = guide.buildInstructionMessage();
-        Assert.assertTrue(message.contains(guide.getRecommendedArtifactName()));
+        Assert.assertTrue(message.contains(guide.getRecommendedArtifactNamePrefix()));
         Assert.assertTrue(message.toLowerCase().contains("download"));
         Assert.assertTrue(message.toLowerCase().contains("arm64-v8a"));
+        Assert.assertTrue(message.toLowerCase().contains("starts with"));
     }
 }
