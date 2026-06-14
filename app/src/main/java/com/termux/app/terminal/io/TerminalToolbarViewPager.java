@@ -1,13 +1,13 @@
 package com.termux.app.terminal.io;
 
 import android.app.AlertDialog;
-import android.graphics.drawable.Drawable;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -94,9 +94,10 @@ public class TerminalToolbarViewPager {
             }
 
             final CharSequence[] history = mSubmittedTextInputHistory.toArray(new CharSequence[0]);
+            ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(mActivity, R.layout.item_toolbar_text_input_history, history);
             new AlertDialog.Builder(mActivity)
                 .setTitle(R.string.title_toolbar_text_input_history_dialog)
-                .setItems(history, (dialog, which) -> {
+                .setAdapter(adapter, (dialog, which) -> {
                     editText.setText(history[which]);
                     editText.setSelection(editText.getText().length());
                 })
@@ -165,21 +166,10 @@ public class TerminalToolbarViewPager {
                     return false;
                 });
 
-                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_toolbar_input_history, 0, R.drawable.ic_toolbar_input_edit, 0);
-                editText.setOnTouchListener((v, event) -> {
-                    if (event.getAction() != MotionEvent.ACTION_UP) return false;
-                    Drawable recallIcon = editText.getCompoundDrawablesRelative()[0];
-                    if (recallIcon == null) return false;
-                    boolean isRightToLeft = editText.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
-                    int iconWidth = recallIcon.getBounds().width();
-                    boolean touchedRecallIcon = isRightToLeft
-                        ? event.getX() >= editText.getWidth() - editText.getPaddingRight() - iconWidth
-                        : event.getX() <= editText.getPaddingLeft() + iconWidth;
-                    if (!touchedRecallIcon) return false;
-                    showSubmittedTextInputHistory(editText);
-                    v.performClick();
-                    return true;
-                });
+                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_toolbar_input_edit, 0, 0, 0);
+
+                ImageButton historyButton = layout.findViewById(R.id.terminal_toolbar_text_input_history_button);
+                historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
             }
             collection.addView(layout);
             return layout;
