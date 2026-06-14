@@ -283,10 +283,23 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
 
         boolean isCurrentSession = sessionAtRow == mActivity.getCurrentSession();
-        int sessionBackgroundResId = isCurrentSession
-            ? (shouldEnableDarkTheme ? R.drawable.current_session_black : R.drawable.current_session)
-            : (shouldEnableDarkTheme ? R.drawable.session_background_black_selected : R.drawable.session_background_selected);
-        sessionTitleView.setBackground(ContextCompat.getDrawable(mActivity, sessionBackgroundResId));
+        boolean sessionRunning = sessionAtRow.isRunning();
+        SessionRowActiveIndicator activeIndicator = computeActiveIndicator(isCurrentSession, sessionRunning);
+
+        int rowBackgroundResId = shouldEnableDarkTheme
+            ? R.drawable.session_background_black_selected
+            : R.drawable.session_background_selected;
+        sessionRowView.setBackground(ContextCompat.getDrawable(mActivity, rowBackgroundResId));
+
+        int activeIndicatorColor = ContextCompat.getColor(mActivity,
+            shouldEnableDarkTheme ? R.color.session_active_indicator_dark : R.color.session_active_indicator_light);
+        View activeIndicatorBar = sessionRowView.findViewById(R.id.session_active_indicator_bar);
+        if (activeIndicator.showAccentBar) {
+            activeIndicatorBar.setBackgroundColor(activeIndicatorColor);
+            activeIndicatorBar.setVisibility(View.VISIBLE);
+        } else {
+            activeIndicatorBar.setVisibility(View.GONE);
+        }
 
         String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
@@ -332,6 +345,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
         fullSessionTitleStyled.setSpan(boldSpan, 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (activeIndicator.useAccentNameColor) {
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), 0, namePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
         if (bellNotificationLabelStart >= 0) {
             fullSessionTitleStyled.setSpan(italicSpan, bellNotificationLabelStart, bellNotificationLabelEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
@@ -348,8 +364,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         sessionTitleView.setText(fullSessionTitleStyled);
 
         applyBellNotificationIcon(sessionTitleView, sessionAtRow);
-
-        boolean sessionRunning = sessionAtRow.isRunning();
 
         if (sessionRunning) {
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
@@ -404,6 +418,20 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private int dpToPx(int dp) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp,
             mActivity.getResources().getDisplayMetrics()));
+    }
+
+    static SessionRowActiveIndicator computeActiveIndicator(boolean isCurrentSession, boolean sessionRunning) {
+        return new SessionRowActiveIndicator(isCurrentSession, isCurrentSession && sessionRunning);
+    }
+
+    static final class SessionRowActiveIndicator {
+        final boolean showAccentBar;
+        final boolean useAccentNameColor;
+
+        SessionRowActiveIndicator(boolean showAccentBar, boolean useAccentNameColor) {
+            this.showAccentBar = showAccentBar;
+            this.useAccentNameColor = useAccentNameColor;
+        }
     }
 
     @Override
