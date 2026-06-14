@@ -1,8 +1,8 @@
 package com.termux.app.browser;
 
-import android.util.Patterns;
-
 import androidx.annotation.Nullable;
+
+import com.termux.view.url.BrowsableUrlDetector;
 
 public final class SessionNameBrowserTabUrlResolver {
 
@@ -11,7 +11,7 @@ public final class SessionNameBrowserTabUrlResolver {
         if (sessionName == null) return null;
         String trimmedSessionName = sessionName.trim();
         if (trimmedSessionName.isEmpty()) return null;
-        if (!Patterns.WEB_URL.matcher(trimmedSessionName).matches()) return null;
+        if (!BrowsableUrlDetector.isLikelyBrowsableUrl(trimmedSessionName)) return null;
         return trimmedSessionName;
     }
 }

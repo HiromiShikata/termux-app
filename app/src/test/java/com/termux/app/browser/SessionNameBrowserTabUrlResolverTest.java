@@ -21,6 +21,12 @@ public class SessionNameBrowserTabUrlResolverTest {
     }
 
     @Test
+    public void restoredIpHostUrlSessionNameWithPortYieldsBrowserTabUrl() {
+        String sessionName = "http://50.30.32.53:9980/in-tmux-by-human/index.v3.json";
+        Assert.assertEquals(sessionName, resolver.resolve(sessionName));
+    }
+
+    @Test
     public void restoredNonUrlSessionNameYieldsNoBrowserTab() {
         Assert.assertNull(resolver.resolve("bash"));
         Assert.assertNull(resolver.resolve("my project session"));
