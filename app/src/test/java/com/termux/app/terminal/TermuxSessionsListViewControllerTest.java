@@ -172,17 +172,13 @@ public class TermuxSessionsListViewControllerTest {
     @Test
     public void currentSessionRowUsesTheCurrentSessionHighlightBackground() {
         Assert.assertEquals(R.drawable.current_session,
-            TermuxSessionsListViewController.sessionRowBackgroundRes(true, false));
-        Assert.assertEquals(R.drawable.current_session_black,
-            TermuxSessionsListViewController.sessionRowBackgroundRes(true, true));
+            TermuxSessionsListViewController.sessionRowBackgroundRes(true));
     }
 
     @Test
     public void nonCurrentSessionRowUsesTheNormalRippleBackground() {
         Assert.assertEquals(R.drawable.session_ripple,
-            TermuxSessionsListViewController.sessionRowBackgroundRes(false, false));
-        Assert.assertEquals(R.drawable.session_ripple_black,
-            TermuxSessionsListViewController.sessionRowBackgroundRes(false, true));
+            TermuxSessionsListViewController.sessionRowBackgroundRes(false));
     }
 
     @Test

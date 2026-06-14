@@ -33,8 +33,6 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
-import com.termux.shared.theme.NightMode;
-import com.termux.shared.theme.ThemeUtils;
 import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
@@ -249,8 +247,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         TextView headerTitleView = headerRowView.findViewById(titleViewId);
         headerTitleView.setText(row.getLabel());
-        boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
-        headerTitleView.setTextColor(shouldEnableDarkTheme ? Color.WHITE : Color.BLACK);
+        headerTitleView.setTextColor(surfacePrimaryTextColor());
         return headerRowView;
     }
 
@@ -258,8 +255,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         TextView collapseIndicatorView = projectHeaderView.findViewById(R.id.session_project_header_collapse_indicator);
         boolean collapsed = mCollapsedProjectKeys.contains(row.getLabel());
         collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
-        boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
-        collapseIndicatorView.setTextColor(shouldEnableDarkTheme ? Color.WHITE : Color.BLACK);
+        collapseIndicatorView.setTextColor(surfacePrimaryTextColor());
     }
 
     private void bindProjectOverviewBrowserIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
@@ -335,17 +331,14 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return sessionRowView;
         }
 
-        boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
-
         boolean isCurrentSession = sessionAtRow == mActivity.getCurrentSession();
         boolean sessionRunning = sessionAtRow.isRunning();
         SessionRowActiveIndicator activeIndicator = computeActiveIndicator(isCurrentSession, sessionRunning);
 
-        int rowBackgroundResId = sessionRowBackgroundRes(isCurrentSession, shouldEnableDarkTheme);
+        int rowBackgroundResId = sessionRowBackgroundRes(isCurrentSession);
         sessionRowView.setBackground(ContextCompat.getDrawable(mActivity, rowBackgroundResId));
 
-        int activeIndicatorColor = ContextCompat.getColor(mActivity,
-            shouldEnableDarkTheme ? R.color.session_active_indicator_dark : R.color.session_active_indicator_light);
+        int activeIndicatorColor = ContextCompat.getColor(mActivity, R.color.session_active_indicator);
         View activeIndicatorBar = sessionRowView.findViewById(R.id.session_active_indicator_bar);
         applyActiveIndicatorBarVisibility(activeIndicatorBar, activeIndicator.showAccentBar, activeIndicatorColor);
 
@@ -399,7 +392,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         if (definitionTitleStart >= 0) {
             int definitionTitleColor = (DEFINITION_TITLE_ALPHA << 24)
-                | ((shouldEnableDarkTheme ? Color.WHITE : Color.BLACK) & 0x00FFFFFF);
+                | (surfacePrimaryTextColor() & 0x00FFFFFF);
             fullSessionTitleStyled.setSpan(new RelativeSizeSpan(DEFINITION_TITLE_RELATIVE_SIZE), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(definitionTitleColor), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
@@ -416,7 +409,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         } else {
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
-        int defaultColor = shouldEnableDarkTheme ? Color.WHITE : Color.BLACK;
+        int defaultColor = surfacePrimaryTextColor();
         int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
         sessionTitleView.setTextColor(color);
         return sessionRowView;
@@ -467,15 +460,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             mActivity.getResources().getDisplayMetrics()));
     }
 
+    private int surfacePrimaryTextColor() {
+        return ContextCompat.getColor(mActivity, com.termux.shared.R.color.schema_text_primary);
+    }
+
     static SessionRowActiveIndicator computeActiveIndicator(boolean isCurrentSession, boolean sessionRunning) {
         return new SessionRowActiveIndicator(isCurrentSession, isCurrentSession && sessionRunning);
     }
 
-    static int sessionRowBackgroundRes(boolean isCurrentSession, boolean darkTheme) {
-        if (isCurrentSession) {
-            return darkTheme ? R.drawable.current_session_black : R.drawable.current_session;
-        }
-        return darkTheme ? R.drawable.session_ripple_black : R.drawable.session_ripple;
+    static int sessionRowBackgroundRes(boolean isCurrentSession) {
+        return isCurrentSession ? R.drawable.current_session : R.drawable.session_ripple;
     }
 
     static final class SessionRowActiveIndicator {

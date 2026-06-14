@@ -1,6 +1,5 @@
 package com.termux.app.terminal;
 
-import android.graphics.Color;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -12,11 +11,10 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
-import com.termux.shared.theme.NightMode;
-import com.termux.shared.theme.ThemeUtils;
 
 public class SessionListBottomSheetController {
 
@@ -183,8 +181,7 @@ public class SessionListBottomSheetController {
     }
 
     private void applyTitleColor() {
-        boolean darkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
-        mTitleView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
+        mTitleView.setTextColor(ContextCompat.getColor(mActivity, com.termux.shared.R.color.schema_text_primary));
     }
 
     private void applySheetHeightCap() {
