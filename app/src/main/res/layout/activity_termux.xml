@@ -289,6 +289,15 @@
             android:orientation="vertical"
             android:visibility="gone">
 
+            <View
+                android:id="@+id/session_list_bottom_sheet_drag_handle"
+                android:layout_width="32dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="4dp"
+                android:background="@drawable/session_list_bottom_sheet_drag_handle" />
+
             <TextView
                 android:id="@+id/session_list_bottom_sheet_title"
                 android:layout_width="match_parent"
@@ -298,6 +307,16 @@
                 android:text="@string/title_session_list_bottom_sheet"
                 android:textSize="16sp"
                 android:textStyle="bold" />
+
+            <ListView
+                android:id="@+id/session_list_bottom_sheet_list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:choiceMode="singleChoice"
+                android:divider="@android:color/transparent"
+                android:dividerHeight="0dp"
+                android:longClickable="true" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -328,16 +347,6 @@
                     android:text="@string/action_load_session_definition" />
 
             </LinearLayout>
-
-            <ListView
-                android:id="@+id/session_list_bottom_sheet_list"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:choiceMode="singleChoice"
-                android:divider="@android:color/transparent"
-                android:dividerHeight="0dp"
-                android:longClickable="true" />
 
         </LinearLayout>
 
