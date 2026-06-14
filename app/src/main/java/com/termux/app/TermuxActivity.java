@@ -150,8 +150,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     TermuxSessionsListViewController mTermuxSessionListViewController;
 
-    private final SessionBellNotificationStore mSessionBellNotificationStore = new SessionBellNotificationStore();
-
     private final SessionDefinitionEntriesProvider mSessionDefinitionEntriesProvider =
         new SessionDefinitionEntriesProvider(new SessionDefinitionLoader(
             new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
@@ -1030,7 +1028,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public SessionBellNotificationStore getSessionBellNotificationStore() {
-        return mSessionBellNotificationStore;
+        return mTermuxService.getSessionBellNotificationStore();
     }
 
     public TermuxBrowserController getTermuxBrowserController() {

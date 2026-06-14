@@ -381,11 +381,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @Nullable
     private Long getBellArrivalTimeMillis(@NonNull TerminalSession session) {
-        String sessionHandle = session.mHandle;
+        return bellArrivalTimeMillis(mActivity.getSessionBellNotificationStore(), session.mHandle);
+    }
+
+    @Nullable
+    static Long bellArrivalTimeMillis(@NonNull SessionBellNotificationStore store, @Nullable String sessionHandle) {
         if (sessionHandle == null) {
             return null;
         }
-        return mActivity.getSessionBellNotificationStore().getBellArrivalTimeMillis(sessionHandle);
+        return store.getBellArrivalTimeMillis(sessionHandle);
     }
 
     public void startPeriodicRefresh() {
