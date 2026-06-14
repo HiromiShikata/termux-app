@@ -43,6 +43,7 @@ import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.scroll.TerminalScrollController;
+import com.termux.view.scroll.TerminalScrollEvent;
 import com.termux.view.textselection.TextSelectionCursorController;
 import com.termux.view.url.TerminalUrlExtractor;
 
@@ -634,19 +635,26 @@ public final class TerminalView extends View {
 
     /** Perform a scroll, either from dragging the screen or by scrolling a mouse wheel. */
     void doScroll(MotionEvent event, int rowsDown) {
+        doScroll(event, rowsDown, false);
+    }
+
+    void doScroll(MotionEvent event, int rowsDown, boolean fromScrollControl) {
         boolean up = rowsDown < 0;
         int amount = Math.abs(rowsDown);
         for (int i = 0; i < amount; i++) {
-            if (mEmulator.isMouseTrackingActive()) {
-                sendMouseEventCode(event, up ? TerminalEmulator.MOUSE_WHEELUP_BUTTON : TerminalEmulator.MOUSE_WHEELDOWN_BUTTON, true);
-            } else if (mEmulator.isAlternateBufferActive()) {
-                // Send up and down key events for scrolling, which is what some terminals do to make scroll work in
-                // e.g. less, which shifts to the alt screen without mouse handling.
-                handleKeyCode(up ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, 0);
-            } else {
-                mTopRow = Math.min(0, Math.max(-(mEmulator.getScreen().getActiveTranscriptRows()), mTopRow + (up ? -1 : 1)));
-                if (!awakenScrollBars()) invalidate();
-                showScrollThumb();
+            TerminalScrollEvent scrollEvent = mScrollController.scrollEventType(mEmulator.isMouseTrackingActive(), mEmulator.isAlternateBufferActive(), fromScrollControl);
+            switch (scrollEvent) {
+                case MOUSE_WHEEL:
+                    sendMouseEventCode(event, up ? TerminalEmulator.MOUSE_WHEELUP_BUTTON : TerminalEmulator.MOUSE_WHEELDOWN_BUTTON, true);
+                    break;
+                case ARROW_KEY:
+                    handleKeyCode(up ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, 0);
+                    break;
+                case LOCAL_SCROLLBACK:
+                    mTopRow = Math.min(0, Math.max(-(mEmulator.getScreen().getActiveTranscriptRows()), mTopRow + (up ? -1 : 1)));
+                    if (!awakenScrollBars()) invalidate();
+                    showScrollThumb();
+                    break;
             }
         }
     }
@@ -1171,7 +1179,7 @@ public final class TerminalView extends View {
                     if (wheelSteps != 0) {
                         mScrollThumbRelativeDragRemainder = dragDelta - (float) wheelSteps * rowHeightPx;
                         mScrollThumbDragLastY = event.getY();
-                        doScroll(event, wheelSteps);
+                        doScroll(event, wheelSteps, true);
                     } else {
                         mScrollThumbRelativeDragRemainder = dragDelta;
                         mScrollThumbDragLastY = event.getY();
