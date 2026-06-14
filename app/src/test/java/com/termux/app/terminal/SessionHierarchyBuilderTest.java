@@ -426,6 +426,41 @@ public class SessionHierarchyBuilderTest {
         assertSession(rows.get(2), 1);
     }
 
+    @Test
+    public void keepsANewlyCreatedBlankNamedSessionInTheNaBucket() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", null), entries, NA);
+
+        Assert.assertEquals(5, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 1);
+        assertProjectHeader(rows.get(2), "projectOne");
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
+    }
+
+    @Test
+    public void keepsEveryDistinctUnmatchedSessionEvenWhenTheyShareTheSameName() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "scratch", "scratch"), entries, NA);
+
+        Assert.assertEquals(6, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 1);
+        assertSession(rows.get(2), 2);
+        assertProjectHeader(rows.get(3), "projectOne");
+        assertStoryHeader(rows.get(4), "storyA");
+        assertSession(rows.get(5), 0);
+    }
+
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {
         Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
         Assert.assertTrue(row.isHeader());
