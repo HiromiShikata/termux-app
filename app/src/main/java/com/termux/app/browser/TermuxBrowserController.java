@@ -127,6 +127,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     loadingTab.setUrl(url);
                     notifyTabsUpdated();
                 }
+                applyDesktopViewport(view, loadingTab);
             }
 
             @Override
@@ -349,7 +350,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void applyDesktopViewport(@NonNull WebView view, @Nullable BrowserTab tab) {
-        if (tab == null || !tab.isDesktopMode()) return;
+        if (!BrowserDesktopViewport.appliesTo(tab)) return;
         view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
     }
 
