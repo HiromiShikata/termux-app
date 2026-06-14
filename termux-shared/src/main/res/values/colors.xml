@@ -6,18 +6,23 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="red_400">#FF0000</color>
-    <color name="red_800">#C4001D</color>
-
     <color name="grey_200">#EEEEEE</color>
     <color name="grey_400">#BDBDBD</color>
     <color name="grey_500">#9E9E9E</color>
     <color name="grey_800">#424242</color>
     <color name="grey_900">#212121</color>
 
-    <color name="red_error">#DC143C</color>
-    <color name="red_error_link">#FC143C</color>
+    <color name="schema_background">#FAFAFA</color>
+    <color name="schema_surface">#FFFFFF</color>
+    <color name="schema_surface_elevated">#F0F0F0</color>
+    <color name="schema_divider">#E0E0E0</color>
+    <color name="schema_text_primary">#1A1A1A</color>
+    <color name="schema_text_secondary">#5C5C5C</color>
+    <color name="schema_accent">#3A6F8F</color>
+    <color name="schema_success">#3F7A52</color>
+    <color name="schema_warning">#8A6D2F</color>
+    <color name="schema_error">#A24A4A</color>
 
-    <color name="blue_link_light">#0969DA</color>
-    <color name="blue_link_dark">#58A6FF</color>
+    <color name="schema_terminal_chrome_surface">#1E1E1E</color>
+    <color name="schema_terminal_chrome_accent">#8AB4C8</color>
 </resources>

@@ -9,8 +9,8 @@
     -->
     <style name="Theme.BaseActivity.DayNight.DarkActionBar" parent="Theme.MaterialComponents">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/red_400</item>
-        <item name="colorPrimaryVariant">@color/red_800</item>
+        <item name="colorPrimary">@color/schema_accent</item>
+        <item name="colorPrimaryVariant">@color/schema_accent</item>
         <item name="colorOnPrimary">@color/black</item>
 
         <!-- Secondary brand color. -->
@@ -23,7 +23,8 @@
         <item name="colorPrimaryDark" tools:targetApi="l">?attr/colorPrimary</item>
 
         <!-- Text color. -->
-        <item name="android:textColorLink">@color/blue_link_dark</item>
+        <item name="android:textColorPrimary">@color/schema_text_primary</item>
+        <item name="android:textColorLink">@color/schema_accent</item>
     </style>
 
     <!-- BaseActivity DayNight NoActionBar theme. -->
@@ -42,8 +43,8 @@
      -->
     <style name="ThemeOverlay.BaseDialog.DayNight" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/red_400</item>
-        <item name="colorPrimaryVariant">@color/red_800</item>
+        <item name="colorPrimary">@color/schema_accent</item>
+        <item name="colorPrimaryVariant">@color/schema_accent</item>
         <item name="colorOnPrimary">@color/black</item>
 
         <!-- Secondary brand color. -->

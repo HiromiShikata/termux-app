@@ -11,8 +11,8 @@
      -->
     <style name="Theme.BaseActivity.Light.DarkActionBar" parent="Theme.MaterialComponents.Light.DarkActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/red_400</item>
-        <item name="colorPrimaryVariant">@color/red_800</item>
+        <item name="colorPrimary">@color/schema_accent</item>
+        <item name="colorPrimaryVariant">@color/schema_accent</item>
         <item name="colorOnPrimary">@color/white</item>
 
         <!-- Secondary brand color. -->
@@ -25,8 +25,8 @@
         <item name="colorPrimaryDark" tools:targetApi="l">?attr/colorPrimary</item>
 
         <!-- Text color. -->
-        <item name="android:textColorPrimary">@color/black</item>
-        <item name="android:textColorLink">@color/blue_link_light</item>
+        <item name="android:textColorPrimary">@color/schema_text_primary</item>
+        <item name="android:textColorLink">@color/schema_accent</item>
 
         <!--
          Dialog Themes.
@@ -73,8 +73,8 @@
      -->
     <style name="ThemeOverlay.BaseDialog.Light" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/red_400</item>
-        <item name="colorPrimaryVariant">@color/red_800</item>
+        <item name="colorPrimary">@color/schema_accent</item>
+        <item name="colorPrimaryVariant">@color/schema_accent</item>
         <item name="colorOnPrimary">@color/white</item>
 
         <!-- Secondary brand color. -->

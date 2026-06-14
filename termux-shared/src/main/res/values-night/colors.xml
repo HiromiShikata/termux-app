@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="schema_background">#121212</color>
+    <color name="schema_surface">#1E1E1E</color>
+    <color name="schema_surface_elevated">#242424</color>
+    <color name="schema_divider">#2C2C2C</color>
+    <color name="schema_text_primary">#E6E6E6</color>
+    <color name="schema_text_secondary">#A0A0A0</color>
+    <color name="schema_accent">#8AB4C8</color>
+    <color name="schema_success">#7FA88A</color>
+    <color name="schema_warning">#C9B07A</color>
+    <color name="schema_error">#C98A8A</color>
+</resources>
