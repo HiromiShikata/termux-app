@@ -326,7 +326,7 @@
                 android:id="@+id/terminal_toolbar_view_pager"
                 android:visibility="gone"
                 android:layout_width="0dp"
-                android:layout_height="37.5dp"
+                android:layout_height="32dp"
                 android:layout_weight="1"
                 android:background="@color/schema_terminal_chrome_surface" />
 
@@ -334,9 +334,11 @@
                 android:id="@+id/terminal_toolbar_browser_toggle_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_toggle_browser"
-                android:padding="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="0dp"
                 android:src="@drawable/ic_browser_toggle"
                 android:tint="@color/white" />
 
@@ -344,9 +346,11 @@
                 android:id="@+id/terminal_toolbar_keyboard_toggle_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_toggle_soft_keyboard_bar"
-                android:padding="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="0dp"
                 android:src="@drawable/ic_keyboard_toggle"
                 android:tint="@color/white" />
 
@@ -354,9 +358,11 @@
                 android:id="@+id/terminal_toolbar_session_sheet_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_open_session_sheet"
-                android:padding="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="0dp"
                 android:src="@drawable/ic_session_sheet_toggle"
                 android:tint="@color/white" />
 
@@ -364,9 +370,11 @@
                 android:id="@+id/terminal_toolbar_drawer_toggle_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_toggle_drawer_bar"
-                android:padding="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="0dp"
                 android:src="@drawable/ic_drawer_toggle"
                 android:tint="@color/white" />
 
@@ -374,9 +382,11 @@
                 android:id="@+id/terminal_toolbar_right_drawer_toggle_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_toggle_right_drawer_bar"
-                android:padding="8dp"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="0dp"
                 android:src="@drawable/ic_tabs_toggle"
                 android:tint="@color/white" />
         </LinearLayout>
