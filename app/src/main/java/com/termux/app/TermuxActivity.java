@@ -13,6 +13,7 @@ import android.os.IBinder;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -1052,6 +1053,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
 
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (mTermuxTerminalViewClient != null
+            && mTermuxTerminalViewClient.handleVolumeKeysSwitchSessions(
+                event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN)) {
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
 
     public TermuxService getTermuxService() {
         return mTermuxService;
