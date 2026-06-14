@@ -123,6 +123,19 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return SessionHierarchyBuilder.firstSessionIndex(buildAllRows());
     }
 
+    static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {
+        return sessionIndex >= 0 && sessionIndex < sessionCount;
+    }
+
+    @Nullable
+    private TermuxSession sessionAtRowOrNull(@NonNull SessionHierarchyRow row) {
+        int sessionIndex = row.getSessionIndex();
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+            return null;
+        }
+        return mSessionList.get(sessionIndex);
+    }
+
     private void toggleProjectCollapsed(@Nullable String projectKey) {
         if (projectKey == null) {
             return;
@@ -274,6 +287,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         sessionTitleView.setPadding(startPadding, verticalPadding, verticalPadding, verticalPadding);
 
         int sessionIndex = row.getSessionIndex();
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+            sessionTitleView.setText("null session");
+            return sessionRowView;
+        }
         TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
         if (sessionAtRow == null) {
             sessionTitleView.setText("null session");
@@ -442,7 +459,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (row.isHeader()) {
             return;
         }
-        TermuxSession clickedSession = mSessionList.get(row.getSessionIndex());
+        TermuxSession clickedSession = sessionAtRowOrNull(row);
+        if (clickedSession == null) {
+            return;
+        }
         mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
         mActivity.getDrawer().closeDrawers();
     }
@@ -453,7 +473,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (row.isHeader()) {
             return false;
         }
-        final TermuxSession selectedSession = mSessionList.get(row.getSessionIndex());
+        final TermuxSession selectedSession = sessionAtRowOrNull(row);
+        if (selectedSession == null) {
+            return false;
+        }
         showSessionActionChooser(selectedSession.getTerminalSession());
         return true;
     }
