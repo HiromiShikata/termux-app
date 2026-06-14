@@ -20,7 +20,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -272,8 +271,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setTerminalToolbarView(savedInstanceState);
 
-        setSettingsButtonView();
-
         setBrowserView();
 
         setTmuxMouseToggleBarView();
@@ -281,8 +278,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setBrowserToggleBarView();
 
         setKeyboardToggleBarView();
-
-        setDrawerToggleBarView();
 
         setRightDrawerToggleBarView();
 
@@ -637,11 +632,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
-    private void setSettingsButtonView() {
-        ImageButton settingsButton = findViewById(R.id.settings_button);
-        settingsButton.setOnClickListener(v -> openSettingsActivity());
-    }
-
     public void openSettingsActivity() {
         ActivityUtils.startActivity(this, createSettingsActivityIntent(this));
     }
@@ -694,17 +684,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         });
     }
 
-    @SuppressLint("RtlHardcoded")
-    private void setDrawerToggleBarView() {
-        findViewById(R.id.terminal_toolbar_drawer_toggle_button).setOnClickListener(v -> {
-            DrawerLayout drawerLayout = getDrawer();
-            if (drawerLayout.isDrawerOpen(Gravity.LEFT))
-                drawerLayout.closeDrawer(Gravity.LEFT);
-            else
-                drawerLayout.openDrawer(Gravity.LEFT);
-        });
-    }
-
     private void setRightDrawerToggleBarView() {
         findViewById(R.id.terminal_toolbar_right_drawer_toggle_button).setOnClickListener(v -> {
             getTermuxBrowserController().toggleTabsDrawer();
@@ -727,7 +706,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onBackPressed() {
         if (mSessionListBottomSheetController != null && mSessionListBottomSheetController.isOpen()) {
             mSessionListBottomSheetController.hide();
-        } else if (getDrawer().isDrawerOpen(Gravity.LEFT) || getDrawer().isDrawerOpen(Gravity.RIGHT)) {
+        } else if (getDrawer().isDrawerOpen(Gravity.RIGHT)) {
             getDrawer().closeDrawers();
         } else if (mTermuxBrowserController != null && mTermuxBrowserController.onBackPressed()) {
             // Browser handled the back press (navigated back or returned to terminal).
