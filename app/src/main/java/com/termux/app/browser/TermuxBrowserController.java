@@ -16,7 +16,11 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -68,6 +72,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final float MAX_BROWSER_SPLIT_RATIO = 0.85f;
 
+    private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
+
+    private static final int HEADER_SECONDARY_TEXT_ALPHA = 0xB3;
+
     private final TermuxActivity mActivity;
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
@@ -107,6 +115,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final View mProjectOverviewActionsView;
 
     private String mCurrentSessionHandle;
+
+    private String mCurrentSessionName;
 
     private BrowserTab mDisplayedTab;
 
@@ -374,15 +384,52 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void updatePageHeader() {
-        BrowserTab displayedTab = mDisplayedTab;
-        String headerText = (displayedTab == null)
-            ? ""
-            : BrowserPageHeaderText.format(displayedTab.getTitle(), displayedTab.getUrl());
-        mPageTitleUrlHeaderView.setText(headerText);
         boolean darkTheme =
             ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
-        mPageTitleUrlHeaderView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
+        int primaryColor = darkTheme ? Color.WHITE : Color.BLACK;
+        mPageTitleUrlHeaderView.setTextColor(primaryColor);
+        mPageTitleUrlHeaderView.setText(buildHeaderText(primaryColor));
         updateProjectOverviewActionsVisibility();
+    }
+
+    @NonNull
+    private CharSequence buildHeaderText(int primaryColor) {
+        BrowserTab displayedTab = mDisplayedTab;
+        if (displayedTab == null) return "";
+        String projectName = mProjectUrlButtonsViewController.resolveProjectName(mCurrentSessionName);
+        BrowserPageHeader header = BrowserPageHeaderText.build(
+            projectName, mCurrentSessionName, displayedTab.getTitle(), displayedTab.getUrl());
+
+        SpannableStringBuilder builder = new SpannableStringBuilder();
+        int secondaryColor = secondaryColor(primaryColor);
+        if (header.hasContextLine()) {
+            appendStyledLine(builder, header.getContextLine(), secondaryColor, true);
+        }
+        if (header.hasTitleLine()) {
+            appendStyledLine(builder, header.getTitleLine(), primaryColor, false);
+        }
+        if (header.hasCompactUrlLine()) {
+            appendStyledLine(builder, header.getCompactUrlLine(), secondaryColor, true);
+        }
+        return builder;
+    }
+
+    private void appendStyledLine(@NonNull SpannableStringBuilder builder, @NonNull String text,
+                                  int color, boolean secondary) {
+        if (builder.length() > 0) builder.append('\n');
+        int start = builder.length();
+        builder.append(text);
+        int end = builder.length();
+        builder.setSpan(new ForegroundColorSpan(color), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (secondary) {
+            builder.setSpan(new RelativeSizeSpan(HEADER_SECONDARY_TEXT_SCALE), start, end,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    private static int secondaryColor(int primaryColor) {
+        return Color.argb(HEADER_SECONDARY_TEXT_ALPHA, Color.red(primaryColor),
+            Color.green(primaryColor), Color.blue(primaryColor));
     }
 
     private void enqueueDownload(@Nullable String url, @Nullable String userAgent,
@@ -588,6 +635,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mBrowserVisible);
         }
         mCurrentSessionHandle = newSessionHandle;
+        mCurrentSessionName = (session == null) ? null : session.mSessionName;
         rebindTabsList(session);
         updateDesktopModeToggleState();
         if (switchingSession) {

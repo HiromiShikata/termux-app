@@ -31,4 +31,18 @@ public final class SessionDefinitionEntryMatcher {
         }
         return entry.getTitleForUrl(sessionName);
     }
+
+    @Nullable
+    public String findGroupLabelForSessionName(@NonNull List<SessionDefinitionEntry> entries,
+                                               @Nullable String sessionName) {
+        SessionDefinitionEntry entry = findEntryForSessionName(entries, sessionName);
+        if (entry == null) {
+            return null;
+        }
+        String groupLabel = entry.getGroupLabel();
+        if (groupLabel == null || groupLabel.isEmpty()) {
+            return null;
+        }
+        return groupLabel;
+    }
 }

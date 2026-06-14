@@ -68,10 +68,11 @@
                             android:clickable="false"
                             android:ellipsize="end"
                             android:focusable="false"
+                            android:lineSpacingMultiplier="1.1"
                             android:longClickable="false"
+                            android:maxLines="4"
                             android:paddingHorizontal="8dp"
                             android:paddingVertical="3dp"
-                            android:singleLine="true"
                             android:textSize="12sp" />
 
                         <LinearLayout

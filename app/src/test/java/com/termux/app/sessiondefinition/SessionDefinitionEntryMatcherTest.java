@@ -108,6 +108,35 @@ public class SessionDefinitionEntryMatcherTest {
     }
 
     @Test
+    public void findGroupLabelReturnsGroupOfMatchedEntry() {
+        SessionDefinitionEntry firstEntry = new SessionDefinitionEntry("ProjectOne", "entryA",
+            Collections.singletonList("https://example.test/a1"));
+        SessionDefinitionEntry secondEntry = new SessionDefinitionEntry("ProjectTwo", "entryB",
+            Collections.singletonList("https://example.test/b1"));
+
+        Assert.assertEquals("ProjectTwo",
+            matcher.findGroupLabelForSessionName(Arrays.asList(firstEntry, secondEntry), "https://example.test/b1"));
+    }
+
+    @Test
+    public void findGroupLabelReturnsNullWhenNoEntryContainsTheUrl() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("ProjectOne", "entryA",
+                Collections.singletonList("https://example.test/a1")));
+
+        Assert.assertNull(matcher.findGroupLabelForSessionName(entries, "https://example.test/other"));
+    }
+
+    @Test
+    public void findGroupLabelReturnsNullWhenMatchedEntryHasEmptyGroupLabel() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("", "entryA",
+                Collections.singletonList("https://example.test/a1")));
+
+        Assert.assertNull(matcher.findGroupLabelForSessionName(entries, "https://example.test/a1"));
+    }
+
+    @Test
     public void doesNotMatchOnPartialUrl() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA",
