@@ -104,15 +104,22 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         super.notifyDataSetChanged();
     }
 
-    private void rebuildRows() {
+    private List<SessionHierarchyRow> buildAllRows() {
         List<String> sessionNames = new ArrayList<>(mSessionList.size());
         for (TermuxSession session : mSessionList) {
             TerminalSession terminalSession = session.getTerminalSession();
             sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
         }
-        List<SessionHierarchyRow> allRows = mHierarchyBuilder.build(sessionNames, mEntries,
-            mActivity.getString(R.string.session_list_other_group_header));
-        mRows = mHierarchyBuilder.filterCollapsedProjects(allRows, mCollapsedProjectKeys);
+        return mHierarchyBuilder.build(sessionNames, mEntries,
+            mActivity.getString(R.string.session_list_na_group_header));
+    }
+
+    private void rebuildRows() {
+        mRows = mHierarchyBuilder.filterCollapsedProjects(buildAllRows(), mCollapsedProjectKeys);
+    }
+
+    public int getFirstVisibleSessionIndexAfterRebuild() {
+        return SessionHierarchyBuilder.firstSessionIndex(buildAllRows());
     }
 
     private void toggleProjectCollapsed(@Nullable String projectKey) {

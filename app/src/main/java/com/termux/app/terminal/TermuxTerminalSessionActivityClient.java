@@ -593,24 +593,54 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mPersistedSessionBySession.remove(finishedSession) != null)
             savePersistedSessions();
 
-        int index = service.removeTermuxSession(finishedSession);
+        service.removeTermuxSession(finishedSession);
 
         int size = service.getTermuxSessionsSize();
         if (size == 0) {
             // There are no sessions to show, so finish the activity.
             mActivity.finishActivityIfNotFinishing();
         } else {
-            if (index >= size) {
-                index = size - 1;
-            }
-            TermuxSession termuxSession = service.getTermuxSession(index);
-            if (termuxSession != null)
-                setCurrentSession(termuxSession.getTerminalSession());
+            TermuxSession nextSession = selectNextVisibleSession();
+            if (nextSession != null)
+                setCurrentSession(nextSession.getTerminalSession());
         }
 
         TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
         if (toolbarAdapter != null)
             toolbarAdapter.removeTextInputForSession(finishedSession);
+    }
+
+    public void removeSessionForRebuild(TerminalSession sessionToRemove) {
+        if (sessionToRemove == null) return;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(sessionToRemove);
+
+        if (mPersistedSessionBySession.remove(sessionToRemove) != null)
+            savePersistedSessions();
+
+        sessionToRemove.finishIfRunning();
+        service.removeTermuxSession(sessionToRemove);
+
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter != null)
+            toolbarAdapter.removeTextInputForSession(sessionToRemove);
+    }
+
+    @Nullable
+    private TermuxSession selectNextVisibleSession() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return service.getTermuxSession(service.getTermuxSessionsSize() - 1);
+
+        int firstVisibleSessionIndex = listViewController.getFirstVisibleSessionIndexAfterRebuild();
+        if (firstVisibleSessionIndex < 0) return service.getTermuxSession(service.getTermuxSessionsSize() - 1);
+
+        return service.getTermuxSession(firstVisibleSessionIndex);
     }
 
     private void recordPersistedSession(TerminalSession terminalSession, PersistedSession persistedSession) {
