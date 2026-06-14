@@ -1,9 +1,11 @@
 package com.termux.app.activities;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,6 +15,9 @@ import androidx.preference.PreferenceFragmentCompat;
 import com.termux.R;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.style.TermuxStyleLauncher;
+import com.termux.app.terminal.session.PersistedSessionClearer;
+import com.termux.app.terminal.session.PersistedSessionStore;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.models.ReportInfo;
@@ -76,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
                     configureSessionDefinitionConfigPreference(context);
                     configureAlwaysNaSessionNamesPreference(context);
                     configureCrashLogViewerPreference(context);
+                    configureClearSavedSessionsPreference(context);
                     configureUpdateApkPreference(context);
                     configureAboutPreference(context);
                     configureDonatePreference(context);
@@ -167,6 +173,40 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 });
             }
+        }
+
+        private void configureClearSavedSessionsPreference(@NonNull Context context) {
+            Preference clearSavedSessionsPreference = findPreference("clear_saved_sessions");
+            if (clearSavedSessionsPreference != null) {
+                clearSavedSessionsPreference.setOnPreferenceClickListener(preference -> {
+                    new AlertDialog.Builder(requireActivity())
+                        .setTitle(R.string.title_confirm_clear_saved_sessions)
+                        .setMessage(R.string.msg_confirm_clear_saved_sessions)
+                        .setPositiveButton(android.R.string.yes, (dialog, which) -> clearSavedSessions(context))
+                        .setNegativeButton(android.R.string.no, null)
+                        .show();
+                    return true;
+                });
+            }
+        }
+
+        private void clearSavedSessions(@NonNull Context context) {
+            TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(context, true);
+            if (preferences == null) return;
+
+            PersistedSessionStore store = new PersistedSessionStore() {
+                @Override
+                public String getPersistedSessions() {
+                    return preferences.getPersistedSessions();
+                }
+
+                @Override
+                public void setPersistedSessions(String value) {
+                    preferences.setPersistedSessions(value);
+                }
+            };
+            PersistedSessionClearer.clear(store);
+            Toast.makeText(context, R.string.msg_saved_sessions_cleared, Toast.LENGTH_SHORT).show();
         }
 
         private void configureUpdateApkPreference(@NonNull Context context) {

@@ -61,6 +61,12 @@
         app:summary="@string/summary_crash_log_viewer"
         app:persistent="false"/>
 
+    <Preference
+        app:key="clear_saved_sessions"
+        app:title="@string/action_clear_saved_sessions"
+        app:summary="@string/summary_clear_saved_sessions"
+        app:persistent="false"/>
+
     <SwitchPreferenceCompat
         app:key="auto_check_for_updates"
         app:title="@string/auto_check_for_updates_title"
