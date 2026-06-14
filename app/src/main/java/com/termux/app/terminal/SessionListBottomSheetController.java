@@ -26,6 +26,7 @@ public class SessionListBottomSheetController {
     private final View mDragHandleView;
     private final TextView mTitleView;
     private final ListView mSessionListView;
+    private final View mSettingsButton;
     private final View mNewSessionButton;
     private final View mLoadSessionButton;
 
@@ -40,6 +41,7 @@ public class SessionListBottomSheetController {
         this.mDragHandleView = activity.findViewById(R.id.session_list_bottom_sheet_drag_handle);
         this.mTitleView = activity.findViewById(R.id.session_list_bottom_sheet_title);
         this.mSessionListView = activity.findViewById(R.id.session_list_bottom_sheet_list);
+        this.mSettingsButton = activity.findViewById(R.id.session_list_bottom_sheet_settings_button);
         this.mNewSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_new_session_button);
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         bindActionButtons();
@@ -52,6 +54,10 @@ public class SessionListBottomSheetController {
     }
 
     private void bindActionButtons() {
+        mSettingsButton.setOnClickListener(v -> {
+            hide();
+            mActivity.openSettingsActivity();
+        });
         mNewSessionButton.setOnClickListener(v -> {
             hide();
             mActivity.promptAndCreateNewSession();
