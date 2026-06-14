@@ -404,13 +404,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         updateSessionNameOverlay();
     }
 
-    private void updateSessionNameOverlay() {
+    public void updateSessionNameOverlay() {
         TextView sessionNameBar = mActivity.findViewById(R.id.session_name_bar);
         if (sessionNameBar == null) return;
 
         TerminalSession session = mActivity.getCurrentSession();
         String sessionName = (session == null) ? null : session.mSessionName;
-        if (TextUtils.isEmpty(sessionName)) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        boolean browserVisible = browserController != null && browserController.isBrowserVisible();
+        if (!SessionNameBarVisibility.isVisible(sessionName, browserVisible)) {
             sessionNameBar.setText("");
             sessionNameBar.setVisibility(View.GONE);
             sessionNameBar.setOnClickListener(null);

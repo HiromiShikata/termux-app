@@ -51,6 +51,7 @@ import androidx.webkit.WebViewFeature;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.SessionListBottomSheetController;
+import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.shared.theme.NightMode;
@@ -599,6 +600,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mProjectOverviewActionsView.setVisibility(showActions ? View.VISIBLE : View.GONE);
     }
 
+    private void updateSessionNameOverlay() {
+        TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
+        if (sessionClient != null) sessionClient.updateSessionNameOverlay();
+    }
+
     private void toggleActiveTabDesktopMode() {
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) {
@@ -718,6 +724,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mBrowserContentContainer.setVisibility(View.VISIBLE);
         showBrowserSplitDivider();
         dismissSoftKeyboardForBrowser();
+        updateSessionNameOverlay();
     }
 
     private void dismissSoftKeyboardForBrowser() {
@@ -738,6 +745,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mBrowserContentContainer.setVisibility(View.GONE);
         mBrowserTerminalDivider.setVisibility(View.GONE);
         updateProjectOverviewActionsVisibility();
+        updateSessionNameOverlay();
     }
 
     public boolean isBrowserVisible() {
@@ -757,6 +765,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         notifyTabsUpdated();
         mActivity.getDrawer().closeDrawers();
         hideSessionListBottomSheet();
+        updateSessionNameOverlay();
     }
 
     private void hideSessionListBottomSheet() {
