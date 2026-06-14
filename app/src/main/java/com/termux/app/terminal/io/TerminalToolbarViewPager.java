@@ -26,6 +26,7 @@ import com.termux.terminal.TerminalSession;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class TerminalToolbarViewPager {
@@ -108,8 +109,11 @@ public class TerminalToolbarViewPager {
         }
 
         void startVoiceInput() {
+            String deviceLanguageTag = Locale.getDefault().toLanguageTag();
             Intent voiceInputIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, deviceLanguageTag)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, deviceLanguageTag);
             try {
                 mActivity.startActivityForResult(voiceInputIntent, TermuxActivity.TERMINAL_TOOLBAR_TEXT_INPUT_VOICE_REQUEST_CODE);
             } catch (ActivityNotFoundException e) {
