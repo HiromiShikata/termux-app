@@ -117,6 +117,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         settings.setAllowContentAccess(false);
 
         applyDarkModeRendering(settings);
+        BrowserWebAuthentication.apply(settings);
 
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
 
