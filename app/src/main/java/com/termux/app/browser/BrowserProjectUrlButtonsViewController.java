@@ -128,6 +128,14 @@ public final class BrowserProjectUrlButtonsViewController {
         return button;
     }
 
+    @Nullable
+    public String resolveProjectName(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty() || mCachedEntries.isEmpty()) {
+            return null;
+        }
+        return mMatcher.findGroupLabelForSessionName(mCachedEntries, sessionName);
+    }
+
     public void clearCachedEntries() {
         mCachedEntries = Collections.emptyList();
     }
