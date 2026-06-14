@@ -89,6 +89,79 @@ public class SessionDefinitionParserTest {
     }
 
     @Test
+    public void parseIndexResolvesProjectNamesToVersionThreeSiblingsWhenIndexUrlIsVersionThree() throws JSONException {
+        String json = "{\"version\":3,\"projects\":[\"umino\",\"xmile\"]}";
+
+        List<SessionDefinitionGroupReference> references =
+            parser.parseIndex(json, "https://example.test/base/index.v3.json");
+
+        Assert.assertEquals(2, references.size());
+        Assert.assertEquals("umino", references.get(0).getLabel());
+        Assert.assertEquals("umino.v3.json", references.get(0).getUrl());
+        Assert.assertEquals("xmile.v3.json", references.get(1).getUrl());
+    }
+
+    @Test
+    public void parseIndexResolvesVersionThreeSiblingsFromVersionFieldEvenWithoutVersionThreeUrl() throws JSONException {
+        String json = "{\"version\":3,\"projects\":[\"umino\"]}";
+
+        List<SessionDefinitionGroupReference> references = parser.parseIndex(json);
+
+        Assert.assertEquals(1, references.size());
+        Assert.assertEquals("umino.v3.json", references.get(0).getUrl());
+    }
+
+    @Test
+    public void parseGroupReadsVersionThreeObjectWithOverviewUrlAndGroups() throws JSONException {
+        String json = "{"
+            + "\"version\":3,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":["
+            + "{\"url\":\"https://example.test/a1\",\"title\":\"Task A\"},"
+            + "{\"url\":\"https://example.test/a2\"}"
+            + "]},"
+            + "{\"story\":\"story-two\",\"urls\":[\"https://example.test/b1\"]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(2, entries.size());
+        SessionDefinitionEntry first = entries.get(0);
+        Assert.assertEquals("umino", first.getGroupLabel());
+        Assert.assertEquals("story-one", first.getEntryLabel());
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", first.getOverviewUrl());
+        Assert.assertEquals(2, first.getUrls().size());
+        Assert.assertEquals("Task A", first.getTitleForUrl("https://example.test/a1"));
+        Assert.assertNull(first.getTitleForUrl("https://example.test/a2"));
+        SessionDefinitionEntry second = entries.get(1);
+        Assert.assertEquals("story-two", second.getEntryLabel());
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", second.getOverviewUrl());
+    }
+
+    @Test
+    public void parseGroupTreatsMissingOrEmptyOverviewUrlAsNoOverviewUrl() throws JSONException {
+        String missingJson = "{\"version\":3,\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"
+            + "]}";
+        String emptyJson = "{\"version\":3,\"overviewUrl\":\"\",\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"
+            + "]}";
+
+        Assert.assertNull(parser.parseGroup("umino", missingJson).get(0).getOverviewUrl());
+        Assert.assertNull(parser.parseGroup("umino", emptyJson).get(0).getOverviewUrl());
+    }
+
+    @Test
+    public void parseGroupLeavesOverviewUrlNullForVersionOneAndTwoArrays() throws JSONException {
+        String json = "[{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        Assert.assertNull(entries.get(0).getOverviewUrl());
+    }
+
+    @Test
     public void parseGroupReadsUrlItemsAsObjectsCarryingTitles() throws JSONException {
         String json = "["
             + "{\"story\":\"story-one\",\"urls\":["

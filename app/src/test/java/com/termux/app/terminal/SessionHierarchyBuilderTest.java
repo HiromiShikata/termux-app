@@ -275,6 +275,47 @@ public class SessionHierarchyBuilderTest {
         assertSession(visibleRows.get(3), 0);
     }
 
+    @Test
+    public void projectHeaderCarriesOverviewUrlFromEntriesThatProvideIt() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a"),
+                Collections.emptyMap(), "https://github.com/HiromiShikata/projects/7"));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "projectOne");
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", rows.get(0).getOverviewUrl());
+    }
+
+    @Test
+    public void projectHeaderHasNoOverviewUrlWhenEntriesProvideNone() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "projectOne");
+        Assert.assertNull(rows.get(0).getOverviewUrl());
+    }
+
+    @Test
+    public void unmatchedNaProjectHeaderHasNoOverviewUrl() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a"),
+                Collections.emptyMap(), "https://github.com/HiromiShikata/projects/7"));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("manual-session", "https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), NA);
+        Assert.assertNull(rows.get(0).getOverviewUrl());
+    }
+
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {
         Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
         Assert.assertTrue(row.isHeader());

@@ -93,6 +93,7 @@
     <string name="msg_session_definition_url_not_set">Set the session definition URL first.</string>
     <string name="msg_session_definition_load_failed">Failed to load session definition.</string>
     <string name="msg_session_definition_no_entries">No sessions found in the session definition.</string>
+    <string name="action_open_project_overview">Open project overview</string>
 
     <string name="msg_enabling_terminal_toolbar">Enabling Terminal Toolbar</string>
     <string name="msg_disabling_terminal_toolbar">Disabling Terminal Toolbar</string>

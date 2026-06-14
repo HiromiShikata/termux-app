@@ -27,6 +27,7 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -198,6 +199,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                 View projectHeaderView = getHeaderView(row, convertView, parent,
                     R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
                 bindProjectCollapseIndicator(projectHeaderView, row);
+                bindProjectOverviewBrowserIcon(projectHeaderView, row);
                 return projectHeaderView;
             case STORY_HEADER:
                 return getHeaderView(row, convertView, parent,
@@ -227,6 +229,34 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
         boolean shouldEnableDarkTheme = ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
         collapseIndicatorView.setTextColor(shouldEnableDarkTheme ? Color.WHITE : Color.BLACK);
+    }
+
+    private void bindProjectOverviewBrowserIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
+        View overviewBrowserIconView = projectHeaderView.findViewById(R.id.session_project_header_overview_browser_icon);
+        String overviewUrl = row.getOverviewUrl();
+        Runnable openAction = (overviewUrl == null || overviewUrl.isEmpty())
+            ? null
+            : () -> openProjectOverview(overviewUrl);
+        applyProjectOverviewBrowserIconVisibility(overviewBrowserIconView, openAction);
+    }
+
+    static void applyProjectOverviewBrowserIconVisibility(@NonNull View overviewBrowserIconView,
+                                                          @Nullable Runnable openAction) {
+        if (openAction == null) {
+            overviewBrowserIconView.setVisibility(View.GONE);
+            overviewBrowserIconView.setOnClickListener(null);
+            return;
+        }
+        overviewBrowserIconView.setVisibility(View.VISIBLE);
+        overviewBrowserIconView.setOnClickListener(v -> openAction.run());
+    }
+
+    private void openProjectOverview(@NonNull String overviewUrl) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) {
+            return;
+        }
+        browserController.openUrlInNewTab(overviewUrl);
     }
 
     @SuppressLint("SetTextI18n")

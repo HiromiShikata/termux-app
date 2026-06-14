@@ -29,4 +29,17 @@
         android:textAllCaps="true"
         android:textSize="12sp"
         android:textStyle="bold" />
+
+    <ImageView
+        android:id="@+id/session_project_header_overview_browser_icon"
+        android:layout_width="28dip"
+        android:layout_height="28dip"
+        android:layout_marginStart="4dip"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_open_project_overview"
+        android:duplicateParentState="false"
+        android:padding="2dip"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_browser_toggle"
+        android:visibility="gone" />
 </LinearLayout>

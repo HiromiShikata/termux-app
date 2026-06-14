@@ -14,6 +14,7 @@ public final class SessionDefinitionEntry {
     private final String entryLabel;
     private final List<String> urls;
     private final Map<String, String> titlesByUrl;
+    private final String overviewUrl;
 
     public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls) {
         this(groupLabel, entryLabel, urls, Collections.emptyMap());
@@ -21,10 +22,16 @@ public final class SessionDefinitionEntry {
 
     public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls,
                                   Map<String, String> titlesByUrl) {
+        this(groupLabel, entryLabel, urls, titlesByUrl, null);
+    }
+
+    public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls,
+                                  Map<String, String> titlesByUrl, @Nullable String overviewUrl) {
         this.groupLabel = groupLabel;
         this.entryLabel = entryLabel;
         this.urls = Collections.unmodifiableList(new ArrayList<>(urls));
         this.titlesByUrl = Collections.unmodifiableMap(new HashMap<>(titlesByUrl));
+        this.overviewUrl = overviewUrl;
     }
 
     public String getGroupLabel() {
@@ -42,6 +49,11 @@ public final class SessionDefinitionEntry {
     @Nullable
     public String getTitleForUrl(String url) {
         return titlesByUrl.get(url);
+    }
+
+    @Nullable
+    public String getOverviewUrl() {
+        return overviewUrl;
     }
 
     public String getSessionName() {
