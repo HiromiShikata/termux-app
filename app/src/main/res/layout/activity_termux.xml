@@ -82,6 +82,34 @@
                             android:singleLine="true"
                             android:textSize="12sp" />
 
+                        <LinearLayout
+                            android:id="@+id/browser_project_overview_actions"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/termuxActivityDrawerBackground"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="4dp"
+                            android:visibility="gone">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/browser_open_all_tasks_button"
+                                style="?android:attr/buttonBarButtonStyle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:contentDescription="@string/action_browser_open_all_tasks"
+                                android:text="@string/action_browser_open_all_tasks" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/browser_open_first_ten_tasks_button"
+                                style="?android:attr/buttonBarButtonStyle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:contentDescription="@string/action_browser_open_first_ten_tasks"
+                                android:text="@string/action_browser_open_first_ten_tasks" />
+                        </LinearLayout>
+
                         <FrameLayout
                             android:layout_width="match_parent"
                             android:layout_height="0dp"

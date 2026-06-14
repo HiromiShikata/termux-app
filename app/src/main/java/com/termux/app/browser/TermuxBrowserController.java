@@ -21,6 +21,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.URLUtil;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -47,6 +48,8 @@ import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.shared.logger.Logger;
+
+import org.json.JSONException;
 
 import java.util.HashSet;
 import java.util.List;
@@ -84,6 +87,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserProjectUrlButtonsViewController mProjectUrlButtonsViewController;
 
+    private final View mProjectOverviewActionsView;
+
     private String mCurrentSessionHandle;
 
     private BrowserTab mDisplayedTab;
@@ -108,9 +113,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity, this);
+        this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         configureWebView();
         configureCookies();
         configureDrawerControls();
+        configureProjectOverviewActions();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -299,6 +306,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         boolean darkTheme =
             ThemeUtils.shouldEnableDarkTheme(mActivity, NightMode.getAppNightMode().getName());
         mPageTitleUrlHeaderView.setTextColor(darkTheme ? Color.WHITE : Color.BLACK);
+        updateProjectOverviewActionsVisibility();
     }
 
     private void enqueueDownload(@Nullable String url, @Nullable String userAgent,
@@ -425,6 +433,54 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
+    private void configureProjectOverviewActions() {
+        mActivity.findViewById(R.id.browser_open_all_tasks_button)
+            .setOnClickListener(v -> openDisplayedTaskUrls(0));
+        mActivity.findViewById(R.id.browser_open_first_ten_tasks_button)
+            .setOnClickListener(v -> openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+    }
+
+    private void openDisplayedTaskUrls(int limit) {
+        mWebView.evaluateJavascript(BrowserGithubTaskUrls.COLLECT_SCRIPT, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String collectedUrlsJson) {
+                List<String> displayedUrls;
+                try {
+                    displayedUrls = BrowserGithubTaskUrls.parseCollectedUrls(collectedUrlsJson);
+                } catch (JSONException e) {
+                    Logger.logStackTraceWithMessage(LOG_TAG, "Failed to parse collected task URLs", e);
+                    return;
+                }
+                List<String> selectedUrls = BrowserGithubTaskUrls.selectForBulkOpen(displayedUrls, limit);
+                openUrlsInExternalBrowser(selectedUrls);
+            }
+        });
+    }
+
+    private void openUrlsInExternalBrowser(@NonNull List<String> urls) {
+        if (urls.isEmpty()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_task_urls_found), false);
+            return;
+        }
+        for (String url : urls) {
+            Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+            try {
+                mActivity.startActivity(viewIntent);
+            } catch (ActivityNotFoundException e) {
+                Logger.logStackTraceWithMessage(LOG_TAG, "No external browser found to open " + url, e);
+            }
+        }
+    }
+
+    private void updateProjectOverviewActionsVisibility() {
+        BrowserTab displayedTab = mDisplayedTab;
+        boolean showActions = mBrowserVisible
+            && displayedTab != null
+            && BrowserProjectOverviewPage.isOverviewUrl(displayedTab.getUrl());
+        mProjectOverviewActionsView.setVisibility(showActions ? View.VISIBLE : View.GONE);
+    }
+
     private void toggleActiveTabDesktopMode() {
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) {
@@ -536,6 +592,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mSwipeRefreshLayout.setRefreshing(false);
         mBrowserContentContainer.setVisibility(View.GONE);
         mActivity.getTerminalView().setVisibility(View.VISIBLE);
+        updateProjectOverviewActionsVisibility();
     }
 
     public boolean isBrowserVisible() {
