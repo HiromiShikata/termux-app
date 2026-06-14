@@ -6,11 +6,13 @@ import android.os.Bundle;
 import android.os.Environment;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
+import com.termux.app.apkupdate.ApkUpdateGuide;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.models.ReportInfo;
@@ -137,8 +139,17 @@ public class SettingsActivity extends AppCompatActivity {
         private void configureUpdateApkPreference(@NonNull Context context) {
             Preference updateApkPreference = findPreference("update_apk");
             if (updateApkPreference != null) {
+                ApkUpdateGuide apkUpdateGuide = new ApkUpdateGuide();
+                updateApkPreference.setSummary(getString(R.string.update_apk_preference_summary,
+                    apkUpdateGuide.getRecommendedArtifactName()));
                 updateApkPreference.setOnPreferenceClickListener(preference -> {
-                    ShareUtils.openUrl(context, "https://github.com/HiromiShikata/termux-app/actions/workflows/debug_build.yml?query=branch%3Amain");
+                    new AlertDialog.Builder(context)
+                        .setTitle(R.string.update_apk_preference_title)
+                        .setMessage(apkUpdateGuide.buildInstructionMessage())
+                        .setPositiveButton(R.string.update_apk_open_builds_button,
+                            (dialog, which) -> ShareUtils.openUrl(context, apkUpdateGuide.getBuildListUrl()))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
                     return true;
                 });
             }
