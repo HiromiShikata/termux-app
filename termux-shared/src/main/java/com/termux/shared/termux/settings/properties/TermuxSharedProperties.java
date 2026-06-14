@@ -47,10 +47,12 @@ public abstract class TermuxSharedProperties {
         // called or a higher priority file may have been created afterward. Otherwise, if no file
         // was found, then default props would keep loading, since mSharedProperties would be null. #2836
         mPropertiesFile = SharedProperties.getPropertiesFileFromList(mPropertiesFilePaths, LOG_TAG);
-        mSharedProperties = null;
-        mSharedProperties = new SharedProperties(mContext, mPropertiesFile, mPropertiesList, mSharedPropertiesParser);
 
-        mSharedProperties.loadPropertiesFromDisk();
+        SharedProperties reloadedSharedProperties =
+            new SharedProperties(mContext, mPropertiesFile, mPropertiesList, mSharedPropertiesParser);
+        reloadedSharedProperties.loadPropertiesFromDisk();
+
+        mSharedProperties = reloadedSharedProperties;
         dumpPropertiesToLog();
         dumpInternalPropertiesToLog();
     }
@@ -152,12 +154,16 @@ public abstract class TermuxSharedProperties {
      */
     public Object getInternalPropertyValue(String key, boolean cached) {
         Object value;
+        SharedProperties sharedProperties = mSharedProperties;
+        if (sharedProperties == null) {
+            return getInternalTermuxPropertyValueFromValue(mContext, key, null);
+        }
         if (cached) {
-            value = mSharedProperties.getInternalProperty(key);
+            value = sharedProperties.getInternalProperty(key);
             // If the value is not null since key was found or if the value was null since the
             // object stored for the key was itself null, we detect the later by checking if the key
             // exists in the map.
-            if (value != null || mSharedProperties.getInternalProperties().containsKey(key)) {
+            if (value != null || sharedProperties.getInternalProperties().containsKey(key)) {
                 return value;
             } else {
                 // This should not happen normally unless mMap was modified after the
@@ -170,7 +176,7 @@ public abstract class TermuxSharedProperties {
             }
         } else {
             // We get the property value directly from file and return its internal value
-            return getInternalTermuxPropertyValueFromValue(mContext, key, mSharedProperties.getProperty(key, false));
+            return getInternalTermuxPropertyValueFromValue(mContext, key, sharedProperties.getProperty(key, false));
         }
     }
 
