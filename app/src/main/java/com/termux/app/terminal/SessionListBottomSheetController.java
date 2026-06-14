@@ -24,6 +24,7 @@ public class SessionListBottomSheetController {
 
     private final TermuxActivity mActivity;
     private final View mSheetView;
+    private final View mScrimView;
     private final View mDragHandleView;
     private final TextView mTitleView;
     private final ListView mSessionListView;
@@ -37,6 +38,7 @@ public class SessionListBottomSheetController {
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
         this.mSheetView = activity.findViewById(R.id.session_list_bottom_sheet);
+        this.mScrimView = activity.findViewById(R.id.session_list_bottom_sheet_scrim);
         this.mDragHandleView = activity.findViewById(R.id.session_list_bottom_sheet_drag_handle);
         this.mTitleView = activity.findViewById(R.id.session_list_bottom_sheet_title);
         this.mSessionListView = activity.findViewById(R.id.session_list_bottom_sheet_list);
@@ -44,6 +46,11 @@ public class SessionListBottomSheetController {
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         bindActionButtons();
         bindDragToDismiss();
+        bindScrimTapToDismiss();
+    }
+
+    private void bindScrimTapToDismiss() {
+        mScrimView.setOnClickListener(v -> hide());
     }
 
     private void bindActionButtons() {
@@ -151,6 +158,7 @@ public class SessionListBottomSheetController {
         applySheetHeightCap();
         bindSessionList(listController);
         mSheetView.animate().cancel();
+        mScrimView.setVisibility(scrimVisibilityForSheet(View.VISIBLE));
         mSheetView.setVisibility(View.VISIBLE);
         mSheetView.setTranslationY(sheetHeightPixels());
         mSheetView.animate()
@@ -164,6 +172,7 @@ public class SessionListBottomSheetController {
         if (mSheetView.getVisibility() != View.VISIBLE) {
             return;
         }
+        mScrimView.setVisibility(scrimVisibilityForSheet(View.GONE));
         animateDismiss();
     }
 
@@ -210,6 +219,10 @@ public class SessionListBottomSheetController {
 
     static int nextSheetVisibility(int currentVisibility) {
         return currentVisibility == View.VISIBLE ? View.GONE : View.VISIBLE;
+    }
+
+    static int scrimVisibilityForSheet(int sheetVisibility) {
+        return sheetVisibility == View.VISIBLE ? View.VISIBLE : View.GONE;
     }
 
     static int computeSheetMaxHeight(int screenHeightPixels) {
