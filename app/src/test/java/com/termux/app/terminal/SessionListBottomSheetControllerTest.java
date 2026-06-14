@@ -77,6 +77,16 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
+    public void scrimIsVisibleWhileSheetIsOpenSoOutsideTapsCanDismissIt() {
+        Assert.assertEquals(View.VISIBLE, SessionListBottomSheetController.scrimVisibilityForSheet(View.VISIBLE));
+    }
+
+    @Test
+    public void scrimIsGoneWhileSheetIsClosedSoItDoesNotBlockInteraction() {
+        Assert.assertEquals(View.GONE, SessionListBottomSheetController.scrimVisibilityForSheet(View.GONE));
+    }
+
+    @Test
     public void capsSheetHeightToOneThirdOfScreen() {
         Assert.assertEquals(640, SessionListBottomSheetController.computeSheetMaxHeight(1920));
     }

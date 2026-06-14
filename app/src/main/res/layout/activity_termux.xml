@@ -278,6 +278,16 @@
 
         </androidx.drawerlayout.widget.DrawerLayout>
 
+        <View
+            android:id="@+id/session_list_bottom_sheet_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_above="@+id/terminal_toolbar_bottom_container"
+            android:background="@android:color/transparent"
+            android:elevation="5dp"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/session_list_bottom_sheet"
             android:layout_width="match_parent"
