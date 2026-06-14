@@ -11,7 +11,6 @@ import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.text.TextUtils;
-import android.util.Patterns;
 import android.view.View;
 import android.widget.Adapter;
 import android.widget.ListView;
@@ -25,6 +24,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -63,6 +63,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
 
     private final SessionDefinitionEntryMatcher mSessionDefinitionEntryMatcher = new SessionDefinitionEntryMatcher();
+
+    private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
@@ -531,13 +533,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void attachBrowserTabForUrlSessionName(@NonNull TerminalSession session, @Nullable String sessionName) {
-        if (sessionName == null) return;
-        String trimmedSessionName = sessionName.trim();
-        if (trimmedSessionName.isEmpty()) return;
-        if (!Patterns.WEB_URL.matcher(trimmedSessionName).matches()) return;
+        String browserTabUrl = mSessionNameBrowserTabUrlResolver.resolve(sessionName);
+        if (browserTabUrl == null) return;
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) return;
-        browserController.attachBackgroundTab(session.mHandle, trimmedSessionName);
+        browserController.attachBackgroundTab(session.mHandle, browserTabUrl);
     }
 
     public void setCurrentStoredSession() {
@@ -674,6 +674,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, name,
                 persistedSession.getExecutablePath(), persistedSession.getArguments(), persistedSession.isFailSafe(),
                 persistedSession.getWorkingDirectory()));
+            attachBrowserTabForUrlSessionName(newTerminalSession, name);
             if (firstRestoredSession == null)
                 firstRestoredSession = newTerminalSession;
         }
