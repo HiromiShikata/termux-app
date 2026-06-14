@@ -8,8 +8,9 @@ public final class BrowserPageTransition {
     private BrowserPageTransition() {
     }
 
-    public static boolean requiresBlankBeforeLoad(
-        @Nullable BrowserTab currentlyDisplayedTab, @NonNull BrowserTab targetTab) {
-        return currentlyDisplayedTab != targetTab;
+    public static boolean requiresCoverWhileLoading(
+        @Nullable String currentlyLoadedUrl, @NonNull String targetUrl, boolean browserWillBeVisible) {
+        if (!browserWillBeVisible) return false;
+        return !targetUrl.equals(currentlyLoadedUrl);
     }
 }

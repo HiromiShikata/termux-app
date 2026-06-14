@@ -55,8 +55,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final String CHROME_PACKAGE_NAME = "com.android.chrome";
 
-    private static final String BLANK_URL = "about:blank";
-
     private final TermuxActivity mActivity;
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
@@ -66,6 +64,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final SwipeRefreshLayout mSwipeRefreshLayout;
 
     private final ProgressBar mPageLoadProgressBar;
+
+    private final View mWebViewCover;
 
     private final ListView mTabsListView;
 
@@ -83,7 +83,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private boolean mBrowserVisible;
 
-    private boolean mClearingDisplayedPage;
+    private String mLoadedUrl;
 
     private final Set<Long> mEnqueuedDownloadIds = new HashSet<>();
 
@@ -96,6 +96,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mWebView = activity.findViewById(R.id.browser_web_view);
         this.mSwipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
         this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
+        this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity, this);
         configureWebView();
@@ -123,8 +124,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                if (isClearingBlankLoad(url)) return;
-                mClearingDisplayedPage = false;
                 showPageLoadProgress(0);
                 BrowserTab loadingTab = mDisplayedTab;
                 if (loadingTab != null) {
@@ -135,11 +134,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
 
             @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                mLoadedUrl = url;
+                revealWebView();
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
-                if (isClearingBlankLoad(url)) {
-                    mClearingDisplayedPage = false;
-                    return;
-                }
+                mLoadedUrl = url;
+                revealWebView();
                 hidePageLoadProgress();
                 mSwipeRefreshLayout.setRefreshing(false);
                 CookieManager.getInstance().flush();
@@ -168,7 +171,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                if (mClearingDisplayedPage) return;
                 if (newProgress < 100) {
                     showPageLoadProgress(newProgress);
                 } else {
@@ -233,12 +235,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void onMainFrameError() {
+        revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
     }
 
-    private boolean isClearingBlankLoad(@Nullable String url) {
-        return mClearingDisplayedPage && BLANK_URL.equals(url);
+    private void showWebViewCover() {
+        mWebViewCover.setVisibility(View.VISIBLE);
+    }
+
+    private void revealWebView() {
+        mWebViewCover.setVisibility(View.GONE);
     }
 
     private void showPageLoadProgress(int progress) {
@@ -474,6 +481,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void showTerminal() {
         mBrowserVisible = false;
+        revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
         mSwipeRefreshLayout.setVisibility(View.GONE);
@@ -556,16 +564,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
         if (!forceReload && activeTab == mDisplayedTab) return;
-        boolean switchingDisplayedPage =
-            BrowserPageTransition.requiresBlankBeforeLoad(mDisplayedTab, activeTab);
+        String targetUrl = activeTab.getUrl();
+        if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, targetUrl, mBrowserVisible)) {
+            showWebViewCover();
+        }
         mDisplayedTab = activeTab;
-        if (switchingDisplayedPage) clearDisplayedPage();
-        mWebView.loadUrl(activeTab.getUrl());
-    }
-
-    private void clearDisplayedPage() {
-        mClearingDisplayedPage = true;
-        mWebView.loadUrl(BLANK_URL);
+        mWebView.loadUrl(targetUrl);
     }
 
     @Nullable

@@ -5,39 +5,37 @@ import org.junit.Test;
 
 public class BrowserPageTransitionTest {
 
-    private static final String SESSION = "session-a";
+    private static final String DISPLAYED_URL = "https://previous.example/";
+
+    private static final String TARGET_URL = "https://requested.example/";
 
     @Test
-    public void openingNewTabFromContextMenuRequiresBlankToHideStalePage() {
-        BrowserTab previouslyDisplayedTab = new BrowserTab(SESSION, "https://previous.example/");
-        BrowserTab newlyRequestedTab = new BrowserTab(SESSION, "https://requested.example/");
-
+    public void loadingADifferentUrlWhileVisibleRequiresCoverToHideStalePage() {
         Assert.assertTrue(
-            BrowserPageTransition.requiresBlankBeforeLoad(previouslyDisplayedTab, newlyRequestedTab));
+            BrowserPageTransition.requiresCoverWhileLoading(DISPLAYED_URL, TARGET_URL, true));
     }
 
     @Test
-    public void switchingBackToAlreadyDisplayedTabDoesNotRequireBlank() {
-        BrowserTab displayedTab = new BrowserTab(SESSION, "https://open.example/");
-
+    public void reloadingTheSameUrlWhileVisibleDoesNotRequireCover() {
         Assert.assertFalse(
-            BrowserPageTransition.requiresBlankBeforeLoad(displayedTab, displayedTab));
+            BrowserPageTransition.requiresCoverWhileLoading(TARGET_URL, TARGET_URL, true));
     }
 
     @Test
-    public void openingTabWhenNothingDisplayedRequiresBlank() {
-        BrowserTab newlyRequestedTab = new BrowserTab(SESSION, "https://requested.example/");
-
+    public void loadingWhenNothingIsDisplayedYetRequiresCover() {
         Assert.assertTrue(
-            BrowserPageTransition.requiresBlankBeforeLoad(null, newlyRequestedTab));
+            BrowserPageTransition.requiresCoverWhileLoading(null, TARGET_URL, true));
     }
 
     @Test
-    public void switchingToADifferentExistingTabRequiresBlank() {
-        BrowserTab firstTab = new BrowserTab(SESSION, "https://first.example/");
-        BrowserTab secondTab = new BrowserTab(SESSION, "https://second.example/");
+    public void loadingADifferentUrlWhileNotVisibleDoesNotRequireCover() {
+        Assert.assertFalse(
+            BrowserPageTransition.requiresCoverWhileLoading(DISPLAYED_URL, TARGET_URL, false));
+    }
 
-        Assert.assertTrue(
-            BrowserPageTransition.requiresBlankBeforeLoad(firstTab, secondTab));
+    @Test
+    public void reloadingTheSameUrlWhileNotVisibleDoesNotRequireCover() {
+        Assert.assertFalse(
+            BrowserPageTransition.requiresCoverWhileLoading(TARGET_URL, TARGET_URL, false));
     }
 }
