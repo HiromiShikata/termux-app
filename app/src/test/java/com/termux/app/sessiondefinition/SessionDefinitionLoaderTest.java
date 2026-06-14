@@ -88,6 +88,44 @@ public class SessionDefinitionLoaderTest {
         Assert.assertEquals("https://example.test/base/alpha.v2.json", fetcher.fetchedUrls.get(1));
     }
 
+    @Test
+    public void loadVersionThreeIndexResolvesVersionThreeProjectFilesAndCarriesOverviewUrl() throws Exception {
+        RecordingFetcher fetcher = new RecordingFetcher();
+        fetcher.register("https://example.test/base/index.v3.json",
+            "{\"version\":3,\"projects\":[\"umino\",\"xmile\"]}");
+        fetcher.register("https://example.test/base/umino.v3.json", "{"
+            + "\"version\":3,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":["
+            + "{\"url\":\"https://example.test/a\",\"title\":\"Task A\"}"
+            + "]}"
+            + "]}");
+        fetcher.register("https://example.test/base/xmile.v3.json", "{"
+            + "\"version\":3,"
+            + "\"groups\":["
+            + "{\"story\":\"story-two\",\"urls\":[\"https://example.test/b\"]}"
+            + "]}");
+
+        SessionDefinitionLoader loader =
+            new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
+
+        List<SessionDefinitionEntry> entries = loader.load("https://example.test/base/index.v3.json");
+
+        Assert.assertEquals(2, entries.size());
+        SessionDefinitionEntry uminoEntry = entries.get(0);
+        Assert.assertEquals("umino/story-one", uminoEntry.getSessionName());
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", uminoEntry.getOverviewUrl());
+        Assert.assertEquals("Task A", uminoEntry.getTitleForUrl("https://example.test/a"));
+        SessionDefinitionEntry xmileEntry = entries.get(1);
+        Assert.assertEquals("xmile/story-two", xmileEntry.getSessionName());
+        Assert.assertNull(xmileEntry.getOverviewUrl());
+
+        Assert.assertEquals("https://example.test/base/index.v3.json", fetcher.fetchedUrls.get(0));
+        Assert.assertEquals("https://example.test/base/umino.v3.json", fetcher.fetchedUrls.get(1));
+        Assert.assertEquals("https://example.test/base/xmile.v3.json", fetcher.fetchedUrls.get(2));
+    }
+
     @Test(expected = IOException.class)
     public void loadPropagatesFetchFailure() throws Exception {
         RecordingFetcher fetcher = new RecordingFetcher();

@@ -39,6 +39,14 @@ public final class SessionHierarchyBuilder {
             }
         }
 
+        Map<String, String> overviewUrlByProject = new LinkedHashMap<>();
+        for (SessionDefinitionEntry entry : entries) {
+            String overviewUrl = entry.getOverviewUrl();
+            if (overviewUrl != null && !overviewUrlByProject.containsKey(entry.getGroupLabel())) {
+                overviewUrlByProject.put(entry.getGroupLabel(), overviewUrl);
+            }
+        }
+
         Map<String, Map<String, List<Integer>>> sessionIndexesByProjectAndStory = new LinkedHashMap<>();
         Set<String> placedNames = new HashSet<>();
         for (SessionDefinitionEntry entry : entries) {
@@ -66,7 +74,7 @@ public final class SessionHierarchyBuilder {
             }
         }
         for (Map.Entry<String, Map<String, List<Integer>>> project : sessionIndexesByProjectAndStory.entrySet()) {
-            rows.add(SessionHierarchyRow.projectHeader(project.getKey()));
+            rows.add(SessionHierarchyRow.projectHeader(project.getKey(), overviewUrlByProject.get(project.getKey())));
             for (Map.Entry<String, List<Integer>> story : project.getValue().entrySet()) {
                 rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
                 for (int sessionIndex : story.getValue()) {
