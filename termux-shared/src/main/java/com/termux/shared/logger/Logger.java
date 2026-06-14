@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Gravity;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -398,7 +399,13 @@ public class Logger {
     public static void showToast(final Context context, final String toastText, boolean longDuration) {
         if (context == null || DataUtils.isNullOrEmpty(toastText)) return;
 
-        new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(context, toastText, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT).show());
+        new Handler(Looper.getMainLooper()).post(() -> createTopGravityToast(context, toastText, longDuration).show());
+    }
+
+    public static Toast createTopGravityToast(final Context context, final String toastText, boolean longDuration) {
+        Toast toast = Toast.makeText(context, toastText, longDuration ? Toast.LENGTH_LONG : Toast.LENGTH_SHORT);
+        toast.setGravity(Gravity.TOP, 0, 0);
+        return toast;
     }
 
 
