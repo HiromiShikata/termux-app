@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
+import com.termux.app.terminal.SessionBellNotificationContent;
 import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
@@ -863,6 +864,44 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         NotificationUtils.setupNotificationChannel(this, TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_ID,
             TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
+
+        // A separate high-importance channel so that a terminal bell from a background session
+        // produces an audible, heads-up system notification instead of only an in-app marker.
+        NotificationUtils.setupNotificationChannel(this, TermuxConstants.TERMUX_APP_SESSION_BELL_NOTIFICATION_CHANNEL_ID,
+            TermuxConstants.TERMUX_APP_SESSION_BELL_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
+    }
+
+    /** Post an Android system notification informing the user that a background terminal session
+     * emitted a terminal bell (BEL, {@code 0x07}). This is what makes a remote task such as a Claude
+     * Code session running in tmux over ssh surface to the user while Termux is in the background. The
+     * notification is posted on a dedicated high-importance channel and opens {@link TermuxActivity}
+     * when tapped. A per-session notification id keeps bells from different sessions separate while a
+     * repeated bell from the same session updates its existing notification. */
+    public synchronized void showSessionBellNotification(@Nullable TerminalSession session) {
+        if (session == null || session.mHandle == null) return;
+
+        String sessionName = session.mSessionName;
+        if (sessionName == null || sessionName.trim().isEmpty())
+            sessionName = session.getTitle();
+
+        Intent notificationIntent = TermuxActivity.newInstance(this);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
+        Notification.Builder builder = NotificationUtils.geNotificationBuilder(this,
+            TermuxConstants.TERMUX_APP_SESSION_BELL_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_HIGH,
+            getString(R.string.application_name), SessionBellNotificationContent.contentText(sessionName), null,
+            contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SOUND_AND_VIBRATE);
+        if (builder == null) return;
+
+        builder.setSmallIcon(R.drawable.ic_service_notification);
+        builder.setColor(0xFF607D8B);
+        builder.setAutoCancel(true);
+
+        NotificationManager notificationManager = NotificationUtils.getNotificationManager(this);
+        if (notificationManager != null)
+            notificationManager.notify(
+                SessionBellNotificationContent.notificationId(TermuxConstants.TERMUX_APP_SESSION_BELL_NOTIFICATION_ID, session.mHandle),
+                builder.build());
     }
 
     /** Update the shown foreground service notification after making any changes that affect it. */
