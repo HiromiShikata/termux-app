@@ -133,6 +133,13 @@ public final class TermuxPreferenceConstants {
 
 
         /**
+         * Defines the key for the last known tmux mouse-mode state shown by the toolbar toggle button.
+         */
+        public static final String KEY_TMUX_MOUSE_MODE_ENABLED = "tmux_mouse_mode_enabled";
+        public static final boolean DEFAULT_VALUE_TMUX_MOUSE_MODE_ENABLED = false;
+
+
+        /**
          * Defines the key for the fraction of the in-app browser content height occupied by the
          * browser area while the in-app browser is open, with the terminal area occupying the
          * remaining height.

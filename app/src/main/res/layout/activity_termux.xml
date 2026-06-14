@@ -370,6 +370,16 @@
                 android:background="@color/schema_terminal_chrome_surface" />
 
             <ImageButton
+                android:id="@+id/terminal_toolbar_tmux_mouse_toggle_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/title_toolbar_tmux_mouse_toggle"
+                android:padding="8dp"
+                android:src="@drawable/ic_toolbar_mouse"
+                android:tint="@color/white" />
+
+            <ImageButton
                 android:id="@+id/terminal_toolbar_browser_toggle_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

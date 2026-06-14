@@ -115,6 +115,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public boolean isTmuxMouseModeEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_TMUX_MOUSE_MODE_ENABLED, TERMUX_APP.DEFAULT_VALUE_TMUX_MOUSE_MODE_ENABLED);
+    }
+
+    public void setTmuxMouseModeEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_TMUX_MOUSE_MODE_ENABLED, value, false);
+    }
+
+
 
     public boolean isSoftKeyboardEnabled() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SOFT_KEYBOARD_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_SOFT_KEYBOARD_ENABLED);
