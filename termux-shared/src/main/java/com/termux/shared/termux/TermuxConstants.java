@@ -851,6 +851,13 @@ public final class TermuxConstants {
     /** Termux app unique notification id used by {@link TERMUX_APP.TERMUX_SERVICE} */
     public static final int TERMUX_APP_NOTIFICATION_ID = 1337;
 
+    /** Termux app notification channel id used for terminal bell notifications from background sessions */
+    public static final String TERMUX_APP_SESSION_BELL_NOTIFICATION_CHANNEL_ID = "termux_session_bell_notification_channel";
+    /** Termux app notification channel name used for terminal bell notifications from background sessions */
+    public static final String TERMUX_APP_SESSION_BELL_NOTIFICATION_CHANNEL_NAME = TermuxConstants.TERMUX_APP_NAME + " Session Bell";
+    /** Termux app base notification id used for terminal bell notifications. A per-session offset is added to this base. */
+    public static final int TERMUX_APP_SESSION_BELL_NOTIFICATION_ID = 1340;
+
     /** Termux app notification channel id used by {@link TERMUX_APP.RUN_COMMAND_SERVICE} */
     public static final String TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_ID = "termux_run_command_notification_channel";
     /** Termux app notification channel name used by {@link TERMUX_APP.RUN_COMMAND_SERVICE} */
