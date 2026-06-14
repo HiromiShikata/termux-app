@@ -29,6 +29,8 @@ public class ShareUtils {
 
     private static final String LOG_TAG = "ShareUtils";
 
+    private static final String CHROME_PACKAGE_NAME = "com.android.chrome";
+
     /**
      * Open the system app chooser that allows the user to select which app to send the intent.
      *
@@ -173,6 +175,25 @@ public class ShareUtils {
             openSystemAppChooser(context, intent, context.getString(R.string.title_open_url_with));
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open url \"" + url + "\"", e);
+        }
+    }
+
+    /**
+     * Open a url in Chrome, falling back to the default browser when Chrome is not installed.
+     *
+     * @param context The context for operations.
+     * @param url The url to open.
+     */
+    public static void openUrlInChrome(final Context context, final String url) {
+        if (context == null || url == null || url.isEmpty()) return;
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        intent.setPackage(CHROME_PACKAGE_NAME);
+        try {
+            context.startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            openUrl(context, url);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open url in Chrome \"" + url + "\"", e);
         }
     }
 
