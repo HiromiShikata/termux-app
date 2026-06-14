@@ -1,11 +1,10 @@
 package com.termux.view.url;
 
+import android.net.Uri;
 import android.util.Patterns;
 
 import androidx.annotation.Nullable;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Locale;
 
 public final class BrowsableUrlDetector {
@@ -24,13 +23,8 @@ public final class BrowsableUrlDetector {
     private static boolean isHttpUrlWithHost(String trimmed) {
         String lowerCased = trimmed.toLowerCase(Locale.ROOT);
         if (!lowerCased.startsWith("http://") && !lowerCased.startsWith("https://")) return false;
-        try {
-            URI uri = new URI(trimmed);
-            String host = uri.getHost();
-            return host != null && !host.isEmpty();
-        } catch (URISyntaxException e) {
-            return false;
-        }
+        String host = Uri.parse(trimmed).getHost();
+        return host != null && !host.isEmpty();
     }
 
     private static boolean containsWhitespace(String value) {
