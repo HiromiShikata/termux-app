@@ -59,6 +59,17 @@ public interface TerminalViewClient {
         return false;
     }
 
+    /**
+     * Whether a single tap on a terminal cell that is on a URL should open that URL in the in-app
+     * browser. When this returns true and the tapped cell is on a URL, the tap opens the URL and is
+     * consumed, taking precedence over forwarding the tap to a program with mouse tracking active.
+     *
+     * @return true if tap-to-open-URL is enabled, false otherwise.
+     */
+    default boolean isTapToOpenUrlEnabled() {
+        return true;
+    }
+
 
 
     boolean readControlKey();

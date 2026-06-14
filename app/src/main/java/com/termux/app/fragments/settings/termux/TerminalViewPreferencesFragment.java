@@ -60,6 +60,9 @@ class TerminalViewPreferencesDataStore extends PreferenceDataStore {
             case "screen_always_on":
                     mPreferences.setKeepScreenOn(value);
                 break;
+            case "tap_to_open_url_enabled":
+                    mPreferences.setTapToOpenUrlEnabled(value);
+                break;
             default:
                 break;
         }
@@ -74,6 +77,8 @@ class TerminalViewPreferencesDataStore extends PreferenceDataStore {
                 return mPreferences.isTerminalMarginAdjustmentEnabled();
             case "screen_always_on":
                 return mPreferences.shouldKeepScreenOn();
+            case "tap_to_open_url_enabled":
+                return mPreferences.isTapToOpenUrlEnabled();
             default:
                 return false;
         }

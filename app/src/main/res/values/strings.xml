@@ -283,6 +283,12 @@
                 <string name="termux_terminal_view_keep_screen_on_off">The screen will turn off automatically after the device timeout.</string>
                 <string name="termux_terminal_view_keep_screen_on_on">The screen will stay on while the terminal is open.</string>
 
+                <!-- Tap URL To Open In Browser -->
+                <string name="termux_terminal_view_tap_to_open_url_title">Tap URL to open in browser</string>
+                <string name="termux_terminal_view_tap_to_open_url_off">Tapping a URL in the terminal will not open it. Use long press and the Open action instead.</string>
+                <string name="termux_terminal_view_tap_to_open_url_on">A single tap on a URL in the terminal opens it in the in-app browser.
+                    When a program has mouse tracking active, tapping a URL opens it instead of forwarding that tap. (Default)</string>
+
 
 
     <!-- Termux:API App Preferences -->

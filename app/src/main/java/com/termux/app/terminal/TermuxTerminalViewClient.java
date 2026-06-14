@@ -379,6 +379,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         return true;
     }
 
+    @Override
+    public boolean isTapToOpenUrlEnabled() {
+        return mActivity.getPreferences().isTapToOpenUrlEnabled();
+    }
+
 
 
     @Override
