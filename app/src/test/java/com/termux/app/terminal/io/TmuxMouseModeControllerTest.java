@@ -28,24 +28,23 @@ public class TmuxMouseModeControllerTest {
     }
 
     @Test
-    public void parseShowMouseOutputReadsOn() {
-        Assert.assertTrue(TmuxMouseModeController.parseShowMouseOutput("on\n", false));
+    public void parseMouseStateReadsOn() {
+        Assert.assertEquals(Boolean.TRUE, TmuxMouseModeController.parseMouseState("on\n"));
     }
 
     @Test
-    public void parseShowMouseOutputReadsOff() {
-        Assert.assertFalse(TmuxMouseModeController.parseShowMouseOutput("off\n", true));
+    public void parseMouseStateReadsOff() {
+        Assert.assertEquals(Boolean.FALSE, TmuxMouseModeController.parseMouseState("off\n"));
     }
 
     @Test
-    public void parseShowMouseOutputFallsBackWhenNull() {
-        Assert.assertTrue(TmuxMouseModeController.parseShowMouseOutput(null, true));
-        Assert.assertFalse(TmuxMouseModeController.parseShowMouseOutput(null, false));
+    public void parseMouseStateIsNullWhenNoOutput() {
+        Assert.assertNull(TmuxMouseModeController.parseMouseState(null));
     }
 
     @Test
-    public void parseShowMouseOutputFallsBackWhenUnrecognized() {
-        Assert.assertTrue(TmuxMouseModeController.parseShowMouseOutput("", true));
-        Assert.assertFalse(TmuxMouseModeController.parseShowMouseOutput("garbage", false));
+    public void parseMouseStateIsNullWhenUnrecognized() {
+        Assert.assertNull(TmuxMouseModeController.parseMouseState(""));
+        Assert.assertNull(TmuxMouseModeController.parseMouseState("no server running on socket"));
     }
 }

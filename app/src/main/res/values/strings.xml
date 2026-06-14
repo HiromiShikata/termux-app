@@ -141,6 +141,7 @@
     <string name="title_toolbar_tmux_mouse_toggle">Toggle tmux mouse mode</string>
     <string name="msg_tmux_mouse_mode_on">tmux mouse mode: on</string>
     <string name="msg_tmux_mouse_mode_off">tmux mouse mode: off</string>
+    <string name="msg_tmux_mouse_mode_no_server">tmux is not running in this session</string>
 
     <string name="action_share_transcript">Share transcript</string>
     <string name="title_share_transcript">Terminal transcript</string>
