@@ -44,26 +44,18 @@
                     android:textSize="12sp"
                     android:visibility="gone" />
 
-                <FrameLayout
+                <LinearLayout
                     android:id="@+id/main_content_container"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_weight="1">
-
-                    <com.termux.view.TerminalView
-                        android:id="@+id/terminal_view"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:defaultFocusHighlightEnabled="false"
-                        android:focusableInTouchMode="true"
-                        android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
-                        android:scrollbars="vertical"
-                        tools:ignore="UnusedAttribute" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <LinearLayout
                         android:id="@+id/browser_content_container"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="2"
                         android:background="?attr/termuxActivityDrawerBackground"
                         android:orientation="vertical"
                         android:visibility="gone">
@@ -149,7 +141,18 @@
                                 android:visibility="gone" />
                         </FrameLayout>
                     </LinearLayout>
-                </FrameLayout>
+
+                    <com.termux.view.TerminalView
+                        android:id="@+id/terminal_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:defaultFocusHighlightEnabled="false"
+                        android:focusableInTouchMode="true"
+                        android:scrollbarThumbVertical="@drawable/terminal_scroll_shape"
+                        android:scrollbars="vertical"
+                        tools:ignore="UnusedAttribute" />
+                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout
