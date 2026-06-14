@@ -1,6 +1,8 @@
 package com.termux.app.terminal;
 
 import android.graphics.Color;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -17,8 +19,12 @@ import com.termux.shared.theme.ThemeUtils;
 
 public class SessionListBottomSheetController {
 
+    static final int DISMISS_SWIPE_MIN_DISTANCE_PIXELS = 48;
+    static final int DISMISS_SWIPE_MIN_VELOCITY_PIXELS_PER_SECOND = 200;
+
     private final TermuxActivity mActivity;
     private final View mSheetView;
+    private final View mDragHandleView;
     private final TextView mTitleView;
     private final ListView mSessionListView;
     private final View mNewSessionButton;
@@ -29,11 +35,13 @@ public class SessionListBottomSheetController {
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
         this.mSheetView = activity.findViewById(R.id.session_list_bottom_sheet);
+        this.mDragHandleView = activity.findViewById(R.id.session_list_bottom_sheet_drag_handle);
         this.mTitleView = activity.findViewById(R.id.session_list_bottom_sheet_title);
         this.mSessionListView = activity.findViewById(R.id.session_list_bottom_sheet_list);
         this.mNewSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_new_session_button);
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         bindActionButtons();
+        bindSwipeDownToDismiss();
     }
 
     private void bindActionButtons() {
@@ -45,6 +53,35 @@ public class SessionListBottomSheetController {
             hide();
             mActivity.loadSessionsFromDefinition();
         });
+    }
+
+    private void bindSwipeDownToDismiss() {
+        GestureDetector gestureDetector =
+            new GestureDetector(mActivity, new SwipeDownGestureListener());
+        View.OnTouchListener swipeToDismissListener = (view, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return true;
+        };
+        mDragHandleView.setOnTouchListener(swipeToDismissListener);
+        mTitleView.setOnTouchListener(swipeToDismissListener);
+    }
+
+    private final class SwipeDownGestureListener extends GestureDetector.SimpleOnGestureListener {
+        @Override
+        public boolean onDown(@NonNull MotionEvent event) {
+            return true;
+        }
+
+        @Override
+        public boolean onFling(@Nullable MotionEvent start, @NonNull MotionEvent end,
+                               float velocityX, float velocityY) {
+            float verticalDistance = start == null ? end.getY() : end.getY() - start.getY();
+            if (isDownwardDismissSwipe(verticalDistance, velocityY)) {
+                hide();
+                return true;
+            }
+            return false;
+        }
     }
 
     public boolean isOpen() {
@@ -121,5 +158,10 @@ public class SessionListBottomSheetController {
 
     static int computeSheetMaxHeight(int screenHeightPixels) {
         return screenHeightPixels / 3;
+    }
+
+    static boolean isDownwardDismissSwipe(float verticalDistancePixels, float verticalVelocityPixelsPerSecond) {
+        return verticalDistancePixels >= DISMISS_SWIPE_MIN_DISTANCE_PIXELS
+            && verticalVelocityPixelsPerSecond >= DISMISS_SWIPE_MIN_VELOCITY_PIXELS_PER_SECOND;
     }
 }

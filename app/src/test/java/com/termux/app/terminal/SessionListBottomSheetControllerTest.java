@@ -90,4 +90,24 @@ public class SessionListBottomSheetControllerTest {
     public void hideIfPresentDoesNothingWhenControllerIsNull() {
         SessionListBottomSheetController.hideIfPresent(null);
     }
+
+    @Test
+    public void downwardSwipeWithEnoughDistanceAndVelocityDismissesSheet() {
+        Assert.assertTrue(SessionListBottomSheetController.isDownwardDismissSwipe(120f, 800f));
+    }
+
+    @Test
+    public void upwardSwipeDoesNotDismissSheet() {
+        Assert.assertFalse(SessionListBottomSheetController.isDownwardDismissSwipe(-120f, -800f));
+    }
+
+    @Test
+    public void shortDownwardSwipeDoesNotDismissSheet() {
+        Assert.assertFalse(SessionListBottomSheetController.isDownwardDismissSwipe(10f, 800f));
+    }
+
+    @Test
+    public void slowDownwardSwipeDoesNotDismissSheet() {
+        Assert.assertFalse(SessionListBottomSheetController.isDownwardDismissSwipe(120f, 50f));
+    }
 }
