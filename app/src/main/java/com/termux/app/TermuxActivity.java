@@ -56,6 +56,7 @@ import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
+import com.termux.app.terminal.io.TmuxMouseModeToggleController;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
@@ -278,6 +279,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setNewSessionButtonView();
 
         setBrowserView();
+
+        setTmuxMouseToggleBarView();
 
         setBrowserToggleBarView();
 
@@ -708,6 +711,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
         mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInNewTab);
+    }
+
+    private void setTmuxMouseToggleBarView() {
+        new TmuxMouseModeToggleController(this, findViewById(R.id.terminal_toolbar_tmux_mouse_toggle_button));
     }
 
     private void setBrowserToggleBarView() {
