@@ -572,17 +572,6 @@ public final class TerminalView extends View {
         return true;
     }
 
-    /**
-     * Get the zero indexed column and row of the terminal view for the
-     * position of the event.
-     *
-     * @param event The event with the position to get the column and row for.
-     * @param relativeToScroll If true the column number will take the scroll
-     * position into account. E.g. if scrolled 3 lines up and the event
-     * position is in the top left, column will be -3 if relativeToScroll is
-     * true and 0 if relativeToScroll is false.
-     * @return Array with the column and row.
-     */
     private boolean openUrlAtTapIfEnabled(MotionEvent event) {
         if (mEmulator == null || mClient == null) return false;
         if (!mClient.isTapToOpenUrlEnabled()) return false;
@@ -601,6 +590,17 @@ public final class TerminalView extends View {
         return mClient.onOpenSelectedUrlRequested(url);
     }
 
+    /**
+     * Get the zero indexed column and row of the terminal view for the
+     * position of the event.
+     *
+     * @param event The event with the position to get the column and row for.
+     * @param relativeToScroll If true the column number will take the scroll
+     * position into account. E.g. if scrolled 3 lines up and the event
+     * position is in the top left, column will be -3 if relativeToScroll is
+     * true and 0 if relativeToScroll is false.
+     * @return Array with the column and row.
+     */
     public int[] getColumnAndRow(MotionEvent event, boolean relativeToScroll) {
         int column = (int) (event.getX() / mRenderer.mFontWidth);
         int row = (int) ((event.getY() - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
