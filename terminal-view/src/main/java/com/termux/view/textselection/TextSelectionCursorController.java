@@ -5,7 +5,6 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.os.Build;
 import android.text.TextUtils;
-import android.util.Patterns;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -18,6 +17,7 @@ import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.WcWidth;
 import com.termux.view.R;
 import com.termux.view.TerminalView;
+import com.termux.view.url.BrowsableUrlDetector;
 
 public class TextSelectionCursorController implements CursorController {
 
@@ -388,7 +388,7 @@ public class TextSelectionCursorController implements CursorController {
 
     /** Whether the given text is a web URL. */
     private static boolean isWebUrl(String text) {
-        return !TextUtils.isEmpty(text) && Patterns.WEB_URL.matcher(text).matches();
+        return BrowsableUrlDetector.isLikelyBrowsableUrl(text);
     }
 
     /** Get the selected text stored before "MORE" button was pressed on the context menu. */
