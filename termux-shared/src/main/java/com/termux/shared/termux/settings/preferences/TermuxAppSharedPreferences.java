@@ -15,6 +15,9 @@ import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxUtils;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_APP;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
     private int MIN_FONTSIZE;
@@ -307,6 +310,35 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
     public void setSessionDefinitionUrl(String value) {
         SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_URL, value, false);
+    }
+
+
+    public String getAlwaysNaSessionNamesText() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_ALWAYS_NA_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES, false);
+    }
+
+    public void setAlwaysNaSessionNames(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_ALWAYS_NA_SESSION_NAMES, value, false);
+    }
+
+    @NonNull
+    public Set<String> getAlwaysNaSessionNames() {
+        return parseAlwaysNaSessionNames(getAlwaysNaSessionNamesText());
+    }
+
+    @NonNull
+    public static Set<String> parseAlwaysNaSessionNames(@Nullable String value) {
+        Set<String> names = new LinkedHashSet<>();
+        if (value == null) {
+            return names;
+        }
+        for (String line : value.split("\n")) {
+            String trimmedName = line.trim();
+            if (!trimmedName.isEmpty()) {
+                names.add(trimmedName);
+            }
+        }
+        return names;
     }
 
 

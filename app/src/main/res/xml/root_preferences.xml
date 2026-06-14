@@ -49,6 +49,12 @@
         app:title="@string/action_open_session_definition_config"
         app:persistent="false"/>
 
+    <Preference
+        app:key="always_na_session_names"
+        app:title="@string/action_open_always_na_session_names_config"
+        app:summary="@string/summary_always_na_session_names_config"
+        app:persistent="false"/>
+
     <SwitchPreferenceCompat
         app:key="auto_check_for_updates"
         app:title="@string/auto_check_for_updates_title"

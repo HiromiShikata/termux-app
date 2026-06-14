@@ -349,6 +349,83 @@ public class SessionHierarchyBuilderTest {
         Assert.assertNull(rows.get(0).getOverviewUrl());
     }
 
+    @Test
+    public void forcesSessionNamedInAlwaysNaSetIntoNaBucketEvenWhenItMatchesAProject() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        Set<String> alwaysNaSessionNames = new LinkedHashSet<>();
+        alwaysNaSessionNames.add("https://example.test/a");
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA, alwaysNaSessionNames);
+
+        Assert.assertEquals(2, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 0);
+    }
+
+    @Test
+    public void keepsSessionsNotInAlwaysNaSetInTheirProjectWhileForcingNamedOnesToNa() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")),
+            new SessionDefinitionEntry("projectOne", "storyB",
+                Collections.singletonList("https://example.test/b")));
+
+        Set<String> alwaysNaSessionNames = new LinkedHashSet<>();
+        alwaysNaSessionNames.add("https://example.test/a");
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "https://example.test/b"), entries, NA,
+            alwaysNaSessionNames);
+
+        Assert.assertEquals(5, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 0);
+        assertProjectHeader(rows.get(2), "projectOne");
+        assertStoryHeader(rows.get(3), "storyB");
+        assertSession(rows.get(4), 1);
+    }
+
+    @Test
+    public void leavesSessionsUnaffectedWhenTheirNamesAreNotInTheAlwaysNaSet() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        Set<String> alwaysNaSessionNames = new LinkedHashSet<>();
+        alwaysNaSessionNames.add("some-other-session-name");
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA, alwaysNaSessionNames);
+
+        Assert.assertEquals(3, rows.size());
+        assertProjectHeader(rows.get(0), "projectOne");
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+    }
+
+    @Test
+    public void forcesAdHocNamedSessionIntoNaAlongsideOtherUnmatchedSessions() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        Set<String> alwaysNaSessionNames = new LinkedHashSet<>();
+        alwaysNaSessionNames.add("https://example.test/a");
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "manual-session"), entries, NA,
+            alwaysNaSessionNames);
+
+        Assert.assertEquals(3, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 0);
+        assertSession(rows.get(2), 1);
+    }
+
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {
         Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
         Assert.assertTrue(row.isHeader());

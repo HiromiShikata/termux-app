@@ -7,6 +7,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,14 @@ public final class SessionHierarchyBuilder {
     public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
                                            @NonNull List<SessionDefinitionEntry> entries,
                                            @NonNull String naProjectLabel) {
+        return build(sessionNames, entries, naProjectLabel, Collections.emptySet());
+    }
+
+    @NonNull
+    public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
+                                           @NonNull List<SessionDefinitionEntry> entries,
+                                           @NonNull String naProjectLabel,
+                                           @NonNull Set<String> alwaysNaSessionNames) {
         if (entries.isEmpty()) {
             return flatten(sessionNames);
         }
@@ -39,8 +48,9 @@ public final class SessionHierarchyBuilder {
                 }
                 sessionIndexByName.put(sessionName, sessionIndex);
             }
-            if (mMatcher.findEntryForSessionName(entries, sessionName) == null
-                    && !isOrphanedProjectSessionName(sessionName)) {
+            if (isAlwaysNaSessionName(sessionName, alwaysNaSessionNames)
+                    || (mMatcher.findEntryForSessionName(entries, sessionName) == null
+                        && !isOrphanedProjectSessionName(sessionName))) {
                 unmatchedSessionIndexes.add(sessionIndex);
             }
         }
@@ -57,6 +67,9 @@ public final class SessionHierarchyBuilder {
         Set<String> placedNames = new HashSet<>();
         for (SessionDefinitionEntry entry : entries) {
             for (String url : entry.getUrls()) {
+                if (isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
+                    continue;
+                }
                 Integer sessionIndex = sessionIndexByName.get(url);
                 if (sessionIndex == null) {
                     continue;
@@ -117,6 +130,11 @@ public final class SessionHierarchyBuilder {
             }
         }
         return visibleRows;
+    }
+
+    private static boolean isAlwaysNaSessionName(@Nullable String sessionName,
+                                                 @NonNull Set<String> alwaysNaSessionNames) {
+        return sessionName != null && alwaysNaSessionNames.contains(sessionName);
     }
 
     private static boolean isOrphanedProjectSessionName(@Nullable String sessionName) {

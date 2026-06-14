@@ -116,6 +116,12 @@
             android:parentActivityName=".app.TermuxActivity" />
 
         <activity
+            android:name=".app.activities.AlwaysNaSessionNamesConfigActivity"
+            android:exported="false"
+            android:label="@string/title_always_na_session_names_config"
+            android:parentActivityName=".app.TermuxActivity" />
+
+        <activity
             android:name=".shared.activities.ReportActivity"
             android:theme="@style/Theme.MarkdownViewActivity.DayNight"
             android:documentLaunchMode="intoExisting" />
