@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
@@ -511,7 +512,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void deleteSession(final TerminalSession sessionToDelete) {
         if (sessionToDelete == null) return;
 
-        new AlertDialog.Builder(mActivity)
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setTitle(R.string.title_confirm_delete_session)
             .setMessage(R.string.msg_confirm_delete_session)
@@ -523,8 +524,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 if (currentSession != null && currentSession != sessionToDelete)
                     setCurrentSession(currentSession);
             })
-            .setNegativeButton(android.R.string.no, null)
-            .show();
+            .setNegativeButton(android.R.string.no, null));
     }
 
     private void renameSession(TerminalSession sessionToRename, String text) {
@@ -552,8 +552,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
-            new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
-                .setPositiveButton(android.R.string.ok, null).show();
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
+                .setPositiveButton(android.R.string.ok, null));
         } else {
             TerminalSession currentSession = mActivity.getCurrentSession();
 
@@ -587,8 +587,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
-            new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
-                .setPositiveButton(android.R.string.ok, null).show();
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
+                .setPositiveButton(android.R.string.ok, null));
         } else {
             TerminalSession currentSession = mActivity.getCurrentSession();
 

@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 
 import com.termux.R;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 
 import java.io.File;
@@ -56,13 +57,12 @@ public final class ApkUpdateUiController {
     }
 
     private void promptInstall(ApkUpdateAvailability availability) {
-        new AlertDialog.Builder(activity)
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
             .setTitle(R.string.apk_update_dialog_title)
             .setMessage(activity.getString(R.string.apk_update_dialog_message, availability.getLatestVersionName()))
             .setPositiveButton(R.string.apk_update_dialog_install,
                 (dialog, which) -> startDownloadAndInstall(availability))
-            .setNegativeButton(R.string.apk_update_dialog_cancel, null)
-            .show();
+            .setNegativeButton(R.string.apk_update_dialog_cancel, null));
     }
 
     private void startDownloadAndInstall(ApkUpdateAvailability availability) {

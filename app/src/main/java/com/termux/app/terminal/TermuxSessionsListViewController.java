@@ -30,6 +30,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.theme.NightMode;
@@ -543,7 +544,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                 mActivity.getTermuxTerminalSessionClient().deleteSession(session);
             }
         });
-        builder.show();
+        DialogUtils.showDismissibleOnTouchOutside(builder);
     }
 
 }
