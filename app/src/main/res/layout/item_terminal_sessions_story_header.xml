@@ -6,9 +6,10 @@
     android:ellipsize="end"
     android:gravity="start|center_vertical"
     android:maxLines="1"
+    android:background="@color/schema_surface_elevated"
     android:paddingStart="18dip"
     android:paddingEnd="6dip"
-    android:paddingTop="2dip"
-    android:paddingBottom="2dip"
+    android:paddingTop="4dip"
+    android:paddingBottom="4dip"
     android:textSize="11sp"
     android:textStyle="bold" />

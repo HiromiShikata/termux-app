@@ -314,9 +314,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         boolean sessionRunning = sessionAtRow.isRunning();
         SessionRowActiveIndicator activeIndicator = computeActiveIndicator(isCurrentSession, sessionRunning);
 
-        int rowBackgroundResId = shouldEnableDarkTheme
-            ? R.drawable.session_background_black_selected
-            : R.drawable.session_background_selected;
+        int rowBackgroundResId = sessionRowBackgroundRes(isCurrentSession, shouldEnableDarkTheme);
         sessionRowView.setBackground(ContextCompat.getDrawable(mActivity, rowBackgroundResId));
 
         int activeIndicatorColor = ContextCompat.getColor(mActivity,
@@ -449,6 +447,13 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     static SessionRowActiveIndicator computeActiveIndicator(boolean isCurrentSession, boolean sessionRunning) {
         return new SessionRowActiveIndicator(isCurrentSession, isCurrentSession && sessionRunning);
+    }
+
+    static int sessionRowBackgroundRes(boolean isCurrentSession, boolean darkTheme) {
+        if (isCurrentSession) {
+            return darkTheme ? R.drawable.current_session_black : R.drawable.current_session;
+        }
+        return darkTheme ? R.drawable.session_ripple_black : R.drawable.session_ripple;
     }
 
     static final class SessionRowActiveIndicator {

@@ -3,10 +3,11 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="start|center_vertical"
+    android:background="@color/schema_surface_elevated"
     android:paddingStart="6dip"
     android:paddingEnd="6dip"
-    android:paddingTop="10dip"
-    android:paddingBottom="2dip">
+    android:paddingTop="6dip"
+    android:paddingBottom="6dip">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/session_project_header_collapse_indicator"
