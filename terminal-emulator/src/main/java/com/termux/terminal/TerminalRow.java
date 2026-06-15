@@ -47,6 +47,11 @@ public final class TerminalRow {
     boolean mLineWrap;
     /** The style bits of each cell in the row. See {@link TextStyle}. */
     final long[] mStyle;
+    /**
+     * The OSC 8 hyperlink URI attached to each cell, indexed by column like {@link #mStyle}, or null when no cell in
+     * this row carries a hyperlink. Lazily allocated so rows without hyperlinks consume no extra memory.
+     */
+    String[] mHyperlinkUris;
     /** If this row might contain chars with width != 1, used for deactivating fast path */
     boolean mHasNonOneWidthOrSurrogateChars;
 
@@ -80,7 +85,7 @@ public final class TerminalRow {
                 sourceX1 += latestNonCombiningWidth;
                 latestNonCombiningWidth = w;
             }
-            setChar(destinationX, codePoint, line.getStyle(sourceX1));
+            setChar(destinationX, codePoint, line.getStyle(sourceX1), line.getHyperlinkUri(sourceX1));
         }
     }
 
@@ -144,16 +149,37 @@ public final class TerminalRow {
     public void clear(long style) {
         Arrays.fill(mText, ' ');
         Arrays.fill(mStyle, style);
+        mHyperlinkUris = null;
         mSpaceUsed = (short) mColumns;
         mHasNonOneWidthOrSurrogateChars = false;
     }
 
-    // https://github.com/steven676/Android-Terminal-Emulator/commit/9a47042620bec87617f0b4f5d50568535668fe26
+    /** The OSC 8 hyperlink URI attached to the cell at the given column, or null if none. */
+    public String getHyperlinkUri(int column) {
+        if (mHyperlinkUris == null || column < 0 || column >= mHyperlinkUris.length) return null;
+        return mHyperlinkUris[column];
+    }
+
+    private void setHyperlinkUri(int column, String hyperlinkUri) {
+        if (hyperlinkUri == null) {
+            if (mHyperlinkUris != null) mHyperlinkUris[column] = null;
+            return;
+        }
+        if (mHyperlinkUris == null) mHyperlinkUris = new String[mColumns];
+        mHyperlinkUris[column] = hyperlinkUri;
+    }
+
     public void setChar(int columnToSet, int codePoint, long style) {
+        setChar(columnToSet, codePoint, style, null);
+    }
+
+    // https://github.com/steven676/Android-Terminal-Emulator/commit/9a47042620bec87617f0b4f5d50568535668fe26
+    public void setChar(int columnToSet, int codePoint, long style, String hyperlinkUri) {
         if (columnToSet  < 0 || columnToSet >= mStyle.length)
             throw new IllegalArgumentException("TerminalRow.setChar(): columnToSet=" + columnToSet + ", codePoint=" + codePoint + ", style=" + style);
 
         mStyle[columnToSet] = style;
+        setHyperlinkUri(columnToSet, hyperlinkUri);
 
         final int newCodePointDisplayWidth = WcWidth.width(codePoint);
 
