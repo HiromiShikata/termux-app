@@ -279,10 +279,12 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         private void configureAboutPreference(@NonNull Context context) {
-            Preference aboutPreference = findPreference("about");
+            LongClickCopyPreference aboutPreference = findPreference("about");
             if (aboutPreference != null) {
                 aboutPreference.setSummary(context.getString(R.string.about_preference_summary_version,
                     BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
+                aboutPreference.setCopyText(BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")");
+                aboutPreference.setCopyConfirmationToast(context.getString(R.string.msg_version_copied));
                 aboutPreference.setOnPreferenceClickListener(preference -> {
                     new Thread() {
                         @Override
