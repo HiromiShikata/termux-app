@@ -16,12 +16,14 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -33,6 +35,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -172,9 +175,66 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
             return;
         }
-        TextInputDialogUtils.textInput(mActivity, R.string.title_browser_edit_url, currentUrl,
-            R.string.action_browser_edit_url_confirm, this::navigateCurrentTabToUrl,
-            -1, null, android.R.string.cancel, null, null);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_browser_edit_url);
+        View dialogView = LayoutInflater.from(builder.getContext())
+            .inflate(R.layout.dialog_browser_edit_url, null);
+        builder.setView(dialogView);
+        AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(true);
+
+        EditText urlInput = dialogView.findViewById(R.id.browser_edit_url_input);
+        urlInput.setText(currentUrl);
+        Selection.setSelection(urlInput.getText(), currentUrl.length());
+
+        Button goButton = dialogView.findViewById(R.id.browser_edit_url_go);
+        Button copyButton = dialogView.findViewById(R.id.browser_edit_url_copy);
+        Button createSessionButton = dialogView.findViewById(R.id.browser_edit_url_create_session);
+        Button cancelButton = dialogView.findViewById(R.id.browser_edit_url_cancel);
+
+        goButton.setText(R.string.action_browser_edit_url_confirm);
+        copyButton.setText(R.string.action_browser_edit_url_copy);
+        createSessionButton.setText(R.string.action_browser_edit_url_create_session);
+        cancelButton.setText(android.R.string.cancel);
+
+        goButton.setOnClickListener(view -> {
+            navigateCurrentTabToUrl(urlInput.getText().toString());
+            dialog.dismiss();
+        });
+        copyButton.setOnClickListener(view -> copyEditedUrlToClipboard(urlInput.getText().toString()));
+        createSessionButton.setOnClickListener(view -> {
+            createSessionForEditedUrl(urlInput.getText().toString());
+            dialog.dismiss();
+        });
+        cancelButton.setOnClickListener(view -> dialog.dismiss());
+
+        urlInput.setOnEditorActionListener((view, actionId, event) -> {
+            navigateCurrentTabToUrl(urlInput.getText().toString());
+            dialog.dismiss();
+            return true;
+        });
+
+        dialog.show();
+    }
+
+    private void copyEditedUrlToClipboard(@Nullable String editedUrl) {
+        String url = BrowserEditedUrl.trimmedOrNull(editedUrl);
+        if (url == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        ShareUtils.copyTextToClipboard(mActivity, url,
+            mActivity.getString(R.string.msg_browser_url_copied));
+    }
+
+    private void createSessionForEditedUrl(@Nullable String editedUrl) {
+        String sessionName = BrowserEditedUrl.sessionNameFor(editedUrl);
+        if (sessionName == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient().addNewSession(false, sessionName);
     }
 
     private void navigateCurrentTabToUrl(@Nullable String input) {
