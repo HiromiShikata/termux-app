@@ -33,6 +33,9 @@ public class SessionListBottomSheetController {
 
     private boolean mAdapterBound;
     private float mDragStartRawY;
+    private int mDragStartHeightPixels;
+    private int mMinHeightPixels;
+    private int mMaxHeightPixels;
     private VelocityTracker mVelocityTracker;
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
@@ -87,6 +90,7 @@ public class SessionListBottomSheetController {
             case MotionEvent.ACTION_DOWN:
                 mSheetView.animate().cancel();
                 mDragStartRawY = event.getRawY();
+                mDragStartHeightPixels = (int) sheetHeightPixels();
                 mVelocityTracker = VelocityTracker.obtain();
                 mVelocityTracker.addMovement(event);
                 return true;
@@ -94,15 +98,18 @@ public class SessionListBottomSheetController {
                 if (mVelocityTracker != null) {
                     mVelocityTracker.addMovement(event);
                 }
-                float dragDelta = event.getRawY() - mDragStartRawY;
-                mSheetView.setTranslationY(
-                    SessionListBottomSheetDragDecision.clampDragTranslation(dragDelta, sheetHeightPixels()));
+                float downwardDrag = event.getRawY() - mDragStartRawY;
+                setSheetHeight(SessionListBottomSheetDragDecision.resolveDragHeight(
+                    downwardDrag, mDragStartHeightPixels, mMinHeightPixels, mMaxHeightPixels));
+                mSheetView.setTranslationY(SessionListBottomSheetDragDecision.resolveDragTranslation(
+                    downwardDrag, mDragStartHeightPixels, mMinHeightPixels));
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 float verticalVelocity = computeVerticalVelocityAndRecycle();
+                float releaseDownwardDrag = event.getRawY() - mDragStartRawY;
                 if (SessionListBottomSheetDragDecision.shouldDismissAfterDrag(
-                        mSheetView.getTranslationY(), verticalVelocity, sheetHeightPixels())) {
+                        releaseDownwardDrag, mDragStartHeightPixels, mMinHeightPixels, verticalVelocity)) {
                     animateDismiss();
                 } else {
                     animateSpringBack();
@@ -167,7 +174,7 @@ public class SessionListBottomSheetController {
             return;
         }
         applyTitleColor();
-        applySheetHeightCap();
+        applySheetDefaultHeight();
         bindSessionList(listController);
         mSheetView.animate().cancel();
         mScrimView.setVisibility(scrimVisibilityForSheet(View.VISIBLE));
@@ -198,11 +205,17 @@ public class SessionListBottomSheetController {
         mTitleView.setTextColor(ContextCompat.getColor(mActivity, com.termux.shared.R.color.schema_text_primary));
     }
 
-    private void applySheetHeightCap() {
-        int maxHeight = computeSheetMaxHeight(mActivity.getResources().getDisplayMetrics().heightPixels);
+    private void applySheetDefaultHeight() {
+        int screenHeight = mActivity.getResources().getDisplayMetrics().heightPixels;
+        mMinHeightPixels = SessionListBottomSheetDragDecision.computeMinHeight(screenHeight);
+        mMaxHeightPixels = SessionListBottomSheetDragDecision.computeMaxHeight(screenHeight);
+        setSheetHeight(SessionListBottomSheetDragDecision.computeDefaultHeight(screenHeight));
+    }
+
+    private void setSheetHeight(int heightPixels) {
         ViewGroup.LayoutParams params = mSheetView.getLayoutParams();
-        if (params.height != maxHeight) {
-            params.height = maxHeight;
+        if (params.height != heightPixels) {
+            params.height = heightPixels;
             mSheetView.setLayoutParams(params);
         }
     }
@@ -235,9 +248,5 @@ public class SessionListBottomSheetController {
 
     static int scrimVisibilityForSheet(int sheetVisibility) {
         return sheetVisibility == View.VISIBLE ? View.VISIBLE : View.GONE;
-    }
-
-    static int computeSheetMaxHeight(int screenHeightPixels) {
-        return screenHeightPixels / 3;
     }
 }

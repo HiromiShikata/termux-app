@@ -6,37 +6,82 @@ import org.junit.Test;
 public class SessionListBottomSheetDragDecisionTest {
 
     @Test
-    public void clampsUpwardDragToZeroSoSheetCannotMoveAboveOpenPosition() {
-        Assert.assertEquals(0f, SessionListBottomSheetDragDecision.clampDragTranslation(-150f, 600f), 0f);
+    public void defaultHeightIsOneThirdOfScreen() {
+        Assert.assertEquals(640, SessionListBottomSheetDragDecision.computeDefaultHeight(1920));
     }
 
     @Test
-    public void clampsDownwardDragToSheetHeightSoSheetCannotMoveBelowFullyHidden() {
-        Assert.assertEquals(600f, SessionListBottomSheetDragDecision.clampDragTranslation(900f, 600f), 0f);
+    public void minHeightIsOneQuarterOfScreen() {
+        Assert.assertEquals(480, SessionListBottomSheetDragDecision.computeMinHeight(1920));
     }
 
     @Test
-    public void passesThroughDragTranslationWithinBounds() {
-        Assert.assertEquals(250f, SessionListBottomSheetDragDecision.clampDragTranslation(250f, 600f), 0f);
+    public void maxHeightIsEightyFivePercentOfScreen() {
+        Assert.assertEquals(1632, SessionListBottomSheetDragDecision.computeMaxHeight(1920));
     }
 
     @Test
-    public void dismissesWhenDraggedPastOneThirdOfSheetHeight() {
-        Assert.assertTrue(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(250f, 0f, 600f));
+    public void minIsBelowDefaultAndDefaultIsBelowMaxSoTheSheetCanGrowAndShrink() {
+        int screenHeightPixels = 1920;
+        int minHeightPixels = SessionListBottomSheetDragDecision.computeMinHeight(screenHeightPixels);
+        int defaultHeightPixels = SessionListBottomSheetDragDecision.computeDefaultHeight(screenHeightPixels);
+        int maxHeightPixels = SessionListBottomSheetDragDecision.computeMaxHeight(screenHeightPixels);
+        Assert.assertTrue(minHeightPixels < defaultHeightPixels);
+        Assert.assertTrue(defaultHeightPixels < maxHeightPixels);
     }
 
     @Test
-    public void springsBackWhenDraggedBelowOneThirdWithLowVelocity() {
-        Assert.assertFalse(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(100f, 0f, 600f));
+    public void draggingUpGrowsTheSheetTaller() {
+        Assert.assertEquals(800, SessionListBottomSheetDragDecision.resolveDragHeight(-200f, 600, 480, 1632));
     }
 
     @Test
-    public void dismissesOnFastDownwardFlingEvenWhenDragIsShort() {
-        Assert.assertTrue(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(40f, 1200f, 600f));
+    public void draggingDownShrinksTheSheetShorter() {
+        Assert.assertEquals(500, SessionListBottomSheetDragDecision.resolveDragHeight(100f, 600, 480, 1632));
     }
 
     @Test
-    public void springsBackOnUpwardVelocityWhenDragIsShort() {
-        Assert.assertFalse(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(40f, -1200f, 600f));
+    public void draggingUpStopsGrowingAtMaxHeight() {
+        Assert.assertEquals(1632, SessionListBottomSheetDragDecision.resolveDragHeight(-5000f, 600, 480, 1632));
+    }
+
+    @Test
+    public void draggingDownStopsShrinkingAtMinHeight() {
+        Assert.assertEquals(480, SessionListBottomSheetDragDecision.resolveDragHeight(5000f, 600, 480, 1632));
+    }
+
+    @Test
+    public void translationStaysZeroWhileTheSheetIsStillAtOrAboveMinHeight() {
+        Assert.assertEquals(0f, SessionListBottomSheetDragDecision.resolveDragTranslation(100f, 600, 480), 0f);
+    }
+
+    @Test
+    public void translationFollowsTheFingerOnceTheSheetIsPulledBelowMinHeight() {
+        Assert.assertEquals(80f, SessionListBottomSheetDragDecision.resolveDragTranslation(200f, 600, 480), 0f);
+    }
+
+    @Test
+    public void dismissesWhenPulledWellBelowMinHeight() {
+        Assert.assertTrue(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(320f, 600, 480, 0f));
+    }
+
+    @Test
+    public void springsBackWhenPulledOnlySlightlyBelowMinHeightWithLowVelocity() {
+        Assert.assertFalse(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(200f, 600, 480, 0f));
+    }
+
+    @Test
+    public void doesNotDismissWhenStillAboveMinHeight() {
+        Assert.assertFalse(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(50f, 600, 480, 0f));
+    }
+
+    @Test
+    public void dismissesOnFastDownwardFlingEvenWhenStillAboveMinHeight() {
+        Assert.assertTrue(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(20f, 600, 480, 1200f));
+    }
+
+    @Test
+    public void doesNotDismissOnUpwardVelocityWhilePulledBelowMin() {
+        Assert.assertFalse(SessionListBottomSheetDragDecision.shouldDismissAfterDrag(140f, 600, 480, -1200f));
     }
 }
