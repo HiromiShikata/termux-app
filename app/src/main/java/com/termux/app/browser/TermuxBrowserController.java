@@ -173,6 +173,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void applyBrowserSplitRatio(float ratio) {
         float clampedRatio = BrowserSplitRatio.clamp(ratio);
+        if (BrowserSplitRatio.isCollapsed(clampedRatio)) {
+            showTerminal();
+            return;
+        }
         LinearLayout.LayoutParams browserParams =
             (LinearLayout.LayoutParams) mBrowserContentContainer.getLayoutParams();
         browserParams.height = 0;
@@ -187,7 +191,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void showBrowserSplitDivider() {
-        applyBrowserSplitRatio(BrowserSplitRatio.MIN);
+        applyBrowserSplitRatio(BrowserSplitRatio.DEFAULT);
         mBrowserTerminalDivider.setVisibility(View.VISIBLE);
     }
 
