@@ -76,4 +76,34 @@ public class BrowserLinkLongPressTest {
     public void mailtoUrlIsNotOpenable() {
         Assert.assertFalse(BrowserLinkLongPress.isOpenableLinkUrl("mailto:user@example.com"));
     }
+
+    @Test
+    public void anchorWithHttpsExtraIsCopyableLink() {
+        Assert.assertTrue(BrowserLinkLongPress.isCopyableLink(
+            WebView.HitTestResult.SRC_ANCHOR_TYPE, "https://example.com/page"));
+    }
+
+    @Test
+    public void anchorWithNonHttpExtraIsNotCopyableLink() {
+        Assert.assertFalse(BrowserLinkLongPress.isCopyableLink(
+            WebView.HitTestResult.SRC_ANCHOR_TYPE, "mailto:user@example.com"));
+    }
+
+    @Test
+    public void anchorWithNullExtraIsNotCopyableLink() {
+        Assert.assertFalse(BrowserLinkLongPress.isCopyableLink(
+            WebView.HitTestResult.SRC_ANCHOR_TYPE, null));
+    }
+
+    @Test
+    public void imageAnchorIsNotCopyableLinkBecauseExtraIsNotTheHref() {
+        Assert.assertFalse(BrowserLinkLongPress.isCopyableLink(
+            WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE, "https://example.com/image.png"));
+    }
+
+    @Test
+    public void nonLinkHitIsNotCopyableLink() {
+        Assert.assertFalse(BrowserLinkLongPress.isCopyableLink(
+            WebView.HitTestResult.EDIT_TEXT_TYPE, "https://example.com/page"));
+    }
 }

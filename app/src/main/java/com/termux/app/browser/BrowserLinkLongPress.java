@@ -23,4 +23,10 @@ public final class BrowserLinkLongPress {
         String trimmed = url.trim();
         return trimmed.startsWith("http://") || trimmed.startsWith("https://");
     }
+
+    public static boolean isCopyableLink(int hitTestType, @Nullable String extra) {
+        return isLinkHit(hitTestType)
+            && !requiresHrefLookup(hitTestType)
+            && isOpenableLinkUrl(extra);
+    }
 }
