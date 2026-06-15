@@ -93,6 +93,13 @@ public final class SessionHierarchyBuilder {
             }
         }
 
+        for (Map.Entry<String, Integer> candidate : sessionIndexByName.entrySet()) {
+            if (!placedNames.contains(candidate.getKey())) {
+                unmatchedSessionIndexes.add(candidate.getValue());
+            }
+        }
+        Collections.sort(unmatchedSessionIndexes);
+
         List<SessionHierarchyRow> rows = new ArrayList<>();
         if (!unmatchedSessionIndexes.isEmpty()) {
             rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));

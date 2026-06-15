@@ -105,36 +105,72 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
-    public void dropsOrphanedProjectUrlSessionsWhilePlacingAdHocSessionsUnderNa() {
+    public void showsUrlNamedSessionNotInDefinitionUnderNaAlongsideAdHocSessions() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
                 Collections.singletonList("https://example.test/a")));
 
         List<SessionHierarchyRow> rows = builder.build(
-            Arrays.asList("https://example.test/a", "https://example.test/dropped", "manual-session"),
+            Arrays.asList("https://example.test/a", "https://example.test/new", "manual-session"),
             entries, NA);
+
+        Assert.assertEquals(6, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 1);
+        assertSession(rows.get(2), 2);
+        assertProjectHeader(rows.get(3), "projectOne");
+        assertStoryHeader(rows.get(4), "storyA");
+        assertSession(rows.get(5), 0);
+    }
+
+    @Test
+    public void showsUrlNamedSessionNotInDefinitionUnderNaEvenWhenItIsTheOnlyUnmatchedSession() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "https://example.test/new"), entries, NA);
 
         Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), NA);
-        assertSession(rows.get(1), 2);
+        assertSession(rows.get(1), 1);
         assertProjectHeader(rows.get(2), "projectOne");
         assertStoryHeader(rows.get(3), "storyA");
         assertSession(rows.get(4), 0);
     }
 
     @Test
-    public void omitsNaHeaderWhenEveryUnmatchedSessionIsAnOrphanedProjectUrl() {
+    public void groupsUrlNamedSessionUnderItsProjectWhenItMatchesADefinitionEntry() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
                 Collections.singletonList("https://example.test/a")));
 
         List<SessionHierarchyRow> rows = builder.build(
-            Arrays.asList("https://example.test/a", "https://example.test/dropped"), entries, NA);
+            Collections.singletonList("https://example.test/a"), entries, NA);
 
         Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
         assertStoryHeader(rows.get(1), "storyA");
         assertSession(rows.get(2), 0);
+    }
+
+    @Test
+    public void showsUrlNamedSessionNotInDefinitionWithoutDuplicatingItWhenNameRepeats() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/a", "https://example.test/new", "https://example.test/new"),
+            entries, NA);
+
+        Assert.assertEquals(5, rows.size());
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 1);
+        assertProjectHeader(rows.get(2), "projectOne");
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
     }
 
     @Test
