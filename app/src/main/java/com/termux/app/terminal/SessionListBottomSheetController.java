@@ -173,6 +173,7 @@ public class SessionListBottomSheetController {
         if (listController == null) {
             return;
         }
+        hideSoftKeyboard();
         applyTitleColor();
         applySheetDefaultHeight();
         bindSessionList(listController);
