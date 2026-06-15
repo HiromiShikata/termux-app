@@ -205,6 +205,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                 bindProjectCollapseIndicator(projectHeaderView, row);
                 bindProjectOverviewBrowserIcon(projectHeaderView, row);
                 bindProjectTdpmConsoleIcon(projectHeaderView, row);
+                bindProjectNewIssueIcon(projectHeaderView, row);
                 return projectHeaderView;
             case STORY_HEADER:
                 return getHeaderView(row, convertView, parent,
@@ -250,6 +251,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             ? null
             : () -> openProjectUrlInNewTab(tdpmConsoleUrl);
         applyProjectHeaderIconVisibility(tdpmConsoleIconView, openAction);
+    }
+
+    private void bindProjectNewIssueIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
+        View newIssueIconView = projectHeaderView.findViewById(R.id.session_project_header_new_issue_icon);
+        String newIssueUrl = row.getNewIssueUrl();
+        Runnable openAction = (newIssueUrl == null || newIssueUrl.isEmpty())
+            ? null
+            : () -> openProjectUrlInNewTab(newIssueUrl);
+        applyProjectHeaderIconVisibility(newIssueIconView, openAction);
     }
 
     static void applyProjectHeaderIconVisibility(@NonNull View projectHeaderIconView,

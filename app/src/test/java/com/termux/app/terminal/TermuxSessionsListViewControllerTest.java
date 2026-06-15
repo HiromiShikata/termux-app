@@ -66,6 +66,22 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void projectHeaderLayoutHostsADistinctNewIssueIconNextToTheOverviewAndTdpmConsoleIcons() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
+        View tdpmConsoleIcon = projectHeader.findViewById(R.id.session_project_header_tdpm_console_icon);
+        View newIssueIcon = projectHeader.findViewById(R.id.session_project_header_new_issue_icon);
+
+        Assert.assertNotNull(newIssueIcon);
+        Assert.assertNotEquals(overviewIcon.getId(), newIssueIcon.getId());
+        Assert.assertNotEquals(tdpmConsoleIcon.getId(), newIssueIcon.getId());
+        Assert.assertEquals(View.GONE, newIssueIcon.getVisibility());
+    }
+
+    @Test
     public void currentRunningSessionShowsAccentBarAndAccentName() {
         SessionRowActiveIndicator indicator =
             TermuxSessionsListViewController.computeActiveIndicator(true, true);
