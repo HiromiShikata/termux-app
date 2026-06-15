@@ -263,6 +263,15 @@ public final class TerminalEmulator {
     int mEffect;
 
     /**
+     * The OSC 8 hyperlink URI currently active, attached to cells as they are printed, or null when no hyperlink is
+     * active. Set by {@code OSC 8 ; params ; URI ST} and cleared by an empty URI.
+     */
+    String mCurrentHyperlinkUri = null;
+
+    /** Maximum length of an OSC 8 hyperlink URI that will be retained. Longer URIs are ignored. */
+    private static final int MAX_HYPERLINK_URI_LENGTH = 4096;
+
+    /**
      * The number of scrolled lines since last calling {@link #clearScrollCounter()}. Used for moving selection up along
      * with the scrolling text.
      */
@@ -2110,6 +2119,18 @@ public final class TerminalEmulator {
                     }
                 }
                 break;
+            case 8: {
+                // OSC 8 ; params ; URI ST → hyperlink. The cells printed until the next OSC 8 (with an empty URI to
+                // close, or another URI to switch) are associated with this URI. textParameter is "params;URI".
+                int uriSeparatorIndex = textParameter.indexOf(';');
+                if (uriSeparatorIndex < 0) {
+                    mCurrentHyperlinkUri = null;
+                } else {
+                    String uri = textParameter.substring(uriSeparatorIndex + 1);
+                    mCurrentHyperlinkUri = (uri.isEmpty() || uri.length() > MAX_HYPERLINK_URI_LENGTH) ? null : uri;
+                }
+                break;
+            }
             case 52: // Manipulate Selection Data. Skip the optional first selection parameter(s).
                 int startIndex = textParameter.indexOf(";") + 1;
                 try {
@@ -2498,7 +2519,7 @@ public final class TerminalEmulator {
         // so was mCursorCol changed after the offsetDueToCombiningChar conditional by another thread?
         // TODO: Check if there are thread synchronization issues with mCursorCol and mCursorRow, possibly causing others bugs too.
         if (column < 0) column = 0;
-        mScreen.setChar(column, mCursorRow, codePoint, getStyle());
+        mScreen.setChar(column, mCursorRow, codePoint, getStyle(), mCurrentHyperlinkUri);
 
         if (autoWrap && displayWidth > 0)
             mAboutToAutoWrap = (mCursorCol == mRightMargin - displayWidth);
@@ -2558,6 +2579,7 @@ public final class TerminalEmulator {
         mAboutToAutoWrap = false;
         mForeColor = mSavedStateMain.mSavedForeColor = mSavedStateAlt.mSavedForeColor = TextStyle.COLOR_INDEX_FOREGROUND;
         mBackColor = mSavedStateMain.mSavedBackColor = mSavedStateAlt.mSavedBackColor = TextStyle.COLOR_INDEX_BACKGROUND;
+        mCurrentHyperlinkUri = null;
         setDefaultTabStops();
 
         mUseLineDrawingG0 = mUseLineDrawingG1 = false;

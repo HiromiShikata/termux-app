@@ -181,6 +181,13 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
         if (mActivity.getProperties().shouldOpenTerminalTranscriptURLOnClick()) {
             int[] columnAndRow = mActivity.getTerminalView().getColumnAndRow(e, true);
+
+            String hyperlinkUri = term.getScreen().getHyperlinkUri(columnAndRow[1], columnAndRow[0]);
+            if (hyperlinkUri != null) {
+                openUrlInApp(hyperlinkUri);
+                return;
+            }
+
             String wordAtTap = term.getScreen().getWordAtLocation(columnAndRow[0], columnAndRow[1]);
             LinkedHashSet<CharSequence> urlSet = TermuxUrlUtils.extractUrls(wordAtTap);
 
