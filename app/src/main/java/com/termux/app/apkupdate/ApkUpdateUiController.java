@@ -2,6 +2,7 @@ package com.termux.app.apkupdate;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 
 import com.termux.R;
@@ -76,21 +77,22 @@ public final class ApkUpdateUiController {
             return;
         }
 
+        Context applicationContext = activity.getApplicationContext();
         Logger.showToast(activity, activity.getString(R.string.apk_update_downloading), false);
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    if (activity.isFinishing()) return;
-                    activity.startActivity(apkInstaller.buildInstallIntent(apkFile));
+                    applicationContext.startActivity(apkInstaller.buildInstallIntent(apkFile));
                 }
 
                 @Override
                 public void onDownloadFailed(String message) {
                     Logger.logError(LOG_TAG, "APK update download failed: " + message);
-                    Logger.showToast(activity,
-                        activity.getString(R.string.apk_update_download_failed, message), true);
+                    Logger.showToast(applicationContext,
+                        applicationContext.getString(R.string.apk_update_download_failed, message), true);
                 }
             });
+        activity.finish();
     }
 }
