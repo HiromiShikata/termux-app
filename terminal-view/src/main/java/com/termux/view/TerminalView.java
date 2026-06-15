@@ -44,7 +44,6 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.scroll.TerminalScrollController;
 import com.termux.view.scroll.TerminalScrollEvent;
-import com.termux.view.scroll.TwoFingerScrollCalculator;
 import com.termux.view.textselection.TextSelectionCursorController;
 import com.termux.view.url.TerminalUrlExtractor;
 
@@ -78,8 +77,6 @@ public final class TerminalView extends View {
 
     float mScaleFactor = 1.f;
     final GestureAndScaleRecognizer mGestureRecognizer;
-
-    private final TwoFingerScrollCalculator mTwoFingerScroll = new TwoFingerScrollCalculator();
 
     /** Keep track of where mouse touch event started which we report as mouse scroll. */
     private int mMouseScrollStartX = -1, mMouseScrollStartY = -1;
@@ -654,76 +651,12 @@ public final class TerminalView extends View {
                     handleKeyCode(up ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, 0);
                     break;
                 case LOCAL_SCROLLBACK:
-                    doLocalScroll(up ? -1 : 1);
+                    mTopRow = Math.min(0, Math.max(-(mEmulator.getScreen().getActiveTranscriptRows()), mTopRow + (up ? -1 : 1)));
+                    if (!awakenScrollBars()) invalidate();
+                    showScrollThumb();
                     break;
             }
         }
-    }
-
-    void doLocalScroll(int rowsDown) {
-        boolean up = rowsDown < 0;
-        int amount = Math.abs(rowsDown);
-        if (amount == 0) return;
-        for (int i = 0; i < amount; i++) {
-            mTopRow = Math.min(0, Math.max(-(mEmulator.getScreen().getActiveTranscriptRows()), mTopRow + (up ? -1 : 1)));
-        }
-        if (!awakenScrollBars()) invalidate();
-        showScrollThumb();
-    }
-
-    private static float averagePointerY(MotionEvent event, int excludedPointerIndex) {
-        float sum = 0f;
-        int count = 0;
-        for (int i = 0; i < event.getPointerCount(); i++) {
-            if (i == excludedPointerIndex) continue;
-            sum += event.getY(i);
-            count++;
-        }
-        return count == 0 ? 0f : sum / count;
-    }
-
-    private boolean handleTwoFingerScroll(MotionEvent event) {
-        if (isSelectingText() || event.isFromSource(InputDevice.SOURCE_MOUSE)) {
-            if (mTwoFingerScroll.isTracking()) mTwoFingerScroll.stop();
-            return false;
-        }
-        int maskedAction = event.getActionMasked();
-        if (mTwoFingerScroll.isTracking()) {
-            switch (maskedAction) {
-                case MotionEvent.ACTION_MOVE:
-                    if (event.getPointerCount() >= 2) {
-                        int rows = mTwoFingerScroll.consumeRows(averagePointerY(event, -1), mRenderer.mFontLineSpacing);
-                        if (rows != 0) doLocalScroll(rows);
-                    }
-                    return true;
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    mTwoFingerScroll.start(averagePointerY(event, -1));
-                    return true;
-                case MotionEvent.ACTION_POINTER_UP:
-                    mTwoFingerScroll.start(averagePointerY(event, event.getActionIndex()));
-                    return true;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    mTwoFingerScroll.stop();
-                    return true;
-                default:
-                    return true;
-            }
-        }
-        if (maskedAction == MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount() == 2) {
-            cancelPendingGesture(event);
-            mTwoFingerScroll.start(averagePointerY(event, -1));
-            return true;
-        }
-        return false;
-    }
-
-    private void cancelPendingGesture(MotionEvent event) {
-        MotionEvent cancel = MotionEvent.obtain(event);
-        cancel.setAction(MotionEvent.ACTION_CANCEL);
-        mGestureRecognizer.onTouchEvent(cancel);
-        cancel.recycle();
-        mScrollRemainder = 0.0f;
     }
 
     /** Overriding {@link View#onGenericMotionEvent(MotionEvent)}. */
@@ -746,10 +679,6 @@ public final class TerminalView extends View {
         final int action = event.getAction();
 
         if (!isSelectingText() && !event.isFromSource(InputDevice.SOURCE_MOUSE) && handleScrollThumbTouchEvent(event)) {
-            return true;
-        }
-
-        if (handleTwoFingerScroll(event)) {
             return true;
         }
 
