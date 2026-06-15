@@ -16,6 +16,10 @@ public final class ApkUpdateManager {
 
     public static final String PREFERENCE_KEY_AUTO_CHECK = "auto_check_for_updates";
 
+    public static final String PREFERENCE_KEY_LAST_CHECK_TIME = "last_update_check_time";
+
+    public static final long NO_CHECK_TIME = 0L;
+
     public interface CheckListener {
         void onUpdateAvailable(ApkUpdateAvailability availability);
 
@@ -51,6 +55,16 @@ public final class ApkUpdateManager {
         return preferences.getBoolean(PREFERENCE_KEY_AUTO_CHECK, false);
     }
 
+    public static long getLastCheckTime(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        return preferences.getLong(PREFERENCE_KEY_LAST_CHECK_TIME, NO_CHECK_TIME);
+    }
+
+    public static void recordCheckTime(Context context, long epochMillis) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        preferences.edit().putLong(PREFERENCE_KEY_LAST_CHECK_TIME, epochMillis).apply();
+    }
+
     public void checkForUpdate(CheckListener listener) {
         new Thread(() -> {
             try {
@@ -58,9 +72,15 @@ public final class ApkUpdateManager {
                 ApkUpdateAvailability availability =
                     updatePlanner.plan(json, BuildConfig.VERSION_NAME, Build.SUPPORTED_ABIS);
                 if (availability.isUpdateAvailable()) {
-                    mainHandler.post(() -> listener.onUpdateAvailable(availability));
+                    mainHandler.post(() -> {
+                        recordCheckTime(context, System.currentTimeMillis());
+                        listener.onUpdateAvailable(availability);
+                    });
                 } else {
-                    mainHandler.post(() -> listener.onUpToDate(availability.getLatestVersionName()));
+                    mainHandler.post(() -> {
+                        recordCheckTime(context, System.currentTimeMillis());
+                        listener.onUpToDate(availability.getLatestVersionName());
+                    });
                 }
             } catch (Exception exception) {
                 String message = exception.getMessage() != null ? exception.getMessage() : exception.toString();

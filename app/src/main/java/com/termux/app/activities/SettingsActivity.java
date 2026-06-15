@@ -3,6 +3,7 @@ package com.termux.app.activities;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
 import android.widget.Toast;
@@ -11,8 +12,13 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceManager;
 
+import com.termux.BuildConfig;
 import com.termux.R;
+import com.termux.app.apkupdate.ApkUpdateAutoCheckThrottle;
+import com.termux.app.apkupdate.ApkUpdateCheckTimeFormatter;
+import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.style.TermuxStyleLauncher;
 import com.termux.app.terminal.session.PersistedSessionClearer;
@@ -62,12 +68,20 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     public static class RootPreferencesFragment extends PreferenceFragmentCompat {
+
+        private final ApkUpdateCheckTimeFormatter checkTimeFormatter = new ApkUpdateCheckTimeFormatter();
+        private SharedPreferences sharedPreferences;
+        private SharedPreferences.OnSharedPreferenceChangeListener lastCheckSummaryUpdater;
+
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             Context context = getContext();
             if (context == null) return;
 
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
+
+            registerLastCheckSummaryUpdater(context);
+            maybeAutoCheckForApkUpdate(context);
 
             new Thread() {
                 @Override
@@ -217,11 +231,58 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 });
             }
+            updateLastCheckSummary(context);
+        }
+
+        private void maybeAutoCheckForApkUpdate(@NonNull Context context) {
+            if (!ApkUpdateManager.isAutoCheckEnabled(context)) {
+                return;
+            }
+            ApkUpdateAutoCheckThrottle throttle = new ApkUpdateAutoCheckThrottle(context);
+            long nowMillis = System.currentTimeMillis();
+            if (!throttle.shouldCheckNow(nowMillis)) {
+                return;
+            }
+            throttle.recordCheckedAt(nowMillis);
+            new ApkUpdateUiController(requireActivity()).checkAndPrompt(false);
+        }
+
+        private void registerLastCheckSummaryUpdater(@NonNull Context context) {
+            sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+            lastCheckSummaryUpdater = (preferences, key) -> {
+                if (ApkUpdateManager.PREFERENCE_KEY_LAST_CHECK_TIME.equals(key)) {
+                    updateLastCheckSummary(context);
+                }
+            };
+            sharedPreferences.registerOnSharedPreferenceChangeListener(lastCheckSummaryUpdater);
+        }
+
+        private void updateLastCheckSummary(@NonNull Context context) {
+            Preference updateApkPreference = findPreference("update_apk");
+            if (updateApkPreference == null) return;
+
+            long lastCheckTime = ApkUpdateManager.getLastCheckTime(context);
+            if (checkTimeFormatter.hasCheckTime(lastCheckTime)) {
+                updateApkPreference.setSummary(context.getString(R.string.update_apk_last_check_summary,
+                    checkTimeFormatter.format(lastCheckTime)));
+            } else {
+                updateApkPreference.setSummary(R.string.update_apk_never_checked_summary);
+            }
+        }
+
+        @Override
+        public void onDestroy() {
+            if (sharedPreferences != null && lastCheckSummaryUpdater != null) {
+                sharedPreferences.unregisterOnSharedPreferenceChangeListener(lastCheckSummaryUpdater);
+            }
+            super.onDestroy();
         }
 
         private void configureAboutPreference(@NonNull Context context) {
             Preference aboutPreference = findPreference("about");
             if (aboutPreference != null) {
+                aboutPreference.setSummary(context.getString(R.string.about_preference_summary_version,
+                    BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
                 aboutPreference.setOnPreferenceClickListener(preference -> {
                     new Thread() {
                         @Override
