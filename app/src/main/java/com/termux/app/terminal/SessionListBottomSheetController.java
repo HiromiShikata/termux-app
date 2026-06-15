@@ -15,11 +15,14 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.shared.view.KeyboardUtils;
 
 public class SessionListBottomSheetController {
 
     static final long SLIDE_ANIMATION_DURATION_MILLISECONDS = 220;
+
+    static final String GOOGLE_URL = "https://www.google.com";
 
     private final TermuxActivity mActivity;
     private final View mSheetView;
@@ -30,6 +33,7 @@ public class SessionListBottomSheetController {
     private final View mSettingsButton;
     private final View mNewSessionButton;
     private final View mLoadSessionButton;
+    private final View mGoogleButton;
 
     private boolean mAdapterBound;
     private float mDragStartRawY;
@@ -48,6 +52,7 @@ public class SessionListBottomSheetController {
         this.mSettingsButton = activity.findViewById(R.id.session_list_bottom_sheet_settings_button);
         this.mNewSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_new_session_button);
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
+        this.mGoogleButton = activity.findViewById(R.id.session_list_bottom_sheet_google_button);
         bindActionButtons();
         bindDragToDismiss();
         bindScrimTapToDismiss();
@@ -73,6 +78,19 @@ public class SessionListBottomSheetController {
             hide();
             mActivity.loadSessionsFromDefinition();
         });
+        mGoogleButton.setOnClickListener(v -> {
+            hideSoftKeyboard();
+            hide();
+            openGoogle();
+        });
+    }
+
+    private void openGoogle() {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) {
+            return;
+        }
+        browserController.openUrlInNewTab(GOOGLE_URL);
     }
 
     private void hideSoftKeyboard() {
