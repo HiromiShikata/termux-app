@@ -18,6 +18,68 @@ public class SessionHierarchyBuilderTest {
     private static final String NA = "N/A";
 
     @Test
+    public void devScenarioUrlSessionNotInDefinitionAppearsUnderNa() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("DEMOPROJECT", "DemoStory",
+                Arrays.asList(
+                    "https://github.com/HiromiShikata/termux-app/issues/100?k=TESTKEY",
+                    "https://github.com/HiromiShikata/termux-app/issues/101?k=TESTKEY")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList(
+                null,
+                "https://github.com/HiromiShikata/termux-app/issues/100?k=TESTKEY",
+                "https://github.com/HiromiShikata/termux-app/issues/101?k=TESTKEY",
+                "https://create-session-verify.test/xyz"),
+            entries, NA);
+
+        StringBuilder dump = new StringBuilder();
+        for (SessionHierarchyRow row : rows) {
+            dump.append(row.getType())
+                .append(row.isHeader() ? "|" + row.getLabel() : "|session#" + row.getSessionIndex())
+                .append('\n');
+        }
+        Assert.assertTrue("URL session index 3 must appear as a row. Actual:\n" + dump,
+            SessionHierarchyBuilder.visibleSessionIndexes(rows).contains(3));
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 0);
+        assertSession(rows.get(2), 3);
+    }
+
+    @Test
+    public void devScenarioTwoUrlSessionsNotInDefinitionBothAppearUnderNa() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("DEMOPROJECT", "DemoStory",
+                Arrays.asList(
+                    "https://github.com/HiromiShikata/termux-app/issues/100?k=TESTKEY",
+                    "https://github.com/HiromiShikata/termux-app/issues/101?k=TESTKEY")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList(
+                null,
+                "https://github.com/HiromiShikata/termux-app/issues/100?k=TESTKEY",
+                "https://github.com/HiromiShikata/termux-app/issues/101?k=TESTKEY",
+                "https://create-session-verify.test/xyz",
+                "https://na-final.test/abc"),
+            entries, NA);
+
+        StringBuilder dump = new StringBuilder();
+        for (SessionHierarchyRow row : rows) {
+            dump.append(row.getType())
+                .append(row.isHeader() ? "|" + row.getLabel() : "|session#" + row.getSessionIndex())
+                .append('\n');
+        }
+        List<Integer> visible = SessionHierarchyBuilder.visibleSessionIndexes(rows);
+        Assert.assertTrue("blank session 0 under N/A. Actual:\n" + dump, visible.contains(0));
+        Assert.assertTrue("xyz session 3 under N/A. Actual:\n" + dump, visible.contains(3));
+        Assert.assertTrue("abc session 4 under N/A. Actual:\n" + dump, visible.contains(4));
+        assertProjectHeader(rows.get(0), NA);
+        assertSession(rows.get(1), 0);
+        assertSession(rows.get(2), 3);
+        assertSession(rows.get(3), 4);
+    }
+
+    @Test
     public void buildsProjectThenStoryThenSessionRowsForASingleStory() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
