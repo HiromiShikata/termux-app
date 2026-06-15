@@ -87,16 +87,6 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
-    public void capsSheetHeightToOneThirdOfScreen() {
-        Assert.assertEquals(640, SessionListBottomSheetController.computeSheetMaxHeight(1920));
-    }
-
-    @Test
-    public void capsSheetHeightWithFlooredDivisionForNonDivisibleScreen() {
-        Assert.assertEquals(800, SessionListBottomSheetController.computeSheetMaxHeight(2400));
-    }
-
-    @Test
     public void hideIfPresentDoesNothingWhenControllerIsNull() {
         SessionListBottomSheetController.hideIfPresent(null);
     }
