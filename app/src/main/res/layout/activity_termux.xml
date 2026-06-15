@@ -315,6 +315,16 @@
                     android:src="@drawable/ic_load_session"
                     android:tint="?attr/termuxActivityDrawerImageTint" />
 
+                <ImageButton
+                    android:id="@+id/session_list_bottom_sheet_google_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/action_open_google"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_google"
+                    android:tint="?attr/termuxActivityDrawerImageTint" />
+
             </LinearLayout>
 
         </LinearLayout>
