@@ -83,6 +83,13 @@
     <string name="action_browser_edit_url_create_session">Create session</string>
     <string name="msg_browser_no_current_url">No page to open.</string>
     <string name="msg_browser_url_copied">URL copied</string>
+    <string name="action_browser_edit_url_add_bookmark">Bookmark</string>
+    <string name="action_browser_edit_url_bookmarks">Bookmarks</string>
+    <string name="msg_browser_bookmarked">Bookmarked</string>
+    <string name="title_browser_bookmarks">Bookmarks</string>
+    <string name="msg_browser_no_bookmarks">No bookmarks yet.</string>
+    <string name="title_browser_bookmark_delete">Delete bookmark?</string>
+    <string name="action_browser_bookmark_delete">Delete</string>
     <string name="action_browser_open_all_tasks">Open all</string>
     <string name="action_browser_open_first_ten_tasks">Open 10</string>
     <string name="msg_browser_no_task_urls_found">No GitHub issue or pull request links found on this page.</string>

@@ -73,4 +73,35 @@
             android:textSize="11sp"
             android:text="@string/action_browser_edit_url_confirm" />
     </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/browser_edit_url_add_bookmark"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:paddingLeft="4dp"
+            android:paddingRight="4dp"
+            android:textSize="11sp"
+            android:text="@string/action_browser_edit_url_add_bookmark" />
+
+        <Button
+            android:id="@+id/browser_edit_url_bookmarks"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minWidth="0dp"
+            android:paddingLeft="4dp"
+            android:paddingRight="4dp"
+            android:textSize="11sp"
+            android:text="@string/action_browser_edit_url_bookmarks" />
+    </LinearLayout>
 </LinearLayout>

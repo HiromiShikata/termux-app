@@ -359,4 +359,13 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSIONS, value, false);
     }
 
+
+    public String getBrowserBookmarks() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_BOOKMARKS, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_BOOKMARKS, false);
+    }
+
+    public void setBrowserBookmarks(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_BOOKMARKS, value, false);
+    }
+
 }
