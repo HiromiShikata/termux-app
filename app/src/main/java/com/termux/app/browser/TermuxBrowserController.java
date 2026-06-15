@@ -146,6 +146,53 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureDrawerControls();
         configureProjectOverviewActions();
         configureBrowserSplitDivider();
+        configureHeaderInteractions();
+    }
+
+    private void configureHeaderInteractions() {
+        mPageTitleUrlHeaderView.setOnClickListener(view -> promptEditCurrentPageUrl());
+        mPageTitleUrlHeaderView.setOnLongClickListener(view -> copyCurrentPageUrlToClipboard());
+    }
+
+    private boolean copyCurrentPageUrlToClipboard() {
+        String currentUrl = currentPageFullUrl();
+        if (currentUrl == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return true;
+        }
+        ShareUtils.copyTextToClipboard(mActivity, currentUrl,
+            mActivity.getString(R.string.msg_browser_url_copied));
+        return true;
+    }
+
+    private void promptEditCurrentPageUrl() {
+        if (mCurrentSessionHandle == null) return;
+        String currentUrl = currentPageFullUrl();
+        if (currentUrl == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        TextInputDialogUtils.textInput(mActivity, R.string.title_browser_edit_url, currentUrl,
+            R.string.action_browser_edit_url_confirm, this::navigateCurrentTabToUrl,
+            -1, null, android.R.string.cancel, null, null);
+    }
+
+    private void navigateCurrentTabToUrl(@Nullable String input) {
+        BrowserTab activeTab = getActiveTab();
+        if (activeTab == null) return;
+        String targetUrl = normalizeUrl(input);
+        activeTab.setUrl(targetUrl);
+        mDisplayedTab = activeTab;
+        updatePageHeader();
+        notifyTabsUpdated();
+        mWebView.loadUrl(targetUrl);
+    }
+
+    @Nullable
+    private String currentPageFullUrl() {
+        BrowserTab displayedTab = mDisplayedTab;
+        String displayedTabUrl = displayedTab == null ? null : displayedTab.getUrl();
+        return BrowserCurrentPageUrl.fullUrl(displayedTabUrl, mLoadedUrl);
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -806,14 +853,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private static String normalizeUrl(@Nullable String input) {
-        if (input == null) return BrowserTab.DEFAULT_URL;
-        String trimmed = input.trim();
-        if (trimmed.isEmpty()) return BrowserTab.DEFAULT_URL;
-        if (trimmed.contains("://")) return trimmed;
-        if (trimmed.contains(" ") || !trimmed.contains(".")) {
-            return "https://duckduckgo.com/?q=" + android.net.Uri.encode(trimmed);
-        }
-        return "https://" + trimmed;
+        return BrowserUrlInput.normalize(input);
     }
 
     private void loadActiveTab() {
