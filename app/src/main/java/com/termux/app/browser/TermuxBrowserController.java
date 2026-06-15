@@ -501,7 +501,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return true;
         }
         String linkUrl = hitTestResult.getExtra();
-        if (!BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) return false;
+        if (!BrowserLinkLongPress.isCopyableLink(hitTestType, linkUrl)) return false;
         showLinkContextMenu(linkUrl);
         return true;
     }
@@ -521,13 +521,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void showLinkContextMenu(@NonNull String linkUrl) {
         CharSequence[] actions = {
-            mActivity.getString(R.string.action_browser_open_link_in_new_tab),
+            mActivity.getString(R.string.action_browser_copy_link_url),
+            mActivity.getString(R.string.action_browser_open_link),
             mActivity.getString(R.string.action_browser_open_in_chrome)
         };
         DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
             .setTitle(linkUrl)
             .setItems(actions, (dialog, which) -> {
                 if (which == 0) {
+                    ShareUtils.copyTextToClipboard(mActivity, linkUrl,
+                        mActivity.getString(R.string.msg_browser_url_copied));
+                } else if (which == 1) {
                     openUrlInNewTab(linkUrl);
                 } else {
                     ShareUtils.openUrlInChrome(mActivity, linkUrl);
