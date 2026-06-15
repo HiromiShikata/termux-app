@@ -226,34 +226,6 @@
                     android:orientation="vertical" />
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/left_drawer"
-                android:layout_width="240dp"
-                android:layout_height="match_parent"
-                android:layout_gravity="start"
-                android:choiceMode="singleChoice"
-                android:divider="@android:color/transparent"
-                android:dividerHeight="0dp"
-                android:descendantFocusability="blocksDescendants"
-                android:orientation="vertical"
-                android:background="?attr/termuxActivityDrawerBackground">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-                    <ImageButton
-                        android:id="@+id/settings_button"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:src="@drawable/ic_settings"
-                        android:background="@null"
-                        android:contentDescription="@string/action_open_settings"
-                        app:tint="?attr/termuxActivityDrawerImageTint" />
-                </LinearLayout>
-
-            </LinearLayout>
-
         </androidx.drawerlayout.widget.DrawerLayout>
 
         <View
@@ -360,14 +332,6 @@
             android:gravity="end|center_vertical"
             android:orientation="horizontal">
 
-            <androidx.viewpager.widget.ViewPager
-                android:id="@+id/terminal_toolbar_view_pager"
-                android:visibility="gone"
-                android:layout_width="0dp"
-                android:layout_height="37.5dp"
-                android:layout_weight="1"
-                android:background="@color/schema_terminal_chrome_surface" />
-
             <ImageButton
                 android:id="@+id/terminal_toolbar_tmux_mouse_toggle_button"
                 android:layout_width="wrap_content"
@@ -377,6 +341,14 @@
                 android:padding="8dp"
                 android:src="@drawable/ic_toolbar_mouse"
                 android:tint="@color/white" />
+
+            <androidx.viewpager.widget.ViewPager
+                android:id="@+id/terminal_toolbar_view_pager"
+                android:visibility="gone"
+                android:layout_width="0dp"
+                android:layout_height="37.5dp"
+                android:layout_weight="1"
+                android:background="@color/schema_terminal_chrome_surface" />
 
             <ImageButton
                 android:id="@+id/terminal_toolbar_browser_toggle_button"
@@ -406,16 +378,6 @@
                 android:contentDescription="@string/action_open_session_sheet"
                 android:padding="8dp"
                 android:src="@drawable/ic_session_sheet_toggle"
-                android:tint="@color/white" />
-
-            <ImageButton
-                android:id="@+id/terminal_toolbar_drawer_toggle_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_toggle_drawer_bar"
-                android:padding="8dp"
-                android:src="@drawable/ic_drawer_toggle"
                 android:tint="@color/white" />
 
             <ImageButton
