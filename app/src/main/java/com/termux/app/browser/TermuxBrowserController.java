@@ -35,6 +35,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -66,6 +67,7 @@ import com.termux.shared.logger.Logger;
 
 import org.json.JSONException;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -83,6 +85,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserTabManager mTabManager = new BrowserTabManager();
 
     private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
+
+    private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
 
     private final WebView mWebView;
 
@@ -192,11 +196,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         Button copyButton = dialogView.findViewById(R.id.browser_edit_url_copy);
         Button createSessionButton = dialogView.findViewById(R.id.browser_edit_url_create_session);
         Button cancelButton = dialogView.findViewById(R.id.browser_edit_url_cancel);
+        Button addBookmarkButton = dialogView.findViewById(R.id.browser_edit_url_add_bookmark);
+        Button bookmarksButton = dialogView.findViewById(R.id.browser_edit_url_bookmarks);
 
         goButton.setText(R.string.action_browser_edit_url_confirm);
         copyButton.setText(R.string.action_browser_edit_url_copy);
         createSessionButton.setText(R.string.action_browser_edit_url_create_session);
         cancelButton.setText(android.R.string.cancel);
+        addBookmarkButton.setText(R.string.action_browser_edit_url_add_bookmark);
+        bookmarksButton.setText(R.string.action_browser_edit_url_bookmarks);
 
         goButton.setOnClickListener(view -> {
             navigateCurrentTabToUrl(urlInput.getText().toString());
@@ -206,6 +214,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         createSessionButton.setOnClickListener(view -> {
             createSessionForEditedUrl(urlInput.getText().toString());
             dialog.dismiss();
+        });
+        addBookmarkButton.setOnClickListener(view -> addCurrentPageBookmark());
+        bookmarksButton.setOnClickListener(view -> {
+            dialog.dismiss();
+            showBookmarksList();
         });
         cancelButton.setOnClickListener(view -> dialog.dismiss());
 
@@ -235,6 +248,78 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return;
         }
         mActivity.getTermuxTerminalSessionClient().addNewSession(false, sessionName);
+    }
+
+    private void addCurrentPageBookmark() {
+        BrowserTab displayedTab = mDisplayedTab;
+        String url = currentPageFullUrl();
+        if (url == null || displayedTab == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        BrowserBookmark bookmark = new BrowserBookmark(url, displayedTab.getTitle());
+        saveBookmarks(loadBookmarks().added(bookmark));
+        mActivity.showToast(mActivity.getString(R.string.msg_browser_bookmarked), false);
+    }
+
+    private void showBookmarksList() {
+        List<BrowserBookmark> bookmarks = loadBookmarks().getBookmarks();
+        if (bookmarks.isEmpty()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_bookmarks), false);
+            return;
+        }
+        List<String> labels = new ArrayList<>();
+        for (BrowserBookmark bookmark : bookmarks) {
+            labels.add(bookmark.getTitle() + "\n" + bookmark.getUrl());
+        }
+        ListView listView = new ListView(mActivity);
+        listView.setAdapter(new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, labels));
+        AlertDialog dialog = new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_browser_bookmarks)
+            .setView(listView)
+            .create();
+        dialog.setCanceledOnTouchOutside(true);
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            openUrlInNewTab(bookmarks.get(position).getUrl());
+            dialog.dismiss();
+        });
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            dialog.dismiss();
+            promptDeleteBookmark(bookmarks.get(position));
+            return true;
+        });
+        dialog.show();
+    }
+
+    private void promptDeleteBookmark(@NonNull BrowserBookmark bookmark) {
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_browser_bookmark_delete)
+            .setMessage(bookmark.getUrl())
+            .setPositiveButton(R.string.action_browser_bookmark_delete, (dialog, which) -> {
+                saveBookmarks(loadBookmarks().removed(bookmark.getUrl()));
+                showBookmarksList();
+            })
+            .setNegativeButton(android.R.string.cancel, (dialog, which) -> showBookmarksList()));
+    }
+
+    @NonNull
+    private BrowserBookmarkCollection loadBookmarks() {
+        try {
+            return new BrowserBookmarkCollection(
+                mBookmarkSerializer.deserialize(mActivity.getPreferences().getBrowserBookmarks()));
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to deserialize browser bookmarks, clearing the store", e);
+            mActivity.getPreferences().setBrowserBookmarks(null);
+            return new BrowserBookmarkCollection(new ArrayList<>());
+        }
+    }
+
+    private void saveBookmarks(@NonNull BrowserBookmarkCollection bookmarks) {
+        try {
+            mActivity.getPreferences().setBrowserBookmarks(mBookmarkSerializer.serialize(bookmarks.getBookmarks()));
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize browser bookmarks", e);
+        }
     }
 
     private void navigateCurrentTabToUrl(@Nullable String input) {

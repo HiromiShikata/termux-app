@@ -225,6 +225,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_PERSISTED_SESSIONS = "persisted_sessions";
         public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSIONS = "";
 
+        public static final String KEY_BROWSER_BOOKMARKS = "browser_bookmarks";
+        public static final String DEFAULT_VALUE_KEY_BROWSER_BOOKMARKS = "";
+
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
          */
