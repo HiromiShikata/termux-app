@@ -387,7 +387,7 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/action_toggle_right_drawer_bar"
                 android:padding="8dp"
-                android:src="@drawable/ic_tabs_toggle"
+                android:src="@drawable/ic_drawer_toggle"
                 android:tint="@color/white" />
         </LinearLayout>
 
