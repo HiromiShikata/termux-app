@@ -79,7 +79,7 @@
         app:summary="@string/update_apk_preference_summary"
         app:persistent="false"/>
 
-    <Preference
+    <com.termux.app.activities.LongClickCopyPreference
         app:key="about"
         app:title="@string/about_preference_title"
         app:persistent="false"/>
