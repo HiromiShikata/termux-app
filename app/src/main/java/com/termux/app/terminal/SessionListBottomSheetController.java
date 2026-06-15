@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.shared.view.KeyboardUtils;
 
 public class SessionListBottomSheetController {
 
@@ -55,17 +56,24 @@ public class SessionListBottomSheetController {
 
     private void bindActionButtons() {
         mSettingsButton.setOnClickListener(v -> {
+            hideSoftKeyboard();
             hide();
             mActivity.openSettingsActivity();
         });
         mNewSessionButton.setOnClickListener(v -> {
+            hideSoftKeyboard();
             hide();
             mActivity.promptAndCreateNewSession();
         });
         mLoadSessionButton.setOnClickListener(v -> {
+            hideSoftKeyboard();
             hide();
             mActivity.loadSessionsFromDefinition();
         });
+    }
+
+    private void hideSoftKeyboard() {
+        KeyboardUtils.hideSoftKeyboard(mActivity, mActivity.getTerminalView());
     }
 
     private void bindDragToDismiss() {
@@ -208,6 +216,7 @@ public class SessionListBottomSheetController {
             boolean isSessionRow = !((SessionHierarchyRow) listController.getItem(position)).isHeader();
             listController.onItemClick(parent, view, position, id);
             if (isSessionRow) {
+                hideSoftKeyboard();
                 hide();
             }
         });
