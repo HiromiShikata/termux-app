@@ -767,15 +767,18 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     private void showUrlOpenChoice(String url) {
         CharSequence[] actions = {
             mActivity.getString(R.string.action_open_url_in_app),
-            mActivity.getString(R.string.action_browser_open_in_chrome)
+            mActivity.getString(R.string.action_browser_open_in_chrome),
+            mActivity.getString(R.string.action_create_session_from_url)
         };
         DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
             .setTitle(url)
             .setItems(actions, (di, which) -> {
                 if (which == 0) {
                     openUrlInApp(url);
-                } else {
+                } else if (which == 1) {
                     ShareUtils.openUrlInChrome(mActivity, url);
+                } else {
+                    mTermuxTerminalSessionActivityClient.addNewSession(false, url);
                 }
             }));
     }
