@@ -16,9 +16,9 @@ import androidx.preference.PreferenceManager;
 
 import com.termux.BuildConfig;
 import com.termux.R;
-import com.termux.app.apkupdate.ApkUpdateAutoCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateCheckTimeFormatter;
 import com.termux.app.apkupdate.ApkUpdateManager;
+import com.termux.app.apkupdate.ApkUpdateSettingsOpenCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.style.TermuxStyleLauncher;
 import com.termux.app.terminal.session.PersistedSessionClearer;
@@ -81,7 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
 
             registerLastCheckSummaryUpdater(context);
-            maybeAutoCheckForApkUpdate(context);
+            checkForApkUpdateOnSettingsOpen(context);
 
             new Thread() {
                 @Override
@@ -234,11 +234,8 @@ public class SettingsActivity extends AppCompatActivity {
             updateLastCheckSummary(context);
         }
 
-        private void maybeAutoCheckForApkUpdate(@NonNull Context context) {
-            if (!ApkUpdateManager.isAutoCheckEnabled(context)) {
-                return;
-            }
-            ApkUpdateAutoCheckThrottle throttle = new ApkUpdateAutoCheckThrottle(context);
+        private void checkForApkUpdateOnSettingsOpen(@NonNull Context context) {
+            ApkUpdateSettingsOpenCheckThrottle throttle = new ApkUpdateSettingsOpenCheckThrottle(context);
             long nowMillis = System.currentTimeMillis();
             if (!throttle.shouldCheckNow(nowMillis)) {
                 return;
