@@ -71,10 +71,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final String LOG_TAG = "TermuxBrowserController";
 
-    private static final float MIN_BROWSER_SPLIT_RATIO = 0.2f;
-
-    private static final float MAX_BROWSER_SPLIT_RATIO = 0.85f;
-
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
     private static final int HEADER_SECONDARY_TEXT_ALPHA = 0xB3;
@@ -168,9 +164,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     return true;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    LinearLayout.LayoutParams browserParams =
-                        (LinearLayout.LayoutParams) mBrowserContentContainer.getLayoutParams();
-                    mActivity.getPreferences().setBrowserSplitRatio(clampBrowserSplitRatio(browserParams.weight));
                     return true;
                 default:
                     return false;
@@ -179,7 +172,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void applyBrowserSplitRatio(float ratio) {
-        float clampedRatio = clampBrowserSplitRatio(ratio);
+        float clampedRatio = BrowserSplitRatio.clamp(ratio);
         LinearLayout.LayoutParams browserParams =
             (LinearLayout.LayoutParams) mBrowserContentContainer.getLayoutParams();
         browserParams.height = 0;
@@ -193,12 +186,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         terminalView.setLayoutParams(terminalParams);
     }
 
-    private float clampBrowserSplitRatio(float ratio) {
-        return Math.max(MIN_BROWSER_SPLIT_RATIO, Math.min(MAX_BROWSER_SPLIT_RATIO, ratio));
-    }
-
     private void showBrowserSplitDivider() {
-        applyBrowserSplitRatio(mActivity.getPreferences().getBrowserSplitRatio());
+        applyBrowserSplitRatio(BrowserSplitRatio.MIN);
         mBrowserTerminalDivider.setVisibility(View.VISIBLE);
     }
 

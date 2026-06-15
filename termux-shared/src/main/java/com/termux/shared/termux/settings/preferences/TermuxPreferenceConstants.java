@@ -1,7 +1,7 @@
 package com.termux.shared.termux.settings.preferences;
 
 /*
- * Version: v0.19.0
+ * Version: v0.22.0
  *
  * Changelog
  *
@@ -89,6 +89,11 @@ package com.termux.shared.termux.settings.preferences;
  * - 0.21.0 (2026-06-14)
  *      - Added following to `TERMUX_APP`:
  *          `KEY_OPEN_TAG_AUTO_OPEN_ENABLED` and `DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED`.
+ *
+ * - 0.22.0 (2026-06-15)
+ *      - Removed following from `TERMUX_APP`:
+ *          `KEY_BROWSER_SPLIT_RATIO` and `DEFAULT_VALUE_BROWSER_SPLIT_RATIO`. The in-app browser
+ *          split height now resets to its two-thirds default on each open instead of being persisted.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -137,15 +142,6 @@ public final class TermuxPreferenceConstants {
          */
         public static final String KEY_TMUX_MOUSE_MODE_ENABLED = "tmux_mouse_mode_enabled";
         public static final boolean DEFAULT_VALUE_TMUX_MOUSE_MODE_ENABLED = false;
-
-
-        /**
-         * Defines the key for the fraction of the in-app browser content height occupied by the
-         * browser area while the in-app browser is open, with the terminal area occupying the
-         * remaining height.
-         */
-        public static final String KEY_BROWSER_SPLIT_RATIO = "browser_split_ratio";
-        public static final float DEFAULT_VALUE_BROWSER_SPLIT_RATIO = 2f / 3f;
 
 
         /**
