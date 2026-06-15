@@ -55,18 +55,20 @@ public final class SessionDefinitionParser {
             JSONObject projectObject = (JSONObject) root;
             String overviewUrl = nonEmptyOrNull(projectObject.optString("overviewUrl", null));
             String tdpmConsoleUrl = nonEmptyOrNull(projectObject.optString("tdpmConsoleUrl", null));
+            String newIssueUrl = nonEmptyOrNull(projectObject.optString("newIssueUrl", null));
             JSONArray groupArray = projectObject.getJSONArray("groups");
-            return parseEntryArray(groupLabel, groupArray, overviewUrl, tdpmConsoleUrl);
+            return parseEntryArray(groupLabel, groupArray, overviewUrl, tdpmConsoleUrl, newIssueUrl);
         }
         if (root instanceof JSONArray) {
-            return parseEntryArray(groupLabel, (JSONArray) root, null, null);
+            return parseEntryArray(groupLabel, (JSONArray) root, null, null, null);
         }
         throw new JSONException("Unexpected session definition group document");
     }
 
     private List<SessionDefinitionEntry> parseEntryArray(String groupLabel, JSONArray entryArray,
                                                          @Nullable String overviewUrl,
-                                                         @Nullable String tdpmConsoleUrl) throws JSONException {
+                                                         @Nullable String tdpmConsoleUrl,
+                                                         @Nullable String newIssueUrl) throws JSONException {
         List<SessionDefinitionEntry> entries = new ArrayList<>();
         for (int i = 0; i < entryArray.length(); i++) {
             JSONObject entry = entryArray.getJSONObject(i);
@@ -89,7 +91,7 @@ public final class SessionDefinitionParser {
                 }
             }
             entries.add(new SessionDefinitionEntry(groupLabel, entryLabel, urls, titlesByUrl, overviewUrl,
-                tdpmConsoleUrl));
+                tdpmConsoleUrl, newIssueUrl));
         }
         return entries;
     }

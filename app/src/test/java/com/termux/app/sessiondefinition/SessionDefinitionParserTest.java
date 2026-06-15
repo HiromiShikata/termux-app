@@ -253,6 +253,7 @@ public class SessionDefinitionParserTest {
             + "\"version\":4,"
             + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
             + "\"tdpmConsoleUrl\":\"https://example.test/tdpm-console?k=TESTKEY\","
+            + "\"newIssueUrl\":\"https://example.test/new-issue?k=TESTKEY\","
             + "\"groups\":["
             + "{\"story\":\"story-one\",\"urls\":["
             + "{\"url\":\"https://example.test/a1\",\"title\":\"Task A\"}"
@@ -266,9 +267,33 @@ public class SessionDefinitionParserTest {
         SessionDefinitionEntry first = entries.get(0);
         Assert.assertEquals("https://github.com/HiromiShikata/projects/7", first.getOverviewUrl());
         Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", first.getTdpmConsoleUrl());
+        Assert.assertEquals("https://example.test/new-issue?k=TESTKEY", first.getNewIssueUrl());
         Assert.assertEquals("Task A", first.getTitleForUrl("https://example.test/a1"));
         SessionDefinitionEntry second = entries.get(1);
         Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", second.getTdpmConsoleUrl());
+        Assert.assertEquals("https://example.test/new-issue?k=TESTKEY", second.getNewIssueUrl());
+    }
+
+    @Test
+    public void parseGroupTreatsMissingOrEmptyNewIssueUrlAsNoNewIssueUrl() throws JSONException {
+        String missingJson = "{\"version\":4,\"overviewUrl\":\"https://example.test/o\",\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"
+            + "]}";
+        String emptyJson = "{\"version\":4,\"newIssueUrl\":\"\",\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"
+            + "]}";
+
+        Assert.assertNull(parser.parseGroup("umino", missingJson).get(0).getNewIssueUrl());
+        Assert.assertNull(parser.parseGroup("umino", emptyJson).get(0).getNewIssueUrl());
+    }
+
+    @Test
+    public void parseGroupLeavesNewIssueUrlNullForVersionOneAndTwoArrays() throws JSONException {
+        String json = "[{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        Assert.assertNull(entries.get(0).getNewIssueUrl());
     }
 
     @Test

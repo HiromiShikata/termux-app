@@ -379,6 +379,37 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
+    public void projectHeaderCarriesNewIssueUrlFromEntriesThatProvideIt() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a"),
+                Collections.emptyMap(), "https://github.com/HiromiShikata/projects/7",
+                "https://example.test/tdpm-console?k=TESTKEY",
+                "https://example.test/new-issue?k=TESTKEY"));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "projectOne");
+        Assert.assertEquals("https://example.test/new-issue?k=TESTKEY", rows.get(0).getNewIssueUrl());
+    }
+
+    @Test
+    public void projectHeaderHasNoNewIssueUrlWhenEntriesProvideNone() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a"),
+                Collections.emptyMap(), "https://github.com/HiromiShikata/projects/7",
+                "https://example.test/tdpm-console?k=TESTKEY"));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "projectOne");
+        Assert.assertNull(rows.get(0).getNewIssueUrl());
+    }
+
+    @Test
     public void forcesSessionNamedInAlwaysNaSetIntoNaBucketEvenWhenItMatchesAProject() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
