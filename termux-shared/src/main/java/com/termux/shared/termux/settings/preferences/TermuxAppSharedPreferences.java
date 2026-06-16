@@ -360,6 +360,71 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public String getDisabledSessionNamesText() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_DISABLED_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_DISABLED_SESSION_NAMES, false);
+    }
+
+    public void setDisabledSessionNames(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_DISABLED_SESSION_NAMES, value, false);
+    }
+
+    @NonNull
+    public Set<String> getDisabledSessionNames() {
+        return parseDisabledSessionNames(getDisabledSessionNamesText());
+    }
+
+    @NonNull
+    public static Set<String> parseDisabledSessionNames(@Nullable String value) {
+        Set<String> names = new LinkedHashSet<>();
+        if (value == null) {
+            return names;
+        }
+        for (String line : value.split("\n")) {
+            String trimmedName = line.trim();
+            if (!trimmedName.isEmpty()) {
+                names.add(trimmedName);
+            }
+        }
+        return names;
+    }
+
+    @NonNull
+    public static String serializeDisabledSessionNames(@NonNull Set<String> names) {
+        StringBuilder builder = new StringBuilder();
+        for (String name : names) {
+            if (name == null || name.trim().isEmpty()) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append("\n");
+            }
+            builder.append(name.trim());
+        }
+        return builder.toString();
+    }
+
+    public boolean isSessionDisabled(@Nullable String sessionName) {
+        return sessionName != null && getDisabledSessionNames().contains(sessionName);
+    }
+
+    public boolean toggleSessionDisabled(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return false;
+        }
+        Set<String> names = getDisabledSessionNames();
+        boolean nowDisabled;
+        if (names.contains(sessionName)) {
+            names.remove(sessionName);
+            nowDisabled = false;
+        } else {
+            names.add(sessionName);
+            nowDisabled = true;
+        }
+        setDisabledSessionNames(serializeDisabledSessionNames(names));
+        return nowDisabled;
+    }
+
+
     public String getPersistedSessions() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_PERSISTED_SESSIONS, false);
     }
