@@ -54,6 +54,51 @@ public class BrowserTabManagerTest {
     }
 
     @Test
+    public void attachOrActivateTabAddsAndActivatesWhenUrlAbsent() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab tab = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+
+        Assert.assertEquals(1, manager.getTabs(SESSION_A).size());
+        Assert.assertSame(tab, manager.getActiveTab(SESSION_A));
+    }
+
+    @Test
+    public void attachOrActivateTabDoesNotDuplicateExistingUrl() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab first = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+        BrowserTab second = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+
+        Assert.assertSame(first, second);
+        Assert.assertEquals(1, manager.getTabs(SESSION_A).size());
+    }
+
+    @Test
+    public void attachOrActivateTabReactivatesExistingUrlTabWhenAnotherTabIsActive() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab urlTab = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+        BrowserTab otherTab = manager.addTab(SESSION_A, "https://a.example/other");
+        Assert.assertSame(otherTab, manager.getActiveTab(SESSION_A));
+
+        BrowserTab reactivated = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+
+        Assert.assertSame(urlTab, reactivated);
+        Assert.assertSame(urlTab, manager.getActiveTab(SESSION_A));
+        Assert.assertEquals(2, manager.getTabs(SESSION_A).size());
+    }
+
+    @Test
+    public void attachOrActivateTabIsScopedPerSession() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab tabInSessionA = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+        BrowserTab tabInSessionB = manager.attachOrActivateTab(SESSION_B, "https://b.example/");
+
+        Assert.assertSame(tabInSessionA, manager.getActiveTab(SESSION_A));
+        Assert.assertSame(tabInSessionB, manager.getActiveTab(SESSION_B));
+        Assert.assertEquals(1, manager.getTabs(SESSION_A).size());
+        Assert.assertEquals(1, manager.getTabs(SESSION_B).size());
+    }
+
+    @Test
     public void manyTabsCanBeOpenedWithoutCap() {
         BrowserTabManager manager = new BrowserTabManager();
         int tabCount = 100;

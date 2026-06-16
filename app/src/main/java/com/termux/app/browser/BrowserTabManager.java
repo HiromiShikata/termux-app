@@ -51,6 +51,14 @@ public final class BrowserTabManager {
         }
     }
 
+    @NonNull
+    public BrowserTab attachOrActivateTab(@NonNull String sessionHandle, @NonNull String url) {
+        BrowserTab existingTab = findTabByUrl(sessionHandle, url);
+        BrowserTab tab = (existingTab != null) ? existingTab : addTab(sessionHandle, url);
+        setActiveTab(tab);
+        return tab;
+    }
+
     @Nullable
     public BrowserTab findTabByUrl(@NonNull String sessionHandle, @NonNull String url) {
         for (BrowserTab tab : getTabs(sessionHandle)) {
