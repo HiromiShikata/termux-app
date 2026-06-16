@@ -71,4 +71,55 @@ public class BrowserSplitRatioTest {
     public void reportsNotCollapsedJustAboveTheCollapseThreshold() {
         Assert.assertFalse(BrowserSplitRatio.isCollapsed(BrowserSplitRatio.COLLAPSE_THRESHOLD + 0.05f));
     }
+
+    @Test
+    public void resolvesToTheDefaultWhenNoRatioWasAdjustedYet() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(null), DELTA);
+    }
+
+    @Test
+    public void reusesAValidUserAdjustedMidRatio() {
+        Assert.assertEquals(0.4f, BrowserSplitRatio.resolveRatioToApply(0.4f), DELTA);
+    }
+
+    @Test
+    public void reusesTheFullScreenMaximumRatio() {
+        Assert.assertEquals(BrowserSplitRatio.MAX, BrowserSplitRatio.resolveRatioToApply(BrowserSplitRatio.MAX), DELTA);
+    }
+
+    @Test
+    public void reusesTheTwoThirdsDefaultRatioWhenItWasTheLastAdjustedRatio() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(BrowserSplitRatio.DEFAULT), DELTA);
+    }
+
+    @Test
+    public void fallsBackToTheDefaultWhenTheLastRatioIsAtTheCollapseThreshold() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(BrowserSplitRatio.COLLAPSE_THRESHOLD), DELTA);
+    }
+
+    @Test
+    public void fallsBackToTheDefaultWhenTheLastRatioIsBelowTheCollapseThreshold() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(BrowserSplitRatio.COLLAPSE_THRESHOLD / 2f), DELTA);
+    }
+
+    @Test
+    public void fallsBackToTheDefaultWhenTheLastRatioIsCollapsedToZero() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(BrowserSplitRatio.MIN), DELTA);
+    }
+
+    @Test
+    public void fallsBackToTheDefaultWhenTheLastRatioIsAboveTheMaximum() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(1.5f), DELTA);
+    }
+
+    @Test
+    public void fallsBackToTheDefaultWhenTheLastRatioIsNegative() {
+        Assert.assertEquals(BrowserSplitRatio.DEFAULT, BrowserSplitRatio.resolveRatioToApply(-0.3f), DELTA);
+    }
+
+    @Test
+    public void reusesARatioJustAboveTheCollapseThreshold() {
+        float justAbove = BrowserSplitRatio.COLLAPSE_THRESHOLD + 0.01f;
+        Assert.assertEquals(justAbove, BrowserSplitRatio.resolveRatioToApply(justAbove), DELTA);
+    }
 }

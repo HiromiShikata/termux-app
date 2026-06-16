@@ -108,6 +108,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private int mSplitDragTotalHeight;
 
+    private Float mLastAppliedBrowserSplitRatio;
+
     private final TextView mPageTitleUrlHeaderView;
 
     private final SwipeRefreshLayout mSwipeRefreshLayout;
@@ -391,10 +393,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         terminalParams.height = 0;
         terminalParams.weight = 1f - clampedRatio;
         terminalView.setLayoutParams(terminalParams);
+        mLastAppliedBrowserSplitRatio = clampedRatio;
     }
 
     private void showBrowserSplitDivider() {
-        applyBrowserSplitRatio(BrowserSplitRatio.DEFAULT);
+        applyBrowserSplitRatio(BrowserSplitRatio.resolveRatioToApply(mLastAppliedBrowserSplitRatio));
         mBrowserTerminalDivider.setVisibility(View.VISIBLE);
     }
 
