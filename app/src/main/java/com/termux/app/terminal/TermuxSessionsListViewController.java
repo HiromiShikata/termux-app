@@ -228,6 +228,26 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
+    public Set<Integer> getMarkedSessionIndexes() {
+        Set<Integer> markedSessionIndexes = new LinkedHashSet<>();
+        SessionBellNotificationStore store = mActivity.getSessionBellNotificationStore();
+        if (store == null) {
+            return markedSessionIndexes;
+        }
+        for (int sessionIndex : getVisibleSessionIndexes()) {
+            if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+                continue;
+            }
+            TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
+            String sessionHandle = terminalSession == null ? null : terminalSession.mHandle;
+            if (bellArrivalTimeMillis(store, sessionHandle) != null) {
+                markedSessionIndexes.add(sessionIndex);
+            }
+        }
+        return markedSessionIndexes;
+    }
+
+    @NonNull
     public List<String> getSessionTitles() {
         List<String> titles = new ArrayList<>(mSessionList.size());
         for (TermuxSession session : mSessionList) {

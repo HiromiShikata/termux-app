@@ -6,8 +6,13 @@ import com.termux.app.browser.BrowserGithubUrlShortener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public final class SessionPickerOverlayRenderModel {
+
+    static final int SECONDARY_MAX_CHARACTERS = 42;
+
+    private static final char ELLIPSIS = '…';
 
     private SessionPickerOverlayRenderModel() {
     }
@@ -16,6 +21,7 @@ public final class SessionPickerOverlayRenderModel {
     public static List<SessionPickerOverlayLine> build(@NonNull List<SessionHierarchyRow> visibleRows,
                                                        @NonNull List<String> sessionRawNames,
                                                        @NonNull List<String> sessionTitles,
+                                                       @NonNull Set<Integer> markedSessionIndexes,
                                                        int highlightedSessionIndex) {
         List<SessionPickerOverlayLine> lines = new ArrayList<>(visibleRows.size());
         for (SessionHierarchyRow row : visibleRows) {
@@ -34,12 +40,22 @@ public final class SessionPickerOverlayRenderModel {
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.SESSION,
                         sessionPrimaryName(sessionRawNames, sessionIndex),
-                        sessionSecondaryTitle(sessionTitles, sessionIndex),
-                        sessionIndex == highlightedSessionIndex));
+                        truncateSecondaryToSingleLine(sessionSecondaryTitle(sessionTitles, sessionIndex)),
+                        sessionIndex == highlightedSessionIndex,
+                        markedSessionIndexes.contains(sessionIndex)));
                     break;
             }
         }
         return lines;
+    }
+
+    @NonNull
+    static String truncateSecondaryToSingleLine(@NonNull String secondaryText) {
+        String singleLine = secondaryText.replace('\n', ' ').replace('\r', ' ').trim();
+        if (singleLine.length() <= SECONDARY_MAX_CHARACTERS) {
+            return singleLine;
+        }
+        return singleLine.substring(0, SECONDARY_MAX_CHARACTERS - 1).trim() + ELLIPSIS;
     }
 
     @NonNull
