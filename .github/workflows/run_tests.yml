@@ -16,6 +16,9 @@ on:
 jobs:
   testing:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
     - name: Clone repository
       uses: actions/checkout@v6
@@ -24,6 +27,34 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
-    - name: Execute tests
+    - name: Execute tests with JaCoCo coverage
       run: |
-        ./gradlew test
+        ./gradlew test jacocoTestReport
+    - name: Print overall coverage percentage to the log
+      run: |
+        REPORT="build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
+        COVERED=$(grep -oE '<counter type="INSTRUCTION" missed="[0-9]+" covered="[0-9]+"/>' "$REPORT" | tail -1 | sed -E 's/.*covered="([0-9]+)".*/\1/')
+        MISSED=$(grep -oE '<counter type="INSTRUCTION" missed="[0-9]+" covered="[0-9]+"/>' "$REPORT" | tail -1 | sed -E 's/.*missed="([0-9]+)".*/\1/')
+        TOTAL=$((COVERED + MISSED))
+        if [ "$TOTAL" -gt 0 ]; then
+          PCT=$(awk "BEGIN { printf \"%.2f\", ($COVERED / $TOTAL) * 100 }")
+        else
+          PCT="0.00"
+        fi
+        echo "Overall instruction coverage: ${PCT}% (${COVERED}/${TOTAL} instructions covered)"
+    - name: Upload JaCoCo coverage report (HTML + XML)
+      uses: actions/upload-artifact@v6
+      with:
+        name: jacoco-coverage-report
+        path: |
+          build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          build/reports/jacoco/jacocoTestReport/html
+    - name: Post JaCoCo coverage report as a PR comment
+      if: github.event_name == 'pull_request'
+      uses: madrapps/jacoco-report@v1.7.2
+      with:
+        paths: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        title: Unit-test coverage (JaCoCo)
+        min-coverage-overall: 0
+        min-coverage-changed-files: 0
