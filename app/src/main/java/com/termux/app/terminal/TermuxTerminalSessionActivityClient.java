@@ -484,6 +484,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionChanged(session);
 
+        SessionListBottomSheetController sessionListBottomSheetController = mActivity.getSessionListBottomSheetController();
+        if (sessionListBottomSheetController != null)
+            sessionListBottomSheetController.revealCurrentSessionRowIfShowing();
+
         ProjectBrowserOverlayController projectBrowser = mActivity.getProjectBrowserOverlayController();
         if (projectBrowser != null
             && ProjectBrowserSessionDismissal.shouldDismissOnSessionAccess(projectBrowser.isVisible()))

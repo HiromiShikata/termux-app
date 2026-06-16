@@ -209,6 +209,21 @@ public class SessionListBottomSheetController {
         revealCurrentSessionRow(listController);
     }
 
+    public void revealCurrentSessionRowIfShowing() {
+        if (!shouldRevealForVisibility(mSheetView.getVisibility())) {
+            return;
+        }
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController == null) {
+            return;
+        }
+        revealCurrentSessionRow(listController);
+    }
+
+    static boolean shouldRevealForVisibility(int sheetVisibility) {
+        return sheetVisibility == View.VISIBLE;
+    }
+
     private void revealCurrentSessionRow(@NonNull TermuxSessionsListViewController listController) {
         mSessionListView.post(() -> {
             TermuxService service = mActivity.getTermuxService();
