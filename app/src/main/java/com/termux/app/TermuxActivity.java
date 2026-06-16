@@ -53,6 +53,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
+import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.io.TmuxMouseModeToggleController;
@@ -152,6 +153,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     TermuxSessionsListViewController mTermuxSessionListViewController;
 
     SessionListBottomSheetController mSessionListBottomSheetController;
+
+    SessionSwitchPickerController mSessionSwitchPickerController;
 
     private final SessionDefinitionEntriesProvider mSessionDefinitionEntriesProvider =
         new SessionDefinitionEntriesProvider(new SessionDefinitionLoader(
@@ -282,6 +285,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setRightDrawerToggleBarView();
 
         setSessionSheetToggleBarView();
+
+        mSessionSwitchPickerController = new SessionSwitchPickerController(this);
 
         registerForContextMenu(mTerminalView);
 
@@ -937,6 +942,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mSessionListBottomSheetController;
     }
 
+    public SessionSwitchPickerController getSessionSwitchPickerController() {
+        return mSessionSwitchPickerController;
+    }
+
     public SessionBellNotificationStore getSessionBellNotificationStore() {
         return mTermuxService.getSessionBellNotificationStore();
     }
@@ -1003,6 +1012,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             && mTermuxTerminalViewClient.handleVolumeKeysSwitchSessions(
                 event.getKeyCode(), event.getAction() == KeyEvent.ACTION_DOWN)) {
             return true;
+        }
+        if (event.getAction() == KeyEvent.ACTION_DOWN
+            && mSessionSwitchPickerController != null
+            && mSessionSwitchPickerController.isShowing()) {
+            mSessionSwitchPickerController.commitAndHide();
         }
         return super.dispatchKeyEvent(event);
     }

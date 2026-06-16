@@ -420,6 +420,41 @@
             android:indeterminate="true"
             android:visibility="gone" />
 
+        <FrameLayout
+            android:id="@+id/session_switch_picker_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_above="@+id/terminal_toolbar_bottom_container"
+            android:clickable="false"
+            android:elevation="12dp"
+            android:focusable="false"
+            android:visibility="gone">
+
+            <View
+                android:id="@+id/session_switch_picker_dim_scrim"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#66000000"
+                android:clickable="false"
+                android:focusable="false" />
+
+            <TextView
+                android:id="@+id/session_switch_picker_structure"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_margin="12dp"
+                android:background="@drawable/session_switch_picker_overlay_background"
+                android:clickable="false"
+                android:focusable="false"
+                android:lineSpacingExtra="2dp"
+                android:maxWidth="280dp"
+                android:padding="12dp"
+                android:textColor="#FFFFFFFF"
+                android:textSize="13sp" />
+        </FrameLayout>
+
     </RelativeLayout>
 
     <View
