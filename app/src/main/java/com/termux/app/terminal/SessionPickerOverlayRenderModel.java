@@ -2,6 +2,8 @@ package com.termux.app.terminal;
 
 import androidx.annotation.NonNull;
 
+import com.termux.app.browser.BrowserGithubUrlShortener;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +14,8 @@ public final class SessionPickerOverlayRenderModel {
 
     @NonNull
     public static List<SessionPickerOverlayLine> build(@NonNull List<SessionHierarchyRow> visibleRows,
-                                                       @NonNull List<String> sessionDisplayNames,
+                                                       @NonNull List<String> sessionRawNames,
+                                                       @NonNull List<String> sessionTitles,
                                                        int highlightedSessionIndex) {
         List<SessionPickerOverlayLine> lines = new ArrayList<>(visibleRows.size());
         for (SessionHierarchyRow row : visibleRows) {
@@ -30,7 +33,8 @@ public final class SessionPickerOverlayRenderModel {
                     int sessionIndex = row.getSessionIndex();
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.SESSION,
-                        sessionDisplayName(sessionDisplayNames, sessionIndex),
+                        sessionPrimaryName(sessionRawNames, sessionIndex),
+                        sessionSecondaryTitle(sessionTitles, sessionIndex),
                         sessionIndex == highlightedSessionIndex));
                     break;
             }
@@ -44,14 +48,23 @@ public final class SessionPickerOverlayRenderModel {
     }
 
     @NonNull
-    private static String sessionDisplayName(@NonNull List<String> sessionDisplayNames, int sessionIndex) {
-        if (sessionIndex < 0 || sessionIndex >= sessionDisplayNames.size()) {
+    private static String sessionPrimaryName(@NonNull List<String> sessionRawNames, int sessionIndex) {
+        if (sessionIndex < 0 || sessionIndex >= sessionRawNames.size()) {
             return "session " + sessionIndex;
         }
-        String name = sessionDisplayNames.get(sessionIndex);
+        String name = sessionRawNames.get(sessionIndex);
         if (name == null || name.isEmpty()) {
             return "session " + sessionIndex;
         }
-        return name;
+        return BrowserGithubUrlShortener.shorten(name);
+    }
+
+    @NonNull
+    private static String sessionSecondaryTitle(@NonNull List<String> sessionTitles, int sessionIndex) {
+        if (sessionIndex < 0 || sessionIndex >= sessionTitles.size()) {
+            return "";
+        }
+        String title = sessionTitles.get(sessionIndex);
+        return title == null ? "" : title;
     }
 }

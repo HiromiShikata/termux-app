@@ -363,6 +363,8 @@
     <string name="update_apk_never_checked_summary">Not checked for updates yet</string>
     <string name="auto_check_for_updates_title">Auto-check for updates on launch</string>
     <string name="auto_check_for_updates_summary">Check GitHub Releases for a newer build each time the app starts</string>
+    <string name="session_switch_preview_first_title">Preview before switching sessions</string>
+    <string name="session_switch_preview_first_summary">When on, the first volume-key press only previews the session list and the switch commits after you stop. When off (default), each volume-key press switches to the next session instantly with no wait.</string>
     <string name="apk_update_checking">Checking for updates…</string>
     <string name="apk_update_up_to_date">You are already on the latest version (%1$s)</string>
     <string name="apk_update_check_failed">Update check failed: %1$s</string>

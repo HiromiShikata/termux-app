@@ -1,9 +1,6 @@
 package com.termux.app.terminal;
 
-import android.graphics.RenderEffect;
-import android.graphics.Shader;
 import android.graphics.Typeface;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableStringBuilder;
@@ -21,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
 import java.util.List;
 
@@ -28,21 +26,24 @@ public class SessionSwitchPickerController {
 
     static final long COMMIT_DELAY_MILLISECONDS = 1500;
 
-    private static final float BACKGROUND_BLUR_RADIUS_PIXELS = 24f;
+    static final long INSTANT_MODE_HIDE_DELAY_MILLISECONDS = 1200;
+
     private static final String STORY_INDENT = "  ";
     private static final String SESSION_INDENT = "    ";
+    private static final String SECONDARY_INDENT = "      ";
     private static final float STORY_RELATIVE_SIZE = 0.85f;
+    private static final float SECONDARY_RELATIVE_SIZE = 0.75f;
     private static final int STORY_TEXT_COLOR = 0xB3FFFFFF;
+    private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
 
     private final TermuxActivity mActivity;
     private final View mOverlayView;
-    private final View mDimScrimView;
     private final TextView mStructureView;
-    private final View mBlurTargetView;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Runnable mCommitRunnable = this::commitAndHide;
+    private final Runnable mHideRunnable = this::hide;
 
     private boolean mShowing;
     private int mHighlightedSessionIndex = -1;
@@ -50,9 +51,7 @@ public class SessionSwitchPickerController {
     public SessionSwitchPickerController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
         this.mOverlayView = activity.findViewById(R.id.session_switch_picker_overlay);
-        this.mDimScrimView = activity.findViewById(R.id.session_switch_picker_dim_scrim);
         this.mStructureView = activity.findViewById(R.id.session_switch_picker_structure);
-        this.mBlurTargetView = activity.findViewById(R.id.main_content_with_session_name_bar);
     }
 
     public boolean isShowing() {
@@ -67,15 +66,19 @@ public class SessionSwitchPickerController {
         }
         int currentSessionIndex = service.getIndexOfSession(mActivity.getCurrentSession());
         List<Integer> visibleSessionIndexes = listController.getVisibleSessionIndexes();
-        mHighlightedSessionIndex = VolumeKeyPickerStep.nextHighlightedSessionIndex(
-            mShowing, mHighlightedSessionIndex, currentSessionIndex, visibleSessionIndexes, forward);
-        if (!mShowing) {
-            mShowing = true;
-            applyBackgroundBlur();
-        }
+        VolumeKeyPickerMoveDecision decision = VolumeKeyPickerMoveDecision.decide(
+            isPreviewFirstEnabled(), mShowing, mHighlightedSessionIndex, currentSessionIndex,
+            visibleSessionIndexes, forward);
+        mHighlightedSessionIndex = decision.getHighlightedSessionIndex();
+        mShowing = true;
         renderStructure(listController);
         mOverlayView.setVisibility(View.VISIBLE);
-        scheduleCommit();
+        if (decision.shouldSwitchImmediately()) {
+            switchToHighlightedSession();
+            scheduleHide();
+        } else {
+            scheduleCommit();
+        }
     }
 
     public void commitAndHide() {
@@ -83,28 +86,48 @@ public class SessionSwitchPickerController {
             return;
         }
         int targetSessionIndex = mHighlightedSessionIndex;
+        boolean previewFirst = isPreviewFirstEnabled();
         hide();
-        if (targetSessionIndex >= 0) {
+        if (previewFirst && targetSessionIndex >= 0) {
             mActivity.getTermuxTerminalSessionClient().switchToSession(targetSessionIndex);
         }
+    }
+
+    private void switchToHighlightedSession() {
+        if (mHighlightedSessionIndex >= 0) {
+            mActivity.getTermuxTerminalSessionClient().switchToSession(mHighlightedSessionIndex);
+        }
+    }
+
+    private boolean isPreviewFirstEnabled() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        return preferences != null && preferences.isSessionSwitchPreviewFirstEnabled();
     }
 
     private void hide() {
         mShowing = false;
         mHighlightedSessionIndex = -1;
         mHandler.removeCallbacks(mCommitRunnable);
+        mHandler.removeCallbacks(mHideRunnable);
         mOverlayView.setVisibility(View.GONE);
-        clearBackgroundBlur();
     }
 
     private void scheduleCommit() {
         mHandler.removeCallbacks(mCommitRunnable);
+        mHandler.removeCallbacks(mHideRunnable);
         mHandler.postDelayed(mCommitRunnable, COMMIT_DELAY_MILLISECONDS);
+    }
+
+    private void scheduleHide() {
+        mHandler.removeCallbacks(mCommitRunnable);
+        mHandler.removeCallbacks(mHideRunnable);
+        mHandler.postDelayed(mHideRunnable, INSTANT_MODE_HIDE_DELAY_MILLISECONDS);
     }
 
     private void renderStructure(@NonNull TermuxSessionsListViewController listController) {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            listController.getVisibleRows(), listController.getSessionDisplayNames(), mHighlightedSessionIndex);
+            listController.getVisibleRows(), listController.getSessionRawNames(),
+            listController.getSessionTitles(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
     }
 
@@ -132,36 +155,34 @@ public class SessionSwitchPickerController {
                     break;
                 case SESSION:
                 default:
-                    builder.append(SESSION_INDENT).append(line.getText());
-                    if (line.isHighlighted()) {
-                        int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
-                        builder.setSpan(new BackgroundColorSpan(highlightBackground), start, builder.length(),
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        builder.setSpan(new StyleSpan(Typeface.BOLD), start, builder.length(),
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                        builder.setSpan(new ForegroundColorSpan(HIGHLIGHTED_SESSION_TEXT_COLOR), start, builder.length(),
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    }
+                    appendSessionLine(builder, line, start, highlightColor);
                     break;
             }
         }
         return builder;
     }
 
-    private void applyBackgroundBlur() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && mBlurTargetView != null) {
-            mBlurTargetView.setRenderEffect(RenderEffect.createBlurEffect(
-                BACKGROUND_BLUR_RADIUS_PIXELS, BACKGROUND_BLUR_RADIUS_PIXELS, Shader.TileMode.CLAMP));
-            mDimScrimView.setVisibility(View.GONE);
-        } else {
-            mDimScrimView.setVisibility(View.VISIBLE);
+    private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
+                                   int start, int highlightColor) {
+        builder.append(SESSION_INDENT).append(line.getText());
+        if (line.isHighlighted()) {
+            int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
+            builder.setSpan(new BackgroundColorSpan(highlightBackground), start, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new StyleSpan(Typeface.BOLD), start, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new ForegroundColorSpan(HIGHLIGHTED_SESSION_TEXT_COLOR), start, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-    }
-
-    private void clearBackgroundBlur() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && mBlurTargetView != null) {
-            mBlurTargetView.setRenderEffect(null);
+        String secondaryText = line.getSecondaryText();
+        if (!secondaryText.isEmpty()) {
+            builder.append('\n');
+            int secondaryStart = builder.length();
+            builder.append(SECONDARY_INDENT).append(secondaryText);
+            builder.setSpan(new RelativeSizeSpan(SECONDARY_RELATIVE_SIZE), secondaryStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new ForegroundColorSpan(SECONDARY_TEXT_COLOR), secondaryStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        mDimScrimView.setVisibility(View.GONE);
     }
 }
