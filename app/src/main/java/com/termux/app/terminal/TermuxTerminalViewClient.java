@@ -301,20 +301,24 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     }
 
     /**
-     * Switch sessions with the hardware volume keys, if the user enabled it. Volume Up switches to the
-     * previous session and Volume Down switches to the next session, with wrap-around at the ends of the
-     * session list. The event is consumed on both key down and key up so the system volume does not change
+     * Drive the volume-key session picker, if the user enabled it. The first Volume Up or Volume Down press
+     * shows a transient picker overlay highlighting the current session without switching. Each subsequent
+     * press moves the highlight to the previous (Volume Up) or next (Volume Down) session within the visible
+     * session structure, skipping sessions inside collapsed project groups and wrapping at the ends. When no
+     * volume key is pressed for the commit delay, the highlighted session becomes the active session and the
+     * overlay hides. The event is consumed on both key down and key up so the system volume does not change
      * and no system volume UI flashes. This is invoked from the activity's dispatchKeyEvent so it works
      * regardless of which view currently has focus, including the terminal toolbar text input.
      */
     public boolean handleVolumeKeysSwitchSessions(int keyCode, boolean down) {
+        SessionSwitchPickerController pickerController = mActivity.getSessionSwitchPickerController();
         switch (VolumeKeysSessionSwitchDecision.decide(
                 mActivity.getPreferences().isVolumeKeysSwitchSessionsEnabled(), keyCode, down)) {
             case SWITCH_TO_NEXT_SESSION:
-                mTermuxTerminalSessionActivityClient.switchToSession(true);
+                if (pickerController != null) pickerController.onVolumeKeyDirection(true);
                 return true;
             case SWITCH_TO_PREVIOUS_SESSION:
-                mTermuxTerminalSessionActivityClient.switchToSession(false);
+                if (pickerController != null) pickerController.onVolumeKeyDirection(false);
                 return true;
             case CONSUME_WITHOUT_SWITCH:
                 return true;

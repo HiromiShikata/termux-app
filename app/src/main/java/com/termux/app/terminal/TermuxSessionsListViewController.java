@@ -124,6 +124,44 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             SessionHierarchyBuilder.visibleSessionIndexes(mRows), currentSessionIndex, forward);
     }
 
+    @NonNull
+    public List<SessionHierarchyRow> getVisibleRows() {
+        return Collections.unmodifiableList(mRows);
+    }
+
+    @NonNull
+    public List<Integer> getVisibleSessionIndexes() {
+        return SessionHierarchyBuilder.visibleSessionIndexes(mRows);
+    }
+
+    @NonNull
+    public List<String> getSessionDisplayNames() {
+        List<String> names = new ArrayList<>(mSessionList.size());
+        for (TermuxSession session : mSessionList) {
+            names.add(sessionDisplayName(session));
+        }
+        return names;
+    }
+
+    @NonNull
+    private String sessionDisplayName(@NonNull TermuxSession session) {
+        TerminalSession terminalSession = session.getTerminalSession();
+        if (terminalSession == null) {
+            return "";
+        }
+        String name = terminalSession.mSessionName;
+        String definitionTitle = (name == null || name.isEmpty())
+            ? null : mEntryMatcher.findTitleForSessionName(mEntries, name);
+        if (definitionTitle != null && !definitionTitle.isEmpty()) {
+            return definitionTitle;
+        }
+        if (name != null && !name.isEmpty()) {
+            return name;
+        }
+        String title = terminalSession.getTitle();
+        return title == null ? "" : title;
+    }
+
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {
         return sessionIndex >= 0 && sessionIndex < sessionCount;
     }
