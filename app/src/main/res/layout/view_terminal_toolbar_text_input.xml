@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/bg_terminal_toolbar_input_row_underline"
     android:gravity="center_vertical"
     android:orientation="horizontal">
 
@@ -22,6 +23,7 @@
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
+        android:background="@android:color/transparent"
         android:imeOptions="actionSend|flagNoFullscreen"
         android:maxLines="3"
         android:inputType="text"
