@@ -59,4 +59,16 @@ public class ExpandedProjectsAllowlistParserTest {
     public void normalizeTrimsAndLowercases() {
         Assert.assertEquals("n/a", ExpandedProjectsAllowlistParser.normalize("  N/A  "));
     }
+
+    @Test
+    public void stripsActionSuffixSoBareProjectNameRemainsAnAllowlistToken() {
+        Assert.assertEquals(Collections.singletonList("xmile"),
+            ExpandedProjectsAllowlistParser.parse("xmile:overviewUrl"));
+    }
+
+    @Test
+    public void keepsBareAndActionTokensCollapsedToProjectNamesWithoutDuplicates() {
+        Assert.assertEquals(Arrays.asList("umino", "xmile"),
+            ExpandedProjectsAllowlistParser.parse("umino,xmile:overviewUrl,XMILE:tdpmConsoleUrl"));
+    }
 }

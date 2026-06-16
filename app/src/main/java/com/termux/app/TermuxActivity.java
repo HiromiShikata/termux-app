@@ -50,6 +50,8 @@ import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
+import com.termux.app.terminal.ProjectActionToken;
+import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
@@ -156,6 +158,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public static final String EXTRA_EXPANDED_PROJECTS = "expanded_projects";
 
     private List<String> mPendingExpandedProjectsAllowlist = Collections.emptyList();
+
+    private List<ProjectActionToken> mPendingProjectActionTokens = Collections.emptyList();
 
     SessionListBottomSheetController mSessionListBottomSheetController;
 
@@ -456,6 +460,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setIntent(null);
 
         mPendingExpandedProjectsAllowlist = parseExpandedProjectsAllowlist(intent);
+        mPendingProjectActionTokens = parseProjectActionTokens(intent);
 
         setTermuxSessionsListView();
 
@@ -603,11 +608,31 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return allowlist;
     }
 
+    @NonNull
+    private List<ProjectActionToken> parseProjectActionTokens(@Nullable Intent intent) {
+        if (intent == null) {
+            return Collections.emptyList();
+        }
+        List<ProjectActionToken> projectActionTokens = new ArrayList<>(
+            ProjectActionTokenParser.parse(intent.getDataString()));
+        for (ProjectActionToken token : ProjectActionTokenParser.parse(intent.getStringExtra(EXTRA_EXPANDED_PROJECTS))) {
+            if (!projectActionTokens.contains(token)) {
+                projectActionTokens.add(token);
+            }
+        }
+        return projectActionTokens;
+    }
+
     private void applyPendingExpandedProjectsAllowlist() {
-        if (mTermuxSessionListViewController == null || mPendingExpandedProjectsAllowlist.isEmpty()) {
+        if (mTermuxSessionListViewController == null) {
             return;
         }
-        mTermuxSessionListViewController.applyExpandedProjectsAllowlist(mPendingExpandedProjectsAllowlist);
+        if (!mPendingExpandedProjectsAllowlist.isEmpty()) {
+            mTermuxSessionListViewController.applyExpandedProjectsAllowlist(mPendingExpandedProjectsAllowlist);
+        }
+        if (!mPendingProjectActionTokens.isEmpty()) {
+            mTermuxSessionListViewController.applyProjectActionTokens(mPendingProjectActionTokens);
+        }
     }
 
 
