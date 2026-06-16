@@ -79,7 +79,24 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
         this.mActivity = activity;
         this.mSessionList = sessionList;
+        restoreCollapsedProjectKeys();
         rebuildRows();
+    }
+
+    private void restoreCollapsedProjectKeys() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return;
+        }
+        mCollapsedProjectKeys.addAll(preferences.getCollapsedProjectKeys());
+    }
+
+    private void persistCollapsedProjectKeys() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return;
+        }
+        preferences.setCollapsedProjectKeys(mCollapsedProjectKeys);
     }
 
     public void setEntries(@NonNull List<SessionDefinitionEntry> entries) {
@@ -264,6 +281,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                 mCollapsedProjectKeys.remove(projectLabel);
             }
         }
+        persistCollapsedProjectKeys();
         notifyDataSetChanged();
     }
 
@@ -318,6 +336,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (!mCollapsedProjectKeys.remove(projectKey)) {
             mCollapsedProjectKeys.add(projectKey);
         }
+        persistCollapsedProjectKeys();
         notifyDataSetChanged();
     }
 
