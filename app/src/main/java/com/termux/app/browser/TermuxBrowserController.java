@@ -59,6 +59,7 @@ import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
+import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
@@ -68,6 +69,10 @@ import com.termux.shared.logger.Logger;
 
 import org.json.JSONException;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -76,6 +81,8 @@ import java.util.Set;
 public final class TermuxBrowserController implements BrowserTabSelectionListener {
 
     private static final String LOG_TAG = "TermuxBrowserController";
+
+    private static final String BROWSER_PAGE_TEXT_FILE_NAME = "browser-page.txt";
 
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
@@ -734,8 +741,45 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private void configureDrawerControls() {
         mActivity.findViewById(R.id.browser_new_tab_button).setOnClickListener(v -> promptNewTab());
         mActivity.findViewById(R.id.browser_open_in_chrome_button).setOnClickListener(v -> openCurrentPageInChrome());
+        mActivity.findViewById(R.id.browser_send_page_text_button).setOnClickListener(v -> sendCurrentPageTextToTerminal());
         mDesktopModeToggle = mActivity.findViewById(R.id.browser_desktop_mode_toggle);
         mDesktopModeToggle.setOnClickListener(v -> toggleActiveTabDesktopMode());
+    }
+
+    private void sendCurrentPageTextToTerminal() {
+        if (!mBrowserVisible) return;
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session == null || !session.isRunning()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_session), false);
+            return;
+        }
+        mWebView.evaluateJavascript(BrowserPageTextCapture.CAPTURE_SCRIPT, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String capturedTextJson) {
+                String pageText;
+                try {
+                    pageText = BrowserPageTextCapture.parseCapturedText(capturedTextJson);
+                } catch (JSONException e) {
+                    Logger.logStackTraceWithMessage(LOG_TAG, "Failed to parse captured page text", e);
+                    mActivity.showToast(mActivity.getString(R.string.msg_browser_page_text_failed), true);
+                    return;
+                }
+                writeCapturedPageTextToSession(session, pageText);
+            }
+        });
+    }
+
+    private void writeCapturedPageTextToSession(@NonNull TerminalSession session, @NonNull String pageText) {
+        File captureFile = new File(TermuxConstants.TERMUX_HOME_DIR_PATH, BROWSER_PAGE_TEXT_FILE_NAME);
+        try (FileOutputStream outputStream = new FileOutputStream(captureFile)) {
+            outputStream.write(pageText.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to write captured page text", e);
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_page_text_failed), true);
+            return;
+        }
+        session.write("cat " + captureFile.getAbsolutePath() + "\n");
+        mActivity.showToast(mActivity.getString(R.string.msg_browser_page_text_sent), false);
     }
 
     private void openCurrentPageInChrome() {

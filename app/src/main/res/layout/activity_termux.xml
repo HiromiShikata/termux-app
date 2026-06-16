@@ -219,6 +219,14 @@
                     android:contentDescription="@string/action_browser_open_in_chrome"
                     android:text="@string/action_browser_open_in_chrome" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/browser_send_page_text_button"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/action_browser_send_page_text"
+                    android:text="@string/action_browser_send_page_text" />
+
                 <LinearLayout
                     android:id="@+id/browser_project_url_buttons"
                     android:layout_width="match_parent"
