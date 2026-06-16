@@ -57,6 +57,7 @@ import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
+import com.termux.app.terminal.io.TerminalEnterKeyController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.io.TmuxMouseModeToggleController;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -290,6 +291,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setBrowserToggleBarView();
 
         setKeyboardToggleBarView();
+
+        setEnterButtonView();
 
         setRightDrawerToggleBarView();
 
@@ -736,6 +739,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.terminal_toolbar_keyboard_toggle_button).setOnClickListener(v -> {
             mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
         });
+    }
+
+    private void setEnterButtonView() {
+        new TerminalEnterKeyController(this, findViewById(R.id.terminal_toolbar_enter_button));
     }
 
     private void setRightDrawerToggleBarView() {

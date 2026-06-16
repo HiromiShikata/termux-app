@@ -64,6 +64,7 @@
     <string name="action_toggle_drawer_bar">Drawer</string>
     <string name="action_toggle_right_drawer_bar">Tabs drawer</string>
     <string name="action_open_session_sheet">Session list sheet</string>
+    <string name="action_send_enter_to_terminal">Send Enter to terminal</string>
     <string name="title_session_list_bottom_sheet">Sessions</string>
 
     <!-- In-app browser -->
