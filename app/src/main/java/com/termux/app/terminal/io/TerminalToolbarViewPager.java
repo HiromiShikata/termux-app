@@ -85,7 +85,9 @@ public class TerminalToolbarViewPager {
                 String submittedTextInput = editText.getText().toString();
                 addSubmittedTextInputToHistory(submittedTextInput);
                 if (session.isRunning()) {
-                    session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
+                    if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput, submitWhenEmpty)) {
+                        session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
+                    }
                 } else {
                     mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
                 }
