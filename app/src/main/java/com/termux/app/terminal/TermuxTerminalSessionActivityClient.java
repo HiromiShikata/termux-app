@@ -338,8 +338,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void playUrgentNotificationSound() {
         Uri notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        if (notificationUri == null)
-            notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         if (notificationUri == null) return;
 
         Ringtone ringtone = RingtoneManager.getRingtone(mActivity, notificationUri);
