@@ -482,7 +482,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                         if (intent != null && intent.getExtras() != null) {
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
-                        if (launchFailsafe || !mTermuxTerminalSessionActivityClient.restorePersistedSessions()) {
+                        if (launchFailsafe
+                                || (!mTermuxTerminalSessionActivityClient.restorePersistedSessions()
+                                    && !mTermuxTerminalSessionActivityClient.restoreAlwaysPresentSessions())) {
                             mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
                         }
                     } catch (WindowManager.BadTokenException e) {
