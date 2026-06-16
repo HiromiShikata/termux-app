@@ -75,6 +75,10 @@
     <string name="action_browser_open_link">Open in Browser</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
+    <string name="action_browser_send_page_text">Send page text to terminal</string>
+    <string name="msg_browser_page_text_sent">Page text sent to terminal</string>
+    <string name="msg_browser_page_text_failed">Failed to capture page text</string>
+    <string name="msg_browser_no_session">No terminal session available</string>
     <string name="action_browser_create_session_for_link">Create new session</string>
     <string name="action_browser_close_tab">Close tab</string>
     <string name="action_project_browser_close">Close project browser</string>
