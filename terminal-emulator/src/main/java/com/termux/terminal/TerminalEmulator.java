@@ -100,6 +100,12 @@ public final class TerminalEmulator {
     /** Payload token required on {@link #MARKER_OSC_CODE} for the marker to fire. */
     private static final String MARKER_OSC_PAYLOAD = "claude-done";
 
+    /** Private OSC code carrying the invisible urgent-attention marker. */
+    private static final int URGENT_MARKER_OSC_CODE = 9998;
+
+    /** Payload token required on {@link #URGENT_MARKER_OSC_CODE} for the urgent marker to fire. */
+    private static final String URGENT_MARKER_OSC_PAYLOAD = "claude-urgent";
+
     /** DECSET 1 - application cursor keys. */
     private static final int DECSET_BIT_APPLICATION_CURSOR_KEYS = 1;
     private static final int DECSET_BIT_REVERSE_VIDEO = 1 << 1;
@@ -2178,6 +2184,11 @@ public final class TerminalEmulator {
             case MARKER_OSC_CODE:
                 if (MARKER_OSC_PAYLOAD.equals(textParameter)) {
                     mSession.onMarkerNotification();
+                }
+                break;
+            case URGENT_MARKER_OSC_CODE:
+                if (URGENT_MARKER_OSC_PAYLOAD.equals(textParameter)) {
+                    mSession.onUrgentNotification();
                 }
                 break;
             default:

@@ -30,6 +30,9 @@ public abstract class TerminalOutput {
     /** Notify the client that an invisible OSC completion marker (OSC 9999;claude-done) was received. */
     public abstract void onMarkerNotification();
 
+    /** Notify the client that an invisible OSC urgent-attention marker (OSC 9998;claude-urgent) was received. */
+    public abstract void onUrgentNotification();
+
     public abstract void onColorsChanged();
 
 }
