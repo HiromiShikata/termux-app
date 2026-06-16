@@ -30,11 +30,15 @@ public final class SessionPickerOverlayRenderModel {
         for (SessionHierarchyRow row : renderableRows) {
             switch (row.getType()) {
                 case PROJECT_HEADER:
+                    if (!lines.isEmpty()) {
+                        lines.add(new SessionPickerOverlayLine(
+                            SessionPickerOverlayLine.Kind.SPACER, "", false));
+                    }
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.PROJECT, labelOrEmpty(row.getLabel()), false));
                     break;
                 case STORY_HEADER:
-                    if (!lines.isEmpty()) {
+                    if (lastLineKind(lines) == SessionPickerOverlayLine.Kind.SESSION) {
                         lines.add(new SessionPickerOverlayLine(
                             SessionPickerOverlayLine.Kind.SPACER, "", false));
                     }
@@ -99,6 +103,13 @@ public final class SessionPickerOverlayRenderModel {
             return singleLine;
         }
         return singleLine.substring(0, SECONDARY_MAX_CHARACTERS - 1).trim() + ELLIPSIS;
+    }
+
+    private static SessionPickerOverlayLine.Kind lastLineKind(@NonNull List<SessionPickerOverlayLine> lines) {
+        if (lines.isEmpty()) {
+            return null;
+        }
+        return lines.get(lines.size() - 1).getKind();
     }
 
     @NonNull

@@ -16,7 +16,7 @@ public class SessionPickerOverlayRenderModelTest {
     private static final Set<Integer> NO_DISABLED = Collections.emptySet();
 
     @Test
-    public void buildsProjectStoryAndSessionLinesFromHierarchy() {
+    public void groupsStoryDirectlyUnderItsProjectWithoutASpacerBetweenThem() {
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.projectHeader("DEMOPROJECT"),
             SessionHierarchyRow.storyHeader("DemoStory"),
@@ -27,16 +27,39 @@ public class SessionPickerOverlayRenderModelTest {
         List<SessionPickerOverlayLine> lines =
             SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, 1);
 
-        Assert.assertEquals(5, lines.size());
+        Assert.assertEquals(4, lines.size());
         assertLine(lines.get(0), SessionPickerOverlayLine.Kind.PROJECT, "DEMOPROJECT", false);
-        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.SPACER, "", false);
-        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.STORY, "DemoStory", false);
-        assertLine(lines.get(3), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
-        assertLine(lines.get(4), SessionPickerOverlayLine.Kind.SESSION, "beta", true);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.STORY, "DemoStory", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
+        assertLine(lines.get(3), SessionPickerOverlayLine.Kind.SESSION, "beta", true);
     }
 
     @Test
-    public void insertsSpacerBeforeEachStoryHeaderThatFollowsAnotherRow() {
+    public void insertsSpacerBeforeEachProjectHeaderThatFollowsAnotherRow() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("FIRSTPROJECT"),
+            SessionHierarchyRow.storyHeader("FirstStory"),
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.projectHeader("SECONDPROJECT"),
+            SessionHierarchyRow.storyHeader("SecondStory"),
+            SessionHierarchyRow.session(1));
+        List<String> names = Arrays.asList("alpha", "beta");
+
+        List<SessionPickerOverlayLine> lines =
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
+
+        Assert.assertEquals(7, lines.size());
+        assertLine(lines.get(0), SessionPickerOverlayLine.Kind.PROJECT, "FIRSTPROJECT", false);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.STORY, "FirstStory", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
+        assertLine(lines.get(3), SessionPickerOverlayLine.Kind.SPACER, "", false);
+        assertLine(lines.get(4), SessionPickerOverlayLine.Kind.PROJECT, "SECONDPROJECT", false);
+        assertLine(lines.get(5), SessionPickerOverlayLine.Kind.STORY, "SecondStory", false);
+        assertLine(lines.get(6), SessionPickerOverlayLine.Kind.SESSION, "beta", false);
+    }
+
+    @Test
+    public void insertsSpacerBetweenSiblingStoriesInAProjectlessList() {
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.storyHeader("FirstStory"),
             SessionHierarchyRow.session(0),
@@ -235,7 +258,7 @@ public class SessionPickerOverlayRenderModelTest {
     }
 
     @Test
-    public void dropsLeadingStoryHeaderAndItsSpacerWhenEveryItsSessionIsDisabled() {
+    public void dropsLeadingStoryHeaderWhoseOnlySessionIsDisabledAndKeepsRemainingStoryUnderProject() {
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.projectHeader("DEMOPROJECT"),
             SessionHierarchyRow.storyHeader("DisabledOnlyStory"),
@@ -248,11 +271,10 @@ public class SessionPickerOverlayRenderModelTest {
         List<SessionPickerOverlayLine> lines =
             SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, disabledSessionIndexes, -1);
 
-        Assert.assertEquals(4, lines.size());
+        Assert.assertEquals(3, lines.size());
         assertLine(lines.get(0), SessionPickerOverlayLine.Kind.PROJECT, "DEMOPROJECT", false);
-        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.SPACER, "", false);
-        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.STORY, "RemainingStory", false);
-        assertLine(lines.get(3), SessionPickerOverlayLine.Kind.SESSION, "beta", false);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.STORY, "RemainingStory", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SESSION, "beta", false);
     }
 
     @Test
