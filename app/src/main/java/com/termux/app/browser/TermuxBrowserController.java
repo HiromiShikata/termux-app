@@ -390,7 +390,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView() {
         WebSettings settings = mWebView.getSettings();
-        mDefaultUserAgent = settings.getUserAgentString();
+        mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
@@ -726,6 +726,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private void configureCookies() {
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(mWebView, true);
     }
 
     private void configureDrawerControls() {
