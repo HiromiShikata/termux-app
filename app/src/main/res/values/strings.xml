@@ -162,12 +162,6 @@
     <string name="title_toolbar_text_input_history_dialog">Tap to restore a recent submission</string>
     <string name="msg_toolbar_text_input_history_empty">No recent submissions to restore</string>
 
-    <!-- Terminal Toolbar tmux mouse-mode toggle -->
-    <string name="title_toolbar_tmux_mouse_toggle">Toggle tmux mouse mode</string>
-    <string name="msg_tmux_mouse_mode_on">tmux mouse mode: on</string>
-    <string name="msg_tmux_mouse_mode_off">tmux mouse mode: off</string>
-    <string name="msg_tmux_mouse_mode_no_server">tmux is not running in this session</string>
-
     <string name="action_share_transcript">Share transcript</string>
     <string name="title_share_transcript">Terminal transcript</string>
     <string name="title_share_transcript_with">Send transcript to:</string>

@@ -172,10 +172,11 @@ public class TerminalToolbarViewPager {
                     return false;
                 });
 
-                editText.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_toolbar_input_edit, 0, 0, 0);
-
                 ImageButton historyButton = layout.findViewById(R.id.terminal_toolbar_text_input_history_button);
                 historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
+
+                ImageButton sendButton = layout.findViewById(R.id.terminal_toolbar_enter_button);
+                new TerminalEnterKeyController(mActivity, sendButton);
             }
             collection.addView(layout);
             return layout;

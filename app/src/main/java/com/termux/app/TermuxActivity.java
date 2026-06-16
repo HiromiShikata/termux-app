@@ -59,9 +59,7 @@ import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
-import com.termux.app.terminal.io.TerminalEnterKeyController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
-import com.termux.app.terminal.io.TmuxMouseModeToggleController;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
@@ -293,13 +291,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setBrowserView();
 
-        setTmuxMouseToggleBarView();
-
         setBrowserToggleBarView();
 
         setKeyboardToggleBarView();
-
-        setEnterButtonView();
 
         setRightDrawerToggleBarView();
 
@@ -738,10 +732,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInNewTab);
     }
 
-    private void setTmuxMouseToggleBarView() {
-        new TmuxMouseModeToggleController(this, findViewById(R.id.terminal_toolbar_tmux_mouse_toggle_button));
-    }
-
     private void setBrowserToggleBarView() {
         findViewById(R.id.terminal_toolbar_browser_toggle_button).setOnClickListener(v -> {
             getTermuxBrowserController().toggleBrowser();
@@ -752,10 +742,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.terminal_toolbar_keyboard_toggle_button).setOnClickListener(v -> {
             mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
         });
-    }
-
-    private void setEnterButtonView() {
-        new TerminalEnterKeyController(this, findViewById(R.id.terminal_toolbar_enter_button));
     }
 
     private void setRightDrawerToggleBarView() {
