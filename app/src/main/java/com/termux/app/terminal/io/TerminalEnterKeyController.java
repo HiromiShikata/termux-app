@@ -23,7 +23,7 @@ public class TerminalEnterKeyController {
 
     private void send() {
         finishComposingText();
-        commitPencilInput();
+        commitToolbarTextInput();
         sendEnter();
     }
 
@@ -32,7 +32,7 @@ public class TerminalEnterKeyController {
         if (terminalView != null) terminalView.finishComposingTextToTerminal();
     }
 
-    private void commitPencilInput() {
+    private void commitToolbarTextInput() {
         if (!mActivity.isTerminalToolbarTextInputViewSelected()) return;
         EditText editText = mActivity.getTerminalToolbarTextInput();
         if (editText == null) return;

@@ -411,16 +411,6 @@
             android:gravity="end|center_vertical"
             android:orientation="horizontal">
 
-            <ImageButton
-                android:id="@+id/terminal_toolbar_tmux_mouse_toggle_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/title_toolbar_tmux_mouse_toggle"
-                android:padding="8dp"
-                android:src="@drawable/ic_toolbar_mouse"
-                android:tint="@color/white" />
-
             <androidx.viewpager.widget.ViewPager
                 android:id="@+id/terminal_toolbar_view_pager"
                 android:visibility="gone"
@@ -447,16 +437,6 @@
                 android:contentDescription="@string/action_toggle_soft_keyboard_bar"
                 android:padding="8dp"
                 android:src="@drawable/ic_keyboard_toggle"
-                android:tint="@color/white" />
-
-            <ImageButton
-                android:id="@+id/terminal_toolbar_enter_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_send_input_to_terminal"
-                android:padding="8dp"
-                android:src="@drawable/ic_toolbar_send"
                 android:tint="@color/white" />
 
             <ImageButton
