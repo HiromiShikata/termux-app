@@ -3,7 +3,6 @@ package com.termux.app.browser;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
-import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -129,6 +128,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserProjectUrlButtonsViewController mProjectUrlButtonsViewController;
 
     private final View mProjectOverviewActionsView;
+
+    private BrowserBulkOpenController mBulkOpenController;
 
     private String mCurrentSessionHandle;
 
@@ -800,43 +801,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void configureProjectOverviewActions() {
+        mBulkOpenController = new BrowserBulkOpenController(mActivity, mWebView);
         mActivity.findViewById(R.id.browser_open_all_tasks_button)
-            .setOnClickListener(v -> openDisplayedTaskUrls(0));
+            .setOnClickListener(v -> mBulkOpenController.openDisplayedTaskUrls(0));
         mActivity.findViewById(R.id.browser_open_first_ten_tasks_button)
-            .setOnClickListener(v -> openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
-    }
-
-    private void openDisplayedTaskUrls(int limit) {
-        mWebView.evaluateJavascript(BrowserGithubTaskUrls.COLLECT_SCRIPT, new ValueCallback<String>() {
-            @Override
-            public void onReceiveValue(String collectedUrlsJson) {
-                List<String> displayedUrls;
-                try {
-                    displayedUrls = BrowserGithubTaskUrls.parseCollectedUrls(collectedUrlsJson);
-                } catch (JSONException e) {
-                    Logger.logStackTraceWithMessage(LOG_TAG, "Failed to parse collected task URLs", e);
-                    return;
-                }
-                List<String> selectedUrls = BrowserGithubTaskUrls.selectForBulkOpen(displayedUrls, limit);
-                openUrlsInExternalBrowser(selectedUrls);
-            }
-        });
-    }
-
-    private void openUrlsInExternalBrowser(@NonNull List<String> urls) {
-        if (urls.isEmpty()) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_task_urls_found), false);
-            return;
-        }
-        for (String url : urls) {
-            Intent viewIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
-            try {
-                mActivity.startActivity(viewIntent);
-            } catch (ActivityNotFoundException e) {
-                Logger.logStackTraceWithMessage(LOG_TAG, "No external browser found to open " + url, e);
-            }
-        }
+            .setOnClickListener(v -> mBulkOpenController.openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
     }
 
     private void updateProjectOverviewActionsVisibility() {
