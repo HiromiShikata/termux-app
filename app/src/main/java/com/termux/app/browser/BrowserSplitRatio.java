@@ -20,4 +20,15 @@ public final class BrowserSplitRatio {
     public static boolean isCollapsed(float ratio) {
         return clamp(ratio) <= COLLAPSE_THRESHOLD;
     }
+
+    public static float resolveRatioToApply(Float lastAdjustedRatio) {
+        if (lastAdjustedRatio == null) {
+            return DEFAULT;
+        }
+        float ratio = lastAdjustedRatio;
+        if (ratio > COLLAPSE_THRESHOLD && ratio <= MAX) {
+            return ratio;
+        }
+        return DEFAULT;
+    }
 }
