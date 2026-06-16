@@ -32,6 +32,8 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.OpenTagBrowserController;
+import com.termux.app.browser.ProjectBrowserOverlayController;
+import com.termux.app.browser.ProjectBrowserSessionDismissal;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
@@ -481,6 +483,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionChanged(session);
+
+        ProjectBrowserOverlayController projectBrowser = mActivity.getProjectBrowserOverlayController();
+        if (projectBrowser != null
+            && ProjectBrowserSessionDismissal.shouldDismissOnSessionAccess(projectBrowser.isVisible()))
+            projectBrowser.hide();
 
         readSpeakTagsForSession(session);
         openTagsForSession(session);
