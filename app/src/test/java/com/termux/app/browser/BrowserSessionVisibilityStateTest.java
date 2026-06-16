@@ -51,6 +51,16 @@ public class BrowserSessionVisibilityStateTest {
     }
 
     @Test
+    public void aPreparedUrlSessionRestoresItsBrowserOnFirstSwitchWithoutAnyManualShow() {
+        BrowserSessionVisibilityState state = new BrowserSessionVisibilityState();
+        Assert.assertFalse(state.shouldRestoreBrowserOnSessionChange(SESSION_A, true));
+
+        state.setBrowserVisible(SESSION_A, true);
+
+        Assert.assertTrue(state.shouldRestoreBrowserOnSessionChange(SESSION_A, true));
+    }
+
+    @Test
     public void clearingASessionForgetsItsRememberedBrowserState() {
         BrowserSessionVisibilityState state = new BrowserSessionVisibilityState();
         state.setBrowserVisible(SESSION_A, true);

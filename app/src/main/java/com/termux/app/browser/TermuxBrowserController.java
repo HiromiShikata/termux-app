@@ -986,9 +986,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void attachBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
-        String normalizedUrl = normalizeUrl(url);
-        if (mTabManager.findTabByUrl(sessionHandle, normalizedUrl) != null) return;
-        mTabManager.addTab(sessionHandle, normalizedUrl);
+        mTabManager.attachOrActivateTab(sessionHandle, normalizeUrl(url));
+        mSessionVisibilityState.setBrowserVisible(sessionHandle, true);
         if (sessionHandle.equals(mCurrentSessionHandle)) notifyTabsUpdated();
     }
 
