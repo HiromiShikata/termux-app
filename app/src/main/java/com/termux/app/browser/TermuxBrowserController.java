@@ -546,6 +546,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 } else if (which == 2) {
                     ShareUtils.openUrlInChrome(mActivity, linkUrl);
                 } else {
+                    ShareUtils.copyTextToClipboard(mActivity, linkUrl,
+                        mActivity.getString(R.string.msg_browser_url_copied));
                     mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
                 }
             }));
