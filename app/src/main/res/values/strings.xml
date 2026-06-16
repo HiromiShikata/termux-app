@@ -73,6 +73,7 @@
     <string name="action_browser_open_link">Open</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
+    <string name="action_browser_create_session_for_link">Create new session</string>
     <string name="action_browser_close_tab">Close tab</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_open_url">Open URL</string>
