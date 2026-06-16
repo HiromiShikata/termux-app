@@ -90,4 +90,15 @@ public class SessionListBottomSheetControllerTest {
     public void hideIfPresentDoesNothingWhenControllerIsNull() {
         SessionListBottomSheetController.hideIfPresent(null);
     }
+
+    @Test
+    public void followCurrentSessionRevealsRowWhenSheetIsShowing() {
+        Assert.assertTrue(SessionListBottomSheetController.shouldRevealForVisibility(View.VISIBLE));
+    }
+
+    @Test
+    public void followCurrentSessionDoesNothingWhenSheetIsHidden() {
+        Assert.assertFalse(SessionListBottomSheetController.shouldRevealForVisibility(View.GONE));
+        Assert.assertFalse(SessionListBottomSheetController.shouldRevealForVisibility(View.INVISIBLE));
+    }
 }
