@@ -351,6 +351,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public boolean isSessionSwitchPreviewFirstEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_PREVIEW_FIRST, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_SWITCH_PREVIEW_FIRST);
+    }
+
+    public void setSessionSwitchPreviewFirstEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_PREVIEW_FIRST, value, false);
+    }
+
+
     public String getPersistedSessions() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_PERSISTED_SESSIONS, false);
     }

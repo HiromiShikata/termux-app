@@ -140,31 +140,37 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
-    public List<String> getSessionDisplayNames() {
-        List<String> names = new ArrayList<>(mSessionList.size());
+    public List<String> getSessionRawNames() {
+        List<String> rawNames = new ArrayList<>(mSessionList.size());
         for (TermuxSession session : mSessionList) {
-            names.add(sessionDisplayName(session));
+            TerminalSession terminalSession = session.getTerminalSession();
+            String name = terminalSession == null ? null : terminalSession.mSessionName;
+            rawNames.add(name == null ? "" : name);
         }
-        return names;
+        return rawNames;
     }
 
     @NonNull
-    private String sessionDisplayName(@NonNull TermuxSession session) {
+    public List<String> getSessionTitles() {
+        List<String> titles = new ArrayList<>(mSessionList.size());
+        for (TermuxSession session : mSessionList) {
+            titles.add(sessionDefinitionTitle(session));
+        }
+        return titles;
+    }
+
+    @NonNull
+    private String sessionDefinitionTitle(@NonNull TermuxSession session) {
         TerminalSession terminalSession = session.getTerminalSession();
         if (terminalSession == null) {
             return "";
         }
         String name = terminalSession.mSessionName;
-        String definitionTitle = (name == null || name.isEmpty())
-            ? null : mEntryMatcher.findTitleForSessionName(mEntries, name);
-        if (definitionTitle != null && !definitionTitle.isEmpty()) {
-            return definitionTitle;
+        if (name == null || name.isEmpty()) {
+            return "";
         }
-        if (name != null && !name.isEmpty()) {
-            return name;
-        }
-        String title = terminalSession.getTitle();
-        return title == null ? "" : title;
+        String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
+        return definitionTitle == null ? "" : definitionTitle;
     }
 
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {
