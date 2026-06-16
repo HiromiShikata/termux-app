@@ -22,7 +22,7 @@
         android:gravity="start|center_vertical"
         android:lineSpacingMultiplier="0.95"
         android:padding="6dip"
-        android:textSize="14sp" />
+        android:textSize="12sp" />
 
     <ImageView
         android:id="@+id/session_disable_toggle"
