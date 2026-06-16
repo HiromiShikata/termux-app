@@ -1,14 +1,18 @@
 package com.termux.app.terminal;
 
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
-import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.LeadingMarginSpan;
+import android.text.style.LineBackgroundSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.TextView;
 
@@ -38,6 +42,7 @@ public class SessionSwitchPickerController {
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
+    private static final float SESSION_INDENT_DP = 12f;
 
     private final TermuxActivity mActivity;
     private final View mOverlayView;
@@ -137,6 +142,8 @@ public class SessionSwitchPickerController {
     private CharSequence buildStructureText(@NonNull List<SessionPickerOverlayLine> lines) {
         SpannableStringBuilder builder = new SpannableStringBuilder();
         int highlightColor = ContextCompat.getColor(mActivity, R.color.session_active_indicator);
+        int sessionIndentPixels = Math.round(TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, SESSION_INDENT_DP, mActivity.getResources().getDisplayMetrics()));
         for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             SessionPickerOverlayLine line = lines.get(lineIndex);
             if (lineIndex > 0) {
@@ -163,7 +170,7 @@ public class SessionSwitchPickerController {
                     break;
                 case SESSION:
                 default:
-                    appendSessionLine(builder, line, start, highlightColor);
+                    appendSessionLine(builder, line, start, highlightColor, sessionIndentPixels);
                     break;
             }
         }
@@ -171,7 +178,7 @@ public class SessionSwitchPickerController {
     }
 
     private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
-                                   int start, int highlightColor) {
+                                   int start, int highlightColor, int sessionIndentPixels) {
         if (line.isMarked()) {
             builder.append(BELL_MARK);
         }
@@ -195,10 +202,33 @@ public class SessionSwitchPickerController {
             builder.setSpan(new ForegroundColorSpan(SECONDARY_TEXT_COLOR), secondaryStart, builder.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
+        builder.setSpan(new LeadingMarginSpan.Standard(sessionIndentPixels), start, builder.length(),
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (line.isHighlighted()) {
             int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
-            builder.setSpan(new BackgroundColorSpan(highlightBackground), start, builder.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new FullWidthHighlightSpan(highlightBackground, mStructureView.getPaddingLeft(),
+                mStructureView.getPaddingRight()), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    private static final class FullWidthHighlightSpan implements LineBackgroundSpan {
+
+        private final Paint mFillPaint = new Paint();
+        private final int mPaddingLeft;
+        private final int mPaddingRight;
+
+        FullWidthHighlightSpan(int color, int paddingLeft, int paddingRight) {
+            mFillPaint.setColor(color);
+            mFillPaint.setStyle(Paint.Style.FILL);
+            mPaddingLeft = paddingLeft;
+            mPaddingRight = paddingRight;
+        }
+
+        @Override
+        public void drawBackground(@NonNull Canvas canvas, @NonNull Paint paint, int left, int right,
+                                   int top, int baseline, int bottom, @NonNull CharSequence text,
+                                   int start, int end, int lineNumber) {
+            canvas.drawRect(left - mPaddingLeft, top, right + mPaddingRight, bottom, mFillPaint);
         }
     }
 }
