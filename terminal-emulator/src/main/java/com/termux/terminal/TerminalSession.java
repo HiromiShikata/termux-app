@@ -307,6 +307,11 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     @Override
+    public void onUrgentNotification() {
+        mClient.onUrgentNotification(this);
+    }
+
+    @Override
     public void onColorsChanged() {
         mClient.onColorsChanged(this);
     }

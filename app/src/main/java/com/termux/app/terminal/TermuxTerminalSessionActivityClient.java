@@ -311,6 +311,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         recordBellNotificationIfBackgroundSession(session);
     }
 
+    @Override
+    public void onUrgentNotification(@NonNull TerminalSession session) {
+        recordBellNotificationIfBackgroundSession(session);
+        mMainThreadHandler.post(() -> handleUrgentNotificationOnMainThread(session));
+    }
+
+    private void handleUrgentNotificationOnMainThread(@NonNull TerminalSession session) {
+        playUrgentNotificationSound();
+        TermuxActivity.startTermuxActivity(mActivity);
+        setCurrentSession(session);
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null)
+            browserController.showTerminal();
+    }
+
+    private void playUrgentNotificationSound() {
+        loadBellSoundPool();
+        if (mBellSoundPool != null)
+            mBellSoundPool.play(mBellSoundId, 1.f, 1.f, 1, 0, 1.f);
+    }
+
     private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
         if (session == mActivity.getCurrentSession()) return;
         if (session.mHandle == null) return;

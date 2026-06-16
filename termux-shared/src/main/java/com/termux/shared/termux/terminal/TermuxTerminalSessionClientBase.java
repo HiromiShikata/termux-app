@@ -41,6 +41,10 @@ public class TermuxTerminalSessionClientBase implements TerminalSessionClient {
     }
 
     @Override
+    public void onUrgentNotification(@NonNull TerminalSession session) {
+    }
+
+    @Override
     public void onColorsChanged(@NonNull TerminalSession changedSession) {
     }
 
