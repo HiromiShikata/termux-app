@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public final class BrowserTab {
 
-    public static final String DEFAULT_URL = "https://duckduckgo.com/";
+    public static final String DEFAULT_URL = "https://www.google.com";
 
     private final String mId = UUID.randomUUID().toString();
 
