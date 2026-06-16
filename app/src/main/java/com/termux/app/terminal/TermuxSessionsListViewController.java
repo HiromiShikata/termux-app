@@ -166,7 +166,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @NonNull
     public List<Integer> getNavigableSessionIndexes() {
-        return navigableSessionIndexes(getVisibleSessionIndexes(), sessionNamesByIndex(), disabledSessionNames());
+        List<Integer> disabledFilteredNavigableSessionIndexes =
+            navigableSessionIndexes(getVisibleSessionIndexes(), sessionNamesByIndex(), disabledSessionNames());
+        return BellMarkedSessionNavigationFilter.bellRestrictedNavigableIndexes(
+            disabledFilteredNavigableSessionIndexes, getMarkedSessionIndexes());
     }
 
     @NonNull
