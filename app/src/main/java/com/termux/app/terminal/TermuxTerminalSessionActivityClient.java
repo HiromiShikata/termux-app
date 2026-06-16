@@ -10,6 +10,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
@@ -85,6 +87,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private static final String LOG_TAG = "TermuxTerminalSessionActivityClient";
 
     private static final float SESSION_NAME_BAR_TITLE_RELATIVE_SIZE = 0.7f;
+
+    private static final long MARK_CLEAR_DELAY_MILLIS = 3000L;
+
+    private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+
+    private Runnable mPendingBellNotificationClear;
 
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
@@ -311,6 +319,36 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
+    private void scheduleBellNotificationClear(@NonNull TerminalSession session) {
+        cancelPendingBellNotificationClear();
+
+        if (session.mHandle == null) return;
+        if (!mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle)) return;
+
+        mPendingBellNotificationClear = () -> {
+            mPendingBellNotificationClear = null;
+            clearBellNotificationIfStillCurrent(session);
+        };
+        mMainThreadHandler.postDelayed(mPendingBellNotificationClear, MARK_CLEAR_DELAY_MILLIS);
+    }
+
+    private void cancelPendingBellNotificationClear() {
+        if (mPendingBellNotificationClear == null) return;
+        mMainThreadHandler.removeCallbacks(mPendingBellNotificationClear);
+        mPendingBellNotificationClear = null;
+    }
+
+    private void clearBellNotificationIfStillCurrent(@NonNull TerminalSession session) {
+        if (session.mHandle == null) return;
+
+        boolean stillCurrentSession = session == mActivity.getCurrentSession();
+        boolean stillHasPendingNotification =
+            mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle);
+        if (!SessionBellNotificationClearDecision.shouldClear(stillCurrentSession, stillHasPendingNotification)) return;
+
+        clearBellNotification(session);
+    }
+
     private void clearBellNotification(@NonNull TerminalSession session) {
         if (session.mHandle == null) return;
         if (!mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle)) return;
@@ -387,7 +425,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
 
-        clearBellNotification(session);
+        scheduleBellNotificationClear(session);
 
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
