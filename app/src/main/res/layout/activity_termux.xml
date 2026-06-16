@@ -407,90 +407,99 @@
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
             android:background="@color/schema_terminal_chrome_surface"
+            android:gravity="bottom"
             android:elevation="6dp"
-            android:orientation="vertical">
+            android:orientation="horizontal">
+
+            <androidx.viewpager.widget.ViewPager
+                android:id="@+id/terminal_toolbar_view_pager"
+                android:visibility="gone"
+                android:layout_width="0dp"
+                android:layout_height="37.5dp"
+                android:layout_weight="1"
+                android:background="@color/schema_terminal_chrome_surface" />
 
             <LinearLayout
-                android:id="@+id/terminal_toolbar_extra_keys_row"
-                android:layout_width="match_parent"
+                android:id="@+id/terminal_toolbar_right_column"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="end|center_vertical"
-                android:orientation="horizontal">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <androidx.viewpager.widget.ViewPager
-                    android:id="@+id/terminal_toolbar_view_pager"
-                    android:visibility="gone"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:id="@+id/terminal_toolbar_icon_button_row"
+                    android:layout_width="match_parent"
                     android:layout_height="37.5dp"
-                    android:layout_weight="1"
-                    android:background="@color/schema_terminal_chrome_surface" />
+                    android:gravity="end|center_vertical"
+                    android:orientation="horizontal">
 
-                <ImageButton
-                    android:id="@+id/terminal_toolbar_browser_toggle_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_toggle_browser"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_browser_toggle"
-                    android:tint="@color/white" />
+                    <ImageButton
+                        android:id="@+id/terminal_toolbar_browser_toggle_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_toggle_browser"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_browser_toggle"
+                        android:tint="@color/white" />
 
-                <ImageButton
-                    android:id="@+id/terminal_toolbar_keyboard_toggle_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_toggle_soft_keyboard_bar"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_keyboard_toggle"
-                    android:tint="@color/white" />
+                    <ImageButton
+                        android:id="@+id/terminal_toolbar_keyboard_toggle_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_toggle_soft_keyboard_bar"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_keyboard_toggle"
+                        android:tint="@color/white" />
 
-                <ImageButton
-                    android:id="@+id/terminal_toolbar_previous_session_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_switch_to_previous_session"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_toolbar_session_prev"
-                    android:tint="@color/white" />
+                    <ImageButton
+                        android:id="@+id/terminal_toolbar_previous_session_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_switch_to_previous_session"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_toolbar_session_prev"
+                        android:tint="@color/white" />
 
-                <ImageButton
-                    android:id="@+id/terminal_toolbar_next_session_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_switch_to_next_session"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_toolbar_session_next"
-                    android:tint="@color/white" />
+                    <ImageButton
+                        android:id="@+id/terminal_toolbar_next_session_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_switch_to_next_session"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_toolbar_session_next"
+                        android:tint="@color/white" />
 
-                <ImageButton
-                    android:id="@+id/terminal_toolbar_session_sheet_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_open_session_sheet"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_session_sheet_toggle"
-                    android:tint="@color/white" />
+                    <ImageButton
+                        android:id="@+id/terminal_toolbar_session_sheet_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_open_session_sheet"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_session_sheet_toggle"
+                        android:tint="@color/white" />
 
-                <ImageButton
-                    android:id="@+id/terminal_toolbar_right_drawer_toggle_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_toggle_right_drawer_bar"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_drawer_toggle"
-                    android:tint="@color/white" />
+                    <ImageButton
+                        android:id="@+id/terminal_toolbar_right_drawer_toggle_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_toggle_right_drawer_bar"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_drawer_toggle"
+                        android:tint="@color/white" />
+                </LinearLayout>
+
+                <include
+                    android:id="@+id/terminal_toolbar_text_input_row"
+                    layout="@layout/view_terminal_toolbar_text_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="37.5dp" />
             </LinearLayout>
-
-            <include
-                android:id="@+id/terminal_toolbar_text_input_row"
-                layout="@layout/view_terminal_toolbar_text_input"
-                android:layout_width="match_parent"
-                android:layout_height="37.5dp" />
         </LinearLayout>
 
         <View
