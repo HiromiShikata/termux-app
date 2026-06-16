@@ -56,6 +56,7 @@ import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
+import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalEnterKeyController;
@@ -305,6 +306,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setSessionSheetToggleBarView();
 
         mSessionSwitchPickerController = new SessionSwitchPickerController(this);
+
+        setSessionNavigationButtonsView();
 
         registerForContextMenu(mTerminalView);
 
@@ -766,6 +769,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         findViewById(R.id.terminal_toolbar_session_sheet_button).setOnClickListener(v -> {
             mSessionListBottomSheetController.toggle();
         });
+    }
+
+    private void setSessionNavigationButtonsView() {
+        SessionNavigationButtonsBinder.bind(
+            findViewById(R.id.terminal_toolbar_previous_session_button),
+            findViewById(R.id.terminal_toolbar_next_session_button),
+            forward -> getSessionSwitchPickerController().onVolumeKeyDirection(forward));
     }
 
 

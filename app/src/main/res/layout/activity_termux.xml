@@ -452,6 +452,26 @@
                 android:tint="@color/white" />
 
             <ImageButton
+                android:id="@+id/terminal_toolbar_previous_session_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_switch_to_previous_session"
+                android:padding="8dp"
+                android:src="@drawable/ic_toolbar_session_prev"
+                android:tint="@color/white" />
+
+            <ImageButton
+                android:id="@+id/terminal_toolbar_next_session_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_switch_to_next_session"
+                android:padding="8dp"
+                android:src="@drawable/ic_toolbar_session_next"
+                android:tint="@color/white" />
+
+            <ImageButton
                 android:id="@+id/terminal_toolbar_session_sheet_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
