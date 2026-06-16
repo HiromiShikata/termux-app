@@ -275,6 +275,128 @@ public class SessionDefinitionParserTest {
     }
 
     @Test
+    public void parseGroupReadsVersionFourSessionsArrayWithNameAndDescription() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "{\"name\":\"https://example.test/a1\",\"description\":\"Session A\"},"
+            + "{\"name\":\"https://example.test/a2\"}"
+            + "]},"
+            + "{\"story\":\"story-two\",\"sessions\":[\"https://example.test/b1\"]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(2, entries.size());
+        SessionDefinitionEntry first = entries.get(0);
+        Assert.assertEquals("story-one", first.getEntryLabel());
+        Assert.assertEquals(2, first.getUrls().size());
+        Assert.assertEquals("https://example.test/a1", first.getUrls().get(0));
+        Assert.assertEquals("https://example.test/a2", first.getUrls().get(1));
+        Assert.assertEquals("Session A", first.getTitleForUrl("https://example.test/a1"));
+        Assert.assertNull(first.getTitleForUrl("https://example.test/a2"));
+        SessionDefinitionEntry second = entries.get(1);
+        Assert.assertEquals("story-two", second.getEntryLabel());
+        Assert.assertEquals(1, second.getUrls().size());
+        Assert.assertEquals("https://example.test/b1", second.getUrls().get(0));
+    }
+
+    @Test
+    public void parseGroupReadsVersionFourUrlsArrayWithUrlAndTitleForBackwardCompatibility() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"urls\":["
+            + "{\"url\":\"https://example.test/a1\",\"title\":\"Task A\"},"
+            + "{\"url\":\"https://example.test/a2\"}"
+            + "]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals(2, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/a1", entry.getUrls().get(0));
+        Assert.assertEquals("https://example.test/a2", entry.getUrls().get(1));
+        Assert.assertEquals("Task A", entry.getTitleForUrl("https://example.test/a1"));
+        Assert.assertNull(entry.getTitleForUrl("https://example.test/a2"));
+    }
+
+    @Test
+    public void parseGroupPrefersSessionsArrayOverUrlsArrayWhenBothPresent() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"groups\":["
+            + "{\"story\":\"story-one\","
+            + "\"sessions\":[{\"name\":\"https://example.test/new\",\"description\":\"New Session\"}],"
+            + "\"urls\":[{\"url\":\"https://example.test/old\",\"title\":\"Old Url\"}]"
+            + "}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals(1, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/new", entry.getUrls().get(0));
+        Assert.assertEquals("New Session", entry.getTitleForUrl("https://example.test/new"));
+        Assert.assertNull(entry.getTitleForUrl("https://example.test/old"));
+    }
+
+    @Test
+    public void parseGroupAcceptsPlainStringSessionItems() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "\"https://example.test/plain\","
+            + "{\"name\":\"https://example.test/named\",\"description\":\"Named Session\"}"
+            + "]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals(2, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/plain", entry.getUrls().get(0));
+        Assert.assertEquals("https://example.test/named", entry.getUrls().get(1));
+        Assert.assertNull(entry.getTitleForUrl("https://example.test/plain"));
+        Assert.assertEquals("Named Session", entry.getTitleForUrl("https://example.test/named"));
+    }
+
+    @Test
+    public void parseGroupPrefersDescriptionOverTitleWhenSessionItemHasBoth() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "{\"name\":\"https://example.test/a1\",\"description\":\"Description text\",\"title\":\"Title text\"}"
+            + "]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("Description text", entry.getTitleForUrl("https://example.test/a1"));
+    }
+
+    @Test
+    public void parseGroupTreatsStoryWithoutSessionsOrUrlsAsEmptySessionList() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"groups\":["
+            + "{\"story\":\"story-empty\"}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("story-empty", entries.get(0).getEntryLabel());
+        Assert.assertTrue(entries.get(0).getUrls().isEmpty());
+    }
+
+    @Test
     public void parseGroupTreatsMissingOrEmptyNewIssueUrlAsNoNewIssueUrl() throws JSONException {
         String missingJson = "{\"version\":4,\"overviewUrl\":\"https://example.test/o\",\"groups\":["
             + "{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}"

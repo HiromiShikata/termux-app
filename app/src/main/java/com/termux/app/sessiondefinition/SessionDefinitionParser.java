@@ -73,21 +73,31 @@ public final class SessionDefinitionParser {
         for (int i = 0; i < entryArray.length(); i++) {
             JSONObject entry = entryArray.getJSONObject(i);
             String entryLabel = entry.getString("story");
-            JSONArray urlArray = entry.getJSONArray("urls");
+            JSONArray sessionArray = entry.optJSONArray("sessions");
+            if (sessionArray == null) {
+                sessionArray = entry.optJSONArray("urls");
+            }
             List<String> urls = new ArrayList<>();
             Map<String, String> titlesByUrl = new LinkedHashMap<>();
-            for (int j = 0; j < urlArray.length(); j++) {
-                Object urlItem = urlArray.get(j);
-                if (urlItem instanceof JSONObject) {
-                    JSONObject urlObject = (JSONObject) urlItem;
-                    String url = urlObject.getString("url");
+            int sessionCount = sessionArray == null ? 0 : sessionArray.length();
+            for (int j = 0; j < sessionCount; j++) {
+                Object sessionItem = sessionArray.get(j);
+                if (sessionItem instanceof JSONObject) {
+                    JSONObject sessionObject = (JSONObject) sessionItem;
+                    String url = sessionObject.optString("name", null);
+                    if (url == null) {
+                        url = sessionObject.getString("url");
+                    }
                     urls.add(url);
-                    String title = urlObject.optString("title", null);
-                    if (title != null && !title.isEmpty()) {
-                        titlesByUrl.put(url, title);
+                    String description = sessionObject.optString("description", null);
+                    if (description == null || description.isEmpty()) {
+                        description = sessionObject.optString("title", null);
+                    }
+                    if (description != null && !description.isEmpty()) {
+                        titlesByUrl.put(url, description);
                     }
                 } else {
-                    urls.add(urlArray.getString(j));
+                    urls.add(sessionArray.getString(j));
                 }
             }
             entries.add(new SessionDefinitionEntry(groupLabel, entryLabel, urls, titlesByUrl, overviewUrl,
