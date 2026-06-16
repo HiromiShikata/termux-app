@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -135,6 +136,10 @@ public final class ExtraKeysView extends GridLayout {
     public static final int MAX_LONG_PRESS_DURATION = 3000;
     /** Defines the fallback duration in milliseconds for {@link #mLongPressTimeout}. */
     public static final int FALLBACK_LONG_PRESS_DURATION = 400;
+
+    /** Defines the text size in scaled pixels for the extra keys button labels. Kept small so the
+     * compact key row labels do not overflow and multi-character labels render on a single line. */
+    public static final float BUTTON_TEXT_SIZE_SP = 9f;
 
     /** Defines the minimum allowed duration in milliseconds for {@link #mLongPressRepeatDelay}. */
     public static final int MIN_LONG_PRESS__REPEAT_DELAY = 5;
@@ -412,6 +417,8 @@ public final class ExtraKeysView extends GridLayout {
                 button.setText(buttonInfo.getDisplay());
                 button.setTextColor(mButtonTextColor);
                 button.setAllCaps(mButtonTextAllCaps);
+                button.setTextSize(TypedValue.COMPLEX_UNIT_SP, BUTTON_TEXT_SIZE_SP);
+                button.setSingleLine(true);
                 button.setPadding(0, 0, 0, 0);
 
                 button.setOnClickListener(view -> {
@@ -599,6 +606,8 @@ public final class ExtraKeysView extends GridLayout {
         }
         button.setText(extraButton.getDisplay());
         button.setAllCaps(mButtonTextAllCaps);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, BUTTON_TEXT_SIZE_SP);
+        button.setSingleLine(true);
         button.setPadding(0, 0, 0, 0);
         button.setMinHeight(0);
         button.setMinWidth(0);
