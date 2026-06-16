@@ -34,6 +34,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -177,6 +178,43 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return null;
         }
         return mSessionList.get(sessionIndex);
+    }
+
+    public void applyExpandedProjectsAllowlist(@NonNull Collection<String> expandedProjectTokens) {
+        if (expandedProjectTokens.isEmpty()) {
+            return;
+        }
+        List<String> projectLabels = new ArrayList<>();
+        for (SessionHierarchyRow row : buildAllRows()) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER && row.getLabel() != null) {
+                projectLabels.add(row.getLabel());
+            }
+        }
+        Set<String> labelsToCollapse = collapsedProjectLabels(projectLabels, expandedProjectTokens);
+        for (String projectLabel : projectLabels) {
+            if (labelsToCollapse.contains(projectLabel)) {
+                mCollapsedProjectKeys.add(projectLabel);
+            } else {
+                mCollapsedProjectKeys.remove(projectLabel);
+            }
+        }
+        notifyDataSetChanged();
+    }
+
+    @NonNull
+    static Set<String> collapsedProjectLabels(@NonNull List<String> projectLabels,
+                                              @NonNull Collection<String> expandedProjectTokens) {
+        Set<String> normalizedAllowedTokens = new LinkedHashSet<>();
+        for (String expandedProjectToken : expandedProjectTokens) {
+            normalizedAllowedTokens.add(ExpandedProjectsAllowlistParser.normalize(expandedProjectToken));
+        }
+        Set<String> labelsToCollapse = new LinkedHashSet<>();
+        for (String projectLabel : projectLabels) {
+            if (!normalizedAllowedTokens.contains(ExpandedProjectsAllowlistParser.normalize(projectLabel))) {
+                labelsToCollapse.add(projectLabel);
+            }
+        }
+        return labelsToCollapse;
     }
 
     private void toggleProjectCollapsed(@Nullable String projectKey) {

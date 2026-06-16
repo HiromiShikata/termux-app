@@ -50,6 +50,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionBellNotificationStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
@@ -77,6 +78,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -151,6 +153,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The termux sessions list controller.
      */
     TermuxSessionsListViewController mTermuxSessionListViewController;
+
+    public static final String EXTRA_EXPANDED_PROJECTS = "expanded_projects";
+
+    private List<String> mPendingExpandedProjectsAllowlist = Collections.emptyList();
 
     SessionListBottomSheetController mSessionListBottomSheetController;
 
@@ -447,10 +453,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mTermuxService = ((TermuxService.LocalBinder) service).service;
 
-        setTermuxSessionsListView();
-
         final Intent intent = getIntent();
         setIntent(null);
+
+        mPendingExpandedProjectsAllowlist = parseExpandedProjectsAllowlist(intent);
+
+        setTermuxSessionsListView();
 
         if (mTermuxService.isTermuxSessionsEmpty()) {
             if (mIsVisible) {
@@ -569,14 +577,38 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionEntriesProvider.getEntries();
         if (!cachedEntries.isEmpty()) {
             mTermuxSessionListViewController.setEntries(cachedEntries);
+            applyPendingExpandedProjectsAllowlist();
             return;
         }
         String baseUrl = getPreferences().getSessionDefinitionUrl().trim();
         mSessionDefinitionEntriesProvider.load(baseUrl, () -> {
             if (mTermuxSessionListViewController != null) {
                 mTermuxSessionListViewController.setEntries(mSessionDefinitionEntriesProvider.getEntries());
+                applyPendingExpandedProjectsAllowlist();
             }
         });
+    }
+
+    @NonNull
+    private List<String> parseExpandedProjectsAllowlist(@Nullable Intent intent) {
+        if (intent == null) {
+            return Collections.emptyList();
+        }
+        List<String> allowlist = new ArrayList<>(
+            ExpandedProjectsAllowlistParser.parse(intent.getDataString()));
+        for (String token : ExpandedProjectsAllowlistParser.parse(intent.getStringExtra(EXTRA_EXPANDED_PROJECTS))) {
+            if (!allowlist.contains(token)) {
+                allowlist.add(token);
+            }
+        }
+        return allowlist;
+    }
+
+    private void applyPendingExpandedProjectsAllowlist() {
+        if (mTermuxSessionListViewController == null || mPendingExpandedProjectsAllowlist.isEmpty()) {
+            return;
+        }
+        mTermuxSessionListViewController.applyExpandedProjectsAllowlist(mPendingExpandedProjectsAllowlist);
     }
 
 
