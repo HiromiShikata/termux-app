@@ -10,7 +10,10 @@ import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.style.RelativeSizeSpan;
 import android.view.View;
 import android.widget.TextView;
 
@@ -78,6 +81,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private int mBellSoundId;
 
     private static final String LOG_TAG = "TermuxTerminalSessionActivityClient";
+
+    private static final float SESSION_NAME_BAR_TITLE_RELATIVE_SIZE = 0.7f;
 
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
@@ -422,18 +427,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         } else {
             String title = mSessionDefinitionEntryMatcher.findTitleForSessionName(
                 mActivity.getSessionDefinitionEntries(), sessionName);
-            if (TextUtils.isEmpty(title)) {
-                sessionNameBar.setSingleLine(true);
-                sessionNameBar.setMaxLines(1);
-                sessionNameBar.setText(sessionName);
-            } else {
-                sessionNameBar.setSingleLine(false);
-                sessionNameBar.setMaxLines(2);
-                sessionNameBar.setText(title + "\n" + sessionName);
-            }
+            SessionNameBarContent content = SessionNameBarContent.of(sessionName, title);
+            sessionNameBar.setSingleLine(false);
+            sessionNameBar.setMaxLines(content.hasTitle() ? 3 : 2);
+            sessionNameBar.setText(buildSessionNameBarText(content));
             sessionNameBar.setVisibility(View.VISIBLE);
             sessionNameBar.setOnClickListener(view -> copyCurrentSessionNameToClipboard());
         }
+    }
+
+    private CharSequence buildSessionNameBarText(SessionNameBarContent content) {
+        if (!content.hasTitle()) return content.getName();
+        SpannableString spannable = new SpannableString(content.getText());
+        spannable.setSpan(new RelativeSizeSpan(SESSION_NAME_BAR_TITLE_RELATIVE_SIZE),
+            content.getTitleStart(), content.getTitleEnd(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return spannable;
     }
 
     private void copyCurrentSessionNameToClipboard() {
