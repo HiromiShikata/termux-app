@@ -27,16 +27,29 @@ public final class VolumeKeyPickerMoveDecision {
                                                      boolean overlayShowing,
                                                      int highlightedSessionIndex,
                                                      int currentSessionIndex,
-                                                     @NonNull List<Integer> visibleSessionIndexes,
+                                                     @NonNull List<Integer> navigableSessionIndexes,
+                                                     boolean forward) {
+        return decide(previewFirstEnabled, overlayShowing, highlightedSessionIndex, currentSessionIndex,
+            navigableSessionIndexes, navigableSessionIndexes, forward);
+    }
+
+    @NonNull
+    public static VolumeKeyPickerMoveDecision decide(boolean previewFirstEnabled,
+                                                     boolean overlayShowing,
+                                                     int highlightedSessionIndex,
+                                                     int currentSessionIndex,
+                                                     @NonNull List<Integer> orderedSessionIndexes,
+                                                     @NonNull List<Integer> navigableSessionIndexes,
                                                      boolean forward) {
         if (previewFirstEnabled) {
             int nextIndex = VolumeKeyPickerStep.nextHighlightedSessionIndex(
-                overlayShowing, highlightedSessionIndex, currentSessionIndex, visibleSessionIndexes, forward);
+                overlayShowing, highlightedSessionIndex, currentSessionIndex,
+                orderedSessionIndexes, navigableSessionIndexes, forward);
             return new VolumeKeyPickerMoveDecision(nextIndex, false);
         }
         int anchorIndex = overlayShowing ? highlightedSessionIndex : currentSessionIndex;
         int nextIndex = VolumeKeyPickerStep.nextHighlightedSessionIndex(
-            true, anchorIndex, currentSessionIndex, visibleSessionIndexes, forward);
+            true, anchorIndex, currentSessionIndex, orderedSessionIndexes, navigableSessionIndexes, forward);
         return new VolumeKeyPickerMoveDecision(nextIndex, true);
     }
 }

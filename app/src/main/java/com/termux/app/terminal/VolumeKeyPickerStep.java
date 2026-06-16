@@ -14,17 +14,27 @@ public final class VolumeKeyPickerStep {
                                                   int currentSessionIndex,
                                                   @NonNull List<Integer> visibleSessionIndexes,
                                                   boolean forward) {
-        if (visibleSessionIndexes.isEmpty()) {
+        return nextHighlightedSessionIndex(overlayShowing, highlightedSessionIndex, currentSessionIndex,
+            visibleSessionIndexes, visibleSessionIndexes, forward);
+    }
+
+    public static int nextHighlightedSessionIndex(boolean overlayShowing,
+                                                  int highlightedSessionIndex,
+                                                  int currentSessionIndex,
+                                                  @NonNull List<Integer> orderedSessionIndexes,
+                                                  @NonNull List<Integer> navigableSessionIndexes,
+                                                  boolean forward) {
+        if (navigableSessionIndexes.isEmpty()) {
             return currentSessionIndex;
         }
         if (!overlayShowing) {
-            if (visibleSessionIndexes.contains(currentSessionIndex)) {
+            if (navigableSessionIndexes.contains(currentSessionIndex)) {
                 return currentSessionIndex;
             }
-            return SessionHierarchyBuilder.nextVisibleSessionIndex(
-                visibleSessionIndexes, currentSessionIndex, forward);
+            return VisibleSessionNavigator.nextSessionIndex(
+                orderedSessionIndexes, navigableSessionIndexes, currentSessionIndex, forward);
         }
-        return SessionHierarchyBuilder.nextVisibleSessionIndex(
-            visibleSessionIndexes, highlightedSessionIndex, forward);
+        return VisibleSessionNavigator.nextSessionIndex(
+            orderedSessionIndexes, navigableSessionIndexes, highlightedSessionIndex, forward);
     }
 }
