@@ -18,6 +18,12 @@ public final class SessionDefinitionPlanner {
         return plannedSessions;
     }
 
+    public SessionDefinitionPlannedSession planNamedSession(String name, String commandTemplate) {
+        String template = commandTemplate == null ? "" : commandTemplate.trim();
+        String command = name == null ? null : buildCommand(template, name);
+        return new SessionDefinitionPlannedSession(name, command);
+    }
+
     private String buildCommand(String template, String name) {
         if (template.isEmpty()) {
             return null;

@@ -782,7 +782,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 } else if (which == 1) {
                     ShareUtils.openUrlInChrome(mActivity, url);
                 } else {
-                    mTermuxTerminalSessionActivityClient.addNewSession(false, url);
+                    mTermuxTerminalSessionActivityClient.addNewSessionApplyingAutosshConfig(url);
                 }
             }));
     }

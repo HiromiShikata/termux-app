@@ -30,6 +30,8 @@ import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
+import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
+import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.tts.SpeakTagTtsController;
@@ -584,6 +586,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             if (closeDrawerAfter)
                 mActivity.getDrawer().closeDrawers();
+        }
+    }
+
+    public void addNewSessionApplyingAutosshConfig(String sessionName) {
+        addNewSessionApplyingAutosshConfig(sessionName, true);
+    }
+
+    public void addNewSessionApplyingAutosshConfig(String sessionName, boolean closeDrawerAfter) {
+        String commandTemplate = mActivity.getPreferences().getAutosshCommand();
+        SessionDefinitionPlannedSession plannedSession =
+            new SessionDefinitionPlanner().planNamedSession(sessionName, commandTemplate);
+        if (plannedSession.hasCommand()) {
+            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), closeDrawerAfter);
+        } else {
+            addNewSession(false, plannedSession.getName(), closeDrawerAfter);
         }
     }
 
