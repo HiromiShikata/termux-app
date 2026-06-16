@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -13,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.BuildConfig;
 import com.termux.R;
@@ -255,6 +258,28 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         private void updateLastCheckSummary(@NonNull Context context) {
+            postWhenLayoutIdle(() -> applyLastCheckSummary(context));
+        }
+
+        private void postWhenLayoutIdle(@NonNull Runnable action) {
+            RecyclerView listView = getListView();
+            if (listView == null) {
+                new Handler(Looper.getMainLooper()).post(action);
+                return;
+            }
+            listView.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (listView.isComputingLayout()) {
+                        listView.post(this);
+                        return;
+                    }
+                    action.run();
+                }
+            });
+        }
+
+        private void applyLastCheckSummary(@NonNull Context context) {
             Preference updateApkPreference = findPreference("update_apk");
             if (updateApkPreference == null) return;
 
