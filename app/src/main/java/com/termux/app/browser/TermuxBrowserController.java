@@ -12,6 +12,7 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
@@ -402,6 +403,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
         applyDarkModeRendering(settings);
         BrowserWebAuthentication.apply(settings);
+        BrowserWebViewAutofill.apply(mWebView, Build.VERSION.SDK_INT);
 
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
 
