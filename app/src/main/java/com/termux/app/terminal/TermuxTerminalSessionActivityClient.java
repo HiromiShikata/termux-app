@@ -9,7 +9,10 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.media.SoundPool;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Spannable;
@@ -319,7 +322,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void handleUrgentNotificationOnMainThread(@NonNull TerminalSession session) {
         playUrgentNotificationSound();
+        if (session.mHandle != null)
+            mActivity.getPreferences().setCurrentSession(session.mHandle);
         TermuxActivity.startTermuxActivity(mActivity);
+        forceDisplaySession(session);
+        mMainThreadHandler.post(() -> forceDisplaySession(session));
+    }
+
+    private void forceDisplaySession(@NonNull TerminalSession session) {
         setCurrentSession(session);
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController != null)
@@ -327,9 +337,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void playUrgentNotificationSound() {
-        loadBellSoundPool();
-        if (mBellSoundPool != null)
-            mBellSoundPool.play(mBellSoundId, 1.f, 1.f, 1, 0, 1.f);
+        Uri notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        if (notificationUri == null)
+            notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        if (notificationUri == null) return;
+
+        Ringtone ringtone = RingtoneManager.getRingtone(mActivity, notificationUri);
+        if (ringtone == null) return;
+        ringtone.setAudioAttributes(new AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
+        ringtone.play();
     }
 
     private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
