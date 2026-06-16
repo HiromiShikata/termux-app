@@ -238,6 +238,24 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
+    public Set<Integer> getDisabledSessionIndexes() {
+        Set<Integer> disabledSessionIndexes = new LinkedHashSet<>();
+        Set<String> disabledSessionNames = disabledSessionNames();
+        if (disabledSessionNames.isEmpty()) {
+            return disabledSessionIndexes;
+        }
+        List<String> sessionNames = sessionNamesByIndex();
+        for (int sessionIndex : getVisibleSessionIndexes()) {
+            String sessionName = sessionIndex >= 0 && sessionIndex < sessionNames.size()
+                ? sessionNames.get(sessionIndex) : null;
+            if (sessionName != null && disabledSessionNames.contains(sessionName)) {
+                disabledSessionIndexes.add(sessionIndex);
+            }
+        }
+        return disabledSessionIndexes;
+    }
+
+    @NonNull
     public Set<Integer> getMarkedSessionIndexes() {
         Set<Integer> markedSessionIndexes = new LinkedHashSet<>();
         SessionBellNotificationStore store = mActivity.getSessionBellNotificationStore();

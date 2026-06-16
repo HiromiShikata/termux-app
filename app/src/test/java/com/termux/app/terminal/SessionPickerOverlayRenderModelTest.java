@@ -13,6 +13,7 @@ public class SessionPickerOverlayRenderModelTest {
 
     private static final List<String> NO_TITLES = Collections.emptyList();
     private static final Set<Integer> NO_MARKS = Collections.emptySet();
+    private static final Set<Integer> NO_DISABLED = Collections.emptySet();
 
     @Test
     public void buildsProjectStoryAndSessionLinesFromHierarchy() {
@@ -24,7 +25,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("alpha", "beta");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, 1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, 1);
 
         Assert.assertEquals(5, lines.size());
         assertLine(lines.get(0), SessionPickerOverlayLine.Kind.PROJECT, "DEMOPROJECT", false);
@@ -44,7 +45,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("alpha", "beta");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals(5, lines.size());
         assertLine(lines.get(0), SessionPickerOverlayLine.Kind.STORY, "FirstStory", false);
@@ -62,7 +63,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("alpha");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals(2, lines.size());
         assertLine(lines.get(0), SessionPickerOverlayLine.Kind.STORY, "OnlyStory", false);
@@ -78,7 +79,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("s0", "s1", "s2", "s3", "s4", "s5");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, 3);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, 3);
 
         Assert.assertFalse(lines.get(0).isHighlighted());
         Assert.assertTrue(lines.get(1).isHighlighted());
@@ -93,7 +94,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("", null);
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals("session 0", lines.get(0).getText());
         Assert.assertEquals("session 1", lines.get(1).getText());
@@ -105,7 +106,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("only");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals("session 7", lines.get(0).getText());
     }
@@ -116,7 +117,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("https://github.com/HiromiShikata/termux-app/issues/440");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals("HiromiShikata/termux-app/issues/440", lines.get(0).getText());
     }
@@ -127,7 +128,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("https://example.com/path");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals("https://example.com/path", lines.get(0).getText());
     }
@@ -139,7 +140,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> titles = Arrays.asList("Redesign overlay");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, titles, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, titles, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals("HiromiShikata/termux-app/issues/440", lines.get(0).getText());
         Assert.assertEquals("Redesign overlay", lines.get(0).getSecondaryText());
@@ -154,7 +155,7 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> titles = Arrays.asList("", null);
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, titles, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, titles, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertEquals("", lines.get(0).getSecondaryText());
         Assert.assertEquals("", lines.get(1).getSecondaryText());
@@ -170,7 +171,7 @@ public class SessionPickerOverlayRenderModelTest {
         Set<Integer> markedSessionIndexes = new HashSet<>(Arrays.asList(0, 2));
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, markedSessionIndexes, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, markedSessionIndexes, NO_DISABLED, -1);
 
         Assert.assertTrue(lines.get(0).isMarked());
         Assert.assertFalse(lines.get(1).isMarked());
@@ -185,10 +186,73 @@ public class SessionPickerOverlayRenderModelTest {
         List<String> names = Arrays.asList("alpha", "beta");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, NO_DISABLED, -1);
 
         Assert.assertFalse(lines.get(0).isMarked());
         Assert.assertFalse(lines.get(1).isMarked());
+    }
+
+    @Test
+    public void excludesDisabledSessionFromRenderedLines() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.storyHeader("DemoStory"),
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.session(1),
+            SessionHierarchyRow.session(2));
+        List<String> names = Arrays.asList("alpha", "beta", "gamma");
+        Set<Integer> disabledSessionIndexes = new HashSet<>(Collections.singletonList(1));
+
+        List<SessionPickerOverlayLine> lines =
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, disabledSessionIndexes, -1);
+
+        Assert.assertEquals(3, lines.size());
+        assertLine(lines.get(0), SessionPickerOverlayLine.Kind.STORY, "DemoStory", false);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SESSION, "gamma", false);
+    }
+
+    @Test
+    public void dropsStoryHeaderWhoseOnlySessionIsDisabledWithoutDanglingSpacer() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.storyHeader("FirstStory"),
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.storyHeader("DisabledOnlyStory"),
+            SessionHierarchyRow.session(1),
+            SessionHierarchyRow.storyHeader("LastStory"),
+            SessionHierarchyRow.session(2));
+        List<String> names = Arrays.asList("alpha", "beta", "gamma");
+        Set<Integer> disabledSessionIndexes = new HashSet<>(Collections.singletonList(1));
+
+        List<SessionPickerOverlayLine> lines =
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, disabledSessionIndexes, -1);
+
+        Assert.assertEquals(5, lines.size());
+        assertLine(lines.get(0), SessionPickerOverlayLine.Kind.STORY, "FirstStory", false);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SPACER, "", false);
+        assertLine(lines.get(3), SessionPickerOverlayLine.Kind.STORY, "LastStory", false);
+        assertLine(lines.get(4), SessionPickerOverlayLine.Kind.SESSION, "gamma", false);
+    }
+
+    @Test
+    public void dropsLeadingStoryHeaderAndItsSpacerWhenEveryItsSessionIsDisabled() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("DEMOPROJECT"),
+            SessionHierarchyRow.storyHeader("DisabledOnlyStory"),
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.storyHeader("RemainingStory"),
+            SessionHierarchyRow.session(1));
+        List<String> names = Arrays.asList("alpha", "beta");
+        Set<Integer> disabledSessionIndexes = new HashSet<>(Collections.singletonList(0));
+
+        List<SessionPickerOverlayLine> lines =
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, NO_MARKS, disabledSessionIndexes, -1);
+
+        Assert.assertEquals(4, lines.size());
+        assertLine(lines.get(0), SessionPickerOverlayLine.Kind.PROJECT, "DEMOPROJECT", false);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.SPACER, "", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.STORY, "RemainingStory", false);
+        assertLine(lines.get(3), SessionPickerOverlayLine.Kind.SESSION, "beta", false);
     }
 
     @Test
@@ -228,7 +292,7 @@ public class SessionPickerOverlayRenderModelTest {
             "This is a very long session description that should never wrap to a second line");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, titles, NO_MARKS, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, titles, NO_MARKS, NO_DISABLED, -1);
 
         String secondaryText = lines.get(0).getSecondaryText();
         Assert.assertEquals(SessionPickerOverlayRenderModel.SECONDARY_MAX_CHARACTERS, secondaryText.length());
