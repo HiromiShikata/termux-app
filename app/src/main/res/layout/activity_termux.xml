@@ -39,9 +39,8 @@
                     android:longClickable="false"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="2dp"
-                    android:singleLine="true"
                     android:textColor="#80FFFFFF"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
                     android:visibility="gone" />
 
                 <LinearLayout
