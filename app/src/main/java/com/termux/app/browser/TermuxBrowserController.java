@@ -523,7 +523,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         CharSequence[] actions = {
             mActivity.getString(R.string.action_browser_copy_link_url),
             mActivity.getString(R.string.action_browser_open_link),
-            mActivity.getString(R.string.action_browser_open_in_chrome)
+            mActivity.getString(R.string.action_browser_open_in_chrome),
+            mActivity.getString(R.string.action_browser_create_session_for_link)
         };
         DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
             .setTitle(linkUrl)
@@ -533,8 +534,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                         mActivity.getString(R.string.msg_browser_url_copied));
                 } else if (which == 1) {
                     openUrlInNewTab(linkUrl);
-                } else {
+                } else if (which == 2) {
                     ShareUtils.openUrlInChrome(mActivity, linkUrl);
+                } else {
+                    mActivity.getTermuxTerminalSessionClient().addNewSession(false, linkUrl);
                 }
             }));
     }
