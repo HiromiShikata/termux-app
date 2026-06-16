@@ -201,6 +201,34 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         notifyDataSetChanged();
     }
 
+    public void applyProjectActionTokens(@NonNull List<ProjectActionToken> projectActionTokens) {
+        if (projectActionTokens.isEmpty()) {
+            return;
+        }
+        List<SessionHierarchyRow> allRows = buildAllRows();
+        for (ProjectActionToken projectActionToken : projectActionTokens) {
+            String url = SessionHierarchyBuilder.projectActionUrl(allRows,
+                projectActionToken.getNormalizedProjectName(), projectActionToken.getAction());
+            if (url != null && !url.isEmpty()) {
+                openProjectUrlInNewTab(url);
+            }
+            int topSessionIndex = SessionHierarchyBuilder.firstSessionIndexForProject(allRows,
+                projectActionToken.getNormalizedProjectName());
+            selectSessionAtIndex(topSessionIndex);
+        }
+    }
+
+    private void selectSessionAtIndex(int sessionIndex) {
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+            return;
+        }
+        TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
+        if (terminalSession == null) {
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient().setCurrentSession(terminalSession);
+    }
+
     @NonNull
     static Set<String> collapsedProjectLabels(@NonNull List<String> projectLabels,
                                               @NonNull Collection<String> expandedProjectTokens) {

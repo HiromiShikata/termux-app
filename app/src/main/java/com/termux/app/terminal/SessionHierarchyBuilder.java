@@ -130,6 +130,56 @@ public final class SessionHierarchyBuilder {
         return -1;
     }
 
+    public static int firstSessionIndexForProject(@NonNull List<SessionHierarchyRow> rows,
+                                                  @NonNull String normalizedProjectLabel) {
+        boolean withinProject = false;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                withinProject = matchesProjectLabel(row, normalizedProjectLabel);
+                continue;
+            }
+            if (withinProject && !row.isHeader()) {
+                return row.getSessionIndex();
+            }
+        }
+        return -1;
+    }
+
+    @Nullable
+    public static String projectActionUrl(@NonNull List<SessionHierarchyRow> rows,
+                                          @NonNull String normalizedProjectLabel,
+                                          @NonNull ProjectAction action) {
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER
+                    && matchesProjectLabel(row, normalizedProjectLabel)) {
+                return actionUrl(row, action);
+            }
+        }
+        return null;
+    }
+
+    private static boolean matchesProjectLabel(@NonNull SessionHierarchyRow projectHeaderRow,
+                                               @NonNull String normalizedProjectLabel) {
+        String label = projectHeaderRow.getLabel();
+        return label != null
+            && ExpandedProjectsAllowlistParser.normalize(label).equals(normalizedProjectLabel);
+    }
+
+    @Nullable
+    private static String actionUrl(@NonNull SessionHierarchyRow projectHeaderRow,
+                                    @NonNull ProjectAction action) {
+        switch (action) {
+            case OVERVIEW_URL:
+                return projectHeaderRow.getOverviewUrl();
+            case TDPM_CONSOLE_URL:
+                return projectHeaderRow.getTdpmConsoleUrl();
+            case NEW_ISSUE_URL:
+                return projectHeaderRow.getNewIssueUrl();
+            default:
+                return null;
+        }
+    }
+
     public static int rowPositionForSessionIndex(@NonNull List<SessionHierarchyRow> rows, int sessionIndex) {
         for (int position = 0; position < rows.size(); position++) {
             SessionHierarchyRow row = rows.get(position);
