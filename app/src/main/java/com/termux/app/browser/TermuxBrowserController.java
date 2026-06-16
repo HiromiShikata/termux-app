@@ -146,7 +146,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
-        this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity, this);
+        this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity);
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         configureWebView();
         configureCookies();

@@ -26,7 +26,7 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
-import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;
@@ -498,11 +498,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private void openProjectUrlInNewTab(@NonNull String url) {
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-        if (browserController == null) {
+        ProjectBrowserOverlayController projectBrowserController = mActivity.getProjectBrowserOverlayController();
+        if (projectBrowserController == null) {
             return;
         }
-        browserController.openUrlInNewTab(url);
+        projectBrowserController.route(url);
     }
 
     @SuppressLint("SetTextI18n")

@@ -32,6 +32,7 @@ import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.browser.OpenTagBrowserController;
+import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.shared.activities.ReportActivity;
@@ -174,6 +175,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
      */
     TermuxBrowserController mTermuxBrowserController;
+
+    /**
+     * The full-screen, project-scoped browser surface for project-level URLs, kept separate from per-session tabs.
+     */
+    ProjectBrowserOverlayController mProjectBrowserOverlayController;
 
     /**
      * Opens an `http`/`https` URL inside a `<open>...</open>` tag in the terminal output in the in-app browser.
@@ -421,6 +427,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxBrowserController != null)
             mTermuxBrowserController.onActivityDestroy();
+
+        if (mProjectBrowserOverlayController != null)
+            mProjectBrowserOverlayController.onActivityDestroy();
 
         if (mTermuxService != null) {
             // Do not leave service and session clients with references to activity.
@@ -722,6 +731,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
+        mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
         mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInNewTab);
     }
 
@@ -765,7 +775,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @SuppressLint("RtlHardcoded")
     @Override
     public void onBackPressed() {
-        if (mSessionListBottomSheetController != null && mSessionListBottomSheetController.isOpen()) {
+        if (mProjectBrowserOverlayController != null && mProjectBrowserOverlayController.onBackPressed()) {
+            // Project browser handled the back press (navigated back or closed the overlay).
+        } else if (mSessionListBottomSheetController != null && mSessionListBottomSheetController.isOpen()) {
             mSessionListBottomSheetController.hide();
         } else if (getDrawer().isDrawerOpen(Gravity.RIGHT)) {
             getDrawer().closeDrawers();
@@ -1008,6 +1020,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxBrowserController getTermuxBrowserController() {
         return mTermuxBrowserController;
+    }
+
+    public ProjectBrowserOverlayController getProjectBrowserOverlayController() {
+        return mProjectBrowserOverlayController;
     }
 
     public OpenTagBrowserController getOpenTagBrowserController() {
