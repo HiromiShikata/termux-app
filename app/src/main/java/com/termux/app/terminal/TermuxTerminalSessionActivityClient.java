@@ -40,6 +40,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
+import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.tts.SpeakTagTtsController;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
@@ -80,6 +81,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final SessionDefinitionEntryMatcher mSessionDefinitionEntryMatcher = new SessionDefinitionEntryMatcher();
 
     private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
+
+    private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
@@ -917,6 +920,48 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         savePersistedSessions();
         setCurrentSession(firstRestoredSession);
+        mActivity.getDrawer().closeDrawers();
+        return true;
+    }
+
+    /**
+     * Recreate the sessions whose names the user configured as always present. Returns {@code true}
+     * if at least one session was created, in which case the caller should not create the default
+     * session. This runs on a cold start after the persisted session list has been cleared, so the
+     * always-present sessions return without reintroducing the previously-cleared persisted records.
+     */
+    public boolean restoreAlwaysPresentSessions() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+
+        List<String> liveSessionNames = new ArrayList<>();
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            liveSessionNames.add(termuxSession.getTerminalSession().mSessionName);
+        }
+
+        List<String> missingSessionNames = mAlwaysPresentSessionPlanner.planMissingSessionNames(
+            mActivity.getPreferences().getAlwaysNaSessionNames(), liveSessionNames);
+        if (missingSessionNames.isEmpty()) return false;
+
+        TerminalSession firstCreatedSession = null;
+        for (String sessionName : missingSessionNames) {
+            if (service.getTermuxSessionsSize() >= MAX_SESSIONS) break;
+
+            TermuxSession newTermuxSession = service.createTermuxSession(null, null, null,
+                mActivity.getProperties().getDefaultWorkingDirectory(), false, sessionName);
+            if (newTermuxSession == null) continue;
+
+            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
+                sessionName, null, null, false, mActivity.getProperties().getDefaultWorkingDirectory()));
+            attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
+            if (firstCreatedSession == null)
+                firstCreatedSession = newTerminalSession;
+        }
+
+        if (firstCreatedSession == null) return false;
+
+        setCurrentSession(firstCreatedSession);
         mActivity.getDrawer().closeDrawers();
         return true;
     }
