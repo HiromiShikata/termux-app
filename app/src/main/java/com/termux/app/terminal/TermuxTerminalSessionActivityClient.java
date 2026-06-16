@@ -494,9 +494,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TerminalSession session = mActivity.getCurrentSession();
         String sessionName = (session == null) ? null : session.mSessionName;
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-        boolean browserVisible = browserController != null && browserController.isBrowserVisible();
-        if (!SessionNameBarVisibility.isVisible(sessionName, browserVisible)) {
+        if (!SessionNameBarVisibility.isVisible(sessionName)) {
             sessionNameBar.setText("");
             sessionNameBar.setVisibility(View.GONE);
             sessionNameBar.setOnClickListener(null);
