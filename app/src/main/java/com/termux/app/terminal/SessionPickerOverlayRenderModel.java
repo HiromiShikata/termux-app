@@ -22,9 +22,12 @@ public final class SessionPickerOverlayRenderModel {
                                                        @NonNull List<String> sessionRawNames,
                                                        @NonNull List<String> sessionTitles,
                                                        @NonNull Set<Integer> markedSessionIndexes,
+                                                       @NonNull Set<Integer> disabledSessionIndexes,
                                                        int highlightedSessionIndex) {
-        List<SessionPickerOverlayLine> lines = new ArrayList<>(visibleRows.size());
-        for (SessionHierarchyRow row : visibleRows) {
+        List<SessionHierarchyRow> renderableRows =
+            renderableRowsExcludingDisabledSessions(visibleRows, disabledSessionIndexes);
+        List<SessionPickerOverlayLine> lines = new ArrayList<>(renderableRows.size());
+        for (SessionHierarchyRow row : renderableRows) {
             switch (row.getType()) {
                 case PROJECT_HEADER:
                     lines.add(new SessionPickerOverlayLine(
@@ -51,6 +54,42 @@ public final class SessionPickerOverlayRenderModel {
             }
         }
         return lines;
+    }
+
+    @NonNull
+    private static List<SessionHierarchyRow> renderableRowsExcludingDisabledSessions(
+        @NonNull List<SessionHierarchyRow> visibleRows, @NonNull Set<Integer> disabledSessionIndexes) {
+        List<SessionHierarchyRow> sessionFilteredRows = new ArrayList<>(visibleRows.size());
+        for (SessionHierarchyRow row : visibleRows) {
+            if (row.getType() == SessionHierarchyRow.Type.SESSION
+                && disabledSessionIndexes.contains(row.getSessionIndex())) {
+                continue;
+            }
+            sessionFilteredRows.add(row);
+        }
+        List<SessionHierarchyRow> renderableRows = new ArrayList<>(sessionFilteredRows.size());
+        for (int rowIndex = 0; rowIndex < sessionFilteredRows.size(); rowIndex++) {
+            SessionHierarchyRow row = sessionFilteredRows.get(rowIndex);
+            if (row.getType() == SessionHierarchyRow.Type.STORY_HEADER
+                && !hasSessionBeforeNextHeader(sessionFilteredRows, rowIndex)) {
+                continue;
+            }
+            renderableRows.add(row);
+        }
+        return renderableRows;
+    }
+
+    private static boolean hasSessionBeforeNextHeader(@NonNull List<SessionHierarchyRow> rows, int headerIndex) {
+        for (int rowIndex = headerIndex + 1; rowIndex < rows.size(); rowIndex++) {
+            SessionHierarchyRow row = rows.get(rowIndex);
+            if (row.getType() == SessionHierarchyRow.Type.SESSION) {
+                return true;
+            }
+            if (row.isHeader()) {
+                return false;
+            }
+        }
+        return false;
     }
 
     @NonNull

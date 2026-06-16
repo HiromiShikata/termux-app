@@ -28,16 +28,13 @@ public class SessionSwitchPickerController {
 
     static final long INSTANT_MODE_HIDE_DELAY_MILLISECONDS = 1200;
 
-    private static final String STORY_INDENT = "  ";
     private static final String STORY_PREFIX = "▸ ";
-    private static final String SESSION_INDENT = "      ";
-    private static final String SECONDARY_INDENT = "        ";
-    private static final float STORY_RELATIVE_SIZE = 0.75f;
+    private static final float STORY_RELATIVE_SIZE = 0.7f;
     private static final float SESSION_NAME_RELATIVE_SIZE = 0.85f;
     private static final float SPACER_RELATIVE_SIZE = 0.4f;
     private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
     private static final String BELL_MARK = "🔔 ";
-    private static final int STORY_TEXT_COLOR = 0xB3FFFFFF;
+    private static final int STORY_TEXT_COLOR = 0x99FFFFFF;
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
@@ -133,7 +130,7 @@ public class SessionSwitchPickerController {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
             listController.getVisibleRows(), listController.getSessionRawNames(),
             listController.getSessionTitles(), listController.getMarkedSessionIndexes(),
-            mHighlightedSessionIndex);
+            listController.getDisabledSessionIndexes(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
     }
 
@@ -153,7 +150,7 @@ public class SessionSwitchPickerController {
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     break;
                 case STORY:
-                    builder.append(STORY_INDENT).append(STORY_PREFIX).append(line.getText());
+                    builder.append(STORY_PREFIX).append(line.getText());
                     builder.setSpan(new RelativeSizeSpan(STORY_RELATIVE_SIZE), start, builder.length(),
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     builder.setSpan(new ForegroundColorSpan(STORY_TEXT_COLOR), start, builder.length(),
@@ -175,7 +172,6 @@ public class SessionSwitchPickerController {
 
     private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
                                    int start, int highlightColor) {
-        builder.append(SESSION_INDENT);
         if (line.isMarked()) {
             builder.append(BELL_MARK);
         }
@@ -193,7 +189,7 @@ public class SessionSwitchPickerController {
         if (!secondaryText.isEmpty()) {
             builder.append('\n');
             int secondaryStart = builder.length();
-            builder.append(SECONDARY_INDENT).append(secondaryText);
+            builder.append(secondaryText);
             builder.setSpan(new RelativeSizeSpan(SECONDARY_RELATIVE_SIZE), secondaryStart, builder.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             builder.setSpan(new ForegroundColorSpan(SECONDARY_TEXT_COLOR), secondaryStart, builder.length(),
