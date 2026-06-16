@@ -72,14 +72,20 @@ public class TerminalToolbarViewPager {
         }
 
         void submitTextInput(final EditText editText) {
+            writeTextInputToSession(editText, true);
+        }
+
+        public void commitTextInputToTerminal(final EditText editText) {
+            writeTextInputToSession(editText, false);
+        }
+
+        private void writeTextInputToSession(final EditText editText, boolean submitWhenEmpty) {
             TerminalSession session = mActivity.getCurrentSession();
             if (session != null) {
                 String submittedTextInput = editText.getText().toString();
                 addSubmittedTextInputToHistory(submittedTextInput);
                 if (session.isRunning()) {
-                    String textToSend = submittedTextInput;
-                    if (textToSend.length() == 0) textToSend = "\r";
-                    session.write(textToSend);
+                    session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
                 } else {
                     mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
                 }

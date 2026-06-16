@@ -1,5 +1,6 @@
 package com.termux.app.terminal.io;
 
+import android.widget.EditText;
 import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
@@ -7,6 +8,7 @@ import androidx.annotation.NonNull;
 import com.termux.app.TermuxActivity;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
+import com.termux.view.TerminalView;
 
 public class TerminalEnterKeyController {
 
@@ -16,7 +18,27 @@ public class TerminalEnterKeyController {
     public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
         this.mActivity = activity;
         this.mButton = button;
-        mButton.setOnClickListener(view -> sendEnter());
+        mButton.setOnClickListener(view -> send());
+    }
+
+    private void send() {
+        finishComposingText();
+        commitPencilInput();
+        sendEnter();
+    }
+
+    private void finishComposingText() {
+        TerminalView terminalView = mActivity.getTerminalView();
+        if (terminalView != null) terminalView.finishComposingTextToTerminal();
+    }
+
+    private void commitPencilInput() {
+        if (!mActivity.isTerminalToolbarTextInputViewSelected()) return;
+        EditText editText = mActivity.getTerminalToolbarTextInput();
+        if (editText == null) return;
+        TerminalToolbarViewPager.PageAdapter adapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (adapter == null) return;
+        adapter.commitTextInputToTerminal(editText);
     }
 
     private void sendEnter() {

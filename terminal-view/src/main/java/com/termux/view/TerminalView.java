@@ -62,6 +62,8 @@ public final class TerminalView extends View {
 
     public TerminalViewClient mClient;
 
+    private InputConnection mInputConnection;
+
     private TextSelectionCursorController mTextSelectionCursorController;
 
     private Handler mTerminalCursorBlinkerHandler;
@@ -383,7 +385,7 @@ public final class TerminalView extends View {
         // keyboard on Android TV (see https://github.com/termux/termux-app/issues/221).
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN;
 
-        return new BaseInputConnection(this, true) {
+        mInputConnection = new BaseInputConnection(this, true) {
 
             @Override
             public boolean finishComposingText() {
@@ -478,6 +480,13 @@ public final class TerminalView extends View {
             }
 
         };
+        return mInputConnection;
+    }
+
+    public void finishComposingTextToTerminal() {
+        if (mInputConnection != null) {
+            mInputConnection.finishComposingText();
+        }
     }
 
     @Override

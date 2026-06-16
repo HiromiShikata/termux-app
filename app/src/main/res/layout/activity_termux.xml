@@ -454,9 +454,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_send_enter_to_terminal"
+                android:contentDescription="@string/action_send_input_to_terminal"
                 android:padding="8dp"
-                android:src="@drawable/ic_toolbar_enter"
+                android:src="@drawable/ic_toolbar_send"
                 android:tint="@color/white" />
 
             <ImageButton
