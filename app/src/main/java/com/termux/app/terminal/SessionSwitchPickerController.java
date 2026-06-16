@@ -65,10 +65,10 @@ public class SessionSwitchPickerController {
             return;
         }
         int currentSessionIndex = service.getIndexOfSession(mActivity.getCurrentSession());
-        List<Integer> visibleSessionIndexes = listController.getVisibleSessionIndexes();
+        List<Integer> navigableSessionIndexes = listController.getNavigableSessionIndexes();
         VolumeKeyPickerMoveDecision decision = VolumeKeyPickerMoveDecision.decide(
             isPreviewFirstEnabled(), mShowing, mHighlightedSessionIndex, currentSessionIndex,
-            visibleSessionIndexes, forward);
+            navigableSessionIndexes, forward);
         mHighlightedSessionIndex = decision.getHighlightedSessionIndex();
         mShowing = true;
         renderStructure(listController);

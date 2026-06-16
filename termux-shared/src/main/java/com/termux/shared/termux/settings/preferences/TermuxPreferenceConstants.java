@@ -225,6 +225,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_SESSION_SWITCH_PREVIEW_FIRST = "session_switch_preview_first";
         public static final boolean DEFAULT_VALUE_KEY_SESSION_SWITCH_PREVIEW_FIRST = false;
 
+        public static final String KEY_DISABLED_SESSION_NAMES = "disabled_session_names";
+        public static final String DEFAULT_VALUE_KEY_DISABLED_SESSION_NAMES = "";
+
         public static final String KEY_PERSISTED_SESSIONS = "persisted_sessions";
         public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSIONS = "";
 

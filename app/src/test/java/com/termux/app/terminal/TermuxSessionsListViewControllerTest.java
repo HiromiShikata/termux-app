@@ -20,6 +20,11 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+
 @RunWith(RobolectricTestRunner.class)
 public class TermuxSessionsListViewControllerTest {
 
@@ -149,7 +154,7 @@ public class TermuxSessionsListViewControllerTest {
 
     @Test
     public void sessionRowLayoutHostsTheActiveIndicatorBarReservingItsGutterByDefaultAlongsideTheTitle() {
-        Context context = RuntimeEnvironment.getApplication();
+        Context context = themedContext();
         View row = LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
 
@@ -233,8 +238,75 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void navigableSessionIndexesExcludeDisabledSessionsSoVolumeKeyNavigationSkipsThem() {
+        List<Integer> visibleSessionIndexes = Arrays.asList(0, 1, 2);
+        List<String> sessionNamesByIndex = Arrays.asList("alpha", "beta", "gamma");
+
+        List<Integer> navigable = TermuxSessionsListViewController.navigableSessionIndexes(
+            visibleSessionIndexes, sessionNamesByIndex, new LinkedHashSet<>(Collections.singletonList("beta")));
+
+        Assert.assertEquals(Arrays.asList(0, 2), navigable);
+    }
+
+    @Test
+    public void navigableSessionIndexesReturnAllVisibleIndexesWhenNoSessionIsDisabled() {
+        List<Integer> visibleSessionIndexes = Arrays.asList(0, 1, 2);
+        List<String> sessionNamesByIndex = Arrays.asList("alpha", "beta", "gamma");
+
+        List<Integer> navigable = TermuxSessionsListViewController.navigableSessionIndexes(
+            visibleSessionIndexes, sessionNamesByIndex, Collections.emptySet());
+
+        Assert.assertEquals(visibleSessionIndexes, navigable);
+    }
+
+    @Test
+    public void reEnablingADisabledSessionRestoresItToTheNavigableSet() {
+        List<Integer> visibleSessionIndexes = Arrays.asList(0, 1, 2);
+        List<String> sessionNamesByIndex = Arrays.asList("alpha", "beta", "gamma");
+
+        List<Integer> whileDisabled = TermuxSessionsListViewController.navigableSessionIndexes(
+            visibleSessionIndexes, sessionNamesByIndex, new LinkedHashSet<>(Collections.singletonList("beta")));
+        List<Integer> afterReEnable = TermuxSessionsListViewController.navigableSessionIndexes(
+            visibleSessionIndexes, sessionNamesByIndex, Collections.emptySet());
+
+        Assert.assertEquals(Arrays.asList(0, 2), whileDisabled);
+        Assert.assertEquals(Arrays.asList(0, 1, 2), afterReEnable);
+    }
+
+    @Test
+    public void navigableSessionIndexesIgnoreDisabledNamesThatHaveNoMatchingSession() {
+        List<Integer> visibleSessionIndexes = Arrays.asList(0, 1);
+        List<String> sessionNamesByIndex = Arrays.asList("alpha", "beta");
+
+        List<Integer> navigable = TermuxSessionsListViewController.navigableSessionIndexes(
+            visibleSessionIndexes, sessionNamesByIndex, new LinkedHashSet<>(Collections.singletonList("missing")));
+
+        Assert.assertEquals(Arrays.asList(0, 1), navigable);
+    }
+
+    @Test
+    public void disabledSessionRowShowsTheDisabledNavigationIconAndEnabledRowShowsTheEnabledIcon() {
+        Assert.assertEquals(R.drawable.ic_session_navigation_disabled,
+            TermuxSessionsListViewController.sessionDisableToggleIconRes(true));
+        Assert.assertEquals(R.drawable.ic_session_navigation_enabled,
+            TermuxSessionsListViewController.sessionDisableToggleIconRes(false));
+    }
+
+    @Test
+    public void sessionRowLayoutHostsTheRightEdgeDisableToggle() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View disableToggle = row.findViewById(R.id.session_disable_toggle);
+
+        Assert.assertNotNull(disableToggle);
+        Assert.assertTrue(disableToggle instanceof ImageView);
+    }
+
+    @Test
     public void sessionRowDoesNotReserveAForcedMinimumHeightSoUntitledRowsStayCompact() {
-        Context context = RuntimeEnvironment.getApplication();
+        Context context = themedContext();
         View row = LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
 

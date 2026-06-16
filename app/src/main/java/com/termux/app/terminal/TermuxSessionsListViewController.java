@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -122,7 +123,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
         return SessionHierarchyBuilder.nextVisibleSessionIndex(
-            SessionHierarchyBuilder.visibleSessionIndexes(mRows), currentSessionIndex, forward);
+            getNavigableSessionIndexes(), currentSessionIndex, forward);
     }
 
     public int getRowPositionForSessionIndex(int sessionIndex) {
@@ -137,6 +138,65 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     @NonNull
     public List<Integer> getVisibleSessionIndexes() {
         return SessionHierarchyBuilder.visibleSessionIndexes(mRows);
+    }
+
+    @NonNull
+    public List<Integer> getNavigableSessionIndexes() {
+        return navigableSessionIndexes(getVisibleSessionIndexes(), sessionNamesByIndex(), disabledSessionNames());
+    }
+
+    @NonNull
+    static List<Integer> navigableSessionIndexes(@NonNull List<Integer> visibleSessionIndexes,
+                                                 @NonNull List<String> sessionNamesByIndex,
+                                                 @NonNull Set<String> disabledSessionNames) {
+        if (disabledSessionNames.isEmpty()) {
+            return new ArrayList<>(visibleSessionIndexes);
+        }
+        List<Integer> navigableSessionIndexes = new ArrayList<>(visibleSessionIndexes.size());
+        for (int sessionIndex : visibleSessionIndexes) {
+            String sessionName = sessionIndex >= 0 && sessionIndex < sessionNamesByIndex.size()
+                ? sessionNamesByIndex.get(sessionIndex) : null;
+            if (sessionName != null && disabledSessionNames.contains(sessionName)) {
+                continue;
+            }
+            navigableSessionIndexes.add(sessionIndex);
+        }
+        return navigableSessionIndexes;
+    }
+
+    @NonNull
+    private List<String> sessionNamesByIndex() {
+        List<String> sessionNames = new ArrayList<>(mSessionList.size());
+        for (TermuxSession session : mSessionList) {
+            TerminalSession terminalSession = session.getTerminalSession();
+            sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
+        }
+        return sessionNames;
+    }
+
+    @NonNull
+    private Set<String> disabledSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return Collections.emptySet();
+        }
+        return preferences.getDisabledSessionNames();
+    }
+
+    private boolean isSessionDisabled(@Nullable String sessionName) {
+        return sessionName != null && disabledSessionNames().contains(sessionName);
+    }
+
+    private void toggleSessionDisabled(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return;
+        }
+        preferences.toggleSessionDisabled(sessionName);
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -512,7 +572,23 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         int defaultColor = surfacePrimaryTextColor();
         int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
         sessionTitleView.setTextColor(color);
+
+        bindSessionDisableToggle(sessionRowView, sessionAtRow.mSessionName);
         return sessionRowView;
+    }
+
+    private void bindSessionDisableToggle(@NonNull View sessionRowView, @Nullable String sessionName) {
+        ImageView disableToggleView = sessionRowView.findViewById(R.id.session_disable_toggle);
+        boolean disabled = isSessionDisabled(sessionName);
+        disableToggleView.setImageResource(sessionDisableToggleIconRes(disabled));
+        disableToggleView.setActivated(disabled);
+        disableToggleView.setOnClickListener(v -> toggleSessionDisabled(sessionName));
+    }
+
+    static int sessionDisableToggleIconRes(boolean disabled) {
+        return disabled
+            ? R.drawable.ic_session_navigation_disabled
+            : R.drawable.ic_session_navigation_enabled;
     }
 
     private String buildBellNotificationLabel(@NonNull TerminalSession session) {
