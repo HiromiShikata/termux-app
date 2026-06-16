@@ -32,7 +32,8 @@ public class SessionSwitchPickerController {
     private static final String SESSION_INDENT = "    ";
     private static final String SECONDARY_INDENT = "      ";
     private static final float STORY_RELATIVE_SIZE = 0.85f;
-    private static final float SECONDARY_RELATIVE_SIZE = 0.75f;
+    private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
+    private static final String BELL_MARK = "🔔 ";
     private static final int STORY_TEXT_COLOR = 0xB3FFFFFF;
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
@@ -127,7 +128,8 @@ public class SessionSwitchPickerController {
     private void renderStructure(@NonNull TermuxSessionsListViewController listController) {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
             listController.getVisibleRows(), listController.getSessionRawNames(),
-            listController.getSessionTitles(), mHighlightedSessionIndex);
+            listController.getSessionTitles(), listController.getMarkedSessionIndexes(),
+            mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
     }
 
@@ -164,7 +166,11 @@ public class SessionSwitchPickerController {
 
     private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
                                    int start, int highlightColor) {
-        builder.append(SESSION_INDENT).append(line.getText());
+        builder.append(SESSION_INDENT);
+        if (line.isMarked()) {
+            builder.append(BELL_MARK);
+        }
+        builder.append(line.getText());
         if (line.isHighlighted()) {
             int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
             builder.setSpan(new BackgroundColorSpan(highlightBackground), start, builder.length(),

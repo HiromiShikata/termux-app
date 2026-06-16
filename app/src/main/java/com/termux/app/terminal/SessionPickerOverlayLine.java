@@ -14,17 +14,19 @@ public final class SessionPickerOverlayLine {
     private final String text;
     private final String secondaryText;
     private final boolean highlighted;
+    private final boolean marked;
 
     public SessionPickerOverlayLine(@NonNull Kind kind, @NonNull String text, boolean highlighted) {
-        this(kind, text, "", highlighted);
+        this(kind, text, "", highlighted, false);
     }
 
     public SessionPickerOverlayLine(@NonNull Kind kind, @NonNull String text, @NonNull String secondaryText,
-                                    boolean highlighted) {
+                                    boolean highlighted, boolean marked) {
         this.kind = kind;
         this.text = text;
         this.secondaryText = secondaryText;
         this.highlighted = highlighted;
+        this.marked = marked;
     }
 
     @NonNull
@@ -44,5 +46,9 @@ public final class SessionPickerOverlayLine {
 
     public boolean isHighlighted() {
         return highlighted;
+    }
+
+    public boolean isMarked() {
+        return marked;
     }
 }

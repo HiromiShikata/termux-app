@@ -440,7 +440,7 @@
                 android:clickable="false"
                 android:focusable="false"
                 android:lineSpacingExtra="1dp"
-                android:maxWidth="160dp"
+                android:maxWidth="240dp"
                 android:padding="6dp"
                 android:textColor="#FFFFFFFF"
                 android:textSize="10sp" />
