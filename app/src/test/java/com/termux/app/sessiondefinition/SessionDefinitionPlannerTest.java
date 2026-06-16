@@ -75,4 +75,48 @@ public class SessionDefinitionPlannerTest {
     public void shellQuoteEscapesSingleQuotes() {
         Assert.assertEquals("'a'\\''b'", SessionDefinitionPlanner.shellQuote("a'b"));
     }
+
+    @Test
+    public void planNamedSessionBuildsAutosshCommandWhenTemplateConfigured() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession("https://example.test/a1", "connect {name}");
+
+        Assert.assertEquals("https://example.test/a1", plannedSession.getName());
+        Assert.assertTrue(plannedSession.hasCommand());
+        Assert.assertEquals("connect 'https://example.test/a1'", plannedSession.getCommand());
+    }
+
+    @Test
+    public void planNamedSessionTrimsTemplateBeforeBuildingCommand() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession("https://example.test/a1", "  connect {name}  ");
+
+        Assert.assertEquals("connect 'https://example.test/a1'", plannedSession.getCommand());
+    }
+
+    @Test
+    public void planNamedSessionProducesPlainSessionWhenTemplateBlank() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession("https://example.test/a1", "   ");
+
+        Assert.assertEquals("https://example.test/a1", plannedSession.getName());
+        Assert.assertFalse(plannedSession.hasCommand());
+    }
+
+    @Test
+    public void planNamedSessionProducesPlainSessionWhenTemplateNull() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession("https://example.test/a1", null);
+
+        Assert.assertFalse(plannedSession.hasCommand());
+    }
+
+    @Test
+    public void planNamedSessionProducesPlainSessionWhenNameNull() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession(null, "connect {name}");
+
+        Assert.assertNull(plannedSession.getName());
+        Assert.assertFalse(plannedSession.hasCommand());
+    }
 }

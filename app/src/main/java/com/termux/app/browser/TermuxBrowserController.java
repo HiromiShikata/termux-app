@@ -247,7 +247,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
             return;
         }
-        mActivity.getTermuxTerminalSessionClient().addNewSession(false, sessionName);
+        mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(sessionName);
     }
 
     private void addCurrentPageBookmark() {
@@ -537,7 +537,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 } else if (which == 2) {
                     ShareUtils.openUrlInChrome(mActivity, linkUrl);
                 } else {
-                    mActivity.getTermuxTerminalSessionClient().addNewSession(false, linkUrl);
+                    mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
                 }
             }));
     }

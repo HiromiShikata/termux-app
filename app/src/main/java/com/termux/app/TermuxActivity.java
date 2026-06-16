@@ -46,7 +46,6 @@ import com.termux.app.sessiondefinition.SessionDefinitionController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionLoader;
 import com.termux.app.sessiondefinition.SessionDefinitionParser;
-import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
@@ -656,14 +655,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             text -> {
                 String trimmedName = text.trim();
                 String sessionName = trimmedName.isEmpty() ? null : trimmedName;
-                String commandTemplate = mPreferences.getAutosshCommand();
-                if (commandTemplate.trim().isEmpty() || sessionName == null) {
-                    mTermuxTerminalSessionActivityClient.addNewSession(false, sessionName);
-                } else {
-                    String command = commandTemplate
-                        .replace("{name}", SessionDefinitionPlanner.shellQuote(sessionName));
-                    mTermuxTerminalSessionActivityClient.addNewAutosshSession(sessionName, command);
-                }
+                mTermuxTerminalSessionActivityClient.addNewSessionApplyingAutosshConfig(sessionName);
             },
             -1, null, -1, null, null);
     }
