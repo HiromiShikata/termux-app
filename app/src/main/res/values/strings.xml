@@ -70,7 +70,7 @@
     <string name="action_resize_browser_terminal_split">Drag to resize the browser and terminal areas</string>
     <string name="action_browser_new_tab">New tab</string>
     <string name="action_browser_copy_link_url">Copy link URL</string>
-    <string name="action_browser_open_link">Open</string>
+    <string name="action_browser_open_link">Open in Browser</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
     <string name="action_browser_create_session_for_link">Create new session</string>
