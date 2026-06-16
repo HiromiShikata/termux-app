@@ -12,7 +12,6 @@ import android.widget.ImageButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.viewpager.widget.PagerAdapter;
-import androidx.viewpager.widget.ViewPager;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -71,6 +70,44 @@ public class TerminalToolbarViewPager {
             }
         }
 
+        public void setupTextInputRow(final View textInputRow) {
+            final EditText editText = textInputRow.findViewById(R.id.terminal_toolbar_text_input);
+            editText.setHorizontallyScrolling(false);
+            editText.setMaxLines(3);
+
+            if (mSavedTextInput != null) {
+                editText.setText(mSavedTextInput);
+                TerminalSession currentSession = mActivity.getCurrentSession();
+                if (currentSession != null) mSessionTextInputs.put(currentSession, mSavedTextInput);
+                mSavedTextInput = null;
+            } else {
+                TerminalSession currentSession = mActivity.getCurrentSession();
+                String text = currentSession == null ? null : mSessionTextInputs.get(currentSession);
+                if (text != null) editText.setText(text);
+            }
+
+            editText.setOnEditorActionListener((v, actionId, event) -> {
+                submitTextInput(editText);
+                return true;
+            });
+
+            editText.setOnKeyListener((v, keyCode, event) -> {
+                if (keyCode == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN
+                    && event.hasNoModifiers()) {
+                    submitTextInput(editText);
+                    return true;
+                }
+                return false;
+            });
+
+            ImageButton historyButton = textInputRow.findViewById(R.id.terminal_toolbar_text_input_history_button);
+            historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
+
+            ImageButton sendButton = textInputRow.findViewById(R.id.terminal_toolbar_enter_button);
+            new TerminalEnterKeyController(mActivity, sendButton);
+        }
+
         void submitTextInput(final EditText editText) {
             writeTextInputToSession(editText, true);
         }
@@ -114,7 +151,7 @@ public class TerminalToolbarViewPager {
 
         @Override
         public int getCount() {
-            return 2;
+            return 1;
         }
 
         @Override
@@ -126,60 +163,18 @@ public class TerminalToolbarViewPager {
         @Override
         public Object instantiateItem(@NonNull ViewGroup collection, int position) {
             LayoutInflater inflater = LayoutInflater.from(mActivity);
-            View layout;
-            if (position == 0) {
-                layout = inflater.inflate(R.layout.view_terminal_toolbar_extra_keys, collection, false);
-                ExtraKeysView extraKeysView = (ExtraKeysView) layout;
-                extraKeysView.setExtraKeysViewClient(mActivity.getTermuxTerminalExtraKeys());
-                extraKeysView.setButtonTextAllCaps(mActivity.getProperties().shouldExtraKeysTextBeAllCaps());
-                mActivity.setExtraKeysView(extraKeysView);
-                extraKeysView.reload(mActivity.getTermuxTerminalExtraKeys().getExtraKeysInfo(),
-                    mActivity.getTerminalToolbarDefaultHeight());
+            View layout = inflater.inflate(R.layout.view_terminal_toolbar_extra_keys, collection, false);
+            ExtraKeysView extraKeysView = (ExtraKeysView) layout;
+            extraKeysView.setExtraKeysViewClient(mActivity.getTermuxTerminalExtraKeys());
+            extraKeysView.setButtonTextAllCaps(mActivity.getProperties().shouldExtraKeysTextBeAllCaps());
+            mActivity.setExtraKeysView(extraKeysView);
+            extraKeysView.reload(mActivity.getTermuxTerminalExtraKeys().getExtraKeysInfo(),
+                mActivity.getTerminalToolbarDefaultHeight());
 
-                // apply extra keys fix if enabled in prefs
-                if (mActivity.getProperties().isUsingFullScreen() && mActivity.getProperties().isUsingFullScreenWorkAround()) {
-                    FullScreenWorkAround.apply(mActivity);
-                }
-
-            } else {
-                layout = inflater.inflate(R.layout.view_terminal_toolbar_text_input, collection, false);
-                final EditText editText = layout.findViewById(R.id.terminal_toolbar_text_input);
-
-                editText.setHorizontallyScrolling(false);
-                editText.setMaxLines(3);
-
-                if (mSavedTextInput != null) {
-                    editText.setText(mSavedTextInput);
-                    TerminalSession currentSession = mActivity.getCurrentSession();
-                    if (currentSession != null) mSessionTextInputs.put(currentSession, mSavedTextInput);
-                    mSavedTextInput = null;
-                } else {
-                    TerminalSession currentSession = mActivity.getCurrentSession();
-                    String text = currentSession == null ? null : mSessionTextInputs.get(currentSession);
-                    if (text != null) editText.setText(text);
-                }
-
-                editText.setOnEditorActionListener((v, actionId, event) -> {
-                    submitTextInput(editText);
-                    return true;
-                });
-
-                editText.setOnKeyListener((v, keyCode, event) -> {
-                    if (keyCode == KeyEvent.KEYCODE_ENTER
-                        && event.getAction() == KeyEvent.ACTION_DOWN
-                        && event.hasNoModifiers()) {
-                        submitTextInput(editText);
-                        return true;
-                    }
-                    return false;
-                });
-
-                ImageButton historyButton = layout.findViewById(R.id.terminal_toolbar_text_input_history_button);
-                historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
-
-                ImageButton sendButton = layout.findViewById(R.id.terminal_toolbar_enter_button);
-                new TerminalEnterKeyController(mActivity, sendButton);
+            if (mActivity.getProperties().isUsingFullScreen() && mActivity.getProperties().isUsingFullScreenWorkAround()) {
+                FullScreenWorkAround.apply(mActivity);
             }
+
             collection.addView(layout);
             return layout;
         }
@@ -187,30 +182,6 @@ public class TerminalToolbarViewPager {
         @Override
         public void destroyItem(@NonNull ViewGroup collection, int position, @NonNull Object view) {
             collection.removeView((View) view);
-        }
-
-    }
-
-
-
-    public static class OnPageChangeListener extends ViewPager.SimpleOnPageChangeListener {
-
-        final TermuxActivity mActivity;
-        final ViewPager mTerminalToolbarViewPager;
-
-        public OnPageChangeListener(TermuxActivity activity, ViewPager viewPager) {
-            this.mActivity = activity;
-            this.mTerminalToolbarViewPager = viewPager;
-        }
-
-        @Override
-        public void onPageSelected(int position) {
-            if (position == 0) {
-                mActivity.getTerminalView().requestFocus();
-            } else {
-                final EditText editText = mTerminalToolbarViewPager.findViewById(R.id.terminal_toolbar_text_input);
-                if (editText != null) editText.requestFocus();
-            }
         }
 
     }

@@ -662,8 +662,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (savedInstanceState != null)
             savedTextInput = savedInstanceState.getString(ARG_TERMINAL_TOOLBAR_TEXT_INPUT);
 
-        terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this, savedTextInput));
-        terminalToolbarViewPager.addOnPageChangeListener(new TerminalToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
+        TerminalToolbarViewPager.PageAdapter pageAdapter = new TerminalToolbarViewPager.PageAdapter(this, savedTextInput);
+        terminalToolbarViewPager.setAdapter(pageAdapter);
+
+        View textInputRow = findViewById(R.id.terminal_toolbar_text_input_row);
+        if (textInputRow != null) pageAdapter.setupTextInputRow(textInputRow);
     }
 
     private void setTerminalToolbarHeight() {
@@ -684,10 +687,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         final boolean showNow = mPreferences.toogleShowTerminalToolbar();
         Logger.showToast(this, (showNow ? getString(R.string.msg_enabling_terminal_toolbar) : getString(R.string.msg_disabling_terminal_toolbar)), true);
         terminalToolbarViewPager.setVisibility(showNow ? View.VISIBLE : View.GONE);
-        if (showNow && isTerminalToolbarTextInputViewSelected()) {
-            // Focus the text input view if just revealed.
-            findViewById(R.id.terminal_toolbar_text_input).requestFocus();
-        }
     }
 
     private void saveTerminalToolbarTextInput(Bundle savedInstanceState) {
@@ -1048,11 +1047,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public boolean isTerminalViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() == 0;
+        EditText textInput = getTerminalToolbarTextInput();
+        return textInput == null || !textInput.hasFocus();
     }
 
     public boolean isTerminalToolbarTextInputViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() == 1;
+        return getTerminalToolbarTextInput() != null;
     }
 
 
