@@ -28,7 +28,13 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     private final ProgressBar mProgressBar;
 
+    private final View mOverviewActionsView;
+
+    private final BrowserBulkOpenController mBulkOpenController;
+
     private boolean mVisible;
+
+    private String mCurrentUrl;
 
     private final ProjectUrlRouter mRouter = new ProjectUrlRouter(this);
 
@@ -38,8 +44,11 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mWebView = activity.findViewById(R.id.project_browser_web_view);
         this.mHeaderUrlView = activity.findViewById(R.id.project_browser_header_url);
         this.mProgressBar = activity.findViewById(R.id.project_browser_progress_bar);
+        this.mOverviewActionsView = activity.findViewById(R.id.project_browser_overview_actions);
+        this.mBulkOpenController = new BrowserBulkOpenController(activity, mWebView);
         configureWebView();
         configureCloseButton();
+        configureOverviewActions();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -61,6 +70,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 mProgressBar.setVisibility(View.VISIBLE);
                 mHeaderUrlView.setText(url);
+                mCurrentUrl = url;
+                updateOverviewActionsVisibility();
                 view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
             }
 
@@ -68,6 +79,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             public void onPageFinished(WebView view, String url) {
                 mProgressBar.setVisibility(View.GONE);
                 mHeaderUrlView.setText(url);
+                mCurrentUrl = url;
+                updateOverviewActionsVisibility();
                 CookieManager.getInstance().flush();
             }
         });
@@ -85,9 +98,18 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         closeButton.setOnClickListener(view -> hide());
     }
 
+    private void configureOverviewActions() {
+        mActivity.findViewById(R.id.project_browser_open_all_tasks_button)
+            .setOnClickListener(view -> mBulkOpenController.openDisplayedTaskUrls(0));
+        mActivity.findViewById(R.id.project_browser_open_first_ten_tasks_button)
+            .setOnClickListener(view ->
+                mBulkOpenController.openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+    }
+
     @Override
     public void openProjectUrl(@NonNull String url) {
         mHeaderUrlView.setText(url);
+        mCurrentUrl = url;
         mWebView.loadUrl(url);
         show();
     }
@@ -100,12 +122,19 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mVisible = true;
         mOverlayContainer.setVisibility(View.VISIBLE);
         mOverlayContainer.bringToFront();
+        updateOverviewActionsVisibility();
     }
 
     public void hide() {
         mVisible = false;
         mProgressBar.setVisibility(View.GONE);
         mOverlayContainer.setVisibility(View.GONE);
+        updateOverviewActionsVisibility();
+    }
+
+    private void updateOverviewActionsVisibility() {
+        boolean showActions = mVisible && BrowserProjectOverviewPage.isOverviewUrl(mCurrentUrl);
+        mOverviewActionsView.setVisibility(showActions ? View.VISIBLE : View.GONE);
     }
 
     public boolean isVisible() {

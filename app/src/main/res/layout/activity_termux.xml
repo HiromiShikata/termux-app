@@ -297,6 +297,32 @@
                     android:focusable="false"
                     android:indeterminate="true"
                     android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/project_browser_overview_actions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="16dp"
+                    android:gravity="end"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                        android:id="@+id/project_browser_open_all_tasks_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:contentDescription="@string/action_browser_open_all_tasks"
+                        android:text="@string/action_browser_open_all_tasks" />
+
+                    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                        android:id="@+id/project_browser_open_first_ten_tasks_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:contentDescription="@string/action_browser_open_first_ten_tasks"
+                        android:text="@string/action_browser_open_first_ten_tasks" />
+                </LinearLayout>
             </FrameLayout>
         </LinearLayout>
 
