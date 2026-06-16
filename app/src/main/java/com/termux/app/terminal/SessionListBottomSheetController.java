@@ -15,8 +15,10 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.shared.view.KeyboardUtils;
+import com.termux.terminal.TerminalSession;
 
 public class SessionListBottomSheetController {
 
@@ -204,6 +206,26 @@ public class SessionListBottomSheetController {
             .setInterpolator(new DecelerateInterpolator())
             .setDuration(SLIDE_ANIMATION_DURATION_MILLISECONDS)
             .start();
+        revealCurrentSessionRow(listController);
+    }
+
+    private void revealCurrentSessionRow(@NonNull TermuxSessionsListViewController listController) {
+        mSessionListView.post(() -> {
+            TermuxService service = mActivity.getTermuxService();
+            if (service == null) {
+                return;
+            }
+            TerminalSession currentSession = mActivity.getCurrentSession();
+            int currentSessionIndex = service.getIndexOfSession(currentSession);
+            if (currentSessionIndex < 0) {
+                return;
+            }
+            int rowPosition = listController.getRowPositionForSessionIndex(currentSessionIndex);
+            if (rowPosition < 0) {
+                return;
+            }
+            mSessionListView.setSelection(rowPosition);
+        });
     }
 
     public void hide() {

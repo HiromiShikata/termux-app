@@ -314,6 +314,49 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
+    public void rowPositionForSessionIndexReturnsTheRowPositionOfAGroupedSession() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyTop",
+                Collections.singletonList("https://example.test/top")),
+            new SessionDefinitionEntry("projectOne", "storyBottom",
+                Collections.singletonList("https://example.test/bottom")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("https://example.test/top", "https://example.test/bottom"), entries, NA);
+
+        Assert.assertEquals(2, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 0));
+        Assert.assertEquals(4, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 1));
+    }
+
+    @Test
+    public void rowPositionForSessionIndexReturnsTheRowPositionInAFlatList() {
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("sessionOne", "sessionTwo", "sessionThree"), Collections.emptyList(), NA);
+
+        Assert.assertEquals(2, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 2));
+    }
+
+    @Test
+    public void rowPositionForSessionIndexReturnsNegativeOneWhenTheSessionIsNotAmongTheRows() {
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("sessionOne"), Collections.emptyList(), NA);
+
+        Assert.assertEquals(-1, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 5));
+    }
+
+    @Test
+    public void rowPositionForSessionIndexReturnsNegativeOneForASessionHiddenInsideACollapsedProject() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+        List<SessionHierarchyRow> rows = builder.filterCollapsedProjects(
+            builder.build(Collections.singletonList("https://example.test/a"), entries, NA),
+            new LinkedHashSet<>(Collections.singletonList("projectOne")));
+
+        Assert.assertEquals(-1, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 0));
+    }
+
+    @Test
     public void fallsBackToAFlatSessionListWhenEntriesAreEmpty() {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "manual-session"),

@@ -130,6 +130,16 @@ public final class SessionHierarchyBuilder {
         return -1;
     }
 
+    public static int rowPositionForSessionIndex(@NonNull List<SessionHierarchyRow> rows, int sessionIndex) {
+        for (int position = 0; position < rows.size(); position++) {
+            SessionHierarchyRow row = rows.get(position);
+            if (!row.isHeader() && row.getSessionIndex() == sessionIndex) {
+                return position;
+            }
+        }
+        return -1;
+    }
+
     @NonNull
     public static List<Integer> visibleSessionIndexes(@NonNull List<SessionHierarchyRow> visibleRows) {
         List<Integer> sessionIndexes = new ArrayList<>();
