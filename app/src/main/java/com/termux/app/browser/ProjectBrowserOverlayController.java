@@ -51,6 +51,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         settings.setDisplayZoomControls(false);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
+        settings.setUserAgentString(BrowserUserAgent.DESKTOP_USER_AGENT);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         BrowserWebAuthentication.apply(settings);
@@ -60,6 +61,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 mProgressBar.setVisibility(View.VISIBLE);
                 mHeaderUrlView.setText(url);
+                view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
             }
 
             @Override
