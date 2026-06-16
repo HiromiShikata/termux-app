@@ -15,3 +15,74 @@ allprojects {
         maven { url "https://jitpack.io" }
     }
 }
+
+ext.jacocoToolVersion = "0.8.12"
+
+def jacocoModules = [":app", ":termux-shared", ":terminal-emulator", ":terminal-view"]
+
+subprojects { subproject ->
+    if (jacocoModules.contains(subproject.path)) {
+        subproject.apply plugin: "jacoco"
+
+        subproject.jacoco {
+            toolVersion = rootProject.ext.jacocoToolVersion
+        }
+
+        subproject.afterEvaluate {
+            subproject.android.buildTypes.debug.enableUnitTestCoverage true
+        }
+    }
+}
+
+ext.jacocoCoverageExcludes = [
+    "**/R.class",
+    "**/R\$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*",
+    "android/**/*.*",
+    "**/databinding/**",
+    "**/android/databinding/*Binding.*",
+    "**/*_MembersInjector.class",
+    "**/Dagger*Component*.*",
+    "**/*Module_*Factory.class"
+]
+
+apply plugin: "jacoco"
+
+jacoco {
+    toolVersion = rootProject.ext.jacocoToolVersion
+}
+
+tasks.register("jacocoTestReport", JacocoReport) {
+    group = "verification"
+    description = "Aggregates JaCoCo unit-test (testDebugUnitTest) coverage across all modules into a single HTML + XML report."
+
+    def coveredModules = jacocoModules.collect { project(it) }
+    def excludes = rootProject.ext.jacocoCoverageExcludes
+
+    dependsOn coveredModules.collect { "${it.path}:testDebugUnitTest" }
+
+    sourceDirectories.setFrom(files(coveredModules.collect { "${it.projectDir}/src/main/java" }))
+    classDirectories.setFrom(files(coveredModules.collect { module ->
+        files(
+            fileTree(dir: "${module.buildDir}/tmp/kotlin-classes/debug", excludes: excludes),
+            fileTree(dir: "${module.buildDir}/intermediates/javac/debug/classes", excludes: excludes),
+            fileTree(dir: "${module.buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes", excludes: excludes)
+        )
+    }))
+    executionData.setFrom(files(coveredModules.collect { module ->
+        fileTree(dir: module.buildDir, includes: [
+            "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            "jacoco/testDebugUnitTest.exec"
+        ])
+    }))
+
+    reports {
+        html.required = true
+        xml.required = true
+        csv.required = false
+        html.outputLocation = layout.buildDirectory.dir("reports/jacoco/jacocoTestReport/html")
+        xml.outputLocation = layout.buildDirectory.file("reports/jacoco/jacocoTestReport/jacocoTestReport.xml")
+    }
+}
