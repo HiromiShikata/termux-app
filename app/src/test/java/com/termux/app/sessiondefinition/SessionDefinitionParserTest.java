@@ -319,6 +319,122 @@ public class SessionDefinitionParserTest {
     }
 
     @Test
+    public void parseGroupReadsVersionFourSessionsArrayWithNameAndDescription() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"tdpmConsoleUrl\":\"https://example.test/tdpm-console?k=TESTKEY\","
+            + "\"newIssueUrl\":\"https://example.test/new-issue?k=TESTKEY\","
+            + "\"groups\":["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "{\"name\":\"https://example.test/a1?k=TESTKEY\",\"description\":\"Session A\"},"
+            + "{\"name\":\"https://example.test/a2?k=TESTKEY\",\"description\":\"Session B\"}"
+            + "]},"
+            + "{\"story\":\"story-two\",\"sessions\":["
+            + "{\"name\":\"https://example.test/b1?k=TESTKEY\",\"description\":\"Session C\"}"
+            + "]}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(2, entries.size());
+        SessionDefinitionEntry first = entries.get(0);
+        Assert.assertEquals("umino", first.getGroupLabel());
+        Assert.assertEquals("story-one", first.getEntryLabel());
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", first.getOverviewUrl());
+        Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", first.getTdpmConsoleUrl());
+        Assert.assertEquals("https://example.test/new-issue?k=TESTKEY", first.getNewIssueUrl());
+        Assert.assertEquals(2, first.getUrls().size());
+        Assert.assertEquals("https://example.test/a1?k=TESTKEY", first.getUrls().get(0));
+        Assert.assertEquals("https://example.test/a2?k=TESTKEY", first.getUrls().get(1));
+        Assert.assertEquals("Session A", first.getTitleForUrl("https://example.test/a1?k=TESTKEY"));
+        Assert.assertEquals("Session B", first.getTitleForUrl("https://example.test/a2?k=TESTKEY"));
+        SessionDefinitionEntry second = entries.get(1);
+        Assert.assertEquals("story-two", second.getEntryLabel());
+        Assert.assertEquals(1, second.getUrls().size());
+        Assert.assertEquals("https://example.test/b1?k=TESTKEY", second.getUrls().get(0));
+        Assert.assertEquals("Session C", second.getTitleForUrl("https://example.test/b1?k=TESTKEY"));
+    }
+
+    @Test
+    public void parseGroupPrefersDescriptionOverTitleWhenBothPresent() throws JSONException {
+        String json = "["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "{\"name\":\"https://example.test/a1?k=TESTKEY\",\"description\":\"From description\",\"title\":\"From title\"}"
+            + "]}"
+            + "]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals(1, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/a1?k=TESTKEY", entry.getUrls().get(0));
+        Assert.assertEquals("From description", entry.getTitleForUrl("https://example.test/a1?k=TESTKEY"));
+    }
+
+    @Test
+    public void parseGroupFallsBackToTitleWhenDescriptionAbsentInSessionsArray() throws JSONException {
+        String json = "["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "{\"name\":\"https://example.test/a1?k=TESTKEY\",\"title\":\"From title\"}"
+            + "]}"
+            + "]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("From title", entry.getTitleForUrl("https://example.test/a1?k=TESTKEY"));
+    }
+
+    @Test
+    public void parseGroupFallsBackToUrlWhenNameAbsentInSessionsArray() throws JSONException {
+        String json = "["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "{\"url\":\"https://example.test/a1?k=TESTKEY\",\"description\":\"Session A\"}"
+            + "]}"
+            + "]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals(1, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/a1?k=TESTKEY", entry.getUrls().get(0));
+        Assert.assertEquals("Session A", entry.getTitleForUrl("https://example.test/a1?k=TESTKEY"));
+    }
+
+    @Test
+    public void parseGroupAcceptsPlainStringSessionItems() throws JSONException {
+        String json = "["
+            + "{\"story\":\"story-one\",\"sessions\":["
+            + "\"https://example.test/plain?k=TESTKEY\","
+            + "{\"name\":\"https://example.test/named?k=TESTKEY\",\"description\":\"Session A\"}"
+            + "]}"
+            + "]";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("alpha", json);
+
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals(2, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/plain?k=TESTKEY", entry.getUrls().get(0));
+        Assert.assertEquals("https://example.test/named?k=TESTKEY", entry.getUrls().get(1));
+        Assert.assertNull(entry.getTitleForUrl("https://example.test/plain?k=TESTKEY"));
+        Assert.assertEquals("Session A", entry.getTitleForUrl("https://example.test/named?k=TESTKEY"));
+    }
+
+    @Test
+    public void parseGroupTreatsMissingSessionsAndUrlsAsEmptySessionList() throws JSONException {
+        String json = "{\"version\":4,\"groups\":["
+            + "{\"story\":\"story-one\"}"
+            + "]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("story-one", entries.get(0).getEntryLabel());
+        Assert.assertTrue(entries.get(0).getUrls().isEmpty());
+    }
+
+    @Test
     public void resolveUrlResolvesRelativeReferenceAgainstBase() throws Exception {
         String resolved = parser.resolveUrl("https://example.test/base/index.json", "groups/first.json");
         Assert.assertEquals("https://example.test/base/groups/first.json", resolved);
