@@ -7,7 +7,8 @@ public final class SessionPickerOverlayLine {
     public enum Kind {
         PROJECT,
         STORY,
-        SESSION
+        SESSION,
+        SPACER
     }
 
     private final Kind kind;

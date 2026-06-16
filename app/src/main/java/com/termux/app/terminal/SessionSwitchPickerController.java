@@ -29,9 +29,12 @@ public class SessionSwitchPickerController {
     static final long INSTANT_MODE_HIDE_DELAY_MILLISECONDS = 1200;
 
     private static final String STORY_INDENT = "  ";
-    private static final String SESSION_INDENT = "    ";
-    private static final String SECONDARY_INDENT = "      ";
-    private static final float STORY_RELATIVE_SIZE = 0.85f;
+    private static final String STORY_PREFIX = "▸ ";
+    private static final String SESSION_INDENT = "      ";
+    private static final String SECONDARY_INDENT = "        ";
+    private static final float STORY_RELATIVE_SIZE = 0.75f;
+    private static final float SESSION_NAME_RELATIVE_SIZE = 0.85f;
+    private static final float SPACER_RELATIVE_SIZE = 0.4f;
     private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
     private static final String BELL_MARK = "🔔 ";
     private static final int STORY_TEXT_COLOR = 0xB3FFFFFF;
@@ -149,10 +152,15 @@ public class SessionSwitchPickerController {
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     break;
                 case STORY:
-                    builder.append(STORY_INDENT).append(line.getText());
+                    builder.append(STORY_INDENT).append(STORY_PREFIX).append(line.getText());
                     builder.setSpan(new RelativeSizeSpan(STORY_RELATIVE_SIZE), start, builder.length(),
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     builder.setSpan(new ForegroundColorSpan(STORY_TEXT_COLOR), start, builder.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    break;
+                case SPACER:
+                    builder.append(' ');
+                    builder.setSpan(new RelativeSizeSpan(SPACER_RELATIVE_SIZE), start, builder.length(),
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                     break;
                 case SESSION:
@@ -170,11 +178,11 @@ public class SessionSwitchPickerController {
         if (line.isMarked()) {
             builder.append(BELL_MARK);
         }
+        int nameStart = builder.length();
         builder.append(line.getText());
+        builder.setSpan(new RelativeSizeSpan(SESSION_NAME_RELATIVE_SIZE), nameStart, builder.length(),
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (line.isHighlighted()) {
-            int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
-            builder.setSpan(new BackgroundColorSpan(highlightBackground), start, builder.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             builder.setSpan(new StyleSpan(Typeface.BOLD), start, builder.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             builder.setSpan(new ForegroundColorSpan(HIGHLIGHTED_SESSION_TEXT_COLOR), start, builder.length(),
@@ -188,6 +196,11 @@ public class SessionSwitchPickerController {
             builder.setSpan(new RelativeSizeSpan(SECONDARY_RELATIVE_SIZE), secondaryStart, builder.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             builder.setSpan(new ForegroundColorSpan(SECONDARY_TEXT_COLOR), secondaryStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (line.isHighlighted()) {
+            int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
+            builder.setSpan(new BackgroundColorSpan(highlightBackground), start, builder.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
     }
