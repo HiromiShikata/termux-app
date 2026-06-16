@@ -31,6 +31,10 @@ public final class SessionPickerOverlayRenderModel {
                         SessionPickerOverlayLine.Kind.PROJECT, labelOrEmpty(row.getLabel()), false));
                     break;
                 case STORY_HEADER:
+                    if (!lines.isEmpty()) {
+                        lines.add(new SessionPickerOverlayLine(
+                            SessionPickerOverlayLine.Kind.SPACER, "", false));
+                    }
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.STORY, labelOrEmpty(row.getLabel()), false));
                     break;
