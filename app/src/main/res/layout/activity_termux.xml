@@ -227,6 +227,70 @@
 
         </androidx.drawerlayout.widget.DrawerLayout>
 
+        <LinearLayout
+            android:id="@+id/project_browser_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_above="@+id/terminal_toolbar_bottom_container"
+            android:background="?attr/termuxActivityDrawerBackground"
+            android:elevation="10dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?attr/termuxActivityDrawerBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/project_browser_close_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/action_project_browser_close"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_browser_close_tab"
+                    android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/project_browser_header_url"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="2"
+                    android:paddingHorizontal="4dp"
+                    android:paddingVertical="3dp"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <WebView
+                    android:id="@+id/project_browser_web_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="?attr/termuxActivityDrawerBackground" />
+
+                <ProgressBar
+                    android:id="@+id/project_browser_progress_bar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:indeterminate="true"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
         <View
             android:id="@+id/session_list_bottom_sheet_scrim"
             android:layout_width="match_parent"

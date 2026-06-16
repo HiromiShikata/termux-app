@@ -26,8 +26,6 @@ public final class BrowserProjectUrlButtonsViewController {
 
     private final TermuxActivity mActivity;
 
-    private final TermuxBrowserController mBrowserController;
-
     private final LinearLayout mButtonsContainer;
 
     private final SessionDefinitionLoader mLoader;
@@ -38,17 +36,14 @@ public final class BrowserProjectUrlButtonsViewController {
 
     private String mPendingSessionName;
 
-    public BrowserProjectUrlButtonsViewController(@NonNull TermuxActivity activity,
-                                                  @NonNull TermuxBrowserController browserController) {
-        this(activity, browserController,
+    public BrowserProjectUrlButtonsViewController(@NonNull TermuxActivity activity) {
+        this(activity,
             new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
     }
 
     public BrowserProjectUrlButtonsViewController(@NonNull TermuxActivity activity,
-                                                  @NonNull TermuxBrowserController browserController,
                                                   @NonNull SessionDefinitionLoader loader) {
         this.mActivity = activity;
-        this.mBrowserController = browserController;
         this.mButtonsContainer = activity.findViewById(R.id.browser_project_url_buttons);
         this.mLoader = loader;
     }
@@ -122,10 +117,18 @@ public final class BrowserProjectUrlButtonsViewController {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mBrowserController.openUrlInNewTab(url);
+                openProjectUrl(url);
             }
         });
         return button;
+    }
+
+    private void openProjectUrl(@NonNull String url) {
+        ProjectBrowserOverlayController projectBrowserController = mActivity.getProjectBrowserOverlayController();
+        if (projectBrowserController == null) {
+            return;
+        }
+        projectBrowserController.route(url);
     }
 
     @Nullable
