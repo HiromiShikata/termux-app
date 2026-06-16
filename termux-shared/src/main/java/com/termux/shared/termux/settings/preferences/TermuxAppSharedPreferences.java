@@ -351,6 +351,54 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public String getCollapsedProjectKeysText() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_COLLAPSED_PROJECT_KEYS, TERMUX_APP.DEFAULT_VALUE_KEY_COLLAPSED_PROJECT_KEYS, false);
+    }
+
+    public void setCollapsedProjectKeys(@NonNull Set<String> collapsedProjectKeys) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_COLLAPSED_PROJECT_KEYS, serializeCollapsedProjectKeys(collapsedProjectKeys), false);
+    }
+
+    @NonNull
+    public Set<String> getCollapsedProjectKeys() {
+        return parseCollapsedProjectKeys(getCollapsedProjectKeysText());
+    }
+
+    @NonNull
+    public static Set<String> parseCollapsedProjectKeys(@Nullable String value) {
+        Set<String> keys = new LinkedHashSet<>();
+        if (value == null) {
+            return keys;
+        }
+        for (String line : value.split("\n")) {
+            String trimmedKey = line.trim();
+            if (!trimmedKey.isEmpty()) {
+                keys.add(trimmedKey);
+            }
+        }
+        return keys;
+    }
+
+    @NonNull
+    public static String serializeCollapsedProjectKeys(@NonNull Set<String> collapsedProjectKeys) {
+        StringBuilder serialized = new StringBuilder();
+        for (String collapsedProjectKey : collapsedProjectKeys) {
+            if (collapsedProjectKey == null) {
+                continue;
+            }
+            String trimmedKey = collapsedProjectKey.trim();
+            if (trimmedKey.isEmpty()) {
+                continue;
+            }
+            if (serialized.length() > 0) {
+                serialized.append("\n");
+            }
+            serialized.append(trimmedKey);
+        }
+        return serialized.toString();
+    }
+
+
     public boolean isSessionSwitchPreviewFirstEnabled() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_PREVIEW_FIRST, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_SWITCH_PREVIEW_FIRST);
     }

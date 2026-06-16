@@ -222,6 +222,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_ALWAYS_NA_SESSION_NAMES = "always_na_session_names";
         public static final String DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES = "";
 
+        public static final String KEY_COLLAPSED_PROJECT_KEYS = "collapsed_project_keys";
+        public static final String DEFAULT_VALUE_KEY_COLLAPSED_PROJECT_KEYS = "";
+
         public static final String KEY_SESSION_SWITCH_PREVIEW_FIRST = "session_switch_preview_first";
         public static final boolean DEFAULT_VALUE_KEY_SESSION_SWITCH_PREVIEW_FIRST = false;
 
