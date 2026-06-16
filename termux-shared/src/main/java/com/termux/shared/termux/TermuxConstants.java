@@ -568,10 +568,6 @@ public final class TermuxConstants {
     public static final String TERMUX_REDDIT_SUBREDDIT_URL = "https://www.reddit.com/r/termux"; // Default: "https://www.reddit.com/r/termux"
 
 
-    /** Termux donate url */
-    public static final String TERMUX_DONATE_URL = TERMUX_SITE_URL + "/donate"; // Default: "https://termux.dev/donate"
-
-
 
 
 

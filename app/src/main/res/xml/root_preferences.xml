@@ -85,10 +85,4 @@
         app:persistent="false"/>
     <!-- app:layout="@layout/preference_markdown_text" -->
 
-    <Preference
-        app:key="donate"
-        app:title="@string/donate_preference_title"
-        app:persistent="false"
-        app:isPreferenceVisible="false"/>
-
 </PreferenceScreen>

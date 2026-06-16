@@ -356,9 +356,6 @@
     <string name="about_preference_summary_version">Version %1$s (%2$d)</string>
     <string name="msg_version_copied">Version copied</string>
 
-    <!-- Donate Preference -->
-    <string name="donate_preference_title">Donate</string>
-
     <!-- Update APK Preference -->
     <string name="update_apk_preference_title">Check for updates now</string>
     <string name="update_apk_preference_summary">Download and install the latest build from GitHub Releases</string>
