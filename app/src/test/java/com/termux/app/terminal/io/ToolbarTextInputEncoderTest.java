@@ -24,4 +24,24 @@ public class ToolbarTextInputEncoderTest {
     public void sendsNothingForEmptyTextWhenSubmitWhenEmptyDisabled() {
         Assert.assertEquals("", ToolbarTextInputEncoder.textToSend("", false));
     }
+
+    @Test
+    public void hasNoContentToSendForEmptyTextWhenSubmitWhenEmptyDisabled() {
+        Assert.assertFalse(ToolbarTextInputEncoder.hasContentToSend("", false));
+    }
+
+    @Test
+    public void hasContentToSendForEmptyTextWhenSubmitWhenEmptyEnabled() {
+        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("", true));
+    }
+
+    @Test
+    public void hasContentToSendForNonEmptyTextWhenSubmitWhenEmptyDisabled() {
+        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("ls -la", false));
+    }
+
+    @Test
+    public void hasContentToSendForNonEmptyTextWhenSubmitWhenEmptyEnabled() {
+        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("ls -la", true));
+    }
 }
