@@ -56,6 +56,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
 
+    static final float SESSION_NAME_RELATIVE_SIZE = 0.85f;
+
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
 
@@ -510,6 +512,14 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         projectBrowserController.route(url);
     }
 
+    static void applySessionNameStyling(@NonNull SpannableString styled, int sessionNameLength, @NonNull StyleSpan boldSpan) {
+        if (sessionNameLength <= 0) {
+            return;
+        }
+        styled.setSpan(boldSpan, 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new RelativeSizeSpan(SESSION_NAME_RELATIVE_SIZE), 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
     @SuppressLint("SetTextI18n")
     private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent) {
         View sessionRowView = convertView;
@@ -587,7 +597,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        fullSessionTitleStyled.setSpan(boldSpan, 0, sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        applySessionNameStyling(fullSessionTitleStyled, sessionNamePart.length(), boldSpan);
         if (activeIndicator.useAccentNameColor) {
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), 0, sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
