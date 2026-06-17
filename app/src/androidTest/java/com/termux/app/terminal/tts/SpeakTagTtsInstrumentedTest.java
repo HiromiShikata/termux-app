@@ -67,8 +67,6 @@ public class SpeakTagTtsInstrumentedTest {
             transcript.contains("</speak>"));
 
         captureScreenshot();
-
-        scenario.close();
     }
 
     private static String waitForTranscriptContaining(TerminalSession session, String needle, long timeoutMillis)
