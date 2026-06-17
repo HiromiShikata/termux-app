@@ -30,6 +30,22 @@
                 android:orientation="vertical">
 
                 <TextView
+                    android:id="@+id/session_project_story_bar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:ellipsize="end"
+                    android:focusable="false"
+                    android:longClickable="false"
+                    android:maxLines="1"
+                    android:paddingHorizontal="6dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="0dp"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="9sp"
+                    android:visibility="gone" />
+
+                <TextView
                     android:id="@+id/session_name_bar"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
