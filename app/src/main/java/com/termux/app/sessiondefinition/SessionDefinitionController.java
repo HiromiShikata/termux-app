@@ -94,6 +94,8 @@ public final class SessionDefinitionController {
             }
         }
 
+        activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions();
+
         activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
     }
 

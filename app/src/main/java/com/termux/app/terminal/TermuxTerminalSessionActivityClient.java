@@ -927,8 +927,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /**
      * Recreate the sessions whose names the user configured as always present. Returns {@code true}
      * if at least one session was created, in which case the caller should not create the default
-     * session. This runs on a cold start after the persisted session list has been cleared, so the
-     * always-present sessions return without reintroducing the previously-cleared persisted records.
+     * session. This runs on a cold start after the persisted session list has been cleared and again
+     * after a session reload rebuilds the session list, so the always-present sessions return without
+     * reintroducing the previously-cleared persisted records.
      */
     public boolean restoreAlwaysPresentSessions() {
         TermuxService service = mActivity.getTermuxService();
