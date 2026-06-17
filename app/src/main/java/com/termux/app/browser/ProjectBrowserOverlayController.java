@@ -76,11 +76,17 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             }
 
             @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 mProgressBar.setVisibility(View.GONE);
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
                 updateOverviewActionsVisibility();
+                view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
                 CookieManager.getInstance().flush();
             }
         });

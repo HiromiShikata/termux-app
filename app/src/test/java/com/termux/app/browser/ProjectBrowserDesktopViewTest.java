@@ -56,6 +56,39 @@ public class ProjectBrowserDesktopViewTest {
     }
 
     @Test
+    public void projectBrowserReinjectsDesktopViewportScriptOnPageFinish() throws IOException {
+        String source = readControllerSource();
+        int onPageFinishedIndex = source.indexOf("onPageFinished");
+        Assert.assertTrue(onPageFinishedIndex >= 0);
+        int injectionAfterPageFinishedIndex = source.indexOf(
+            "view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null)", onPageFinishedIndex);
+        Assert.assertTrue(injectionAfterPageFinishedIndex > onPageFinishedIndex);
+    }
+
+    @Test
+    public void projectBrowserReinjectsDesktopViewportScriptOnPageCommitVisible() throws IOException {
+        String source = readControllerSource();
+        int onPageCommitVisibleIndex = source.indexOf("onPageCommitVisible");
+        Assert.assertTrue(onPageCommitVisibleIndex >= 0);
+        int injectionAfterCommitVisibleIndex = source.indexOf(
+            "view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null)", onPageCommitVisibleIndex);
+        Assert.assertTrue(injectionAfterCommitVisibleIndex > onPageCommitVisibleIndex);
+    }
+
+    @Test
+    public void projectBrowserInjectsDesktopViewportScriptOnStartCommitAndFinish() throws IOException {
+        String source = readControllerSource();
+        int injectionCount = 0;
+        int searchIndex = source.indexOf("view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null)");
+        while (searchIndex >= 0) {
+            injectionCount++;
+            searchIndex = source.indexOf(
+                "view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null)", searchIndex + 1);
+        }
+        Assert.assertTrue(injectionCount >= 3);
+    }
+
+    @Test
     public void projectBrowserKeepsWideViewportAndOverviewMode() throws IOException {
         String source = readControllerSource();
         Assert.assertTrue(source.contains("settings.setUseWideViewPort(true)"));
