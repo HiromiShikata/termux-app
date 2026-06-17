@@ -21,7 +21,6 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.terminal.SessionBellNotificationStore;
-import com.termux.app.terminal.tts.SpeakTagTtsController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
@@ -92,8 +91,6 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     private final SessionBellNotificationStore mSessionBellNotificationStore = new SessionBellNotificationStore();
 
-    private SpeakTagTtsController mSpeakTagTtsController;
-
     /**
      * Termux app shared properties manager, loaded from termux.properties
      */
@@ -122,8 +119,6 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         mProperties = TermuxAppSharedProperties.getProperties();
 
         mShellManager = TermuxShellManager.getShellManager();
-
-        mSpeakTagTtsController = new SpeakTagTtsController(this);
 
         runStartForeground();
 
@@ -186,9 +181,6 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         TermuxShellManager.onAppExit(this);
 
         SystemEventReceiver.unregisterPackageUpdateEvents(this);
-
-        if (mSpeakTagTtsController != null)
-            mSpeakTagTtsController.shutdown();
 
         runStopForeground();
     }
@@ -909,10 +901,6 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     public SessionBellNotificationStore getSessionBellNotificationStore() {
         return mSessionBellNotificationStore;
-    }
-
-    public SpeakTagTtsController getSpeakTagTtsController() {
-        return mSpeakTagTtsController;
     }
 
     @Nullable

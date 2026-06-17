@@ -26,6 +26,8 @@ public interface TerminalSessionClient {
 
     void onUrgentNotification(@NonNull TerminalSession session);
 
+    void onSpeakNotification(@NonNull TerminalSession session, @NonNull String text);
+
     void onColorsChanged(@NonNull TerminalSession session);
 
     void onTerminalCursorStateChange(boolean state);

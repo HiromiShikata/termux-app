@@ -33,6 +33,9 @@ public abstract class TerminalOutput {
     /** Notify the client that an invisible OSC urgent-attention marker (OSC 9998;claude-urgent) was received. */
     public abstract void onUrgentNotification();
 
+    /** Notify the client that a literal {@code <speak>...</speak>} tag in the session output enclosed the given text. */
+    public abstract void onSpeakNotification(String text);
+
     public abstract void onColorsChanged();
 
 }

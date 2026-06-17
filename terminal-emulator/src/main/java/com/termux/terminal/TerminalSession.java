@@ -312,6 +312,11 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     @Override
+    public void onSpeakNotification(String text) {
+        mClient.onSpeakNotification(this, text);
+    }
+
+    @Override
     public void onColorsChanged() {
         mClient.onColorsChanged(this);
     }

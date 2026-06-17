@@ -188,6 +188,11 @@ public final class TerminalEmulator {
     /** The terminal session this emulator is bound to. */
     private final TerminalOutput mSession;
 
+    /** Detects literal {@code <speak>...</speak>} tags in the session output and reports the enclosed text. */
+    private final SpeakTagFilter mSpeakTagFilter = new SpeakTagFilter();
+    private final SpeakTagFilter.DisplayEmitter mSpeakTagDisplayEmitter = this::emitCodePoint;
+    private final SpeakTagFilter.SpeakListener mSpeakTagListener = this::dispatchSpeakNotification;
+
     TerminalSessionClient mClient;
 
     /** Keeps track of the current argument of the current escape sequence. Ranges from 0 to MAX_ESCAPE_PARAMETERS-1. */
@@ -589,6 +594,9 @@ public final class TerminalEmulator {
     }
 
     public void processCodePoint(int b) {
+        if (mEscapeState == ESC_NONE && b < 32 && mSpeakTagFilter.hasPending()) {
+            mSpeakTagFilter.flushPending(mSpeakTagDisplayEmitter);
+        }
         // The Application Program-Control (APC) string might be arbitrary non-printable characters, so handle that early.
         if (mEscapeState == ESC_APC) {
             doApc(b);
@@ -666,7 +674,7 @@ public final class TerminalEmulator {
                 mContinueSequence = false;
                 switch (mEscapeState) {
                     case ESC_NONE:
-                        if (b >= 32) emitCodePoint(b);
+                        if (b >= 32) mSpeakTagFilter.processCodePoint(b, mSpeakTagDisplayEmitter, mSpeakTagListener);
                         break;
                     case ESC:
                         doEsc(b);
@@ -2381,6 +2389,10 @@ public final class TerminalEmulator {
 
     private void finishSequence() {
         mEscapeState = ESC_NONE;
+    }
+
+    private void dispatchSpeakNotification(String text) {
+        mSession.onSpeakNotification(text);
     }
 
     /**

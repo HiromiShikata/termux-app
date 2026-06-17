@@ -45,6 +45,10 @@ public class TermuxTerminalSessionClientBase implements TerminalSessionClient {
     }
 
     @Override
+    public void onSpeakNotification(@NonNull TerminalSession session, @NonNull String text) {
+    }
+
+    @Override
     public void onColorsChanged(@NonNull TerminalSession changedSession) {
     }
 
