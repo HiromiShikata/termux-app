@@ -53,8 +53,23 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mOverviewActionsView = activity.findViewById(R.id.project_browser_overview_actions);
         this.mBulkOpenController = new BrowserBulkOpenController(activity, mWebView);
         configureWebView();
+        configureLinkContextMenu();
         configureCloseButton();
         configureOverviewActions();
+    }
+
+    private void configureLinkContextMenu() {
+        new BrowserLinkContextMenuController(mActivity, mWebView, new BrowserLinkContextMenuController.Actions() {
+            @Override
+            public void openLinkInBrowser(@NonNull String linkUrl) {
+                openProjectUrl(linkUrl);
+            }
+
+            @Override
+            public void createSessionForLink(@NonNull String linkUrl) {
+                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
+            }
+        }).attach();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
