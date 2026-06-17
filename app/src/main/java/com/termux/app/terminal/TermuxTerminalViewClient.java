@@ -165,12 +165,17 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public float onScale(float scale) {
-        if (scale < 0.9f || scale > 1.1f) {
-            boolean increase = scale > 1.f;
-            changeFontSize(increase);
-            return 1.0f;
+        switch (ScaleGestureFontSizeDecision.decide(scale)) {
+            case INCREASE_FONT_SIZE:
+                changeFontSize(true);
+                return 1.0f;
+            case DECREASE_FONT_SIZE:
+                changeFontSize(false);
+                return 1.0f;
+            case NO_CHANGE:
+            default:
+                return scale;
         }
-        return scale;
     }
 
 
@@ -248,36 +253,53 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             e.isCtrlPressed() && e.isAltPressed()) {
             // Get the unmodified code point:
             int unicodeChar = e.getUnicodeChar(0);
+            int shiftedUnicodeChar = e.getUnicodeChar(KeyEvent.META_SHIFT_ON);
 
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || unicodeChar == 'n'/* next */) {
-                mTermuxTerminalSessionActivityClient.switchToSession(true);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP || unicodeChar == 'p' /* previous */) {
-                mTermuxTerminalSessionActivityClient.switchToSession(false);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                mActivity.getDrawer().openDrawer(Gravity.LEFT);
-            } else if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                mActivity.getDrawer().closeDrawers();
-            } else if (unicodeChar == 'k'/* keyboard */) {
-                onToggleSoftKeyboardRequest();
-            } else if (unicodeChar == 'm'/* menu */) {
-                mActivity.getTerminalView().showContextMenu();
-            } else if (unicodeChar == 'r'/* rename */) {
-                mTermuxTerminalSessionActivityClient.renameSession(currentSession);
-            } else if (unicodeChar == 'c'/* create */) {
-                mTermuxTerminalSessionActivityClient.addNewSession(false, null);
-            } else if (unicodeChar == 'u' /* urls */) {
-                showUrlSelection();
-            } else if (unicodeChar == 'v') {
-                doPaste();
-            } else if (unicodeChar == '+' || e.getUnicodeChar(KeyEvent.META_SHIFT_ON) == '+') {
-                // We also check for the shifted char here since shift may be required to produce '+',
-                // see https://github.com/termux/termux-api/issues/2
-                changeFontSize(true);
-            } else if (unicodeChar == '-') {
-                changeFontSize(false);
-            } else if (unicodeChar >= '1' && unicodeChar <= '9') {
-                int index = unicodeChar - '1';
-                mTermuxTerminalSessionActivityClient.switchToSession(index);
+            HardwareKeyboardShortcut.Result shortcut =
+                HardwareKeyboardShortcut.decide(keyCode, unicodeChar, shiftedUnicodeChar);
+            switch (shortcut.action) {
+                case SWITCH_TO_NEXT_SESSION:
+                    mTermuxTerminalSessionActivityClient.switchToSession(true);
+                    break;
+                case SWITCH_TO_PREVIOUS_SESSION:
+                    mTermuxTerminalSessionActivityClient.switchToSession(false);
+                    break;
+                case OPEN_DRAWER:
+                    mActivity.getDrawer().openDrawer(Gravity.LEFT);
+                    break;
+                case CLOSE_DRAWER:
+                    mActivity.getDrawer().closeDrawers();
+                    break;
+                case TOGGLE_SOFT_KEYBOARD:
+                    onToggleSoftKeyboardRequest();
+                    break;
+                case SHOW_CONTEXT_MENU:
+                    mActivity.getTerminalView().showContextMenu();
+                    break;
+                case RENAME_SESSION:
+                    mTermuxTerminalSessionActivityClient.renameSession(currentSession);
+                    break;
+                case CREATE_SESSION:
+                    mTermuxTerminalSessionActivityClient.addNewSession(false, null);
+                    break;
+                case SHOW_URL_SELECTION:
+                    showUrlSelection();
+                    break;
+                case PASTE:
+                    doPaste();
+                    break;
+                case INCREASE_FONT_SIZE:
+                    changeFontSize(true);
+                    break;
+                case DECREASE_FONT_SIZE:
+                    changeFontSize(false);
+                    break;
+                case SWITCH_TO_SESSION_INDEX:
+                    mTermuxTerminalSessionActivityClient.switchToSession(shortcut.sessionIndex);
+                    break;
+                case NONE:
+                default:
+                    break;
             }
             return true;
         }
@@ -402,102 +424,28 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onCodePoint(final int codePoint, boolean ctrlDown, TerminalSession session) {
         if (mVirtualFnKeyDown) {
-            int resultingKeyCode = -1;
-            int resultingCodePoint = -1;
-            boolean altDown = false;
-            int lowerCase = Character.toLowerCase(codePoint);
-            switch (lowerCase) {
-                // Arrow keys.
-                case 'w':
-                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_UP;
-                    break;
-                case 'a':
-                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_LEFT;
-                    break;
-                case 's':
-                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_DOWN;
-                    break;
-                case 'd':
-                    resultingKeyCode = KeyEvent.KEYCODE_DPAD_RIGHT;
-                    break;
-
-                // Page up and down.
-                case 'p':
-                    resultingKeyCode = KeyEvent.KEYCODE_PAGE_UP;
-                    break;
-                case 'n':
-                    resultingKeyCode = KeyEvent.KEYCODE_PAGE_DOWN;
-                    break;
-
-                // Some special keys:
-                case 't':
-                    resultingKeyCode = KeyEvent.KEYCODE_TAB;
-                    break;
-                case 'i':
-                    resultingKeyCode = KeyEvent.KEYCODE_INSERT;
-                    break;
-                case 'h':
-                    resultingCodePoint = '~';
-                    break;
-
-                // Special characters to input.
-                case 'u':
-                    resultingCodePoint = '_';
-                    break;
-                case 'l':
-                    resultingCodePoint = '|';
-                    break;
-
-                // Function keys.
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                    resultingKeyCode = (codePoint - '1') + KeyEvent.KEYCODE_F1;
-                    break;
-                case '0':
-                    resultingKeyCode = KeyEvent.KEYCODE_F10;
-                    break;
-
-                // Other special keys.
-                case 'e':
-                    resultingCodePoint = /*Escape*/ 27;
-                    break;
-                case '.':
-                    resultingCodePoint = /*^.*/ 28;
-                    break;
-
-                case 'b': // alt+b, jumping backward in readline.
-                case 'f': // alf+f, jumping forward in readline.
-                case 'x': // alt+x, common in emacs.
-                    resultingCodePoint = lowerCase;
-                    altDown = true;
-                    break;
-
-                // Volume control.
-                case 'v':
-                    resultingCodePoint = -1;
+            VirtualFunctionKeyMapper.Result mapping = VirtualFunctionKeyMapper.map(codePoint);
+            int resultingKeyCode = mapping.keyCode;
+            int resultingCodePoint = mapping.codePoint;
+            boolean altDown = mapping.altDown;
+            switch (mapping.sideEffect) {
+                case ADJUST_VOLUME:
                     AudioManager audio = (AudioManager) mActivity.getSystemService(Context.AUDIO_SERVICE);
                     audio.adjustSuggestedStreamVolume(AudioManager.ADJUST_SAME, AudioManager.USE_DEFAULT_STREAM_TYPE, AudioManager.FLAG_SHOW_UI);
                     break;
-
-                // Writing mode:
-                case 'q':
-                case 'k':
+                case TOGGLE_TERMINAL_TOOLBAR:
                     mActivity.toggleTerminalToolbar();
                     mVirtualFnKeyDown=false; // force disable fn key down to restore keyboard input into terminal view, fixes termux/termux-app#1420
                     break;
+                case NONE:
+                default:
+                    break;
             }
 
-            if (resultingKeyCode != -1) {
+            if (resultingKeyCode != VirtualFunctionKeyMapper.NONE) {
                 TerminalEmulator term = session.getEmulator();
                 session.write(KeyHandler.getCode(resultingKeyCode, 0, term.isCursorKeysApplicationMode(), term.isKeypadApplicationMode()));
-            } else if (resultingCodePoint != -1) {
+            } else if (resultingCodePoint != VirtualFunctionKeyMapper.NONE) {
                 session.writeCodePoint(altDown, resultingCodePoint);
             }
             return true;
