@@ -303,6 +303,15 @@
                     android:layout_height="match_parent"
                     android:background="?attr/termuxActivityDrawerBackground" />
 
+                <View
+                    android:id="@+id/project_browser_web_view_cover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="?attr/termuxActivityDrawerBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:visibility="gone" />
+
                 <ProgressBar
                     android:id="@+id/project_browser_progress_bar"
                     style="?android:attr/progressBarStyleHorizontal"
@@ -311,7 +320,7 @@
                     android:layout_gravity="top"
                     android:clickable="false"
                     android:focusable="false"
-                    android:indeterminate="true"
+                    android:max="100"
                     android:visibility="gone" />
 
                 <LinearLayout
