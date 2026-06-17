@@ -99,7 +99,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long MARK_CLEAR_DELAY_MILLIS = 3000L;
 
+    private static final long OUTPUT_ACTIVITY_REFRESH_INTERVAL_MILLIS = 500L;
+
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+
+    private final SessionOutputActivityRefreshDebouncer mOutputActivityRefreshDebouncer =
+        new SessionOutputActivityRefreshDebouncer(OUTPUT_ACTIVITY_REFRESH_INTERVAL_MILLIS);
 
     private Runnable mPendingBellNotificationClear;
 
@@ -171,12 +176,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onTextChanged(@NonNull TerminalSession changedSession) {
+        boolean isCurrentSession = mActivity.getCurrentSession() == changedSession;
+
+        if (!isCurrentSession)
+            recordOutputActivityForBackgroundSession(changedSession);
+
         if (!mActivity.isVisible()) return;
 
-        if (mActivity.getCurrentSession() == changedSession) {
+        if (isCurrentSession) {
             mActivity.getTerminalView().onScreenUpdated();
             openTagsForSession(changedSession);
         }
+    }
+
+    private void recordOutputActivityForBackgroundSession(@NonNull TerminalSession session) {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionHandle = currentSession == null ? null : currentSession.mHandle;
+        boolean marked = SessionOutputActivityMarker.markBackgroundOutputActivity(
+            mActivity.getSessionOutputActivityStore(), currentSessionHandle, session.mHandle);
+        if (marked && mActivity.isVisible()
+            && mOutputActivityRefreshDebouncer.shouldRefresh(System.currentTimeMillis()))
+            termuxSessionListNotifyUpdated();
     }
 
     private void openTagsForSession(TerminalSession session) {
@@ -350,6 +370,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
+    private void clearOutputActivity(@NonNull TerminalSession session) {
+        SessionOutputActivityMarker.clearOutputActivityForCurrentSession(
+            mActivity.getSessionOutputActivityStore(), session.mHandle);
+    }
+
     private void scheduleBellNotificationClear(@NonNull TerminalSession session) {
         cancelPendingBellNotificationClear();
 
@@ -458,6 +483,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         mActiveSessionHandle = session.mHandle;
 
+        clearOutputActivity(session);
         scheduleBellNotificationClear(session);
 
         TerminalSession previousSession = mActivity.getCurrentSession();
