@@ -449,17 +449,21 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         if (sessionName == null || sessionName.isEmpty()) {
             return false;
         }
+        return setSessionDisabled(sessionName, !isSessionDisabled(sessionName));
+    }
+
+    public boolean setSessionDisabled(@Nullable String sessionName, boolean disabled) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return false;
+        }
         Set<String> names = getDisabledSessionNames();
-        boolean nowDisabled;
-        if (names.contains(sessionName)) {
-            names.remove(sessionName);
-            nowDisabled = false;
-        } else {
+        if (disabled) {
             names.add(sessionName);
-            nowDisabled = true;
+        } else {
+            names.remove(sessionName);
         }
         setDisabledSessionNames(serializeDisabledSessionNames(names));
-        return nowDisabled;
+        return disabled;
     }
 
 

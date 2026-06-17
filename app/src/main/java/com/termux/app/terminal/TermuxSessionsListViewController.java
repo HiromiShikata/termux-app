@@ -226,6 +226,18 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         notifyDataSetChanged();
     }
 
+    private void hideSession(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return;
+        }
+        preferences.setSessionDisabled(sessionName, true);
+        notifyDataSetChanged();
+    }
+
     @NonNull
     public List<String> getSessionRawNames() {
         List<String> rawNames = new ArrayList<>(mSessionList.size());
@@ -763,6 +775,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         CharSequence[] actions = {
             mActivity.getString(R.string.action_copy_session_name),
             mActivity.getString(R.string.action_rename_session),
+            mActivity.getString(R.string.action_hide_session),
             mActivity.getString(R.string.action_delete_session)
         };
 
@@ -776,6 +789,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             } else if (which == 1) {
                 mActivity.getTermuxTerminalSessionClient().renameSession(session);
             } else if (which == 2) {
+                hideSession(session.mSessionName);
+            } else if (which == 3) {
                 mActivity.getTermuxTerminalSessionClient().deleteSession(session);
             }
         });
