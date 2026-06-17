@@ -43,7 +43,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
 import com.termux.app.terminal.session.PersistedSession;
-import com.termux.app.terminal.tts.SpeakTagTtsController;
+import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
@@ -175,28 +175,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getCurrentSession() == changedSession) {
             mActivity.getTerminalView().onScreenUpdated();
-            readSpeakTagsForSession(changedSession);
             openTagsForSession(changedSession);
         }
-    }
-
-    private void readSpeakTagsForSession(TerminalSession session) {
-        if (session == null) return;
-
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
-
-        SpeakTagTtsController speakTagTtsController = service.getSpeakTagTtsController();
-        if (speakTagTtsController == null) return;
-        if (!speakTagTtsController.isAutoReadEnabled()) return;
-
-        TerminalEmulator emulator = session.getEmulator();
-        if (emulator == null) return;
-
-        TerminalBuffer screen = emulator.getScreen();
-        if (screen == null) return;
-
-        speakTagTtsController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
     }
 
     private void openTagsForSession(TerminalSession session) {
@@ -238,9 +218,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.finishActivityIfNotFinishing();
             return;
         }
-
-        if (service.getSpeakTagTtsController() != null)
-            service.getSpeakTagTtsController().forgetSession(finishedSession.mHandle);
 
         if (mActivity.getOpenTagBrowserController() != null)
             mActivity.getOpenTagBrowserController().forgetSession(finishedSession.mHandle);
@@ -326,6 +303,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onUrgentNotification(@NonNull TerminalSession session) {
         recordBellNotificationIfBackgroundSession(session);
         mMainThreadHandler.post(() -> handleUrgentNotificationOnMainThread(session));
+    }
+
+    @Override
+    public void onSpeakNotification(@NonNull TerminalSession session, @NonNull String text) {
+        if (mActivity.getCurrentSession() != session) return;
+        if (!mActivity.getPreferences().isSpeakTagAutoReadEnabled()) return;
+        TtsManager ttsManager = mActivity.getTtsManager();
+        if (ttsManager == null) return;
+        ttsManager.speak(text);
     }
 
     private void handleUrgentNotificationOnMainThread(@NonNull TerminalSession session) {
@@ -501,7 +487,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             && ProjectBrowserSessionDismissal.shouldDismissOnSessionAccess(projectBrowser.isVisible()))
             projectBrowser.hide();
 
-        readSpeakTagsForSession(session);
         openTagsForSession(session);
 
         enforceActiveSessionViewBinding(session);

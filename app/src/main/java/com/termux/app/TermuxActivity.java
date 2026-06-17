@@ -31,6 +31,7 @@ import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.TermuxBrowserController;
@@ -120,6 +121,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      *  {@link TerminalSession} and {@link TermuxActivity}.
      */
     TermuxTerminalSessionActivityClient mTermuxTerminalSessionActivityClient;
+
+    /**
+     * Reads aloud text enclosed in literal {@code <speak>...</speak>} tags detected in session output.
+     */
+    private TtsManager mTtsManager;
 
     /**
      * Termux app shared preferences manager.
@@ -285,6 +291,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         }
 
+        mTtsManager = new TtsManager(this);
+
         setTermuxTerminalViewAndClients();
 
         setTerminalToolbarView(savedInstanceState);
@@ -419,6 +427,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
+
+        if (mTtsManager != null)
+            mTtsManager.shutdown();
 
         if (mIsInvalidState) return;
 
@@ -1105,6 +1116,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxTerminalSessionActivityClient getTermuxTerminalSessionClient() {
         return mTermuxTerminalSessionActivityClient;
+    }
+
+    public TtsManager getTtsManager() {
+        return mTtsManager;
     }
 
     public TermuxSessionsListViewController getTermuxSessionListViewController() {
