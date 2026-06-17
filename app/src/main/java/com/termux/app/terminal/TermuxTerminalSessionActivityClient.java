@@ -36,6 +36,7 @@ import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.ProjectBrowserSessionDismissal;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
@@ -545,6 +546,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setVisibility(View.GONE);
             sessionNameBar.setOnClickListener(null);
             sessionNameBar.setClickable(false);
+            updateSessionProjectStoryBar(null);
         } else {
             String title = mSessionDefinitionEntryMatcher.findTitleForSessionName(
                 mActivity.getSessionDefinitionEntries(), sessionName);
@@ -554,6 +556,25 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setText(buildSessionNameBarText(content));
             sessionNameBar.setVisibility(View.VISIBLE);
             sessionNameBar.setOnClickListener(view -> copyCurrentSessionNameToClipboard());
+            updateSessionProjectStoryBar(sessionName);
+        }
+    }
+
+    private void updateSessionProjectStoryBar(@Nullable String sessionName) {
+        TextView projectStoryBar = mActivity.findViewById(R.id.session_project_story_bar);
+        if (projectStoryBar == null) return;
+
+        SessionDefinitionEntry entry = mSessionDefinitionEntryMatcher.findEntryForSessionName(
+            mActivity.getSessionDefinitionEntries(), sessionName);
+        SessionProjectStoryLine line = (entry == null)
+            ? SessionProjectStoryLine.of(null, null)
+            : SessionProjectStoryLine.of(entry.getGroupLabel(), entry.getEntryLabel());
+        if (line.hasContent()) {
+            projectStoryBar.setText(line.getText());
+            projectStoryBar.setVisibility(View.VISIBLE);
+        } else {
+            projectStoryBar.setText("");
+            projectStoryBar.setVisibility(View.GONE);
         }
     }
 
