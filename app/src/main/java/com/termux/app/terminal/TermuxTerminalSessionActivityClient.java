@@ -510,29 +510,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void enforceActiveSessionViewBinding(@NonNull TerminalSession session) {
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-
-        TerminalSession displayedTerminalSession =
-            (mActivity.getTerminalView() == null) ? null : mActivity.getTerminalView().getCurrentSession();
-        String displayedTerminalSessionHandle =
-            (displayedTerminalSession == null) ? null : displayedTerminalSession.mHandle;
-        boolean browserVisible = browserController != null && browserController.isBrowserVisible();
-        String displayedBrowserSessionHandle =
-            (browserController == null) ? null : browserController.getDisplayedSessionHandle();
-        boolean activeSessionHasBrowserTab =
-            browserController != null && browserController.hasBrowserTabForSession(mActiveSessionHandle);
-
-        ActiveSessionViewBindingResolution resolution = ActiveSessionViewBindingResolution.resolve(
-            mActiveSessionHandle, displayedTerminalSessionHandle, browserVisible,
-            displayedBrowserSessionHandle, activeSessionHasBrowserTab);
-
-        Logger.logDebug(LOG_TAG, resolution.diagnosticLine());
-
-        if (resolution.requiresTerminalRebind())
-            mActivity.getTerminalView().attachSession(session);
-
-        if (resolution.requiresBrowserRebind() && browserController != null)
-            browserController.reconcileDisplayedTabWithActiveSession(session);
+        Logger.logDebug(LOG_TAG, "guard neutered for experiment " + session.mHandle);
     }
 
     public void updateSessionNameOverlay() {
