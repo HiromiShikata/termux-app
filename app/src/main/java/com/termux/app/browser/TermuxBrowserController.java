@@ -27,6 +27,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.HttpAuthHandler;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -480,6 +481,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @SuppressWarnings("deprecation")
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 onMainFrameError();
+            }
+
+            @Override
+            public void onReceivedHttpAuthRequest(WebView view, HttpAuthHandler handler, String host, String realm) {
+                BrowserHttpAuthDialog.show(view.getContext(), handler, host, realm);
             }
         });
 
