@@ -58,4 +58,15 @@ public class AlwaysPresentSessionPlannerTest {
 
         Assert.assertEquals(Collections.singletonList("alpha"), missing);
     }
+
+    @Test
+    public void planMissingSessionNamesIncludesAlwaysSessionMissingAfterSessionReloadRebuild() {
+        List<String> liveSessionNamesAfterReload = Arrays.asList(
+            "https://example.test/a", "https://example.test/b");
+
+        List<String> missing = planner.planMissingSessionNames(
+            Collections.singletonList("myalways"), liveSessionNamesAfterReload);
+
+        Assert.assertEquals(Collections.singletonList("myalways"), missing);
+    }
 }
