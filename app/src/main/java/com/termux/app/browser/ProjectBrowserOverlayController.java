@@ -65,28 +65,23 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         settings.setAllowContentAccess(false);
         BrowserWebAuthentication.apply(settings);
 
-        mWebView.setWebViewClient(new WebViewClient() {
+        mWebView.setWebViewClient(new BrowserDesktopViewportWebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
                 mProgressBar.setVisibility(View.VISIBLE);
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
                 updateOverviewActionsVisibility();
-                view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
-            }
-
-            @Override
-            public void onPageCommitVisible(WebView view, String url) {
-                view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
                 mProgressBar.setVisibility(View.GONE);
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
                 updateOverviewActionsVisibility();
-                view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
                 CookieManager.getInstance().flush();
             }
         });
