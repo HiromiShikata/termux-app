@@ -424,6 +424,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, mBrowserVisible)) {
+                    showWebViewCover();
+                }
                 showPageLoadProgress(0);
                 BrowserTab loadingTab = displayedTabForCallback();
                 if (loadingTab != null) {
@@ -483,8 +486,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                if (newProgress < 100) {
-                    showPageLoadProgress(newProgress);
+                BrowserPageLoadProgressState progressState =
+                    BrowserPageLoadProgressState.forProgress(newProgress);
+                if (progressState.isVisible()) {
+                    showPageLoadProgress(progressState.getProgress());
                 } else {
                     hidePageLoadProgress();
                 }

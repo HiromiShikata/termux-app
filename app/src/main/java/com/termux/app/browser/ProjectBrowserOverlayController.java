@@ -28,6 +28,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     private final ProgressBar mProgressBar;
 
+    private final View mWebViewCover;
+
     private final View mOverviewActionsView;
 
     private final BrowserBulkOpenController mBulkOpenController;
@@ -35,6 +37,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private boolean mVisible;
 
     private String mCurrentUrl;
+
+    private String mLoadedUrl;
 
     private final ProjectUrlRouter mRouter = new ProjectUrlRouter(this);
 
@@ -44,6 +48,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mWebView = activity.findViewById(R.id.project_browser_web_view);
         this.mHeaderUrlView = activity.findViewById(R.id.project_browser_header_url);
         this.mProgressBar = activity.findViewById(R.id.project_browser_progress_bar);
+        this.mWebViewCover = activity.findViewById(R.id.project_browser_web_view_cover);
         this.mOverviewActionsView = activity.findViewById(R.id.project_browser_overview_actions);
         this.mBulkOpenController = new BrowserBulkOpenController(activity, mWebView);
         configureWebView();
@@ -69,6 +74,10 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+                if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, mVisible)) {
+                    mWebViewCover.setVisibility(View.VISIBLE);
+                }
+                mProgressBar.setProgress(0);
                 mProgressBar.setVisibility(View.VISIBLE);
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
@@ -76,8 +85,17 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             }
 
             @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                super.onPageCommitVisible(view, url);
+                mLoadedUrl = url;
+                mWebViewCover.setVisibility(View.GONE);
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                mLoadedUrl = url;
+                mWebViewCover.setVisibility(View.GONE);
                 mProgressBar.setVisibility(View.GONE);
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
@@ -89,7 +107,13 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                mProgressBar.setVisibility(newProgress < 100 ? View.VISIBLE : View.GONE);
+                BrowserPageLoadProgressState progressState =
+                    BrowserPageLoadProgressState.forProgress(newProgress);
+                mProgressBar.setProgress(progressState.getProgress());
+                mProgressBar.setVisibility(progressState.isVisible() ? View.VISIBLE : View.GONE);
+                if (!progressState.isVisible()) {
+                    mWebViewCover.setVisibility(View.GONE);
+                }
             }
         });
     }
@@ -129,6 +153,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     public void hide() {
         mVisible = false;
         mProgressBar.setVisibility(View.GONE);
+        mWebViewCover.setVisibility(View.GONE);
         mOverlayContainer.setVisibility(View.GONE);
         updateOverviewActionsVisibility();
     }
