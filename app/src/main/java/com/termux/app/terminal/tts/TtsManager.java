@@ -6,29 +6,38 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public final class TtsManager {
 
     public static final String LOG_TAG = "TermuxSpeakTagTts";
 
-    private static final String UTTERANCE_ID = "termux-speak-tag";
+    static final String UTTERANCE_ID = "termux-speak-tag";
 
-    private final TextToSpeech mTextToSpeech;
+    public interface SpeechSynthesizer {
+        void initialize(Runnable onReady);
+
+        void speak(String text, int queueMode, String utteranceId);
+
+        void stop();
+
+        void shutdown();
+    }
+
+    private final SpeechSynthesizer mSynthesizer;
     private final List<String> mPendingTexts = new ArrayList<>();
 
     private boolean mReady = false;
 
     public TtsManager(Context context) {
-        mTextToSpeech = new TextToSpeech(context.getApplicationContext(), this::onInit);
+        this(new AndroidTextToSpeechSynthesizer(context.getApplicationContext()));
     }
 
-    private void onInit(int status) {
-        if (status != TextToSpeech.SUCCESS) {
-            Log.w(LOG_TAG, "TextToSpeech engine failed to initialize with status " + status);
-            return;
-        }
-        mTextToSpeech.setLanguage(Locale.getDefault());
+    TtsManager(SpeechSynthesizer synthesizer) {
+        mSynthesizer = synthesizer;
+        mSynthesizer.initialize(this::onReady);
+    }
+
+    private void onReady() {
         mReady = true;
         List<String> pending = new ArrayList<>(mPendingTexts);
         mPendingTexts.clear();
@@ -37,7 +46,7 @@ public final class TtsManager {
 
     public void speak(String text) {
         if (text == null || text.isEmpty()) return;
-        Log.i(LOG_TAG, "speak: " + text);
+        Log.i(LOG_TAG, "speak (QUEUE_FLUSH): " + text);
         if (mReady) {
             dispatch(text);
         } else {
@@ -45,12 +54,18 @@ public final class TtsManager {
         }
     }
 
+    public void stop() {
+        Log.i(LOG_TAG, "stop");
+        mPendingTexts.clear();
+        mSynthesizer.stop();
+    }
+
     public void shutdown() {
-        mTextToSpeech.stop();
-        mTextToSpeech.shutdown();
+        mSynthesizer.stop();
+        mSynthesizer.shutdown();
     }
 
     private void dispatch(String text) {
-        mTextToSpeech.speak(text, TextToSpeech.QUEUE_ADD, null, UTTERANCE_ID);
+        mSynthesizer.speak(text, TextToSpeech.QUEUE_FLUSH, UTTERANCE_ID);
     }
 }

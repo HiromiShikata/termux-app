@@ -594,9 +594,6 @@ public final class TerminalEmulator {
     }
 
     public void processCodePoint(int b) {
-        if (mEscapeState == ESC_NONE && b < 32 && mSpeakTagFilter.hasPending()) {
-            mSpeakTagFilter.flushPending(mSpeakTagDisplayEmitter);
-        }
         // The Application Program-Control (APC) string might be arbitrary non-printable characters, so handle that early.
         if (mEscapeState == ESC_APC) {
             doApc(b);
@@ -1607,6 +1604,8 @@ public final class TerminalEmulator {
             case 'H': // "${CSI}${ROW};${COLUMN}H" - Cursor position (CUP).
             case 'f': // "${CSI}${ROW};${COLUMN}f" - Horizontal and Vertical Position (HVP).
                 setCursorPosition(getArg1(1) - 1, getArg0(1) - 1);
+                if (mCursorRow == 0 && mCursorCol == 0)
+                    mSpeakTagFilter.abortSpeak(mSpeakTagDisplayEmitter);
                 break;
             case 'I': // Cursor Horizontal Forward Tabulation (CHT). Move the active position n tabs forward.
                 setCursorCol(nextTabStop(getArg0(1)));
@@ -1625,6 +1624,7 @@ public final class TerminalEmulator {
                     case 2: // Erase all of the display - all lines are erased, changed to single-width, and the cursor does not
                         // move..
                         blockClear(0, 0, mColumns, mRows);
+                        mSpeakTagFilter.abortSpeak(mSpeakTagDisplayEmitter);
                         break;
                     case 3: // Delete all lines saved in the scrollback buffer (xterm etc)
                         mMainBuffer.clearTranscript();
