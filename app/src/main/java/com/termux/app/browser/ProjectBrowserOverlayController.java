@@ -12,6 +12,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -165,6 +166,11 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     public boolean isVisible() {
         return mVisible;
+    }
+
+    @Nullable
+    public String getCurrentUrl() {
+        return mCurrentUrl;
     }
 
     public boolean onBackPressed() {
