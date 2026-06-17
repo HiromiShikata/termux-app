@@ -540,7 +540,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setMaxLines(content.hasTitle() ? 3 : 2);
             sessionNameBar.setText(buildSessionNameBarText(content));
             sessionNameBar.setVisibility(View.VISIBLE);
-            sessionNameBar.setOnClickListener(view -> copyCurrentSessionNameToClipboard());
+            sessionNameBar.setOnClickListener(view -> onSessionNameBarTapped());
             updateSessionProjectStoryBar(sessionName);
         }
     }
@@ -571,8 +571,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return spannable;
     }
 
-    private void copyCurrentSessionNameToClipboard() {
-        copySessionNameToClipboard(mActivity.getCurrentSession());
+    private void onSessionNameBarTapped() {
+        ProjectBrowserOverlayController projectBrowser = mActivity.getProjectBrowserOverlayController();
+        boolean projectBrowserVisible = projectBrowser != null && projectBrowser.isVisible();
+        String projectBrowserUrl = (projectBrowser == null) ? null : projectBrowser.getCurrentUrl();
+        TerminalSession session = mActivity.getCurrentSession();
+        String sessionNameForCopy = (session == null) ? null
+            : resolveSessionNameForCopy(session.mSessionName, session.getTitle());
+
+        HeaderTapCopyTarget target = HeaderTapCopyTarget.resolve(
+            projectBrowserVisible, projectBrowserUrl, sessionNameForCopy);
+        if (target.isEmpty()) return;
+
+        int confirmationMessageResId = target.isProjectBrowserUrl()
+            ? R.string.msg_browser_url_copied
+            : R.string.msg_session_name_copied_to_clipboard;
+        ShareUtils.copyTextToClipboard(mActivity, target.getText(),
+            mActivity.getString(confirmationMessageResId));
     }
 
     public void copySessionNameToClipboard(TerminalSession session) {
