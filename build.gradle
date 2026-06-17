@@ -31,6 +31,13 @@ subprojects { subproject ->
         subproject.afterEvaluate {
             subproject.android.buildTypes.debug.enableUnitTestCoverage true
         }
+
+        subproject.tasks.withType(Test).configureEach {
+            jacoco {
+                includeNoLocationClasses = true
+                excludes = ["jdk.internal.*"]
+            }
+        }
     }
 }
 
