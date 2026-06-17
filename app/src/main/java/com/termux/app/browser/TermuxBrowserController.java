@@ -971,6 +971,29 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return mBrowserVisible;
     }
 
+    @Nullable
+    public String getDisplayedSessionHandle() {
+        return mWebViewOwnerHandle;
+    }
+
+    public boolean hasBrowserTabForSession(@Nullable String sessionHandle) {
+        return sessionHandle != null && mTabManager.getActiveTab(sessionHandle) != null;
+    }
+
+    public void reconcileDisplayedTabWithActiveSession(@Nullable TerminalSession session) {
+        String activeSessionHandle = (session == null) ? null : session.mHandle;
+        if (!java.util.Objects.equals(activeSessionHandle, mCurrentSessionHandle)) {
+            onSessionChanged(session);
+            return;
+        }
+        if (!mBrowserVisible) return;
+        if (getActiveTab() != null) {
+            loadActiveTab();
+        } else {
+            showTerminal();
+        }
+    }
+
     public void openTab(@NonNull BrowserTab tab) {
         boolean browserWasHidden = !mBrowserVisible;
         mTabManager.setActiveTab(tab);

@@ -102,6 +102,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private Runnable mPendingBellNotificationClear;
 
+    private String mActiveSessionHandle;
+
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
     }
@@ -467,6 +469,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
 
+        mActiveSessionHandle = session.mHandle;
+
         scheduleBellNotificationClear(session);
 
         TerminalSession previousSession = mActivity.getCurrentSession();
@@ -499,7 +503,35 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         readSpeakTagsForSession(session);
         openTagsForSession(session);
 
+        enforceActiveSessionViewBinding(session);
+
         updateSessionNameOverlay();
+    }
+
+    private void enforceActiveSessionViewBinding(@NonNull TerminalSession session) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+
+        TerminalSession displayedTerminalSession =
+            (mActivity.getTerminalView() == null) ? null : mActivity.getTerminalView().getCurrentSession();
+        String displayedTerminalSessionHandle =
+            (displayedTerminalSession == null) ? null : displayedTerminalSession.mHandle;
+        boolean browserVisible = browserController != null && browserController.isBrowserVisible();
+        String displayedBrowserSessionHandle =
+            (browserController == null) ? null : browserController.getDisplayedSessionHandle();
+        boolean activeSessionHasBrowserTab =
+            browserController != null && browserController.hasBrowserTabForSession(mActiveSessionHandle);
+
+        ActiveSessionViewBindingResolution resolution = ActiveSessionViewBindingResolution.resolve(
+            mActiveSessionHandle, displayedTerminalSessionHandle, browserVisible,
+            displayedBrowserSessionHandle, activeSessionHasBrowserTab);
+
+        Logger.logDebug(LOG_TAG, resolution.diagnosticLine());
+
+        if (resolution.requiresTerminalRebind())
+            mActivity.getTerminalView().attachSession(session);
+
+        if (resolution.requiresBrowserRebind() && browserController != null)
+            browserController.reconcileDisplayedTabWithActiveSession(session);
     }
 
     public void updateSessionNameOverlay() {
