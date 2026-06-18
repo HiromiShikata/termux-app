@@ -429,4 +429,101 @@ public class TerminalRowTest extends TestCase {
 		// assertEquals(' ', line.mText[line.findStartOfColumn(COLUMNS - 1)]);
 	}
 
+	public void testFreshRowIsBlank() {
+		assertTrue(row.isBlank());
+		assertEquals(COLUMNS, row.getSpaceUsed());
+	}
+
+	public void testSetCharMakesRowNonBlank() {
+		row.setChar(3, 'x', 0);
+		assertFalse(row.isBlank());
+		row.setChar(3, ' ', 0);
+		assertTrue(row.isBlank());
+	}
+
+	public void testClearResetsTextAndStyle() {
+		long style = TextStyle.encode(5, 6, TextStyle.CHARACTER_ATTRIBUTE_BOLD);
+		row.setChar(0, 'a', TextStyle.NORMAL);
+		row.setChar(0, DIARESIS_CODEPOINT, TextStyle.NORMAL);
+		row.clear(style);
+		assertTrue(row.isBlank());
+		assertEquals(COLUMNS, row.getSpaceUsed());
+		for (int column = 0; column < COLUMNS; column++) {
+			assertEquals(style, row.getStyle(column));
+		}
+	}
+
+	public void testGetStyleReturnsStoredStyle() {
+		long style = TextStyle.encode(2, 3, TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE);
+		row.setChar(4, 'b', style);
+		assertEquals(style, row.getStyle(4));
+	}
+
+	public void testSetCharRejectsColumnOutOfBounds() {
+		try {
+			row.setChar(COLUMNS, 'a', 0);
+			fail("Expected IllegalArgumentException for column equal to width");
+		} catch (IllegalArgumentException expected) {
+		}
+		try {
+			row.setChar(-1, 'a', 0);
+			fail("Expected IllegalArgumentException for negative column");
+		} catch (IllegalArgumentException expected) {
+		}
+	}
+
+	public void testInsertingWideCharAtLastColumnThrows() {
+		try {
+			row.setChar(COLUMNS - 1, ONE_JAVA_CHAR_DISPLAY_WIDTH_TWO_1, 0);
+			fail("Expected IllegalArgumentException for wide character in last column");
+		} catch (IllegalArgumentException expected) {
+		}
+	}
+
+	public void testHyperlinkUriStoredAndCleared() {
+		assertNull(row.getHyperlinkUri(0));
+		row.setChar(0, 'L', 0, "https://example.com");
+		assertEquals("https://example.com", row.getHyperlinkUri(0));
+		assertNull(row.getHyperlinkUri(1));
+		row.setChar(0, 'L', 0, null);
+		assertNull(row.getHyperlinkUri(0));
+	}
+
+	public void testHyperlinkUriOutOfRangeReturnsNull() {
+		row.setChar(0, 'L', 0, "https://example.com");
+		assertNull(row.getHyperlinkUri(-1));
+		assertNull(row.getHyperlinkUri(COLUMNS));
+	}
+
+	public void testCombiningCharacterCapPerColumn() {
+		row.setChar(0, 'e', 0);
+		int initialSpaceUsed = row.getSpaceUsed();
+		for (int i = 0; i < 30; i++) {
+			row.setChar(0, DIARESIS_CODEPOINT, 0);
+		}
+		int spaceUsedAfterCombining = row.getSpaceUsed();
+		int addedCombiningChars = spaceUsedAfterCombining - initialSpaceUsed;
+		assertEquals(15, addedCombiningChars);
+	}
+
+	public void testCopyIntervalCopiesCharactersWithinSameRow() {
+		row.setChar(0, 'a', 0);
+		row.setChar(1, 'b', 0);
+		row.setChar(2, 'c', 0);
+		row.copyInterval(row, 0, 3, 3);
+		assertLineStartsWith('a', 'b', 'c', 'a', 'b', 'c');
+	}
+
+	public void testCopyIntervalCopiesBetweenRows() {
+		TerminalRow source = new TerminalRow(COLUMNS, TextStyle.NORMAL);
+		long style = TextStyle.encode(9, 10, TextStyle.CHARACTER_ATTRIBUTE_ITALIC);
+		source.setChar(0, 'X', style);
+		source.setChar(1, 'Y', style);
+		row.copyInterval(source, 0, 2, 2);
+		assertEquals('X', row.mText[row.findStartOfColumn(2)]);
+		assertEquals('Y', row.mText[row.findStartOfColumn(3)]);
+		assertEquals(style, row.getStyle(2));
+		assertEquals(style, row.getStyle(3));
+	}
+
 }
