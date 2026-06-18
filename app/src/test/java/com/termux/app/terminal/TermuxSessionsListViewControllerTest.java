@@ -223,6 +223,54 @@ public class TermuxSessionsListViewControllerTest {
         Assert.assertEquals(projectHeader.getPaddingTop(), projectHeader.getPaddingBottom());
     }
 
+    @Test
+    public void activeSessionIndicatorUsesTheNeutralGrayLightAccentInDayMode() {
+        RuntimeEnvironment.setQualifiers("notnight");
+        Context context = RuntimeEnvironment.getApplication();
+
+        Assert.assertEquals(0xFF3A6F8F,
+            ContextCompat.getColor(context, R.color.session_active_indicator));
+    }
+
+    @Test
+    public void activeSessionIndicatorUsesTheNeutralGrayDarkAccentInNightMode() {
+        RuntimeEnvironment.setQualifiers("night");
+        Context context = RuntimeEnvironment.getApplication();
+
+        Assert.assertEquals(0xFF8AB4C8,
+            ContextCompat.getColor(context, R.color.session_active_indicator));
+    }
+
+    @Test
+    public void darkChromeSurfacesUseTheMaterialDarkGrayFamilyRatherThanPureBlackInNightMode() {
+        RuntimeEnvironment.setQualifiers("night");
+        Context context = RuntimeEnvironment.getApplication();
+
+        Assert.assertEquals(0xFF121212,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_background));
+        Assert.assertEquals(0xFF1E1E1E,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_surface));
+        Assert.assertEquals(0xFF242424,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_surface_elevated));
+        Assert.assertEquals(0xFF2C2C2C,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_divider));
+        Assert.assertNotEquals(Color.BLACK,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_background));
+    }
+
+    @Test
+    public void lightChromeSurfacesUseTheNeutralGrayLightFamilyInDayMode() {
+        RuntimeEnvironment.setQualifiers("notnight");
+        Context context = RuntimeEnvironment.getApplication();
+
+        Assert.assertEquals(0xFFFAFAFA,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_background));
+        Assert.assertEquals(0xFFFFFFFF,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_surface));
+        Assert.assertEquals(0xFFE0E0E0,
+            ContextCompat.getColor(context, com.termux.shared.R.color.schema_divider));
+    }
+
     private static Context themedContext() {
         return new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
