@@ -7,13 +7,16 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.LineBackgroundSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -44,6 +47,8 @@ public class SessionSwitchPickerController {
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
     private static final float SESSION_INDENT_DP = 12f;
+    private static final float OVERLAY_FIXED_WIDTH_DP = 240f;
+    private static final float OVERLAY_FIXED_HEIGHT_DP = 320f;
 
     private final TermuxActivity mActivity;
     private final View mOverlayView;
@@ -59,6 +64,7 @@ public class SessionSwitchPickerController {
         this.mActivity = activity;
         this.mOverlayView = activity.findViewById(R.id.session_switch_picker_overlay);
         this.mStructureView = activity.findViewById(R.id.session_switch_picker_structure);
+        this.mStructureView.setMovementMethod(new ScrollingMovementMethod());
     }
 
     public boolean isShowing() {
@@ -138,6 +144,39 @@ public class SessionSwitchPickerController {
             listController.getSessionTitles(), listController.getMarkedSessionIndexes(),
             listController.getDisabledSessionIndexes(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
+        applyFixedOverlaySize();
+    }
+
+    private void applyFixedOverlaySize() {
+        DisplayMetrics displayMetrics = mActivity.getResources().getDisplayMetrics();
+        int fixedWidthPixels = overlayWidthPx(displayMetrics);
+        int fixedHeightPixels = overlayHeightPx(displayMetrics);
+        ViewGroup.LayoutParams layoutParams = mStructureView.getLayoutParams();
+        if (layoutParams.width != fixedWidthPixels || layoutParams.height != fixedHeightPixels) {
+            layoutParams.width = fixedWidthPixels;
+            layoutParams.height = fixedHeightPixels;
+            mStructureView.setLayoutParams(layoutParams);
+        }
+    }
+
+    static int overlayWidthPx(@NonNull DisplayMetrics displayMetrics) {
+        return dimensionPx(OVERLAY_FIXED_WIDTH_DP, displayMetrics);
+    }
+
+    static int overlayHeightPx(@NonNull DisplayMetrics displayMetrics) {
+        return dimensionPx(OVERLAY_FIXED_HEIGHT_DP, displayMetrics);
+    }
+
+    static int overlayHeightPxForLineCount(int lineCount, @NonNull DisplayMetrics displayMetrics) {
+        return overlayHeightPx(displayMetrics);
+    }
+
+    static int overlayWidthPxForLineCount(int lineCount, @NonNull DisplayMetrics displayMetrics) {
+        return overlayWidthPx(displayMetrics);
+    }
+
+    private static int dimensionPx(float dp, @NonNull DisplayMetrics displayMetrics) {
+        return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, displayMetrics));
     }
 
     private CharSequence buildStructureText(@NonNull List<SessionPickerOverlayLine> lines) {
