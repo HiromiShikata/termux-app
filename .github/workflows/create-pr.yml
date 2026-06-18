@@ -75,14 +75,19 @@ jobs:
 
       - name: Enable Auto Merge for PR
         if: steps.resolve_pr.outputs.pr_number
+        continue-on-error: true
         run: |
+          REPO_SETTINGS=$(curl -s \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}")
           RULESET_METHOD=$(gh api "repos/${{ github.repository }}/rules/branches/main" \
             --jq '[.[] | select(.type == "pull_request") | .parameters.allowed_merge_methods // empty][0][0]' 2>/dev/null || echo "")
           if [ -n "$RULESET_METHOD" ] && [ "$RULESET_METHOD" != "null" ]; then
             MERGE_METHOD=$(echo "$RULESET_METHOD" | tr '[:lower:]' '[:upper:]')
           else
-            ALLOW_SQUASH=$(gh api "repos/${{ github.repository }}" --jq '.allow_squash_merge')
-            ALLOW_REBASE=$(gh api "repos/${{ github.repository }}" --jq '.allow_rebase_merge')
+            ALLOW_SQUASH=$(echo "$REPO_SETTINGS" | jq -r '.allow_squash_merge')
+            ALLOW_REBASE=$(echo "$REPO_SETTINGS" | jq -r '.allow_rebase_merge')
             if [ "$ALLOW_SQUASH" = "true" ]; then
               MERGE_METHOD="SQUASH"
             elif [ "$ALLOW_REBASE" = "true" ]; then
