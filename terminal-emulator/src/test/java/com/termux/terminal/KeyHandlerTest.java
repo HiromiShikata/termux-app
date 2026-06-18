@@ -200,4 +200,107 @@ public class KeyHandlerTest extends TestCase {
         assertKeysEquals("\033[3~", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_DOT, 0, false, false));
 	}
 
+	public void testArrowKeysWithAltModifier() {
+		assertKeysEquals("\033[1;3A", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_UP, KeyHandler.KEYMOD_ALT, false, false));
+		assertKeysEquals("\033[1;3B", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_DOWN, KeyHandler.KEYMOD_ALT, false, false));
+		assertKeysEquals("\033[1;3C", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_RIGHT, KeyHandler.KEYMOD_ALT, false, false));
+		assertKeysEquals("\033[1;3D", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_LEFT, KeyHandler.KEYMOD_ALT, false, false));
+	}
+
+	public void testArrowKeysWithAltCtrlModifier() {
+		int altCtrl = KeyHandler.KEYMOD_ALT | KeyHandler.KEYMOD_CTRL;
+		assertKeysEquals("\033[1;7A", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_UP, altCtrl, false, false));
+		assertKeysEquals("\033[1;7B", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_DOWN, altCtrl, false, false));
+		assertKeysEquals("\033[1;7C", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_RIGHT, altCtrl, false, false));
+		assertKeysEquals("\033[1;7D", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_LEFT, altCtrl, false, false));
+	}
+
+	public void testArrowKeysWithShiftAltModifier() {
+		int shiftAlt = KeyHandler.KEYMOD_SHIFT | KeyHandler.KEYMOD_ALT;
+		assertKeysEquals("\033[1;4A", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_UP, shiftAlt, false, false));
+		assertKeysEquals("\033[1;4D", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_LEFT, shiftAlt, false, false));
+	}
+
+	public void testArrowKeysWithShiftAltCtrlModifier() {
+		int shiftAltCtrl = KeyHandler.KEYMOD_SHIFT | KeyHandler.KEYMOD_ALT | KeyHandler.KEYMOD_CTRL;
+		assertKeysEquals("\033[1;8A", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_UP, shiftAltCtrl, false, false));
+		assertKeysEquals("\033[1;8C", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_RIGHT, shiftAltCtrl, false, false));
+	}
+
+	public void testArrowKeysInCursorApplicationMode() {
+		assertKeysEquals("\033OA", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_UP, 0, true, false));
+		assertKeysEquals("\033OB", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_DOWN, 0, true, false));
+		assertKeysEquals("\033OC", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_RIGHT, 0, true, false));
+		assertKeysEquals("\033OD", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_LEFT, 0, true, false));
+	}
+
+	public void testDpadCenterSendsCarriageReturn() {
+		assertKeysEquals("\015", KeyHandler.getCode(KeyEvent.KEYCODE_DPAD_CENTER, 0, false, false));
+	}
+
+	public void testEscapeAndBackSendEscape() {
+		assertKeysEquals("\033", KeyHandler.getCode(KeyEvent.KEYCODE_ESCAPE, 0, false, false));
+		assertKeysEquals("\033", KeyHandler.getCode(KeyEvent.KEYCODE_BACK, 0, false, false));
+	}
+
+	public void testSysRequestAndBreak() {
+		assertKeysEquals("\033[32~", KeyHandler.getCode(KeyEvent.KEYCODE_SYSRQ, 0, false, false));
+		assertKeysEquals("\033[34~", KeyHandler.getCode(KeyEvent.KEYCODE_BREAK, 0, false, false));
+	}
+
+	public void testInsertAndForwardDeleteWithModifiers() {
+		assertKeysEquals("\033[2~", KeyHandler.getCode(KeyEvent.KEYCODE_INSERT, 0, false, false));
+		assertKeysEquals("\033[2;5~", KeyHandler.getCode(KeyEvent.KEYCODE_INSERT, KeyHandler.KEYMOD_CTRL, false, false));
+		assertKeysEquals("\033[3~", KeyHandler.getCode(KeyEvent.KEYCODE_FORWARD_DEL, 0, false, false));
+		assertKeysEquals("\033[3;3~", KeyHandler.getCode(KeyEvent.KEYCODE_FORWARD_DEL, KeyHandler.KEYMOD_ALT, false, false));
+	}
+
+	public void testPageUpAndPageDownWithModifiers() {
+		assertKeysEquals("\033[5~", KeyHandler.getCode(KeyEvent.KEYCODE_PAGE_UP, 0, false, false));
+		assertKeysEquals("\033[6~", KeyHandler.getCode(KeyEvent.KEYCODE_PAGE_DOWN, 0, false, false));
+		assertKeysEquals("\033[5;2~", KeyHandler.getCode(KeyEvent.KEYCODE_PAGE_UP, KeyHandler.KEYMOD_SHIFT, false, false));
+		assertKeysEquals("\033[6;5~", KeyHandler.getCode(KeyEvent.KEYCODE_PAGE_DOWN, KeyHandler.KEYMOD_CTRL, false, false));
+	}
+
+	public void testDeleteWithAltAndCtrl() {
+		assertKeysEquals("\033", KeyHandler.getCode(KeyEvent.KEYCODE_DEL, KeyHandler.KEYMOD_ALT, false, false));
+		assertKeysEquals("", KeyHandler.getCode(KeyEvent.KEYCODE_DEL, KeyHandler.KEYMOD_CTRL, false, false));
+		assertKeysEquals("\033", KeyHandler.getCode(KeyEvent.KEYCODE_DEL, KeyHandler.KEYMOD_ALT | KeyHandler.KEYMOD_CTRL, false, false));
+	}
+
+	public void testEnterWithAlt() {
+		assertKeysEquals("\033\r", KeyHandler.getCode(KeyEvent.KEYCODE_ENTER, KeyHandler.KEYMOD_ALT, false, false));
+	}
+
+	public void testNumLockKeyInKeypadApplicationMode() {
+		assertKeysEquals("\033OP", KeyHandler.getCode(KeyEvent.KEYCODE_NUM_LOCK, 0, false, true));
+		assertNull(KeyHandler.getCode(KeyEvent.KEYCODE_NUM_LOCK, 0, false, false));
+	}
+
+	public void testNumpadOperatorsInKeypadApplicationMode() {
+		assertKeysEquals("\033OM", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_ENTER, 0, false, true));
+		assertKeysEquals("\033Oj", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_MULTIPLY, 0, false, true));
+		assertKeysEquals("\033Ok", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_ADD, 0, false, true));
+		assertKeysEquals("\033Om", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_SUBTRACT, 0, false, true));
+		assertKeysEquals("\033Oo", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_DIVIDE, 0, false, true));
+		assertKeysEquals("\033OX", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_EQUALS, 0, false, true));
+	}
+
+	public void testNumpadOperatorsInNonKeypadMode() {
+		assertKeysEquals("\n", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_ENTER, 0, false, false));
+		assertKeysEquals("*", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_MULTIPLY, 0, false, false));
+		assertKeysEquals("+", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_ADD, 0, false, false));
+		assertKeysEquals("-", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_SUBTRACT, 0, false, false));
+		assertKeysEquals("/", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_DIVIDE, 0, false, false));
+		assertKeysEquals("=", KeyHandler.getCode(KeyEvent.KEYCODE_NUMPAD_EQUALS, 0, false, false));
+	}
+
+	public void testUnmappedKeyCodeReturnsNull() {
+		assertNull(KeyHandler.getCode(KeyEvent.KEYCODE_CAPS_LOCK, 0, false, false));
+	}
+
+	public void testUnknownTermcapReturnsNull() {
+		assertNull(KeyHandler.getCodeFromTermcap("zz", false, false));
+	}
+
 }
