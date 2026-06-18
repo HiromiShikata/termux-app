@@ -367,6 +367,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mIsVisible = true;
 
+        if (mTermuxService != null)
+            mTermuxService.onActivityForegrounded();
+
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.onStart();
 
@@ -409,6 +412,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mIsInvalidState) return;
 
         mIsVisible = false;
+
+        if (mTermuxService != null)
+            mTermuxService.onActivityBackgrounded();
 
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.onStop();

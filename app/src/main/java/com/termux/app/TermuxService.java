@@ -108,6 +108,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private PowerManager.WakeLock mWakeLock;
     private WifiManager.WifiLock mWifiLock;
 
+    /** Decides whether the wake lock and Wi-Fi lock must be auto-released while the activity is in
+     * the background and re-acquired when it returns to the foreground, preserving the user's intent. */
+    private final BackgroundIdleWakeLockPolicy mBackgroundIdleWakeLockPolicy = new BackgroundIdleWakeLockPolicy();
+
     /** If the user has executed the {@link TERMUX_SERVICE#ACTION_STOP_SERVICE} intent. */
     boolean mWantsToStop = false;
 
@@ -154,6 +158,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                     break;
                 case TERMUX_SERVICE.ACTION_WAKE_UNLOCK:
                     Logger.logDebug(LOG_TAG, "ACTION_WAKE_UNLOCK intent received");
+                    mBackgroundIdleWakeLockPolicy.onWakeLockManuallyReleased();
                     actionReleaseWakeLock(true);
                     break;
                 case TERMUX_SERVICE.ACTION_SERVICE_EXECUTE:
@@ -358,6 +363,41 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             updateNotification();
 
         Logger.logDebug(LOG_TAG, "WakeLocks released successfully");
+    }
+
+    /** Enter background-idle mode when {@link TermuxActivity} stops. Releases the held wake and Wi-Fi
+     * locks so the CPU and Wi-Fi radio may return to power-save while the app is in the background,
+     * while remembering that they were held so they can be re-acquired on return to the foreground.
+     * Running shell sessions and background tasks are never killed and the foreground service stays
+     * alive; only the optional app-layer power locks are released. */
+    synchronized void onActivityBackgrounded() {
+        Logger.logDebug(LOG_TAG, "onActivityBackgrounded");
+
+        boolean wakeLockCurrentlyHeld = mWakeLock != null;
+        if (!mBackgroundIdleWakeLockPolicy.shouldReleaseWakeLockOnBackground(wakeLockCurrentlyHeld))
+            return;
+
+        if (mShellManager.mTermuxSessions.isEmpty() && mShellManager.mTermuxTasks.isEmpty()) {
+            Logger.logDebug(LOG_TAG, "Skipping background-idle wake lock release since no sessions or tasks are running");
+            return;
+        }
+
+        Logger.logDebug(LOG_TAG, "Releasing WakeLocks for background-idle mode");
+        actionReleaseWakeLock(true);
+    }
+
+    /** Leave background-idle mode when {@link TermuxActivity} starts. Re-acquires the wake and Wi-Fi
+     * locks only if they were auto-released for background-idle and are not currently held, so the
+     * user's earlier wake-lock intent is restored without overriding a manual release. */
+    synchronized void onActivityForegrounded() {
+        Logger.logDebug(LOG_TAG, "onActivityForegrounded");
+
+        boolean wakeLockCurrentlyHeld = mWakeLock != null;
+        if (!mBackgroundIdleWakeLockPolicy.shouldReacquireWakeLockOnForeground(wakeLockCurrentlyHeld))
+            return;
+
+        Logger.logDebug(LOG_TAG, "Re-acquiring WakeLocks after returning to foreground");
+        actionAcquireWakeLock();
     }
 
     /** Process {@link TERMUX_SERVICE#ACTION_SERVICE_EXECUTE} intent to execute a shell command in
