@@ -47,12 +47,4 @@ public final class BrowserDisplayedTabResolution {
         }
         return new BrowserDisplayedTabResolution(Action.KEEP);
     }
-
-    public static boolean callbackMayMutateDisplayedTab(@Nullable String currentSessionHandle,
-                                                        @Nullable String displayedTabSessionHandle,
-                                                        @Nullable String webViewOwnerHandle) {
-        return currentSessionHandle != null
-            && currentSessionHandle.equals(displayedTabSessionHandle)
-            && currentSessionHandle.equals(webViewOwnerHandle);
-    }
 }

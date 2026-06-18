@@ -137,6 +137,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private String mWebViewOwnerHandle;
 
+    private BrowserWebViewNavigation mActiveNavigation;
+
     private boolean mBrowserVisible;
 
     private String mLoadedUrl;
@@ -340,6 +342,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         activeTab.setUrl(targetUrl);
         mDisplayedTab = activeTab;
         mWebViewOwnerHandle = activeTab.getSessionHandle();
+        mActiveNavigation = BrowserWebViewNavigation.startedBy(activeTab);
         updatePageHeader();
         notifyTabsUpdated();
         mWebView.loadUrl(targetUrl);
@@ -426,7 +429,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     showWebViewCover();
                 }
                 showPageLoadProgress(0);
-                BrowserTab loadingTab = displayedTabForCallback();
+                BrowserTab loadingTab = tabForUrlCallback(url, view.getUrl());
                 if (loadingTab != null) {
                     loadingTab.setUrl(url);
                     notifyTabsUpdated();
@@ -448,7 +451,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 hidePageLoadProgress();
                 mSwipeRefreshLayout.setRefreshing(false);
                 CookieManager.getInstance().flush();
-                BrowserTab loadingTab = displayedTabForCallback();
+                BrowserTab loadingTab = tabForUrlCallback(url, view.getUrl());
                 if (loadingTab != null) {
                     loadingTab.setUrl(url);
                     loadingTab.setTitle(view.getTitle());
@@ -460,7 +463,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
-                BrowserTab loadingTab = displayedTabForCallback();
+                BrowserTab loadingTab = tabForUrlCallback(url, view.getUrl());
                 if (loadingTab != null) {
                     loadingTab.setUrl(url);
                     notifyTabsUpdated();
@@ -500,7 +503,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void onReceivedTitle(WebView view, String title) {
-                BrowserTab loadingTab = displayedTabForCallback();
+                BrowserTab loadingTab = tabForTitleCallback(view.getUrl());
                 if (loadingTab != null) {
                     loadingTab.setTitle(title);
                     notifyTabsUpdated();
@@ -769,6 +772,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void clearCurrentTabCache() {
         if (!mBrowserVisible) return;
+        BrowserTab activeTab = getActiveTab();
+        if (activeTab == null) return;
+        mActiveNavigation = BrowserWebViewNavigation.startedBy(activeTab);
         mWebView.clearCache(true);
         mWebView.reload();
         mActivity.showToast(mActivity.getString(R.string.msg_browser_cache_cleared), false);
@@ -815,6 +821,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         updateDesktopModeToggleState();
         mDisplayedTab = activeTab;
         mWebViewOwnerHandle = activeTab.getSessionHandle();
+        mActiveNavigation = BrowserWebViewNavigation.startedBy(activeTab);
         mWebView.reload();
     }
 
@@ -898,6 +905,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void onSessionRemoved(@NonNull TerminalSession session) {
         if (mDisplayedTab != null && session.mHandle.equals(mDisplayedTab.getSessionHandle()))
             mDisplayedTab = null;
+        if (mActiveNavigation != null && session.mHandle.equals(mActiveNavigation.getSessionHandle()))
+            mActiveNavigation = null;
         if (session.mHandle.equals(mWebViewOwnerHandle))
             mWebViewOwnerHandle = null;
         mTabManager.removeSession(session.mHandle);
@@ -1000,6 +1009,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void closeTab(@NonNull BrowserTab tab) {
         mTabManager.removeTab(tab);
         if (tab == mDisplayedTab) mDisplayedTab = null;
+        if (mActiveNavigation != null && tab == mActiveNavigation.getTab()) mActiveNavigation = null;
         notifyTabsUpdated();
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) {
@@ -1068,6 +1078,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         mDisplayedTab = tab;
         mWebViewOwnerHandle = tab.getSessionHandle();
+        mActiveNavigation = BrowserWebViewNavigation.startedBy(tab);
         updatePageHeader();
         mWebView.loadUrl(targetUrl);
     }
@@ -1076,17 +1087,23 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (mDisplayedTab != null
                 && !mDisplayedTab.getSessionHandle().equals(mCurrentSessionHandle)) {
             mDisplayedTab = null;
+            mActiveNavigation = null;
+            mWebView.loadUrl("about:blank");
         }
     }
 
     @Nullable
-    private BrowserTab displayedTabForCallback() {
-        if (mDisplayedTab != null
-                && BrowserDisplayedTabResolution.callbackMayMutateDisplayedTab(
-                    mCurrentSessionHandle, mDisplayedTab.getSessionHandle(), mWebViewOwnerHandle)) {
-            return mDisplayedTab;
-        }
-        return null;
+    private BrowserTab tabForUrlCallback(@Nullable String callbackUrl, @Nullable String webViewCurrentUrl) {
+        if (mActiveNavigation == null) return null;
+        return mActiveNavigation.tabForUrlCallback(
+            mCurrentSessionHandle, mWebViewOwnerHandle, callbackUrl, webViewCurrentUrl);
+    }
+
+    @Nullable
+    private BrowserTab tabForTitleCallback(@Nullable String webViewCurrentUrl) {
+        if (mActiveNavigation == null) return null;
+        return mActiveNavigation.tabForTitleCallback(
+            mCurrentSessionHandle, mWebViewOwnerHandle, webViewCurrentUrl);
     }
 
     @Nullable
