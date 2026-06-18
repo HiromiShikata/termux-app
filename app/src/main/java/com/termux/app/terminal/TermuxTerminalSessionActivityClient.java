@@ -42,6 +42,8 @@ import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
+import com.termux.app.terminal.session.AlwaysPresentSessionStartup;
+import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
@@ -84,6 +86,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
 
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
+    private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
@@ -1028,17 +1031,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.getPreferences().getAlwaysNaSessionNames(), liveSessionNames);
         if (missingSessionNames.isEmpty()) return false;
 
+        String commandTemplate = mActivity.getPreferences().getAutosshCommand();
+        String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+        String workingDirectory = mActivity.getProperties().getDefaultWorkingDirectory();
+
         TerminalSession firstCreatedSession = null;
         for (String sessionName : missingSessionNames) {
             if (service.getTermuxSessionsSize() >= MAX_SESSIONS) break;
 
-            TermuxSession newTermuxSession = service.createTermuxSession(null, null, null,
-                mActivity.getProperties().getDefaultWorkingDirectory(), false, sessionName);
+            AlwaysPresentSessionStartup startup =
+                mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
+            TermuxSession newTermuxSession = service.createTermuxSession(startup.getExecutablePath(),
+                startup.getArguments(), null, workingDirectory, false, sessionName);
             if (newTermuxSession == null) continue;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                sessionName, null, null, false, mActivity.getProperties().getDefaultWorkingDirectory()));
+                sessionName, startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             if (firstCreatedSession == null)
                 firstCreatedSession = newTerminalSession;
