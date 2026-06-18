@@ -62,4 +62,49 @@ public class TextStyleTest extends TestCase {
 		assertTrue((TextStyle.decodeEffect(encoded) & TextStyle.CHARACTER_ATTRIBUTE_PROTECTED) != 0);
 	}
 
+	public void testNormalConstantDecodesToDefaults() {
+		assertEquals(TextStyle.COLOR_INDEX_FOREGROUND, TextStyle.decodeForeColor(TextStyle.NORMAL));
+		assertEquals(TextStyle.COLOR_INDEX_BACKGROUND, TextStyle.decodeBackColor(TextStyle.NORMAL));
+		assertEquals(0, TextStyle.decodeEffect(TextStyle.NORMAL));
+	}
+
+	public void testForegroundAndBackgroundAreIndependent() {
+		long encoded = TextStyle.encode(7, 200, 0);
+		assertEquals(7, TextStyle.decodeForeColor(encoded));
+		assertEquals(200, TextStyle.decodeBackColor(encoded));
+
+		long swapped = TextStyle.encode(200, 7, 0);
+		assertEquals(200, TextStyle.decodeForeColor(swapped));
+		assertEquals(7, TextStyle.decodeBackColor(swapped));
+	}
+
+	public void testEffectsDoNotLeakIntoColors() {
+		int allEffects = TextStyle.CHARACTER_ATTRIBUTE_BOLD | TextStyle.CHARACTER_ATTRIBUTE_ITALIC
+				| TextStyle.CHARACTER_ATTRIBUTE_UNDERLINE | TextStyle.CHARACTER_ATTRIBUTE_BLINK
+				| TextStyle.CHARACTER_ATTRIBUTE_INVERSE | TextStyle.CHARACTER_ATTRIBUTE_INVISIBLE
+				| TextStyle.CHARACTER_ATTRIBUTE_STRIKETHROUGH | TextStyle.CHARACTER_ATTRIBUTE_PROTECTED
+				| TextStyle.CHARACTER_ATTRIBUTE_DIM;
+		long encoded = TextStyle.encode(11, 22, allEffects);
+		assertEquals(11, TextStyle.decodeForeColor(encoded));
+		assertEquals(22, TextStyle.decodeBackColor(encoded));
+		assertEquals(allEffects, TextStyle.decodeEffect(encoded));
+	}
+
+	public void testTrueColorForegroundWithIndexedBackground() {
+		int trueColorFg = 0xFF123456;
+		long encoded = TextStyle.encode(trueColorFg, TextStyle.COLOR_INDEX_BACKGROUND,
+				TextStyle.CHARACTER_ATTRIBUTE_BOLD);
+		assertEquals(trueColorFg, TextStyle.decodeForeColor(encoded));
+		assertEquals(TextStyle.COLOR_INDEX_BACKGROUND, TextStyle.decodeBackColor(encoded));
+		assertTrue((TextStyle.decodeEffect(encoded) & TextStyle.CHARACTER_ATTRIBUTE_BOLD) != 0);
+	}
+
+	public void testTrueColorBothChannelsRoundTrip() {
+		int fg = 0xFFAABBCC;
+		int bg = 0xFF010203;
+		long encoded = TextStyle.encode(fg, bg, 0);
+		assertEquals(fg, TextStyle.decodeForeColor(encoded));
+		assertEquals(bg, TextStyle.decodeBackColor(encoded));
+	}
+
 }
