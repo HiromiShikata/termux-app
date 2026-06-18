@@ -13,9 +13,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -515,60 +512,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
             enqueueDownload(url, userAgent, contentDisposition, mimetype));
 
-        mWebView.setOnLongClickListener(view -> onWebViewLongPress());
-    }
-
-    private boolean onWebViewLongPress() {
-        WebView.HitTestResult hitTestResult = mWebView.getHitTestResult();
-        if (hitTestResult == null) return false;
-        int hitTestType = hitTestResult.getType();
-        if (!BrowserLinkLongPress.isLinkHit(hitTestType)) return false;
-        if (BrowserLinkLongPress.requiresHrefLookup(hitTestType)) {
-            requestLinkHrefThenShowMenu();
-            return true;
-        }
-        String linkUrl = hitTestResult.getExtra();
-        if (!BrowserLinkLongPress.isCopyableLink(hitTestType, linkUrl)) return false;
-        showLinkContextMenu(linkUrl);
-        return true;
-    }
-
-    private void requestLinkHrefThenShowMenu() {
-        Handler hrefHandler = new Handler(Looper.getMainLooper()) {
+        new BrowserLinkContextMenuController(mActivity, mWebView, new BrowserLinkContextMenuController.Actions() {
             @Override
-            public void handleMessage(@NonNull Message message) {
-                String linkUrl = message.getData().getString("url");
-                if (BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
-                    showLinkContextMenu(linkUrl);
-                }
+            public void openLinkInBrowser(@NonNull String linkUrl) {
+                openUrlInNewTab(linkUrl);
             }
-        };
-        mWebView.requestFocusNodeHref(hrefHandler.obtainMessage());
-    }
 
-    private void showLinkContextMenu(@NonNull String linkUrl) {
-        CharSequence[] actions = {
-            mActivity.getString(R.string.action_browser_copy_link_url),
-            mActivity.getString(R.string.action_browser_open_link),
-            mActivity.getString(R.string.action_browser_open_in_chrome),
-            mActivity.getString(R.string.action_browser_create_session_for_link)
-        };
-        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
-            .setTitle(linkUrl)
-            .setItems(actions, (dialog, which) -> {
-                if (which == 0) {
-                    ShareUtils.copyTextToClipboard(mActivity, linkUrl,
-                        mActivity.getString(R.string.msg_browser_url_copied));
-                } else if (which == 1) {
-                    openUrlInNewTab(linkUrl);
-                } else if (which == 2) {
-                    ShareUtils.openUrlInChrome(mActivity, linkUrl);
-                } else {
-                    ShareUtils.copyTextToClipboard(mActivity, linkUrl,
-                        mActivity.getString(R.string.msg_browser_url_copied));
-                    mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
-                }
-            }));
+            @Override
+            public void createSessionForLink(@NonNull String linkUrl) {
+                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
+            }
+        }).attach();
     }
 
     private void applyDarkModeRendering(@NonNull WebSettings settings) {
