@@ -237,6 +237,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_AUTOFILL_USERNAME = 11;
     private static final int CONTEXT_MENU_AUTOFILL_PASSWORD = 2;
     private static final int CONTEXT_MENU_TRANSLATE_SELECTED_TEXT = 13;
+    private static final int CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID = 14;
+    private static final int CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID = 15;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
 
@@ -837,6 +839,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         boolean autoFillEnabled = mTerminalView.isAutoFillEnabled();
 
+        if (mTermuxTerminalViewClient != null && !DataUtils.isNullOrEmpty(mTermuxTerminalViewClient.getLongPressedUrl())) {
+            menu.add(Menu.NONE, CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID, Menu.NONE, R.string.action_open_link_in_browser);
+            menu.add(Menu.NONE, CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID, Menu.NONE, R.string.action_open_link_in_chrome);
+        }
+
         menu.add(Menu.NONE, CONTEXT_MENU_SELECT_URL_ID, Menu.NONE, R.string.action_select_url);
         menu.add(Menu.NONE, CONTEXT_MENU_SHARE_TRANSCRIPT_ID, Menu.NONE, R.string.action_share_transcript);
         if (!DataUtils.isNullOrEmpty(mTerminalView.getStoredSelectedText())) {
@@ -862,6 +869,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         TerminalSession session = getCurrentSession();
 
         switch (item.getItemId()) {
+            case CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID:
+                mTermuxTerminalViewClient.openLongPressedUrlInApp();
+                return true;
+            case CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID:
+                mTermuxTerminalViewClient.openLongPressedUrlInChrome();
+                return true;
             case CONTEXT_MENU_SELECT_URL_ID:
                 mTermuxTerminalViewClient.showUrlSelection();
                 return true;
@@ -893,6 +906,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onContextMenuClosed(menu);
         // onContextMenuClosed() is triggered twice if back button is pressed to dismiss instead of tap for some reason
         mTerminalView.onContextMenuClosed(menu);
+        if (mTermuxTerminalViewClient != null) {
+            mTermuxTerminalViewClient.clearLongPressedUrl();
+        }
     }
 
     private void translateSelectedText() {
