@@ -44,6 +44,8 @@ import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartup;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
+import com.termux.app.terminal.session.DuplicateSessionNameResolution;
+import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
@@ -736,6 +738,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
+        if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
+
         if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
                 .setPositiveButton(android.R.string.ok, null));
@@ -786,6 +790,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
+        if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
+
         if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
                 .setPositiveButton(android.R.string.ok, null));
@@ -812,6 +818,39 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (closeDrawerAfter)
                 mActivity.getDrawer().closeDrawers();
         }
+    }
+
+    private boolean revealExistingSessionByName(@Nullable String sessionName, boolean closeDrawerAfter) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+
+        List<String> liveSessionNames = new ArrayList<>();
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            liveSessionNames.add(termuxSession.getTerminalSession().mSessionName);
+        }
+
+        DuplicateSessionNameResolution resolution = DuplicateSessionNameResolver.resolve(
+            sessionName, liveSessionNames, mActivity.getPreferences().getDisabledSessionNames());
+        if (!resolution.shouldRevealExisting()) return false;
+
+        String existingSessionName = resolution.getExistingSessionName();
+        TerminalSession existingTerminalSession = null;
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            if (existingSessionName.equals(termuxSession.getTerminalSession().mSessionName)) {
+                existingTerminalSession = termuxSession.getTerminalSession();
+                break;
+            }
+        }
+        if (existingTerminalSession == null) return false;
+
+        if (resolution.requiresUnhide())
+            mActivity.getPreferences().setSessionDisabled(existingSessionName, false);
+        setCurrentSession(existingTerminalSession);
+
+        if (closeDrawerAfter)
+            mActivity.getDrawer().closeDrawers();
+
+        return true;
     }
 
     private void attachBrowserTabForUrlSessionName(@NonNull TerminalSession session, @Nullable String sessionName) {
