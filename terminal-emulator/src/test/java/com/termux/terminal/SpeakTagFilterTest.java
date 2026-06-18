@@ -114,4 +114,67 @@ public class SpeakTagFilterTest {
         assertEquals("value <spea", capture.display.toString());
         assertTrue(capture.spoken.isEmpty());
     }
+
+    @Test
+    public void unterminatedSpeakHitsSafetyBoundAndDoesNotSpeakAndResetsState() {
+        SpeakTagFilter filter = new SpeakTagFilter();
+        Capture capture = new Capture();
+
+        StringBuilder runaway = new StringBuilder("<speak>");
+        for (int i = 0; i < SpeakTagFilter.MAX_SPOKEN_TEXT_LENGTH + 100; i++) runaway.append('a');
+        feed(filter, capture, runaway.toString());
+
+        assertTrue(capture.spoken.isEmpty());
+
+        feed(filter, capture, "<speak>after reset</speak>");
+        assertEquals(Collections.singletonList("after reset"), capture.spoken);
+    }
+
+    @Test
+    public void unterminatedSpeakStillEmitsInnerTextToDisplay() {
+        SpeakTagFilter filter = new SpeakTagFilter();
+        Capture capture = new Capture();
+
+        StringBuilder inner = new StringBuilder();
+        for (int i = 0; i < SpeakTagFilter.MAX_SPOKEN_TEXT_LENGTH + 100; i++) inner.append('a');
+        feed(filter, capture, "<speak>" + inner);
+
+        assertEquals(inner.toString(), capture.display.toString());
+        assertTrue(capture.spoken.isEmpty());
+    }
+
+    @Test
+    public void strayOpenMarkerBeforeWellFormedPairSpeaksOnlyTheLastInnerText() {
+        SpeakTagFilter filter = new SpeakTagFilter();
+        Capture capture = new Capture();
+
+        feed(filter, capture, "<speak>stray runaway text <speak>hello</speak>");
+
+        assertEquals(Collections.singletonList("hello"), capture.spoken);
+    }
+
+    @Test
+    public void newOpenMarkerWhileInsideSpeakDiscardsEarlierAccumulatedText() {
+        SpeakTagFilter filter = new SpeakTagFilter();
+        Capture capture = new Capture();
+
+        feed(filter, capture, "<speak>first <speak>second <speak>third</speak> tail");
+
+        assertEquals(Collections.singletonList("third"), capture.spoken);
+    }
+
+    @Test
+    public void abortSpeakResetsStateAndDoesNotSpeak() {
+        SpeakTagFilter filter = new SpeakTagFilter();
+        Capture capture = new Capture();
+
+        feed(filter, capture, "<speak>hello");
+        filter.abortSpeak(capture.display::appendCodePoint);
+
+        feed(filter, capture, " more</speak>");
+        assertTrue(capture.spoken.isEmpty());
+
+        feed(filter, capture, "<speak>again</speak>");
+        assertEquals(Collections.singletonList("again"), capture.spoken);
+    }
 }

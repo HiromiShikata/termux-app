@@ -535,6 +535,16 @@
                         android:tint="@color/white" />
 
                     <ImageButton
+                        android:id="@+id/terminal_toolbar_stop_speaking_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_stop_speaking"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_toolbar_stop_speaking"
+                        android:tint="@color/white" />
+
+                    <ImageButton
                         android:id="@+id/terminal_toolbar_right_drawer_toggle_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"

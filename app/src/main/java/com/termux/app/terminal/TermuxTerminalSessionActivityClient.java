@@ -463,6 +463,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
 
+        if (switchingSessions) {
+            TtsManager ttsManager = mActivity.getTtsManager();
+            if (ttsManager != null) ttsManager.stop();
+        }
+
         TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
         if (toolbarAdapter != null && switchingSessions)
             toolbarAdapter.saveTextInputForSession(previousSession);

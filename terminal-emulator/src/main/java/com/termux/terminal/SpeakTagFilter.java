@@ -13,28 +13,31 @@ public final class SpeakTagFilter {
     private static final String OPEN_MARKER = "<speak>";
     private static final String CLOSE_MARKER = "</speak>";
 
+    static final int MAX_SPOKEN_TEXT_LENGTH = 500;
+
     private final StringBuilder mPendingMarker = new StringBuilder();
     private final StringBuilder mSpokenText = new StringBuilder();
     private boolean mInsideSpeak = false;
 
     public void processCodePoint(int codePoint, DisplayEmitter display, SpeakListener speak) {
-        String marker = mInsideSpeak ? CLOSE_MARKER : OPEN_MARKER;
         mPendingMarker.appendCodePoint(codePoint);
 
-        while (mPendingMarker.length() > 0 && !isPrefixOfMarker(mPendingMarker, marker)) {
+        while (mPendingMarker.length() > 0 && !isPrefixOfActiveMarker(mPendingMarker)) {
             releaseFirstPendingCodePoint(display);
         }
 
-        if (mPendingMarker.length() == marker.length()) {
+        if (markerComplete(mPendingMarker, OPEN_MARKER)) {
             mPendingMarker.setLength(0);
-            if (mInsideSpeak) {
-                String text = mSpokenText.toString();
-                mSpokenText.setLength(0);
-                mInsideSpeak = false;
-                if (!text.isEmpty()) speak.onSpeakText(text);
-            } else {
-                mInsideSpeak = true;
-            }
+            mSpokenText.setLength(0);
+            mInsideSpeak = true;
+        } else if (mInsideSpeak && markerComplete(mPendingMarker, CLOSE_MARKER)) {
+            mPendingMarker.setLength(0);
+            String text = mSpokenText.toString();
+            mSpokenText.setLength(0);
+            mInsideSpeak = false;
+            if (!text.isEmpty()) speak.onSpeakText(text);
+        } else if (mInsideSpeak && mSpokenText.length() > MAX_SPOKEN_TEXT_LENGTH) {
+            abortSpeak(display);
         }
     }
 
@@ -42,6 +45,13 @@ public final class SpeakTagFilter {
         while (mPendingMarker.length() > 0) {
             releaseFirstPendingCodePoint(display);
         }
+    }
+
+    public void abortSpeak(DisplayEmitter display) {
+        if (!mInsideSpeak) return;
+        mInsideSpeak = false;
+        flushPending(display);
+        mSpokenText.setLength(0);
     }
 
     public boolean hasPending() {
@@ -53,6 +63,16 @@ public final class SpeakTagFilter {
         mPendingMarker.delete(0, Character.charCount(codePoint));
         display.emitCodePoint(codePoint);
         if (mInsideSpeak) mSpokenText.appendCodePoint(codePoint);
+    }
+
+    private boolean isPrefixOfActiveMarker(CharSequence candidate) {
+        if (isPrefixOfMarker(candidate, OPEN_MARKER)) return true;
+        return mInsideSpeak && isPrefixOfMarker(candidate, CLOSE_MARKER);
+    }
+
+    private static boolean markerComplete(CharSequence candidate, String marker) {
+        if (candidate.length() != marker.length()) return false;
+        return isPrefixOfMarker(candidate, marker);
     }
 
     private static boolean isPrefixOfMarker(CharSequence candidate, String marker) {
