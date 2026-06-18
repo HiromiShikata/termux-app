@@ -110,6 +110,11 @@
     <string name="msg_browser_download_started">Downloading %1$s</string>
     <string name="msg_browser_download_complete">Download complete. Opening Downloads.</string>
     <string name="msg_browser_download_failed">Could not start download.</string>
+    <string name="title_browser_http_auth">Sign in</string>
+    <string name="msg_browser_http_auth_prompt">%1$s requires a username and password.</string>
+    <string name="hint_browser_http_auth_username">Username</string>
+    <string name="hint_browser_http_auth_password">Password</string>
+    <string name="action_browser_http_auth_sign_in">Sign in</string>
 
     <string name="action_open_autossh_config">AutoSSH Config</string>
     <string name="title_autossh_config">AutoSSH Config</string>
