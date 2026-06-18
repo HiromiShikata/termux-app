@@ -220,4 +220,40 @@ public class DataUtilsTest {
     public void getSerializedSizeReturnsPositiveForSerializableObject() {
         Assert.assertTrue(DataUtils.getSerializedSize("hello") > 0);
     }
+
+    @Test
+    public void getTruncatedCommandOutputWithPrefixReturnsTruncatedTail() {
+        String result = DataUtils.getTruncatedCommandOutput("0123456789", 18, false, false, true);
+        Assert.assertTrue(result.startsWith("(truncated) "));
+        Assert.assertTrue(result.endsWith("789"));
+    }
+
+    @Test
+    public void getTruncatedCommandOutputOnNewlineWhenNoFurtherNewlineKeepsTailFromCutOff() {
+        String result = DataUtils.getTruncatedCommandOutput("aaaa\nbbbbbbbb", 4, false, true, false);
+        Assert.assertEquals("bbbb", result);
+    }
+
+    @Test
+    public void getTruncatedCommandOutputOnNewlineIgnoresTrailingNewline() {
+        String result = DataUtils.getTruncatedCommandOutput("aaaaaaaa\n", 5, false, true, false);
+        Assert.assertEquals("aaaa\n", result);
+    }
+
+    @Test
+    public void getSerializedSizeReturnsNegativeOneForNonSerializableGraph() {
+        Assert.assertEquals(-1, DataUtils.getSerializedSize(new java.util.ArrayList<Object>() {{
+            add(new Object());
+        }}));
+    }
+
+    @Test
+    public void getStringFromIntegerFormatsValueAsBaseTen() {
+        Assert.assertEquals("-8", DataUtils.getStringFromInteger(-8, "def"));
+    }
+
+    @Test
+    public void getIndentedStringReturnsNullForNullInput() {
+        Assert.assertNull(DataUtils.getIndentedString(null, ">", 1));
+    }
 }
