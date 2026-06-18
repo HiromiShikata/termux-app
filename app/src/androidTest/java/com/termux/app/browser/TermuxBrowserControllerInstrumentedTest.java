@@ -28,117 +28,124 @@ public class TermuxBrowserControllerInstrumentedTest {
 
     @Test
     public void openUrlInNewTabProducesActiveTabAndMakesBrowserVisible() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
-            assertNotNull(browserController);
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
+                assertNotNull(browserController);
 
-            browserController.onSessionChanged(newDetachedSession());
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+                browserController.onSessionChanged(newDetachedSession());
+                browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
 
-            BrowserTab activeTab = browserController.getActiveTab();
-            assertNotNull(activeTab);
-            assertEquals(LOOPBACK_TAB_URL, activeTab.getUrl());
-            assertTrue(browserController.isBrowserVisible());
-        });
+                BrowserTab activeTab = browserController.getActiveTab();
+                assertNotNull(activeTab);
+                assertEquals(LOOPBACK_TAB_URL, activeTab.getUrl());
+                assertTrue(browserController.isBrowserVisible());
+            });
+        }
     }
 
     @Test
     public void showTerminalHidesBrowserAfterOpeningTab() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
 
-            browserController.onSessionChanged(newDetachedSession());
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
-            assertTrue(browserController.isBrowserVisible());
+                browserController.onSessionChanged(newDetachedSession());
+                browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+                assertTrue(browserController.isBrowserVisible());
 
-            browserController.showTerminal();
-            assertFalse(browserController.isBrowserVisible());
-        });
+                browserController.showTerminal();
+                assertFalse(browserController.isBrowserVisible());
+            });
+        }
     }
 
     @Test
     public void toggleBrowserReturnsToBrowserWhenActiveTabExists() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
 
-            browserController.onSessionChanged(newDetachedSession());
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
-            browserController.showTerminal();
-            assertFalse(browserController.isBrowserVisible());
+                browserController.onSessionChanged(newDetachedSession());
+                browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+                browserController.showTerminal();
+                assertFalse(browserController.isBrowserVisible());
 
-            browserController.toggleBrowser();
-            assertTrue(browserController.isBrowserVisible());
+                browserController.toggleBrowser();
+                assertTrue(browserController.isBrowserVisible());
 
-            browserController.toggleBrowser();
-            assertFalse(browserController.isBrowserVisible());
-        });
+                browserController.toggleBrowser();
+                assertFalse(browserController.isBrowserVisible());
+            });
+        }
     }
 
     @Test
     public void newTabDefaultsToDesktopModeReflectedInResolvedUserAgent() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
 
-            browserController.onSessionChanged(newDetachedSession());
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+                browserController.onSessionChanged(newDetachedSession());
+                browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
 
-            BrowserTab activeTab = browserController.getActiveTab();
-            assertNotNull(activeTab);
-            assertTrue(activeTab.isDesktopMode());
-            assertEquals(BrowserUserAgent.DESKTOP_USER_AGENT,
-                BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
+                BrowserTab activeTab = browserController.getActiveTab();
+                assertNotNull(activeTab);
+                assertTrue(activeTab.isDesktopMode());
+                assertEquals(BrowserUserAgent.DESKTOP_USER_AGENT,
+                    BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
 
-            activeTab.setDesktopMode(false);
-            assertEquals("default-mobile-user-agent",
-                BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
-        });
+                activeTab.setDesktopMode(false);
+                assertEquals("default-mobile-user-agent",
+                    BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
+            });
+        }
     }
 
     @Test
     public void openingSecondUrlSwitchesActiveTabToTheNewTab() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
 
-            browserController.onSessionChanged(newDetachedSession());
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
-            browserController.openUrlInNewTab(SECONDARY_LOOPBACK_TAB_URL);
+                browserController.onSessionChanged(newDetachedSession());
+                browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+                browserController.openUrlInNewTab(SECONDARY_LOOPBACK_TAB_URL);
 
-            BrowserTab activeTab = browserController.getActiveTab();
-            assertNotNull(activeTab);
-            assertEquals(SECONDARY_LOOPBACK_TAB_URL, activeTab.getUrl());
-            assertTrue(browserController.isBrowserVisible());
-        });
+                BrowserTab activeTab = browserController.getActiveTab();
+                assertNotNull(activeTab);
+                assertEquals(SECONDARY_LOOPBACK_TAB_URL, activeTab.getUrl());
+                assertTrue(browserController.isBrowserVisible());
+            });
+        }
     }
 
     @Test
     public void openUrlInNewTabIsNoOpWhenNoSessionIsSelected() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
 
-            browserController.onSessionChanged(null);
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+                browserController.onSessionChanged(null);
+                browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
 
-            assertNull(browserController.getActiveTab());
-            assertFalse(browserController.isBrowserVisible());
-        });
+                assertNull(browserController.getActiveTab());
+                assertFalse(browserController.isBrowserVisible());
+            });
+        }
     }
 
     @Test
     public void drawerBrowserControlViewsAreInflatedAndWired() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            assertNotNull(activity.findViewById(R.id.browser_new_tab_button));
-            assertNotNull(activity.findViewById(R.id.browser_open_in_chrome_button));
-            assertNotNull(activity.findViewById(R.id.browser_send_page_text_button));
-            assertNotNull(activity.findViewById(R.id.browser_clear_cache_button));
-            assertNotNull(activity.findViewById(R.id.browser_desktop_mode_toggle));
-        });
+        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+            scenario.onActivity(activity -> {
+                assertNotNull(activity.findViewById(R.id.browser_new_tab_button));
+                assertNotNull(activity.findViewById(R.id.browser_open_in_chrome_button));
+                assertNotNull(activity.findViewById(R.id.browser_send_page_text_button));
+                assertNotNull(activity.findViewById(R.id.browser_clear_cache_button));
+                assertNotNull(activity.findViewById(R.id.browser_desktop_mode_toggle));
+            });
+        }
     }
 
     private static TerminalSession newDetachedSession() {
