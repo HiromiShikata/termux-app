@@ -62,6 +62,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     private List<KeyboardShortcut> mSessionShortcuts;
 
+    private String mLongPressedUrl;
+
     private static final String LOG_TAG = "TermuxTerminalViewClient";
 
     public TermuxTerminalViewClient(TermuxActivity activity, TermuxTerminalSessionActivityClient termuxTerminalSessionActivityClient) {
@@ -402,7 +404,53 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public boolean onLongPress(MotionEvent event) {
-        return false;
+        String url = extractUrlAt(event);
+        if (DataUtils.isNullOrEmpty(url)) {
+            mLongPressedUrl = null;
+            return false;
+        }
+        mLongPressedUrl = url;
+        mActivity.getTerminalView().showContextMenu();
+        return true;
+    }
+
+    private String extractUrlAt(MotionEvent event) {
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session == null) return null;
+        TerminalEmulator term = session.getEmulator();
+        if (term == null) return null;
+
+        int[] columnAndRow = mActivity.getTerminalView().getColumnAndRow(event, true);
+
+        String hyperlinkUri = term.getScreen().getHyperlinkUri(columnAndRow[1], columnAndRow[0]);
+        String wordAtLongPress = term.getScreen().getWordAtLocation(columnAndRow[0], columnAndRow[1]);
+        return selectLongPressUrl(hyperlinkUri, wordAtLongPress);
+    }
+
+    static String selectLongPressUrl(String hyperlinkUri, String wordAtLongPress) {
+        if (!DataUtils.isNullOrEmpty(hyperlinkUri)) return hyperlinkUri;
+
+        LinkedHashSet<CharSequence> urlSet = TermuxUrlUtils.extractUrls(wordAtLongPress);
+        if (urlSet.isEmpty()) return null;
+        return (String) urlSet.iterator().next();
+    }
+
+    public String getLongPressedUrl() {
+        return mLongPressedUrl;
+    }
+
+    public void clearLongPressedUrl() {
+        mLongPressedUrl = null;
+    }
+
+    public void openLongPressedUrlInApp() {
+        if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
+        openUrlInApp(mLongPressedUrl);
+    }
+
+    public void openLongPressedUrlInChrome() {
+        if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
+        ShareUtils.openUrlInChrome(mActivity, mLongPressedUrl);
     }
 
     @Override
