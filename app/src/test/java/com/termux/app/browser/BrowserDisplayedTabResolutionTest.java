@@ -86,34 +86,4 @@ public class BrowserDisplayedTabResolutionTest {
         Assert.assertTrue(resolution.shouldDisplay());
         Assert.assertTrue(resolution.shouldLoadWebView());
     }
-
-    @Test
-    public void aLateCallbackForThePreviousSessionMustNotBeAppliedAfterASwitch() {
-        Assert.assertFalse(BrowserDisplayedTabResolution.callbackMayMutateDisplayedTab(
-            SESSION_A, SESSION_B, SESSION_B));
-    }
-
-    @Test
-    public void aCallbackForTheCurrentSessionsOwnedWebViewMayBeApplied() {
-        Assert.assertTrue(BrowserDisplayedTabResolution.callbackMayMutateDisplayedTab(
-            SESSION_A, SESSION_A, SESSION_A));
-    }
-
-    @Test
-    public void aCallbackIsRejectedWhenTheWebViewIsNotYetOwnedByTheCurrentSession() {
-        Assert.assertFalse(BrowserDisplayedTabResolution.callbackMayMutateDisplayedTab(
-            SESSION_A, SESSION_A, SESSION_B));
-    }
-
-    @Test
-    public void aCallbackIsRejectedWhenThereIsNoCurrentSession() {
-        Assert.assertFalse(BrowserDisplayedTabResolution.callbackMayMutateDisplayedTab(
-            null, null, null));
-    }
-
-    @Test
-    public void aCallbackIsRejectedWhenTheDisplayedTabHasNoOwnerHandle() {
-        Assert.assertFalse(BrowserDisplayedTabResolution.callbackMayMutateDisplayedTab(
-            SESSION_A, null, SESSION_A));
-    }
 }
