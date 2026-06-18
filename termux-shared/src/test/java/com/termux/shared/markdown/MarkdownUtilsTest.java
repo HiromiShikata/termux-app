@@ -118,4 +118,61 @@ public class MarkdownUtilsTest {
     public void getLinkMarkdownStringReturnsLabelWhenUrlNull() {
         Assert.assertEquals("label", MarkdownUtils.getLinkMarkdownString("label", null));
     }
+
+    @Test
+    public void getMarkdownCodeForStringBlockUsesThreeMoreBackticksThanLongestRun() {
+        Assert.assertEquals("``````\n```x```\n``````",
+            MarkdownUtils.getMarkdownCodeForString("```x```", true));
+    }
+
+    @Test
+    public void getMarkdownCodeForStringBlockFenceGrowsWithInternalDoubleBacktick() {
+        Assert.assertEquals("`````\na``b\n`````",
+            MarkdownUtils.getMarkdownCodeForString("a``b", true));
+    }
+
+    @Test
+    public void getMarkdownCodeForStringInlinePadsBothLeadingAndTrailingBacktick() {
+        Assert.assertEquals("`` `mid` ``",
+            MarkdownUtils.getMarkdownCodeForString("`mid`", false));
+    }
+
+    @Test
+    public void getMarkdownCodeForStringInlinePadsSingleBacktickContentOnBothSides() {
+        Assert.assertEquals("`` ` ``", MarkdownUtils.getMarkdownCodeForString("`", false));
+    }
+
+    @Test
+    public void getMaxConsecutiveBackTicksCountReturnsLongestRunWhenLongerRunPrecedesShorter() {
+        Assert.assertEquals(3, MarkdownUtils.getMaxConsecutiveBackTicksCount("```a`b"));
+    }
+
+    @Test
+    public void getMaxConsecutiveBackTicksCountCountsRunAtStringBoundaries() {
+        Assert.assertEquals(2, MarkdownUtils.getMaxConsecutiveBackTicksCount("``edge``"));
+    }
+
+    @Test
+    public void getSingleLineMarkdownStringEntryEscapesBacktickValueAsInlineCode() {
+        Assert.assertEquals("**Key**: ``a`b``  ",
+            MarkdownUtils.getSingleLineMarkdownStringEntry("Key", "a`b", "def"));
+    }
+
+    @Test
+    public void getMultiLineMarkdownStringEntryEscapesBacktickValueAsCodeBlock() {
+        Assert.assertEquals("**Key**:\n``````\n```x\n``````\n",
+            MarkdownUtils.getMultiLineMarkdownStringEntry("Key", "```x", "def"));
+    }
+
+    @Test
+    public void getLinkMarkdownStringEscapesEveryClosingBracketInLabel() {
+        Assert.assertEquals("[a\\]b\\]c](https://example.com)",
+            MarkdownUtils.getLinkMarkdownString("a]b]c", "https://example.com"));
+    }
+
+    @Test
+    public void getLinkMarkdownStringEscapesEveryClosingParenInUrl() {
+        Assert.assertEquals("[label](https://example.com/a\\)b\\)c)",
+            MarkdownUtils.getLinkMarkdownString("label", "https://example.com/a)b)c"));
+    }
 }

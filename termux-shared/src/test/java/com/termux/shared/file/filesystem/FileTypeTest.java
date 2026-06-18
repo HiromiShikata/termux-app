@@ -43,4 +43,27 @@ public class FileTypeTest {
     public void valueOfResolvesEnumConstantByName() {
         Assert.assertSame(FileType.REGULAR, FileType.valueOf("REGULAR"));
     }
+
+    @Test
+    public void valuesExposesEveryDefinedConstantInDeclaredOrder() {
+        FileType[] expected = {FileType.NO_EXIST, FileType.REGULAR, FileType.DIRECTORY, FileType.SYMLINK,
+            FileType.SOCKET, FileType.CHARACTER, FileType.FIFO, FileType.BLOCK, FileType.UNKNOWN};
+        Assert.assertArrayEquals(expected, FileType.values());
+    }
+
+    @Test
+    public void valueOfRoundTripsForEveryConstant() {
+        for (FileType type : FileType.values()) {
+            Assert.assertSame(type, FileType.valueOf(type.name()));
+        }
+    }
+
+    @Test
+    public void noExistValueIsZeroAndNotAnyFileTypeFlag() {
+        Assert.assertEquals(0, FileType.NO_EXIST.getValue());
+        int flaggedTypes = FileType.REGULAR.getValue() | FileType.DIRECTORY.getValue()
+            | FileType.SYMLINK.getValue() | FileType.SOCKET.getValue() | FileType.CHARACTER.getValue()
+            | FileType.FIFO.getValue() | FileType.BLOCK.getValue() | FileType.UNKNOWN.getValue();
+        Assert.assertEquals(0, flaggedTypes & FileType.NO_EXIST.getValue());
+    }
 }
