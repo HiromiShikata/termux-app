@@ -163,4 +163,33 @@ public class ShellEnvironmentUtilsTest {
         ShellEnvironmentUtils.putToEnvIfInSystemEnv(environment, "DEFINITELY_NOT_A_REAL_ENV_VAR_NAME_XYZ");
         Assert.assertFalse(environment.containsKey("DEFINITELY_NOT_A_REAL_ENV_VAR_NAME_XYZ"));
     }
+
+    @Test
+    public void convertEnvironmentToEnvironSkipsInvalidValues() {
+        HashMap<String, String> map = new HashMap<>();
+        map.put("HAS_NULL_BYTE", "a\0b");
+        Assert.assertTrue(ShellEnvironmentUtils.convertEnvironmentToEnviron(map).isEmpty());
+    }
+
+    @Test
+    public void convertEnvironmentToDotEnvFileFromMapWritesExportLine() {
+        HashMap<String, String> map = new HashMap<>();
+        map.put("KEY", "value");
+        Assert.assertEquals("export KEY=\"value\"\n",
+            ShellEnvironmentUtils.convertEnvironmentToDotEnvFile(map));
+    }
+
+    @Test
+    public void convertEnvironmentToDotEnvFileFromMapIsEmptyForInvalidName() {
+        HashMap<String, String> map = new HashMap<>();
+        map.put("2BAD", "value");
+        Assert.assertEquals("", ShellEnvironmentUtils.convertEnvironmentToDotEnvFile(map));
+    }
+
+    @Test
+    public void convertEnvironmentToDotEnvFileSkipsNullValuedVariables() {
+        List<ShellEnvironmentVariable> list = new ArrayList<>();
+        list.add(new ShellEnvironmentVariable("KEY", null, false));
+        Assert.assertEquals("", ShellEnvironmentUtils.convertEnvironmentToDotEnvFile(list));
+    }
 }
