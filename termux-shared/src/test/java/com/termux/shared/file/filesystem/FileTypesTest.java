@@ -45,4 +45,31 @@ public class FileTypesTest {
         Assert.assertEquals("regular,directory,symlink,character,fifo,block,unknown",
             FileTypes.convertFileTypeFlagsToNamesString(FileTypes.FILE_TYPE_ANY_FLAGS));
     }
+
+    @Test
+    public void convertSocketFlagAloneReturnsEmptyStringBecauseSocketIsNotEnumerated() {
+        Assert.assertEquals("", FileTypes.convertFileTypeFlagsToNamesString(FileType.SOCKET.getValue()));
+    }
+
+    @Test
+    public void convertDropsSocketButKeepsEnumeratedNeighbours() {
+        int flags = FileType.SYMLINK.getValue() | FileType.SOCKET.getValue() | FileType.CHARACTER.getValue();
+        Assert.assertEquals("symlink,character", FileTypes.convertFileTypeFlagsToNamesString(flags));
+    }
+
+    @Test
+    public void convertNoExistFlagReturnsEmptyStringBecauseValueIsZero() {
+        Assert.assertEquals("", FileTypes.convertFileTypeFlagsToNamesString(FileType.NO_EXIST.getValue()));
+    }
+
+    @Test
+    public void convertLastEnumeratedFlagAloneReturnsUnknown() {
+        Assert.assertEquals("unknown", FileTypes.convertFileTypeFlagsToNamesString(FileType.UNKNOWN.getValue()));
+    }
+
+    @Test
+    public void convertNormalFlagsConstantReturnsRegularDirectorySymlink() {
+        Assert.assertEquals("regular,directory,symlink",
+            FileTypes.convertFileTypeFlagsToNamesString(FileTypes.FILE_TYPE_NORMAL_FLAGS));
+    }
 }
