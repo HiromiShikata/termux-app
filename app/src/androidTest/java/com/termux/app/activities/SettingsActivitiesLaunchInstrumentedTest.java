@@ -22,18 +22,17 @@ public class SettingsActivitiesLaunchInstrumentedTest {
 
     @Test
     public void settingsActivityReachesResumedWithRenderedRootPreferenceScreen() {
-        try (ActivityScenario<SettingsActivity> scenario = ActivityScenario.launch(SettingsActivity.class)) {
-            scenario.moveToState(Lifecycle.State.RESUMED);
-            scenario.onActivity(activity -> {
-                assertNotNull(activity.findViewById(R.id.settings));
-                Fragment fragment = activity.getSupportFragmentManager().findFragmentById(R.id.settings);
-                assertNotNull(fragment);
-                assertTrue(fragment instanceof SettingsActivity.RootPreferencesFragment);
-                PreferenceScreen preferenceScreen = ((PreferenceFragmentCompat) fragment).getPreferenceScreen();
-                assertNotNull(preferenceScreen);
-                assertTrue(preferenceScreen.getPreferenceCount() > 0);
-            });
-        }
+        ActivityScenario<SettingsActivity> scenario = ActivityScenario.launch(SettingsActivity.class);
+        scenario.moveToState(Lifecycle.State.RESUMED);
+        scenario.onActivity(activity -> {
+            assertNotNull(activity.findViewById(R.id.settings));
+            Fragment fragment = activity.getSupportFragmentManager().findFragmentById(R.id.settings);
+            assertNotNull(fragment);
+            assertTrue(fragment instanceof SettingsActivity.RootPreferencesFragment);
+            PreferenceScreen preferenceScreen = ((PreferenceFragmentCompat) fragment).getPreferenceScreen();
+            assertNotNull(preferenceScreen);
+            assertTrue(preferenceScreen.getPreferenceCount() > 0);
+        });
     }
 
     @Test
@@ -57,9 +56,8 @@ public class SettingsActivitiesLaunchInstrumentedTest {
     }
 
     private static <T extends Activity> void assertReachesResumed(Class<T> activityClass) {
-        try (ActivityScenario<T> scenario = ActivityScenario.launch(activityClass)) {
-            scenario.moveToState(Lifecycle.State.RESUMED);
-            scenario.onActivity(activity -> assertNotNull(activity));
-        }
+        ActivityScenario<T> scenario = ActivityScenario.launch(activityClass);
+        scenario.moveToState(Lifecycle.State.RESUMED);
+        scenario.onActivity(activity -> assertNotNull(activity));
     }
 }
