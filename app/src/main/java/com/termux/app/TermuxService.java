@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.terminal.SessionBellNotificationStore;
+import com.termux.app.terminal.SessionOutputActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
@@ -90,6 +91,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private final TermuxTerminalSessionServiceClient mTermuxTerminalSessionServiceClient = new TermuxTerminalSessionServiceClient(this);
 
     private final SessionBellNotificationStore mSessionBellNotificationStore = new SessionBellNotificationStore();
+
+    private final SessionOutputActivityStore mSessionOutputActivityStore = new SessionOutputActivityStore();
 
     /**
      * Termux app shared properties manager, loaded from termux.properties
@@ -901,6 +904,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     public SessionBellNotificationStore getSessionBellNotificationStore() {
         return mSessionBellNotificationStore;
+    }
+
+    public SessionOutputActivityStore getSessionOutputActivityStore() {
+        return mSessionOutputActivityStore;
     }
 
     @Nullable

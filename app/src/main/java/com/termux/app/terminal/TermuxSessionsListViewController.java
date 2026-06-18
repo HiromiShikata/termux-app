@@ -687,12 +687,29 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull TerminalSession session) {
-        if (getBellArrivalTimeMillis(session) != null) {
+        if (hasNewActivityIndicator(session)) {
             sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_session_bell_notification, 0, 0, 0);
             sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
         } else {
             sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
         }
+    }
+
+    private boolean hasNewActivityIndicator(@NonNull TerminalSession session) {
+        return hasNewActivityIndicator(getBellArrivalTimeMillis(session),
+            mActivity.getSessionOutputActivityStore(), session.mHandle);
+    }
+
+    static boolean hasNewActivityIndicator(@Nullable Long bellArrivalTimeMillis,
+                                           @Nullable SessionOutputActivityStore outputActivityStore,
+                                           @Nullable String sessionHandle) {
+        if (bellArrivalTimeMillis != null) {
+            return true;
+        }
+        if (outputActivityStore == null || sessionHandle == null) {
+            return false;
+        }
+        return outputActivityStore.hasOutputActivity(sessionHandle);
     }
 
     @Nullable

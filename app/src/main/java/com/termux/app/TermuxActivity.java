@@ -56,6 +56,7 @@ import com.termux.app.terminal.ProjectActionToken;
 import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionBellNotificationStore;
+import com.termux.app.terminal.SessionOutputActivityStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
@@ -1033,6 +1034,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public SessionBellNotificationStore getSessionBellNotificationStore() {
         return mTermuxService.getSessionBellNotificationStore();
+    }
+
+    public SessionOutputActivityStore getSessionOutputActivityStore() {
+        return mTermuxService.getSessionOutputActivityStore();
     }
 
     public TermuxBrowserController getTermuxBrowserController() {
