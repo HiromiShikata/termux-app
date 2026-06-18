@@ -628,17 +628,18 @@
 
             <TextView
                 android:id="@+id/session_switch_picker_structure"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="240dp"
+                android:layout_height="320dp"
                 android:layout_gravity="top|start"
                 android:layout_margin="6dp"
                 android:layout_marginTop="32dp"
                 android:background="@drawable/session_switch_picker_overlay_background"
                 android:clickable="false"
                 android:focusable="false"
+                android:gravity="top|start"
                 android:lineSpacingExtra="1dp"
-                android:maxWidth="240dp"
                 android:padding="6dp"
+                android:scrollbars="none"
                 android:textColor="#FFFFFFFF"
                 android:textSize="10sp" />
         </FrameLayout>

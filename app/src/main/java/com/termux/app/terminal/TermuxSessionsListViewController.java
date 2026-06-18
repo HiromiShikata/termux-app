@@ -274,13 +274,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (store == null) {
             return markedSessionIndexes;
         }
+        SessionOutputActivityStore outputActivityStore = mActivity.getSessionOutputActivityStore();
         for (int sessionIndex : getVisibleSessionIndexes()) {
             if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
                 continue;
             }
             TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
             String sessionHandle = terminalSession == null ? null : terminalSession.mHandle;
-            if (bellArrivalTimeMillis(store, sessionHandle) != null) {
+            if (hasNewActivityIndicator(bellArrivalTimeMillis(store, sessionHandle),
+                outputActivityStore, sessionHandle)) {
                 markedSessionIndexes.add(sessionIndex);
             }
         }
@@ -687,12 +689,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull TerminalSession session) {
-        if (hasNewActivityIndicator(session)) {
-            sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_session_bell_notification, 0, 0, 0);
-            sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
-        } else {
-            sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0);
-        }
+        int indicatorDrawableRes = newActivityIndicatorDrawableRes(hasNewActivityIndicator(session));
+        sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(indicatorDrawableRes, 0, 0, 0);
+        sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
+    }
+
+    static int newActivityIndicatorDrawableRes(boolean hasNewActivityIndicator) {
+        return hasNewActivityIndicator
+            ? R.drawable.ic_session_bell_notification
+            : R.drawable.ic_session_bell_notification_placeholder;
     }
 
     private boolean hasNewActivityIndicator(@NonNull TerminalSession session) {
