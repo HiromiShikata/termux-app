@@ -12,8 +12,9 @@ public final class BrowserPageHeaderText {
 
     @NonNull
     public static BrowserPageHeader build(@Nullable String projectName, @Nullable String sessionName,
-                                          @Nullable String title, @Nullable String url) {
-        String contextLine = contextLine(projectName, sessionName);
+                                          @Nullable String title, @Nullable String url,
+                                          boolean sessionHeaderVisible) {
+        String contextLine = sessionHeaderVisible ? "" : contextLine(projectName, sessionName);
         String titleLine = trimToEmpty(title);
         String compactUrlLine = BrowserGithubUrlShortener.shorten(url);
         if (titleLine.equals(compactUrlLine)) {

@@ -575,7 +575,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (displayedTab == null) return "";
         String projectName = mProjectUrlButtonsViewController.resolveProjectName(mCurrentSessionName);
         BrowserPageHeader header = BrowserPageHeaderText.build(
-            projectName, mCurrentSessionName, displayedTab.getTitle(), displayedTab.getUrl());
+            projectName, mCurrentSessionName, displayedTab.getTitle(), displayedTab.getUrl(),
+            isSessionHeaderVisible());
 
         SpannableStringBuilder builder = new SpannableStringBuilder();
         int secondaryColor = secondaryColor(primaryColor);
@@ -589,6 +590,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             appendStyledLine(builder, header.getCompactUrlLine(), secondaryColor, true);
         }
         return builder;
+    }
+
+    private boolean isSessionHeaderVisible() {
+        return isViewVisible(R.id.session_name_bar) || isViewVisible(R.id.session_project_story_bar);
+    }
+
+    private boolean isViewVisible(int viewId) {
+        View view = mActivity.findViewById(viewId);
+        return view != null && view.getVisibility() == View.VISIBLE;
     }
 
     private void appendStyledLine(@NonNull SpannableStringBuilder builder, @NonNull String text,
