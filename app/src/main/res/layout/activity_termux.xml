@@ -243,6 +243,14 @@
                     android:contentDescription="@string/action_browser_send_page_text"
                     android:text="@string/action_browser_send_page_text" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/browser_clear_cache_button"
+                    style="?android:attr/buttonBarButtonStyle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/action_browser_clear_cache"
+                    android:text="@string/action_browser_clear_cache" />
+
                 <LinearLayout
                     android:id="@+id/browser_project_url_buttons"
                     android:layout_width="match_parent"

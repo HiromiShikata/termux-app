@@ -726,6 +726,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mActivity.findViewById(R.id.browser_new_tab_button).setOnClickListener(v -> promptNewTab());
         mActivity.findViewById(R.id.browser_open_in_chrome_button).setOnClickListener(v -> openCurrentPageInChrome());
         mActivity.findViewById(R.id.browser_send_page_text_button).setOnClickListener(v -> sendCurrentPageTextToTerminal());
+        mActivity.findViewById(R.id.browser_clear_cache_button).setOnClickListener(v -> clearCurrentTabCache());
         mDesktopModeToggle = mActivity.findViewById(R.id.browser_desktop_mode_toggle);
         mDesktopModeToggle.setOnClickListener(v -> toggleActiveTabDesktopMode());
     }
@@ -764,6 +765,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         session.write("cat " + captureFile.getAbsolutePath() + "\n");
         mActivity.showToast(mActivity.getString(R.string.msg_browser_page_text_sent), false);
+    }
+
+    private void clearCurrentTabCache() {
+        if (!mBrowserVisible) return;
+        mWebView.clearCache(true);
+        mWebView.reload();
+        mActivity.showToast(mActivity.getString(R.string.msg_browser_cache_cleared), false);
     }
 
     private void openCurrentPageInChrome() {

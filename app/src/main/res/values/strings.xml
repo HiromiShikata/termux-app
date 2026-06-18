@@ -81,6 +81,8 @@
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
     <string name="action_browser_send_page_text">Send page text to terminal</string>
+    <string name="action_browser_clear_cache">Clear cache</string>
+    <string name="msg_browser_cache_cleared">Cache cleared</string>
     <string name="msg_browser_page_text_sent">Page text sent to terminal</string>
     <string name="msg_browser_page_text_failed">Failed to capture page text</string>
     <string name="msg_browser_no_session">No terminal session available</string>
