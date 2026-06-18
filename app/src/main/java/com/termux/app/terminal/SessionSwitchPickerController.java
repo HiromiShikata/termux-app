@@ -38,6 +38,7 @@ public class SessionSwitchPickerController {
     private static final float SPACER_RELATIVE_SIZE = 0.4f;
     private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
     private static final String BELL_MARK = "🔔 ";
+    private static final int TRANSPARENT_COLOR = 0x00000000;
     private static final int STORY_TEXT_COLOR = 0x99FFFFFF;
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
@@ -177,10 +178,22 @@ public class SessionSwitchPickerController {
         return builder;
     }
 
+    @NonNull
+    static String bellMarkSlotText() {
+        return BELL_MARK;
+    }
+
+    static boolean isBellMarkSlotVisible(boolean marked) {
+        return marked;
+    }
+
     private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
                                    int start, int highlightColor, int sessionIndentPixels) {
-        if (line.isMarked()) {
-            builder.append(BELL_MARK);
+        int bellMarkStart = builder.length();
+        builder.append(bellMarkSlotText());
+        if (!isBellMarkSlotVisible(line.isMarked())) {
+            builder.setSpan(new ForegroundColorSpan(TRANSPARENT_COLOR), bellMarkStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         int nameStart = builder.length();
         builder.append(line.getText());
