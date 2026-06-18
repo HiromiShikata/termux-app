@@ -178,6 +178,13 @@
     <string name="action_autofill_username">Autofill username</string>
     <string name="action_autofill_password">Autofill password</string>
 
+    <string name="action_color_scheme">Color scheme</string>
+    <string name="title_color_scheme_dialog">Select a color scheme</string>
+    <string name="color_scheme_default">Default</string>
+    <string name="color_scheme_monochrome_neutral">Monochrome Neutral Gray</string>
+    <string name="color_scheme_monochrome_cool">Monochrome Cool Gray</string>
+    <string name="color_scheme_monochrome_warm">Monochrome Warm Gray</string>
+
     <string name="action_style_terminal">Style</string>
     <string name="action_toggle_keep_screen_on">Keep screen on</string>
     <string name="action_open_settings">Settings</string>

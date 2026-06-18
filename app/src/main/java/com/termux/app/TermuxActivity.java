@@ -42,6 +42,9 @@ import com.termux.shared.activity.media.AppCompatActivityUtils;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
+import com.termux.shared.errors.Error;
+import com.termux.shared.file.FileUtils;
+import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.sessiondefinition.HttpSessionDefinitionDocumentFetcher;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
@@ -77,10 +80,15 @@ import com.termux.view.TerminalViewClient;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -236,6 +244,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_AUTOFILL_USERNAME = 11;
     private static final int CONTEXT_MENU_AUTOFILL_PASSWORD = 2;
     private static final int CONTEXT_MENU_TRANSLATE_SELECTED_TEXT = 13;
+    private static final int CONTEXT_MENU_COLOR_SCHEME = 14;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
 
@@ -832,6 +841,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_USERNAME, Menu.NONE, R.string.action_autofill_username);
         if (autoFillEnabled)
             menu.add(Menu.NONE, CONTEXT_MENU_AUTOFILL_PASSWORD, Menu.NONE, R.string.action_autofill_password);
+        menu.add(Menu.NONE, CONTEXT_MENU_COLOR_SCHEME, Menu.NONE, R.string.action_color_scheme);
     }
 
     /** Hook system menu to show context menu instead. */
@@ -867,6 +877,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             case CONTEXT_MENU_AUTOFILL_PASSWORD:
                 mTerminalView.requestAutoFillPassword();
                 return true;
+            case CONTEXT_MENU_COLOR_SCHEME:
+                showColorSchemeSelectionDialog();
+                return true;
             default:
                 return super.onContextItemSelected(item);
         }
@@ -896,6 +909,60 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         } catch (ActivityNotFoundException e) {
             showToast(getString(R.string.msg_no_translation_app_found), true);
         }
+    }
+
+    private void showColorSchemeSelectionDialog() {
+        final String[] schemeNames = new String[] {
+            getString(R.string.color_scheme_default),
+            getString(R.string.color_scheme_monochrome_neutral),
+            getString(R.string.color_scheme_monochrome_cool),
+            getString(R.string.color_scheme_monochrome_warm)
+        };
+        final int[] schemeRawResources = new int[] {
+            0,
+            com.termux.shared.R.raw.color_scheme_monochrome_neutral,
+            com.termux.shared.R.raw.color_scheme_monochrome_cool,
+            com.termux.shared.R.raw.color_scheme_monochrome_warm
+        };
+
+        new AlertDialog.Builder(this)
+            .setTitle(R.string.title_color_scheme_dialog)
+            .setItems(schemeNames, (dialog, which) -> applyColorScheme(schemeRawResources[which]))
+            .show();
+    }
+
+    private void applyColorScheme(int rawResourceId) {
+        String colorsFilePath = TermuxConstants.TERMUX_COLOR_PROPERTIES_FILE.getAbsolutePath();
+        Error error;
+        if (rawResourceId == 0) {
+            error = FileUtils.deleteRegularFile("terminal color scheme", colorsFilePath, true);
+        } else {
+            String schemeContent = readRawResourceText(rawResourceId);
+            if (schemeContent == null) return;
+            error = FileUtils.writeTextToFile("terminal color scheme", colorsFilePath, null, schemeContent, false);
+        }
+
+        if (error != null) {
+            Logger.logErrorAndShowToast(this, LOG_TAG, error.getMessage());
+            return;
+        }
+
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.checkForFontAndColors();
+    }
+
+    private String readRawResourceText(int rawResourceId) {
+        StringBuilder content = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(getResources().openRawResource(rawResourceId), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                content.append(line).append('\n');
+            }
+        } catch (IOException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to read color scheme raw resource", e);
+            return null;
+        }
+        return content.toString();
     }
 
     private boolean startGoogleTranslate(String selectedText) {
