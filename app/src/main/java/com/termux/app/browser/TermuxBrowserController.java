@@ -939,6 +939,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void showTerminal() {
         mBrowserVisible = false;
         mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, false);
+        resetWebViewToBlankForForeignFrame();
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
@@ -1050,7 +1051,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mWebViewOwnerHandle, mDisplayedTab == null ? null : mDisplayedTab.getSessionHandle(),
             forceReload);
         if (!resolution.shouldDisplay()) {
-            clearDisplayedTabForForeignSession();
+            resetWebViewToBlankForForeignFrame();
             return;
         }
         applyUserAgent(activeTab);
@@ -1062,7 +1063,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void displayTabInWebView(@NonNull BrowserTab tab) {
         String targetUrl = tab.getUrl();
-        if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, targetUrl, mBrowserVisible)) {
+        if (BrowserRenderedFrameOwnership.requiresCoverForFrame(
+                mCurrentSessionHandle, mWebViewOwnerHandle, mLoadedUrl, targetUrl, mBrowserVisible)) {
             showWebViewCover();
         }
         mDisplayedTab = tab;
@@ -1072,13 +1074,19 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mWebView.loadUrl(targetUrl);
     }
 
-    private void clearDisplayedTabForForeignSession() {
+    private void resetWebViewToBlankForForeignFrame() {
         if (mDisplayedTab != null
                 && !mDisplayedTab.getSessionHandle().equals(mCurrentSessionHandle)) {
             mDisplayedTab = null;
-            mActiveNavigation = null;
-            mWebView.loadUrl("about:blank");
         }
+        if (!BrowserRenderedFrameOwnership.isRenderedFrameForeign(
+                mCurrentSessionHandle, mWebViewOwnerHandle)) {
+            return;
+        }
+        mActiveNavigation = null;
+        mWebViewOwnerHandle = null;
+        mLoadedUrl = null;
+        mWebView.loadUrl("about:blank");
     }
 
     @Nullable

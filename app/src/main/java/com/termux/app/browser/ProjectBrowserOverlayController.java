@@ -172,6 +172,9 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     @Override
     public void openProjectUrl(@NonNull String url) {
+        if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, true)) {
+            mWebViewCover.setVisibility(View.VISIBLE);
+        }
         mHeaderUrlView.setText(url);
         mCurrentUrl = url;
         mWebView.loadUrl(url);
@@ -202,7 +205,15 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mWebViewCover.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(false);
         mOverlayContainer.setVisibility(View.GONE);
+        resetWebViewToBlank();
         updateOverviewActionsVisibility();
+    }
+
+    private void resetWebViewToBlank() {
+        mCurrentUrl = null;
+        mLoadedUrl = null;
+        mHeaderUrlView.setText("");
+        mWebView.loadUrl("about:blank");
     }
 
     private void updateOverviewActionsVisibility() {
