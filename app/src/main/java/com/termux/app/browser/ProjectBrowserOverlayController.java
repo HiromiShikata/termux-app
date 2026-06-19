@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.view.View;
 import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -13,6 +15,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -24,6 +27,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private final View mOverlayContainer;
 
     private final WebView mWebView;
+
+    private final SwipeRefreshLayout mSwipeRefreshLayout;
 
     private final TextView mHeaderUrlView;
 
@@ -47,6 +52,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mActivity = activity;
         this.mOverlayContainer = activity.findViewById(R.id.project_browser_overlay);
         this.mWebView = activity.findViewById(R.id.project_browser_web_view);
+        this.mSwipeRefreshLayout = activity.findViewById(R.id.project_browser_swipe_refresh);
         this.mHeaderUrlView = activity.findViewById(R.id.project_browser_header_url);
         this.mProgressBar = activity.findViewById(R.id.project_browser_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.project_browser_web_view_cover);
@@ -86,6 +92,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         settings.setAllowContentAccess(false);
         BrowserWebAuthentication.apply(settings);
 
+        mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
+
         mWebView.setWebViewClient(new BrowserDesktopViewportWebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -113,10 +121,25 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
                 mProgressBar.setVisibility(View.GONE);
+                mSwipeRefreshLayout.setRefreshing(false);
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
                 updateOverviewActionsVisibility();
                 CookieManager.getInstance().flush();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (!request.isForMainFrame()) return;
+                onMainFrameError();
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                onMainFrameError();
             }
         });
 
@@ -159,10 +182,17 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mRouter.route(url);
     }
 
+    private void onMainFrameError() {
+        mWebViewCover.setVisibility(View.GONE);
+        mProgressBar.setVisibility(View.GONE);
+        mSwipeRefreshLayout.setRefreshing(false);
+    }
+
     private void show() {
         mVisible = true;
         mOverlayContainer.setVisibility(View.VISIBLE);
         mOverlayContainer.bringToFront();
+        mWebView.requestFocus();
         updateOverviewActionsVisibility();
     }
 
@@ -170,6 +200,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mVisible = false;
         mProgressBar.setVisibility(View.GONE);
         mWebViewCover.setVisibility(View.GONE);
+        mSwipeRefreshLayout.setRefreshing(false);
         mOverlayContainer.setVisibility(View.GONE);
         updateOverviewActionsVisibility();
     }
