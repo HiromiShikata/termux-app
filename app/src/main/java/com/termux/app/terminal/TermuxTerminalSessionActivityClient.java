@@ -195,8 +195,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordOutputActivityForBackgroundSession(@NonNull TerminalSession session) {
-        TerminalSession currentSession = mActivity.getCurrentSession();
-        String currentSessionHandle = currentSession == null ? null : currentSession.mHandle;
+        String currentSessionHandle = activeSessionHandle();
         boolean marked = SessionOutputActivityMarker.markBackgroundOutputActivity(
             mActivity.getSessionOutputActivityStore(), currentSessionHandle, session.mHandle);
         if (marked && mActivity.isVisible()
@@ -368,11 +367,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
-        if (session == mActivity.getCurrentSession()) return;
         if (session.mHandle == null) return;
+        if (session.mHandle.equals(activeSessionHandle())) return;
 
         mActivity.getSessionBellNotificationStore().recordBell(session.mHandle, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
+    }
+
+    @Nullable
+    private String activeSessionHandle() {
+        if (mActiveSessionHandle != null) {
+            return mActiveSessionHandle;
+        }
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        return currentSession == null ? null : currentSession.mHandle;
     }
 
     private void clearOutputActivity(@NonNull TerminalSession session) {
