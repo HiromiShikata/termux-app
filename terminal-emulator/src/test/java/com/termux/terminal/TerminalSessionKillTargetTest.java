@@ -32,4 +32,19 @@ public class TerminalSessionKillTargetTest {
     public void killsTheNegatedProcessGroupForTheSmallestRealShellPid() {
         Assert.assertEquals(-2, TerminalSession.shellProcessGroupKillTarget(2));
     }
+
+    @Test
+    public void sendsSigkillForARunningSessionThatOwnsAProcessGroup() {
+        Assert.assertTrue(TerminalSession.shouldSendSigkillToProcessGroup(true, 4321));
+    }
+
+    @Test
+    public void doesNotSendSigkillForAFinishedSessionEvenWhenItStillHoldsAPositiveStaleShellPid() {
+        Assert.assertFalse(TerminalSession.shouldSendSigkillToProcessGroup(false, 4321));
+    }
+
+    @Test
+    public void doesNotSendSigkillForARunningSessionWithoutAStartedShellProcessGroup() {
+        Assert.assertFalse(TerminalSession.shouldSendSigkillToProcessGroup(true, 0));
+    }
 }
