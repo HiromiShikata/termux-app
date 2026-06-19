@@ -197,14 +197,6 @@
                 android:orientation="vertical"
                 android:background="?attr/termuxActivityDrawerBackground">
 
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/browser_drawer_session_name"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="8dp"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
                 <ListView
                     android:id="@+id/browser_tabs_list"
                     android:layout_width="match_parent"
@@ -250,12 +242,6 @@
                     android:layout_height="wrap_content"
                     android:contentDescription="@string/action_browser_clear_cache"
                     android:text="@string/action_browser_clear_cache" />
-
-                <LinearLayout
-                    android:id="@+id/browser_project_url_buttons"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
             </LinearLayout>
 
         </androidx.drawerlayout.widget.DrawerLayout>
