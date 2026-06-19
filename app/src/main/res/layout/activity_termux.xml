@@ -305,11 +305,20 @@
                 android:layout_height="0dp"
                 android:layout_weight="1">
 
-                <WebView
-                    android:id="@+id/project_browser_web_view"
+                <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                    android:id="@+id/project_browser_swipe_refresh"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:background="?attr/termuxActivityDrawerBackground" />
+                    android:background="?attr/termuxActivityDrawerBackground">
+
+                    <WebView
+                        android:id="@+id/project_browser_web_view"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:background="?attr/termuxActivityDrawerBackground" />
+                </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
                 <View
                     android:id="@+id/project_browser_web_view_cover"
