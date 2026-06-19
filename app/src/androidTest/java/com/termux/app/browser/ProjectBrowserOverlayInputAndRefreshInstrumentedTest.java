@@ -1,6 +1,7 @@
 package com.termux.app.browser;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.webkit.WebView;
@@ -38,7 +39,7 @@ public class ProjectBrowserOverlayInputAndRefreshInstrumentedTest {
             WebView overlayWebView = activity.findViewById(R.id.project_browser_web_view);
             assertNotNull(swipeRefreshLayout);
             assertNotNull(overlayWebView);
-            assertTrue(overlayWebView.getParent() == swipeRefreshLayout);
+            assertSame(swipeRefreshLayout, overlayWebView.getParent());
         });
     }
 }
