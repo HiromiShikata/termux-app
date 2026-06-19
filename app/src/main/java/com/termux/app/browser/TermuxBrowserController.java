@@ -123,7 +123,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private BrowserTabsListViewController mTabsListViewController;
 
-    private final BrowserProjectUrlButtonsViewController mProjectUrlButtonsViewController;
+    private final BrowserProjectNameResolver mProjectNameResolver;
 
     private final View mProjectOverviewActionsView;
 
@@ -159,7 +159,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
-        this.mProjectUrlButtonsViewController = new BrowserProjectUrlButtonsViewController(activity);
+        this.mProjectNameResolver = new BrowserProjectNameResolver(activity);
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         configureWebView();
         configureCookies();
@@ -576,7 +576,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private CharSequence buildHeaderText(int primaryColor) {
         BrowserTab displayedTab = mDisplayedTab;
         if (displayedTab == null) return "";
-        String projectName = mProjectUrlButtonsViewController.resolveProjectName(mCurrentSessionName);
+        String projectName = mProjectNameResolver.resolveProjectName(mCurrentSessionName);
         BrowserPageHeader header = BrowserPageHeaderText.build(
             projectName, mCurrentSessionName, displayedTab.getTitle(), displayedTab.getUrl(),
             isSessionHeaderVisible());
@@ -878,13 +878,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private void rebindTabsList(@Nullable TerminalSession session) {
         if (mCurrentSessionHandle == null) {
             mTabsListView.setAdapter(null);
-            mProjectUrlButtonsViewController.showProjectUrlsForSession(null);
+            mProjectNameResolver.loadEntriesForSession(null);
             return;
         }
-
-        com.google.android.material.textview.MaterialTextView headerView =
-            mActivity.findViewById(R.id.browser_drawer_session_name);
-        headerView.setText(sessionDisplayName(session));
 
         List<BrowserTab> tabs = mTabManager.getTabs(mCurrentSessionHandle);
         mTabsListViewController = new BrowserTabsListViewController(mActivity, this, tabs);
@@ -892,14 +888,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mTabsListView.setOnItemClickListener(mTabsListViewController);
 
         String sessionName = (session == null) ? null : session.mSessionName;
-        mProjectUrlButtonsViewController.showProjectUrlsForSession(sessionName);
-    }
-
-    private String sessionDisplayName(@Nullable TerminalSession session) {
-        if (session == null) return mActivity.getString(R.string.title_browser_tabs);
-        if (session.mSessionName != null && !session.mSessionName.isEmpty()) return session.mSessionName;
-        String title = session.getTitle();
-        return (title == null || title.isEmpty()) ? mActivity.getString(R.string.title_browser_tabs) : title;
+        mProjectNameResolver.loadEntriesForSession(sessionName);
     }
 
     public void onSessionRemoved(@NonNull TerminalSession session) {
