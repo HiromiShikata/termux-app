@@ -14,6 +14,9 @@ public final class SessionOutputActivityMarker {
         if (changedSessionHandle == null) {
             return false;
         }
+        if (currentSessionHandle == null) {
+            return false;
+        }
         if (changedSessionHandle.equals(currentSessionHandle)) {
             return false;
         }
