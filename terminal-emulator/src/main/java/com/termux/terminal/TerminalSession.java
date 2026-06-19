@@ -246,12 +246,16 @@ public final class TerminalSession extends TerminalOutput {
         return NO_SHELL_PROCESS_GROUP_TARGET;
     }
 
+    static boolean shouldSendSigkillToProcessGroup(boolean running, int shellPid) {
+        return running && shellProcessGroupKillTarget(shellPid) != NO_SHELL_PROCESS_GROUP_TARGET;
+    }
+
     /** Finish this terminal session by sending SIGKILL to the shell process group. */
     public void finishIfRunning() {
-        int shellProcessGroupTarget = shellProcessGroupKillTarget(mShellPid);
-        if (shellProcessGroupTarget == NO_SHELL_PROCESS_GROUP_TARGET) {
+        if (!shouldSendSigkillToProcessGroup(isRunning(), mShellPid)) {
             return;
         }
+        int shellProcessGroupTarget = shellProcessGroupKillTarget(mShellPid);
         try {
             Os.kill(shellProcessGroupTarget, OsConstants.SIGKILL);
         } catch (ErrnoException e) {
