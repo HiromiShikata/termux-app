@@ -273,6 +273,12 @@ public class SessionSwitchPickerController {
         builder.append(line.getText());
         builder.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), nameStart, builder.length(),
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (line.isCurrent()) {
+            builder.setSpan(new StyleSpan(Typeface.BOLD), nameStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new ForegroundColorSpan(highlightColor), nameStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
         String newActivityLabel = line.getNewActivityLabel();
         if (!newActivityLabel.isEmpty()) {
             int ageLabelStart = builder.length();
