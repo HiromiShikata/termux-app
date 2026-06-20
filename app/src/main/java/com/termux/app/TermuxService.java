@@ -584,11 +584,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         ShellCreateMode shellCreateMode = processShellCreateMode(executionCommand);
         if (shellCreateMode == null) return;
         if (ShellCreateMode.NO_SHELL_WITH_NAME.equals(shellCreateMode)) {
-            newTermuxSession = getTermuxSessionForShellName(executionCommand.shellName);
+            newTermuxSession = getTermuxSessionForSessionName(executionCommand.shellName);
             if (newTermuxSession != null)
-                Logger.logVerbose(LOG_TAG, "Existing TermuxSession with \"" + executionCommand.shellName + "\" shell name found for shell create mode \"" + shellCreateMode.getMode() + "\"");
+                Logger.logVerbose(LOG_TAG, "Existing TermuxSession with \"" + executionCommand.shellName + "\" session name found for shell create mode \"" + shellCreateMode.getMode() + "\"");
             else
-                Logger.logVerbose(LOG_TAG, "No existing TermuxSession with \"" + executionCommand.shellName + "\" shell name found for shell create mode \"" + shellCreateMode.getMode() + "\"");
+                Logger.logVerbose(LOG_TAG, "No existing TermuxSession with \"" + executionCommand.shellName + "\" session name found for shell create mode \"" + shellCreateMode.getMode() + "\"");
         }
 
         if (newTermuxSession == null)
@@ -999,13 +999,13 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return null;
     }
 
-    public synchronized TermuxSession getTermuxSessionForShellName(String name) {
+    public synchronized TermuxSession getTermuxSessionForSessionName(String name) {
         if (DataUtils.isNullOrEmpty(name)) return null;
         TermuxSession termuxSession;
         for (int i = 0, len = mShellManager.mTermuxSessions.size(); i < len; i++) {
             termuxSession = mShellManager.mTermuxSessions.get(i);
-            String shellName = termuxSession.getExecutionCommand().shellName;
-            if (shellName != null && shellName.equals(name))
+            String sessionName = termuxSession.getTerminalSession().mSessionName;
+            if (sessionName != null && sessionName.equals(name))
                 return termuxSession;
         }
         return null;

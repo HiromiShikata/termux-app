@@ -47,6 +47,7 @@ import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
 import com.termux.app.terminal.session.DuplicateSessionNameResolution;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
+import com.termux.app.terminal.session.PersistedSessionRestoreData;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
@@ -701,17 +702,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void renameSession(TerminalSession sessionToRename, String text) {
         if (sessionToRename == null) return;
         sessionToRename.mSessionName = text;
-        TermuxService service = mActivity.getTermuxService();
-        if (service != null) {
-            TermuxSession termuxSession = service.getTermuxSessionForTerminalSession(sessionToRename);
-            if (termuxSession != null)
-                termuxSession.getExecutionCommand().shellName = text;
-        }
 
         if (sessionToRename == mActivity.getCurrentSession())
             updateSessionNameOverlay();
 
-        updatePersistedSessionName(sessionToRename, text);
+        if (mPersistedSessionBySession.containsKey(sessionToRename))
+            savePersistedSessions();
     }
 
     public void addNewSession(boolean isFailSafe, String sessionName) {
@@ -742,7 +738,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             if (!isFailSafe)
-                recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, null, null, false, workingDirectory));
+                recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, null, null, false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             setCurrentSession(newTerminalSession);
 
@@ -795,7 +791,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, sessionName, shellPath, arguments, false, workingDirectory));
+            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             setCurrentSession(newTerminalSession);
 
@@ -970,25 +966,24 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         savePersistedSessions();
     }
 
-    private void updatePersistedSessionName(TerminalSession terminalSession, String name) {
-        PersistedSession existing = mPersistedSessionBySession.get(terminalSession);
-        if (existing == null) return;
-
-        mPersistedSessionBySession.put(terminalSession, new PersistedSession(existing.getHandle(), name,
-            existing.getExecutablePath(), existing.getArguments(), existing.isFailSafe(), existing.getWorkingDirectory()));
-        savePersistedSessions();
-    }
-
     private void savePersistedSessions() {
         try {
-            String serialized = mPersistedSessionSerializer.serialize(new ArrayList<>(mPersistedSessionBySession.values()));
+            List<PersistedSessionRestoreData> restoreData = new ArrayList<>();
+            for (Map.Entry<TerminalSession, PersistedSession> entry : mPersistedSessionBySession.entrySet()) {
+                TerminalSession session = entry.getKey();
+                PersistedSession persistedSession = entry.getValue();
+                restoreData.add(new PersistedSessionRestoreData(persistedSession.getHandle(), session.mSessionName,
+                    persistedSession.getExecutablePath(), persistedSession.getArguments(),
+                    persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
+            }
+            String serialized = mPersistedSessionSerializer.serialize(restoreData);
             mActivity.getPreferences().setPersistedSessions(serialized);
         } catch (JSONException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize persisted sessions", e);
         }
     }
 
-    private List<PersistedSession> loadPersistedSessions() {
+    private List<PersistedSessionRestoreData> loadPersistedSessions() {
         try {
             return mPersistedSessionSerializer.deserialize(mActivity.getPreferences().getPersistedSessions());
         } catch (JSONException e) {
@@ -1006,13 +1001,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;
 
-        List<PersistedSession> persistedSessions = loadPersistedSessions();
+        List<PersistedSessionRestoreData> persistedSessions = loadPersistedSessions();
         if (persistedSessions.isEmpty()) return false;
 
         Set<String> restoredNames = new HashSet<>();
         TerminalSession firstRestoredSession = null;
 
-        for (PersistedSession persistedSession : persistedSessions) {
+        for (PersistedSessionRestoreData persistedSession : persistedSessions) {
             String name = persistedSession.getName();
             if (name != null && !restoredNames.add(name)) continue;
             if (service.getTermuxSessionsSize() >= MAX_SESSIONS) break;
@@ -1023,7 +1018,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (newTermuxSession == null) continue;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, name,
+            mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
                 persistedSession.getExecutablePath(), persistedSession.getArguments(), persistedSession.isFailSafe(),
                 persistedSession.getWorkingDirectory()));
             attachBrowserTabForUrlSessionName(newTerminalSession, name);
@@ -1075,7 +1070,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                sessionName, startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
+                startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
             if (firstCreatedSession == null)
                 firstCreatedSession = newTerminalSession;
@@ -1099,9 +1094,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         Map<String, PersistedSession> persistedSessionByHandle = new HashMap<>();
-        for (PersistedSession persistedSession : loadPersistedSessions()) {
-            if (persistedSession.getHandle() != null)
-                persistedSessionByHandle.put(persistedSession.getHandle(), persistedSession);
+        for (PersistedSessionRestoreData restoreData : loadPersistedSessions()) {
+            if (restoreData.getHandle() != null)
+                persistedSessionByHandle.put(restoreData.getHandle(), new PersistedSession(restoreData.getHandle(),
+                    restoreData.getExecutablePath(), restoreData.getArguments(), restoreData.isFailSafe(),
+                    restoreData.getWorkingDirectory()));
         }
 
         mPersistedSessionBySession.clear();
