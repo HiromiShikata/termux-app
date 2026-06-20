@@ -286,6 +286,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return ageLabelsBySessionIndex;
         }
         long nowMillis = System.currentTimeMillis();
+        String activeSessionHandle = activeSessionHandle();
         for (int sessionIndex : getVisibleSessionIndexes()) {
             if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
                 continue;
@@ -293,7 +294,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
             String sessionHandle = terminalSession == null ? null : terminalSession.mHandle;
             SessionNewActivityIndicator indicator =
-                newActivityIndicator(store, sessionHandle, nowMillis);
+                newActivityIndicator(store, sessionHandle, activeSessionHandle, nowMillis);
             if (indicator.isVisible()) {
                 ageLabelsBySessionIndex.put(sessionIndex, indicator.getLabel());
             }
@@ -310,6 +311,27 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         return SessionNewActivityIndicator.labelFor(store.getLastBellTimeMillis(sessionHandle),
             store.getLastSeenTimeMillis(sessionHandle), nowMillis);
+    }
+
+    @NonNull
+    static SessionNewActivityIndicator newActivityIndicator(@NonNull SessionNewActivityStore store,
+                                                            @Nullable String sessionHandle,
+                                                            @Nullable String activeSessionHandle,
+                                                            long nowMillis) {
+        if (isActiveSession(sessionHandle, activeSessionHandle)) {
+            return SessionNewActivityIndicator.labelFor(null, null, nowMillis);
+        }
+        return newActivityIndicator(store, sessionHandle, nowMillis);
+    }
+
+    static boolean isActiveSession(@Nullable String sessionHandle, @Nullable String activeSessionHandle) {
+        return sessionHandle != null && sessionHandle.equals(activeSessionHandle);
+    }
+
+    @Nullable
+    private String activeSessionHandle() {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        return currentSession == null ? null : currentSession.mHandle;
     }
 
     @NonNull
@@ -729,7 +751,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (store == null) {
             return SessionNewActivityIndicator.labelFor(null, null, System.currentTimeMillis());
         }
-        return newActivityIndicator(store, session.mHandle, System.currentTimeMillis());
+        return newActivityIndicator(store, session.mHandle, activeSessionHandle(), System.currentTimeMillis());
     }
 
     private int dpToPx(int dp) {
