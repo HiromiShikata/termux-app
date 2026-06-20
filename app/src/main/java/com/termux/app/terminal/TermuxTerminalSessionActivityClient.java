@@ -36,8 +36,6 @@ import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.ProjectBrowserSessionDismissal;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
-import com.termux.app.sessiondefinition.SessionDefinitionEntry;
-import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -83,8 +81,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final TermuxActivity mActivity;
 
     private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
-
-    private final SessionDefinitionEntryMatcher mSessionDefinitionEntryMatcher = new SessionDefinitionEntryMatcher();
 
     private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
 
@@ -555,6 +551,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TerminalSession session = mActivity.getCurrentSession();
         String sessionName = (session == null) ? null : session.mSessionName;
+        SessionRow currentSessionRow = currentSessionRow();
         if (!SessionNameBarVisibility.isVisible(sessionName)) {
             sessionNameBar.setText("");
             sessionNameBar.setVisibility(View.GONE);
@@ -562,27 +559,33 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setClickable(false);
             updateSessionProjectStoryBar(null);
         } else {
-            String title = mSessionDefinitionEntryMatcher.findTitleForSessionName(
-                mActivity.getSessionDefinitionEntries(), sessionName);
+            String title = currentSessionRow.getResolvedTitle();
             SessionNameBarContent content = SessionNameBarContent.of(sessionName, title);
             sessionNameBar.setSingleLine(false);
             sessionNameBar.setMaxLines(content.hasTitle() ? 3 : 2);
             sessionNameBar.setText(buildSessionNameBarText(content));
             sessionNameBar.setVisibility(View.VISIBLE);
             sessionNameBar.setOnClickListener(view -> onSessionNameBarTapped());
-            updateSessionProjectStoryBar(sessionName);
+            updateSessionProjectStoryBar(currentSessionRow);
         }
     }
 
-    private void updateSessionProjectStoryBar(@Nullable String sessionName) {
+    @NonNull
+    private SessionRow currentSessionRow() {
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) {
+            return SessionRow.rowOrEmpty(null, -1);
+        }
+        return listViewController.getCurrentSessionRow();
+    }
+
+    private void updateSessionProjectStoryBar(@Nullable SessionRow currentSessionRow) {
         TextView projectStoryBar = mActivity.findViewById(R.id.session_project_story_bar);
         if (projectStoryBar == null) return;
 
-        SessionDefinitionEntry entry = mSessionDefinitionEntryMatcher.findEntryForSessionName(
-            mActivity.getSessionDefinitionEntries(), sessionName);
-        SessionProjectStoryLine line = (entry == null)
+        SessionProjectStoryLine line = (currentSessionRow == null)
             ? SessionProjectStoryLine.of(null, null)
-            : SessionProjectStoryLine.of(entry.getGroupLabel(), entry.getEntryLabel());
+            : SessionProjectStoryLine.of(currentSessionRow.getProject(), currentSessionRow.getStory());
         if (line.hasContent()) {
             projectStoryBar.setText(line.getText());
             projectStoryBar.setVisibility(View.VISIBLE);

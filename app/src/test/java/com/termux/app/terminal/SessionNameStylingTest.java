@@ -24,7 +24,7 @@ public class SessionNameStylingTest {
 
         RelativeSizeSpan[] sizeSpans = styled.getSpans(0, sessionName.length(), RelativeSizeSpan.class);
         Assert.assertEquals(1, sizeSpans.length);
-        Assert.assertEquals(TermuxSessionsListViewController.SESSION_NAME_RELATIVE_SIZE,
+        Assert.assertEquals(SessionRow.SESSION_NAME_RELATIVE_SIZE,
             sizeSpans[0].getSizeChange(), 0.0001f);
         Assert.assertTrue(sizeSpans[0].getSizeChange() < 1.0f);
         Assert.assertEquals(0, styled.getSpanStart(sizeSpans[0]));

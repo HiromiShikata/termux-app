@@ -24,8 +24,8 @@ public class SessionPickerOverlayAgeLabelTest {
         Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
         markedSessionAgeLabels.put(1, "30s ago");
 
-        List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, -1);
+        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
+            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED), -1);
         String structureText = SessionSwitchPickerController.pickerStructurePlainText(lines);
 
         Assert.assertTrue(structureText.contains("30s ago"));
@@ -39,10 +39,17 @@ public class SessionPickerOverlayAgeLabelTest {
         List<String> names = Arrays.asList("alpha", "beta");
 
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, names, NO_TITLES, Collections.emptyMap(), NO_DISABLED, -1);
+            rows, sessionRows(names, NO_TITLES, Collections.emptyMap(), NO_DISABLED), -1);
         String structureText = SessionSwitchPickerController.pickerStructurePlainText(lines);
 
         Assert.assertFalse(structureText.contains("ago"));
+    }
+
+    private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
+                                                        Map<Integer, String> markedSessionAgeLabels,
+                                                        Set<Integer> disabledSessionIndexes) {
+        return SessionRow.project(names, titles, Collections.emptyList(), Collections.emptyList(),
+            markedSessionAgeLabels, disabledSessionIndexes, -1);
     }
 
     @Test
