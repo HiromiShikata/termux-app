@@ -19,17 +19,17 @@ public final class SessionDefinitionController {
     private static final String LOG_TAG = "SessionDefinitionController";
 
     private final TermuxActivity activity;
-    private final SessionDefinitionLoader loader;
+    private final SessionDefinitionRepository repository;
     private final SessionDefinitionPlanner planner;
     private final SessionDefinitionEntryMatcher matcher = new SessionDefinitionEntryMatcher();
 
     public SessionDefinitionController(TermuxActivity activity) {
-        this(activity, new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()), new SessionDefinitionPlanner());
+        this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
     }
 
-    public SessionDefinitionController(TermuxActivity activity, SessionDefinitionLoader loader, SessionDefinitionPlanner planner) {
+    public SessionDefinitionController(TermuxActivity activity, SessionDefinitionRepository repository, SessionDefinitionPlanner planner) {
         this.activity = activity;
-        this.loader = loader;
+        this.repository = repository;
         this.planner = planner;
     }
 
@@ -42,27 +42,20 @@ public final class SessionDefinitionController {
 
         setLoadingProgressVisible(true);
 
-        new Thread(() -> {
+        repository.loadForRebuild(baseUrl, entries -> {
             try {
-                List<SessionDefinitionEntry> entries = loader.load(baseUrl);
-                activity.runOnUiThread(() -> {
-                    try {
-                        buildSessions(entries);
-                    } finally {
-                        setLoadingProgressVisible(false);
-                    }
-                });
-            } catch (Exception exception) {
-                Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
-                activity.runOnUiThread(() -> {
-                    try {
-                        activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
-                    } finally {
-                        setLoadingProgressVisible(false);
-                    }
-                });
+                buildSessions(entries);
+            } finally {
+                setLoadingProgressVisible(false);
             }
-        }).start();
+        }, exception -> {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
+            try {
+                activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
+            } finally {
+                setLoadingProgressVisible(false);
+            }
+        });
     }
 
     private void setLoadingProgressVisible(boolean visible) {

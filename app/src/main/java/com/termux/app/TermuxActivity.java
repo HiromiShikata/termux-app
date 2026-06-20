@@ -43,18 +43,16 @@ import com.termux.shared.data.IntentUtils;
 import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
-import com.termux.app.sessiondefinition.HttpSessionDefinitionDocumentFetcher;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
-import com.termux.app.sessiondefinition.SessionDefinitionLoader;
-import com.termux.app.sessiondefinition.SessionDefinitionParser;
+import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
+import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
 import com.termux.app.terminal.ProjectActionToken;
 import com.termux.app.terminal.ProjectActionTokenParser;
-import com.termux.app.terminal.SessionDefinitionEntriesProvider;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
@@ -172,9 +170,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     SessionSwitchPickerController mSessionSwitchPickerController;
 
-    private final SessionDefinitionEntriesProvider mSessionDefinitionEntriesProvider =
-        new SessionDefinitionEntriesProvider(new SessionDefinitionLoader(
-            new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
+    private final SessionDefinitionRepository mSessionDefinitionRepository =
+        new SessionDefinitionRepository();
 
     /**
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
@@ -670,16 +667,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void loadSessionDefinitionEntriesForGrouping() {
         if (mTermuxSessionListViewController == null) return;
-        List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionEntriesProvider.getEntries();
+        List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionRepository.getCachedEntries();
         if (!cachedEntries.isEmpty()) {
             mTermuxSessionListViewController.setEntries(cachedEntries);
             applyPendingExpandedProjectsAllowlist();
             return;
         }
         String baseUrl = getPreferences().getSessionDefinitionUrl().trim();
-        mSessionDefinitionEntriesProvider.load(baseUrl, () -> {
+        mSessionDefinitionRepository.load(baseUrl, () -> {
             if (mTermuxSessionListViewController != null) {
-                mTermuxSessionListViewController.setEntries(mSessionDefinitionEntriesProvider.getEntries());
+                mTermuxSessionListViewController.setEntries(mSessionDefinitionRepository.getCachedEntries());
                 applyPendingExpandedProjectsAllowlist();
             }
         });
@@ -793,7 +790,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public void loadSessionsFromDefinition() {
-        new SessionDefinitionController(this).loadAndBuildSessions();
+        new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions();
     }
 
     public void promptAndCreateNewSession() {
@@ -1214,7 +1211,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @NonNull
     public List<SessionDefinitionEntry> getSessionDefinitionEntries() {
-        return Collections.unmodifiableList(mSessionDefinitionEntriesProvider.getEntries());
+        return Collections.unmodifiableList(mSessionDefinitionRepository.getCachedEntries());
     }
 
     @Nullable
