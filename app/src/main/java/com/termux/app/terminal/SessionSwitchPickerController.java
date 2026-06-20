@@ -27,6 +27,7 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.terminal.TerminalSession;
 
 import java.util.List;
 
@@ -47,6 +48,7 @@ public class SessionSwitchPickerController {
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
     private static final float SESSION_INDENT_DP = 12f;
     private static final float OVERLAY_FIXED_WIDTH_DP = 240f;
+    private static final float OVERLAY_MAX_HEIGHT_SCREEN_FRACTION = 0.8f;
 
     private final TermuxActivity mActivity;
     private final View mOverlayView;
@@ -139,10 +141,21 @@ public class SessionSwitchPickerController {
 
     private void renderStructure(@NonNull TermuxSessionsListViewController listController) {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            listController.getVisibleRows(), listController.getSessionRows(), mHighlightedSessionIndex);
+            listController.getVisibleRows(), listController.getSessionRows(), mHighlightedSessionIndex,
+            currentSessionName());
         mStructureView.setText(buildStructureText(lines));
         applyFixedOverlaySize();
         scrollHighlightedLineIntoView();
+    }
+
+    @NonNull
+    private String currentSessionName() {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        if (currentSession == null) {
+            return "";
+        }
+        String name = currentSession.mSessionName;
+        return name == null ? "" : name;
     }
 
     private void scrollHighlightedLineIntoView() {
@@ -171,17 +184,25 @@ public class SessionSwitchPickerController {
     private void applyFixedOverlaySize() {
         DisplayMetrics displayMetrics = mActivity.getResources().getDisplayMetrics();
         int fixedWidthPixels = overlayWidthPx(displayMetrics);
+        int maxHeightPixels = overlayMaxHeightPx(displayMetrics);
         ViewGroup.LayoutParams layoutParams = mStructureView.getLayoutParams();
         if (layoutParams.width != fixedWidthPixels
-                || layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+                || layoutParams.height != ViewGroup.LayoutParams.WRAP_CONTENT) {
             layoutParams.width = fixedWidthPixels;
-            layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             mStructureView.setLayoutParams(layoutParams);
+        }
+        if (mStructureView.getMaxHeight() != maxHeightPixels) {
+            mStructureView.setMaxHeight(maxHeightPixels);
         }
     }
 
     static int overlayWidthPx(@NonNull DisplayMetrics displayMetrics) {
         return dimensionPx(OVERLAY_FIXED_WIDTH_DP, displayMetrics);
+    }
+
+    static int overlayMaxHeightPx(@NonNull DisplayMetrics displayMetrics) {
+        return Math.round(displayMetrics.heightPixels * OVERLAY_MAX_HEIGHT_SCREEN_FRACTION);
     }
 
     static int overlayWidthPxForLineCount(int lineCount, @NonNull DisplayMetrics displayMetrics) {
