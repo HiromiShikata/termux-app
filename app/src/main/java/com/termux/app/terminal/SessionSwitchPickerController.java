@@ -47,7 +47,6 @@ public class SessionSwitchPickerController {
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
     private static final float SESSION_INDENT_DP = 12f;
     private static final float OVERLAY_FIXED_WIDTH_DP = 240f;
-    private static final float OVERLAY_FIXED_HEIGHT_DP = 320f;
 
     private final TermuxActivity mActivity;
     private final View mOverlayView;
@@ -172,25 +171,17 @@ public class SessionSwitchPickerController {
     private void applyFixedOverlaySize() {
         DisplayMetrics displayMetrics = mActivity.getResources().getDisplayMetrics();
         int fixedWidthPixels = overlayWidthPx(displayMetrics);
-        int fixedHeightPixels = overlayHeightPx(displayMetrics);
         ViewGroup.LayoutParams layoutParams = mStructureView.getLayoutParams();
-        if (layoutParams.width != fixedWidthPixels || layoutParams.height != fixedHeightPixels) {
+        if (layoutParams.width != fixedWidthPixels
+                || layoutParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
             layoutParams.width = fixedWidthPixels;
-            layoutParams.height = fixedHeightPixels;
+            layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
             mStructureView.setLayoutParams(layoutParams);
         }
     }
 
     static int overlayWidthPx(@NonNull DisplayMetrics displayMetrics) {
         return dimensionPx(OVERLAY_FIXED_WIDTH_DP, displayMetrics);
-    }
-
-    static int overlayHeightPx(@NonNull DisplayMetrics displayMetrics) {
-        return dimensionPx(OVERLAY_FIXED_HEIGHT_DP, displayMetrics);
-    }
-
-    static int overlayHeightPxForLineCount(int lineCount, @NonNull DisplayMetrics displayMetrics) {
-        return overlayHeightPx(displayMetrics);
     }
 
     static int overlayWidthPxForLineCount(int lineCount, @NonNull DisplayMetrics displayMetrics) {

@@ -117,17 +117,6 @@ public class SessionBellIndicatorConsistencyTest {
     }
 
     @Test
-    public void pickerOverlayHeightIsIdenticalForOneItemAndManyItems() {
-        DisplayMetrics displayMetrics = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics();
-
-        int heightForOneItem = SessionSwitchPickerController.overlayHeightPxForLineCount(1, displayMetrics);
-        int heightForManyItems = SessionSwitchPickerController.overlayHeightPxForLineCount(50, displayMetrics);
-
-        Assert.assertTrue(heightForOneItem > 0);
-        Assert.assertEquals(heightForOneItem, heightForManyItems);
-    }
-
-    @Test
     public void pickerOverlayWidthIsIdenticalForOneItemAndManyItems() {
         DisplayMetrics displayMetrics = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics();
 
@@ -139,20 +128,17 @@ public class SessionBellIndicatorConsistencyTest {
     }
 
     @Test
-    public void appliedPickerOverlaySizeMatchesTheFixedDimensionRegardlessOfItemCount() {
+    public void appliedPickerOverlayWidthMatchesTheFixedDimensionRegardlessOfItemCount() {
         DisplayMetrics displayMetrics = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics();
 
-        int fixedHeight = SessionSwitchPickerController.overlayHeightPx(displayMetrics);
         int fixedWidth = SessionSwitchPickerController.overlayWidthPx(displayMetrics);
 
-        Assert.assertEquals(fixedHeight, SessionSwitchPickerController.overlayHeightPxForLineCount(1, displayMetrics));
-        Assert.assertEquals(fixedHeight, SessionSwitchPickerController.overlayHeightPxForLineCount(100, displayMetrics));
         Assert.assertEquals(fixedWidth, SessionSwitchPickerController.overlayWidthPxForLineCount(1, displayMetrics));
         Assert.assertEquals(fixedWidth, SessionSwitchPickerController.overlayWidthPxForLineCount(100, displayMetrics));
     }
 
     @Test
-    public void pickerOverlayStructureViewDeclaresAFixedSizeInTheLayoutMatchingTheControllerConstants() {
+    public void pickerOverlayStructureViewDeclaresAFixedWidthAndFillsHeightSoNoVerticalGapShows() {
         Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
         View root = LayoutInflater.from(context)
@@ -160,11 +146,13 @@ public class SessionBellIndicatorConsistencyTest {
         TextView structureView = root.findViewById(R.id.session_switch_picker_structure);
         DisplayMetrics displayMetrics = context.getResources().getDisplayMetrics();
 
-        ViewGroup.LayoutParams layoutParams = structureView.getLayoutParams();
+        ViewGroup.MarginLayoutParams layoutParams =
+            (ViewGroup.MarginLayoutParams) structureView.getLayoutParams();
 
         Assert.assertNotEquals(ViewGroup.LayoutParams.WRAP_CONTENT, layoutParams.width);
-        Assert.assertNotEquals(ViewGroup.LayoutParams.WRAP_CONTENT, layoutParams.height);
         Assert.assertEquals(SessionSwitchPickerController.overlayWidthPx(displayMetrics), layoutParams.width);
-        Assert.assertEquals(SessionSwitchPickerController.overlayHeightPx(displayMetrics), layoutParams.height);
+        Assert.assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, layoutParams.height);
+        Assert.assertEquals(0, layoutParams.topMargin);
+        Assert.assertEquals(0, layoutParams.bottomMargin);
     }
 }
