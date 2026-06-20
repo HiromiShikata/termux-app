@@ -138,7 +138,7 @@ public class SessionBellIndicatorConsistencyTest {
     }
 
     @Test
-    public void pickerOverlayStructureViewDeclaresAFixedWidthAndFillsHeightSoNoVerticalGapShows() {
+    public void pickerOverlayStructureViewDeclaresAFixedWidthAndContentSizedHeightWithoutMargins() {
         Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
         View root = LayoutInflater.from(context)
@@ -151,8 +151,18 @@ public class SessionBellIndicatorConsistencyTest {
 
         Assert.assertNotEquals(ViewGroup.LayoutParams.WRAP_CONTENT, layoutParams.width);
         Assert.assertEquals(SessionSwitchPickerController.overlayWidthPx(displayMetrics), layoutParams.width);
-        Assert.assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, layoutParams.height);
+        Assert.assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, layoutParams.height);
         Assert.assertEquals(0, layoutParams.topMargin);
         Assert.assertEquals(0, layoutParams.bottomMargin);
+    }
+
+    @Test
+    public void pickerOverlayMaxHeightIsCappedBelowFullScreenSoTallListsScrollInsteadOfFillingTheScreen() {
+        DisplayMetrics displayMetrics = RuntimeEnvironment.getApplication().getResources().getDisplayMetrics();
+
+        int maxHeight = SessionSwitchPickerController.overlayMaxHeightPx(displayMetrics);
+
+        Assert.assertTrue(maxHeight > 0);
+        Assert.assertTrue(maxHeight < displayMetrics.heightPixels);
     }
 }
