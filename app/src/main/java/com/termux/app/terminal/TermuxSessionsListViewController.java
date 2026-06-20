@@ -162,7 +162,13 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
         return VisibleSessionNavigator.nextSessionIndex(
-            getOrderedSessionIndexes(), getNavigableSessionIndexes(), currentSessionIndex, forward);
+            getOrderedSessionIndexes(), getNavigationCandidateSessionIndexes(), currentSessionIndex, forward);
+    }
+
+    @NonNull
+    public List<Integer> getNavigationCandidateSessionIndexes() {
+        return NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(
+            getNavigableSessionIndexes(), getMarkedSessionIndexes());
     }
 
     @NonNull
