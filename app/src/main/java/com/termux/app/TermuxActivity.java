@@ -196,6 +196,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     private final BroadcastReceiver mTermuxActivityBroadcastReceiver = new TermuxActivityBroadcastReceiver();
 
+    private List<ActivityComponent> mActivityComponents = Collections.emptyList();
+
     /**
      * The last toast shown, used cancel current toast before showing new in {@link #showToast(String, boolean)}.
      */
@@ -315,6 +317,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setSessionNavigationButtonsView();
 
+        buildActivityComponents();
+
         registerForContextMenu(mTerminalView);
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
@@ -343,6 +347,65 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         TermuxUtils.sendTermuxOpenedBroadcast(this);
 
         maybeAutoCheckForApkUpdate();
+    }
+
+    private void buildActivityComponents() {
+        ActivityComponent projectBrowserComponent = new ActivityComponent() {
+            @Override
+            public boolean onBackPressed() {
+                return mProjectBrowserOverlayController.onBackPressed();
+            }
+
+            @Override
+            public void onActivityDestroy() {
+                mProjectBrowserOverlayController.onActivityDestroy();
+            }
+        };
+
+        ActivityComponent sessionListBottomSheetComponent = new ActivityComponent() {
+            @Override
+            public boolean onBackPressed() {
+                if (mSessionListBottomSheetController.isOpen()) {
+                    mSessionListBottomSheetController.hide();
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        ActivityComponent rightDrawerComponent = new ActivityComponent() {
+            @Override
+            public boolean onBackPressed() {
+                if (getDrawer().isDrawerOpen(Gravity.RIGHT)) {
+                    getDrawer().closeDrawers();
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        ActivityComponent browserComponent = new ActivityComponent() {
+            @Override
+            public boolean onBackPressed() {
+                return mTermuxBrowserController.onBackPressed();
+            }
+
+            @Override
+            public void onActivityStop() {
+                mTermuxBrowserController.onActivityStop();
+            }
+
+            @Override
+            public void onActivityDestroy() {
+                mTermuxBrowserController.onActivityDestroy();
+            }
+        };
+
+        mActivityComponents = Arrays.asList(
+            projectBrowserComponent,
+            sessionListBottomSheetComponent,
+            rightDrawerComponent,
+            browserComponent);
     }
 
     private void maybeAutoCheckForApkUpdate() {
@@ -428,8 +491,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         unregisterTermuxActivityBroadcastReceiver();
         getDrawer().closeDrawers();
 
-        if (mTermuxBrowserController != null)
-            mTermuxBrowserController.onActivityStop();
+        for (ActivityComponent component : mActivityComponents)
+            component.onActivityStop();
     }
 
     @Override
@@ -443,11 +506,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mIsInvalidState) return;
 
-        if (mTermuxBrowserController != null)
-            mTermuxBrowserController.onActivityDestroy();
-
-        if (mProjectBrowserOverlayController != null)
-            mProjectBrowserOverlayController.onActivityDestroy();
+        for (ActivityComponent component : mActivityComponents)
+            component.onActivityDestroy();
 
         if (mTermuxService != null) {
             // Do not leave service and session clients with references to activity.
@@ -800,17 +860,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @SuppressLint("RtlHardcoded")
     @Override
     public void onBackPressed() {
-        if (mProjectBrowserOverlayController != null && mProjectBrowserOverlayController.onBackPressed()) {
-            // Project browser handled the back press (navigated back or closed the overlay).
-        } else if (mSessionListBottomSheetController != null && mSessionListBottomSheetController.isOpen()) {
-            mSessionListBottomSheetController.hide();
-        } else if (getDrawer().isDrawerOpen(Gravity.RIGHT)) {
-            getDrawer().closeDrawers();
-        } else if (mTermuxBrowserController != null && mTermuxBrowserController.onBackPressed()) {
-            // Browser handled the back press (navigated back or returned to terminal).
-        } else {
-            finishActivityIfNotFinishing();
+        for (ActivityComponent component : mActivityComponents) {
+            if (component.onBackPressed()) {
+                return;
+            }
         }
+        finishActivityIfNotFinishing();
     }
 
     public void finishActivityIfNotFinishing() {
