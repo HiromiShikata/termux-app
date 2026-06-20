@@ -6,13 +6,15 @@ import android.widget.ProgressBar;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public final class SessionDefinitionController {
 
@@ -71,13 +73,14 @@ public final class SessionDefinitionController {
 
         if (plannedSessions.isEmpty()) {
             activity.showToast(activity.getString(R.string.msg_session_definition_no_entries), true);
-            return;
         }
 
-        List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, Collections.emptySet());
+        Set<String> liveSessionNames = collectLiveSessionNames();
 
-        removeProjectLinkedSessions(entries);
+        List<SessionDefinitionPlannedSession> sessionsToCreate =
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, liveSessionNames);
+
+        removeSessionsWithDisappearedDefinition(entries);
 
         for (SessionDefinitionPlannedSession plannedSession : sessionsToCreate) {
             if (plannedSession.hasCommand()) {
@@ -92,23 +95,51 @@ public final class SessionDefinitionController {
         activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
     }
 
-    private void removeProjectLinkedSessions(List<SessionDefinitionEntry> entries) {
+    private Set<String> collectLiveSessionNames() {
+        Set<String> liveSessionNames = new HashSet<>();
         TermuxService service = activity.getTermuxService();
         if (service == null) {
-            return;
+            return liveSessionNames;
         }
-        List<TerminalSession> projectLinkedSessions = new ArrayList<>();
         for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == null) {
                 continue;
             }
-            if (matcher.findEntryForSessionName(entries, terminalSession.mSessionName) != null) {
-                projectLinkedSessions.add(terminalSession);
+            liveSessionNames.add(terminalSession.mSessionName);
+        }
+        return liveSessionNames;
+    }
+
+    private void removeSessionsWithDisappearedDefinition(List<SessionDefinitionEntry> currentEntries) {
+        TermuxService service = activity.getTermuxService();
+        if (service == null) {
+            return;
+        }
+        List<SessionDefinitionEntry> previousEntries = previousDefinitionEntries();
+        List<TerminalSession> sessionsToRemove = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null) {
+                continue;
+            }
+            String sessionName = terminalSession.mSessionName;
+            boolean wasProjectLinked = matcher.findEntryForSessionName(previousEntries, sessionName) != null;
+            boolean isStillDefined = matcher.findEntryForSessionName(currentEntries, sessionName) != null;
+            if (wasProjectLinked && !isStillDefined) {
+                sessionsToRemove.add(terminalSession);
             }
         }
-        for (TerminalSession terminalSession : projectLinkedSessions) {
+        for (TerminalSession terminalSession : sessionsToRemove) {
             activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
         }
+    }
+
+    private List<SessionDefinitionEntry> previousDefinitionEntries() {
+        TermuxSessionsListViewController listViewController = activity.getTermuxSessionListViewController();
+        if (listViewController == null) {
+            return new ArrayList<>();
+        }
+        return listViewController.getEntries();
     }
 }
