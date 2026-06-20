@@ -48,8 +48,36 @@ public class SessionPickerOverlayAgeLabelTest {
     private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
                                                         Map<Integer, String> markedSessionAgeLabels,
                                                         Set<Integer> disabledSessionIndexes) {
+        return sessionRows(names, titles, markedSessionAgeLabels, disabledSessionIndexes, -1);
+    }
+
+    private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
+                                                        Map<Integer, String> markedSessionAgeLabels,
+                                                        Set<Integer> disabledSessionIndexes,
+                                                        int currentSessionIndex) {
         return SessionRow.project(names, titles, Collections.emptyList(), Collections.emptyList(),
-            markedSessionAgeLabels, disabledSessionIndexes, -1);
+            markedSessionAgeLabels, disabledSessionIndexes, currentSessionIndex);
+    }
+
+    @Test
+    public void pickerHidesTheBellSlotForTheCurrentSessionButShowsItForAnUnseenBackgroundSession() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.session(1));
+        List<String> names = Arrays.asList("current", "background");
+        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+        markedSessionAgeLabels.put(0, "4s ago");
+        markedSessionAgeLabels.put(1, "30s ago");
+
+        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
+            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, 0), -1);
+
+        Assert.assertFalse(SessionSwitchPickerController.isBellMarkSlotVisible(lines.get(0).isMarked()));
+        Assert.assertTrue(SessionSwitchPickerController.isBellMarkSlotVisible(lines.get(1).isMarked()));
+
+        String structureText = SessionSwitchPickerController.pickerStructurePlainText(lines);
+        Assert.assertFalse(structureText.contains("4s ago"));
+        Assert.assertTrue(structureText.contains("30s ago"));
     }
 
     @Test

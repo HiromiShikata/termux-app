@@ -46,13 +46,16 @@ public final class SessionPickerOverlayRenderModel {
                 default:
                     int sessionIndex = row.getSessionIndex();
                     SessionRow sessionRow = SessionRow.rowOrEmpty(sessionRowsByIndex, sessionIndex);
+                    boolean isCurrentSession = sessionRow.isCurrent();
+                    boolean isBellMarked = !isCurrentSession && sessionRow.isBellMarked();
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.SESSION,
                         sessionPrimaryName(sessionRow),
                         truncateSecondaryToSingleLine(sessionRow.getResolvedTitle()),
                         sessionIndex == highlightedSessionIndex,
-                        sessionRow.isBellMarked(),
-                        sessionRow.getBellAgeLabel()));
+                        isCurrentSession,
+                        isBellMarked,
+                        isBellMarked ? sessionRow.getBellAgeLabel() : ""));
                     break;
             }
         }
