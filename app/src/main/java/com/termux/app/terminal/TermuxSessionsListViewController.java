@@ -110,6 +110,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         notifyDataSetChanged();
     }
 
+    @NonNull
+    public List<SessionDefinitionEntry> getEntries() {
+        return mEntries;
+    }
+
     @Override
     public void notifyDataSetChanged() {
         rebuildRows();

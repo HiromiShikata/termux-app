@@ -67,48 +67,53 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
-    public void removeProjectLinkedSessionsRemovesEveryMatchKeepsAdHocAndDoesNotThrow() throws Exception {
+    public void removeSessionsWithDisappearedDefinitionKeepsStillDefinedAndAdHocSessions() throws Exception {
         shellManager.mTermuxSessions.add(session("adhoc-local"));
         shellManager.mTermuxSessions.add(session("https://example.test/a"));
         shellManager.mTermuxSessions.add(session("https://example.test/b"));
-        shellManager.mTermuxSessions.add(session("https://example.test/a"));
         shellManager.mTermuxSessions.add(session("https://example.test/c"));
 
-        invokeRemoveProjectLinkedSessions();
+        invokeRemoveSessionsWithDisappearedDefinition(entries);
 
         List<String> remaining = remainingSessionNames();
-        assertEquals(Collections.singletonList("adhoc-local"), remaining);
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a",
+            "https://example.test/b", "https://example.test/c"), remaining);
     }
 
     @Test
-    public void removeProjectLinkedSessionsRemovesTheCurrentlyDisplayedProjectSession() throws Exception {
+    public void removeSessionsWithDisappearedDefinitionRemovesOnlySessionsNoLongerDefined() throws Exception {
         TermuxSession adHoc = session("adhoc-local");
-        TermuxSession currentProjectSession = session("https://example.test/a");
+        TermuxSession stillDefined = session("https://example.test/a");
+        TermuxSession disappearedDefinition = session("https://example.test/b");
         shellManager.mTermuxSessions.add(adHoc);
-        shellManager.mTermuxSessions.add(currentProjectSession);
-        shellManager.mTermuxSessions.add(session("https://example.test/b"));
+        shellManager.mTermuxSessions.add(stillDefined);
+        shellManager.mTermuxSessions.add(disappearedDefinition);
 
-        adapter.notifyDataSetChanged();
+        List<SessionDefinitionEntry> currentEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
 
-        invokeRemoveProjectLinkedSessions();
+        invokeRemoveSessionsWithDisappearedDefinition(currentEntries);
 
-        assertEquals(Collections.singletonList("adhoc-local"), remainingSessionNames());
-        assertTrue(service.getIndexOfSession(currentProjectSession.getTerminalSession()) < 0);
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
+        assertTrue(service.getIndexOfSession(stillDefined.getTerminalSession()) >= 0);
+        assertTrue(service.getIndexOfSession(disappearedDefinition.getTerminalSession()) < 0);
     }
 
     @Test
     public void ensureCurrentSessionValidAfterRebuildKeepsAValidCurrentSession() throws Exception {
         TermuxSession adHoc = session("adhoc-local");
+        TermuxSession stillDefined = session("https://example.test/a");
         shellManager.mTermuxSessions.add(adHoc);
-        shellManager.mTermuxSessions.add(session("https://example.test/a"));
+        shellManager.mTermuxSessions.add(stillDefined);
 
         attachCurrentSession(adHoc.getTerminalSession());
 
-        invokeRemoveProjectLinkedSessions();
+        invokeRemoveSessionsWithDisappearedDefinition(entries);
         activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
 
         assertSame(adHoc.getTerminalSession(), activity.getCurrentSession());
-        assertEquals(Collections.singletonList("adhoc-local"), remainingSessionNames());
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
     }
 
     @Test
@@ -125,12 +130,13 @@ public class SessionDefinitionControllerWashReplaceTest {
             service.getTermuxSession(firstVisibleSessionIndex).getTerminalSession().mSessionName);
     }
 
-    private void invokeRemoveProjectLinkedSessions() throws Exception {
+    private void invokeRemoveSessionsWithDisappearedDefinition(List<SessionDefinitionEntry> currentEntries)
+        throws Exception {
         SessionDefinitionController controller = new SessionDefinitionController(activity);
         Method removeMethod = SessionDefinitionController.class
-            .getDeclaredMethod("removeProjectLinkedSessions", List.class);
+            .getDeclaredMethod("removeSessionsWithDisappearedDefinition", List.class);
         removeMethod.setAccessible(true);
-        removeMethod.invoke(controller, entries);
+        removeMethod.invoke(controller, currentEntries);
     }
 
     private List<String> remainingSessionNames() {
