@@ -15,7 +15,6 @@ import com.termux.view.TerminalView;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 @RunWith(AndroidJUnit4.class)
@@ -44,7 +43,6 @@ public class ActiveSessionViewBindingInstrumentedTest {
             browserController.attachBackgroundTab(activeSession.mHandle, LOOPBACK_TAB_URL);
 
             terminalView.mTermSession = activeSession;
-            setActiveSessionHandle(sessionClient, activeSession.mHandle);
 
             assertEquals(previousSession.mHandle, browserController.getDisplayedSessionHandle());
 
@@ -58,17 +56,6 @@ public class ActiveSessionViewBindingInstrumentedTest {
     private static TerminalSession newDetachedSession() {
         return new TerminalSession(DETACHED_SESSION_SHELL, "/", new String[]{DETACHED_SESSION_SHELL},
             new String[0], null, new TermuxTerminalSessionClientBase());
-    }
-
-    private static void setActiveSessionHandle(TermuxTerminalSessionActivityClient sessionClient,
-                                               String activeSessionHandle) {
-        try {
-            Field field = TermuxTerminalSessionActivityClient.class.getDeclaredField("mActiveSessionHandle");
-            field.setAccessible(true);
-            field.set(sessionClient, activeSessionHandle);
-        } catch (ReflectiveOperationException reflectiveOperationException) {
-            throw new RuntimeException(reflectiveOperationException);
-        }
     }
 
     private static void invokeEnforceActiveSessionViewBinding(

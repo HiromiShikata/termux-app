@@ -110,8 +110,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private boolean mActiveSessionSeenTickScheduled;
 
-    private String mActiveSessionHandle;
-
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
     }
@@ -359,6 +357,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
+    @Nullable
+    private String activeSessionHandle() {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        return currentSession == null ? null : currentSession.mHandle;
+    }
+
+    private void clearNewActivityForViewedSession(@Nullable String sessionHandle) {
+        if (sessionHandle == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (!store.hasUnseenBell(sessionHandle)) return;
+        store.recordSeen(sessionHandle, System.currentTimeMillis());
+        termuxSessionListNotifyUpdated();
+    }
+
     private void purgeNewActivityForRemovedSession(@Nullable String sessionHandle) {
         if (sessionHandle == null) return;
         mActivity.getSessionNewActivityStore().purgeSession(sessionHandle);
@@ -375,8 +387,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordActiveSessionSeen() {
-        if (mActiveSessionHandle == null) return;
-        mActivity.getSessionNewActivityStore().recordSeen(mActiveSessionHandle, System.currentTimeMillis());
+        String handle = activeSessionHandle();
+        if (handle == null) return;
+        mActivity.getSessionNewActivityStore().recordSeen(handle, System.currentTimeMillis());
     }
 
     public void startActiveSessionSeenTick() {
@@ -464,7 +477,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
 
-        mActiveSessionHandle = session.mHandle;
+        clearNewActivityForViewedSession(session.mHandle);
 
         stopActiveSessionSeenTick();
         startActiveSessionSeenTick();
@@ -511,6 +524,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void enforceActiveSessionViewBinding(@NonNull TerminalSession session) {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
 
+        String activeSessionHandle = session.mHandle;
         TerminalSession displayedTerminalSession =
             (mActivity.getTerminalView() == null) ? null : mActivity.getTerminalView().getCurrentSession();
         String displayedTerminalSessionHandle =
@@ -519,10 +533,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String displayedBrowserSessionHandle =
             (browserController == null) ? null : browserController.getDisplayedSessionHandle();
         boolean activeSessionHasBrowserTab =
-            browserController != null && browserController.hasBrowserTabForSession(mActiveSessionHandle);
+            browserController != null && browserController.hasBrowserTabForSession(activeSessionHandle);
 
         ActiveSessionViewBindingResolution resolution = ActiveSessionViewBindingResolution.resolve(
-            mActiveSessionHandle, displayedTerminalSessionHandle, browserVisible,
+            activeSessionHandle, displayedTerminalSessionHandle, browserVisible,
             displayedBrowserSessionHandle, activeSessionHasBrowserTab);
 
         Logger.logDebug(LOG_TAG, resolution.diagnosticLine());
