@@ -6,71 +6,97 @@ import org.junit.Test;
 public class SessionNewActivityStoreTest {
 
     @Test
-    public void marksAndExposesArrivalTimeByHandle() {
+    public void recordsAndExposesLastBellTimeByHandle() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        Assert.assertFalse(store.hasNewActivity("handle-one"));
-        Assert.assertNull(store.getArrivalTimeMillis("handle-one"));
+        Assert.assertNull(store.getLastBellTimeMillis("handle-one"));
 
-        store.markNewActivity("handle-one", 1_000L);
+        store.recordBell("handle-one", 1_000L);
 
-        Assert.assertTrue(store.hasNewActivity("handle-one"));
-        Assert.assertEquals(Long.valueOf(1_000L), store.getArrivalTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastBellTimeMillis("handle-one"));
     }
 
     @Test
-    public void clearRemovesTheEntry() {
+    public void recordsAndExposesLastSeenTimeByHandle() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.markNewActivity("handle-one", 1_000L);
+        Assert.assertNull(store.getLastSeenTimeMillis("handle-one"));
 
-        store.clearNewActivity("handle-one");
+        store.recordSeen("handle-one", 2_000L);
 
-        Assert.assertFalse(store.hasNewActivity("handle-one"));
-        Assert.assertNull(store.getArrivalTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(2_000L), store.getLastSeenTimeMillis("handle-one"));
     }
 
     @Test
-    public void purgeRemovesTheEntry() {
+    public void hasUnseenBellIsFalseWithoutAnyBell() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.markNewActivity("handle-one", 1_000L);
+
+        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+    }
+
+    @Test
+    public void hasUnseenBellIsTrueWhenBellHasNeverBeenSeen() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordBell("handle-one", 1_000L);
+
+        Assert.assertTrue(store.hasUnseenBell("handle-one"));
+    }
+
+    @Test
+    public void hasUnseenBellIsFalseWhenSeenAfterBell() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordBell("handle-one", 1_000L);
+        store.recordSeen("handle-one", 2_000L);
+
+        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+    }
+
+    @Test
+    public void hasUnseenBellIsFalseWhenSeenExactlyAtBellTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordBell("handle-one", 1_000L);
+        store.recordSeen("handle-one", 1_000L);
+
+        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+    }
+
+    @Test
+    public void hasUnseenBellIsTrueWhenBellArrivesAfterTheLastSeen() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordSeen("handle-one", 1_000L);
+        store.recordBell("handle-one", 5_000L);
+
+        Assert.assertTrue(store.hasUnseenBell("handle-one"));
+    }
+
+    @Test
+    public void purgeRemovesBothTimestamps() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordBell("handle-one", 1_000L);
+        store.recordSeen("handle-one", 2_000L);
 
         store.purgeSession("handle-one");
 
-        Assert.assertFalse(store.hasNewActivity("handle-one"));
-        Assert.assertNull(store.getArrivalTimeMillis("handle-one"));
+        Assert.assertNull(store.getLastBellTimeMillis("handle-one"));
+        Assert.assertNull(store.getLastSeenTimeMillis("handle-one"));
     }
 
     @Test
-    public void clearedEntryStaysClearedUntilANewMark() {
+    public void recordingBellAgainForSameHandleUpdatesLastBellTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.markNewActivity("handle-one", 1_000L);
-        store.clearNewActivity("handle-one");
-        Assert.assertFalse(store.hasNewActivity("handle-one"));
+        store.recordBell("handle-one", 1_000L);
+        store.recordBell("handle-one", 5_000L);
 
-        store.markNewActivity("handle-one", 9_000L);
-
-        Assert.assertTrue(store.hasNewActivity("handle-one"));
-        Assert.assertEquals(Long.valueOf(9_000L), store.getArrivalTimeMillis("handle-one"));
-    }
-
-    @Test
-    public void markingAgainForSameHandleUpdatesArrivalTime() {
-        SessionNewActivityStore store = new SessionNewActivityStore();
-        store.markNewActivity("handle-one", 1_000L);
-        store.markNewActivity("handle-one", 5_000L);
-
-        Assert.assertEquals(Long.valueOf(5_000L), store.getArrivalTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(5_000L), store.getLastBellTimeMillis("handle-one"));
     }
 
     @Test
     public void tracksDistinctHandlesIndependently() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.markNewActivity("handle-one", 1_000L);
-        store.markNewActivity("handle-two", 2_000L);
+        store.recordBell("handle-one", 1_000L);
+        store.recordBell("handle-two", 2_000L);
+        store.recordSeen("handle-one", 9_000L);
 
-        store.clearNewActivity("handle-one");
-
-        Assert.assertFalse(store.hasNewActivity("handle-one"));
-        Assert.assertTrue(store.hasNewActivity("handle-two"));
+        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+        Assert.assertTrue(store.hasUnseenBell("handle-two"));
     }
 
     @Test
