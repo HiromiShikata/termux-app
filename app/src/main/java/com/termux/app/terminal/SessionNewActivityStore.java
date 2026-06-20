@@ -16,8 +16,8 @@ public class SessionNewActivityStore {
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
 
-    private final Map<String, Long> mLastBellTimeMillisByHandle = new HashMap<>();
-    private final Map<String, Long> mLastSeenTimeMillisByHandle = new HashMap<>();
+    private final Map<String, Long> mLastBellTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -30,57 +30,57 @@ public class SessionNewActivityStore {
         mPersistence = persistence;
         for (SessionNewActivityState state : persistence.load()) {
             if (state.getLastBellTimeMillis() != null)
-                mLastBellTimeMillisByHandle.put(state.getHandle(), state.getLastBellTimeMillis());
+                mLastBellTimeMillisByName.put(state.getSessionName(), state.getLastBellTimeMillis());
             if (state.getLastSeenTimeMillis() != null)
-                mLastSeenTimeMillisByHandle.put(state.getHandle(), state.getLastSeenTimeMillis());
+                mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
         }
     }
 
-    public void recordBell(@NonNull String sessionHandle, long bellTimeMillis) {
-        mLastBellTimeMillisByHandle.put(sessionHandle, bellTimeMillis);
+    public void recordBell(@NonNull String sessionName, long bellTimeMillis) {
+        mLastBellTimeMillisByName.put(sessionName, bellTimeMillis);
         save();
     }
 
-    public void recordSeen(@NonNull String sessionHandle, long seenTimeMillis) {
-        mLastSeenTimeMillisByHandle.put(sessionHandle, seenTimeMillis);
+    public void recordSeen(@NonNull String sessionName, long seenTimeMillis) {
+        mLastSeenTimeMillisByName.put(sessionName, seenTimeMillis);
         save();
     }
 
-    public void purgeSession(@NonNull String sessionHandle) {
-        mLastBellTimeMillisByHandle.remove(sessionHandle);
-        mLastSeenTimeMillisByHandle.remove(sessionHandle);
+    public void purgeSession(@NonNull String sessionName) {
+        mLastBellTimeMillisByName.remove(sessionName);
+        mLastSeenTimeMillisByName.remove(sessionName);
         save();
     }
 
-    public void pruneToHandles(@NonNull Set<String> knownHandles) {
-        boolean changed = mLastBellTimeMillisByHandle.keySet().retainAll(knownHandles);
-        changed |= mLastSeenTimeMillisByHandle.keySet().retainAll(knownHandles);
+    public void pruneToSessionNames(@NonNull Set<String> knownSessionNames) {
+        boolean changed = mLastBellTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
 
     @Nullable
-    public Long getLastBellTimeMillis(@NonNull String sessionHandle) {
-        return mLastBellTimeMillisByHandle.get(sessionHandle);
+    public Long getLastBellTimeMillis(@NonNull String sessionName) {
+        return mLastBellTimeMillisByName.get(sessionName);
     }
 
     @Nullable
-    public Long getLastSeenTimeMillis(@NonNull String sessionHandle) {
-        return mLastSeenTimeMillisByHandle.get(sessionHandle);
+    public Long getLastSeenTimeMillis(@NonNull String sessionName) {
+        return mLastSeenTimeMillisByName.get(sessionName);
     }
 
-    public boolean hasUnseenBell(@NonNull String sessionHandle) {
+    public boolean hasUnseenBell(@NonNull String sessionName) {
         return SessionNewActivityIndicator.isBellUnseen(
-            getLastBellTimeMillis(sessionHandle), getLastSeenTimeMillis(sessionHandle));
+            getLastBellTimeMillis(sessionName), getLastSeenTimeMillis(sessionName));
     }
 
     private void save() {
-        Set<String> handles = new HashSet<>(mLastBellTimeMillisByHandle.keySet());
-        handles.addAll(mLastSeenTimeMillisByHandle.keySet());
+        Set<String> sessionNames = new HashSet<>(mLastBellTimeMillisByName.keySet());
+        sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
-        for (String handle : handles) {
-            states.add(new SessionNewActivityState(handle,
-                mLastBellTimeMillisByHandle.get(handle), mLastSeenTimeMillisByHandle.get(handle)));
+        for (String sessionName : sessionNames) {
+            states.add(new SessionNewActivityState(sessionName,
+                mLastBellTimeMillisByName.get(sessionName), mLastSeenTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
     }

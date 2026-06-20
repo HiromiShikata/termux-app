@@ -11,7 +11,7 @@ import java.util.List;
 
 public final class SessionNewActivityStateSerializer {
 
-    private static final String KEY_HANDLE = "handle";
+    private static final String KEY_SESSION_NAME = "sessionName";
     private static final String KEY_LAST_BELL_TIME_MILLIS = "lastBellTimeMillis";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
 
@@ -19,7 +19,7 @@ public final class SessionNewActivityStateSerializer {
         JSONArray array = new JSONArray();
         for (SessionNewActivityState state : states) {
             JSONObject object = new JSONObject();
-            object.put(KEY_HANDLE, state.getHandle());
+            object.put(KEY_SESSION_NAME, state.getSessionName());
             if (state.getLastBellTimeMillis() != null)
                 object.put(KEY_LAST_BELL_TIME_MILLIS, state.getLastBellTimeMillis().longValue());
             if (state.getLastSeenTimeMillis() != null)
@@ -37,16 +37,16 @@ public final class SessionNewActivityStateSerializer {
         JSONArray array = new JSONArray(serialized);
         for (int i = 0; i < array.length(); i++) {
             JSONObject object = array.getJSONObject(i);
-            if (object.isNull(KEY_HANDLE))
+            if (object.isNull(KEY_SESSION_NAME))
                 continue;
 
-            String handle = object.getString(KEY_HANDLE);
+            String sessionName = object.getString(KEY_SESSION_NAME);
             Long lastBellTimeMillis = object.isNull(KEY_LAST_BELL_TIME_MILLIS)
                 ? null : object.getLong(KEY_LAST_BELL_TIME_MILLIS);
             Long lastSeenTimeMillis = object.isNull(KEY_LAST_SEEN_TIME_MILLIS)
                 ? null : object.getLong(KEY_LAST_SEEN_TIME_MILLIS);
 
-            states.add(new SessionNewActivityState(handle, lastBellTimeMillis, lastSeenTimeMillis));
+            states.add(new SessionNewActivityState(sessionName, lastBellTimeMillis, lastSeenTimeMillis));
         }
         return states;
     }

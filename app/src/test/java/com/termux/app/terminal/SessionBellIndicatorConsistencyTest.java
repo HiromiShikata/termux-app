@@ -33,9 +33,9 @@ public class SessionBellIndicatorConsistencyTest {
     @Test
     public void bothRenderersAgreeWhenAnUnseenBellIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background-handle", 1_000L);
+        store.recordBell("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", 4_000L);
+            store, "background", 4_000L);
 
         Assert.assertEquals(bottomSheetShowsBell(indicator), pickerOverlayShowsBell(indicator));
         Assert.assertTrue(bottomSheetShowsBell(indicator));
@@ -45,7 +45,7 @@ public class SessionBellIndicatorConsistencyTest {
     public void bothRenderersAgreeWhenNoBellIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", 4_000L);
+            store, "background", 4_000L);
 
         Assert.assertEquals(bottomSheetShowsBell(indicator), pickerOverlayShowsBell(indicator));
         Assert.assertFalse(bottomSheetShowsBell(indicator));
@@ -54,9 +54,9 @@ public class SessionBellIndicatorConsistencyTest {
     @Test
     public void bothRenderersDeriveTheSameAgeLabelFromTheSharedHelper() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background-handle", 1_000L);
+        store.recordBell("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", 31_000L);
+            store, "background", 31_000L);
 
         String bottomSheetLabel = "  " + indicator.getLabel();
         String pickerLabel = SessionSwitchPickerController.newActivityLabelSlotText(indicator.getLabel());
@@ -68,10 +68,10 @@ public class SessionBellIndicatorConsistencyTest {
     @Test
     public void activeSessionShowsNoIndicatorPurelyBecauseLastSeenCaughtUpToTheBell() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active-handle", 1_000L);
-        store.recordSeen("active-handle", 2_000L);
+        store.recordBell("active", 1_000L);
+        store.recordSeen("active", 2_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "active-handle", 4_000L);
+            store, "active", 4_000L);
 
         Assert.assertFalse(indicator.isVisible());
         Assert.assertEquals("", indicator.getLabel());

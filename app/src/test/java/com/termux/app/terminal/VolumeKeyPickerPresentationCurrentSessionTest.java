@@ -15,30 +15,33 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     private static final class FakeSessionRuntime {
 
         private final List<String> sessionNames;
-        private final List<String> activeSessionHandles;
         private final SessionNewActivityStore newActivityStore;
         private int currentSessionIndex;
         private long nowMillis;
 
-        FakeSessionRuntime(List<String> sessionNames, List<String> activeSessionHandles,
-                           SessionNewActivityStore newActivityStore, int currentSessionIndex, long nowMillis) {
+        FakeSessionRuntime(List<String> sessionNames, SessionNewActivityStore newActivityStore,
+                           int currentSessionIndex, long nowMillis) {
             this.sessionNames = sessionNames;
-            this.activeSessionHandles = activeSessionHandles;
             this.newActivityStore = newActivityStore;
             this.currentSessionIndex = currentSessionIndex;
             this.nowMillis = nowMillis;
+            recordSeenForCurrentSession();
         }
 
         void switchTo(int sessionIndex) {
             this.currentSessionIndex = sessionIndex;
+            recordSeenForCurrentSession();
+        }
+
+        private void recordSeenForCurrentSession() {
+            newActivityStore.recordSeen(sessionNames.get(currentSessionIndex), nowMillis);
         }
 
         Map<Integer, SessionRow> renderModelSessionRows() {
             Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
-            String activeSessionHandle = activeSessionHandles.get(currentSessionIndex);
             for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
                 SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-                    newActivityStore, activeSessionHandles.get(sessionIndex), activeSessionHandle, nowMillis);
+                    newActivityStore, sessionNames.get(sessionIndex), nowMillis);
                 if (indicator.isVisible()) {
                     markedSessionAgeLabels.put(sessionIndex, indicator.getLabel());
                 }
@@ -75,14 +78,12 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     }
 
     @Test
-    public void immediateSwitchPickerMarksTheJustSwitchedSessionAsCurrentAndSuppressesItsBell() {
+    public void immediateSwitchPickerMarksTheJustSwitchedSessionAsCurrentAndClearsItsBellViaSeenTick() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-0", 1_000L);
-        store.recordBell("handle-1", 1_000L);
+        store.recordBell("session-1", 1_000L);
         FakeSessionRuntime runtime = new FakeSessionRuntime(
-            Arrays.asList("session-0", "session-1"),
-            Arrays.asList("handle-0", "handle-1"),
-            store, 0, 4_000L);
+            Arrays.asList("session-0", "session-1"), store, 0, 4_000L);
+        store.recordBell("session-0", 4_500L);
 
         List<SessionPickerOverlayLine> lines = presentAndCaptureRenderedLines(runtime, 1, true);
 
@@ -95,14 +96,12 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     }
 
     @Test
-    public void previewFirstPickerMarksTheStillActiveSessionAsCurrentBeforeAnyCommit() {
+    public void previewFirstPickerMarksTheStillActiveSessionAsCurrentAndClearsItsBellViaSeenTick() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-0", 1_000L);
-        store.recordBell("handle-1", 1_000L);
+        store.recordBell("session-0", 1_000L);
+        store.recordBell("session-1", 1_000L);
         FakeSessionRuntime runtime = new FakeSessionRuntime(
-            Arrays.asList("session-0", "session-1"),
-            Arrays.asList("handle-0", "handle-1"),
-            store, 0, 4_000L);
+            Arrays.asList("session-0", "session-1"), store, 0, 4_000L);
 
         List<SessionPickerOverlayLine> lines = presentAndCaptureRenderedLines(runtime, 1, false);
 

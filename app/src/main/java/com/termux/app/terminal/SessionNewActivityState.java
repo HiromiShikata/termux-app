@@ -6,7 +6,7 @@ import androidx.annotation.Nullable;
 public final class SessionNewActivityState {
 
     @NonNull
-    private final String mHandle;
+    private final String mSessionName;
 
     @Nullable
     private final Long mLastBellTimeMillis;
@@ -14,16 +14,16 @@ public final class SessionNewActivityState {
     @Nullable
     private final Long mLastSeenTimeMillis;
 
-    public SessionNewActivityState(@NonNull String handle, @Nullable Long lastBellTimeMillis,
+    public SessionNewActivityState(@NonNull String sessionName, @Nullable Long lastBellTimeMillis,
                                    @Nullable Long lastSeenTimeMillis) {
-        mHandle = handle;
+        mSessionName = sessionName;
         mLastBellTimeMillis = lastBellTimeMillis;
         mLastSeenTimeMillis = lastSeenTimeMillis;
     }
 
     @NonNull
-    public String getHandle() {
-        return mHandle;
+    public String getSessionName() {
+        return mSessionName;
     }
 
     @Nullable
