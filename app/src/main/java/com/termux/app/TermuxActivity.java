@@ -20,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -55,6 +56,7 @@ import com.termux.app.terminal.ProjectActionToken;
 import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
+import com.termux.app.terminal.SessionBellDirection;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.TermuxSessionsListViewController;
@@ -76,6 +78,7 @@ import com.termux.view.TerminalViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
@@ -83,6 +86,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A terminal emulator activity.
@@ -169,6 +173,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     SessionListBottomSheetController mSessionListBottomSheetController;
 
     SessionSwitchPickerController mSessionSwitchPickerController;
+
+    private ImageButton mPreviousSessionButton;
+
+    private ImageButton mNextSessionButton;
 
     private final SessionDefinitionRepository mSessionDefinitionRepository =
         new SessionDefinitionRepository();
@@ -844,10 +852,35 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setSessionNavigationButtonsView() {
+        mPreviousSessionButton = findViewById(R.id.terminal_toolbar_previous_session_button);
+        mNextSessionButton = findViewById(R.id.terminal_toolbar_next_session_button);
         SessionNavigationButtonsBinder.bind(
-            findViewById(R.id.terminal_toolbar_previous_session_button),
-            findViewById(R.id.terminal_toolbar_next_session_button),
+            mPreviousSessionButton,
+            mNextSessionButton,
             forward -> getSessionSwitchPickerController().onVolumeKeyDirection(forward));
+    }
+
+    private void renderSessionNavigationBellGlow() {
+        if (mPreviousSessionButton == null || mNextSessionButton == null) {
+            return;
+        }
+        SessionBellDirection direction = computeSessionBellDirection();
+        int glowColor = ContextCompat.getColor(this, R.color.session_bell_direction_glow);
+        int defaultColor = ContextCompat.getColor(this, com.termux.shared.R.color.white);
+        SessionNavigationButtonsBinder.applyDirectionGlow(
+            mPreviousSessionButton, mNextSessionButton, direction, glowColor, defaultColor);
+    }
+
+    @NonNull
+    private SessionBellDirection computeSessionBellDirection() {
+        TermuxService service = getTermuxService();
+        if (service == null || mTermuxSessionListViewController == null) {
+            return SessionBellDirection.compute(Collections.emptyList(), -1, Collections.emptySet());
+        }
+        List<Integer> orderedSessionIndexes = mTermuxSessionListViewController.getOrderedSessionIndexes();
+        Set<Integer> unseenBellSessionIndexes = mTermuxSessionListViewController.getMarkedSessionIndexes();
+        int currentSessionIndex = service.getIndexOfSession(getCurrentSession());
+        return SessionBellDirection.compute(orderedSessionIndexes, currentSessionIndex, unseenBellSessionIndexes);
     }
 
 
@@ -1154,6 +1187,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void termuxSessionListNotifyUpdated() {
         mTermuxSessionListViewController.notifyDataSetChanged();
+        renderSessionNavigationBellGlow();
     }
 
     public boolean isVisible() {
