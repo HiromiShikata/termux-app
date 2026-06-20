@@ -22,12 +22,23 @@ public final class SessionNewActivityIndicator {
         return label;
     }
 
+    static boolean isBellUnseen(@Nullable Long lastBellTimeMillis, @Nullable Long lastSeenTimeMillis) {
+        if (lastBellTimeMillis == null) {
+            return false;
+        }
+        if (lastSeenTimeMillis == null) {
+            return true;
+        }
+        return lastBellTimeMillis > lastSeenTimeMillis;
+    }
+
     @NonNull
-    public static SessionNewActivityIndicator labelFor(@Nullable Long arrivalTimeMillis, long nowMillis) {
-        if (arrivalTimeMillis == null) {
+    public static SessionNewActivityIndicator labelFor(@Nullable Long lastBellTimeMillis,
+                                                       @Nullable Long lastSeenTimeMillis, long nowMillis) {
+        if (!isBellUnseen(lastBellTimeMillis, lastSeenTimeMillis)) {
             return new SessionNewActivityIndicator(false, "");
         }
         return new SessionNewActivityIndicator(true,
-            SessionNewActivityStore.formatRelativeTime(nowMillis - arrivalTimeMillis));
+            SessionNewActivityStore.formatRelativeTime(nowMillis - lastBellTimeMillis));
     }
 }

@@ -46,11 +46,11 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void bottomSheetLabelAndPickerLabelAreByteIdenticalForTheSameArrivalTimestamp() {
+    public void bottomSheetLabelAndPickerLabelAreByteIdenticalForTheSameBellTimestamp() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.markNewActivity("background-handle", 1_000L);
+        store.recordBell("background-handle", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", "current-handle", 1_000L + 45_000L);
+            store, "background-handle", 1_000L + 45_000L);
 
         String bottomSheetLabel = "  " + indicator.getLabel();
         String pickerLabel = SessionSwitchPickerController.newActivityLabelSlotText(indicator.getLabel());
@@ -60,10 +60,10 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void aSessionWithoutAValidTimestampProducesNoIndicatorAndNoLabel() {
+    public void aSessionWithoutABellProducesNoIndicatorAndNoLabel() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", "current-handle", 5_000L);
+            store, "background-handle", 5_000L);
 
         Assert.assertFalse(indicator.isVisible());
         Assert.assertEquals("", indicator.getLabel());

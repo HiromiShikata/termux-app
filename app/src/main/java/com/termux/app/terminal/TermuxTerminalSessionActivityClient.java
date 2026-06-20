@@ -102,12 +102,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final float SESSION_NAME_BAR_TITLE_RELATIVE_SIZE = 0.7f;
 
-    private static final long OUTPUT_ACTIVITY_REFRESH_INTERVAL_MILLIS = 500L;
+    private static final long ACTIVE_SESSION_SEEN_TICK_INTERVAL_MILLIS = 1000L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
-    private final SessionOutputActivityRefreshDebouncer mOutputActivityRefreshDebouncer =
-        new SessionOutputActivityRefreshDebouncer(OUTPUT_ACTIVITY_REFRESH_INTERVAL_MILLIS);
+    private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
+
+    private boolean mActiveSessionSeenTickScheduled;
 
     private String mActiveSessionHandle;
 
@@ -148,12 +149,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // the first time bell key is pressed and play() is called, since sound may not be loaded
         // quickly enough before the call to play(). https://stackoverflow.com/questions/35435625
         loadBellSoundPool();
+
+        startActiveSessionSeenTick();
     }
 
     /**
      * Should be called when mActivity.onStop() is called
      */
     public void onStop() {
+        stopActiveSessionSeenTick();
+
         // Store current session in shared preferences so that it can be restored later in
         // {@link #onStart} if needed.
         setCurrentStoredSession();
@@ -177,24 +182,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onTextChanged(@NonNull TerminalSession changedSession) {
-        boolean isCurrentSession = mActivity.getCurrentSession() == changedSession;
-
-        if (!isCurrentSession)
-            recordOutputActivityForBackgroundSession(changedSession);
-
         if (!mActivity.isVisible()) return;
 
-        if (isCurrentSession) {
+        if (mActivity.getCurrentSession() == changedSession) {
             mActivity.getTerminalView().onScreenUpdated();
             openTagsForSession(changedSession);
         }
-    }
-
-    private void recordOutputActivityForBackgroundSession(@NonNull TerminalSession session) {
-        if (!markNewActivityForBackgroundSession(session)) return;
-        if (mActivity.isVisible()
-            && mOutputActivityRefreshDebouncer.shouldRefresh(System.currentTimeMillis()))
-            termuxSessionListNotifyUpdated();
     }
 
     private void openTagsForSession(TerminalSession session) {
@@ -361,41 +354,46 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
-        if (markNewActivityForBackgroundSession(session))
-            termuxSessionListNotifyUpdated();
-    }
-
-    private boolean markNewActivityForBackgroundSession(@NonNull TerminalSession session) {
-        if (session.mHandle == null) return false;
-        if (session.mHandle.equals(activeSessionHandle())) return false;
-
-        mActivity.getSessionNewActivityStore().markNewActivity(session.mHandle, System.currentTimeMillis());
-        return true;
-    }
-
-    @Nullable
-    private String activeSessionHandle() {
-        if (mActiveSessionHandle != null) {
-            return mActiveSessionHandle;
-        }
-        TerminalSession currentSession = mActivity.getCurrentSession();
-        return currentSession == null ? null : currentSession.mHandle;
-    }
-
-    private void clearNewActivityForViewedSession(@Nullable String sessionHandle) {
-        if (sessionHandle == null) return;
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (!store.hasNewActivity(sessionHandle)) return;
-        store.clearNewActivity(sessionHandle);
+        if (session.mHandle == null) return;
+        mActivity.getSessionNewActivityStore().recordBell(session.mHandle, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
     }
 
     private void purgeNewActivityForRemovedSession(@Nullable String sessionHandle) {
         if (sessionHandle == null) return;
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (!store.hasNewActivity(sessionHandle)) return;
-        store.purgeSession(sessionHandle);
+        mActivity.getSessionNewActivityStore().purgeSession(sessionHandle);
         termuxSessionListNotifyUpdated();
+    }
+
+    private void onActiveSessionSeenTick() {
+        mActiveSessionSeenTickScheduled = false;
+        if (!mActivity.isVisible()) return;
+
+        recordActiveSessionSeen();
+        termuxSessionListNotifyUpdated();
+        scheduleActiveSessionSeenTick();
+    }
+
+    private void recordActiveSessionSeen() {
+        if (mActiveSessionHandle == null) return;
+        mActivity.getSessionNewActivityStore().recordSeen(mActiveSessionHandle, System.currentTimeMillis());
+    }
+
+    public void startActiveSessionSeenTick() {
+        scheduleActiveSessionSeenTick();
+    }
+
+    private void scheduleActiveSessionSeenTick() {
+        if (mActiveSessionSeenTickScheduled) return;
+        if (!mActivity.isVisible()) return;
+        mActiveSessionSeenTickScheduled = true;
+        mMainThreadHandler.postDelayed(mActiveSessionSeenTickRunnable,
+            ACTIVE_SESSION_SEEN_TICK_INTERVAL_MILLIS);
+    }
+
+    public void stopActiveSessionSeenTick() {
+        mActiveSessionSeenTickScheduled = false;
+        mMainThreadHandler.removeCallbacks(mActiveSessionSeenTickRunnable);
     }
 
     @Override
@@ -468,7 +466,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         mActiveSessionHandle = session.mHandle;
 
-        clearNewActivityForViewedSession(session.mHandle);
+        stopActiveSessionSeenTick();
+        startActiveSessionSeenTick();
 
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
