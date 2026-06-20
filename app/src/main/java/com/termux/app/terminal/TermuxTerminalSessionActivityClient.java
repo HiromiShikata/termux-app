@@ -1034,6 +1034,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (firstRestoredSession == null) return false;
 
         savePersistedSessions();
+        service.pruneSessionNewActivityStoreToLiveSessions();
         setCurrentSession(firstRestoredSession);
         mActivity.getDrawer().closeDrawers();
         return true;
@@ -1113,6 +1114,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
 
         savePersistedSessions();
+        service.pruneSessionNewActivityStoreToLiveSessions();
     }
 
     public void termuxSessionListNotifyUpdated() {

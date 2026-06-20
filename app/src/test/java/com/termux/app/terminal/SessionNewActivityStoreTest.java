@@ -3,6 +3,9 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
+import java.util.HashSet;
+
 public class SessionNewActivityStoreTest {
 
     @Test
@@ -97,6 +100,87 @@ public class SessionNewActivityStoreTest {
 
         Assert.assertFalse(store.hasUnseenBell("handle-one"));
         Assert.assertTrue(store.hasUnseenBell("handle-two"));
+    }
+
+    @Test
+    public void reconstructingStoreFromSamePersistenceRestoresLastBellAndLastSeen() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordBell("handle-one", 1_000L);
+        store.recordSeen("handle-one", 2_000L);
+        store.recordBell("handle-two", 7_000L);
+
+        SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(Long.valueOf(1_000L), reconstructed.getLastBellTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(2_000L), reconstructed.getLastSeenTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(7_000L), reconstructed.getLastBellTimeMillis("handle-two"));
+    }
+
+    @Test
+    public void reconstructedStoreReportsUnseenBellForBackgroundSession() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordBell("background", 5_000L);
+
+        SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
+
+        Assert.assertTrue(reconstructed.hasUnseenBell("background"));
+    }
+
+    @Test
+    public void reconstructedStoreReportsNoBellForSessionThatWasSeen() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordBell("seen", 5_000L);
+        store.recordSeen("seen", 9_000L);
+
+        SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
+
+        Assert.assertFalse(reconstructed.hasUnseenBell("seen"));
+    }
+
+    @Test
+    public void purgePersistsRemovalAcrossReconstruction() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordBell("handle-one", 1_000L);
+        store.purgeSession("handle-one");
+
+        SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
+
+        Assert.assertNull(reconstructed.getLastBellTimeMillis("handle-one"));
+        Assert.assertNull(reconstructed.getLastSeenTimeMillis("handle-one"));
+    }
+
+    @Test
+    public void pruneToHandlesDropsUnknownHandles() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordBell("alive", 1_000L);
+        store.recordBell("gone", 2_000L);
+        store.recordSeen("gone", 3_000L);
+
+        store.pruneToHandles(new HashSet<>(Collections.singletonList("alive")));
+
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastBellTimeMillis("alive"));
+        Assert.assertNull(store.getLastBellTimeMillis("gone"));
+        Assert.assertNull(store.getLastSeenTimeMillis("gone"));
+    }
+
+    @Test
+    public void pruneToHandlesPersistsDroppedHandlesAcrossReconstruction() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordBell("alive", 1_000L);
+        store.recordBell("gone", 2_000L);
+
+        store.pruneToHandles(new HashSet<>(Collections.singletonList("alive")));
+
+        SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(Long.valueOf(1_000L), reconstructed.getLastBellTimeMillis("alive"));
+        Assert.assertNull(reconstructed.getLastBellTimeMillis("gone"));
     }
 
     @Test
