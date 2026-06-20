@@ -691,19 +691,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void deleteSession(final TerminalSession sessionToDelete) {
         if (sessionToDelete == null) return;
 
-        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
-            .setIcon(android.R.drawable.ic_dialog_alert)
-            .setTitle(R.string.title_confirm_delete_session)
-            .setMessage(R.string.msg_confirm_delete_session)
-            .setPositiveButton(android.R.string.yes, (dialog, id) -> {
-                dialog.dismiss();
-                TerminalSession currentSession = mActivity.getCurrentSession();
-                sessionToDelete.finishIfRunning();
-                removeFinishedSession(sessionToDelete);
-                if (currentSession != null && currentSession != sessionToDelete)
-                    setCurrentSession(currentSession);
-            })
-            .setNegativeButton(android.R.string.no, null));
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        sessionToDelete.finishIfRunning();
+        removeFinishedSession(sessionToDelete);
+        if (currentSession != null && currentSession != sessionToDelete)
+            setCurrentSession(currentSession);
     }
 
     private void renameSession(TerminalSession sessionToRename, String text) {
