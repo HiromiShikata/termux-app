@@ -281,17 +281,16 @@ public class SessionListBottomSheetController {
             return;
         }
         bindSessionListAdapter(mSessionListView, listController);
-        mSessionListView.setOnItemClickListener((parent, view, position, id) -> {
-            boolean isSessionRow = !((SessionHierarchyRow) listController.getItem(position)).isHeader();
-            listController.onItemClick(parent, view, position, id);
-            if (isSessionRow) {
-                hideSoftKeyboard();
-                hide();
-            }
-        });
-        mSessionListView.setOnItemLongClickListener((parent, view, position, id) ->
-            listController.onItemLongClick(parent, view, position, id));
+        listController.setSessionClickHost(this::dismissAfterSessionSelected);
+        mSessionListView.setOnItemClickListener(listController);
+        mSessionListView.setOnItemLongClickListener(listController);
         mAdapterBound = true;
+    }
+
+    private void dismissAfterSessionSelected() {
+        mActivity.getDrawer().closeDrawers();
+        hideSoftKeyboard();
+        hide();
     }
 
     static void bindSessionListAdapter(@NonNull ListView listView, @NonNull BaseAdapter adapter) {
