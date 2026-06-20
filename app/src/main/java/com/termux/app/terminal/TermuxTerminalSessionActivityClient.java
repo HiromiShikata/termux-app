@@ -102,16 +102,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final float SESSION_NAME_BAR_TITLE_RELATIVE_SIZE = 0.7f;
 
-    private static final long MARK_CLEAR_DELAY_MILLIS = 3000L;
-
     private static final long OUTPUT_ACTIVITY_REFRESH_INTERVAL_MILLIS = 500L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
     private final SessionOutputActivityRefreshDebouncer mOutputActivityRefreshDebouncer =
         new SessionOutputActivityRefreshDebouncer(OUTPUT_ACTIVITY_REFRESH_INTERVAL_MILLIS);
-
-    private Runnable mPendingBellNotificationClear;
 
     private String mActiveSessionHandle;
 
@@ -383,47 +379,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return currentSession == null ? null : currentSession.mHandle;
     }
 
-    private void clearOutputActivity(@NonNull TerminalSession session) {
-        SessionOutputActivityMarker.clearOutputActivityForCurrentSession(
-            mActivity.getSessionOutputActivityStore(), session.mHandle);
-    }
-
-    private void scheduleBellNotificationClear(@NonNull TerminalSession session) {
-        cancelPendingBellNotificationClear();
-
-        if (session.mHandle == null) return;
-        if (!mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle)) return;
-
-        mPendingBellNotificationClear = () -> {
-            mPendingBellNotificationClear = null;
-            clearBellNotificationIfStillCurrent(session);
-        };
-        mMainThreadHandler.postDelayed(mPendingBellNotificationClear, MARK_CLEAR_DELAY_MILLIS);
-    }
-
-    private void cancelPendingBellNotificationClear() {
-        if (mPendingBellNotificationClear == null) return;
-        mMainThreadHandler.removeCallbacks(mPendingBellNotificationClear);
-        mPendingBellNotificationClear = null;
-    }
-
-    private void clearBellNotificationIfStillCurrent(@NonNull TerminalSession session) {
-        if (session.mHandle == null) return;
-
-        boolean stillCurrentSession = session == mActivity.getCurrentSession();
-        boolean stillHasPendingNotification =
-            mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle);
-        if (!SessionBellNotificationClearDecision.shouldClear(stillCurrentSession, stillHasPendingNotification)) return;
-
-        clearBellNotification(session);
-    }
-
-    private void clearBellNotification(@NonNull TerminalSession session) {
-        if (session.mHandle == null) return;
-        if (!mActivity.getSessionBellNotificationStore().hasPendingNotification(session.mHandle)) return;
-
-        mActivity.getSessionBellNotificationStore().clearBell(session.mHandle);
-        termuxSessionListNotifyUpdated();
+    private void clearActivityMarkersForHandle(@Nullable String sessionHandle) {
+        boolean cleared = SessionActivityMarkerCleaner.clearActivityMarkers(
+            mActivity.getSessionBellNotificationStore(),
+            mActivity.getSessionOutputActivityStore(),
+            sessionHandle);
+        if (cleared)
+            termuxSessionListNotifyUpdated();
     }
 
     @Override
@@ -496,8 +458,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         mActiveSessionHandle = session.mHandle;
 
-        clearOutputActivity(session);
-        scheduleBellNotificationClear(session);
+        clearActivityMarkersForHandle(session.mHandle);
 
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
@@ -916,6 +877,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
+        if (finishedSession != null)
+            clearActivityMarkersForHandle(finishedSession.mHandle);
+
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
 
@@ -943,6 +907,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (sessionToRemove == null) return;
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
+
+        clearActivityMarkersForHandle(sessionToRemove.mHandle);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(sessionToRemove);
