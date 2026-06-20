@@ -58,12 +58,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
 
-    static final float SESSION_NAME_RELATIVE_SIZE = 0.85f;
-
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
-
-    private static final String BELL_NOTIFICATION_LABEL_PREFIX = "  ";
 
     final TermuxActivity mActivity;
 
@@ -79,6 +75,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private List<SessionDefinitionEntry> mEntries = Collections.emptyList();
 
     private List<SessionHierarchyRow> mRows = Collections.emptyList();
+
+    private Map<Integer, SessionRow> mSessionRowsByIndex = Collections.emptyMap();
 
     private final Set<String> mCollapsedProjectKeys = new LinkedHashSet<>();
 
@@ -154,6 +152,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private void rebuildRows() {
         mRows = mHierarchyBuilder.filterCollapsedProjects(buildAllRows(), mCollapsedProjectKeys);
+        mSessionRowsByIndex = getSessionRows();
     }
 
     public int getFirstVisibleSessionIndexAfterRebuild() {
@@ -262,17 +261,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
-    public List<String> getSessionRawNames() {
-        List<String> rawNames = new ArrayList<>(mSessionList.size());
-        for (TermuxSession session : mSessionList) {
-            TerminalSession terminalSession = session.getTerminalSession();
-            String name = terminalSession == null ? null : terminalSession.mSessionName;
-            rawNames.add(name == null ? "" : name);
-        }
-        return rawNames;
-    }
-
-    @NonNull
     public Set<Integer> getDisabledSessionIndexes() {
         Set<Integer> disabledSessionIndexes = new LinkedHashSet<>();
         Set<String> disabledSessionNames = disabledSessionNames();
@@ -296,8 +284,48 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
-    public Map<Integer, String> getMarkedSessionAgeLabels() {
-        return markedSessionAgeLabels();
+    public SessionRow getCurrentSessionRow() {
+        int currentSessionIndex = indexOfSession(mActivity.getCurrentSession());
+        return SessionRow.rowOrEmpty(getSessionRows(), currentSessionIndex);
+    }
+
+    @NonNull
+    public Map<Integer, SessionRow> getSessionRows() {
+        List<String> namesByIndex = new ArrayList<>(mSessionList.size());
+        List<String> titlesByIndex = new ArrayList<>(mSessionList.size());
+        List<String> projectsByIndex = new ArrayList<>(mSessionList.size());
+        List<String> storiesByIndex = new ArrayList<>(mSessionList.size());
+        for (TermuxSession session : mSessionList) {
+            TerminalSession terminalSession = session.getTerminalSession();
+            String name = terminalSession == null ? null : terminalSession.mSessionName;
+            SessionDefinitionEntry entry = (name == null || name.isEmpty())
+                ? null : mEntryMatcher.findEntryForSessionName(mEntries, name);
+            namesByIndex.add(name);
+            titlesByIndex.add(entry == null ? "" : definitionTitleOrEmpty(name));
+            projectsByIndex.add(entry == null || entry.getGroupLabel() == null ? "" : entry.getGroupLabel());
+            storiesByIndex.add(entry == null || entry.getEntryLabel() == null ? "" : entry.getEntryLabel());
+        }
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        return SessionRow.project(namesByIndex, titlesByIndex, projectsByIndex, storiesByIndex,
+            markedSessionAgeLabels(), getDisabledSessionIndexes(), indexOfSession(currentSession));
+    }
+
+    @NonNull
+    private String definitionTitleOrEmpty(@NonNull String name) {
+        String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
+        return definitionTitle == null ? "" : definitionTitle;
+    }
+
+    private int indexOfSession(@Nullable TerminalSession session) {
+        if (session == null) {
+            return -1;
+        }
+        for (int sessionIndex = 0; sessionIndex < mSessionList.size(); sessionIndex++) {
+            if (mSessionList.get(sessionIndex).getTerminalSession() == session) {
+                return sessionIndex;
+            }
+        }
+        return -1;
     }
 
     @NonNull
@@ -354,29 +382,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private String activeSessionHandle() {
         TerminalSession currentSession = mActivity.getCurrentSession();
         return currentSession == null ? null : currentSession.mHandle;
-    }
-
-    @NonNull
-    public List<String> getSessionTitles() {
-        List<String> titles = new ArrayList<>(mSessionList.size());
-        for (TermuxSession session : mSessionList) {
-            titles.add(sessionDefinitionTitle(session));
-        }
-        return titles;
-    }
-
-    @NonNull
-    private String sessionDefinitionTitle(@NonNull TermuxSession session) {
-        TerminalSession terminalSession = session.getTerminalSession();
-        if (terminalSession == null) {
-            return "";
-        }
-        String name = terminalSession.mSessionName;
-        if (name == null || name.isEmpty()) {
-            return "";
-        }
-        String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
-        return definitionTitle == null ? "" : definitionTitle;
     }
 
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {
@@ -619,7 +624,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return;
         }
         styled.setSpan(boldSpan, 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        styled.setSpan(new RelativeSizeSpan(SESSION_NAME_RELATIVE_SIZE), 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     @SuppressLint("SetTextI18n")
@@ -647,7 +652,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return sessionRowView;
         }
 
-        boolean isCurrentSession = sessionAtRow == mActivity.getCurrentSession();
+        SessionRow sessionRow = SessionRow.rowOrEmpty(mSessionRowsByIndex, sessionIndex);
+
+        boolean isCurrentSession = sessionRow.isCurrent();
         boolean sessionRunning = sessionAtRow.isRunning();
         SessionRowActiveIndicator activeIndicator = computeActiveIndicator(isCurrentSession, sessionRunning);
 
@@ -658,13 +665,12 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         View activeIndicatorBar = sessionRowView.findViewById(R.id.session_active_indicator_bar);
         applyActiveIndicatorBarVisibility(activeIndicatorBar, activeIndicator.showAccentBar, activeIndicatorColor);
 
-        String name = sessionAtRow.mSessionName;
         String sessionTitle = sessionAtRow.getTitle();
-        String definitionTitle = mEntryMatcher.findTitleForSessionName(mEntries, name);
+        String definitionTitle = sessionRow.getResolvedTitle();
 
-        String sessionNamePart = (TextUtils.isEmpty(name) ? "" : name);
+        String sessionNamePart = sessionRow.getName();
 
-        String bellNotificationLabelPart = buildBellNotificationLabel(sessionAtRow);
+        String bellNotificationLabelPart = buildBellNotificationLabel(sessionRow);
 
         StringBuilder fullSessionTitleBuilder = new StringBuilder(sessionNamePart);
         int bellNotificationLabelStart = -1;
@@ -718,7 +724,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         sessionTitleView.setText(fullSessionTitleStyled);
 
-        applyBellNotificationIcon(sessionTitleView, sessionAtRow);
+        applyBellNotificationIcon(sessionTitleView, sessionRow);
 
         if (sessionRunning) {
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
@@ -729,13 +735,14 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
         sessionTitleView.setTextColor(color);
 
-        bindSessionDisableToggle(sessionRowView, sessionAtRow.mSessionName);
+        bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
         return sessionRowView;
     }
 
-    private void bindSessionDisableToggle(@NonNull View sessionRowView, @Nullable String sessionName) {
+    private void bindSessionDisableToggle(@NonNull View sessionRowView, @NonNull SessionRow sessionRow,
+                                          @Nullable String sessionName) {
         ImageView disableToggleView = sessionRowView.findViewById(R.id.session_disable_toggle);
-        boolean disabled = isSessionDisabled(sessionName);
+        boolean disabled = sessionRow.isDisabled();
         disableToggleView.setImageResource(sessionDisableToggleIconRes(disabled));
         disableToggleView.setActivated(disabled);
         disableToggleView.setOnClickListener(v -> toggleSessionDisabled(sessionName));
@@ -747,16 +754,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             : R.drawable.ic_session_navigation_enabled;
     }
 
-    private String buildBellNotificationLabel(@NonNull TerminalSession session) {
-        SessionNewActivityIndicator indicator = rowNewActivityIndicator(session);
-        if (!indicator.isVisible()) {
+    private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
+        if (!sessionRow.isBellMarked()) {
             return "";
         }
-        return BELL_NOTIFICATION_LABEL_PREFIX + indicator.getLabel();
+        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + sessionRow.getBellAgeLabel();
     }
 
-    private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull TerminalSession session) {
-        int indicatorDrawableRes = newActivityIndicatorDrawableRes(rowNewActivityIndicator(session).isVisible());
+    private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull SessionRow sessionRow) {
+        int indicatorDrawableRes = newActivityIndicatorDrawableRes(sessionRow.isBellMarked());
         sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(indicatorDrawableRes, 0, 0, 0);
         sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
     }
@@ -765,15 +771,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return hasNewActivityIndicator
             ? R.drawable.ic_session_bell_notification
             : R.drawable.ic_session_bell_notification_placeholder;
-    }
-
-    @NonNull
-    private SessionNewActivityIndicator rowNewActivityIndicator(@NonNull TerminalSession session) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) {
-            return SessionNewActivityIndicator.labelFor(null, null, System.currentTimeMillis());
-        }
-        return newActivityIndicator(store, session.mHandle, activeSessionHandle(), System.currentTimeMillis());
     }
 
     private int dpToPx(int dp) {

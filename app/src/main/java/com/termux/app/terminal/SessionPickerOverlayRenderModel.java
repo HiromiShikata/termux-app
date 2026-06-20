@@ -7,7 +7,6 @@ import com.termux.app.browser.BrowserGithubUrlShortener;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public final class SessionPickerOverlayRenderModel {
 
@@ -20,13 +19,10 @@ public final class SessionPickerOverlayRenderModel {
 
     @NonNull
     public static List<SessionPickerOverlayLine> build(@NonNull List<SessionHierarchyRow> visibleRows,
-                                                       @NonNull List<String> sessionRawNames,
-                                                       @NonNull List<String> sessionTitles,
-                                                       @NonNull Map<Integer, String> markedSessionAgeLabels,
-                                                       @NonNull Set<Integer> disabledSessionIndexes,
+                                                       @NonNull Map<Integer, SessionRow> sessionRowsByIndex,
                                                        int highlightedSessionIndex) {
         List<SessionHierarchyRow> renderableRows =
-            renderableRowsExcludingDisabledSessions(visibleRows, disabledSessionIndexes);
+            renderableRowsExcludingDisabledSessions(visibleRows, sessionRowsByIndex);
         List<SessionPickerOverlayLine> lines = new ArrayList<>(renderableRows.size());
         for (SessionHierarchyRow row : renderableRows) {
             switch (row.getType()) {
@@ -49,13 +45,14 @@ public final class SessionPickerOverlayRenderModel {
                 case SESSION:
                 default:
                     int sessionIndex = row.getSessionIndex();
+                    SessionRow sessionRow = SessionRow.rowOrEmpty(sessionRowsByIndex, sessionIndex);
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.SESSION,
-                        sessionPrimaryName(sessionRawNames, sessionIndex),
-                        truncateSecondaryToSingleLine(sessionSecondaryTitle(sessionTitles, sessionIndex)),
+                        sessionPrimaryName(sessionRow),
+                        truncateSecondaryToSingleLine(sessionRow.getResolvedTitle()),
                         sessionIndex == highlightedSessionIndex,
-                        markedSessionAgeLabels.containsKey(sessionIndex),
-                        newActivityLabelOrEmpty(markedSessionAgeLabels, sessionIndex)));
+                        sessionRow.isBellMarked(),
+                        sessionRow.getBellAgeLabel()));
                     break;
             }
         }
@@ -64,11 +61,11 @@ public final class SessionPickerOverlayRenderModel {
 
     @NonNull
     private static List<SessionHierarchyRow> renderableRowsExcludingDisabledSessions(
-        @NonNull List<SessionHierarchyRow> visibleRows, @NonNull Set<Integer> disabledSessionIndexes) {
+        @NonNull List<SessionHierarchyRow> visibleRows, @NonNull Map<Integer, SessionRow> sessionRowsByIndex) {
         List<SessionHierarchyRow> sessionFilteredRows = new ArrayList<>(visibleRows.size());
         for (SessionHierarchyRow row : visibleRows) {
             if (row.getType() == SessionHierarchyRow.Type.SESSION
-                && disabledSessionIndexes.contains(row.getSessionIndex())) {
+                && SessionRow.rowOrEmpty(sessionRowsByIndex, row.getSessionIndex()).isDisabled()) {
                 continue;
             }
             sessionFilteredRows.add(row);
@@ -120,30 +117,11 @@ public final class SessionPickerOverlayRenderModel {
     }
 
     @NonNull
-    private static String newActivityLabelOrEmpty(@NonNull Map<Integer, String> markedSessionAgeLabels,
-                                                  int sessionIndex) {
-        String label = markedSessionAgeLabels.get(sessionIndex);
-        return label == null ? "" : label;
-    }
-
-    @NonNull
-    private static String sessionPrimaryName(@NonNull List<String> sessionRawNames, int sessionIndex) {
-        if (sessionIndex < 0 || sessionIndex >= sessionRawNames.size()) {
-            return "session " + sessionIndex;
-        }
-        String name = sessionRawNames.get(sessionIndex);
-        if (name == null || name.isEmpty()) {
-            return "session " + sessionIndex;
+    private static String sessionPrimaryName(@NonNull SessionRow sessionRow) {
+        String name = sessionRow.getName();
+        if (name.isEmpty()) {
+            return "session " + sessionRow.getSessionIndex();
         }
         return BrowserGithubUrlShortener.shorten(name);
-    }
-
-    @NonNull
-    private static String sessionSecondaryTitle(@NonNull List<String> sessionTitles, int sessionIndex) {
-        if (sessionIndex < 0 || sessionIndex >= sessionTitles.size()) {
-            return "";
-        }
-        String title = sessionTitles.get(sessionIndex);
-        return title == null ? "" : title;
     }
 }

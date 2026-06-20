@@ -37,11 +37,8 @@ public class SessionSwitchPickerController {
 
     private static final String STORY_PREFIX = "▸ ";
     private static final float STORY_RELATIVE_SIZE = 0.7f;
-    private static final float SESSION_NAME_RELATIVE_SIZE = 0.85f;
     private static final float SPACER_RELATIVE_SIZE = 0.4f;
     private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
-    private static final String BELL_MARK = "🔔 ";
-    private static final String NEW_ACTIVITY_LABEL_PREFIX = "  ";
     private static final int TRANSPARENT_COLOR = 0x00000000;
     private static final int STORY_TEXT_COLOR = 0x99FFFFFF;
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
@@ -141,9 +138,7 @@ public class SessionSwitchPickerController {
 
     private void renderStructure(@NonNull TermuxSessionsListViewController listController) {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            listController.getVisibleRows(), listController.getSessionRawNames(),
-            listController.getSessionTitles(), listController.getMarkedSessionAgeLabels(),
-            listController.getDisabledSessionIndexes(), mHighlightedSessionIndex);
+            listController.getVisibleRows(), listController.getSessionRows(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
         applyFixedOverlaySize();
     }
@@ -220,7 +215,7 @@ public class SessionSwitchPickerController {
 
     @NonNull
     static String bellMarkSlotText() {
-        return BELL_MARK;
+        return SessionRow.BELL_MARK;
     }
 
     static boolean isBellMarkSlotVisible(boolean marked) {
@@ -232,7 +227,7 @@ public class SessionSwitchPickerController {
         if (newActivityLabel.isEmpty()) {
             return "";
         }
-        return NEW_ACTIVITY_LABEL_PREFIX + newActivityLabel;
+        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + newActivityLabel;
     }
 
     @NonNull
@@ -276,7 +271,7 @@ public class SessionSwitchPickerController {
         }
         int nameStart = builder.length();
         builder.append(line.getText());
-        builder.setSpan(new RelativeSizeSpan(SESSION_NAME_RELATIVE_SIZE), nameStart, builder.length(),
+        builder.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), nameStart, builder.length(),
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         String newActivityLabel = line.getNewActivityLabel();
         if (!newActivityLabel.isEmpty()) {

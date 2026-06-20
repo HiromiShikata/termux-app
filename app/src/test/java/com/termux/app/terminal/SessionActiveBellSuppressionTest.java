@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SessionActiveBellSuppressionTest {
 
@@ -82,7 +83,7 @@ public class SessionActiveBellSuppressionTest {
             SessionHierarchyRow.session(0), SessionHierarchyRow.session(1));
         List<String> names = Arrays.asList("active", "background");
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, names, Collections.emptyList(), markedSessionAgeLabels, Collections.emptySet(), 0);
+            rows, sessionRows(names, Collections.emptyList(), markedSessionAgeLabels, Collections.emptySet()), 0);
 
         Assert.assertFalse(lines.get(0).isMarked());
         Assert.assertTrue(lines.get(1).isMarked());
@@ -103,6 +104,13 @@ public class SessionActiveBellSuppressionTest {
 
         Assert.assertFalse(whileActive.isVisible());
         Assert.assertTrue(afterLeaving.isVisible());
+    }
+
+    private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
+                                                        Map<Integer, String> markedSessionAgeLabels,
+                                                        Set<Integer> disabledSessionIndexes) {
+        return SessionRow.project(names, titles, Collections.emptyList(), Collections.emptyList(),
+            markedSessionAgeLabels, disabledSessionIndexes, -1);
     }
 
     private static void markIfVisible(Map<Integer, String> markedSessionAgeLabels,
