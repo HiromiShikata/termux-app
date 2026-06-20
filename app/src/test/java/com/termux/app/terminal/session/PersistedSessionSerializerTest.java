@@ -29,12 +29,12 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesPlainSession() throws JSONException {
-        PersistedSession plainSession = new PersistedSession("handle-1", "shell-one", null, null, false, "/home/user");
+        PersistedSessionRestoreData plainSession = new PersistedSessionRestoreData("handle-1", "shell-one", null, null, false, "/home/user");
 
-        List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(plainSession)));
+        List<PersistedSessionRestoreData> restored = serializer.deserialize(serializer.serialize(Arrays.asList(plainSession)));
 
         Assert.assertEquals(1, restored.size());
-        PersistedSession result = restored.get(0);
+        PersistedSessionRestoreData result = restored.get(0);
         Assert.assertEquals("handle-1", result.getHandle());
         Assert.assertEquals("shell-one", result.getName());
         Assert.assertNull(result.getExecutablePath());
@@ -45,13 +45,13 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesCommandSessionWithArguments() throws JSONException {
-        PersistedSession commandSession = new PersistedSession("handle-2", "shell-two", "/bin/sh",
+        PersistedSessionRestoreData commandSession = new PersistedSessionRestoreData("handle-2", "shell-two", "/bin/sh",
             new String[]{"-c", "sleep 1"}, false, "/home/user/project");
 
-        List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(commandSession)));
+        List<PersistedSessionRestoreData> restored = serializer.deserialize(serializer.serialize(Arrays.asList(commandSession)));
 
         Assert.assertEquals(1, restored.size());
-        PersistedSession result = restored.get(0);
+        PersistedSessionRestoreData result = restored.get(0);
         Assert.assertEquals("handle-2", result.getHandle());
         Assert.assertEquals("shell-two", result.getName());
         Assert.assertEquals("/bin/sh", result.getExecutablePath());
@@ -62,12 +62,12 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesFailSafeFlagAndNullName() throws JSONException {
-        PersistedSession failSafeSession = new PersistedSession("handle-3", null, null, null, true, null);
+        PersistedSessionRestoreData failSafeSession = new PersistedSessionRestoreData("handle-3", null, null, null, true, null);
 
-        List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(failSafeSession)));
+        List<PersistedSessionRestoreData> restored = serializer.deserialize(serializer.serialize(Arrays.asList(failSafeSession)));
 
         Assert.assertEquals(1, restored.size());
-        PersistedSession result = restored.get(0);
+        PersistedSessionRestoreData result = restored.get(0);
         Assert.assertEquals("handle-3", result.getHandle());
         Assert.assertNull(result.getName());
         Assert.assertNull(result.getExecutablePath());
@@ -78,12 +78,12 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesOrderOfMultipleSessions() throws JSONException {
-        List<PersistedSession> sessions = Arrays.asList(
-            new PersistedSession("handle-a", "first", null, null, false, "/home/user"),
-            new PersistedSession("handle-b", "second", "/bin/sh", new String[]{"-c", "echo hi"}, false, "/tmp"),
-            new PersistedSession("handle-c", "third", null, null, true, "/home/user"));
+        List<PersistedSessionRestoreData> sessions = Arrays.asList(
+            new PersistedSessionRestoreData("handle-a", "first", null, null, false, "/home/user"),
+            new PersistedSessionRestoreData("handle-b", "second", "/bin/sh", new String[]{"-c", "echo hi"}, false, "/tmp"),
+            new PersistedSessionRestoreData("handle-c", "third", null, null, true, "/home/user"));
 
-        List<PersistedSession> restored = serializer.deserialize(serializer.serialize(sessions));
+        List<PersistedSessionRestoreData> restored = serializer.deserialize(serializer.serialize(sessions));
 
         Assert.assertEquals(3, restored.size());
         Assert.assertEquals("first", restored.get(0).getName());
@@ -95,9 +95,9 @@ public class PersistedSessionSerializerTest {
 
     @Test
     public void roundTripPreservesEmptyArguments() throws JSONException {
-        PersistedSession session = new PersistedSession("handle-4", "empty-args", "/bin/sh", new String[]{}, false, "/tmp");
+        PersistedSessionRestoreData session = new PersistedSessionRestoreData("handle-4", "empty-args", "/bin/sh", new String[]{}, false, "/tmp");
 
-        List<PersistedSession> restored = serializer.deserialize(serializer.serialize(Arrays.asList(session)));
+        List<PersistedSessionRestoreData> restored = serializer.deserialize(serializer.serialize(Arrays.asList(session)));
 
         Assert.assertEquals(1, restored.size());
         Assert.assertArrayEquals(new String[]{}, restored.get(0).getArguments());
@@ -108,10 +108,10 @@ public class PersistedSessionSerializerTest {
         String serialized = "[{\"handle\":\"handle-5\",\"name\":null,\"executablePath\":null,"
             + "\"arguments\":null,\"isFailSafe\":true,\"workingDirectory\":null}]";
 
-        List<PersistedSession> restored = serializer.deserialize(serialized);
+        List<PersistedSessionRestoreData> restored = serializer.deserialize(serialized);
 
         Assert.assertEquals(1, restored.size());
-        PersistedSession result = restored.get(0);
+        PersistedSessionRestoreData result = restored.get(0);
         Assert.assertEquals("handle-5", result.getHandle());
         Assert.assertNull(result.getName());
         Assert.assertNull(result.getExecutablePath());

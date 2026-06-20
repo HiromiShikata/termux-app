@@ -16,9 +16,9 @@ public final class PersistedSessionSerializer {
     private static final String KEY_IS_FAIL_SAFE = "isFailSafe";
     private static final String KEY_WORKING_DIRECTORY = "workingDirectory";
 
-    public String serialize(List<PersistedSession> sessions) throws JSONException {
+    public String serialize(List<PersistedSessionRestoreData> sessions) throws JSONException {
         JSONArray array = new JSONArray();
-        for (PersistedSession session : sessions) {
+        for (PersistedSessionRestoreData session : sessions) {
             JSONObject object = new JSONObject();
             if (session.getHandle() != null)
                 object.put(KEY_HANDLE, session.getHandle());
@@ -40,8 +40,8 @@ public final class PersistedSessionSerializer {
         return array.toString();
     }
 
-    public List<PersistedSession> deserialize(String serialized) throws JSONException {
-        List<PersistedSession> sessions = new ArrayList<>();
+    public List<PersistedSessionRestoreData> deserialize(String serialized) throws JSONException {
+        List<PersistedSessionRestoreData> sessions = new ArrayList<>();
         if (serialized == null || serialized.isEmpty())
             return sessions;
 
@@ -64,7 +64,7 @@ public final class PersistedSessionSerializer {
             boolean isFailSafe = object.optBoolean(KEY_IS_FAIL_SAFE, false);
             String workingDirectory = object.isNull(KEY_WORKING_DIRECTORY) ? null : object.getString(KEY_WORKING_DIRECTORY);
 
-            sessions.add(new PersistedSession(handle, name, executablePath, arguments, isFailSafe, workingDirectory));
+            sessions.add(new PersistedSessionRestoreData(handle, name, executablePath, arguments, isFailSafe, workingDirectory));
         }
         return sessions;
     }

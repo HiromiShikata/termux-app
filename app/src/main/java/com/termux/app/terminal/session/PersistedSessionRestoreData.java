@@ -2,10 +2,13 @@ package com.termux.app.terminal.session;
 
 import androidx.annotation.Nullable;
 
-public final class PersistedSession {
+public final class PersistedSessionRestoreData {
 
     @Nullable
     private final String mHandle;
+
+    @Nullable
+    private final String mName;
 
     @Nullable
     private final String mExecutablePath;
@@ -18,9 +21,10 @@ public final class PersistedSession {
     @Nullable
     private final String mWorkingDirectory;
 
-    public PersistedSession(@Nullable String handle, @Nullable String executablePath,
-                            @Nullable String[] arguments, boolean isFailSafe, @Nullable String workingDirectory) {
+    public PersistedSessionRestoreData(@Nullable String handle, @Nullable String name, @Nullable String executablePath,
+                                       @Nullable String[] arguments, boolean isFailSafe, @Nullable String workingDirectory) {
         mHandle = handle;
+        mName = name;
         mExecutablePath = executablePath;
         mArguments = arguments == null ? null : arguments.clone();
         mIsFailSafe = isFailSafe;
@@ -30,6 +34,11 @@ public final class PersistedSession {
     @Nullable
     public String getHandle() {
         return mHandle;
+    }
+
+    @Nullable
+    public String getName() {
+        return mName;
     }
 
     @Nullable
