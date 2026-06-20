@@ -191,10 +191,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordOutputActivityForBackgroundSession(@NonNull TerminalSession session) {
-        String currentSessionHandle = activeSessionHandle();
-        boolean marked = SessionOutputActivityMarker.markBackgroundOutputActivity(
-            mActivity.getSessionOutputActivityStore(), currentSessionHandle, session.mHandle);
-        if (marked && mActivity.isVisible()
+        if (!markNewActivityForBackgroundSession(session)) return;
+        if (mActivity.isVisible()
             && mOutputActivityRefreshDebouncer.shouldRefresh(System.currentTimeMillis()))
             termuxSessionListNotifyUpdated();
     }
@@ -363,11 +361,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
-        if (session.mHandle == null) return;
-        if (session.mHandle.equals(activeSessionHandle())) return;
+        if (markNewActivityForBackgroundSession(session))
+            termuxSessionListNotifyUpdated();
+    }
 
-        mActivity.getSessionBellNotificationStore().recordBell(session.mHandle, System.currentTimeMillis());
-        termuxSessionListNotifyUpdated();
+    private boolean markNewActivityForBackgroundSession(@NonNull TerminalSession session) {
+        if (session.mHandle == null) return false;
+        if (session.mHandle.equals(activeSessionHandle())) return false;
+
+        mActivity.getSessionNewActivityStore().markNewActivity(session.mHandle, System.currentTimeMillis());
+        return true;
     }
 
     @Nullable
@@ -379,13 +382,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return currentSession == null ? null : currentSession.mHandle;
     }
 
-    private void clearActivityMarkersForHandle(@Nullable String sessionHandle) {
-        boolean cleared = SessionActivityMarkerCleaner.clearActivityMarkers(
-            mActivity.getSessionBellNotificationStore(),
-            mActivity.getSessionOutputActivityStore(),
-            sessionHandle);
-        if (cleared)
-            termuxSessionListNotifyUpdated();
+    private void clearNewActivityForViewedSession(@Nullable String sessionHandle) {
+        if (sessionHandle == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (!store.hasNewActivity(sessionHandle)) return;
+        store.clearNewActivity(sessionHandle);
+        termuxSessionListNotifyUpdated();
+    }
+
+    private void purgeNewActivityForRemovedSession(@Nullable String sessionHandle) {
+        if (sessionHandle == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (!store.hasNewActivity(sessionHandle)) return;
+        store.purgeSession(sessionHandle);
+        termuxSessionListNotifyUpdated();
     }
 
     @Override
@@ -458,7 +468,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         mActiveSessionHandle = session.mHandle;
 
-        clearActivityMarkersForHandle(session.mHandle);
+        clearNewActivityForViewedSession(session.mHandle);
 
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
@@ -878,7 +888,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         if (finishedSession != null)
-            clearActivityMarkersForHandle(finishedSession.mHandle);
+            purgeNewActivityForRemovedSession(finishedSession.mHandle);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
@@ -908,7 +918,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
-        clearActivityMarkersForHandle(sessionToRemove.mHandle);
+        purgeNewActivityForRemovedSession(sessionToRemove.mHandle);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(sessionToRemove);

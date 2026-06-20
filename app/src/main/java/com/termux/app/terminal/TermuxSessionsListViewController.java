@@ -37,8 +37,10 @@ import com.termux.terminal.TerminalSession;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
@@ -60,6 +62,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
+
+    private static final String BELL_NOTIFICATION_LABEL_PREFIX = "  ";
 
     final TermuxActivity mActivity;
 
@@ -166,10 +170,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @NonNull
     public List<Integer> getNavigableSessionIndexes() {
-        List<Integer> disabledFilteredNavigableSessionIndexes =
-            navigableSessionIndexes(getVisibleSessionIndexes(), sessionNamesByIndex(), disabledSessionNames());
-        return BellMarkedSessionNavigationFilter.bellRestrictedNavigableIndexes(
-            disabledFilteredNavigableSessionIndexes, getMarkedSessionIndexes());
+        return navigableSessionIndexes(getVisibleSessionIndexes(), sessionNamesByIndex(), disabledSessionNames());
     }
 
     @NonNull
@@ -269,24 +270,51 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @NonNull
     public Set<Integer> getMarkedSessionIndexes() {
-        Set<Integer> markedSessionIndexes = new LinkedHashSet<>();
-        SessionBellNotificationStore store = mActivity.getSessionBellNotificationStore();
+        return new LinkedHashSet<>(markedSessionAgeLabels().keySet());
+    }
+
+    @NonNull
+    public Map<Integer, String> getMarkedSessionAgeLabels() {
+        return markedSessionAgeLabels();
+    }
+
+    @NonNull
+    private Map<Integer, String> markedSessionAgeLabels() {
+        Map<Integer, String> ageLabelsBySessionIndex = new LinkedHashMap<>();
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) {
-            return markedSessionIndexes;
+            return ageLabelsBySessionIndex;
         }
-        SessionOutputActivityStore outputActivityStore = mActivity.getSessionOutputActivityStore();
+        long nowMillis = System.currentTimeMillis();
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionHandle = currentSession == null ? null : currentSession.mHandle;
         for (int sessionIndex : getVisibleSessionIndexes()) {
             if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
                 continue;
             }
             TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
             String sessionHandle = terminalSession == null ? null : terminalSession.mHandle;
-            if (hasNewActivityIndicator(bellArrivalTimeMillis(store, sessionHandle),
-                outputActivityStore, sessionHandle)) {
-                markedSessionIndexes.add(sessionIndex);
+            SessionNewActivityIndicator indicator =
+                newActivityIndicator(store, sessionHandle, currentSessionHandle, nowMillis);
+            if (indicator.isVisible()) {
+                ageLabelsBySessionIndex.put(sessionIndex, indicator.getLabel());
             }
         }
-        return markedSessionIndexes;
+        return ageLabelsBySessionIndex;
+    }
+
+    @NonNull
+    static SessionNewActivityIndicator newActivityIndicator(@NonNull SessionNewActivityStore store,
+                                                            @Nullable String sessionHandle,
+                                                            @Nullable String currentSessionHandle,
+                                                            long nowMillis) {
+        if (sessionHandle == null) {
+            return SessionNewActivityIndicator.labelFor(null, nowMillis);
+        }
+        if (sessionHandle.equals(currentSessionHandle)) {
+            return SessionNewActivityIndicator.labelFor(null, nowMillis);
+        }
+        return SessionNewActivityIndicator.labelFor(store.getArrivalTimeMillis(sessionHandle), nowMillis);
     }
 
     @NonNull
@@ -681,15 +709,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private String buildBellNotificationLabel(@NonNull TerminalSession session) {
-        Long bellArrivalTimeMillis = getBellArrivalTimeMillis(session);
-        if (bellArrivalTimeMillis == null) {
+        SessionNewActivityIndicator indicator = rowNewActivityIndicator(session);
+        if (!indicator.isVisible()) {
             return "";
         }
-        return "  " + SessionBellNotificationStore.formatRelativeTime(System.currentTimeMillis() - bellArrivalTimeMillis);
+        return BELL_NOTIFICATION_LABEL_PREFIX + indicator.getLabel();
     }
 
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull TerminalSession session) {
-        int indicatorDrawableRes = newActivityIndicatorDrawableRes(hasNewActivityIndicator(session));
+        int indicatorDrawableRes = newActivityIndicatorDrawableRes(rowNewActivityIndicator(session).isVisible());
         sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(indicatorDrawableRes, 0, 0, 0);
         sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
     }
@@ -700,34 +728,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             : R.drawable.ic_session_bell_notification_placeholder;
     }
 
-    private boolean hasNewActivityIndicator(@NonNull TerminalSession session) {
-        return hasNewActivityIndicator(getBellArrivalTimeMillis(session),
-            mActivity.getSessionOutputActivityStore(), session.mHandle);
-    }
-
-    static boolean hasNewActivityIndicator(@Nullable Long bellArrivalTimeMillis,
-                                           @Nullable SessionOutputActivityStore outputActivityStore,
-                                           @Nullable String sessionHandle) {
-        if (bellArrivalTimeMillis != null) {
-            return true;
+    @NonNull
+    private SessionNewActivityIndicator rowNewActivityIndicator(@NonNull TerminalSession session) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) {
+            return SessionNewActivityIndicator.labelFor(null, System.currentTimeMillis());
         }
-        if (outputActivityStore == null || sessionHandle == null) {
-            return false;
-        }
-        return outputActivityStore.hasOutputActivity(sessionHandle);
-    }
-
-    @Nullable
-    private Long getBellArrivalTimeMillis(@NonNull TerminalSession session) {
-        return bellArrivalTimeMillis(mActivity.getSessionBellNotificationStore(), session.mHandle);
-    }
-
-    @Nullable
-    static Long bellArrivalTimeMillis(@NonNull SessionBellNotificationStore store, @Nullable String sessionHandle) {
-        if (sessionHandle == null) {
-            return null;
-        }
-        return store.getBellArrivalTimeMillis(sessionHandle);
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionHandle = currentSession == null ? null : currentSession.mHandle;
+        return newActivityIndicator(store, session.mHandle, currentSessionHandle, System.currentTimeMillis());
     }
 
     private int dpToPx(int dp) {

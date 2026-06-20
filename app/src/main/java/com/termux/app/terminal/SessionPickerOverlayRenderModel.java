@@ -6,6 +6,7 @@ import com.termux.app.browser.BrowserGithubUrlShortener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class SessionPickerOverlayRenderModel {
@@ -21,7 +22,7 @@ public final class SessionPickerOverlayRenderModel {
     public static List<SessionPickerOverlayLine> build(@NonNull List<SessionHierarchyRow> visibleRows,
                                                        @NonNull List<String> sessionRawNames,
                                                        @NonNull List<String> sessionTitles,
-                                                       @NonNull Set<Integer> markedSessionIndexes,
+                                                       @NonNull Map<Integer, String> markedSessionAgeLabels,
                                                        @NonNull Set<Integer> disabledSessionIndexes,
                                                        int highlightedSessionIndex) {
         List<SessionHierarchyRow> renderableRows =
@@ -53,7 +54,8 @@ public final class SessionPickerOverlayRenderModel {
                         sessionPrimaryName(sessionRawNames, sessionIndex),
                         truncateSecondaryToSingleLine(sessionSecondaryTitle(sessionTitles, sessionIndex)),
                         sessionIndex == highlightedSessionIndex,
-                        markedSessionIndexes.contains(sessionIndex)));
+                        markedSessionAgeLabels.containsKey(sessionIndex),
+                        newActivityLabelOrEmpty(markedSessionAgeLabels, sessionIndex)));
                     break;
             }
         }
@@ -114,6 +116,13 @@ public final class SessionPickerOverlayRenderModel {
 
     @NonNull
     private static String labelOrEmpty(String label) {
+        return label == null ? "" : label;
+    }
+
+    @NonNull
+    private static String newActivityLabelOrEmpty(@NonNull Map<Integer, String> markedSessionAgeLabels,
+                                                  int sessionIndex) {
+        String label = markedSessionAgeLabels.get(sessionIndex);
         return label == null ? "" : label;
     }
 
