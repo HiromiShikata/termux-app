@@ -286,7 +286,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onBell(@NonNull TerminalSession session) {
-        recordBellNotificationIfBackgroundSession(session);
+        recordBellForSession(session);
 
         if (!mActivity.isVisible()) return;
 
@@ -307,12 +307,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onMarkerNotification(@NonNull TerminalSession session) {
-        recordBellNotificationIfBackgroundSession(session);
+        recordBellForSession(session);
     }
 
     @Override
     public void onUrgentNotification(@NonNull TerminalSession session) {
-        recordBellNotificationIfBackgroundSession(session);
+        recordBellForSession(session);
         mMainThreadHandler.post(() -> handleUrgentNotificationOnMainThread(session));
     }
 
@@ -353,7 +353,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         ringtone.play();
     }
 
-    private void recordBellNotificationIfBackgroundSession(@NonNull TerminalSession session) {
+    private void recordBellForSession(@NonNull TerminalSession session) {
         if (session.mHandle == null) return;
         mActivity.getSessionNewActivityStore().recordBell(session.mHandle, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
