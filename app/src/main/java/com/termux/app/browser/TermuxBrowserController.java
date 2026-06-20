@@ -1076,14 +1076,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void resetWebViewToBlankForForeignFrame() {
-        if (mRenderedFrame.getTab() != null
-                && !mRenderedFrame.getTab().getSessionHandle().equals(mCurrentSessionHandle)) {
-            blankFrame();
-        }
-        if (!BrowserRenderedFrameOwnership.isRenderedFrameForeign(
-                mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle())) {
-            return;
-        }
+        boolean renderedFrameIsForeign = BrowserRenderedFrameOwnership.isRenderedFrameForeign(
+            mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle());
+        if (!renderedFrameIsForeign) return;
         blankFrame();
         mWebView.loadUrl("about:blank");
     }
