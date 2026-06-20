@@ -60,15 +60,26 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void pickerHidesTheBellSlotForTheCurrentSessionButShowsItForAnUnseenBackgroundSession() {
+    public void pickerHidesTheBellSlotForTheSeenCurrentSessionButShowsItForAnUnseenBackgroundSession() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordBell("current", 1_000L);
+        store.recordSeen("current", 5_000L);
+        store.recordBell("background", 1_000L);
+
+        long nowMillis = 31_000L;
+        List<String> names = Arrays.asList("current", "background");
+        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+        for (int sessionIndex = 0; sessionIndex < names.size(); sessionIndex++) {
+            SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+                store, names.get(sessionIndex), nowMillis);
+            if (indicator.isVisible()) {
+                markedSessionAgeLabels.put(sessionIndex, indicator.getLabel());
+            }
+        }
+
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.session(0),
             SessionHierarchyRow.session(1));
-        List<String> names = Arrays.asList("current", "background");
-        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
-        markedSessionAgeLabels.put(0, "4s ago");
-        markedSessionAgeLabels.put(1, "30s ago");
-
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
             rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, 0), -1);
 
@@ -76,16 +87,15 @@ public class SessionPickerOverlayAgeLabelTest {
         Assert.assertTrue(SessionSwitchPickerController.isBellMarkSlotVisible(lines.get(1).isMarked()));
 
         String structureText = SessionSwitchPickerController.pickerStructurePlainText(lines);
-        Assert.assertFalse(structureText.contains("4s ago"));
         Assert.assertTrue(structureText.contains("30s ago"));
     }
 
     @Test
     public void bottomSheetLabelAndPickerLabelAreByteIdenticalForTheSameBellTimestamp() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background-handle", 1_000L);
+        store.recordBell("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", 1_000L + 45_000L);
+            store, "background", 1_000L + 45_000L);
 
         String bottomSheetLabel = "  " + indicator.getLabel();
         String pickerLabel = SessionSwitchPickerController.newActivityLabelSlotText(indicator.getLabel());
@@ -98,7 +108,7 @@ public class SessionPickerOverlayAgeLabelTest {
     public void aSessionWithoutABellProducesNoIndicatorAndNoLabel() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", 5_000L);
+            store, "background", 5_000L);
 
         Assert.assertFalse(indicator.isVisible());
         Assert.assertEquals("", indicator.getLabel());

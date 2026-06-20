@@ -950,13 +950,13 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     public synchronized void pruneSessionNewActivityStoreToLiveSessions() {
-        Set<String> liveHandles = new HashSet<>();
+        Set<String> liveSessionNames = new HashSet<>();
         for (TermuxSession termuxSession : mShellManager.mTermuxSessions) {
-            String handle = termuxSession.getTerminalSession().mHandle;
-            if (handle != null)
-                liveHandles.add(handle);
+            String sessionName = termuxSession.getTerminalSession().mSessionName;
+            if (sessionName != null)
+                liveSessionNames.add(sessionName);
         }
-        mSessionNewActivityStore.pruneToHandles(liveHandles);
+        mSessionNewActivityStore.pruneToSessionNames(liveSessionNames);
     }
 
     @NonNull

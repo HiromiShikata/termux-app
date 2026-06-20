@@ -9,112 +9,125 @@ import java.util.HashSet;
 public class SessionNewActivityStoreTest {
 
     @Test
-    public void recordsAndExposesLastBellTimeByHandle() {
+    public void recordsAndExposesLastBellTimeByName() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        Assert.assertNull(store.getLastBellTimeMillis("handle-one"));
+        Assert.assertNull(store.getLastBellTimeMillis("session-one"));
 
-        store.recordBell("handle-one", 1_000L);
+        store.recordBell("session-one", 1_000L);
 
-        Assert.assertEquals(Long.valueOf(1_000L), store.getLastBellTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastBellTimeMillis("session-one"));
     }
 
     @Test
-    public void recordsAndExposesLastSeenTimeByHandle() {
+    public void recordsAndExposesLastSeenTimeByName() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        Assert.assertNull(store.getLastSeenTimeMillis("handle-one"));
+        Assert.assertNull(store.getLastSeenTimeMillis("session-one"));
 
-        store.recordSeen("handle-one", 2_000L);
+        store.recordSeen("session-one", 2_000L);
 
-        Assert.assertEquals(Long.valueOf(2_000L), store.getLastSeenTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(2_000L), store.getLastSeenTimeMillis("session-one"));
     }
 
     @Test
     public void hasUnseenBellIsFalseWithoutAnyBell() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
-        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+        Assert.assertFalse(store.hasUnseenBell("session-one"));
     }
 
     @Test
     public void hasUnseenBellIsTrueWhenBellHasNeverBeenSeen() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-one", 1_000L);
+        store.recordBell("session-one", 1_000L);
 
-        Assert.assertTrue(store.hasUnseenBell("handle-one"));
+        Assert.assertTrue(store.hasUnseenBell("session-one"));
     }
 
     @Test
     public void hasUnseenBellIsFalseWhenSeenAfterBell() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-one", 1_000L);
-        store.recordSeen("handle-one", 2_000L);
+        store.recordBell("session-one", 1_000L);
+        store.recordSeen("session-one", 2_000L);
 
-        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+        Assert.assertFalse(store.hasUnseenBell("session-one"));
     }
 
     @Test
     public void hasUnseenBellIsFalseWhenSeenExactlyAtBellTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-one", 1_000L);
-        store.recordSeen("handle-one", 1_000L);
+        store.recordBell("session-one", 1_000L);
+        store.recordSeen("session-one", 1_000L);
 
-        Assert.assertFalse(store.hasUnseenBell("handle-one"));
+        Assert.assertFalse(store.hasUnseenBell("session-one"));
     }
 
     @Test
     public void hasUnseenBellIsTrueWhenBellArrivesAfterTheLastSeen() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordSeen("handle-one", 1_000L);
-        store.recordBell("handle-one", 5_000L);
+        store.recordSeen("session-one", 1_000L);
+        store.recordBell("session-one", 5_000L);
 
-        Assert.assertTrue(store.hasUnseenBell("handle-one"));
+        Assert.assertTrue(store.hasUnseenBell("session-one"));
     }
 
     @Test
     public void purgeRemovesBothTimestamps() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-one", 1_000L);
-        store.recordSeen("handle-one", 2_000L);
+        store.recordBell("session-one", 1_000L);
+        store.recordSeen("session-one", 2_000L);
 
-        store.purgeSession("handle-one");
+        store.purgeSession("session-one");
 
-        Assert.assertNull(store.getLastBellTimeMillis("handle-one"));
-        Assert.assertNull(store.getLastSeenTimeMillis("handle-one"));
+        Assert.assertNull(store.getLastBellTimeMillis("session-one"));
+        Assert.assertNull(store.getLastSeenTimeMillis("session-one"));
     }
 
     @Test
-    public void recordingBellAgainForSameHandleUpdatesLastBellTime() {
+    public void recordingBellAgainForSameNameUpdatesLastBellTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-one", 1_000L);
-        store.recordBell("handle-one", 5_000L);
+        store.recordBell("session-one", 1_000L);
+        store.recordBell("session-one", 5_000L);
 
-        Assert.assertEquals(Long.valueOf(5_000L), store.getLastBellTimeMillis("handle-one"));
+        Assert.assertEquals(Long.valueOf(5_000L), store.getLastBellTimeMillis("session-one"));
     }
 
     @Test
-    public void tracksDistinctHandlesIndependently() {
+    public void tracksDistinctNamesIndependently() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("handle-one", 1_000L);
-        store.recordBell("handle-two", 2_000L);
-        store.recordSeen("handle-one", 9_000L);
+        store.recordBell("session-one", 1_000L);
+        store.recordBell("session-two", 2_000L);
+        store.recordSeen("session-one", 9_000L);
 
-        Assert.assertFalse(store.hasUnseenBell("handle-one"));
-        Assert.assertTrue(store.hasUnseenBell("handle-two"));
+        Assert.assertFalse(store.hasUnseenBell("session-one"));
+        Assert.assertTrue(store.hasUnseenBell("session-two"));
+    }
+
+    @Test
+    public void unseenBellKeyedByNameSurvivesRestart() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
+        beforeRestart.recordBell("my-session", 1_000L);
+        Assert.assertTrue(beforeRestart.hasUnseenBell("my-session"));
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+
+        Assert.assertTrue(afterRestart.hasUnseenBell("my-session"));
+        Assert.assertEquals(Long.valueOf(1_000L), afterRestart.getLastBellTimeMillis("my-session"));
     }
 
     @Test
     public void reconstructingStoreFromSamePersistenceRestoresLastBellAndLastSeen() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
-        store.recordBell("handle-one", 1_000L);
-        store.recordSeen("handle-one", 2_000L);
-        store.recordBell("handle-two", 7_000L);
+        store.recordBell("session-one", 1_000L);
+        store.recordSeen("session-one", 2_000L);
+        store.recordBell("session-two", 7_000L);
 
         SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
 
-        Assert.assertEquals(Long.valueOf(1_000L), reconstructed.getLastBellTimeMillis("handle-one"));
-        Assert.assertEquals(Long.valueOf(2_000L), reconstructed.getLastSeenTimeMillis("handle-one"));
-        Assert.assertEquals(Long.valueOf(7_000L), reconstructed.getLastBellTimeMillis("handle-two"));
+        Assert.assertEquals(Long.valueOf(1_000L), reconstructed.getLastBellTimeMillis("session-one"));
+        Assert.assertEquals(Long.valueOf(2_000L), reconstructed.getLastSeenTimeMillis("session-one"));
+        Assert.assertEquals(Long.valueOf(7_000L), reconstructed.getLastBellTimeMillis("session-two"));
     }
 
     @Test
@@ -144,24 +157,24 @@ public class SessionNewActivityStoreTest {
     public void purgePersistsRemovalAcrossReconstruction() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
-        store.recordBell("handle-one", 1_000L);
-        store.purgeSession("handle-one");
+        store.recordBell("session-one", 1_000L);
+        store.purgeSession("session-one");
 
         SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
 
-        Assert.assertNull(reconstructed.getLastBellTimeMillis("handle-one"));
-        Assert.assertNull(reconstructed.getLastSeenTimeMillis("handle-one"));
+        Assert.assertNull(reconstructed.getLastBellTimeMillis("session-one"));
+        Assert.assertNull(reconstructed.getLastSeenTimeMillis("session-one"));
     }
 
     @Test
-    public void pruneToHandlesDropsUnknownHandles() {
+    public void pruneToSessionNamesDropsUnknownNames() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
         store.recordBell("alive", 1_000L);
         store.recordBell("gone", 2_000L);
         store.recordSeen("gone", 3_000L);
 
-        store.pruneToHandles(new HashSet<>(Collections.singletonList("alive")));
+        store.pruneToSessionNames(new HashSet<>(Collections.singletonList("alive")));
 
         Assert.assertEquals(Long.valueOf(1_000L), store.getLastBellTimeMillis("alive"));
         Assert.assertNull(store.getLastBellTimeMillis("gone"));
@@ -169,18 +182,31 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void pruneToHandlesPersistsDroppedHandlesAcrossReconstruction() {
+    public void pruneToSessionNamesPersistsDroppedNamesAcrossReconstruction() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
         store.recordBell("alive", 1_000L);
         store.recordBell("gone", 2_000L);
 
-        store.pruneToHandles(new HashSet<>(Collections.singletonList("alive")));
+        store.pruneToSessionNames(new HashSet<>(Collections.singletonList("alive")));
 
         SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
 
         Assert.assertEquals(Long.valueOf(1_000L), reconstructed.getLastBellTimeMillis("alive"));
         Assert.assertNull(reconstructed.getLastBellTimeMillis("gone"));
+    }
+
+    @Test
+    public void pruneToSessionNamesRetainsRestoredNameThatStillExistsAfterRestart() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
+        beforeRestart.recordBell("restored-session", 1_000L);
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+        afterRestart.pruneToSessionNames(
+            new HashSet<>(Collections.singletonList("restored-session")));
+
+        Assert.assertTrue(afterRestart.hasUnseenBell("restored-session"));
     }
 
     @Test

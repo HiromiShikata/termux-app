@@ -13,48 +13,40 @@ import java.util.Set;
 public class SessionActiveBellSuppressionTest {
 
     @Test
-    public void activeSessionShowsNoBellImmediatelyAfterABellEventBeforeAnySeenTick() {
+    public void activeSessionShowsNoBellOnceTheSeenTickHasAdvancedPastTheBell() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active-handle", 5_000L);
+        store.recordBell("active", 5_000L);
+        store.recordSeen("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "active-handle", "active-handle", 5_050L);
+            store, "active", 5_050L);
 
         Assert.assertFalse(indicator.isVisible());
         Assert.assertEquals("", indicator.getLabel());
     }
 
     @Test
-    public void backgroundUnseenSessionStillShowsTheBellWhenADifferentSessionIsActive() {
+    public void backgroundUnseenSessionStillShowsTheBellWhileTheActiveSessionIsCleared() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background-handle", 1_000L);
+        store.recordBell("background", 1_000L);
+        store.recordBell("active", 5_000L);
+        store.recordSeen("active", 31_000L);
 
-        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", "active-handle", 31_000L);
+        SessionNewActivityIndicator background = TermuxSessionsListViewController.newActivityIndicator(
+            store, "background", 31_000L);
 
-        Assert.assertTrue(indicator.isVisible());
-        Assert.assertEquals("30s ago", indicator.getLabel());
+        Assert.assertTrue(background.isVisible());
+        Assert.assertEquals("30s ago", background.getLabel());
     }
 
     @Test
-    public void backgroundUnseenSessionStillShowsTheBellWhenNoSessionIsActive() {
+    public void bothRenderersAgreeThatTheClearedSessionShowsNoBell() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background-handle", 1_000L);
+        store.recordBell("active", 5_000L);
+        store.recordSeen("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", null, 31_000L);
-
-        Assert.assertTrue(indicator.isVisible());
-        Assert.assertEquals("30s ago", indicator.getLabel());
-    }
-
-    @Test
-    public void bothRenderersAgreeThatTheActiveSessionShowsNoBell() {
-        SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active-handle", 5_000L);
-
-        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
-            store, "active-handle", "active-handle", 5_050L);
+            store, "active", 5_050L);
 
         int bottomSheetDrawable =
             TermuxSessionsListViewController.newActivityIndicatorDrawableRes(indicator.isVisible());
@@ -66,18 +58,18 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void pickerStructureOmitsTheBellForTheActiveSessionEvenWithARecordedBell() {
+    public void pickerOmitsTheBellForTheSeenCurrentSessionAndKeepsItForTheBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active-handle", 5_000L);
-        store.recordBell("background-handle", 1_000L);
+        store.recordBell("active", 5_000L);
+        store.recordSeen("active", 5_050L);
+        store.recordBell("background", 1_000L);
 
         long nowMillis = 5_050L;
-        String activeSessionHandle = "active-handle";
         Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
         markIfVisible(markedSessionAgeLabels, 0, TermuxSessionsListViewController.newActivityIndicator(
-            store, "active-handle", activeSessionHandle, nowMillis));
+            store, "active", nowMillis));
         markIfVisible(markedSessionAgeLabels, 1, TermuxSessionsListViewController.newActivityIndicator(
-            store, "background-handle", activeSessionHandle, nowMillis));
+            store, "background", nowMillis));
 
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.session(0), SessionHierarchyRow.session(1));
@@ -92,18 +84,27 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void leavingASessionStillRevealsABellThatArrivesAfterItStopsBeingActive() {
+    public void currentSessionWithoutASeenTickStillShowsItsBellThroughTheSharedLogic() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordSeen("handle", 6_000L);
-        store.recordBell("handle", 9_000L);
+        store.recordBell("current", 1_000L);
 
-        SessionNewActivityIndicator whileActive = TermuxSessionsListViewController.newActivityIndicator(
-            store, "handle", "handle", 9_500L);
-        SessionNewActivityIndicator afterLeaving = TermuxSessionsListViewController.newActivityIndicator(
-            store, "handle", "other-handle", 9_500L);
+        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+            store, "current", 31_000L);
 
-        Assert.assertFalse(whileActive.isVisible());
-        Assert.assertTrue(afterLeaving.isVisible());
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals("30s ago", indicator.getLabel());
+    }
+
+    @Test
+    public void aBellArrivingAfterTheLastSeenTickReappears() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordSeen("session", 6_000L);
+        store.recordBell("session", 9_000L);
+
+        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+            store, "session", 9_500L);
+
+        Assert.assertTrue(indicator.isVisible());
     }
 
     private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,

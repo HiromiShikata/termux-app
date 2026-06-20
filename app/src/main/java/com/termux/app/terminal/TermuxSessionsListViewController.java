@@ -336,15 +336,14 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return ageLabelsBySessionIndex;
         }
         long nowMillis = System.currentTimeMillis();
-        String activeSessionHandle = activeSessionHandle();
         for (int sessionIndex : getVisibleSessionIndexes()) {
             if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
                 continue;
             }
             TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
-            String sessionHandle = terminalSession == null ? null : terminalSession.mHandle;
+            String sessionName = terminalSession == null ? null : terminalSession.mSessionName;
             SessionNewActivityIndicator indicator =
-                newActivityIndicator(store, sessionHandle, activeSessionHandle, nowMillis);
+                newActivityIndicator(store, sessionName, nowMillis);
             if (indicator.isVisible()) {
                 ageLabelsBySessionIndex.put(sessionIndex, indicator.getLabel());
             }
@@ -354,34 +353,13 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @NonNull
     static SessionNewActivityIndicator newActivityIndicator(@NonNull SessionNewActivityStore store,
-                                                            @Nullable String sessionHandle,
+                                                            @Nullable String sessionName,
                                                             long nowMillis) {
-        if (sessionHandle == null) {
+        if (sessionName == null) {
             return SessionNewActivityIndicator.labelFor(null, null, nowMillis);
         }
-        return SessionNewActivityIndicator.labelFor(store.getLastBellTimeMillis(sessionHandle),
-            store.getLastSeenTimeMillis(sessionHandle), nowMillis);
-    }
-
-    @NonNull
-    static SessionNewActivityIndicator newActivityIndicator(@NonNull SessionNewActivityStore store,
-                                                            @Nullable String sessionHandle,
-                                                            @Nullable String activeSessionHandle,
-                                                            long nowMillis) {
-        if (isActiveSession(sessionHandle, activeSessionHandle)) {
-            return SessionNewActivityIndicator.labelFor(null, null, nowMillis);
-        }
-        return newActivityIndicator(store, sessionHandle, nowMillis);
-    }
-
-    static boolean isActiveSession(@Nullable String sessionHandle, @Nullable String activeSessionHandle) {
-        return sessionHandle != null && sessionHandle.equals(activeSessionHandle);
-    }
-
-    @Nullable
-    private String activeSessionHandle() {
-        TerminalSession currentSession = mActivity.getCurrentSession();
-        return currentSession == null ? null : currentSession.mHandle;
+        return SessionNewActivityIndicator.labelFor(store.getLastBellTimeMillis(sessionName),
+            store.getLastSeenTimeMillis(sessionName), nowMillis);
     }
 
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {

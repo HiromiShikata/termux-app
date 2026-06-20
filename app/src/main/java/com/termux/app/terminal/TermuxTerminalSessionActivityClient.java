@@ -356,28 +356,28 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordBellForSession(@NonNull TerminalSession session) {
-        if (session.mHandle == null) return;
-        mActivity.getSessionNewActivityStore().recordBell(session.mHandle, System.currentTimeMillis());
+        if (session.mSessionName == null) return;
+        mActivity.getSessionNewActivityStore().recordBell(session.mSessionName, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
     }
 
     @Nullable
-    private String activeSessionHandle() {
+    private String activeSessionName() {
         TerminalSession currentSession = mActivity.getCurrentSession();
-        return currentSession == null ? null : currentSession.mHandle;
+        return currentSession == null ? null : currentSession.mSessionName;
     }
 
-    private void clearNewActivityForViewedSession(@Nullable String sessionHandle) {
-        if (sessionHandle == null) return;
+    private void clearNewActivityForViewedSession(@Nullable String sessionName) {
+        if (sessionName == null) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (!store.hasUnseenBell(sessionHandle)) return;
-        store.recordSeen(sessionHandle, System.currentTimeMillis());
+        if (!store.hasUnseenBell(sessionName)) return;
+        store.recordSeen(sessionName, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
     }
 
-    private void purgeNewActivityForRemovedSession(@Nullable String sessionHandle) {
-        if (sessionHandle == null) return;
-        mActivity.getSessionNewActivityStore().purgeSession(sessionHandle);
+    private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        mActivity.getSessionNewActivityStore().purgeSession(sessionName);
         termuxSessionListNotifyUpdated();
     }
 
@@ -391,9 +391,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordActiveSessionSeen() {
-        String handle = activeSessionHandle();
-        if (handle == null) return;
-        mActivity.getSessionNewActivityStore().recordSeen(handle, System.currentTimeMillis());
+        String sessionName = activeSessionName();
+        if (sessionName == null) return;
+        mActivity.getSessionNewActivityStore().recordSeen(sessionName, System.currentTimeMillis());
     }
 
     public void startActiveSessionSeenTick() {
@@ -481,7 +481,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
 
-        clearNewActivityForViewedSession(session.mHandle);
+        clearNewActivityForViewedSession(session.mSessionName);
 
         stopActiveSessionSeenTick();
         startActiveSessionSeenTick();
@@ -926,7 +926,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         if (finishedSession != null)
-            purgeNewActivityForRemovedSession(finishedSession.mHandle);
+            purgeNewActivityForRemovedSession(finishedSession.mSessionName);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
@@ -956,7 +956,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
-        purgeNewActivityForRemovedSession(sessionToRemove.mHandle);
+        purgeNewActivityForRemovedSession(sessionToRemove.mSessionName);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(sessionToRemove);

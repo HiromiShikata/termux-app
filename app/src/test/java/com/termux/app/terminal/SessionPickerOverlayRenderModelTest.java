@@ -298,7 +298,28 @@ public class SessionPickerOverlayRenderModelTest {
     }
 
     @Test
-    public void flagsTheCurrentSessionAndSuppressesItsBellWhileKeepingOtherUnseenBells() {
+    public void flagsTheCurrentSessionAndShowsItsBellOnlyFromTheSharedMarkedSet() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.session(1));
+        List<String> names = Arrays.asList("current", "background");
+        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+        markedSessionAgeLabels.put(1, "30s ago");
+
+        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
+            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, 0), -1);
+
+        Assert.assertTrue(lines.get(0).isCurrent());
+        Assert.assertFalse(lines.get(0).isMarked());
+        Assert.assertEquals("", lines.get(0).getNewActivityLabel());
+
+        Assert.assertFalse(lines.get(1).isCurrent());
+        Assert.assertTrue(lines.get(1).isMarked());
+        Assert.assertEquals("30s ago", lines.get(1).getNewActivityLabel());
+    }
+
+    @Test
+    public void marksTheCurrentSessionsBellWhenItIsStillInTheMarkedSet() {
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.session(0),
             SessionHierarchyRow.session(1));
@@ -311,10 +332,9 @@ public class SessionPickerOverlayRenderModelTest {
             rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, 0), -1);
 
         Assert.assertTrue(lines.get(0).isCurrent());
-        Assert.assertFalse(lines.get(0).isMarked());
-        Assert.assertEquals("", lines.get(0).getNewActivityLabel());
+        Assert.assertTrue(lines.get(0).isMarked());
+        Assert.assertEquals("4s ago", lines.get(0).getNewActivityLabel());
 
-        Assert.assertFalse(lines.get(1).isCurrent());
         Assert.assertTrue(lines.get(1).isMarked());
         Assert.assertEquals("30s ago", lines.get(1).getNewActivityLabel());
     }

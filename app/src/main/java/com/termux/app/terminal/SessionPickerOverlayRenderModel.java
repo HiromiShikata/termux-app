@@ -47,7 +47,7 @@ public final class SessionPickerOverlayRenderModel {
                     int sessionIndex = row.getSessionIndex();
                     SessionRow sessionRow = SessionRow.rowOrEmpty(sessionRowsByIndex, sessionIndex);
                     boolean isCurrentSession = sessionRow.isCurrent();
-                    boolean isBellMarked = !isCurrentSession && sessionRow.isBellMarked();
+                    boolean isBellMarked = sessionRow.isBellMarked();
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.SESSION,
                         sessionPrimaryName(sessionRow),
