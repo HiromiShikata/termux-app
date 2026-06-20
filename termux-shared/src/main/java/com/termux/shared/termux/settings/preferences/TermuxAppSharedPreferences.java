@@ -476,6 +476,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public String getPersistedSessionNewActivityStates() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSION_NEW_ACTIVITY_STATES, TERMUX_APP.DEFAULT_VALUE_KEY_PERSISTED_SESSION_NEW_ACTIVITY_STATES, false);
+    }
+
+    public void setPersistedSessionNewActivityStates(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSION_NEW_ACTIVITY_STATES, value, false);
+    }
+
+
     public String getBrowserBookmarks() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_BOOKMARKS, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_BOOKMARKS, false);
     }

@@ -23,6 +23,8 @@ import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
+import com.termux.app.terminal.session.PreferencesSessionNewActivityPersistence;
+import com.termux.app.terminal.session.SessionNewActivityStateStore;
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.net.uri.UriUtils;
@@ -51,7 +53,9 @@ import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A service holding a list of {@link TermuxSession} in {@link TermuxShellManager#mTermuxSessions} and background {@link AppShell}
@@ -89,7 +93,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      */
     private final TermuxTerminalSessionServiceClient mTermuxTerminalSessionServiceClient = new TermuxTerminalSessionServiceClient(this);
 
-    private final SessionNewActivityStore mSessionNewActivityStore = new SessionNewActivityStore();
+    private SessionNewActivityStore mSessionNewActivityStore = new SessionNewActivityStore();
 
     /**
      * Termux app shared properties manager, loaded from termux.properties
@@ -123,6 +127,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         mProperties = TermuxAppSharedProperties.getProperties();
 
         mShellManager = TermuxShellManager.getShellManager();
+
+        mSessionNewActivityStore = buildSessionNewActivityStore();
 
         runStartForeground();
 
@@ -941,6 +947,36 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     public SessionNewActivityStore getSessionNewActivityStore() {
         return mSessionNewActivityStore;
+    }
+
+    public synchronized void pruneSessionNewActivityStoreToLiveSessions() {
+        Set<String> liveHandles = new HashSet<>();
+        for (TermuxSession termuxSession : mShellManager.mTermuxSessions) {
+            String handle = termuxSession.getTerminalSession().mHandle;
+            if (handle != null)
+                liveHandles.add(handle);
+        }
+        mSessionNewActivityStore.pruneToHandles(liveHandles);
+    }
+
+    @NonNull
+    private SessionNewActivityStore buildSessionNewActivityStore() {
+        final TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this);
+        if (preferences == null)
+            return new SessionNewActivityStore();
+
+        SessionNewActivityStateStore store = new SessionNewActivityStateStore() {
+            @Override
+            public String getPersistedSessionNewActivityStates() {
+                return preferences.getPersistedSessionNewActivityStates();
+            }
+
+            @Override
+            public void setPersistedSessionNewActivityStates(String value) {
+                preferences.setPersistedSessionNewActivityStates(value);
+            }
+        };
+        return new SessionNewActivityStore(new PreferencesSessionNewActivityPersistence(store));
     }
 
     @Nullable

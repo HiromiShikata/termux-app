@@ -227,6 +227,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_PERSISTED_SESSIONS = "persisted_sessions";
         public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSIONS = "";
 
+        public static final String KEY_PERSISTED_SESSION_NEW_ACTIVITY_STATES = "persisted_session_new_activity_states";
+        public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSION_NEW_ACTIVITY_STATES = "";
+
         public static final String KEY_BROWSER_BOOKMARKS = "browser_bookmarks";
         public static final String DEFAULT_VALUE_KEY_BROWSER_BOOKMARKS = "";
 
