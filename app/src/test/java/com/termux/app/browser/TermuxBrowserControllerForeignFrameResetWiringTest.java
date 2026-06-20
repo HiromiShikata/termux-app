@@ -33,10 +33,19 @@ public class TermuxBrowserControllerForeignFrameResetWiringTest {
         String methodBody = source.substring(methodIndex, methodEnd);
         Assert.assertTrue(methodBody.contains(
             "BrowserRenderedFrameOwnership.isRenderedFrameForeign"));
-        Assert.assertTrue(methodBody.contains("mWebViewOwnerHandle = null"));
-        Assert.assertTrue(methodBody.contains("mLoadedUrl = null"));
-        Assert.assertTrue(methodBody.contains("mActiveNavigation = null"));
+        Assert.assertTrue(methodBody.contains("blankFrame()"));
         Assert.assertTrue(methodBody.contains("mWebView.loadUrl(\"about:blank\")"));
+    }
+
+    @Test
+    public void blankFrameIsTheSingleStateClearingWriteForTheRenderedFrame() throws IOException {
+        String source = readControllerSource();
+        int methodIndex = source.indexOf("private void blankFrame()");
+        Assert.assertTrue(methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue(methodBody.contains("mRenderedFrame = BrowserRenderedFrame.BLANK"));
     }
 
     @Test
@@ -75,14 +84,38 @@ public class TermuxBrowserControllerForeignFrameResetWiringTest {
         String methodBody = source.substring(displayIndex, methodEnd);
         Assert.assertTrue(methodBody.contains(
             "BrowserRenderedFrameOwnership.requiresCoverForFrame"));
-        Assert.assertTrue(methodBody.contains("mWebViewOwnerHandle"));
+        Assert.assertTrue(methodBody.contains("mRenderedFrame.getOwnerSessionHandle()"));
     }
 
     @Test
-    public void callbackAttributionThroughActiveNavigationIsPreserved() throws IOException {
+    public void displayingATabRoutesThroughTheSingleRenderFrameWrite() throws IOException {
         String source = readControllerSource();
-        Assert.assertTrue(source.contains("mActiveNavigation.tabForUrlCallback"));
-        Assert.assertTrue(source.contains("mActiveNavigation.tabForTitleCallback"));
+        int displayIndex = source.indexOf("private void displayTabInWebView(@NonNull BrowserTab tab)");
+        Assert.assertTrue(displayIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", displayIndex);
+        Assert.assertTrue(methodEnd > displayIndex);
+        String methodBody = source.substring(displayIndex, methodEnd);
+        Assert.assertTrue(methodBody.contains("renderFrame(tab)"));
+    }
+
+    @Test
+    public void renderFrameIsTheSingleStateSettingWriteForTheRenderedFrame() throws IOException {
+        String source = readControllerSource();
+        int methodIndex = source.indexOf("private void renderFrame(@NonNull BrowserTab tab)");
+        Assert.assertTrue(methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue(methodBody.contains(
+            "mRenderedFrame = BrowserRenderedFrame.renderingTab(tab)"));
+    }
+
+    @Test
+    public void callbackAttributionThroughInFlightNavigationIsPreserved() throws IOException {
+        String source = readControllerSource();
+        Assert.assertTrue(source.contains("inFlightNavigation.tabForUrlCallback"));
+        Assert.assertTrue(source.contains("inFlightNavigation.tabForTitleCallback"));
+        Assert.assertTrue(source.contains("mRenderedFrame.getInFlightNavigation()"));
     }
 
     @Test
@@ -92,6 +125,7 @@ public class TermuxBrowserControllerForeignFrameResetWiringTest {
         Assert.assertTrue(onRemovedIndex >= 0);
         int methodEnd = source.indexOf("\n    }", onRemovedIndex);
         String methodBody = source.substring(onRemovedIndex, methodEnd);
-        Assert.assertTrue(methodBody.contains("mWebViewOwnerHandle = null"));
+        Assert.assertTrue(methodBody.contains("mRenderedFrame.getOwnerSessionHandle()"));
+        Assert.assertTrue(methodBody.contains("blankFrame()"));
     }
 }
