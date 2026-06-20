@@ -6,13 +6,15 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class SessionPickerOverlayRenderModelTest {
 
     private static final List<String> NO_TITLES = Collections.emptyList();
-    private static final Set<Integer> NO_MARKS = Collections.emptySet();
+    private static final Map<Integer, String> NO_MARKS = Collections.emptyMap();
     private static final Set<Integer> NO_DISABLED = Collections.emptySet();
 
     @Test
@@ -191,14 +193,32 @@ public class SessionPickerOverlayRenderModelTest {
             SessionHierarchyRow.session(1),
             SessionHierarchyRow.session(2));
         List<String> names = Arrays.asList("alpha", "beta", "gamma");
-        Set<Integer> markedSessionIndexes = new HashSet<>(Arrays.asList(0, 2));
+        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+        markedSessionAgeLabels.put(0, "5s ago");
+        markedSessionAgeLabels.put(2, "2m ago");
 
         List<SessionPickerOverlayLine> lines =
-            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, markedSessionIndexes, NO_DISABLED, -1);
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, -1);
 
         Assert.assertTrue(lines.get(0).isMarked());
         Assert.assertFalse(lines.get(1).isMarked());
         Assert.assertTrue(lines.get(2).isMarked());
+    }
+
+    @Test
+    public void carriesTheAgeLabelForMarkedSessionsAndEmptyForUnmarkedSessions() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.session(1));
+        List<String> names = Arrays.asList("alpha", "beta");
+        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+        markedSessionAgeLabels.put(1, "12s ago");
+
+        List<SessionPickerOverlayLine> lines =
+            SessionPickerOverlayRenderModel.build(rows, names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, -1);
+
+        Assert.assertEquals("", lines.get(0).getNewActivityLabel());
+        Assert.assertEquals("12s ago", lines.get(1).getNewActivityLabel());
     }
 
     @Test

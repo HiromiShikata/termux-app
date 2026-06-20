@@ -21,63 +21,61 @@ import org.robolectric.RuntimeEnvironment;
 @RunWith(RobolectricTestRunner.class)
 public class SessionBellIndicatorConsistencyTest {
 
-    private static boolean bottomSheetShowsBell(Long bellArrivalTimeMillis,
-                                                SessionOutputActivityStore outputActivityStore,
-                                                String sessionHandle) {
-        boolean hasIndicator = TermuxSessionsListViewController.hasNewActivityIndicator(
-            bellArrivalTimeMillis, outputActivityStore, sessionHandle);
-        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(hasIndicator)
+    private static boolean bottomSheetShowsBell(SessionNewActivityIndicator indicator) {
+        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(indicator.isVisible())
             == R.drawable.ic_session_bell_notification;
     }
 
-    private static boolean pickerOverlayShowsBell(Long bellArrivalTimeMillis,
-                                                  SessionOutputActivityStore outputActivityStore,
-                                                  String sessionHandle) {
-        boolean hasIndicator = TermuxSessionsListViewController.hasNewActivityIndicator(
-            bellArrivalTimeMillis, outputActivityStore, sessionHandle);
-        return SessionSwitchPickerController.isBellMarkSlotVisible(hasIndicator);
+    private static boolean pickerOverlayShowsBell(SessionNewActivityIndicator indicator) {
+        return SessionSwitchPickerController.isBellMarkSlotVisible(indicator.isVisible());
     }
 
     @Test
-    public void bothRenderersAgreeWhenOnlyOutputActivityIsRecorded() {
-        SessionOutputActivityStore outputActivityStore = new SessionOutputActivityStore();
-        outputActivityStore.markOutputActivity("handle");
+    public void bothRenderersAgreeWhenNewActivityIsRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.markNewActivity("background-handle", 1_000L);
+        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+            store, "background-handle", "current-handle", 4_000L);
 
-        Assert.assertEquals(
-            bottomSheetShowsBell(null, outputActivityStore, "handle"),
-            pickerOverlayShowsBell(null, outputActivityStore, "handle"));
-        Assert.assertTrue(bottomSheetShowsBell(null, outputActivityStore, "handle"));
+        Assert.assertEquals(bottomSheetShowsBell(indicator), pickerOverlayShowsBell(indicator));
+        Assert.assertTrue(bottomSheetShowsBell(indicator));
     }
 
     @Test
-    public void bothRenderersAgreeWhenOnlyBellIsRecorded() {
-        SessionOutputActivityStore outputActivityStore = new SessionOutputActivityStore();
+    public void bothRenderersAgreeWhenNoNewActivityIsRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+            store, "background-handle", "current-handle", 4_000L);
 
-        Assert.assertEquals(
-            bottomSheetShowsBell(1_000L, outputActivityStore, "handle"),
-            pickerOverlayShowsBell(1_000L, outputActivityStore, "handle"));
-        Assert.assertTrue(bottomSheetShowsBell(1_000L, outputActivityStore, "handle"));
+        Assert.assertEquals(bottomSheetShowsBell(indicator), pickerOverlayShowsBell(indicator));
+        Assert.assertFalse(bottomSheetShowsBell(indicator));
     }
 
     @Test
-    public void bothRenderersAgreeWhenNeitherBellNorOutputActivityIsRecorded() {
-        SessionOutputActivityStore outputActivityStore = new SessionOutputActivityStore();
+    public void bothRenderersDeriveTheSameAgeLabelFromTheSharedHelper() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.markNewActivity("background-handle", 1_000L);
+        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+            store, "background-handle", "current-handle", 31_000L);
 
-        Assert.assertEquals(
-            bottomSheetShowsBell(null, outputActivityStore, "handle"),
-            pickerOverlayShowsBell(null, outputActivityStore, "handle"));
-        Assert.assertFalse(bottomSheetShowsBell(null, outputActivityStore, "handle"));
+        String bottomSheetLabel = "  " + indicator.getLabel();
+        String pickerLabel = SessionSwitchPickerController.newActivityLabelSlotText(indicator.getLabel());
+
+        Assert.assertEquals("30s ago", indicator.getLabel());
+        Assert.assertEquals(bottomSheetLabel, pickerLabel);
     }
 
     @Test
-    public void bothRenderersAgreeWhenBothBellAndOutputActivityAreRecorded() {
-        SessionOutputActivityStore outputActivityStore = new SessionOutputActivityStore();
-        outputActivityStore.markOutputActivity("handle");
+    public void currentSessionNeverShowsAnIndicatorEvenWhenAStaleTimestampExists() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.markNewActivity("current-handle", 1_000L);
+        SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
+            store, "current-handle", "current-handle", 4_000L);
 
-        Assert.assertEquals(
-            bottomSheetShowsBell(1_000L, outputActivityStore, "handle"),
-            pickerOverlayShowsBell(1_000L, outputActivityStore, "handle"));
-        Assert.assertTrue(bottomSheetShowsBell(1_000L, outputActivityStore, "handle"));
+        Assert.assertFalse(indicator.isVisible());
+        Assert.assertEquals("", indicator.getLabel());
+        Assert.assertFalse(bottomSheetShowsBell(indicator));
+        Assert.assertFalse(pickerOverlayShowsBell(indicator));
     }
 
     @Test

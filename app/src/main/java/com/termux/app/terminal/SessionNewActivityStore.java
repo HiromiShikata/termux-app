@@ -6,29 +6,33 @@ import androidx.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SessionBellNotificationStore {
+public class SessionNewActivityStore {
 
     private static final long ONE_SECOND_MILLIS = 1000L;
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
 
-    private final Map<String, Long> mBellArrivalTimeMillisByHandle = new HashMap<>();
+    private final Map<String, Long> mArrivalTimeMillisByHandle = new HashMap<>();
 
-    public void recordBell(@NonNull String sessionHandle, long arrivalTimeMillis) {
-        mBellArrivalTimeMillisByHandle.put(sessionHandle, arrivalTimeMillis);
+    public void markNewActivity(@NonNull String sessionHandle, long arrivalTimeMillis) {
+        mArrivalTimeMillisByHandle.put(sessionHandle, arrivalTimeMillis);
     }
 
-    public void clearBell(@NonNull String sessionHandle) {
-        mBellArrivalTimeMillisByHandle.remove(sessionHandle);
+    public void clearNewActivity(@NonNull String sessionHandle) {
+        mArrivalTimeMillisByHandle.remove(sessionHandle);
     }
 
-    public boolean hasPendingNotification(@NonNull String sessionHandle) {
-        return mBellArrivalTimeMillisByHandle.containsKey(sessionHandle);
+    public void purgeSession(@NonNull String sessionHandle) {
+        mArrivalTimeMillisByHandle.remove(sessionHandle);
+    }
+
+    public boolean hasNewActivity(@NonNull String sessionHandle) {
+        return mArrivalTimeMillisByHandle.containsKey(sessionHandle);
     }
 
     @Nullable
-    public Long getBellArrivalTimeMillis(@NonNull String sessionHandle) {
-        return mBellArrivalTimeMillisByHandle.get(sessionHandle);
+    public Long getArrivalTimeMillis(@NonNull String sessionHandle) {
+        return mArrivalTimeMillisByHandle.get(sessionHandle);
     }
 
     public static String formatRelativeTime(long elapsedMillis) {

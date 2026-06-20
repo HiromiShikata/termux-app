@@ -41,6 +41,7 @@ public class SessionSwitchPickerController {
     private static final float SPACER_RELATIVE_SIZE = 0.4f;
     private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
     private static final String BELL_MARK = "🔔 ";
+    private static final String NEW_ACTIVITY_LABEL_PREFIX = "  ";
     private static final int TRANSPARENT_COLOR = 0x00000000;
     private static final int STORY_TEXT_COLOR = 0x99FFFFFF;
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
@@ -141,7 +142,7 @@ public class SessionSwitchPickerController {
     private void renderStructure(@NonNull TermuxSessionsListViewController listController) {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
             listController.getVisibleRows(), listController.getSessionRawNames(),
-            listController.getSessionTitles(), listController.getMarkedSessionIndexes(),
+            listController.getSessionTitles(), listController.getMarkedSessionAgeLabels(),
             listController.getDisabledSessionIndexes(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
         applyFixedOverlaySize();
@@ -226,6 +227,45 @@ public class SessionSwitchPickerController {
         return marked;
     }
 
+    @NonNull
+    static String newActivityLabelSlotText(@NonNull String newActivityLabel) {
+        if (newActivityLabel.isEmpty()) {
+            return "";
+        }
+        return NEW_ACTIVITY_LABEL_PREFIX + newActivityLabel;
+    }
+
+    @NonNull
+    static String pickerStructurePlainText(@NonNull List<SessionPickerOverlayLine> lines) {
+        StringBuilder text = new StringBuilder();
+        for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+            SessionPickerOverlayLine line = lines.get(lineIndex);
+            if (lineIndex > 0) {
+                text.append('\n');
+            }
+            switch (line.getKind()) {
+                case PROJECT:
+                    text.append(line.getText());
+                    break;
+                case STORY:
+                    text.append(STORY_PREFIX).append(line.getText());
+                    break;
+                case SPACER:
+                    text.append(' ');
+                    break;
+                case SESSION:
+                default:
+                    text.append(bellMarkSlotText()).append(line.getText())
+                        .append(newActivityLabelSlotText(line.getNewActivityLabel()));
+                    if (!line.getSecondaryText().isEmpty()) {
+                        text.append('\n').append(line.getSecondaryText());
+                    }
+                    break;
+            }
+        }
+        return text.toString();
+    }
+
     private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
                                    int start, int highlightColor, int sessionIndentPixels) {
         int bellMarkStart = builder.length();
@@ -238,6 +278,15 @@ public class SessionSwitchPickerController {
         builder.append(line.getText());
         builder.setSpan(new RelativeSizeSpan(SESSION_NAME_RELATIVE_SIZE), nameStart, builder.length(),
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        String newActivityLabel = line.getNewActivityLabel();
+        if (!newActivityLabel.isEmpty()) {
+            int ageLabelStart = builder.length();
+            builder.append(newActivityLabelSlotText(newActivityLabel));
+            builder.setSpan(new RelativeSizeSpan(SECONDARY_RELATIVE_SIZE), ageLabelStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new ForegroundColorSpan(SECONDARY_TEXT_COLOR), ageLabelStart, builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
         if (line.isHighlighted()) {
             builder.setSpan(new StyleSpan(Typeface.BOLD), start, builder.length(),
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
