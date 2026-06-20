@@ -82,6 +82,13 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private final Set<String> mCollapsedProjectKeys = new LinkedHashSet<>();
 
+    @Nullable
+    private SessionClickHost mSessionClickHost;
+
+    public interface SessionClickHost {
+        void onSessionSelected();
+    }
+
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
         this.mActivity = activity;
         this.mSessionList = sessionList;
@@ -103,6 +110,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return;
         }
         preferences.setCollapsedProjectKeys(mCollapsedProjectKeys);
+    }
+
+    public void setSessionClickHost(@Nullable SessionClickHost sessionClickHost) {
+        this.mSessionClickHost = sessionClickHost;
     }
 
     public void setEntries(@NonNull List<SessionDefinitionEntry> entries) {
@@ -779,7 +790,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return;
         }
         mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
-        mActivity.getDrawer().closeDrawers();
+        if (mSessionClickHost != null) {
+            mSessionClickHost.onSessionSelected();
+        }
     }
 
     @Override
