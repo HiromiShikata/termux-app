@@ -5,6 +5,7 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.method.ScrollingMovementMethod;
@@ -57,6 +58,7 @@ public class SessionSwitchPickerController {
 
     private boolean mShowing;
     private int mHighlightedSessionIndex = -1;
+    private int mHighlightedTextOffset = -1;
 
     public SessionSwitchPickerController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -118,6 +120,7 @@ public class SessionSwitchPickerController {
     private void hide() {
         mShowing = false;
         mHighlightedSessionIndex = -1;
+        mHighlightedTextOffset = -1;
         mHandler.removeCallbacks(mCommitRunnable);
         mHandler.removeCallbacks(mHideRunnable);
         mOverlayView.setVisibility(View.GONE);
@@ -140,6 +143,30 @@ public class SessionSwitchPickerController {
             listController.getVisibleRows(), listController.getSessionRows(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
         applyFixedOverlaySize();
+        scrollHighlightedLineIntoView();
+    }
+
+    private void scrollHighlightedLineIntoView() {
+        final int highlightedTextOffset = mHighlightedTextOffset;
+        if (highlightedTextOffset < 0) {
+            return;
+        }
+        mStructureView.post(() -> {
+            Layout layout = mStructureView.getLayout();
+            if (layout == null || highlightedTextOffset > layout.getText().length()) {
+                return;
+            }
+            int highlightedLine = layout.getLineForOffset(highlightedTextOffset);
+            int highlightedLineTop = layout.getLineTop(highlightedLine);
+            int highlightedLineBottom = layout.getLineBottom(highlightedLine);
+            int viewportHeight = mStructureView.getHeight()
+                - mStructureView.getPaddingTop() - mStructureView.getPaddingBottom();
+            int contentHeight = layout.getHeight();
+            int targetScrollY = SessionPickerScrollOffset.targetScrollY(
+                highlightedLineTop, highlightedLineBottom, viewportHeight, contentHeight,
+                mStructureView.getScrollY());
+            mStructureView.scrollTo(mStructureView.getScrollX(), targetScrollY);
+        });
     }
 
     private void applyFixedOverlaySize() {
@@ -176,6 +203,7 @@ public class SessionSwitchPickerController {
 
     private CharSequence buildStructureText(@NonNull List<SessionPickerOverlayLine> lines) {
         SpannableStringBuilder builder = new SpannableStringBuilder();
+        mHighlightedTextOffset = -1;
         int highlightColor = ContextCompat.getColor(mActivity, R.color.session_active_indicator);
         int sessionIndentPixels = Math.round(TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, SESSION_INDENT_DP, mActivity.getResources().getDisplayMetrics()));
@@ -185,6 +213,9 @@ public class SessionSwitchPickerController {
                 builder.append('\n');
             }
             int start = builder.length();
+            if (line.isHighlighted()) {
+                mHighlightedTextOffset = start;
+            }
             switch (line.getKind()) {
                 case PROJECT:
                     builder.append(line.getText());
