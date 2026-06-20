@@ -616,6 +616,7 @@
             android:layout_height="match_parent"
             android:layout_alignParentTop="true"
             android:layout_above="@+id/terminal_toolbar_bottom_container"
+            android:background="#CC000000"
             android:clickable="false"
             android:elevation="12dp"
             android:focusable="false"
