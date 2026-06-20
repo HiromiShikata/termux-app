@@ -1,5 +1,6 @@
 package com.termux.app.terminal;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Typeface;
@@ -10,6 +11,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.ImageSpan;
 import android.text.style.LeadingMarginSpan;
 import android.text.style.LineBackgroundSpan;
 import android.text.style.RelativeSizeSpan;
@@ -41,12 +43,12 @@ public class SessionSwitchPickerController {
     private static final float STORY_RELATIVE_SIZE = 0.7f;
     private static final float SPACER_RELATIVE_SIZE = 0.4f;
     private static final float SECONDARY_RELATIVE_SIZE = 0.65f;
-    private static final int TRANSPARENT_COLOR = 0x00000000;
     private static final int STORY_TEXT_COLOR = 0x99FFFFFF;
     private static final int SECONDARY_TEXT_COLOR = 0x99FFFFFF;
     private static final int HIGHLIGHT_BACKGROUND_ALPHA = 0x66;
     private static final int HIGHLIGHTED_SESSION_TEXT_COLOR = 0xFFFFFFFF;
     private static final float SESSION_INDENT_DP = 12f;
+    private static final float CURRENT_SESSION_INDICATOR_BAR_WIDTH_DP = 3f;
     private static final float OVERLAY_FIXED_WIDTH_DP = 240f;
     private static final float OVERLAY_MAX_HEIGHT_SCREEN_FRACTION = 0.8f;
 
@@ -219,6 +221,9 @@ public class SessionSwitchPickerController {
         int highlightColor = ContextCompat.getColor(mActivity, R.color.session_active_indicator);
         int sessionIndentPixels = Math.round(TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, SESSION_INDENT_DP, mActivity.getResources().getDisplayMetrics()));
+        int currentIndicatorBarWidthPixels = Math.round(TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, CURRENT_SESSION_INDICATOR_BAR_WIDTH_DP,
+            mActivity.getResources().getDisplayMetrics()));
         for (int lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             SessionPickerOverlayLine line = lines.get(lineIndex);
             if (lineIndex > 0) {
@@ -248,7 +253,9 @@ public class SessionSwitchPickerController {
                     break;
                 case SESSION:
                 default:
-                    appendSessionLine(builder, line, start, highlightColor, sessionIndentPixels);
+                    appendSessionLine(mActivity, builder, line, start, highlightColor, sessionIndentPixels,
+                        currentIndicatorBarWidthPixels, mStructureView.getPaddingLeft(),
+                        mStructureView.getPaddingRight());
                     break;
             }
         }
@@ -262,6 +269,10 @@ public class SessionSwitchPickerController {
 
     static boolean isBellMarkSlotVisible(boolean marked) {
         return marked;
+    }
+
+    static int bellMarkDrawableRes(boolean marked) {
+        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(marked);
     }
 
     @NonNull
@@ -303,14 +314,15 @@ public class SessionSwitchPickerController {
         return text.toString();
     }
 
-    private void appendSessionLine(@NonNull SpannableStringBuilder builder, @NonNull SessionPickerOverlayLine line,
-                                   int start, int highlightColor, int sessionIndentPixels) {
+    static void appendSessionLine(@NonNull Context context, @NonNull SpannableStringBuilder builder,
+                                  @NonNull SessionPickerOverlayLine line, int start, int highlightColor,
+                                  int sessionIndentPixels, int currentIndicatorBarWidthPixels,
+                                  int paddingLeft, int paddingRight) {
         int bellMarkStart = builder.length();
-        builder.append(bellMarkSlotText());
-        if (!isBellMarkSlotVisible(line.isMarked())) {
-            builder.setSpan(new ForegroundColorSpan(TRANSPARENT_COLOR), bellMarkStart, builder.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
+        builder.append(' ');
+        builder.setSpan(new ImageSpan(context, bellMarkDrawableRes(line.isMarked()), ImageSpan.ALIGN_BASELINE),
+            bellMarkStart, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        builder.append(' ');
         int nameStart = builder.length();
         builder.append(line.getText());
         builder.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), nameStart, builder.length(),
@@ -350,8 +362,12 @@ public class SessionSwitchPickerController {
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         if (line.isHighlighted()) {
             int highlightBackground = (HIGHLIGHT_BACKGROUND_ALPHA << 24) | (highlightColor & 0x00FFFFFF);
-            builder.setSpan(new FullWidthHighlightSpan(highlightBackground, mStructureView.getPaddingLeft(),
-                mStructureView.getPaddingRight()), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new FullWidthHighlightSpan(highlightBackground, paddingLeft, paddingRight),
+                start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (line.isCurrent()) {
+            builder.setSpan(new CurrentSessionIndicatorSpan(highlightColor, paddingLeft,
+                currentIndicatorBarWidthPixels), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
     }
 
@@ -373,6 +389,28 @@ public class SessionSwitchPickerController {
                                    int top, int baseline, int bottom, @NonNull CharSequence text,
                                    int start, int end, int lineNumber) {
             canvas.drawRect(left - mPaddingLeft, top, right + mPaddingRight, bottom, mFillPaint);
+        }
+    }
+
+    static final class CurrentSessionIndicatorSpan implements LineBackgroundSpan {
+
+        private final Paint mBarPaint = new Paint();
+        private final int mPaddingLeft;
+        private final int mBarWidth;
+
+        CurrentSessionIndicatorSpan(int color, int paddingLeft, int barWidth) {
+            mBarPaint.setColor(color);
+            mBarPaint.setStyle(Paint.Style.FILL);
+            mPaddingLeft = paddingLeft;
+            mBarWidth = barWidth;
+        }
+
+        @Override
+        public void drawBackground(@NonNull Canvas canvas, @NonNull Paint paint, int left, int right,
+                                   int top, int baseline, int bottom, @NonNull CharSequence text,
+                                   int start, int end, int lineNumber) {
+            int barLeft = left - mPaddingLeft;
+            canvas.drawRect(barLeft, top, barLeft + mBarWidth, bottom, mBarPaint);
         }
     }
 }
