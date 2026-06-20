@@ -101,6 +101,17 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
+    public void removeSessionsWithDisappearedDefinitionRemovesAllWhenDefinitionBecomesEmpty() throws Exception {
+        shellManager.mTermuxSessions.add(session("adhoc-local"));
+        shellManager.mTermuxSessions.add(session("https://example.test/a"));
+        shellManager.mTermuxSessions.add(session("https://example.test/c"));
+
+        invokeRemoveSessionsWithDisappearedDefinition(Collections.emptyList());
+
+        assertEquals(Collections.singletonList("adhoc-local"), remainingSessionNames());
+    }
+
+    @Test
     public void ensureCurrentSessionValidAfterRebuildKeepsAValidCurrentSession() throws Exception {
         TermuxSession adHoc = session("adhoc-local");
         TermuxSession stillDefined = session("https://example.test/a");

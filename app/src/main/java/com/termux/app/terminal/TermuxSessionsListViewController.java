@@ -106,13 +106,13 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     public void setEntries(@NonNull List<SessionDefinitionEntry> entries) {
-        this.mEntries = entries;
+        this.mEntries = new ArrayList<>(entries);
         notifyDataSetChanged();
     }
 
     @NonNull
     public List<SessionDefinitionEntry> getEntries() {
-        return mEntries;
+        return Collections.unmodifiableList(mEntries);
     }
 
     @Override

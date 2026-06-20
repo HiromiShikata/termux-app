@@ -80,7 +80,6 @@ public final class SessionDefinitionController {
 
         if (plannedSessions.isEmpty()) {
             activity.showToast(activity.getString(R.string.msg_session_definition_no_entries), true);
-            return;
         }
 
         Set<String> liveSessionNames = collectLiveSessionNames();
