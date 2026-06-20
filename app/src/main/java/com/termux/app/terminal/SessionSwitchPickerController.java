@@ -83,14 +83,13 @@ public class SessionSwitchPickerController {
             orderedSessionIndexes, navigableSessionIndexes, forward);
         mHighlightedSessionIndex = decision.getHighlightedSessionIndex();
         mShowing = true;
-        renderStructure(listController);
-        mOverlayView.setVisibility(View.VISIBLE);
-        if (decision.shouldSwitchImmediately()) {
-            switchToHighlightedSession();
-            scheduleHide();
-        } else {
-            scheduleCommit();
-        }
+        VolumeKeyPickerPresentation.present(
+            decision,
+            this::switchToHighlightedSession,
+            () -> renderStructure(listController),
+            () -> mOverlayView.setVisibility(View.VISIBLE),
+            this::scheduleHide,
+            this::scheduleCommit);
     }
 
     public void commitAndHide() {
