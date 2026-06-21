@@ -1,6 +1,9 @@
 package com.termux.app.terminal;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.RectF;
 import android.text.SpannableStringBuilder;
 import android.text.style.ImageSpan;
 
@@ -95,5 +98,56 @@ public class SessionSwitchPickerControllerRenderTest {
             builder.getSpans(0, builder.length(),
                 SessionSwitchPickerController.CurrentSessionIndicatorSpan.class);
         Assert.assertEquals(0, indicatorSpans.length);
+    }
+
+    @Test
+    public void currentSessionIndicatorBarDrawsAtTheLeftContentEdgeNotOffThePanel() {
+        SessionSwitchPickerController.CurrentSessionIndicatorSpan indicatorSpan =
+            new SessionSwitchPickerController.CurrentSessionIndicatorSpan(
+                ACTIVE_INDICATOR_COLOR, INDICATOR_BAR_WIDTH_PIXELS);
+        int lineLeft = 0;
+        int lineRight = 240;
+        int lineTop = 10;
+        int lineBottom = 30;
+        RecordingCanvas recordingCanvas = new RecordingCanvas();
+
+        indicatorSpan.drawBackground(recordingCanvas, new Paint(), lineLeft, lineRight,
+            lineTop, lineTop + 15, lineBottom, "active", 0, 6, 0);
+
+        Assert.assertNotNull("indicator bar must be drawn", recordingCanvas.lastRect);
+        Assert.assertEquals(lineLeft, Math.round(recordingCanvas.lastRect.left));
+        Assert.assertEquals(lineLeft + INDICATOR_BAR_WIDTH_PIXELS,
+            Math.round(recordingCanvas.lastRect.right));
+        Assert.assertTrue("bar must start within the panel left edge, not off-screen",
+            recordingCanvas.lastRect.left >= lineLeft);
+    }
+
+    @Test
+    public void currentSessionIndicatorBarSpansTheFullLineHeight() {
+        SessionSwitchPickerController.CurrentSessionIndicatorSpan indicatorSpan =
+            new SessionSwitchPickerController.CurrentSessionIndicatorSpan(
+                ACTIVE_INDICATOR_COLOR, INDICATOR_BAR_WIDTH_PIXELS);
+        int lineTop = 10;
+        int lineBottom = 30;
+        RecordingCanvas recordingCanvas = new RecordingCanvas();
+
+        indicatorSpan.drawBackground(recordingCanvas, new Paint(), 0, 240,
+            lineTop, lineTop + 15, lineBottom, "active", 0, 6, 0);
+
+        Assert.assertNotNull(recordingCanvas.lastRect);
+        Assert.assertEquals(lineTop, Math.round(recordingCanvas.lastRect.top));
+        Assert.assertEquals(lineBottom, Math.round(recordingCanvas.lastRect.bottom));
+        Assert.assertEquals(ACTIVE_INDICATOR_COLOR, recordingCanvas.lastPaintColor);
+    }
+
+    private static final class RecordingCanvas extends Canvas {
+        private RectF lastRect;
+        private int lastPaintColor;
+
+        @Override
+        public void drawRect(float left, float top, float right, float bottom, Paint paint) {
+            lastRect = new RectF(left, top, right, bottom);
+            lastPaintColor = paint.getColor();
+        }
     }
 }
