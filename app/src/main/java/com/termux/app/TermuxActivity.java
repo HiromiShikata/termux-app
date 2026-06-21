@@ -894,7 +894,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
         mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
-        mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInNewTab);
+        mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInTabForSession);
     }
 
     private void setBrowserToggleBarView() {
