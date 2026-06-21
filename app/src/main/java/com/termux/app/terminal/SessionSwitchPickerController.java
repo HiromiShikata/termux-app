@@ -366,8 +366,8 @@ public class SessionSwitchPickerController {
                 start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (line.isCurrent()) {
-            builder.setSpan(new CurrentSessionIndicatorSpan(highlightColor, paddingLeft,
-                currentIndicatorBarWidthPixels), start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            builder.setSpan(new CurrentSessionIndicatorSpan(highlightColor, currentIndicatorBarWidthPixels),
+                start, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
     }
 
@@ -395,13 +395,11 @@ public class SessionSwitchPickerController {
     static final class CurrentSessionIndicatorSpan implements LineBackgroundSpan {
 
         private final Paint mBarPaint = new Paint();
-        private final int mPaddingLeft;
         private final int mBarWidth;
 
-        CurrentSessionIndicatorSpan(int color, int paddingLeft, int barWidth) {
+        CurrentSessionIndicatorSpan(int color, int barWidth) {
             mBarPaint.setColor(color);
             mBarPaint.setStyle(Paint.Style.FILL);
-            mPaddingLeft = paddingLeft;
             mBarWidth = barWidth;
         }
 
@@ -409,8 +407,7 @@ public class SessionSwitchPickerController {
         public void drawBackground(@NonNull Canvas canvas, @NonNull Paint paint, int left, int right,
                                    int top, int baseline, int bottom, @NonNull CharSequence text,
                                    int start, int end, int lineNumber) {
-            int barLeft = left - mPaddingLeft;
-            canvas.drawRect(barLeft, top, barLeft + mBarWidth, bottom, mBarPaint);
+            canvas.drawRect(left, top, left + mBarWidth, bottom, mBarPaint);
         }
     }
 }

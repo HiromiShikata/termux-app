@@ -154,6 +154,34 @@ public class SessionBellIndicatorConsistencyTest {
         Assert.assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, layoutParams.height);
         Assert.assertEquals(0, layoutParams.topMargin);
         Assert.assertEquals(0, layoutParams.bottomMargin);
+        Assert.assertEquals(0, layoutParams.getMarginStart());
+        Assert.assertEquals(0, layoutParams.leftMargin);
+    }
+
+    @Test
+    public void pickerOverlayPanelSitsFlushAgainstTheTopLeftCornerWithoutLeadingPadding() {
+        Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
+            R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+        View root = LayoutInflater.from(context)
+            .inflate(R.layout.activity_termux, new FrameLayout(context), false);
+        TextView structureView = root.findViewById(R.id.session_switch_picker_structure);
+
+        Assert.assertEquals(0, structureView.getPaddingStart());
+        Assert.assertEquals(0, structureView.getPaddingTop());
+        Assert.assertEquals(0, structureView.getPaddingLeft());
+    }
+
+    @Test
+    public void pickerOverlayContainerHasNoFullScreenScrimSoTheTerminalStaysVisible() {
+        Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
+            R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+        View root = LayoutInflater.from(context)
+            .inflate(R.layout.activity_termux, new FrameLayout(context), false);
+
+        View overlayContainer = root.findViewById(R.id.session_switch_picker_overlay);
+
+        Assert.assertNull("overlay container must not paint a full-screen scrim",
+            overlayContainer.getBackground());
     }
 
     @Test
