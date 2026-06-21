@@ -10,7 +10,7 @@ import java.util.Map;
 public final class OpenTagBrowserController {
 
     public interface UrlOpener {
-        void openUrlInNewTab(@NonNull String url);
+        void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url);
     }
 
     private final TermuxAppSharedPreferences mPreferences;
@@ -37,7 +37,7 @@ public final class OpenTagBrowserController {
         if (openUrl == null) return;
 
         scanner.markOpened(openUrl);
-        mUrlOpener.openUrlInNewTab(openUrl);
+        mUrlOpener.openUrlInTabForSession(sessionKey, openUrl);
     }
 
     public void forgetSession(String sessionKey) {

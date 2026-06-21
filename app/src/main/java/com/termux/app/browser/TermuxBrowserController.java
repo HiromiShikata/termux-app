@@ -999,6 +999,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         openTab(tab);
     }
 
+    public void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url) {
+        BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
+        if (sessionHandle.equals(mCurrentSessionHandle)) {
+            openTab(tab);
+            return;
+        }
+        mSessionVisibilityState.setBrowserVisible(sessionHandle, true);
+    }
+
     public void attachBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
         mTabManager.attachOrActivateTab(sessionHandle, normalizeUrl(url));
         mSessionVisibilityState.setBrowserVisible(sessionHandle, true);
