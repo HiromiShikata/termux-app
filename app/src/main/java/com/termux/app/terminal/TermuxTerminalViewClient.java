@@ -439,6 +439,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         return mLongPressedUrl;
     }
 
+    public static boolean shouldShowLongPressedUrlMenuItems(String longPressedUrl) {
+        return !DataUtils.isNullOrEmpty(longPressedUrl);
+    }
+
     public void clearLongPressedUrl() {
         mLongPressedUrl = null;
     }
@@ -451,6 +455,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     public void openLongPressedUrlInChrome() {
         if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
         ShareUtils.openUrlInChrome(mActivity, mLongPressedUrl);
+    }
+
+    public void copyLongPressedUrlToClipboard() {
+        if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
+        ShareUtils.copyTextToClipboard(mActivity, mLongPressedUrl, mActivity.getString(R.string.msg_select_url_copied_to_clipboard));
     }
 
     @Override
