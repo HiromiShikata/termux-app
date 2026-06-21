@@ -516,6 +516,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onStop();
 
+        if (mSessionSwitchPickerController != null)
+            mSessionSwitchPickerController.onActivityStopped();
+
         removeTermuxActivityRootViewGlobalLayoutListener();
 
         unregisterTermuxActivityBroadcastReceiver();

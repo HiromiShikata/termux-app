@@ -9,7 +9,6 @@ import android.os.Looper;
 import android.text.Layout;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
-import android.text.method.ScrollingMovementMethod;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
 import android.text.style.LeadingMarginSpan;
@@ -66,11 +65,22 @@ public class SessionSwitchPickerController {
         this.mActivity = activity;
         this.mOverlayView = activity.findViewById(R.id.session_switch_picker_overlay);
         this.mStructureView = activity.findViewById(R.id.session_switch_picker_structure);
-        this.mStructureView.setMovementMethod(new ScrollingMovementMethod());
+        configureStructureViewAsNonTouchTarget(this.mStructureView);
+    }
+
+    static void configureStructureViewAsNonTouchTarget(@NonNull TextView structureView) {
+        structureView.setMovementMethod(null);
+        structureView.setClickable(false);
+        structureView.setFocusable(false);
+        structureView.setLongClickable(false);
     }
 
     public boolean isShowing() {
         return mShowing;
+    }
+
+    public void onActivityStopped() {
+        hide();
     }
 
     public void onVolumeKeyDirection(boolean forward) {
@@ -86,12 +96,11 @@ public class SessionSwitchPickerController {
             isPreviewFirstEnabled(), mShowing, mHighlightedSessionIndex, currentSessionIndex,
             orderedSessionIndexes, navigableSessionIndexes, forward);
         mHighlightedSessionIndex = decision.getHighlightedSessionIndex();
-        mShowing = true;
         VolumeKeyPickerPresentation.present(
             decision,
             this::switchToHighlightedSession,
             () -> renderStructure(listController),
-            () -> mOverlayView.setVisibility(View.VISIBLE),
+            () -> setShowing(true),
             this::scheduleHide,
             this::scheduleCommit);
     }
@@ -120,12 +129,16 @@ public class SessionSwitchPickerController {
     }
 
     private void hide() {
-        mShowing = false;
         mHighlightedSessionIndex = -1;
         mHighlightedTextOffset = -1;
         mHandler.removeCallbacks(mCommitRunnable);
         mHandler.removeCallbacks(mHideRunnable);
-        mOverlayView.setVisibility(View.GONE);
+        setShowing(false);
+    }
+
+    private void setShowing(boolean showing) {
+        mShowing = showing;
+        mOverlayView.setVisibility(SessionSwitchPickerVisibility.overlayVisibilityForShowing(showing));
     }
 
     private void scheduleCommit() {
