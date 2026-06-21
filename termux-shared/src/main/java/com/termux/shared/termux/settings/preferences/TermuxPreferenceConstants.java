@@ -94,6 +94,11 @@ package com.termux.shared.termux.settings.preferences;
  *      - Removed following from `TERMUX_APP`:
  *          `KEY_BROWSER_SPLIT_RATIO` and `DEFAULT_VALUE_BROWSER_SPLIT_RATIO`. The in-app browser
  *          split height now resets to its two-thirds default on each open instead of being persisted.
+ *
+ * - 0.23.0 (2026-06-21)
+ *      - Changed `DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED` from `false` to `true` so that
+ *          `http`/`https` URLs inside `<open>...</open>` tags auto-open in the in-app browser out of
+ *          the box. The behavior remains user-configurable via the existing settings toggle.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -150,7 +155,7 @@ public final class TermuxPreferenceConstants {
          * in the terminal output is automatically opened in the in-app browser.
          */
         public static final String KEY_OPEN_TAG_AUTO_OPEN_ENABLED = "open_tag_auto_open_enabled";
-        public static final boolean DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED = false;
+        public static final boolean DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED = true;
 
 
         /**
