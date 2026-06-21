@@ -9,7 +9,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Gravity;
@@ -50,6 +52,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
 import com.termux.app.terminal.ProjectActionToken;
@@ -60,6 +63,7 @@ import com.termux.app.terminal.SessionBellDirection;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.session.SessionDefinitionPrewarm;
+import com.termux.app.terminal.session.SessionEagerLoader;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -196,6 +200,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         },
         () -> getPreferences().getSessionDefinitionUrl(),
         baseUrl -> mSessionDefinitionRepository.load(baseUrl, this::onSessionDefinitionDocumentPrewarmed));
+
+    private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+
+    private final SessionEagerLoader mSessionEagerLoader = new SessionEagerLoader(
+        this::collectSessionsToEagerLoad,
+        session -> session.getEmulator() != null,
+        this::eagerLoadSessionEmulatorStaged);
 
     /**
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
@@ -589,6 +600,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                                     && !mTermuxTerminalSessionActivityClient.restoreAlwaysPresentSessions())) {
                             mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
                         }
+                        eagerLoadAllSessions();
                     } catch (WindowManager.BadTokenException e) {
                         // Activity finished - ignore.
                     }
@@ -614,6 +626,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         // Update the {@link TerminalSession} and {@link TerminalEmulator} clients.
         mTermuxService.setTermuxTerminalSessionClient(mTermuxTerminalSessionActivityClient);
+
+        eagerLoadAllSessions();
     }
 
     @Override
@@ -819,6 +833,42 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void prewarmSessionDefinitionDocument() {
         mSessionDefinitionPrewarm.prewarmSessionDefinitionDocument();
+    }
+
+    public void eagerLoadAllSessions() {
+        if (mTerminalView == null || mTermuxService == null) return;
+
+        if (!mTerminalView.isLaidOutForSizeComputation()) {
+            mTerminalView.post(this::eagerLoadAllSessions);
+            return;
+        }
+
+        mSessionEagerLoader.eagerLoadAllSessions();
+    }
+
+    private List<TerminalSession> collectSessionsToEagerLoad() {
+        List<TerminalSession> sessions = new ArrayList<>();
+        if (mTermuxService == null) return sessions;
+
+        TerminalSession displayedSession = getCurrentSession();
+        for (TermuxSession termuxSession : mTermuxService.getTermuxSessions()) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == displayedSession) continue;
+            sessions.add(terminalSession);
+        }
+        return sessions;
+    }
+
+    private void eagerLoadSessionEmulatorStaged(@NonNull TerminalSession session) {
+        mMainThreadHandler.post(() -> {
+            if (session.getEmulator() != null) return;
+
+            int[] dimensions = mTerminalView.computeSessionEmulatorDimensions();
+            if (dimensions == null) return;
+
+            session.updateSize(dimensions[0], dimensions[1], dimensions[2], dimensions[3]);
+            mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
+        });
     }
 
     private void onSessionDefinitionDocumentPrewarmed() {
