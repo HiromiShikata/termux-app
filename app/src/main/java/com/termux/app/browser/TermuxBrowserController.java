@@ -12,7 +12,6 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Environment;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
@@ -1045,7 +1044,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void displayTabInWebView(@NonNull BrowserTab tab) {
-        captureDisplayedTabStateBeforeSwitchingTo(tab);
+        BrowserTab previouslyDisplayedTab = mRenderedFrame.getTab();
         String targetUrl = tab.getUrl();
         if (BrowserRenderedFrameOwnership.requiresCoverForFrame(
                 mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle(),
@@ -1053,21 +1052,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             showWebViewCover();
         }
         renderFrame(tab);
-        BrowserTabStateRestoration restoration =
-            BrowserTabStateRestoration.resolve(tab.hasSavedWebViewState(), false);
-        if (restoration.shouldRestoreState()) {
-            mWebView.restoreState(tab.getSavedWebViewState());
-        } else {
-            mWebView.loadUrl(targetUrl);
+        mWebView.loadUrl(targetUrl);
+        BrowserHistoryIsolation historyIsolation =
+            BrowserHistoryIsolation.resolve(previouslyDisplayedTab != tab);
+        if (historyIsolation.shouldClearHistory()) {
+            mWebView.clearHistory();
         }
-    }
-
-    private void captureDisplayedTabStateBeforeSwitchingTo(@NonNull BrowserTab targetTab) {
-        BrowserTab displayedTab = mRenderedFrame.getTab();
-        if (displayedTab == null || displayedTab == targetTab) return;
-        Bundle savedState = new Bundle();
-        mWebView.saveState(savedState);
-        displayedTab.setSavedWebViewState(savedState);
     }
 
     private void renderFrame(@NonNull BrowserTab tab) {
