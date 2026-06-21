@@ -373,43 +373,6 @@ public class SessionPickerOverlayRenderModelTest {
     }
 
     @Test
-    public void suppressesBellForCurrentSessionMatchedByNameWhileKeepingOtherBells() {
-        List<SessionHierarchyRow> rows = Arrays.asList(
-            SessionHierarchyRow.session(0),
-            SessionHierarchyRow.session(1));
-        List<String> names = Arrays.asList("current", "background");
-        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
-        markedSessionAgeLabels.put(0, "3s ago");
-        markedSessionAgeLabels.put(1, "30s ago");
-
-        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, 0), -1, "current");
-
-        Assert.assertFalse(lines.get(0).isMarked());
-        Assert.assertEquals("", lines.get(0).getNewActivityLabel());
-        Assert.assertTrue(lines.get(1).isMarked());
-        Assert.assertEquals("30s ago", lines.get(1).getNewActivityLabel());
-    }
-
-    @Test
-    public void suppressesCurrentSessionBellByNameEvenWhenCurrentIndexIsAbsent() {
-        List<SessionHierarchyRow> rows = Arrays.asList(
-            SessionHierarchyRow.session(0),
-            SessionHierarchyRow.session(1));
-        List<String> names = Arrays.asList("current", "background");
-        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
-        markedSessionAgeLabels.put(0, "3s ago");
-        markedSessionAgeLabels.put(1, "30s ago");
-
-        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, -1), -1, "current");
-
-        Assert.assertFalse(lines.get(0).isMarked());
-        Assert.assertTrue(lines.get(1).isMarked());
-        Assert.assertEquals("30s ago", lines.get(1).getNewActivityLabel());
-    }
-
-    @Test
     public void keepsShortSecondaryTextUntruncated() {
         Assert.assertEquals("Redesign overlay",
             SessionPickerOverlayRenderModel.truncateSecondaryToSingleLine("Redesign overlay"));

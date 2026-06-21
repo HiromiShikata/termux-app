@@ -29,7 +29,6 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
-import com.termux.terminal.TerminalSession;
 
 import java.util.List;
 
@@ -143,21 +142,10 @@ public class SessionSwitchPickerController {
 
     private void renderStructure(@NonNull TermuxSessionsListViewController listController) {
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            listController.getVisibleRows(), listController.getSessionRows(), mHighlightedSessionIndex,
-            currentSessionName());
+            listController.getVisibleRows(), listController.getSessionRows(), mHighlightedSessionIndex);
         mStructureView.setText(buildStructureText(lines));
         applyFixedOverlaySize();
         scrollHighlightedLineIntoView();
-    }
-
-    @NonNull
-    private String currentSessionName() {
-        TerminalSession currentSession = mActivity.getCurrentSession();
-        if (currentSession == null) {
-            return "";
-        }
-        String name = currentSession.mSessionName;
-        return name == null ? "" : name;
     }
 
     private void scrollHighlightedLineIntoView() {

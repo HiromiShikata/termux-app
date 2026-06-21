@@ -1,7 +1,6 @@
 package com.termux.app.terminal;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.termux.app.browser.BrowserGithubUrlShortener;
 
@@ -22,14 +21,6 @@ public final class SessionPickerOverlayRenderModel {
     public static List<SessionPickerOverlayLine> build(@NonNull List<SessionHierarchyRow> visibleRows,
                                                        @NonNull Map<Integer, SessionRow> sessionRowsByIndex,
                                                        int highlightedSessionIndex) {
-        return build(visibleRows, sessionRowsByIndex, highlightedSessionIndex, null);
-    }
-
-    @NonNull
-    public static List<SessionPickerOverlayLine> build(@NonNull List<SessionHierarchyRow> visibleRows,
-                                                       @NonNull Map<Integer, SessionRow> sessionRowsByIndex,
-                                                       int highlightedSessionIndex,
-                                                       @Nullable String currentSessionName) {
         List<SessionHierarchyRow> renderableRows =
             renderableRowsExcludingDisabledSessions(visibleRows, sessionRowsByIndex);
         List<SessionPickerOverlayLine> lines = new ArrayList<>(renderableRows.size());
@@ -56,8 +47,7 @@ public final class SessionPickerOverlayRenderModel {
                     int sessionIndex = row.getSessionIndex();
                     SessionRow sessionRow = SessionRow.rowOrEmpty(sessionRowsByIndex, sessionIndex);
                     boolean isCurrentSession = sessionRow.isCurrent();
-                    boolean isCurrentByName = isCurrentSessionName(currentSessionName, sessionRow.getName());
-                    boolean isBellMarked = sessionRow.isBellMarked() && !isCurrentByName;
+                    boolean isBellMarked = sessionRow.isBellMarked();
                     lines.add(new SessionPickerOverlayLine(
                         SessionPickerOverlayLine.Kind.SESSION,
                         sessionPrimaryName(sessionRow),
@@ -127,11 +117,6 @@ public final class SessionPickerOverlayRenderModel {
     @NonNull
     private static String labelOrEmpty(String label) {
         return label == null ? "" : label;
-    }
-
-    private static boolean isCurrentSessionName(@Nullable String currentSessionName, @NonNull String sessionName) {
-        return currentSessionName != null && !currentSessionName.isEmpty()
-            && currentSessionName.equals(sessionName);
     }
 
     @NonNull
