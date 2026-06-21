@@ -87,6 +87,20 @@ public class SessionListBottomSheetController {
         });
     }
 
+    private void hideBrowserIfShowing() {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) {
+            return;
+        }
+        if (shouldHideBrowserOnOpen(browserController.isBrowserVisible())) {
+            browserController.showTerminal();
+        }
+    }
+
+    static boolean shouldHideBrowserOnOpen(boolean browserVisible) {
+        return browserVisible;
+    }
+
     private void openGoogle() {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) {
@@ -193,6 +207,7 @@ public class SessionListBottomSheetController {
         if (listController == null) {
             return;
         }
+        hideBrowserIfShowing();
         hideSoftKeyboard();
         applyTitleColor();
         applySheetDefaultHeight();
