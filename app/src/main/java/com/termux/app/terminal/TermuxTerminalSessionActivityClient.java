@@ -130,6 +130,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             setCurrentSession(getCurrentStoredSessionOrLast());
             termuxSessionListNotifyUpdated();
             mActivity.prewarmSessionDefinitionDocument();
+            mActivity.eagerLoadAllSessions();
         }
 
         // The current terminal session may have changed while being away, force

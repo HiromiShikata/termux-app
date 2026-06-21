@@ -1089,6 +1089,17 @@ public final class TerminalView extends View {
         }
     }
 
+    public boolean isLaidOutForSizeComputation() {
+        return getWidth() != 0 && getHeight() != 0 && mRenderer != null;
+    }
+
+    public int[] computeSessionEmulatorDimensions() {
+        if (!isLaidOutForSizeComputation()) return null;
+        int columns = Math.max(4, (int) (getWidth() / mRenderer.mFontWidth));
+        int rows = Math.max(4, (getHeight() - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
+        return new int[]{columns, rows, (int) mRenderer.getFontWidth(), mRenderer.getFontLineSpacing()};
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         if (mEmulator == null) {
