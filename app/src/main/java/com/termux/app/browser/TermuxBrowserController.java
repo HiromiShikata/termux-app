@@ -153,7 +153,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mPageLoadProgressBar = activity.findViewById(R.id.browser_page_load_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
-        this.mProjectNameResolver = new BrowserProjectNameResolver(activity);
+        this.mProjectNameResolver = new BrowserProjectNameResolver(activity::getSessionDefinitionEntries);
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         configureWebView();
         configureCookies();
@@ -840,7 +840,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
-        rebindTabsList(session);
+        rebindTabsList();
         updateDesktopModeToggleState();
         if (switchingSession) {
             restoreSessionVisibility();
@@ -865,10 +865,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
-    private void rebindTabsList(@Nullable TerminalSession session) {
+    private void rebindTabsList() {
         if (mCurrentSessionHandle == null) {
             mTabsListView.setAdapter(null);
-            mProjectNameResolver.loadEntriesForSession(null);
             return;
         }
 
@@ -876,9 +875,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mTabsListViewController = new BrowserTabsListViewController(mActivity, this, tabs);
         mTabsListView.setAdapter(mTabsListViewController);
         mTabsListView.setOnItemClickListener(mTabsListViewController);
-
-        String sessionName = (session == null) ? null : session.mSessionName;
-        mProjectNameResolver.loadEntriesForSession(sessionName);
     }
 
     public void onSessionRemoved(@NonNull TerminalSession session) {

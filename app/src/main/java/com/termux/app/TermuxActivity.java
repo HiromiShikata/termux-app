@@ -59,6 +59,7 @@ import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.SessionBellDirection;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
+import com.termux.app.terminal.session.SessionDefinitionPrewarm;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -180,6 +181,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final SessionDefinitionRepository mSessionDefinitionRepository =
         new SessionDefinitionRepository();
+
+    private final SessionDefinitionPrewarm mSessionDefinitionPrewarm = new SessionDefinitionPrewarm(
+        new SessionDefinitionPrewarm.DocumentLoadState() {
+            @Override
+            public boolean isDocumentLoaded() {
+                return mSessionDefinitionRepository.isLoaded();
+            }
+
+            @Override
+            public boolean isDocumentLoading() {
+                return mSessionDefinitionRepository.isLoading();
+            }
+        },
+        () -> getPreferences().getSessionDefinitionUrl(),
+        baseUrl -> mSessionDefinitionRepository.load(baseUrl, this::onSessionDefinitionDocumentPrewarmed));
 
     /**
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
@@ -799,6 +815,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void loadSessionsFromDefinition() {
         new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions();
+    }
+
+    public void prewarmSessionDefinitionDocument() {
+        mSessionDefinitionPrewarm.prewarmSessionDefinitionDocument();
+    }
+
+    private void onSessionDefinitionDocumentPrewarmed() {
+        if (mTermuxSessionListViewController != null) {
+            mTermuxSessionListViewController.setEntries(mSessionDefinitionRepository.getCachedEntries());
+            applyPendingExpandedProjectsAllowlist();
+        }
     }
 
     public void promptAndCreateNewSession() {
