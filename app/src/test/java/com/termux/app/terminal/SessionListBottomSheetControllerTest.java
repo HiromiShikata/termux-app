@@ -101,4 +101,14 @@ public class SessionListBottomSheetControllerTest {
         Assert.assertFalse(SessionListBottomSheetController.shouldRevealForVisibility(View.GONE));
         Assert.assertFalse(SessionListBottomSheetController.shouldRevealForVisibility(View.INVISIBLE));
     }
+
+    @Test
+    public void openingSheetClosesTheBrowserWhenTheBrowserIsCurrentlyShowing() {
+        Assert.assertTrue(SessionListBottomSheetController.shouldHideBrowserOnOpen(true));
+    }
+
+    @Test
+    public void openingSheetLeavesTheTerminalUntouchedWhenTheBrowserIsNotShowing() {
+        Assert.assertFalse(SessionListBottomSheetController.shouldHideBrowserOnOpen(false));
+    }
 }
