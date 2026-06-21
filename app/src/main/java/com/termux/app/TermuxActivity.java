@@ -330,8 +330,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setRightDrawerToggleBarView();
 
-        setStopSpeakingButtonView();
-
         setSessionSheetToggleBarView();
 
         mSessionSwitchPickerController = new SessionSwitchPickerController(this);
@@ -861,13 +859,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setRightDrawerToggleBarView() {
         findViewById(R.id.terminal_toolbar_right_drawer_toggle_button).setOnClickListener(v -> {
             getTermuxBrowserController().toggleTabsDrawer();
-        });
-    }
-
-    private void setStopSpeakingButtonView() {
-        findViewById(R.id.terminal_toolbar_stop_speaking_button).setOnClickListener(v -> {
-            if (mTtsManager != null) mTtsManager.stop();
-            Logger.showToast(this, getString(R.string.msg_stopped_speaking), true);
         });
     }
 

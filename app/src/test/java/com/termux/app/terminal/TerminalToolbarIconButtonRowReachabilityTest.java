@@ -24,10 +24,9 @@ public class TerminalToolbarIconButtonRowReachabilityTest {
     private static final int TOOLBAR_HEIGHT_DP = 32;
 
     @Test
-    public void stopSpeakingAndDrawerToggleButtonsExistInTheBottomToolbar() {
+    public void drawerToggleButtonExistsInTheBottomToolbar() {
         View bottomContainer = inflateBottomToolbar();
 
-        Assert.assertNotNull(bottomContainer.findViewById(R.id.terminal_toolbar_stop_speaking_button));
         Assert.assertNotNull(bottomContainer.findViewById(R.id.terminal_toolbar_right_drawer_toggle_button));
     }
 
@@ -35,10 +34,8 @@ public class TerminalToolbarIconButtonRowReachabilityTest {
     public void allIconButtonsLiveInsideAHorizontallyScrollableContainerSoNoneAreClipped() {
         View bottomContainer = inflateBottomToolbar();
 
-        View stopSpeakingButton = bottomContainer.findViewById(R.id.terminal_toolbar_stop_speaking_button);
         View drawerToggleButton = bottomContainer.findViewById(R.id.terminal_toolbar_right_drawer_toggle_button);
 
-        Assert.assertTrue(isDescendantOfHorizontalScrollView(stopSpeakingButton));
         Assert.assertTrue(isDescendantOfHorizontalScrollView(drawerToggleButton));
     }
 
@@ -65,10 +62,8 @@ public class TerminalToolbarIconButtonRowReachabilityTest {
             Assert.assertTrue(iconButtonRow.getChildAt(index).getWidth() > 0);
         }
 
-        View stopSpeakingButton = bottomContainer.findViewById(R.id.terminal_toolbar_stop_speaking_button);
         View drawerToggleButton = bottomContainer.findViewById(R.id.terminal_toolbar_right_drawer_toggle_button);
 
-        Assert.assertTrue(buttonRightEdgeReachable(stopSpeakingButton, scrollView, maxScrollX));
         Assert.assertTrue(buttonRightEdgeReachable(drawerToggleButton, scrollView, maxScrollX));
     }
 

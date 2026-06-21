@@ -66,8 +66,6 @@
     <string name="action_switch_to_previous_session">Switch to previous session</string>
     <string name="action_switch_to_next_session">Switch to next session</string>
     <string name="action_send_input_to_terminal">Send</string>
-    <string name="action_stop_speaking">Stop reading aloud</string>
-    <string name="msg_stopped_speaking">Stopped reading aloud</string>
     <string name="title_session_list_bottom_sheet">Sessions</string>
 
     <!-- In-app browser -->
