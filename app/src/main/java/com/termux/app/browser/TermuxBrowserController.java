@@ -1045,7 +1045,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void displayTabInWebView(@NonNull BrowserTab tab) {
-        captureDisplayedTabState();
+        captureDisplayedTabStateBeforeSwitchingTo(tab);
         String targetUrl = tab.getUrl();
         if (BrowserRenderedFrameOwnership.requiresCoverForFrame(
                 mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle(),
@@ -1062,9 +1062,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
-    private void captureDisplayedTabState() {
+    private void captureDisplayedTabStateBeforeSwitchingTo(@NonNull BrowserTab targetTab) {
         BrowserTab displayedTab = mRenderedFrame.getTab();
-        if (displayedTab == null) return;
+        if (displayedTab == null || displayedTab == targetTab) return;
         Bundle savedState = new Bundle();
         mWebView.saveState(savedState);
         displayedTab.setSavedWebViewState(savedState);
