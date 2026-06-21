@@ -161,6 +161,7 @@
     <string name="action_create_session_from_url">Create new session</string>
     <string name="action_open_link_in_browser">Open in Browser</string>
     <string name="action_open_link_in_chrome">Open in Chrome</string>
+    <string name="action_copy_link_url">Copy URL</string>
     <string name="title_select_url_dialog">Tap URL to open or long press to copy</string>
     <string name="title_select_url_none_found">No URL found in the terminal.</string>
     <string name="msg_select_url_copied_to_clipboard">URL copied to clipboard</string>

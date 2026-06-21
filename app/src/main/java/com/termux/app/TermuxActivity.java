@@ -272,6 +272,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_TRANSLATE_SELECTED_TEXT = 13;
     private static final int CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID = 14;
     private static final int CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID = 15;
+    private static final int CONTEXT_MENU_COPY_LINK_URL_ID = 16;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
 
@@ -994,9 +995,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         boolean autoFillEnabled = mTerminalView.isAutoFillEnabled();
 
-        if (mTermuxTerminalViewClient != null && !DataUtils.isNullOrEmpty(mTermuxTerminalViewClient.getLongPressedUrl())) {
+        if (mTermuxTerminalViewClient != null && TermuxTerminalViewClient.shouldShowLongPressedUrlMenuItems(mTermuxTerminalViewClient.getLongPressedUrl())) {
             menu.add(Menu.NONE, CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID, Menu.NONE, R.string.action_open_link_in_browser);
             menu.add(Menu.NONE, CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID, Menu.NONE, R.string.action_open_link_in_chrome);
+            menu.add(Menu.NONE, CONTEXT_MENU_COPY_LINK_URL_ID, Menu.NONE, R.string.action_copy_link_url);
         }
 
         menu.add(Menu.NONE, CONTEXT_MENU_SELECT_URL_ID, Menu.NONE, R.string.action_select_url);
@@ -1029,6 +1031,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 return true;
             case CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID:
                 mTermuxTerminalViewClient.openLongPressedUrlInChrome();
+                return true;
+            case CONTEXT_MENU_COPY_LINK_URL_ID:
+                mTermuxTerminalViewClient.copyLongPressedUrlToClipboard();
                 return true;
             case CONTEXT_MENU_SELECT_URL_ID:
                 mTermuxTerminalViewClient.showUrlSelection();
