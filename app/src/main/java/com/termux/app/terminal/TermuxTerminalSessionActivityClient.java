@@ -367,14 +367,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return currentSession == null ? null : currentSession.mSessionName;
     }
 
-    private void clearNewActivityForViewedSession(@Nullable String sessionName) {
-        if (sessionName == null) return;
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (!store.hasUnseenBell(sessionName)) return;
-        store.recordSeen(sessionName, System.currentTimeMillis());
-        termuxSessionListNotifyUpdated();
-    }
-
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
         mActivity.getSessionNewActivityStore().purgeSession(sessionName);
@@ -480,8 +472,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /** Try switching to session. */
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
-
-        clearNewActivityForViewedSession(session.mSessionName);
 
         stopActiveSessionSeenTick();
         startActiveSessionSeenTick();
