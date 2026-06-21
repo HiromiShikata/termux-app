@@ -46,7 +46,6 @@ import com.termux.app.terminal.session.DuplicateSessionNameResolution;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
-import com.termux.app.terminal.session.SessionPrewarmOrchestrator;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
@@ -84,11 +83,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
 
     private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
-
-    private final SessionPrewarmOrchestrator mSessionPrewarmOrchestrator = new SessionPrewarmOrchestrator(
-        this::warmSession,
-        task -> new Thread(task).start(),
-        task -> new Handler(Looper.getMainLooper()).post(task));
 
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
@@ -135,7 +129,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getTermuxService() != null) {
             setCurrentSession(getCurrentStoredSessionOrLast());
             termuxSessionListNotifyUpdated();
-            prewarmAllSessions();
+            mActivity.prewarmSessionDefinitionDocument();
         }
 
         // The current terminal session may have changed while being away, force
@@ -839,33 +833,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) return;
         browserController.attachBackgroundTab(session.mHandle, browserTabUrl);
-    }
-
-    private void prewarmAllSessions() {
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
-
-        List<String> sessionHandles = new ArrayList<>();
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            sessionHandles.add(termuxSession.getTerminalSession().mHandle);
-        }
-        mSessionPrewarmOrchestrator.prewarmSessions(sessionHandles);
-    }
-
-    private void warmSession(@NonNull String sessionHandle) {
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
-
-        TerminalSession sessionToWarm = null;
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            if (sessionHandle.equals(termuxSession.getTerminalSession().mHandle)) {
-                sessionToWarm = termuxSession.getTerminalSession();
-                break;
-            }
-        }
-        if (sessionToWarm == null) return;
-
-        attachBrowserTabForUrlSessionName(sessionToWarm, sessionToWarm.mSessionName);
     }
 
     public void setCurrentStoredSession() {

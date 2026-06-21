@@ -51,6 +51,10 @@ public final class SessionDefinitionRepository {
         return loaded;
     }
 
+    public boolean isLoading() {
+        return loading;
+    }
+
     public void load(@NonNull String baseUrl, @NonNull OnEntriesLoadedListener listener) {
         if (loaded || loading || baseUrl.isEmpty()) {
             return;
