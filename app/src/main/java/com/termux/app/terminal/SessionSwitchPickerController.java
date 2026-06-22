@@ -263,17 +263,12 @@ public class SessionSwitchPickerController {
         return builder;
     }
 
-    @NonNull
-    static String bellMarkSlotText() {
-        return SessionRow.BELL_MARK;
-    }
-
     static boolean isBellMarkSlotVisible(boolean marked) {
         return marked;
     }
 
-    static int bellMarkDrawableRes(boolean marked) {
-        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(marked);
+    static int bellMarkDrawableRes(@NonNull SessionNewActivityTier tier) {
+        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(tier);
     }
 
     @NonNull
@@ -304,7 +299,7 @@ public class SessionSwitchPickerController {
                     break;
                 case SESSION:
                 default:
-                    text.append(bellMarkSlotText()).append(line.getText())
+                    text.append(line.getText())
                         .append(newActivityLabelSlotText(line.getNewActivityLabel()));
                     if (!line.getSecondaryText().isEmpty()) {
                         text.append('\n').append(line.getSecondaryText());
@@ -321,7 +316,7 @@ public class SessionSwitchPickerController {
                                   int paddingLeft, int paddingRight) {
         int bellMarkStart = builder.length();
         builder.append(' ');
-        builder.setSpan(new ImageSpan(context, bellMarkDrawableRes(line.isMarked()), ImageSpan.ALIGN_BASELINE),
+        builder.setSpan(new ImageSpan(context, bellMarkDrawableRes(line.getTier()), ImageSpan.ALIGN_BASELINE),
             bellMarkStart, builder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         builder.append(' ');
         int nameStart = builder.length();

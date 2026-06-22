@@ -22,21 +22,33 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     }
 
     @Override
+    public void onTextChanged(@NonNull TerminalSession changedSession) {
+        recordOutputActivity(changedSession);
+    }
+
+    @Override
     public void onBell(@NonNull TerminalSession session) {
-        if (session.mSessionName == null) return;
-        mService.getSessionNewActivityStore().recordBell(session.mSessionName, System.currentTimeMillis());
+        recordOutputActivity(session);
     }
 
     @Override
     public void onMarkerNotification(@NonNull TerminalSession session) {
-        if (session.mSessionName == null) return;
-        mService.getSessionNewActivityStore().recordBell(session.mSessionName, System.currentTimeMillis());
+        recordExplicitCall(session);
     }
 
     @Override
     public void onUrgentNotification(@NonNull TerminalSession session) {
+        recordExplicitCall(session);
+    }
+
+    private void recordOutputActivity(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
-        mService.getSessionNewActivityStore().recordBell(session.mSessionName, System.currentTimeMillis());
+        mService.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
+    }
+
+    private void recordExplicitCall(@NonNull TerminalSession session) {
+        if (session.mSessionName == null) return;
+        mService.getSessionNewActivityStore().recordExplicitCall(session.mSessionName, System.currentTimeMillis());
     }
 
     @Override

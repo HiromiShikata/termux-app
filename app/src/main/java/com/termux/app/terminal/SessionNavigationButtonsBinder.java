@@ -20,11 +20,24 @@ public final class SessionNavigationButtonsBinder {
         nextSessionButton.setOnClickListener(v -> listener.onSessionDirection(true));
     }
 
-    public static void applyDirectionGlow(@NonNull ImageView previousSessionButton,
+    public static void applyDirectionTier(@NonNull ImageView previousSessionButton,
                                           @NonNull ImageView nextSessionButton,
-                                          @NonNull SessionBellDirection direction,
-                                          int glowColor, int defaultColor) {
-        previousSessionButton.setColorFilter(direction.hasBellAbove() ? glowColor : defaultColor);
-        nextSessionButton.setColorFilter(direction.hasBellBelow() ? glowColor : defaultColor);
+                                          @NonNull SessionActivityDirection direction,
+                                          int redColor, int yellowColor, int defaultColor) {
+        int tierColor = tierColor(direction.getTier(), redColor, yellowColor, defaultColor);
+        previousSessionButton.setColorFilter(direction.hasActiveAbove() ? tierColor : defaultColor);
+        nextSessionButton.setColorFilter(direction.hasActiveBelow() ? tierColor : defaultColor);
+    }
+
+    static int tierColor(@NonNull SessionNewActivityTier tier, int redColor, int yellowColor, int defaultColor) {
+        switch (tier) {
+            case RED:
+                return redColor;
+            case YELLOW:
+                return yellowColor;
+            case NONE:
+            default:
+                return defaultColor;
+        }
     }
 }

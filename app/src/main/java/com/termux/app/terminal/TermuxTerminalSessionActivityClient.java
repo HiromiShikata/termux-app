@@ -179,6 +179,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onTextChanged(@NonNull TerminalSession changedSession) {
+        recordOutputActivityForSession(changedSession);
+
         if (!mActivity.isVisible()) return;
 
         if (mActivity.getCurrentSession() == changedSession) {
@@ -283,7 +285,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onBell(@NonNull TerminalSession session) {
-        recordBellForSession(session);
+        recordOutputActivityForSession(session);
 
         if (!mActivity.isVisible()) return;
 
@@ -304,12 +306,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onMarkerNotification(@NonNull TerminalSession session) {
-        recordBellForSession(session);
+        recordExplicitCallForSession(session);
     }
 
     @Override
     public void onUrgentNotification(@NonNull TerminalSession session) {
-        recordBellForSession(session);
+        recordExplicitCallForSession(session);
         mMainThreadHandler.post(() -> handleUrgentNotificationOnMainThread(session));
     }
 
@@ -350,9 +352,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         ringtone.play();
     }
 
-    private void recordBellForSession(@NonNull TerminalSession session) {
+    private void recordOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
-        mActivity.getSessionNewActivityStore().recordBell(session.mSessionName, System.currentTimeMillis());
+        mActivity.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
+        termuxSessionListNotifyUpdated();
+    }
+
+    private void recordExplicitCallForSession(@NonNull TerminalSession session) {
+        if (session.mSessionName == null) return;
+        mActivity.getSessionNewActivityStore().recordExplicitCall(session.mSessionName, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
     }
 

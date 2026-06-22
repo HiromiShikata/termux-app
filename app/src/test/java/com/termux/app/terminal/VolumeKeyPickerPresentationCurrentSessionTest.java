@@ -38,17 +38,19 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
         }
 
         Map<Integer, SessionRow> renderModelSessionRows() {
-            Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+            Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+            Map<Integer, String> ageLabelsByIndex = new LinkedHashMap<>();
             for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
                 SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
                     newActivityStore, sessionNames.get(sessionIndex), nowMillis);
                 if (indicator.isVisible()) {
-                    markedSessionAgeLabels.put(sessionIndex, indicator.getLabel());
+                    tiersByIndex.put(sessionIndex, indicator.getTier());
+                    ageLabelsByIndex.put(sessionIndex, indicator.getLabel());
                 }
             }
             return SessionRow.project(sessionNames, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyList(),
-                markedSessionAgeLabels, Collections.emptySet(), currentSessionIndex);
+                tiersByIndex, ageLabelsByIndex, Collections.emptySet(), currentSessionIndex);
         }
     }
 
@@ -80,10 +82,10 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     @Test
     public void immediateSwitchPickerMarksTheJustSwitchedSessionAsCurrentAndClearsItsBellViaSeenTick() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("session-1", 1_000L);
+        store.recordExplicitCall("session-1", 1_000L);
         FakeSessionRuntime runtime = new FakeSessionRuntime(
             Arrays.asList("session-0", "session-1"), store, 0, 4_000L);
-        store.recordBell("session-0", 4_500L);
+        store.recordExplicitCall("session-0", 4_500L);
 
         List<SessionPickerOverlayLine> lines = presentAndCaptureRenderedLines(runtime, 1, true);
 
@@ -98,8 +100,8 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     @Test
     public void previewFirstPickerMarksTheStillActiveSessionAsCurrentAndClearsItsBellViaSeenTick() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("session-0", 1_000L);
-        store.recordBell("session-1", 1_000L);
+        store.recordExplicitCall("session-0", 1_000L);
+        store.recordExplicitCall("session-1", 1_000L);
         FakeSessionRuntime runtime = new FakeSessionRuntime(
             Arrays.asList("session-0", "session-1"), store, 0, 4_000L);
 

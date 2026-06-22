@@ -6,51 +6,86 @@ import org.junit.Test;
 public class SessionNewActivityIndicatorTest {
 
     @Test
-    public void nullBellProducesNoIndicatorAndEmptyLabel() {
-        SessionNewActivityIndicator indicator = SessionNewActivityIndicator.labelFor(null, 1_000L, 31_000L);
+    public void noSignalsProduceNoIndicatorAndEmptyLabel() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(null, null, 1_000L, 31_000L);
 
         Assert.assertFalse(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.NONE, indicator.getTier());
         Assert.assertEquals("", indicator.getLabel());
     }
 
     @Test
-    public void bellBeforeLastSeenProducesNoIndicator() {
-        SessionNewActivityIndicator indicator = SessionNewActivityIndicator.labelFor(1_000L, 5_000L, 31_000L);
+    public void outputActivityBeforeLastSeenProducesNoIndicator() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(1_000L, null, 5_000L, 31_000L);
 
         Assert.assertFalse(indicator.isVisible());
-        Assert.assertEquals("", indicator.getLabel());
+        Assert.assertEquals(SessionNewActivityTier.NONE, indicator.getTier());
     }
 
     @Test
-    public void bellEqualToLastSeenProducesNoIndicator() {
-        SessionNewActivityIndicator indicator = SessionNewActivityIndicator.labelFor(5_000L, 5_000L, 31_000L);
+    public void outputActivityEqualToLastSeenProducesNoIndicator() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(5_000L, null, 5_000L, 31_000L);
 
         Assert.assertFalse(indicator.isVisible());
-        Assert.assertEquals("", indicator.getLabel());
     }
 
     @Test
-    public void bellAfterLastSeenProducesVisibleIndicatorWithRelativeTimeLabel() {
-        SessionNewActivityIndicator indicator = SessionNewActivityIndicator.labelFor(1_000L, 500L, 31_000L);
+    public void outputActivityAfterLastSeenProducesYellowIndicatorWithRelativeTimeLabel() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(1_000L, null, 500L, 31_000L);
 
         Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
         Assert.assertEquals("30s ago", indicator.getLabel());
     }
 
     @Test
-    public void bellWithoutAnyLastSeenProducesVisibleIndicator() {
-        SessionNewActivityIndicator indicator = SessionNewActivityIndicator.labelFor(1_000L, null, 31_000L);
+    public void explicitCallAfterLastSeenProducesRedIndicatorWithRelativeTimeLabel() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(null, 1_000L, 500L, 31_000L);
 
         Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.RED, indicator.getTier());
         Assert.assertEquals("30s ago", indicator.getLabel());
     }
 
     @Test
-    public void labelAdvancesAsTimePassesForAFixedBellTime() {
+    public void explicitCallTakesPriorityOverOutputActivity() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(2_000L, 1_000L, 500L, 31_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, indicator.getTier());
+        Assert.assertEquals("30s ago", indicator.getLabel());
+    }
+
+    @Test
+    public void seenExplicitCallFallsBackToPendingOutputActivityAsYellow() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(2_000L, 1_000L, 1_500L, 32_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
+        Assert.assertEquals("30s ago", indicator.getLabel());
+    }
+
+    @Test
+    public void signalWithoutAnyLastSeenProducesVisibleIndicator() {
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(1_000L, null, null, 31_000L);
+
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
+        Assert.assertEquals("30s ago", indicator.getLabel());
+    }
+
+    @Test
+    public void labelAdvancesAsTimePassesForAFixedSignalTime() {
         SessionNewActivityIndicator atFirstTick =
-            SessionNewActivityIndicator.labelFor(1_000L, null, 1_000L + 5_000L);
+            SessionNewActivityIndicator.indicatorFor(null, 1_000L, null, 1_000L + 5_000L);
         SessionNewActivityIndicator atLaterTick =
-            SessionNewActivityIndicator.labelFor(1_000L, null, 1_000L + 40_000L);
+            SessionNewActivityIndicator.indicatorFor(null, 1_000L, null, 1_000L + 40_000L);
 
         Assert.assertEquals("5s ago", atFirstTick.getLabel());
         Assert.assertEquals("40s ago", atLaterTick.getLabel());
@@ -58,7 +93,8 @@ public class SessionNewActivityIndicatorTest {
 
     @Test
     public void negativeElapsedClampsToZeroSecondsAgo() {
-        SessionNewActivityIndicator indicator = SessionNewActivityIndicator.labelFor(5_000L, null, 1_000L);
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(null, 5_000L, null, 1_000L);
 
         Assert.assertTrue(indicator.isVisible());
         Assert.assertEquals("0s ago", indicator.getLabel());

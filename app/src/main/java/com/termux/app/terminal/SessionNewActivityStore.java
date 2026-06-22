@@ -16,7 +16,8 @@ public class SessionNewActivityStore {
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
 
-    private final Map<String, Long> mLastBellTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mLastOutputActivityTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
 
     @NonNull
@@ -29,15 +30,22 @@ public class SessionNewActivityStore {
     public SessionNewActivityStore(@NonNull SessionNewActivityPersistence persistence) {
         mPersistence = persistence;
         for (SessionNewActivityState state : persistence.load()) {
-            if (state.getLastBellTimeMillis() != null)
-                mLastBellTimeMillisByName.put(state.getSessionName(), state.getLastBellTimeMillis());
+            if (state.getLastOutputActivityTimeMillis() != null)
+                mLastOutputActivityTimeMillisByName.put(state.getSessionName(), state.getLastOutputActivityTimeMillis());
+            if (state.getLastExplicitCallTimeMillis() != null)
+                mLastExplicitCallTimeMillisByName.put(state.getSessionName(), state.getLastExplicitCallTimeMillis());
             if (state.getLastSeenTimeMillis() != null)
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
         }
     }
 
-    public void recordBell(@NonNull String sessionName, long bellTimeMillis) {
-        mLastBellTimeMillisByName.put(sessionName, bellTimeMillis);
+    public void recordOutputActivity(@NonNull String sessionName, long outputActivityTimeMillis) {
+        mLastOutputActivityTimeMillisByName.put(sessionName, outputActivityTimeMillis);
+        save();
+    }
+
+    public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis) {
+        mLastExplicitCallTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         save();
     }
 
@@ -47,21 +55,28 @@ public class SessionNewActivityStore {
     }
 
     public void purgeSession(@NonNull String sessionName) {
-        mLastBellTimeMillisByName.remove(sessionName);
+        mLastOutputActivityTimeMillisByName.remove(sessionName);
+        mLastExplicitCallTimeMillisByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         save();
     }
 
     public void pruneToSessionNames(@NonNull Set<String> knownSessionNames) {
-        boolean changed = mLastBellTimeMillisByName.keySet().retainAll(knownSessionNames);
+        boolean changed = mLastOutputActivityTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mLastExplicitCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
 
     @Nullable
-    public Long getLastBellTimeMillis(@NonNull String sessionName) {
-        return mLastBellTimeMillisByName.get(sessionName);
+    public Long getLastOutputActivityTimeMillis(@NonNull String sessionName) {
+        return mLastOutputActivityTimeMillisByName.get(sessionName);
+    }
+
+    @Nullable
+    public Long getLastExplicitCallTimeMillis(@NonNull String sessionName) {
+        return mLastExplicitCallTimeMillisByName.get(sessionName);
     }
 
     @Nullable
@@ -69,18 +84,56 @@ public class SessionNewActivityStore {
         return mLastSeenTimeMillisByName.get(sessionName);
     }
 
-    public boolean hasUnseenBell(@NonNull String sessionName) {
-        return SessionNewActivityIndicator.isBellUnseen(
-            getLastBellTimeMillis(sessionName), getLastSeenTimeMillis(sessionName));
+    @NonNull
+    public SessionNewActivityTier tierFor(@NonNull String sessionName) {
+        return SessionNewActivityTier.resolve(
+            getLastOutputActivityTimeMillis(sessionName),
+            getLastExplicitCallTimeMillis(sessionName),
+            getLastSeenTimeMillis(sessionName));
+    }
+
+    @NonNull
+    public SessionNewActivityTier globalActiveTier(@NonNull Set<String> sessionNames) {
+        SessionNewActivityTier activeTier = SessionNewActivityTier.NONE;
+        for (String sessionName : sessionNames) {
+            SessionNewActivityTier tier = tierFor(sessionName);
+            if (tier == SessionNewActivityTier.RED) {
+                return SessionNewActivityTier.RED;
+            }
+            if (tier == SessionNewActivityTier.YELLOW) {
+                activeTier = SessionNewActivityTier.YELLOW;
+            }
+        }
+        return activeTier;
+    }
+
+    public boolean hasUnseenActivity(@NonNull String sessionName) {
+        return tierFor(sessionName) != SessionNewActivityTier.NONE;
+    }
+
+    @Nullable
+    Long pendingSignalTimeMillis(@NonNull String sessionName) {
+        switch (tierFor(sessionName)) {
+            case RED:
+                return getLastExplicitCallTimeMillis(sessionName);
+            case YELLOW:
+                return getLastOutputActivityTimeMillis(sessionName);
+            case NONE:
+            default:
+                return null;
+        }
     }
 
     private void save() {
-        Set<String> sessionNames = new HashSet<>(mLastBellTimeMillisByName.keySet());
+        Set<String> sessionNames = new HashSet<>(mLastOutputActivityTimeMillisByName.keySet());
+        sessionNames.addAll(mLastExplicitCallTimeMillisByName.keySet());
         sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             states.add(new SessionNewActivityState(sessionName,
-                mLastBellTimeMillisByName.get(sessionName), mLastSeenTimeMillisByName.get(sessionName)));
+                mLastOutputActivityTimeMillisByName.get(sessionName),
+                mLastExplicitCallTimeMillisByName.get(sessionName),
+                mLastSeenTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
     }

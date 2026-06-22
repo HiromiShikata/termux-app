@@ -33,51 +33,55 @@ public class SessionSwitchPickerControllerRenderTest {
     }
 
     @Test
-    public void markedSessionMapsToTheRealBellDrawableAndUnmarkedToTheTransparentPlaceholder() {
-        Assert.assertEquals(R.drawable.ic_session_bell_notification,
-            SessionSwitchPickerController.bellMarkDrawableRes(true));
-        Assert.assertEquals(R.drawable.ic_session_bell_notification_placeholder,
-            SessionSwitchPickerController.bellMarkDrawableRes(false));
+    public void redTierMapsToRedDotYellowToYellowDotAndNoneToTransparentPlaceholder() {
+        Assert.assertEquals(R.drawable.ic_session_activity_dot_red,
+            SessionSwitchPickerController.bellMarkDrawableRes(SessionNewActivityTier.RED));
+        Assert.assertEquals(R.drawable.ic_session_activity_dot_yellow,
+            SessionSwitchPickerController.bellMarkDrawableRes(SessionNewActivityTier.YELLOW));
+        Assert.assertEquals(R.drawable.ic_session_activity_dot_placeholder,
+            SessionSwitchPickerController.bellMarkDrawableRes(SessionNewActivityTier.NONE));
     }
 
     @Test
-    public void pickerAndBottomSheetAgreeOnTheBellDrawableForBothStates() {
-        Assert.assertEquals(
-            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(true),
-            SessionSwitchPickerController.bellMarkDrawableRes(true));
-        Assert.assertEquals(
-            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(false),
-            SessionSwitchPickerController.bellMarkDrawableRes(false));
+    public void pickerAndBottomSheetAgreeOnTheDotDrawableForEveryTier() {
+        for (SessionNewActivityTier tier : SessionNewActivityTier.values()) {
+            Assert.assertEquals(
+                TermuxSessionsListViewController.newActivityIndicatorDrawableRes(tier),
+                SessionSwitchPickerController.bellMarkDrawableRes(tier));
+        }
     }
 
     @Test
-    public void markedSessionLineRendersTheBellAsAnImageSpanWithoutTheColorEmojiGlyph() {
+    public void markedSessionLineRendersTheDotAsAnImageSpanWithoutTheColorEmojiGlyph() {
         SessionPickerOverlayLine markedLine = new SessionPickerOverlayLine(
-            SessionPickerOverlayLine.Kind.SESSION, "background", "", false, false, true, "4s ago");
+            SessionPickerOverlayLine.Kind.SESSION, "background", "", false, false,
+            SessionNewActivityTier.RED, "4s ago");
 
         SpannableStringBuilder builder = renderSessionLine(markedLine);
 
         ImageSpan[] imageSpans = builder.getSpans(0, builder.length(), ImageSpan.class);
         Assert.assertEquals(1, imageSpans.length);
-        Assert.assertFalse(builder.toString().contains(SessionRow.BELL_MARK.trim()));
+        Assert.assertFalse(builder.toString().contains("🔔"));
     }
 
     @Test
-    public void unmarkedSessionLineStillReservesTheBellSlotAsAnImageSpanToPreserveAlignment() {
+    public void unmarkedSessionLineStillReservesTheDotSlotAsAnImageSpanToPreserveAlignment() {
         SessionPickerOverlayLine unmarkedLine = new SessionPickerOverlayLine(
-            SessionPickerOverlayLine.Kind.SESSION, "current", "", false, false, false, "");
+            SessionPickerOverlayLine.Kind.SESSION, "current", "", false, false,
+            SessionNewActivityTier.NONE, "");
 
         SpannableStringBuilder builder = renderSessionLine(unmarkedLine);
 
         ImageSpan[] imageSpans = builder.getSpans(0, builder.length(), ImageSpan.class);
         Assert.assertEquals(1, imageSpans.length);
-        Assert.assertFalse(builder.toString().contains(SessionRow.BELL_MARK.trim()));
+        Assert.assertFalse(builder.toString().contains("🔔"));
     }
 
     @Test
     public void currentSessionLineGetsTheBlueLeadingIndicatorBar() {
         SessionPickerOverlayLine currentLine = new SessionPickerOverlayLine(
-            SessionPickerOverlayLine.Kind.SESSION, "active", "", false, true, false, "");
+            SessionPickerOverlayLine.Kind.SESSION, "active", "", false, true,
+            SessionNewActivityTier.NONE, "");
 
         SpannableStringBuilder builder = renderSessionLine(currentLine);
 
@@ -90,7 +94,8 @@ public class SessionSwitchPickerControllerRenderTest {
     @Test
     public void nonCurrentSessionLineHasNoBlueLeadingIndicatorBar() {
         SessionPickerOverlayLine backgroundLine = new SessionPickerOverlayLine(
-            SessionPickerOverlayLine.Kind.SESSION, "background", "", false, false, true, "4s ago");
+            SessionPickerOverlayLine.Kind.SESSION, "background", "", false, false,
+            SessionNewActivityTier.RED, "4s ago");
 
         SpannableStringBuilder builder = renderSessionLine(backgroundLine);
 

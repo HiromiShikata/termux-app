@@ -426,8 +426,12 @@ public class SessionPickerOverlayRenderModelTest {
                                                         Map<Integer, String> markedSessionAgeLabels,
                                                         Set<Integer> disabledSessionIndexes,
                                                         int currentSessionIndex) {
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        for (Integer markedSessionIndex : markedSessionAgeLabels.keySet()) {
+            tiersByIndex.put(markedSessionIndex, SessionNewActivityTier.YELLOW);
+        }
         return SessionRow.project(names, titles, Collections.emptyList(), Collections.emptyList(),
-            markedSessionAgeLabels, disabledSessionIndexes, currentSessionIndex);
+            tiersByIndex, markedSessionAgeLabels, disabledSessionIndexes, currentSessionIndex);
     }
 
     private void assertLine(SessionPickerOverlayLine line, SessionPickerOverlayLine.Kind kind,

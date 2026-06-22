@@ -13,9 +13,9 @@ import java.util.Set;
 public class SessionActiveBellSuppressionTest {
 
     @Test
-    public void activeSessionShowsNoBellOnceTheSeenTickHasAdvancedPastTheBell() {
+    public void activeSessionShowsNoDotOnceTheSeenTickHasAdvancedPastTheSignal() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active", 5_000L);
+        store.recordExplicitCall("active", 5_000L);
         store.recordSeen("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
@@ -26,10 +26,10 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void backgroundUnseenSessionStillShowsTheBellWhileTheActiveSessionIsCleared() {
+    public void backgroundUnseenSessionStillShowsTheDotWhileTheActiveSessionIsCleared() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background", 1_000L);
-        store.recordBell("active", 5_000L);
+        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("active", 5_000L);
         store.recordSeen("active", 31_000L);
 
         SessionNewActivityIndicator background = TermuxSessionsListViewController.newActivityIndicator(
@@ -40,42 +40,45 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void bothRenderersAgreeThatTheClearedSessionShowsNoBell() {
+    public void bothRenderersAgreeThatTheClearedSessionShowsNoDot() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active", 5_000L);
+        store.recordExplicitCall("active", 5_000L);
         store.recordSeen("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "active", 5_050L);
 
         int bottomSheetDrawable =
-            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(indicator.isVisible());
-        int placeholderDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(false);
-        boolean pickerShowsBell = SessionSwitchPickerController.isBellMarkSlotVisible(indicator.isVisible());
+            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(indicator.getTier());
+        int placeholderDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(
+            SessionNewActivityTier.NONE);
+        boolean pickerShowsDot = SessionSwitchPickerController.isBellMarkSlotVisible(indicator.isVisible());
 
         Assert.assertEquals(placeholderDrawable, bottomSheetDrawable);
-        Assert.assertFalse(pickerShowsBell);
+        Assert.assertFalse(pickerShowsDot);
     }
 
     @Test
-    public void pickerOmitsTheBellForTheSeenCurrentSessionAndKeepsItForTheBackgroundSession() {
+    public void pickerOmitsTheDotForTheSeenCurrentSessionAndKeepsItForTheBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active", 5_000L);
+        store.recordExplicitCall("active", 5_000L);
         store.recordSeen("active", 5_050L);
-        store.recordBell("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L);
 
         long nowMillis = 5_050L;
-        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
-        markIfVisible(markedSessionAgeLabels, 0, TermuxSessionsListViewController.newActivityIndicator(
-            store, "active", nowMillis));
-        markIfVisible(markedSessionAgeLabels, 1, TermuxSessionsListViewController.newActivityIndicator(
-            store, "background", nowMillis));
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        Map<Integer, String> ageLabelsByIndex = new LinkedHashMap<>();
+        markIfVisible(tiersByIndex, ageLabelsByIndex, 0,
+            TermuxSessionsListViewController.newActivityIndicator(store, "active", nowMillis));
+        markIfVisible(tiersByIndex, ageLabelsByIndex, 1,
+            TermuxSessionsListViewController.newActivityIndicator(store, "background", nowMillis));
 
         List<SessionHierarchyRow> rows = Arrays.asList(
             SessionHierarchyRow.session(0), SessionHierarchyRow.session(1));
         List<String> names = Arrays.asList("active", "background");
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, sessionRows(names, Collections.emptyList(), markedSessionAgeLabels, Collections.emptySet()), 0);
+            rows, sessionRows(names, Collections.emptyList(), tiersByIndex, ageLabelsByIndex,
+                Collections.emptySet()), 0);
 
         Assert.assertFalse(lines.get(0).isMarked());
         Assert.assertTrue(lines.get(1).isMarked());
@@ -84,9 +87,9 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void currentSessionWithoutASeenTickStillShowsItsBellThroughTheSharedLogic() {
+    public void currentSessionWithoutASeenTickStillShowsItsDotThroughTheSharedLogic() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("current", 1_000L);
+        store.recordExplicitCall("current", 1_000L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "current", 31_000L);
@@ -96,10 +99,10 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void aBellArrivingAfterTheLastSeenTickReappears() {
+    public void aSignalArrivingAfterTheLastSeenTickReappears() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordSeen("session", 6_000L);
-        store.recordBell("session", 9_000L);
+        store.recordExplicitCall("session", 9_000L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "session", 9_500L);
@@ -108,16 +111,19 @@ public class SessionActiveBellSuppressionTest {
     }
 
     private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
-                                                        Map<Integer, String> markedSessionAgeLabels,
+                                                        Map<Integer, SessionNewActivityTier> tiersByIndex,
+                                                        Map<Integer, String> ageLabelsByIndex,
                                                         Set<Integer> disabledSessionIndexes) {
         return SessionRow.project(names, titles, Collections.emptyList(), Collections.emptyList(),
-            markedSessionAgeLabels, disabledSessionIndexes, -1);
+            tiersByIndex, ageLabelsByIndex, disabledSessionIndexes, -1);
     }
 
-    private static void markIfVisible(Map<Integer, String> markedSessionAgeLabels,
+    private static void markIfVisible(Map<Integer, SessionNewActivityTier> tiersByIndex,
+                                      Map<Integer, String> ageLabelsByIndex,
                                       int sessionIndex, SessionNewActivityIndicator indicator) {
         if (indicator.isVisible()) {
-            markedSessionAgeLabels.put(sessionIndex, indicator.getLabel());
+            tiersByIndex.put(sessionIndex, indicator.getTier());
+            ageLabelsByIndex.put(sessionIndex, indicator.getLabel());
         }
     }
 }

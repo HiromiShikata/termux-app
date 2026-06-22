@@ -12,16 +12,20 @@ import java.util.List;
 public final class SessionNewActivityStateSerializer {
 
     private static final String KEY_SESSION_NAME = "sessionName";
-    private static final String KEY_LAST_BELL_TIME_MILLIS = "lastBellTimeMillis";
+    private static final String KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS = "lastOutputActivityTimeMillis";
+    private static final String KEY_LAST_EXPLICIT_CALL_TIME_MILLIS = "lastExplicitCallTimeMillis";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
+    private static final String LEGACY_KEY_LAST_BELL_TIME_MILLIS = "lastBellTimeMillis";
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
         for (SessionNewActivityState state : states) {
             JSONObject object = new JSONObject();
             object.put(KEY_SESSION_NAME, state.getSessionName());
-            if (state.getLastBellTimeMillis() != null)
-                object.put(KEY_LAST_BELL_TIME_MILLIS, state.getLastBellTimeMillis().longValue());
+            if (state.getLastOutputActivityTimeMillis() != null)
+                object.put(KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS, state.getLastOutputActivityTimeMillis().longValue());
+            if (state.getLastExplicitCallTimeMillis() != null)
+                object.put(KEY_LAST_EXPLICIT_CALL_TIME_MILLIS, state.getLastExplicitCallTimeMillis().longValue());
             if (state.getLastSeenTimeMillis() != null)
                 object.put(KEY_LAST_SEEN_TIME_MILLIS, state.getLastSeenTimeMillis().longValue());
             array.put(object);
@@ -41,13 +45,19 @@ public final class SessionNewActivityStateSerializer {
                 continue;
 
             String sessionName = object.getString(KEY_SESSION_NAME);
-            Long lastBellTimeMillis = object.isNull(KEY_LAST_BELL_TIME_MILLIS)
-                ? null : object.getLong(KEY_LAST_BELL_TIME_MILLIS);
-            Long lastSeenTimeMillis = object.isNull(KEY_LAST_SEEN_TIME_MILLIS)
-                ? null : object.getLong(KEY_LAST_SEEN_TIME_MILLIS);
+            Long lastOutputActivityTimeMillis = optionalLong(object, KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS);
+            Long lastExplicitCallTimeMillis = optionalLong(object, KEY_LAST_EXPLICIT_CALL_TIME_MILLIS);
+            if (lastExplicitCallTimeMillis == null)
+                lastExplicitCallTimeMillis = optionalLong(object, LEGACY_KEY_LAST_BELL_TIME_MILLIS);
+            Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
 
-            states.add(new SessionNewActivityState(sessionName, lastBellTimeMillis, lastSeenTimeMillis));
+            states.add(new SessionNewActivityState(sessionName, lastOutputActivityTimeMillis,
+                lastExplicitCallTimeMillis, lastSeenTimeMillis));
         }
         return states;
+    }
+
+    private static Long optionalLong(JSONObject object, String key) throws JSONException {
+        return object.isNull(key) ? null : object.getLong(key);
     }
 }
