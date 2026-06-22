@@ -107,6 +107,27 @@ public class SessionActivityDirectionTest {
     }
 
     @Test
+    public void hiddenRedSessionExcludedFromTiersNeitherColorsArrowsNorDrivesTheGlobalTier() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2), 1, tiers());
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, direction.getTier());
+        Assert.assertFalse(direction.hasActiveAbove());
+        Assert.assertFalse(direction.hasActiveBelow());
+    }
+
+    @Test
+    public void onlyVisibleSessionsRetainedInTiersDriveTheArrowColorWhenAHiddenRedSessionIsExcluded() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2, 3), 1,
+            tiers(3, SessionNewActivityTier.YELLOW));
+
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, direction.getTier());
+        Assert.assertFalse(direction.hasActiveAbove());
+        Assert.assertTrue(direction.hasActiveBelow());
+    }
+
+    @Test
     public void emptySessionListProducesNoneTier() {
         SessionActivityDirection direction =
             SessionActivityDirection.compute(Collections.<Integer>emptyList(), -1, tiers());

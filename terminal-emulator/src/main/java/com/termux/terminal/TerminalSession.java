@@ -220,6 +220,10 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator;
     }
 
+    public long getNeverResetScrolledLineCount() {
+        return mEmulator == null ? 0L : mEmulator.getNeverResetScrolledLineCount();
+    }
+
     /** Notify the {@link #mClient} that the screen has changed. */
     protected void notifyScreenUpdate() {
         mClient.onTextChanged(this);

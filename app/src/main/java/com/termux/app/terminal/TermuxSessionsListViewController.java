@@ -358,12 +358,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return indicatorsBySessionIndex;
         }
         long nowMillis = System.currentTimeMillis();
+        Set<String> disabledSessionNames = disabledSessionNames();
         for (int sessionIndex : getVisibleSessionIndexes()) {
             if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
                 continue;
             }
             TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
             String sessionName = terminalSession == null ? null : terminalSession.mSessionName;
+            if (isExcludedFromActivityIndicators(sessionName, disabledSessionNames)) {
+                continue;
+            }
             SessionNewActivityIndicator indicator =
                 newActivityIndicator(store, sessionName, nowMillis);
             if (indicator.isVisible()) {
@@ -371,6 +375,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             }
         }
         return indicatorsBySessionIndex;
+    }
+
+    static boolean isExcludedFromActivityIndicators(@Nullable String sessionName,
+                                                    @NonNull Set<String> disabledSessionNames) {
+        return sessionName != null && disabledSessionNames.contains(sessionName);
     }
 
     @NonNull

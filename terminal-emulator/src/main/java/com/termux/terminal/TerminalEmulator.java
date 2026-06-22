@@ -288,6 +288,8 @@ public final class TerminalEmulator {
      */
     private int mScrollCounter = 0;
 
+    private long mNeverResetScrolledLineCount = 0L;
+
     /** If automatic scrolling of terminal is disabled */
     private boolean mAutoScrollDisabled;
 
@@ -2256,6 +2258,7 @@ public final class TerminalEmulator {
 
     private void scrollDownOneLine() {
         mScrollCounter++;
+        mNeverResetScrolledLineCount++;
         long currentStyle = getStyle();
         if (mLeftMargin != 0 || mRightMargin != mColumns) {
             // Horizontal margin: Do not put anything into scroll history, just non-margin part of screen up.
@@ -2578,6 +2581,10 @@ public final class TerminalEmulator {
 
     public void clearScrollCounter() {
         mScrollCounter = 0;
+    }
+
+    public long getNeverResetScrolledLineCount() {
+        return mNeverResetScrolledLineCount;
     }
 
     public boolean isAutoScrollDisabled() {

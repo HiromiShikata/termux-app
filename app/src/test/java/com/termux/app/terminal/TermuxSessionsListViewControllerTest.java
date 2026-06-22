@@ -341,6 +341,30 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void disabledSessionIsExcludedFromActivityIndicatorsSoItNeverGetsATier() {
+        Assert.assertTrue(TermuxSessionsListViewController.isExcludedFromActivityIndicators(
+            "beta", new LinkedHashSet<>(Collections.singletonList("beta"))));
+    }
+
+    @Test
+    public void enabledSessionIsNotExcludedFromActivityIndicators() {
+        Assert.assertFalse(TermuxSessionsListViewController.isExcludedFromActivityIndicators(
+            "alpha", new LinkedHashSet<>(Collections.singletonList("beta"))));
+    }
+
+    @Test
+    public void unnamedSessionIsNotExcludedFromActivityIndicators() {
+        Assert.assertFalse(TermuxSessionsListViewController.isExcludedFromActivityIndicators(
+            null, new LinkedHashSet<>(Collections.singletonList("beta"))));
+    }
+
+    @Test
+    public void noSessionIsExcludedFromActivityIndicatorsWhenNothingIsDisabled() {
+        Assert.assertFalse(TermuxSessionsListViewController.isExcludedFromActivityIndicators(
+            "alpha", Collections.emptySet()));
+    }
+
+    @Test
     public void disabledSessionRowShowsTheDisabledNavigationIconAndEnabledRowShowsTheEnabledIcon() {
         Assert.assertEquals(R.drawable.ic_session_navigation_disabled,
             TermuxSessionsListViewController.sessionDisableToggleIconRes(true));

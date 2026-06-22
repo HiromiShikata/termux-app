@@ -17,12 +17,19 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
 
     private final TermuxService mService;
 
+    private final SessionOutputProgressTracker mSessionOutputProgressTracker = new SessionOutputProgressTracker();
+
     public TermuxTerminalSessionServiceClient(TermuxService service) {
         this.mService = service;
     }
 
     @Override
     public void onTextChanged(@NonNull TerminalSession changedSession) {
+        if (changedSession.mSessionName == null) return;
+        if (!mSessionOutputProgressTracker.hasNewOutput(
+                changedSession.mSessionName, changedSession.getNeverResetScrolledLineCount())) {
+            return;
+        }
         recordOutputActivity(changedSession);
     }
 

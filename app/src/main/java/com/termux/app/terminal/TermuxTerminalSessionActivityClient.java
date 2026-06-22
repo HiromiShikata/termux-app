@@ -84,6 +84,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
 
+    private final SessionOutputProgressTracker mSessionOutputProgressTracker = new SessionOutputProgressTracker();
+
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
 
@@ -179,7 +181,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onTextChanged(@NonNull TerminalSession changedSession) {
-        recordOutputActivityForSession(changedSession);
+        recordNewOutputActivityForSession(changedSession);
 
         if (!mActivity.isVisible()) return;
 
@@ -352,6 +354,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         ringtone.play();
     }
 
+    private void recordNewOutputActivityForSession(@NonNull TerminalSession session) {
+        if (session.mSessionName == null) return;
+        if (!mSessionOutputProgressTracker.hasNewOutput(
+                session.mSessionName, session.getNeverResetScrolledLineCount())) {
+            return;
+        }
+        recordOutputActivityForSession(session);
+    }
+
     private void recordOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         long nowMillis = System.currentTimeMillis();
@@ -379,6 +390,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
+        mSessionOutputProgressTracker.forget(sessionName);
         mActivity.getSessionNewActivityStore().purgeSession(sessionName);
         termuxSessionListNotifyUpdated();
     }
