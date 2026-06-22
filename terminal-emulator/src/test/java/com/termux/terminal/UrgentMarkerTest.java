@@ -49,4 +49,18 @@ public class UrgentMarkerTest extends TerminalTestCase {
         assertEquals(0, mOutput.markerNotifications);
     }
 
+    public void testUrgentMarkerWithoutReasonFiresWithEmptyReason() {
+        withTerminalSized(4, 2)
+            .enterString("\033]9998;claude-urgent\007");
+        assertEquals(1, mOutput.urgentNotifications);
+        assertEquals("", mOutput.urgentReasons.get(0));
+    }
+
+    public void testUrgentMarkerWithReasonFiresAndCarriesReason() {
+        withTerminalSized(4, 2)
+            .enterString("\033]9998;claude-urgent;needs approval\007");
+        assertEquals(1, mOutput.urgentNotifications);
+        assertEquals("needs approval", mOutput.urgentReasons.get(0));
+    }
+
 }

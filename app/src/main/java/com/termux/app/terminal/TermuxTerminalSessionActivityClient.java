@@ -307,13 +307,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Override
-    public void onMarkerNotification(@NonNull TerminalSession session) {
-        recordExplicitCallForSession(session);
+    public void onMarkerNotification(@NonNull TerminalSession session, @NonNull String reason) {
+        recordExplicitCallForSession(session, reason);
     }
 
     @Override
-    public void onUrgentNotification(@NonNull TerminalSession session) {
-        recordExplicitCallForSession(session);
+    public void onUrgentNotification(@NonNull TerminalSession session, @NonNull String reason) {
+        recordExplicitCallForSession(session, reason);
         mMainThreadHandler.post(() -> handleUrgentNotificationOnMainThread(session));
     }
 
@@ -376,9 +376,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return mActivity.isVisible() && mActivity.getCurrentSession() == session;
     }
 
-    private void recordExplicitCallForSession(@NonNull TerminalSession session) {
+    private void recordExplicitCallForSession(@NonNull TerminalSession session, @NonNull String reason) {
         if (session.mSessionName == null) return;
-        mActivity.getSessionNewActivityStore().recordExplicitCall(session.mSessionName, System.currentTimeMillis());
+        mActivity.getSessionNewActivityStore().recordExplicitCall(
+            session.mSessionName, System.currentTimeMillis(), reason);
         termuxSessionListNotifyUpdated();
     }
 

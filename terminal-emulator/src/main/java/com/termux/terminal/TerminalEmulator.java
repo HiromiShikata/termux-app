@@ -2191,21 +2191,36 @@ public final class TerminalEmulator {
                 break;
             case 119: // Reset highlight color.
                 break;
-            case MARKER_OSC_CODE:
-                if (MARKER_OSC_PAYLOAD.equals(textParameter)) {
-                    mSession.onMarkerNotification();
+            case MARKER_OSC_CODE: {
+                String markerReason = markerReasonOrNull(textParameter, MARKER_OSC_PAYLOAD);
+                if (markerReason != null) {
+                    mSession.onMarkerNotification(markerReason);
                 }
                 break;
-            case URGENT_MARKER_OSC_CODE:
-                if (URGENT_MARKER_OSC_PAYLOAD.equals(textParameter)) {
-                    mSession.onUrgentNotification();
+            }
+            case URGENT_MARKER_OSC_CODE: {
+                String urgentReason = markerReasonOrNull(textParameter, URGENT_MARKER_OSC_PAYLOAD);
+                if (urgentReason != null) {
+                    mSession.onUrgentNotification(urgentReason);
                 }
                 break;
+            }
             default:
                 unknownParameter(value);
                 break;
         }
         finishSequence();
+    }
+
+    private static String markerReasonOrNull(String textParameter, String payload) {
+        if (payload.equals(textParameter)) {
+            return "";
+        }
+        String payloadWithReasonSeparator = payload + ";";
+        if (textParameter.startsWith(payloadWithReasonSeparator)) {
+            return textParameter.substring(payloadWithReasonSeparator.length());
+        }
+        return null;
     }
 
     private void blockClear(int sx, int sy, int w) {

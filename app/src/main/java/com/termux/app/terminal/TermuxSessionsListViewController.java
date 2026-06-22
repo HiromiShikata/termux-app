@@ -61,6 +61,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
 
+    private static final String RED_EXPLICIT_CALL_REASON_PREFIX = "⚠ ";
+
     final TermuxActivity mActivity;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
@@ -740,6 +742,18 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             sessionTitleStart = fullSessionTitleBuilder.length();
             fullSessionTitleBuilder.append(sessionTitle);
             sessionTitleEnd = fullSessionTitleBuilder.length();
+            hasSecondaryLine = true;
+        }
+        String explicitCallReasonPart = redExplicitCallReasonLabel(sessionRow);
+        int explicitCallReasonStart = -1;
+        int explicitCallReasonEnd = -1;
+        if (!explicitCallReasonPart.isEmpty()) {
+            if (hasSecondaryLine) {
+                fullSessionTitleBuilder.append("\n");
+            }
+            explicitCallReasonStart = fullSessionTitleBuilder.length();
+            fullSessionTitleBuilder.append(explicitCallReasonPart);
+            explicitCallReasonEnd = fullSessionTitleBuilder.length();
         }
 
         String fullSessionTitle = fullSessionTitleBuilder.toString();
@@ -759,6 +773,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         if (sessionTitleStart >= 0) {
             fullSessionTitleStyled.setSpan(italicSpan, sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (explicitCallReasonStart >= 0) {
+            int redReasonColor = ContextCompat.getColor(mActivity, R.color.session_activity_tier_red);
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(redReasonColor), explicitCallReasonStart, explicitCallReasonEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
         sessionTitleView.setText(fullSessionTitleStyled);
@@ -812,6 +830,26 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         String label = store.lastOutputActivityAgeLabelJapanese(sessionName, System.currentTimeMillis());
         return label == null ? "" : label;
+    }
+
+    @NonNull
+    private String redExplicitCallReasonLabel(@NonNull SessionRow sessionRow) {
+        if (sessionRow.getTier() != SessionNewActivityTier.RED) {
+            return "";
+        }
+        String sessionName = sessionRow.getName();
+        if (sessionName.isEmpty()) {
+            return "";
+        }
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) {
+            return "";
+        }
+        String reason = store.getLastExplicitCallReason(sessionName);
+        if (reason.isEmpty()) {
+            return "";
+        }
+        return RED_EXPLICIT_CALL_REASON_PREFIX + reason;
     }
 
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull SessionRow sessionRow) {
