@@ -78,6 +78,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private Map<Integer, SessionRow> mSessionRowsByIndex = Collections.emptyMap();
 
+    private int mTotalSessionCount;
+
+    private Map<String, Integer> mSessionCountByProjectLabel = Collections.emptyMap();
+
     private final Set<String> mCollapsedProjectKeys = new LinkedHashSet<>();
 
     @Nullable
@@ -151,8 +155,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private void rebuildRows() {
-        mRows = mHierarchyBuilder.filterCollapsedProjects(buildAllRows(), mCollapsedProjectKeys);
+        List<SessionHierarchyRow> allRows = buildAllRows();
+        mRows = mHierarchyBuilder.filterCollapsedProjects(allRows, mCollapsedProjectKeys);
         mSessionRowsByIndex = getSessionRows();
+        mTotalSessionCount = SessionHierarchyBuilder.totalSessionCount(allRows);
+        mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(allRows);
+    }
+
+    public int getTotalSessionCount() {
+        return mTotalSessionCount;
     }
 
     public int getFirstVisibleSessionIndexAfterRebuild() {
@@ -530,6 +541,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             case PROJECT_HEADER:
                 View projectHeaderView = getHeaderView(row, convertView, parent,
                     R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
+                bindProjectSessionCount(projectHeaderView, row);
                 bindProjectCollapseIndicator(projectHeaderView, row);
                 bindProjectOverviewBrowserIcon(projectHeaderView, row);
                 bindProjectTdpmConsoleIcon(projectHeaderView, row);
@@ -554,6 +566,23 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         headerTitleView.setText(row.getLabel());
         headerTitleView.setTextColor(surfacePrimaryTextColor());
         return headerRowView;
+    }
+
+    private void bindProjectSessionCount(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
+        TextView countBadgeView = projectHeaderView.findViewById(R.id.session_project_header_count_badge);
+        int projectSessionCount = projectSessionCount(row.getLabel());
+        countBadgeView.setText(sessionCountBadgeText(projectSessionCount));
+        countBadgeView.setTextColor(surfacePrimaryTextColor());
+    }
+
+    private int projectSessionCount(@Nullable String projectLabel) {
+        Integer projectSessionCount = mSessionCountByProjectLabel.get(projectLabel);
+        return projectSessionCount == null ? 0 : projectSessionCount;
+    }
+
+    @NonNull
+    static String sessionCountBadgeText(int sessionCount) {
+        return Integer.toString(sessionCount);
     }
 
     private void bindProjectCollapseIndicator(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {

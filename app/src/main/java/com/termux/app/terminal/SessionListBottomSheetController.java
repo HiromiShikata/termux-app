@@ -212,6 +212,7 @@ public class SessionListBottomSheetController {
         applyTitleColor();
         applySheetDefaultHeight();
         bindSessionList(listController);
+        applySessionCountTitle(listController);
         mSheetView.animate().cancel();
         mScrimView.setVisibility(scrimVisibilityForSheet(View.VISIBLE));
         mSheetView.setVisibility(View.VISIBLE);
@@ -274,6 +275,27 @@ public class SessionListBottomSheetController {
 
     private void applyTitleColor() {
         mTitleView.setTextColor(ContextCompat.getColor(mActivity, com.termux.shared.R.color.schema_text_primary));
+    }
+
+    public void refreshSessionCountTitleIfShowing() {
+        if (mSheetView.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController == null) {
+            return;
+        }
+        applySessionCountTitle(listController);
+    }
+
+    private void applySessionCountTitle(@NonNull TermuxSessionsListViewController listController) {
+        String baseTitle = mActivity.getString(R.string.title_session_list_bottom_sheet);
+        mTitleView.setText(sessionCountTitle(baseTitle, listController.getTotalSessionCount()));
+    }
+
+    @NonNull
+    static String sessionCountTitle(@NonNull String baseTitle, int totalSessionCount) {
+        return baseTitle + " (" + totalSessionCount + ")";
     }
 
     private void applySheetDefaultHeight() {

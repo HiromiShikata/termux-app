@@ -31,6 +31,22 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/session_project_header_count_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dip"
+        android:background="@drawable/session_count_badge_background"
+        android:duplicateParentState="false"
+        android:gravity="center"
+        android:minWidth="20dip"
+        android:paddingStart="6dip"
+        android:paddingEnd="6dip"
+        android:paddingTop="1dip"
+        android:paddingBottom="1dip"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+
     <ImageView
         android:id="@+id/session_project_header_overview_browser_icon"
         android:layout_width="28dip"
