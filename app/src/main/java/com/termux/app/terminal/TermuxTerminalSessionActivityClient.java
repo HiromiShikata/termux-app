@@ -354,8 +354,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void recordOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
-        mActivity.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
+        long nowMillis = System.currentTimeMillis();
+        mActivity.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, nowMillis);
+        if (isCurrentlyViewedSession(session))
+            mActivity.getSessionNewActivityStore().recordSeen(session.mSessionName, nowMillis);
         termuxSessionListNotifyUpdated();
+    }
+
+    private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
+        return mActivity.isVisible() && mActivity.getCurrentSession() == session;
     }
 
     private void recordExplicitCallForSession(@NonNull TerminalSession session) {
@@ -392,6 +399,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void startActiveSessionSeenTick() {
+        if (mActivity.isVisible())
+            recordActiveSessionSeen();
         scheduleActiveSessionSeenTick();
     }
 
@@ -477,7 +486,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (session == null) return;
 
         stopActiveSessionSeenTick();
-        startActiveSessionSeenTick();
 
         TerminalSession previousSession = mActivity.getCurrentSession();
         boolean switchingSessions = previousSession != null && previousSession != session;
@@ -492,6 +500,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             toolbarAdapter.saveTextInputForSession(previousSession);
 
         mActivity.getTerminalView().attachSession(session);
+
+        startActiveSessionSeenTick();
 
         if (toolbarAdapter != null && switchingSessions)
             toolbarAdapter.restoreTextInputForSession(session);

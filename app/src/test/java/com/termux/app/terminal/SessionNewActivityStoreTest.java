@@ -83,6 +83,35 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void outputSeenAtSameInstantClearsYellowForViewedSession() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("session-one", 1_000L);
+        store.recordSeen("session-one", 1_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
+    }
+
+    @Test
+    public void viewedSessionWithNoNewOutputSinceLastSeenShowsNone() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("session-one", 1_000L);
+        store.recordSeen("session-one", 1_000L);
+        store.recordSeen("session-one", 2_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
+    }
+
+    @Test
+    public void outputAfterSeenReappearsAsYellow() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("session-one", 1_000L);
+        store.recordSeen("session-one", 1_000L);
+        store.recordOutputActivity("session-one", 2_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, store.tierFor("session-one"));
+    }
+
+    @Test
     public void seenClearsRedButLeavesNewerOutputActivityAsYellow() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session-one", 1_000L);
