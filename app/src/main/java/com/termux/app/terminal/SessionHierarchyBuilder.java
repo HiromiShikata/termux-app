@@ -190,6 +190,31 @@ public final class SessionHierarchyBuilder {
         return -1;
     }
 
+    public static int totalSessionCount(@NonNull List<SessionHierarchyRow> rows) {
+        int sessionCount = 0;
+        for (SessionHierarchyRow row : rows) {
+            if (!row.isHeader()) {
+                sessionCount++;
+            }
+        }
+        return sessionCount;
+    }
+
+    @NonNull
+    public static Map<String, Integer> sessionCountByProjectLabel(@NonNull List<SessionHierarchyRow> rows) {
+        Map<String, Integer> sessionCountByProjectLabel = new LinkedHashMap<>();
+        String currentProjectLabel = null;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                currentProjectLabel = row.getLabel();
+                sessionCountByProjectLabel.putIfAbsent(currentProjectLabel, 0);
+            } else if (!row.isHeader() && currentProjectLabel != null) {
+                sessionCountByProjectLabel.merge(currentProjectLabel, 1, Integer::sum);
+            }
+        }
+        return sessionCountByProjectLabel;
+    }
+
     @NonNull
     public static List<Integer> visibleSessionIndexes(@NonNull List<SessionHierarchyRow> visibleRows) {
         List<Integer> sessionIndexes = new ArrayList<>();
