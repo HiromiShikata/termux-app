@@ -14,6 +14,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_SESSION_NAME = "sessionName";
     private static final String KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS = "lastOutputActivityTimeMillis";
     private static final String KEY_LAST_EXPLICIT_CALL_TIME_MILLIS = "lastExplicitCallTimeMillis";
+    private static final String KEY_LAST_EXPLICIT_CALL_REASON = "lastExplicitCallReason";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
@@ -25,6 +26,8 @@ public final class SessionNewActivityStateSerializer {
                 object.put(KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS, state.getLastOutputActivityTimeMillis().longValue());
             if (state.getLastExplicitCallTimeMillis() != null)
                 object.put(KEY_LAST_EXPLICIT_CALL_TIME_MILLIS, state.getLastExplicitCallTimeMillis().longValue());
+            if (state.getLastExplicitCallReason() != null)
+                object.put(KEY_LAST_EXPLICIT_CALL_REASON, state.getLastExplicitCallReason());
             if (state.getLastSeenTimeMillis() != null)
                 object.put(KEY_LAST_SEEN_TIME_MILLIS, state.getLastSeenTimeMillis().longValue());
             array.put(object);
@@ -46,15 +49,20 @@ public final class SessionNewActivityStateSerializer {
             String sessionName = object.getString(KEY_SESSION_NAME);
             Long lastOutputActivityTimeMillis = optionalLong(object, KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS);
             Long lastExplicitCallTimeMillis = optionalLong(object, KEY_LAST_EXPLICIT_CALL_TIME_MILLIS);
+            String lastExplicitCallReason = optionalString(object, KEY_LAST_EXPLICIT_CALL_REASON);
             Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
 
             states.add(new SessionNewActivityState(sessionName, lastOutputActivityTimeMillis,
-                lastExplicitCallTimeMillis, lastSeenTimeMillis));
+                lastExplicitCallTimeMillis, lastExplicitCallReason, lastSeenTimeMillis));
         }
         return states;
     }
 
     private static Long optionalLong(JSONObject object, String key) throws JSONException {
         return object.isNull(key) ? null : object.getLong(key);
+    }
+
+    private static String optionalString(JSONObject object, String key) throws JSONException {
+        return object.isNull(key) ? null : object.getString(key);
     }
 }

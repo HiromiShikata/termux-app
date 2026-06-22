@@ -37,11 +37,11 @@ public class TermuxTerminalSessionClientBase implements TerminalSessionClient {
     }
 
     @Override
-    public void onMarkerNotification(@NonNull TerminalSession session) {
+    public void onMarkerNotification(@NonNull TerminalSession session, @NonNull String reason) {
     }
 
     @Override
-    public void onUrgentNotification(@NonNull TerminalSession session) {
+    public void onUrgentNotification(@NonNull TerminalSession session, @NonNull String reason) {
     }
 
     @Override

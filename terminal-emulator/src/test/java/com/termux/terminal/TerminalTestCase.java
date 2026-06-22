@@ -23,6 +23,8 @@ public abstract class TerminalTestCase extends TestCase {
 		public int bellsRung = 0;
 		public int markerNotifications = 0;
 		public int urgentNotifications = 0;
+		public final List<String> markerReasons = new ArrayList<>();
+		public final List<String> urgentReasons = new ArrayList<>();
 		public final List<String> speakNotifications = new ArrayList<>();
 		public int colorsChanged = 0;
 
@@ -57,13 +59,15 @@ public abstract class TerminalTestCase extends TestCase {
 		}
 
 		@Override
-		public void onMarkerNotification() {
+		public void onMarkerNotification(String reason) {
 			markerNotifications++;
+			markerReasons.add(reason);
 		}
 
 		@Override
-		public void onUrgentNotification() {
+		public void onUrgentNotification(String reason) {
 			urgentNotifications++;
+			urgentReasons.add(reason);
 		}
 
 		@Override

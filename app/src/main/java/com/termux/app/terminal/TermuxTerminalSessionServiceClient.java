@@ -39,13 +39,13 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     }
 
     @Override
-    public void onMarkerNotification(@NonNull TerminalSession session) {
-        recordExplicitCall(session);
+    public void onMarkerNotification(@NonNull TerminalSession session, @NonNull String reason) {
+        recordExplicitCall(session, reason);
     }
 
     @Override
-    public void onUrgentNotification(@NonNull TerminalSession session) {
-        recordExplicitCall(session);
+    public void onUrgentNotification(@NonNull TerminalSession session, @NonNull String reason) {
+        recordExplicitCall(session, reason);
     }
 
     private void recordOutputActivity(@NonNull TerminalSession session) {
@@ -53,9 +53,10 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         mService.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
     }
 
-    private void recordExplicitCall(@NonNull TerminalSession session) {
+    private void recordExplicitCall(@NonNull TerminalSession session, @NonNull String reason) {
         if (session.mSessionName == null) return;
-        mService.getSessionNewActivityStore().recordExplicitCall(session.mSessionName, System.currentTimeMillis());
+        mService.getSessionNewActivityStore().recordExplicitCall(
+            session.mSessionName, System.currentTimeMillis(), reason);
     }
 
     @Override

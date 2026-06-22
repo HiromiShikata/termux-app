@@ -371,4 +371,58 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
         Assert.assertEquals("0秒前", store.lastOutputActivityAgeLabelJapanese("worker", 1_500L));
     }
+
+    @Test
+    public void recordExplicitCallWithReasonStoresReasonAndRaisesRed() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "deploy failed");
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertEquals("deploy failed", store.getLastExplicitCallReason("worker"));
+    }
+
+    @Test
+    public void recordExplicitCallWithoutReasonRaisesRedWithEmptyReason() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertEquals("", store.getLastExplicitCallReason("worker"));
+    }
+
+    @Test
+    public void getLastExplicitCallReasonIsEmptyForUnknownSession() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        Assert.assertEquals("", store.getLastExplicitCallReason("never-called"));
+    }
+
+    @Test
+    public void recordExplicitCallWithReasonOverwritesPreviousReason() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordExplicitCall("worker", 2_000L, "second reason");
+
+        Assert.assertEquals("second reason", store.getLastExplicitCallReason("worker"));
+    }
+
+    @Test
+    public void purgeSessionClearsExplicitCallReason() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "deploy failed");
+        store.purgeSession("worker");
+
+        Assert.assertEquals("", store.getLastExplicitCallReason("worker"));
+    }
+
+    @Test
+    public void explicitCallReasonSurvivesPersistenceReload() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
+        beforeRestart.recordExplicitCall("worker", 1_000L, "needs approval");
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals("needs approval", afterRestart.getLastExplicitCallReason("worker"));
+    }
 }
