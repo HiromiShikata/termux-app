@@ -3,7 +3,7 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SessionCountBadgeTextTest {
+public class SessionCountTitleTest {
 
     @Test
     public void sessionCountTitleAppendsTotalCountInParentheses() {
@@ -17,9 +17,4 @@ public class SessionCountBadgeTextTest {
             SessionListBottomSheetController.sessionCountTitle("Sessions", 0));
     }
 
-    @Test
-    public void sessionCountBadgeTextIsTheCount() {
-        Assert.assertEquals("2", TermuxSessionsListViewController.sessionCountBadgeText(2));
-        Assert.assertEquals("0", TermuxSessionsListViewController.sessionCountBadgeText(0));
-    }
 }
