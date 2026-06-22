@@ -148,4 +148,24 @@ public class SessionNewActivityStore {
         }
         return (clampedElapsedMillis / ONE_HOUR_MILLIS) + "h ago";
     }
+
+    public static String formatRelativeTimeJapanese(long elapsedMillis) {
+        long clampedElapsedMillis = Math.max(0L, elapsedMillis);
+        if (clampedElapsedMillis < ONE_MINUTE_MILLIS) {
+            return (clampedElapsedMillis / ONE_SECOND_MILLIS) + "秒前";
+        }
+        if (clampedElapsedMillis < ONE_HOUR_MILLIS) {
+            return (clampedElapsedMillis / ONE_MINUTE_MILLIS) + "分前";
+        }
+        return (clampedElapsedMillis / ONE_HOUR_MILLIS) + "時間前";
+    }
+
+    @Nullable
+    public String lastOutputActivityAgeLabelJapanese(@NonNull String sessionName, long nowMillis) {
+        Long lastOutputActivityTimeMillis = getLastOutputActivityTimeMillis(sessionName);
+        if (lastOutputActivityTimeMillis == null) {
+            return null;
+        }
+        return formatRelativeTimeJapanese(nowMillis - lastOutputActivityTimeMillis);
+    }
 }

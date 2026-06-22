@@ -325,4 +325,50 @@ public class SessionNewActivityStoreTest {
     public void formatsExactlyOneHourAsHoursAgo() {
         Assert.assertEquals("1h ago", SessionNewActivityStore.formatRelativeTime(3_600_000L));
     }
+
+    @Test
+    public void formatsSubMinuteElapsedAsJapaneseSecondsAgo() {
+        Assert.assertEquals("30秒前", SessionNewActivityStore.formatRelativeTimeJapanese(30_000L));
+    }
+
+    @Test
+    public void formatsNegativeElapsedAsZeroJapaneseSecondsAgo() {
+        Assert.assertEquals("0秒前", SessionNewActivityStore.formatRelativeTimeJapanese(-5_000L));
+    }
+
+    @Test
+    public void formatsExactlyOneMinuteAsJapaneseMinutesAgo() {
+        Assert.assertEquals("3分前", SessionNewActivityStore.formatRelativeTimeJapanese(180_000L));
+    }
+
+    @Test
+    public void formatsExactlyOneHourAsJapaneseHoursAgo() {
+        Assert.assertEquals("2時間前", SessionNewActivityStore.formatRelativeTimeJapanese(7_200_000L));
+    }
+
+    @Test
+    public void lastOutputActivityAgeLabelJapaneseReflectsRecordedOutputActivity() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        Assert.assertEquals("5秒前", store.lastOutputActivityAgeLabelJapanese("worker", 6_000L));
+    }
+
+    @Test
+    public void lastOutputActivityAgeLabelJapaneseIsNullWhenOutputActivityUnknown() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L);
+
+        Assert.assertNull(store.lastOutputActivityAgeLabelJapanese("worker", 6_000L));
+    }
+
+    @Test
+    public void lastOutputActivityAgeLabelJapaneseIsPresentEvenWithoutAnyPendingTier() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+        store.recordSeen("worker", 2_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+        Assert.assertEquals("0秒前", store.lastOutputActivityAgeLabelJapanese("worker", 1_500L));
+    }
 }
