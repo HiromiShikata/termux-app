@@ -15,28 +15,26 @@ public final class SessionRow {
 
     static final String NEW_ACTIVITY_LABEL_PREFIX = "  ";
 
-    static final String BELL_MARK = "🔔 ";
-
     private final int sessionIndex;
     private final String name;
     private final String resolvedTitle;
     private final String project;
     private final String story;
-    private final boolean bellMarked;
-    private final String bellAgeLabel;
+    private final SessionNewActivityTier tier;
+    private final String activityAgeLabel;
     private final boolean disabled;
     private final boolean current;
 
     SessionRow(int sessionIndex, @NonNull String name, @NonNull String resolvedTitle,
-               @NonNull String project, @NonNull String story, boolean bellMarked,
-               @NonNull String bellAgeLabel, boolean disabled, boolean current) {
+               @NonNull String project, @NonNull String story, @NonNull SessionNewActivityTier tier,
+               @NonNull String activityAgeLabel, boolean disabled, boolean current) {
         this.sessionIndex = sessionIndex;
         this.name = name;
         this.resolvedTitle = resolvedTitle;
         this.project = project;
         this.story = story;
-        this.bellMarked = bellMarked;
-        this.bellAgeLabel = bellAgeLabel;
+        this.tier = tier;
+        this.activityAgeLabel = activityAgeLabel;
         this.disabled = disabled;
         this.current = current;
     }
@@ -65,13 +63,18 @@ public final class SessionRow {
         return story;
     }
 
-    public boolean isBellMarked() {
-        return bellMarked;
+    @NonNull
+    public SessionNewActivityTier getTier() {
+        return tier;
+    }
+
+    public boolean isActivityMarked() {
+        return tier != SessionNewActivityTier.NONE;
     }
 
     @NonNull
-    public String getBellAgeLabel() {
-        return bellAgeLabel;
+    public String getActivityAgeLabel() {
+        return activityAgeLabel;
     }
 
     public boolean isDisabled() {
@@ -87,22 +90,26 @@ public final class SessionRow {
                                                    @NonNull List<String> titlesByIndex,
                                                    @NonNull List<String> projectsByIndex,
                                                    @NonNull List<String> storiesByIndex,
-                                                   @NonNull Map<Integer, String> bellAgeLabelsByIndex,
+                                                   @NonNull Map<Integer, SessionNewActivityTier> tiersByIndex,
+                                                   @NonNull Map<Integer, String> activityAgeLabelsByIndex,
                                                    @NonNull Set<Integer> disabledIndexes,
                                                    int currentSessionIndex) {
         Map<Integer, SessionRow> rowsByIndex = new LinkedHashMap<>();
         int sessionCount = namesByIndex.size();
         for (int sessionIndex = 0; sessionIndex < sessionCount; sessionIndex++) {
-            String bellAgeLabel = bellAgeLabelsByIndex.get(sessionIndex);
-            boolean bellMarked = bellAgeLabel != null;
+            SessionNewActivityTier tier = tiersByIndex.get(sessionIndex);
+            if (tier == null) {
+                tier = SessionNewActivityTier.NONE;
+            }
+            String activityAgeLabel = activityAgeLabelsByIndex.get(sessionIndex);
             rowsByIndex.put(sessionIndex, new SessionRow(
                 sessionIndex,
                 valueAt(namesByIndex, sessionIndex),
                 valueAt(titlesByIndex, sessionIndex),
                 valueAt(projectsByIndex, sessionIndex),
                 valueAt(storiesByIndex, sessionIndex),
-                bellMarked,
-                bellMarked ? bellAgeLabel : "",
+                tier,
+                activityAgeLabel == null ? "" : activityAgeLabel,
                 disabledIndexes.contains(sessionIndex),
                 sessionIndex == currentSessionIndex));
         }
@@ -120,7 +127,7 @@ public final class SessionRow {
 
     @NonNull
     private static SessionRow emptyAt(int sessionIndex) {
-        return new SessionRow(sessionIndex, "", "", "", "", false, "", false, false);
+        return new SessionRow(sessionIndex, "", "", "", "", SessionNewActivityTier.NONE, "", false, false);
     }
 
     @NonNull

@@ -21,11 +21,13 @@ public class SessionPickerOverlayAgeLabelTest {
             SessionHierarchyRow.session(0),
             SessionHierarchyRow.session(1));
         List<String> names = Arrays.asList("alpha", "beta");
-        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
-        markedSessionAgeLabels.put(1, "30s ago");
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        tiersByIndex.put(1, SessionNewActivityTier.YELLOW);
+        Map<Integer, String> ageLabelsByIndex = new LinkedHashMap<>();
+        ageLabelsByIndex.put(1, "30s ago");
 
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED), -1);
+            rows, sessionRows(names, NO_TITLES, tiersByIndex, ageLabelsByIndex, NO_DISABLED, -1), -1);
         String structureText = SessionSwitchPickerController.pickerStructurePlainText(lines);
 
         Assert.assertTrue(structureText.contains("30s ago"));
@@ -39,41 +41,39 @@ public class SessionPickerOverlayAgeLabelTest {
         List<String> names = Arrays.asList("alpha", "beta");
 
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, sessionRows(names, NO_TITLES, Collections.emptyMap(), NO_DISABLED), -1);
+            rows, sessionRows(names, NO_TITLES, Collections.emptyMap(), Collections.emptyMap(),
+                NO_DISABLED, -1), -1);
         String structureText = SessionSwitchPickerController.pickerStructurePlainText(lines);
 
         Assert.assertFalse(structureText.contains("ago"));
     }
 
     private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
-                                                        Map<Integer, String> markedSessionAgeLabels,
-                                                        Set<Integer> disabledSessionIndexes) {
-        return sessionRows(names, titles, markedSessionAgeLabels, disabledSessionIndexes, -1);
-    }
-
-    private static Map<Integer, SessionRow> sessionRows(List<String> names, List<String> titles,
-                                                        Map<Integer, String> markedSessionAgeLabels,
+                                                        Map<Integer, SessionNewActivityTier> tiersByIndex,
+                                                        Map<Integer, String> ageLabelsByIndex,
                                                         Set<Integer> disabledSessionIndexes,
                                                         int currentSessionIndex) {
         return SessionRow.project(names, titles, Collections.emptyList(), Collections.emptyList(),
-            markedSessionAgeLabels, disabledSessionIndexes, currentSessionIndex);
+            tiersByIndex, ageLabelsByIndex, disabledSessionIndexes, currentSessionIndex);
     }
 
     @Test
-    public void pickerHidesTheBellSlotForTheSeenCurrentSessionButShowsItForAnUnseenBackgroundSession() {
+    public void pickerHidesTheDotForTheSeenCurrentSessionButShowsItForAnUnseenBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("current", 1_000L);
+        store.recordExplicitCall("current", 1_000L);
         store.recordSeen("current", 5_000L);
-        store.recordBell("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L);
 
         long nowMillis = 31_000L;
         List<String> names = Arrays.asList("current", "background");
-        Map<Integer, String> markedSessionAgeLabels = new LinkedHashMap<>();
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        Map<Integer, String> ageLabelsByIndex = new LinkedHashMap<>();
         for (int sessionIndex = 0; sessionIndex < names.size(); sessionIndex++) {
             SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
                 store, names.get(sessionIndex), nowMillis);
             if (indicator.isVisible()) {
-                markedSessionAgeLabels.put(sessionIndex, indicator.getLabel());
+                tiersByIndex.put(sessionIndex, indicator.getTier());
+                ageLabelsByIndex.put(sessionIndex, indicator.getLabel());
             }
         }
 
@@ -81,7 +81,7 @@ public class SessionPickerOverlayAgeLabelTest {
             SessionHierarchyRow.session(0),
             SessionHierarchyRow.session(1));
         List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(
-            rows, sessionRows(names, NO_TITLES, markedSessionAgeLabels, NO_DISABLED, 0), -1);
+            rows, sessionRows(names, NO_TITLES, tiersByIndex, ageLabelsByIndex, NO_DISABLED, 0), -1);
 
         Assert.assertFalse(SessionSwitchPickerController.isBellMarkSlotVisible(lines.get(0).isMarked()));
         Assert.assertTrue(SessionSwitchPickerController.isBellMarkSlotVisible(lines.get(1).isMarked()));
@@ -91,9 +91,9 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void bottomSheetLabelAndPickerLabelAreByteIdenticalForTheSameBellTimestamp() {
+    public void bottomSheetLabelAndPickerLabelAreByteIdenticalForTheSameSignalTimestamp() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 1_000L + 45_000L);
 
@@ -105,7 +105,7 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void aSessionWithoutABellProducesNoIndicatorAndNoLabel() {
+    public void aSessionWithoutAnySignalProducesNoIndicatorAndNoLabel() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 5_000L);

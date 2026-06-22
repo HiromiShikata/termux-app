@@ -21,40 +21,40 @@ import org.robolectric.RuntimeEnvironment;
 @RunWith(RobolectricTestRunner.class)
 public class SessionBellIndicatorConsistencyTest {
 
-    private static boolean bottomSheetShowsBell(SessionNewActivityIndicator indicator) {
-        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(indicator.isVisible())
-            == R.drawable.ic_session_bell_notification;
+    private static boolean bottomSheetShowsDot(SessionNewActivityIndicator indicator) {
+        return TermuxSessionsListViewController.newActivityIndicatorDrawableRes(indicator.getTier())
+            != R.drawable.ic_session_activity_dot_placeholder;
     }
 
-    private static boolean pickerOverlayShowsBell(SessionNewActivityIndicator indicator) {
+    private static boolean pickerOverlayShowsDot(SessionNewActivityIndicator indicator) {
         return SessionSwitchPickerController.isBellMarkSlotVisible(indicator.isVisible());
     }
 
     @Test
-    public void bothRenderersAgreeWhenAnUnseenBellIsRecorded() {
+    public void bothRenderersAgreeWhenAnUnseenSignalIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 4_000L);
 
-        Assert.assertEquals(bottomSheetShowsBell(indicator), pickerOverlayShowsBell(indicator));
-        Assert.assertTrue(bottomSheetShowsBell(indicator));
+        Assert.assertEquals(bottomSheetShowsDot(indicator), pickerOverlayShowsDot(indicator));
+        Assert.assertTrue(bottomSheetShowsDot(indicator));
     }
 
     @Test
-    public void bothRenderersAgreeWhenNoBellIsRecorded() {
+    public void bothRenderersAgreeWhenNoSignalIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 4_000L);
 
-        Assert.assertEquals(bottomSheetShowsBell(indicator), pickerOverlayShowsBell(indicator));
-        Assert.assertFalse(bottomSheetShowsBell(indicator));
+        Assert.assertEquals(bottomSheetShowsDot(indicator), pickerOverlayShowsDot(indicator));
+        Assert.assertFalse(bottomSheetShowsDot(indicator));
     }
 
     @Test
     public void bothRenderersDeriveTheSameAgeLabelFromTheSharedHelper() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 31_000L);
 
@@ -66,33 +66,38 @@ public class SessionBellIndicatorConsistencyTest {
     }
 
     @Test
-    public void activeSessionShowsNoIndicatorPurelyBecauseLastSeenCaughtUpToTheBell() {
+    public void activeSessionShowsNoIndicatorPurelyBecauseLastSeenCaughtUpToTheSignal() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("active", 1_000L);
+        store.recordExplicitCall("active", 1_000L);
         store.recordSeen("active", 2_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "active", 4_000L);
 
         Assert.assertFalse(indicator.isVisible());
         Assert.assertEquals("", indicator.getLabel());
-        Assert.assertFalse(bottomSheetShowsBell(indicator));
-        Assert.assertFalse(pickerOverlayShowsBell(indicator));
+        Assert.assertFalse(bottomSheetShowsDot(indicator));
+        Assert.assertFalse(pickerOverlayShowsDot(indicator));
     }
 
     @Test
     public void bottomSheetReservesAFixedIndicatorSlotRegardlessOfIndicatorPresence() {
-        int presentDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(true);
-        int absentDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(false);
+        int redDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(
+            SessionNewActivityTier.RED);
+        int yellowDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(
+            SessionNewActivityTier.YELLOW);
+        int absentDrawable = TermuxSessionsListViewController.newActivityIndicatorDrawableRes(
+            SessionNewActivityTier.NONE);
 
-        Assert.assertNotEquals(0, presentDrawable);
+        Assert.assertNotEquals(0, redDrawable);
+        Assert.assertNotEquals(0, yellowDrawable);
         Assert.assertNotEquals(0, absentDrawable);
-        Assert.assertEquals(R.drawable.ic_session_bell_notification, presentDrawable);
-        Assert.assertEquals(R.drawable.ic_session_bell_notification_placeholder, absentDrawable);
+        Assert.assertEquals(R.drawable.ic_session_activity_dot_red, redDrawable);
+        Assert.assertEquals(R.drawable.ic_session_activity_dot_yellow, yellowDrawable);
+        Assert.assertEquals(R.drawable.ic_session_activity_dot_placeholder, absentDrawable);
     }
 
     @Test
-    public void pickerOverlayEmitsTheSameBellMarkSlotTextWhetherOrNotMarked() {
-        Assert.assertFalse(SessionSwitchPickerController.bellMarkSlotText().isEmpty());
+    public void pickerOverlayMarksTheSlotVisibleOnlyWhenAnActivityIsPresent() {
         Assert.assertFalse(SessionSwitchPickerController.isBellMarkSlotVisible(false));
         Assert.assertTrue(SessionSwitchPickerController.isBellMarkSlotVisible(true));
     }
@@ -101,11 +106,11 @@ public class SessionBellIndicatorConsistencyTest {
     public void bottomSheetRowKeepsAStartCompoundDrawableWithStableBoundsWhetherOrNotIndicatorIsPresent() {
         TextView withIndicator = new TextView(RuntimeEnvironment.getApplication());
         withIndicator.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(true), 0, 0, 0);
+            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(SessionNewActivityTier.RED), 0, 0, 0);
 
         TextView withoutIndicator = new TextView(RuntimeEnvironment.getApplication());
         withoutIndicator.setCompoundDrawablesRelativeWithIntrinsicBounds(
-            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(false), 0, 0, 0);
+            TermuxSessionsListViewController.newActivityIndicatorDrawableRes(SessionNewActivityTier.NONE), 0, 0, 0);
 
         Drawable presentStartDrawable = withIndicator.getCompoundDrawablesRelative()[0];
         Drawable absentStartDrawable = withoutIndicator.getCompoundDrawablesRelative()[0];

@@ -11,37 +11,50 @@ public class SessionBellTwoTimestampBehaviorTest {
     }
 
     @Test
-    public void realBellInANonViewedSessionShowsTheBell() {
+    public void explicitCallInANonViewedSessionShowsRed() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L);
 
-        Assert.assertTrue(indicatorFor(store, "background", 2_000L).isVisible());
+        SessionNewActivityIndicator indicator = indicatorFor(store, "background", 2_000L);
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.RED, indicator.getTier());
     }
 
     @Test
-    public void ordinaryOutputDoesNotSetTheBellSoNoZeroSecondsAgoForever() {
+    public void outputActivityInANonViewedSessionShowsYellow() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("background", 1_000L);
+
+        SessionNewActivityIndicator indicator = indicatorFor(store, "background", 2_000L);
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
+    }
+
+    @Test
+    public void seenAloneNeverProducesAnIndicator() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         store.recordSeen("background", 1_000L);
 
-        Assert.assertNull(store.getLastBellTimeMillis("background"));
+        Assert.assertNull(store.getLastExplicitCallTimeMillis("background"));
+        Assert.assertNull(store.getLastOutputActivityTimeMillis("background"));
         Assert.assertFalse(indicatorFor(store, "background", 2_000L).isVisible());
         Assert.assertFalse(indicatorFor(store, "background", 60_000L).isVisible());
     }
 
     @Test
-    public void viewingASessionDoesNotClearTheBellInstantlyBeforeTheDwellElapses() {
+    public void viewingASessionDoesNotClearTheSignalBeforeSeenTimeAdvances() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("viewed", 5_000L);
+        store.recordExplicitCall("viewed", 5_000L);
 
         long switchMomentMillis = 5_100L;
         Assert.assertTrue(indicatorFor(store, "viewed", switchMomentMillis).isVisible());
     }
 
     @Test
-    public void viewingASessionClearsTheBellOnceTheSeenTimeAdvancesPastTheBell() {
+    public void viewingASessionClearsTheSignalOnceTheSeenTimeAdvancesPastIt() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("viewed", 5_000L);
+        store.recordExplicitCall("viewed", 5_000L);
 
         store.recordSeen("viewed", 6_100L);
 
@@ -49,21 +62,21 @@ public class SessionBellTwoTimestampBehaviorTest {
     }
 
     @Test
-    public void aBellArrivingAfterTheSessionWasSeenReappears() {
+    public void aSignalArrivingAfterTheSessionWasSeenReappears() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("session", 1_000L);
+        store.recordExplicitCall("session", 1_000L);
         store.recordSeen("session", 2_000L);
         Assert.assertFalse(indicatorFor(store, "session", 2_500L).isVisible());
 
-        store.recordBell("session", 9_000L);
+        store.recordExplicitCall("session", 9_000L);
 
         Assert.assertTrue(indicatorFor(store, "session", 9_500L).isVisible());
     }
 
     @Test
-    public void ageLabelAdvancesOverTimeWhileTheBellStaysUnseen() {
+    public void ageLabelAdvancesOverTimeWhileTheSignalStaysUnseen() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("session", 1_000L);
+        store.recordExplicitCall("session", 1_000L);
 
         String labelAtFiveSeconds = indicatorFor(store, "session", 6_000L).getLabel();
         String labelAtFortySeconds = indicatorFor(store, "session", 41_000L).getLabel();
@@ -73,9 +86,9 @@ public class SessionBellTwoTimestampBehaviorTest {
     }
 
     @Test
-    public void purgingARemovedSessionDropsItsBell() {
+    public void purgingARemovedSessionDropsItsSignals() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("session", 1_000L);
+        store.recordExplicitCall("session", 1_000L);
 
         store.purgeSession("session");
 

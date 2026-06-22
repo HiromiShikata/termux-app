@@ -5,16 +5,24 @@ import androidx.annotation.Nullable;
 
 public final class SessionNewActivityIndicator {
 
-    private final boolean visible;
+    @NonNull
+    private final SessionNewActivityTier tier;
+
+    @NonNull
     private final String label;
 
-    private SessionNewActivityIndicator(boolean visible, @NonNull String label) {
-        this.visible = visible;
+    private SessionNewActivityIndicator(@NonNull SessionNewActivityTier tier, @NonNull String label) {
+        this.tier = tier;
         this.label = label;
     }
 
+    @NonNull
+    public SessionNewActivityTier getTier() {
+        return tier;
+    }
+
     public boolean isVisible() {
-        return visible;
+        return tier != SessionNewActivityTier.NONE;
     }
 
     @NonNull
@@ -22,23 +30,22 @@ public final class SessionNewActivityIndicator {
         return label;
     }
 
-    static boolean isBellUnseen(@Nullable Long lastBellTimeMillis, @Nullable Long lastSeenTimeMillis) {
-        if (lastBellTimeMillis == null) {
-            return false;
-        }
-        if (lastSeenTimeMillis == null) {
-            return true;
-        }
-        return lastBellTimeMillis > lastSeenTimeMillis;
-    }
-
     @NonNull
-    public static SessionNewActivityIndicator labelFor(@Nullable Long lastBellTimeMillis,
-                                                       @Nullable Long lastSeenTimeMillis, long nowMillis) {
-        if (!isBellUnseen(lastBellTimeMillis, lastSeenTimeMillis)) {
-            return new SessionNewActivityIndicator(false, "");
+    public static SessionNewActivityIndicator indicatorFor(@Nullable Long lastOutputActivityTimeMillis,
+                                                           @Nullable Long lastExplicitCallTimeMillis,
+                                                           @Nullable Long lastSeenTimeMillis, long nowMillis) {
+        SessionNewActivityTier tier = SessionNewActivityTier.resolve(
+            lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastSeenTimeMillis);
+        switch (tier) {
+            case RED:
+                return new SessionNewActivityIndicator(SessionNewActivityTier.RED,
+                    SessionNewActivityStore.formatRelativeTime(nowMillis - lastExplicitCallTimeMillis));
+            case YELLOW:
+                return new SessionNewActivityIndicator(SessionNewActivityTier.YELLOW,
+                    SessionNewActivityStore.formatRelativeTime(nowMillis - lastOutputActivityTimeMillis));
+            case NONE:
+            default:
+                return new SessionNewActivityIndicator(SessionNewActivityTier.NONE, "");
         }
-        return new SessionNewActivityIndicator(true,
-            SessionNewActivityStore.formatRelativeTime(nowMillis - lastBellTimeMillis));
     }
 }

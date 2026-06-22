@@ -59,7 +59,8 @@ import com.termux.app.terminal.ProjectActionToken;
 import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
-import com.termux.app.terminal.SessionBellDirection;
+import com.termux.app.terminal.SessionActivityDirection;
+import com.termux.app.terminal.SessionNewActivityTier;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.session.SessionDefinitionPrewarm;
@@ -91,7 +92,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /**
  * A terminal emulator activity.
@@ -932,27 +933,29 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             forward -> getSessionSwitchPickerController().onVolumeKeyDirection(forward));
     }
 
-    private void renderSessionNavigationBellGlow() {
+    private void renderSessionNavigationActivityTier() {
         if (mPreviousSessionButton == null || mNextSessionButton == null) {
             return;
         }
-        SessionBellDirection direction = computeSessionBellDirection();
-        int glowColor = ContextCompat.getColor(this, R.color.session_bell_direction_glow);
+        SessionActivityDirection direction = computeSessionActivityDirection();
+        int redColor = ContextCompat.getColor(this, R.color.session_activity_tier_red);
+        int yellowColor = ContextCompat.getColor(this, R.color.session_activity_tier_yellow);
         int defaultColor = ContextCompat.getColor(this, com.termux.shared.R.color.white);
-        SessionNavigationButtonsBinder.applyDirectionGlow(
-            mPreviousSessionButton, mNextSessionButton, direction, glowColor, defaultColor);
+        SessionNavigationButtonsBinder.applyDirectionTier(
+            mPreviousSessionButton, mNextSessionButton, direction, redColor, yellowColor, defaultColor);
     }
 
     @NonNull
-    private SessionBellDirection computeSessionBellDirection() {
+    private SessionActivityDirection computeSessionActivityDirection() {
         TermuxService service = getTermuxService();
         if (service == null || mTermuxSessionListViewController == null) {
-            return SessionBellDirection.compute(Collections.emptyList(), -1, Collections.emptySet());
+            return SessionActivityDirection.compute(Collections.emptyList(), -1, Collections.emptyMap());
         }
         List<Integer> orderedSessionIndexes = mTermuxSessionListViewController.getOrderedSessionIndexes();
-        Set<Integer> unseenBellSessionIndexes = mTermuxSessionListViewController.getMarkedSessionIndexes();
+        Map<Integer, SessionNewActivityTier> tiersByIndex =
+            mTermuxSessionListViewController.getSessionTiersByIndex();
         int currentSessionIndex = service.getIndexOfSession(getCurrentSession());
-        return SessionBellDirection.compute(orderedSessionIndexes, currentSessionIndex, unseenBellSessionIndexes);
+        return SessionActivityDirection.compute(orderedSessionIndexes, currentSessionIndex, tiersByIndex);
     }
 
 
@@ -1263,7 +1266,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void termuxSessionListNotifyUpdated() {
         mTermuxSessionListViewController.notifyDataSetChanged();
-        renderSessionNavigationBellGlow();
+        renderSessionNavigationActivityTier();
     }
 
     public boolean isVisible() {

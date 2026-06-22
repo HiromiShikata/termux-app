@@ -9,15 +9,21 @@ public final class SessionNewActivityState {
     private final String mSessionName;
 
     @Nullable
-    private final Long mLastBellTimeMillis;
+    private final Long mLastOutputActivityTimeMillis;
+
+    @Nullable
+    private final Long mLastExplicitCallTimeMillis;
 
     @Nullable
     private final Long mLastSeenTimeMillis;
 
-    public SessionNewActivityState(@NonNull String sessionName, @Nullable Long lastBellTimeMillis,
+    public SessionNewActivityState(@NonNull String sessionName,
+                                   @Nullable Long lastOutputActivityTimeMillis,
+                                   @Nullable Long lastExplicitCallTimeMillis,
                                    @Nullable Long lastSeenTimeMillis) {
         mSessionName = sessionName;
-        mLastBellTimeMillis = lastBellTimeMillis;
+        mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
+        mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
         mLastSeenTimeMillis = lastSeenTimeMillis;
     }
 
@@ -27,8 +33,13 @@ public final class SessionNewActivityState {
     }
 
     @Nullable
-    public Long getLastBellTimeMillis() {
-        return mLastBellTimeMillis;
+    public Long getLastOutputActivityTimeMillis() {
+        return mLastOutputActivityTimeMillis;
+    }
+
+    @Nullable
+    public Long getLastExplicitCallTimeMillis() {
+        return mLastExplicitCallTimeMillis;
     }
 
     @Nullable

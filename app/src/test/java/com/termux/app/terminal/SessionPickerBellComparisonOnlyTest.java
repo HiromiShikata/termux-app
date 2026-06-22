@@ -13,35 +13,37 @@ import java.util.Map;
 public class SessionPickerBellComparisonOnlyTest {
 
     @Test
-    public void currentSessionWithUnseenBellStillShowsBellSinceSuppressionIsRemoved() {
+    public void currentSessionWithUnseenSignalStillShowsDotSinceSuppressionIsRemoved() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("current", 5_000L);
+        store.recordExplicitCall("current", 5_000L);
 
         List<SessionPickerOverlayLine> lines = render(store,
             Arrays.asList("current", "background"), 0, 5_500L);
 
         Assert.assertTrue(lines.get(0).isCurrent());
         Assert.assertTrue(lines.get(0).isMarked());
+        Assert.assertEquals(SessionNewActivityTier.RED, lines.get(0).getTier());
     }
 
     @Test
-    public void renderedBellMatchesLastBellGreaterThanLastSeenForEverySession() {
+    public void renderedTierMatchesSignalGreaterThanLastSeenForEverySession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("alpha", 5_000L);
+        store.recordExplicitCall("alpha", 5_000L);
         store.recordSeen("alpha", 6_000L);
-        store.recordBell("beta", 5_000L);
+        store.recordOutputActivity("beta", 5_000L);
 
         List<SessionPickerOverlayLine> lines = render(store,
             Arrays.asList("alpha", "beta"), -1, 6_500L);
 
         Assert.assertFalse(lines.get(0).isMarked());
         Assert.assertTrue(lines.get(1).isMarked());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, lines.get(1).getTier());
     }
 
     @Test
-    public void advancingLastSeenViaSeenTickRemovesTheBellWithoutAnyExplicitClear() {
+    public void advancingLastSeenViaSeenTickRemovesTheDotWithoutAnyExplicitClear() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordBell("current", 5_000L);
+        store.recordExplicitCall("current", 5_000L);
 
         List<SessionPickerOverlayLine> beforeTick = render(store,
             Collections.singletonList("current"), 0, 5_500L);
@@ -57,19 +59,21 @@ public class SessionPickerBellComparisonOnlyTest {
     private static List<SessionPickerOverlayLine> render(SessionNewActivityStore store,
                                                          List<String> sessionNames,
                                                          int currentSessionIndex, long nowMillis) {
-        Map<Integer, String> bellAgeLabelsByIndex = new LinkedHashMap<>();
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        Map<Integer, String> ageLabelsByIndex = new LinkedHashMap<>();
         List<SessionHierarchyRow> rows = new ArrayList<>(sessionNames.size());
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
             SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
                 store, sessionNames.get(sessionIndex), nowMillis);
             if (indicator.isVisible()) {
-                bellAgeLabelsByIndex.put(sessionIndex, indicator.getLabel());
+                tiersByIndex.put(sessionIndex, indicator.getTier());
+                ageLabelsByIndex.put(sessionIndex, indicator.getLabel());
             }
             rows.add(SessionHierarchyRow.session(sessionIndex));
         }
         Map<Integer, SessionRow> sessionRowsByIndex = SessionRow.project(sessionNames,
             Collections.emptyList(), Collections.emptyList(), Collections.emptyList(),
-            bellAgeLabelsByIndex, Collections.emptySet(), currentSessionIndex);
+            tiersByIndex, ageLabelsByIndex, Collections.emptySet(), currentSessionIndex);
         return SessionPickerOverlayRenderModel.build(rows, sessionRowsByIndex, -1);
     }
 }

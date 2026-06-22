@@ -166,8 +166,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @NonNull
     public List<Integer> getNavigationCandidateSessionIndexes() {
-        return NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(
-            getNavigableSessionIndexes(), getMarkedSessionIndexes());
+        return NotifiedSessionNavigationCandidates.restrictToActiveTier(
+            getNavigableSessionIndexes(), getSessionTiersByIndex());
     }
 
     @NonNull
@@ -280,7 +280,17 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     @NonNull
     public Set<Integer> getMarkedSessionIndexes() {
-        return new LinkedHashSet<>(markedSessionAgeLabels().keySet());
+        return new LinkedHashSet<>(sessionActivityIndicatorsByIndex().keySet());
+    }
+
+    @NonNull
+    public Map<Integer, SessionNewActivityTier> getSessionTiersByIndex() {
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        for (Map.Entry<Integer, SessionNewActivityIndicator> entry
+                : sessionActivityIndicatorsByIndex().entrySet()) {
+            tiersByIndex.put(entry.getKey(), entry.getValue().getTier());
+        }
+        return tiersByIndex;
     }
 
     @NonNull
@@ -307,7 +317,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         TerminalSession currentSession = mActivity.getCurrentSession();
         return SessionRow.project(namesByIndex, titlesByIndex, projectsByIndex, storiesByIndex,
-            markedSessionAgeLabels(), getDisabledSessionIndexes(), indexOfSession(currentSession));
+            getSessionTiersByIndex(), sessionActivityAgeLabelsByIndex(), getDisabledSessionIndexes(),
+            indexOfSession(currentSession));
     }
 
     @NonNull
@@ -329,11 +340,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
-    private Map<Integer, String> markedSessionAgeLabels() {
-        Map<Integer, String> ageLabelsBySessionIndex = new LinkedHashMap<>();
+    private Map<Integer, SessionNewActivityIndicator> sessionActivityIndicatorsByIndex() {
+        Map<Integer, SessionNewActivityIndicator> indicatorsBySessionIndex = new LinkedHashMap<>();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) {
-            return ageLabelsBySessionIndex;
+            return indicatorsBySessionIndex;
         }
         long nowMillis = System.currentTimeMillis();
         for (int sessionIndex : getVisibleSessionIndexes()) {
@@ -345,8 +356,18 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             SessionNewActivityIndicator indicator =
                 newActivityIndicator(store, sessionName, nowMillis);
             if (indicator.isVisible()) {
-                ageLabelsBySessionIndex.put(sessionIndex, indicator.getLabel());
+                indicatorsBySessionIndex.put(sessionIndex, indicator);
             }
+        }
+        return indicatorsBySessionIndex;
+    }
+
+    @NonNull
+    private Map<Integer, String> sessionActivityAgeLabelsByIndex() {
+        Map<Integer, String> ageLabelsBySessionIndex = new LinkedHashMap<>();
+        for (Map.Entry<Integer, SessionNewActivityIndicator> entry
+                : sessionActivityIndicatorsByIndex().entrySet()) {
+            ageLabelsBySessionIndex.put(entry.getKey(), entry.getValue().getLabel());
         }
         return ageLabelsBySessionIndex;
     }
@@ -356,9 +377,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                                                             @Nullable String sessionName,
                                                             long nowMillis) {
         if (sessionName == null) {
-            return SessionNewActivityIndicator.labelFor(null, null, nowMillis);
+            return SessionNewActivityIndicator.indicatorFor(null, null, null, nowMillis);
         }
-        return SessionNewActivityIndicator.labelFor(store.getLastBellTimeMillis(sessionName),
+        return SessionNewActivityIndicator.indicatorFor(
+            store.getLastOutputActivityTimeMillis(sessionName),
+            store.getLastExplicitCallTimeMillis(sessionName),
             store.getLastSeenTimeMillis(sessionName), nowMillis);
     }
 
@@ -733,22 +756,20 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
-        if (!sessionRow.isBellMarked()) {
+        if (!sessionRow.isActivityMarked()) {
             return "";
         }
-        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + sessionRow.getBellAgeLabel();
+        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + sessionRow.getActivityAgeLabel();
     }
 
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull SessionRow sessionRow) {
-        int indicatorDrawableRes = newActivityIndicatorDrawableRes(sessionRow.isBellMarked());
+        int indicatorDrawableRes = newActivityIndicatorDrawableRes(sessionRow.getTier());
         sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(indicatorDrawableRes, 0, 0, 0);
         sessionTitleView.setCompoundDrawablePadding(dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
     }
 
-    static int newActivityIndicatorDrawableRes(boolean hasNewActivityIndicator) {
-        return hasNewActivityIndicator
-            ? R.drawable.ic_session_bell_notification
-            : R.drawable.ic_session_bell_notification_placeholder;
+    static int newActivityIndicatorDrawableRes(@NonNull SessionNewActivityTier tier) {
+        return SessionActivityTierDrawables.dotDrawableRes(tier);
     }
 
     private int dpToPx(int dp) {

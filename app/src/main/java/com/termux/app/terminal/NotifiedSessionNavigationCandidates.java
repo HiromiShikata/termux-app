@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public final class NotifiedSessionNavigationCandidates {
 
@@ -12,17 +12,31 @@ public final class NotifiedSessionNavigationCandidates {
     }
 
     @NonNull
-    public static List<Integer> restrictToNotifiedWhenAny(@NonNull List<Integer> navigableSessionIndexes,
-                                                          @NonNull Set<Integer> notifiedSessionIndexes) {
-        List<Integer> notifiedCandidates = new ArrayList<>();
+    public static List<Integer> restrictToActiveTier(@NonNull List<Integer> navigableSessionIndexes,
+                                                     @NonNull Map<Integer, SessionNewActivityTier> tiersByIndex) {
+        List<Integer> redCandidates = candidatesForTier(
+            navigableSessionIndexes, tiersByIndex, SessionNewActivityTier.RED);
+        if (!redCandidates.isEmpty()) {
+            return redCandidates;
+        }
+        List<Integer> yellowCandidates = candidatesForTier(
+            navigableSessionIndexes, tiersByIndex, SessionNewActivityTier.YELLOW);
+        if (!yellowCandidates.isEmpty()) {
+            return yellowCandidates;
+        }
+        return new ArrayList<>(navigableSessionIndexes);
+    }
+
+    @NonNull
+    private static List<Integer> candidatesForTier(@NonNull List<Integer> navigableSessionIndexes,
+                                                   @NonNull Map<Integer, SessionNewActivityTier> tiersByIndex,
+                                                   @NonNull SessionNewActivityTier tier) {
+        List<Integer> candidates = new ArrayList<>();
         for (int sessionIndex : navigableSessionIndexes) {
-            if (notifiedSessionIndexes.contains(sessionIndex)) {
-                notifiedCandidates.add(sessionIndex);
+            if (tiersByIndex.get(sessionIndex) == tier) {
+                candidates.add(sessionIndex);
             }
         }
-        if (notifiedCandidates.isEmpty()) {
-            return new ArrayList<>(navigableSessionIndexes);
-        }
-        return notifiedCandidates;
+        return candidates;
     }
 }

@@ -5,52 +5,80 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 public class NotifiedSessionNavigationCandidatesTest {
 
+    private static Map<Integer, SessionNewActivityTier> tiers(Object... pairs) {
+        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            tiersByIndex.put((Integer) pairs[i], (SessionNewActivityTier) pairs[i + 1]);
+        }
+        return tiersByIndex;
+    }
+
     @Test
-    public void restrictsToNotifiedSessionsInDisplayOrderWhenAnyHaveUnseenBell() {
+    public void restrictsToRedSessionsWhenAnyRedExists() {
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
-        Set<Integer> notified = new LinkedHashSet<>(Arrays.asList(3, 1));
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            1, SessionNewActivityTier.YELLOW,
+            2, SessionNewActivityTier.RED,
+            4, SessionNewActivityTier.RED);
 
         List<Integer> candidates =
-            NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(navigable, notified);
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
+
+        Assert.assertEquals(Arrays.asList(2, 4), candidates);
+    }
+
+    @Test
+    public void restrictsToYellowSessionsWhenNoRedButYellowExists() {
+        List<Integer> navigable = Arrays.asList(0, 1, 2, 3);
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            1, SessionNewActivityTier.YELLOW,
+            3, SessionNewActivityTier.YELLOW);
+
+        List<Integer> candidates =
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
 
         Assert.assertEquals(Arrays.asList(1, 3), candidates);
     }
 
     @Test
-    public void returnsFullNavigableListWhenNoSessionHasUnseenBell() {
+    public void returnsFullNavigableListWhenNoSessionHasActivity() {
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3);
 
-        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(
-            navigable, Collections.emptySet());
+        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToActiveTier(
+            navigable, tiers());
 
         Assert.assertEquals(navigable, candidates);
     }
 
     @Test
-    public void ignoresNotifiedSessionsThatAreNotNavigable() {
+    public void ignoresActiveSessionsThatAreNotNavigable() {
         List<Integer> navigable = Arrays.asList(0, 2, 4);
-        Set<Integer> notified = new LinkedHashSet<>(Arrays.asList(1, 3));
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            1, SessionNewActivityTier.RED,
+            3, SessionNewActivityTier.RED);
 
         List<Integer> candidates =
-            NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(navigable, notified);
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
 
         Assert.assertEquals(navigable, candidates);
     }
 
     @Test
-    public void forwardNavigationVisitsOnlyNotifiedSessionsAndWrapsWithinThatSubset() {
+    public void redCyclingVisitsOnlyRedSessionsAndWrapsWithinThatSubset() {
         List<Integer> ordered = Arrays.asList(0, 1, 2, 3, 4);
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
-        Set<Integer> notified = new LinkedHashSet<>(Arrays.asList(1, 3));
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            0, SessionNewActivityTier.YELLOW,
+            1, SessionNewActivityTier.RED,
+            3, SessionNewActivityTier.RED);
         List<Integer> candidates =
-            NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(navigable, notified);
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
 
         List<Integer> visited = new ArrayList<>();
         int current = 1;
@@ -64,12 +92,14 @@ public class NotifiedSessionNavigationCandidatesTest {
     }
 
     @Test
-    public void backwardNavigationVisitsOnlyNotifiedSessionsAndWrapsWithinThatSubset() {
+    public void yellowCyclingVisitsOnlyYellowSessionsWhenNoRedExists() {
         List<Integer> ordered = Arrays.asList(0, 1, 2, 3, 4);
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
-        Set<Integer> notified = new LinkedHashSet<>(Arrays.asList(1, 3));
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            1, SessionNewActivityTier.YELLOW,
+            3, SessionNewActivityTier.YELLOW);
         List<Integer> candidates =
-            NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(navigable, notified);
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
 
         List<Integer> visited = new ArrayList<>();
         int current = 3;
@@ -83,23 +113,11 @@ public class NotifiedSessionNavigationCandidatesTest {
     }
 
     @Test
-    public void navigationFromNonNotifiedCurrentSessionJumpsToNextNotifiedInDisplayOrder() {
-        List<Integer> ordered = Arrays.asList(0, 1, 2, 3, 4);
-        List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
-        Set<Integer> notified = new LinkedHashSet<>(Arrays.asList(1, 4));
-        List<Integer> candidates =
-            NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(navigable, notified);
-
-        Assert.assertEquals(4, VisibleSessionNavigator.nextSessionIndex(ordered, candidates, 2, true));
-        Assert.assertEquals(1, VisibleSessionNavigator.nextSessionIndex(ordered, candidates, 2, false));
-    }
-
-    @Test
-    public void fullNavigationVisitsEverySessionWhenNoSessionHasUnseenBell() {
+    public void fullNavigationVisitsEverySessionWhenNoSessionHasActivity() {
         List<Integer> ordered = Arrays.asList(0, 1, 2, 3);
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3);
-        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToNotifiedWhenAny(
-            navigable, Collections.emptySet());
+        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToActiveTier(
+            navigable, tiers());
 
         List<Integer> visited = new ArrayList<>();
         int current = 0;
@@ -110,5 +128,23 @@ public class NotifiedSessionNavigationCandidatesTest {
         }
 
         Assert.assertEquals(Arrays.asList(0, 1, 2, 3), visited);
+    }
+
+    @Test
+    public void tierTransitionsFromRedToYellowToAllAsSessionsClear() {
+        List<Integer> navigable = Arrays.asList(0, 1, 2);
+        Map<Integer, SessionNewActivityTier> withRed = tiers(
+            0, SessionNewActivityTier.RED,
+            1, SessionNewActivityTier.YELLOW);
+        Assert.assertEquals(Arrays.asList(0),
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, withRed));
+
+        Map<Integer, SessionNewActivityTier> yellowOnly = tiers(
+            1, SessionNewActivityTier.YELLOW);
+        Assert.assertEquals(Arrays.asList(1),
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, yellowOnly));
+
+        Assert.assertEquals(navigable,
+            NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiers()));
     }
 }
