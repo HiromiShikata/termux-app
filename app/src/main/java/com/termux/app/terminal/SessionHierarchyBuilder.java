@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -107,11 +108,19 @@ public final class SessionHierarchyBuilder {
                 rows.add(SessionHierarchyRow.session(sessionIndex));
             }
         }
-        for (Map.Entry<String, Map<String, List<Integer>>> project : sessionIndexesByProjectAndStory.entrySet()) {
-            rows.add(SessionHierarchyRow.projectHeader(project.getKey(),
-                overviewUrlByProject.get(project.getKey()), tdpmConsoleUrlByProject.get(project.getKey()),
-                newIssueUrlByProject.get(project.getKey())));
-            for (Map.Entry<String, List<Integer>> story : project.getValue().entrySet()) {
+        Set<String> definedProjectLabels = new LinkedHashSet<>();
+        for (SessionDefinitionEntry entry : entries) {
+            definedProjectLabels.add(entry.getGroupLabel());
+        }
+        for (String projectLabel : definedProjectLabels) {
+            rows.add(SessionHierarchyRow.projectHeader(projectLabel,
+                overviewUrlByProject.get(projectLabel), tdpmConsoleUrlByProject.get(projectLabel),
+                newIssueUrlByProject.get(projectLabel)));
+            Map<String, List<Integer>> storiesInProject = sessionIndexesByProjectAndStory.get(projectLabel);
+            if (storiesInProject == null) {
+                continue;
+            }
+            for (Map.Entry<String, List<Integer>> story : storiesInProject.entrySet()) {
                 rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
                 for (int sessionIndex : story.getValue()) {
                     rows.add(SessionHierarchyRow.session(sessionIndex));
