@@ -794,10 +794,24 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
-        if (!sessionRow.isActivityMarked()) {
+        String lastUpdatedAgeLabel = lastUpdatedAgeLabel(sessionRow.getName());
+        if (lastUpdatedAgeLabel.isEmpty()) {
             return "";
         }
-        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + sessionRow.getActivityAgeLabel();
+        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + lastUpdatedAgeLabel;
+    }
+
+    @NonNull
+    private String lastUpdatedAgeLabel(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return "";
+        }
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) {
+            return "";
+        }
+        String label = store.lastOutputActivityAgeLabelJapanese(sessionName, System.currentTimeMillis());
+        return label == null ? "" : label;
     }
 
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull SessionRow sessionRow) {
