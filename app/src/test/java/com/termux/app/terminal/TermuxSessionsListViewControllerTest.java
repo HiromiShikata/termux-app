@@ -87,6 +87,24 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void projectHeaderLayoutHostsACountBadgeDistinctFromTheTitle() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        View titleView = projectHeader.findViewById(R.id.session_project_header_title);
+        View countBadgeView = projectHeader.findViewById(R.id.session_project_header_count_badge);
+
+        Assert.assertNotNull(countBadgeView);
+        Assert.assertNotEquals(titleView.getId(), countBadgeView.getId());
+    }
+
+    @Test
+    public void sessionCountBadgeTextRendersTheRawCount() {
+        Assert.assertEquals("5", TermuxSessionsListViewController.sessionCountBadgeText(5));
+    }
+
+    @Test
     public void currentRunningSessionShowsAccentBarAndAccentName() {
         SessionRowActiveIndicator indicator =
             TermuxSessionsListViewController.computeActiveIndicator(true, true);
