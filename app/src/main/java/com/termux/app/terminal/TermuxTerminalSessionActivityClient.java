@@ -399,10 +399,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void startActiveSessionSeenTick() {
-        if (mActivity.isVisible()) {
+        if (mActivity.isVisible())
             recordActiveSessionSeen();
-            termuxSessionListNotifyUpdated();
-        }
         scheduleActiveSessionSeenTick();
     }
 
