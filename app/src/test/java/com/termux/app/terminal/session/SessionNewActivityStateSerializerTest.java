@@ -1,6 +1,7 @@
 package com.termux.app.terminal.session;
 
 import com.termux.app.terminal.SessionNewActivityState;
+import com.termux.app.terminal.SessionNewActivityTier;
 
 import org.json.JSONException;
 import org.junit.Assert;
@@ -47,14 +48,27 @@ public class SessionNewActivityStateSerializerTest {
     }
 
     @Test
-    public void legacyLastBellTimeMillisIsMigratedToExplicitCall() throws JSONException {
+    public void legacyLastBellTimeMillisIsDroppedAndDoesNotBecomeExplicitCall() throws JSONException {
         List<SessionNewActivityState> result = serializer.deserialize(
             "[{\"sessionName\":\"legacy\",\"lastBellTimeMillis\":1234,\"lastSeenTimeMillis\":500}]");
 
         Assert.assertEquals(1, result.size());
-        Assert.assertEquals(Long.valueOf(1234L), result.get(0).getLastExplicitCallTimeMillis());
-        Assert.assertEquals(Long.valueOf(500L), result.get(0).getLastSeenTimeMillis());
+        Assert.assertNull(result.get(0).getLastExplicitCallTimeMillis());
         Assert.assertNull(result.get(0).getLastOutputActivityTimeMillis());
+        Assert.assertEquals(Long.valueOf(500L), result.get(0).getLastSeenTimeMillis());
+    }
+
+    @Test
+    public void legacyLastBellTimeMillisDoesNotProduceRedTierAfterLoad() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"lastBellTimeMillis\":1234}]");
+
+        Assert.assertEquals(1, result.size());
+        SessionNewActivityState state = result.get(0);
+        Assert.assertEquals(SessionNewActivityTier.NONE, SessionNewActivityTier.resolve(
+            state.getLastOutputActivityTimeMillis(),
+            state.getLastExplicitCallTimeMillis(),
+            state.getLastSeenTimeMillis()));
     }
 
     @Test
