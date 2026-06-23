@@ -6,8 +6,8 @@ import org.junit.Test;
 public class SessionListBottomSheetDragDecisionTest {
 
     @Test
-    public void defaultHeightIsOneThirdOfScreen() {
-        Assert.assertEquals(640, SessionListBottomSheetDragDecision.computeDefaultHeight(1920));
+    public void defaultHeightIsOneHalfOfScreen() {
+        Assert.assertEquals(960, SessionListBottomSheetDragDecision.computeDefaultHeight(1920));
     }
 
     @Test
