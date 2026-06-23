@@ -57,6 +57,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
+    private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
@@ -668,6 +669,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         styled.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
+    static void applyBellNotificationLabelStyling(@NonNull SpannableString styled, int start, int end,
+                                                   @NonNull StyleSpan italicSpan) {
+        if (start < 0 || end <= start) {
+            return;
+        }
+        styled.setSpan(italicSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new RelativeSizeSpan(BELL_NOTIFICATION_LABEL_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
     @SuppressLint("SetTextI18n")
     private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent) {
         View sessionRowView = convertView;
@@ -762,9 +772,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (activeIndicator.useAccentNameColor) {
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), 0, sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        if (bellNotificationLabelStart >= 0) {
-            fullSessionTitleStyled.setSpan(italicSpan, bellNotificationLabelStart, bellNotificationLabelEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
+        applyBellNotificationLabelStyling(fullSessionTitleStyled, bellNotificationLabelStart, bellNotificationLabelEnd, italicSpan);
         if (definitionTitleStart >= 0) {
             int definitionTitleColor = (DEFINITION_TITLE_ALPHA << 24)
                 | (surfacePrimaryTextColor() & 0x00FFFFFF);
