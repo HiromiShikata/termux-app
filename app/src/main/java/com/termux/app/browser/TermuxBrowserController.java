@@ -27,6 +27,7 @@ import android.webkit.CookieManager;
 import android.webkit.HttpAuthHandler;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
+import android.webkit.WebBackForwardList;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -438,6 +439,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (mBrowserVisible && "about:blank".equals(url)) {
+                    showTerminal();
+                    return;
+                }
                 commitRenderedFrameUrl(url);
                 revealWebView();
                 hidePageLoadProgress();
@@ -1122,7 +1127,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public boolean onBackPressed() {
         if (mBrowserVisible && mWebView.canGoBack()) {
-            mWebView.goBack();
+            WebBackForwardList backForwardList = mWebView.copyBackForwardList();
+            int previousIndex = backForwardList.getCurrentIndex() - 1;
+            if (previousIndex >= 0 && "about:blank".equals(backForwardList.getItemAtIndex(previousIndex).getUrl())) {
+                showTerminal();
+            } else {
+                mWebView.goBack();
+            }
             return true;
         }
         if (mBrowserVisible) {
