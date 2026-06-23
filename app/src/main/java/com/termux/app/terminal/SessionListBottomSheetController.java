@@ -1,5 +1,7 @@
 package com.termux.app.terminal;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -25,6 +27,8 @@ public class SessionListBottomSheetController {
 
     static final long SLIDE_ANIMATION_DURATION_MILLISECONDS = 220;
 
+    static final long RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS = 1000L;
+
     static final String GOOGLE_URL = "https://www.google.com";
 
     private final TermuxActivity mActivity;
@@ -44,6 +48,10 @@ public class SessionListBottomSheetController {
     private int mMinHeightPixels;
     private int mMaxHeightPixels;
     private VelocityTracker mVelocityTracker;
+
+    private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+    private final Runnable mRelativeTimeRefreshRunnable = this::onRelativeTimeRefreshTick;
+    private boolean mRelativeTimeRefreshScheduled;
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -184,6 +192,7 @@ public class SessionListBottomSheetController {
     }
 
     private void animateDismiss() {
+        stopRelativeTimeRefresh();
         mSheetView.animate()
             .translationY(sheetHeightPixels())
             .setInterpolator(new DecelerateInterpolator())
@@ -228,6 +237,44 @@ public class SessionListBottomSheetController {
             .setDuration(SLIDE_ANIMATION_DURATION_MILLISECONDS)
             .start();
         revealCurrentSessionRow(listController);
+        startRelativeTimeRefresh();
+    }
+
+    private void onRelativeTimeRefreshTick() {
+        mRelativeTimeRefreshScheduled = false;
+        if (!shouldKeepRefreshing(mSheetView.getVisibility())) {
+            return;
+        }
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController != null) {
+            listController.notifyDataSetChanged();
+        }
+        scheduleRelativeTimeRefresh();
+    }
+
+    private void startRelativeTimeRefresh() {
+        scheduleRelativeTimeRefresh();
+    }
+
+    private void scheduleRelativeTimeRefresh() {
+        if (mRelativeTimeRefreshScheduled) {
+            return;
+        }
+        if (!shouldKeepRefreshing(mSheetView.getVisibility())) {
+            return;
+        }
+        mRelativeTimeRefreshScheduled = true;
+        mMainThreadHandler.postDelayed(mRelativeTimeRefreshRunnable,
+            RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS);
+    }
+
+    private void stopRelativeTimeRefresh() {
+        mRelativeTimeRefreshScheduled = false;
+        mMainThreadHandler.removeCallbacks(mRelativeTimeRefreshRunnable);
+    }
+
+    static boolean shouldKeepRefreshing(int sheetVisibility) {
+        return sheetVisibility == View.VISIBLE;
     }
 
     public void revealCurrentSessionRowIfShowing() {

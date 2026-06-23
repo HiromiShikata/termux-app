@@ -94,14 +94,14 @@ public class SessionNewActivityIndicatorTest {
     @Test
     public void yellowLabelAgeIncrementsForAFixedOutputActivityTimeRatherThanStayingAtZero() {
         SessionNewActivityIndicator atFirstTick =
-            SessionNewActivityIndicator.indicatorFor(1_000L, null, 500L, 1_000L);
+            SessionNewActivityIndicator.indicatorFor(1_000L, null, 500L, 30_500L);
         SessionNewActivityIndicator atLaterTick =
-            SessionNewActivityIndicator.indicatorFor(1_000L, null, 500L, 1_000L + 45_000L);
+            SessionNewActivityIndicator.indicatorFor(1_000L, null, 500L, 30_500L + 15_000L);
 
         Assert.assertEquals(SessionNewActivityTier.YELLOW, atFirstTick.getTier());
-        Assert.assertEquals("0s ago", atFirstTick.getLabel());
+        Assert.assertEquals("29s ago", atFirstTick.getLabel());
         Assert.assertEquals(SessionNewActivityTier.YELLOW, atLaterTick.getTier());
-        Assert.assertEquals("45s ago", atLaterTick.getLabel());
+        Assert.assertEquals("44s ago", atLaterTick.getLabel());
     }
 
     @Test
