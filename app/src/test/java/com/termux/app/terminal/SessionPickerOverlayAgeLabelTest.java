@@ -91,17 +91,18 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void bottomSheetLabelAndPickerLabelAreByteIdenticalForTheSameSignalTimestamp() {
+    public void bottomSheetAgeLabelAppearsBeforeSessionNameWithTrailingSpaceSeparator() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("background", 1_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 1_000L + 45_000L);
 
-        String bottomSheetLabel = "  " + indicator.getLabel();
+        String bottomSheetLabel = indicator.getLabel() + "  ";
         String pickerLabel = SessionSwitchPickerController.newActivityLabelSlotText(indicator.getLabel());
 
         Assert.assertEquals("45s ago", indicator.getLabel());
-        Assert.assertEquals(bottomSheetLabel, pickerLabel);
+        Assert.assertEquals("45s ago  ", bottomSheetLabel);
+        Assert.assertEquals("  45s ago", pickerLabel);
     }
 
     @Test

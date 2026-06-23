@@ -661,12 +661,12 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         projectBrowserController.route(url);
     }
 
-    static void applySessionNameStyling(@NonNull SpannableString styled, int sessionNameLength, @NonNull StyleSpan boldSpan) {
-        if (sessionNameLength <= 0) {
+    static void applySessionNameStyling(@NonNull SpannableString styled, int start, int end, @NonNull StyleSpan boldSpan) {
+        if (end <= start) {
             return;
         }
-        styled.setSpan(boldSpan, 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        styled.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), 0, sessionNameLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(boldSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new RelativeSizeSpan(SessionRow.SESSION_NAME_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     static void applyBellNotificationLabelStyling(@NonNull SpannableString styled, int start, int end,
@@ -723,14 +723,16 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         String bellNotificationLabelPart = buildBellNotificationLabel(sessionRow);
 
-        StringBuilder fullSessionTitleBuilder = new StringBuilder(sessionNamePart);
+        StringBuilder fullSessionTitleBuilder = new StringBuilder();
         int bellNotificationLabelStart = -1;
         int bellNotificationLabelEnd = -1;
         if (!bellNotificationLabelPart.isEmpty()) {
-            bellNotificationLabelStart = fullSessionTitleBuilder.length();
+            bellNotificationLabelStart = 0;
             fullSessionTitleBuilder.append(bellNotificationLabelPart);
             bellNotificationLabelEnd = fullSessionTitleBuilder.length();
         }
+        int sessionNameStart = fullSessionTitleBuilder.length();
+        fullSessionTitleBuilder.append(sessionNamePart);
         boolean hasSecondaryLine = !sessionNamePart.isEmpty();
         int definitionTitleStart = -1;
         int definitionTitleEnd = -1;
@@ -768,9 +770,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         String fullSessionTitle = fullSessionTitleBuilder.toString();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        applySessionNameStyling(fullSessionTitleStyled, sessionNamePart.length(), boldSpan);
+        applySessionNameStyling(fullSessionTitleStyled, sessionNameStart, sessionNameStart + sessionNamePart.length(), boldSpan);
         if (activeIndicator.useAccentNameColor) {
-            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), 0, sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), sessionNameStart, sessionNameStart + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         applyBellNotificationLabelStyling(fullSessionTitleStyled, bellNotificationLabelStart, bellNotificationLabelEnd, italicSpan);
         if (definitionTitleStart >= 0) {
@@ -824,7 +826,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (lastUpdatedAgeLabel.isEmpty()) {
             return "";
         }
-        return SessionRow.NEW_ACTIVITY_LABEL_PREFIX + lastUpdatedAgeLabel;
+        return lastUpdatedAgeLabel + SessionRow.NEW_ACTIVITY_LABEL_PREFIX;
     }
 
     @NonNull

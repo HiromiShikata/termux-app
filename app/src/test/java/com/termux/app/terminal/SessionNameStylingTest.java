@@ -21,7 +21,7 @@ public class SessionNameStylingTest {
         SpannableString styled = new SpannableString(fullTitle);
 
         TermuxSessionsListViewController.applySessionNameStyling(
-            styled, sessionName.length(), new StyleSpan(Typeface.BOLD));
+            styled, 0, sessionName.length(), new StyleSpan(Typeface.BOLD));
 
         RelativeSizeSpan[] sizeSpans = styled.getSpans(0, sessionName.length(), RelativeSizeSpan.class);
         Assert.assertEquals(1, sizeSpans.length);
@@ -39,7 +39,7 @@ public class SessionNameStylingTest {
         SpannableString styled = new SpannableString(fullTitle);
 
         TermuxSessionsListViewController.applySessionNameStyling(
-            styled, sessionName.length(), new StyleSpan(Typeface.BOLD));
+            styled, 0, sessionName.length(), new StyleSpan(Typeface.BOLD));
 
         RelativeSizeSpan[] secondaryLineSpans =
             styled.getSpans(sessionName.length() + 1, fullTitle.length(), RelativeSizeSpan.class);
@@ -52,7 +52,7 @@ public class SessionNameStylingTest {
         SpannableString styled = new SpannableString(sessionName);
         StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
 
-        TermuxSessionsListViewController.applySessionNameStyling(styled, sessionName.length(), boldSpan);
+        TermuxSessionsListViewController.applySessionNameStyling(styled, 0, sessionName.length(), boldSpan);
 
         StyleSpan[] styleSpans = styled.getSpans(0, sessionName.length(), StyleSpan.class);
         Assert.assertEquals(1, styleSpans.length);
@@ -63,7 +63,7 @@ public class SessionNameStylingTest {
     public void appliesNoNameSpansWhenTheSessionNameIsEmpty() {
         SpannableString styled = new SpannableString("only a secondary line");
 
-        TermuxSessionsListViewController.applySessionNameStyling(styled, 0, new StyleSpan(Typeface.BOLD));
+        TermuxSessionsListViewController.applySessionNameStyling(styled, 0, 0, new StyleSpan(Typeface.BOLD));
 
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
