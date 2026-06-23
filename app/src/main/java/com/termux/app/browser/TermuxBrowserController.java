@@ -3,6 +3,7 @@ package com.termux.app.browser;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -81,6 +82,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final String LOG_TAG = "TermuxBrowserController";
 
+    public static final int REQUEST_BROWSER_FILE_CHOOSER = 3000;
+
     private static final String BROWSER_PAGE_TEXT_FILE_NAME = "browser-page.txt";
 
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
@@ -146,6 +149,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private BroadcastReceiver mDownloadCompleteReceiver;
 
     private boolean mDownloadReceiverRegistered;
+
+    private ValueCallback<Uri[]> mPendingFileChooserCallback;
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -522,6 +527,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     notifyTabsUpdated();
                 }
             }
+
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePathCallback,
+                                             FileChooserParams fileChooserParams) {
+                return showFileChooser(filePathCallback, fileChooserParams);
+            }
         });
 
         mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
@@ -538,6 +549,52 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
             }
         }).attach();
+    }
+
+    private boolean showFileChooser(@Nullable ValueCallback<Uri[]> filePathCallback,
+                                    @Nullable WebChromeClient.FileChooserParams fileChooserParams) {
+        if (filePathCallback == null) {
+            return false;
+        }
+        cancelPendingFileChooser();
+        Intent intent = buildFileChooserIntent(fileChooserParams);
+        try {
+            mPendingFileChooserCallback = filePathCallback;
+            mActivity.startActivityForResult(intent, REQUEST_BROWSER_FILE_CHOOSER);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open file chooser", e);
+            mPendingFileChooserCallback = null;
+            filePathCallback.onReceiveValue(null);
+            return false;
+        }
+    }
+
+    @NonNull
+    private Intent buildFileChooserIntent(@Nullable WebChromeClient.FileChooserParams fileChooserParams) {
+        if (fileChooserParams != null) {
+            boolean allowMultiple = fileChooserParams.getMode()
+                == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE;
+            return BrowserFileChooserResult.buildIntent(allowMultiple, fileChooserParams.getAcceptTypes());
+        }
+        return BrowserFileChooserResult.buildIntent(false, null);
+    }
+
+    public void deliverFileChooserResult(int resultCode, @Nullable Intent data) {
+        ValueCallback<Uri[]> callback = mPendingFileChooserCallback;
+        mPendingFileChooserCallback = null;
+        if (callback == null) {
+            return;
+        }
+        callback.onReceiveValue(BrowserFileChooserResult.parse(resultCode, data));
+    }
+
+    private void cancelPendingFileChooser() {
+        ValueCallback<Uri[]> callback = mPendingFileChooserCallback;
+        mPendingFileChooserCallback = null;
+        if (callback != null) {
+            callback.onReceiveValue(null);
+        }
     }
 
     private void applyDarkModeRendering(@NonNull WebSettings settings) {
@@ -1191,6 +1248,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void onActivityDestroy() {
+        cancelPendingFileChooser();
         unregisterDownloadCompleteReceiver();
         mWebView.stopLoading();
         mWebView.setWebViewClient(new WebViewClient());
