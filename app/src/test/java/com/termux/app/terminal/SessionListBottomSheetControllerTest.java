@@ -111,4 +111,21 @@ public class SessionListBottomSheetControllerTest {
     public void openingSheetLeavesTheTerminalUntouchedWhenTheBrowserIsNotShowing() {
         Assert.assertFalse(SessionListBottomSheetController.shouldHideBrowserOnOpen(false));
     }
+
+    @Test
+    public void relativeTimeRefreshKeepsTickingWhileTheSheetIsVisible() {
+        Assert.assertTrue(SessionListBottomSheetController.shouldKeepRefreshing(View.VISIBLE));
+    }
+
+    @Test
+    public void relativeTimeRefreshStopsWhenTheSheetIsHidden() {
+        Assert.assertFalse(SessionListBottomSheetController.shouldKeepRefreshing(View.GONE));
+        Assert.assertFalse(SessionListBottomSheetController.shouldKeepRefreshing(View.INVISIBLE));
+    }
+
+    @Test
+    public void relativeTimeRefreshIntervalIsAboutOneSecond() {
+        Assert.assertEquals(1000L,
+            SessionListBottomSheetController.RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS);
+    }
 }

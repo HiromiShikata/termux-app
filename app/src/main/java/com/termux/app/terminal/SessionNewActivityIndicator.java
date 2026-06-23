@@ -35,7 +35,7 @@ public final class SessionNewActivityIndicator {
                                                            @Nullable Long lastExplicitCallTimeMillis,
                                                            @Nullable Long lastSeenTimeMillis, long nowMillis) {
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastSeenTimeMillis);
+            lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastSeenTimeMillis, nowMillis);
         switch (tier) {
             case RED:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.RED,
