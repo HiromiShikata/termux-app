@@ -433,11 +433,38 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
         };
 
+        ActivityComponent termuxTerminalSessionActivityClientComponent = new ActivityComponent() {
+            @Override
+            public void onActivityStop() {
+                if (mTermuxTerminalSessionActivityClient != null)
+                    mTermuxTerminalSessionActivityClient.onStop();
+            }
+        };
+
+        ActivityComponent termuxTerminalViewClientComponent = new ActivityComponent() {
+            @Override
+            public void onActivityStop() {
+                if (mTermuxTerminalViewClient != null)
+                    mTermuxTerminalViewClient.onStop();
+            }
+        };
+
+        ActivityComponent sessionSwitchPickerControllerComponent = new ActivityComponent() {
+            @Override
+            public void onActivityStop() {
+                if (mSessionSwitchPickerController != null)
+                    mSessionSwitchPickerController.onActivityStopped();
+            }
+        };
+
         mActivityComponents = Arrays.asList(
             projectBrowserComponent,
             sessionListBottomSheetComponent,
             rightDrawerComponent,
-            browserComponent);
+            browserComponent,
+            termuxTerminalSessionActivityClientComponent,
+            termuxTerminalViewClientComponent,
+            sessionSwitchPickerControllerComponent);
     }
 
     private void maybeAutoCheckForApkUpdate() {
@@ -511,15 +538,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxService != null)
             mTermuxService.onActivityBackgrounded();
-
-        if (mTermuxTerminalSessionActivityClient != null)
-            mTermuxTerminalSessionActivityClient.onStop();
-
-        if (mTermuxTerminalViewClient != null)
-            mTermuxTerminalViewClient.onStop();
-
-        if (mSessionSwitchPickerController != null)
-            mSessionSwitchPickerController.onActivityStopped();
 
         removeTermuxActivityRootViewGlobalLayoutListener();
 
