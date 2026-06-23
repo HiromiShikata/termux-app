@@ -290,6 +290,8 @@ public final class TerminalEmulator {
 
     private long mNeverResetScrolledLineCount = 0L;
 
+    private long mVisibleContentVersion = 0L;
+
     /** If automatic scrolling of terminal is disabled */
     private boolean mAutoScrollDisabled;
 
@@ -2430,6 +2432,7 @@ public final class TerminalEmulator {
      */
     private void emitCodePoint(int codePoint) {
         mLastEmittedCodePoint = codePoint;
+        mVisibleContentVersion++;
         if (mUseLineDrawingUsesG0 ? mUseLineDrawingG0 : mUseLineDrawingG1) {
             // http://www.vt100.net/docs/vt102-ug/table5-15.html.
             switch (codePoint) {
@@ -2610,6 +2613,10 @@ public final class TerminalEmulator {
 
     public long getNeverResetScrolledLineCount() {
         return mNeverResetScrolledLineCount;
+    }
+
+    public long getVisibleContentVersion() {
+        return mVisibleContentVersion;
     }
 
     public boolean isAutoScrollDisabled() {

@@ -228,6 +228,10 @@ public final class TerminalSession extends TerminalOutput {
 
     public long getTotalBytesProcessed() { return mTotalBytesProcessed; }
 
+    public long getVisibleContentVersion() {
+        return mEmulator == null ? 0L : mEmulator.getVisibleContentVersion();
+    }
+
     /** Notify the {@link #mClient} that the screen has changed. */
     protected void notifyScreenUpdate() {
         mClient.onTextChanged(this);
