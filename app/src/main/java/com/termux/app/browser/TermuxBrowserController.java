@@ -36,7 +36,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -118,7 +118,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final ListView mTabsListView;
 
-    private CheckBox mDesktopModeToggle;
+    private ImageButton mDesktopModeToggle;
 
     private String mDefaultUserAgent;
 
@@ -833,7 +833,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private void updateDesktopModeToggleState() {
         if (mDesktopModeToggle == null) return;
         BrowserTab activeTab = getActiveTab();
-        mDesktopModeToggle.setChecked(activeTab != null && activeTab.isDesktopMode());
+        boolean isDesktop = activeTab != null && activeTab.isDesktopMode();
+        if (isDesktop) {
+            mDesktopModeToggle.setColorFilter(0xFF03A9F4);
+        } else {
+            mDesktopModeToggle.clearColorFilter();
+        }
     }
 
     public void onSessionChanged(@Nullable TerminalSession session) {
