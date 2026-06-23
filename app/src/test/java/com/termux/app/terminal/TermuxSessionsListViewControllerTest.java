@@ -407,12 +407,12 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void timestampLineAlwaysShowsAllThreeLabelsWithDashesWhenNoActivityIsRecorded() {
+    public void timestampLineShowsDashesForCallAndSeenAndAVeryOldOutAgeWhenNoActivityIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: -  out: -  seen: -", line);
+        Assert.assertEquals("call: -  out: 1m ago  seen: -", line);
     }
 
     @Test

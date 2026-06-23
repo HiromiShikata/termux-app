@@ -870,7 +870,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                                      long nowMillis) {
         if (sessionName == null || sessionName.isEmpty()) return "";
         return "call: " + relativeAgeOrDash(store.getLastExplicitCallTimeMillis(sessionName), nowMillis)
-            + "  out: " + relativeAgeOrDash(store.getLastOutputActivityTimeMillis(sessionName), nowMillis)
+            + "  out: " + store.lastOutputActivityAgeLabelTreatingNoDataAsVeryOld(sessionName, nowMillis)
             + "  seen: " + relativeAgeOrDash(store.getLastSeenTimeMillis(sessionName), nowMillis);
     }
 

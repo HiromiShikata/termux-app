@@ -109,6 +109,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private boolean mActiveSessionSeenTickScheduled;
 
+    @Nullable
+    private String mUnacknowledgedUrgentCallSessionName;
+
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
     }
@@ -331,6 +334,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         playUrgentNotificationSound();
         if (session.mHandle != null)
             mActivity.getPreferences().setCurrentSession(session.mHandle);
+        mUnacknowledgedUrgentCallSessionName = session.mSessionName;
         TermuxActivity.startTermuxActivity(mActivity);
         forceDisplaySession(session);
         mMainThreadHandler.post(() -> forceDisplaySession(session));
@@ -358,7 +362,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordNewOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         if (!mSessionOutputProgressTracker.hasNewOutput(
-                session.mSessionName, session.getTotalBytesProcessed())) {
+                session.mSessionName, session.getVisibleContentVersion())) {
             return;
         }
         recordOutputActivityForSession(session);
@@ -368,7 +372,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (session.mSessionName == null) return;
         long nowMillis = System.currentTimeMillis();
         mActivity.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, nowMillis);
-        if (isCurrentlyViewedSession(session))
+        if (isCurrentlyViewedSession(session)
+                && !UrgentCallSeenSuppression.shouldSuppressSeen(
+                    mUnacknowledgedUrgentCallSessionName, session.mSessionName))
             mActivity.getSessionNewActivityStore().recordSeen(session.mSessionName, nowMillis);
         termuxSessionListNotifyUpdated();
     }
@@ -392,6 +398,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
+        if (sessionName.equals(mUnacknowledgedUrgentCallSessionName))
+            mUnacknowledgedUrgentCallSessionName = null;
         mSessionOutputProgressTracker.forget(sessionName);
         mActivity.getSessionNewActivityStore().purgeSession(sessionName);
         termuxSessionListNotifyUpdated();
@@ -409,6 +417,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordActiveSessionSeen() {
         String sessionName = activeSessionName();
         if (sessionName == null) return;
+        if (UrgentCallSeenSuppression.shouldSuppressSeen(mUnacknowledgedUrgentCallSessionName, sessionName))
+            return;
         mActivity.getSessionNewActivityStore().recordSeen(sessionName, System.currentTimeMillis());
     }
 
@@ -498,6 +508,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /** Try switching to session. */
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
+
+        if (UrgentCallSeenSuppression.clearsSuppressionOnSwitch(
+                mUnacknowledgedUrgentCallSessionName, session.mSessionName)) {
+            mUnacknowledgedUrgentCallSessionName = null;
+        }
 
         stopActiveSessionSeenTick();
 
