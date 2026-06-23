@@ -7,6 +7,7 @@ import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -118,6 +119,10 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                if (mVisible && "about:blank".equals(url)) {
+                    hide();
+                    return;
+                }
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
                 mProgressBar.setVisibility(View.GONE);
@@ -233,7 +238,13 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     public boolean onBackPressed() {
         if (!mVisible) return false;
         if (mWebView.canGoBack()) {
-            mWebView.goBack();
+            WebBackForwardList backForwardList = mWebView.copyBackForwardList();
+            int previousIndex = backForwardList.getCurrentIndex() - 1;
+            if (previousIndex >= 0 && "about:blank".equals(backForwardList.getItemAtIndex(previousIndex).getUrl())) {
+                hide();
+            } else {
+                mWebView.goBack();
+            }
             return true;
         }
         hide();

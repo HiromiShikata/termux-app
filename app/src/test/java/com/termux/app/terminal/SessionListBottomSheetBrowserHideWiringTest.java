@@ -49,4 +49,17 @@ public class SessionListBottomSheetBrowserHideWiringTest {
         Assert.assertFalse(methodBody.contains("openUrlInNewTab"));
         Assert.assertFalse(methodBody.contains("showBrowser"));
     }
+
+    @Test
+    public void hideBrowserStepAlsoHidesProjectBrowserOverlayWhenVisible() throws IOException {
+        String source = readControllerSource();
+        int methodIndex = source.indexOf("private void hideBrowserIfShowing() {");
+        Assert.assertTrue(methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue(methodBody.contains("getProjectBrowserOverlayController()"));
+        Assert.assertTrue(methodBody.contains("projectBrowserOverlayController.isVisible()"));
+        Assert.assertTrue(methodBody.contains("projectBrowserOverlayController.hide()"));
+    }
 }
