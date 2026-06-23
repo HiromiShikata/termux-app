@@ -1,5 +1,7 @@
 package com.termux.app.browser;
 
+import android.graphics.Bitmap;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -18,6 +20,8 @@ public final class BrowserTab {
     private String mTitle;
 
     private boolean mDesktopMode = true;
+
+    private Bitmap mFavicon;
 
     public BrowserTab(@NonNull String sessionHandle, @NonNull String url) {
         this.mSessionHandle = sessionHandle;
@@ -59,5 +63,14 @@ public final class BrowserTab {
 
     public void setDesktopMode(boolean desktopMode) {
         this.mDesktopMode = desktopMode;
+    }
+
+    @Nullable
+    public Bitmap getFavicon() {
+        return mFavicon;
+    }
+
+    public void setFavicon(@Nullable Bitmap favicon) {
+        this.mFavicon = favicon;
     }
 }

@@ -38,6 +38,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -124,6 +125,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private BrowserTabsListViewController mTabsListViewController;
 
+    private BrowserTabFaviconStripController mTabFaviconStripController;
+
     private final BrowserProjectNameResolver mProjectNameResolver;
 
     private final View mProjectOverviewActionsView;
@@ -156,6 +159,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectNameResolver = new BrowserProjectNameResolver(activity::getSessionDefinitionEntries);
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
+        HorizontalScrollView tabStripScroll = activity.findViewById(R.id.browser_tab_strip_scroll);
+        LinearLayout tabStripContainer = activity.findViewById(R.id.browser_tab_strip_container);
+        mTabFaviconStripController = new BrowserTabFaviconStripController(tabStripScroll, tabStripContainer, this);
         configureWebView();
         configureCookies();
         configureDrawerControls();
@@ -506,6 +512,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     notifyTabsUpdated();
                 }
                 updatePageHeader();
+            }
+
+            @Override
+            public void onReceivedIcon(WebView view, Bitmap icon) {
+                BrowserTab loadingTab = tabForUrlCallback(view.getUrl(), view.getUrl());
+                if (loadingTab != null && icon != null) {
+                    loadingTab.setFavicon(icon);
+                    notifyTabsUpdated();
+                }
             }
         });
 
@@ -1133,6 +1148,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void notifyTabsUpdated() {
         if (mTabsListViewController != null) mTabsListViewController.notifyDataSetChanged();
+        if (mTabFaviconStripController != null && mCurrentSessionHandle != null) {
+            mTabFaviconStripController.update(
+                mTabManager.getTabs(mCurrentSessionHandle),
+                getActiveTab()
+            );
+        }
     }
 
     public boolean onBackPressed() {
