@@ -75,6 +75,7 @@
     <string name="action_browser_copy_link_url">Copy link URL</string>
     <string name="action_browser_open_link">Open in Browser</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
+    <string name="action_browser_desktop_mode_toggle">Toggle desktop mode</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
     <string name="action_browser_send_page_text">Send page text to terminal</string>
     <string name="action_browser_clear_cache">Clear cache</string>
