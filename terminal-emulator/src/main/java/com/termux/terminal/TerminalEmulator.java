@@ -1046,6 +1046,16 @@ public final class TerminalEmulator {
                             Logger.logError(mClient, LOG_TAG, "Invalid device termcap/terminfo name of odd length: " + part);
                         }
                     }
+                } else if (dcs.startsWith("tmux;")) {
+                    finishSequence();
+                    String inner = dcs.substring(5);
+                    if (!inner.isEmpty()) {
+                        processCodePoint(27);
+                        for (int i = 0; i < inner.length(); i++) {
+                            processCodePoint(inner.charAt(i));
+                        }
+                        processCodePoint(7);
+                    }
                 } else {
                     if (LOG_ESCAPE_SEQUENCES)
                         Logger.logError(mClient, LOG_TAG, "Unrecognized device control string: " + dcs);
