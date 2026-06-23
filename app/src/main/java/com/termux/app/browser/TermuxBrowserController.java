@@ -994,8 +994,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void openUrlInNewTab(@NonNull String url) {
-        if (mCurrentSessionHandle == null) return;
-        BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, normalizeUrl(url));
+        String sessionHandle = mCurrentSessionHandle;
+        if (sessionHandle == null) {
+            TerminalSession currentSession = mActivity.getCurrentSession();
+            if (currentSession == null) return;
+            sessionHandle = currentSession.mHandle;
+        }
+        BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         openTab(tab);
     }
 
