@@ -19,6 +19,7 @@ public final class TerminalBuffer {
     private int mActiveTranscriptRows = 0;
     /** The index in the circular buffer where the visible screen starts. */
     private int mScreenFirstRow = 0;
+    private long mCellWriteVersion = 0L;
 
     /**
      * Create a transcript screen.
@@ -459,8 +460,13 @@ public final class TerminalBuffer {
     public void setChar(int column, int row, int codePoint, long style, String hyperlinkUri) {
         if (row  < 0 || row >= mScreenRows || column < 0 || column >= mColumns)
             throw new IllegalArgumentException("TerminalBuffer.setChar(): row=" + row + ", column=" + column + ", mScreenRows=" + mScreenRows + ", mColumns=" + mColumns);
+        mCellWriteVersion++;
         row = externalToInternalRow(row);
         allocateFullLineIfNecessary(row).setChar(column, codePoint, style, hyperlinkUri);
+    }
+
+    public long getCellWriteVersion() {
+        return mCellWriteVersion;
     }
 
     public long getStyleAt(int externalRow, int column) {
