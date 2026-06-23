@@ -6,6 +6,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
@@ -382,6 +383,27 @@ public class TermuxSessionsListViewControllerTest {
 
         Assert.assertNotNull(disableToggle);
         Assert.assertTrue(disableToggle instanceof ImageView);
+    }
+
+    @Test
+    public void sessionRowBlocksDescendantFocusSoTheListDoesNotStealTheDisableToggleTap() {
+        Context context = themedContext();
+        ViewGroup row = (ViewGroup) LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        Assert.assertEquals(ViewGroup.FOCUS_BLOCK_DESCENDANTS, row.getDescendantFocusability());
+    }
+
+    @Test
+    public void disableToggleIsClickableAndFocusableSoTheRowItemClickDoesNotConsumeItsTap() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View disableToggle = row.findViewById(R.id.session_disable_toggle);
+
+        Assert.assertTrue(disableToggle.isClickable());
+        Assert.assertTrue(disableToggle.isFocusable());
     }
 
     @Test
