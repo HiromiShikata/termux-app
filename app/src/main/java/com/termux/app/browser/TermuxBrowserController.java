@@ -1044,7 +1044,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (sessionHandle.equals(mCurrentSessionHandle)) notifyTabsUpdated();
     }
 
-    private void promptNewTab() {
+    public void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
         TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
             R.string.action_browser_open_url_confirm, text -> {

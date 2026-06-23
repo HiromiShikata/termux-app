@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -42,6 +43,10 @@ public class BrowserTabsListViewControllerTest {
         @Override
         public void closeTab(@NonNull BrowserTab tab) {
             closedTabs.add(tab);
+        }
+
+        @Override
+        public void promptNewTab() {
         }
 
         @Nullable
@@ -103,6 +108,19 @@ public class BrowserTabsListViewControllerTest {
         Assert.assertEquals(1, listener.closedTabs.size());
         Assert.assertSame(tab, listener.closedTabs.get(0));
         Assert.assertTrue(listener.openedTabs.isEmpty());
+    }
+
+    @Test
+    public void rowFaviconIsPopulatedForEachTab() {
+        BrowserTab tab = new BrowserTab(SESSION, "https://only.example/");
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        listener.activeTab = tab;
+        BrowserTabsListViewController controller = new BrowserTabsListViewController(
+            RuntimeEnvironment.getApplication(), listener, new ArrayList<>(Arrays.asList(tab)));
+
+        ImageView faviconView = rowViewFor(controller, 0).findViewById(R.id.browser_tab_favicon);
+
+        Assert.assertNotNull(faviconView.getDrawable());
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -10,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -50,9 +52,17 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
         TextView titleView = tabRowView.findViewById(R.id.browser_tab_title);
         TextView urlView = tabRowView.findViewById(R.id.browser_tab_url);
         ImageButton closeButton = tabRowView.findViewById(R.id.browser_tab_close_button);
+        ImageView faviconView = tabRowView.findViewById(R.id.browser_tab_favicon);
 
         titleView.setText(displayTitle(tab));
         urlView.setText(tab.getUrl());
+
+        Bitmap favicon = tab.getFavicon();
+        if (favicon != null) {
+            faviconView.setImageBitmap(favicon);
+        } else {
+            faviconView.setImageBitmap(BrowserTabFaviconPlaceholder.letterBitmapForTab(tab));
+        }
 
         boolean darkTheme = ThemeUtils.shouldEnableDarkTheme(getContext(), NightMode.getAppNightMode().getName());
         applyThemeAwareColors(tabRowView, titleView, urlView, tab, darkTheme);

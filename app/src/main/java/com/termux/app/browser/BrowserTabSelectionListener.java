@@ -9,6 +9,8 @@ public interface BrowserTabSelectionListener {
 
     void closeTab(@NonNull BrowserTab tab);
 
+    void promptNewTab();
+
     @Nullable
     BrowserTab getActiveTab();
 }
