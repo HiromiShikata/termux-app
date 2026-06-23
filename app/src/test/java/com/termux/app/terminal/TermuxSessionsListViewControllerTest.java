@@ -385,6 +385,68 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void timestampLineAlwaysShowsAllThreeLabelsWithDashesWhenNoActivityIsRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
+
+        Assert.assertEquals("call: -  out: -  seen: -", line);
+    }
+
+    @Test
+    public void timestampLineIsEmptyForNullSessionName() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, null, 61_000L);
+
+        Assert.assertEquals("", line);
+    }
+
+    @Test
+    public void timestampLineShowsDashesForUnsetCallAndSeenWhenOnlyOutputActivityIsRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
+
+        Assert.assertEquals("call: -  out: 1m ago  seen: -", line);
+    }
+
+    @Test
+    public void timestampLineShowsDashForUnsetSeenWhenCallAndOutAreRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L);
+        store.recordOutputActivity("worker", 2_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
+
+        Assert.assertEquals("call: 1m ago  out: 1m ago  seen: -", line);
+    }
+
+    @Test
+    public void timestampLineKeepsSeenForTheCurrentlyActiveSession() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+        store.recordSeen("worker", 2_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
+
+        Assert.assertEquals("call: -  out: 1m ago  seen: 1m ago", line);
+    }
+
+    @Test
+    public void timestampLineBuildsAllThreePartsInCallOutSeenOrderWhenAllAreRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L);
+        store.recordOutputActivity("worker", 1_000L);
+        store.recordSeen("worker", 1_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
+
+        Assert.assertEquals("call: 1m ago  out: 1m ago  seen: 1m ago", line);
+    }
+
+    @Test
     public void sessionRowDoesNotReserveAForcedMinimumHeightSoUntitledRowsStayCompact() {
         Context context = themedContext();
         View row = LayoutInflater.from(context)

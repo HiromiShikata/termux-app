@@ -347,6 +347,32 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void lastOutputActivityAgeLabelReflectsRecordedOutputActivityInEnglish() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        Assert.assertEquals("5s ago", store.lastOutputActivityAgeLabel("worker", 6_000L));
+    }
+
+    @Test
+    public void lastOutputActivityAgeLabelIsNullWhenOutputActivityUnknown() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L);
+
+        Assert.assertNull(store.lastOutputActivityAgeLabel("worker", 6_000L));
+    }
+
+    @Test
+    public void lastOutputActivityAgeLabelIsPresentEvenWithoutAnyPendingTier() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+        store.recordSeen("worker", 2_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+        Assert.assertEquals("0s ago", store.lastOutputActivityAgeLabel("worker", 1_500L));
+    }
+
+    @Test
     public void lastOutputActivityAgeLabelJapaneseReflectsRecordedOutputActivity() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordOutputActivity("worker", 1_000L);

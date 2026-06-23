@@ -58,6 +58,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
+    private static final float TIMESTAMP_ROW_RELATIVE_SIZE = 0.65f;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
@@ -766,6 +767,19 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             explicitCallReasonStart = fullSessionTitleBuilder.length();
             fullSessionTitleBuilder.append(explicitCallReasonPart);
             explicitCallReasonEnd = fullSessionTitleBuilder.length();
+            hasSecondaryLine = true;
+        }
+
+        String timestampLine = buildTimestampLine(sessionAtRow.mSessionName);
+        int timestampLineStart = -1;
+        int timestampLineEnd = -1;
+        if (!timestampLine.isEmpty()) {
+            if (hasSecondaryLine) {
+                fullSessionTitleBuilder.append("\n");
+            }
+            timestampLineStart = fullSessionTitleBuilder.length();
+            fullSessionTitleBuilder.append(timestampLine);
+            timestampLineEnd = fullSessionTitleBuilder.length();
         }
 
         String fullSessionTitle = fullSessionTitleBuilder.toString();
@@ -787,6 +801,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (explicitCallReasonStart >= 0) {
             int redReasonColor = ContextCompat.getColor(mActivity, R.color.session_activity_tier_red);
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(redReasonColor), explicitCallReasonStart, explicitCallReasonEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (timestampLineStart >= 0) {
+            int fadedColor = (0x99 << 24) | (surfacePrimaryTextColor() & 0x00FFFFFF);
+            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(TIMESTAMP_ROW_RELATIVE_SIZE), timestampLineStart, timestampLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(fadedColor), timestampLineStart, timestampLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
         sessionTitleView.setText(fullSessionTitleStyled);
@@ -822,11 +841,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
-        String lastUpdatedAgeLabel = lastUpdatedAgeLabel(sessionRow.getName());
-        if (lastUpdatedAgeLabel.isEmpty()) {
-            return "";
-        }
-        return lastUpdatedAgeLabel + SessionRow.NEW_ACTIVITY_LABEL_PREFIX;
+        return "";
     }
 
     @NonNull
@@ -838,8 +853,30 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         if (store == null) {
             return "";
         }
-        String label = store.lastOutputActivityAgeLabelJapanese(sessionName, System.currentTimeMillis());
+        String label = store.lastOutputActivityAgeLabel(sessionName, System.currentTimeMillis());
         return label == null ? "" : label;
+    }
+
+    @NonNull
+    private String buildTimestampLine(@Nullable String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return "";
+        return buildTimestampLine(store, sessionName, System.currentTimeMillis());
+    }
+
+    @NonNull
+    static String buildTimestampLine(@NonNull SessionNewActivityStore store,
+                                     @Nullable String sessionName,
+                                     long nowMillis) {
+        if (sessionName == null || sessionName.isEmpty()) return "";
+        return "call: " + relativeAgeOrDash(store.getLastExplicitCallTimeMillis(sessionName), nowMillis)
+            + "  out: " + relativeAgeOrDash(store.getLastOutputActivityTimeMillis(sessionName), nowMillis)
+            + "  seen: " + relativeAgeOrDash(store.getLastSeenTimeMillis(sessionName), nowMillis);
+    }
+
+    @NonNull
+    private static String relativeAgeOrDash(@Nullable Long timeMillis, long nowMillis) {
+        return timeMillis == null ? "-" : SessionNewActivityStore.formatRelativeTime(nowMillis - timeMillis);
     }
 
     @NonNull
