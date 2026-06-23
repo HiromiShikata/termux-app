@@ -94,18 +94,6 @@ public final class TerminalEmulator {
     /** Needs to be large enough to contain reasonable OSC 52 pastes. */
     private static final int MAX_OSC_STRING_LENGTH = 8192;
 
-    /** Private OSC code carrying the invisible completion marker. */
-    private static final int MARKER_OSC_CODE = 9999;
-
-    /** Payload token required on {@link #MARKER_OSC_CODE} for the marker to fire. */
-    private static final String MARKER_OSC_PAYLOAD = "claude-done";
-
-    /** Private OSC code carrying the invisible urgent-attention marker. */
-    private static final int URGENT_MARKER_OSC_CODE = 9998;
-
-    /** Payload token required on {@link #URGENT_MARKER_OSC_CODE} for the urgent marker to fire. */
-    private static final String URGENT_MARKER_OSC_PAYLOAD = "claude-urgent";
-
     /** DECSET 1 - application cursor keys. */
     private static final int DECSET_BIT_APPLICATION_CURSOR_KEYS = 1;
     private static final int DECSET_BIT_REVERSE_VIDEO = 1 << 1;
@@ -2203,36 +2191,11 @@ public final class TerminalEmulator {
                 break;
             case 119: // Reset highlight color.
                 break;
-            case MARKER_OSC_CODE: {
-                String markerReason = markerReasonOrNull(textParameter, MARKER_OSC_PAYLOAD);
-                if (markerReason != null) {
-                    mSession.onMarkerNotification(markerReason);
-                }
-                break;
-            }
-            case URGENT_MARKER_OSC_CODE: {
-                String urgentReason = markerReasonOrNull(textParameter, URGENT_MARKER_OSC_PAYLOAD);
-                if (urgentReason != null) {
-                    mSession.onUrgentNotification(urgentReason);
-                }
-                break;
-            }
             default:
                 unknownParameter(value);
                 break;
         }
         finishSequence();
-    }
-
-    private static String markerReasonOrNull(String textParameter, String payload) {
-        if (payload.equals(textParameter)) {
-            return "";
-        }
-        String payloadWithReasonSeparator = payload + ";";
-        if (textParameter.startsWith(payloadWithReasonSeparator)) {
-            return textParameter.substring(payloadWithReasonSeparator.length());
-        }
-        return null;
     }
 
     private void blockClear(int sx, int sy, int w) {

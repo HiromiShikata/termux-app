@@ -56,6 +56,7 @@ import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
 import com.termux.app.terminal.ProjectActionToken;
 import com.termux.app.terminal.ProjectActionTokenParser;
@@ -227,6 +228,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     OpenTagBrowserController mOpenTagBrowserController;
 
     UpdateTagUpdateController mUpdateTagUpdateController;
+
+    CallToUserTagController mCallToUserTagController;
 
     /**
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
@@ -920,6 +923,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
         mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInTabForSession);
         mUpdateTagUpdateController = new UpdateTagUpdateController(new UpdateTagUpdateRunner(this));
+        mCallToUserTagController = new CallToUserTagController(this::recordCallToUserForSessionHandle);
+    }
+
+    private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {
+        if (mTermuxService == null) return;
+        TerminalSession session = mTermuxService.getTerminalSessionForHandle(sessionHandle);
+        if (session == null || session.mSessionName == null) return;
+        mTermuxService.getSessionNewActivityStore().recordExplicitCall(
+            session.mSessionName, System.currentTimeMillis(), reason);
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
     }
 
     private void setBrowserToggleBarView() {
@@ -1258,6 +1272,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public UpdateTagUpdateController getUpdateTagUpdateController() {
         return mUpdateTagUpdateController;
+    }
+
+    public CallToUserTagController getCallToUserTagController() {
+        return mCallToUserTagController;
     }
 
 

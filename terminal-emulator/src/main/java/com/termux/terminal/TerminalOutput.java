@@ -27,12 +27,6 @@ public abstract class TerminalOutput {
     /** Notify the terminal client that a bell character (ASCII 7, bell, BEL, \a, ^G)) has been received. */
     public abstract void onBell();
 
-    /** Notify the client that an invisible OSC completion marker (OSC 9999;claude-done[;reason]) was received. */
-    public abstract void onMarkerNotification(String reason);
-
-    /** Notify the client that an invisible OSC urgent-attention marker (OSC 9998;claude-urgent[;reason]) was received. */
-    public abstract void onUrgentNotification(String reason);
-
     /** Notify the client that a literal {@code <speak>...</speak>} tag in the session output enclosed the given text. */
     public abstract void onSpeakNotification(String text);
 

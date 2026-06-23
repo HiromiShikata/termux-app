@@ -9,10 +9,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
 import android.media.SoundPool;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Spannable;
@@ -110,9 +107,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private boolean mActiveSessionSeenTickScheduled;
 
-    @Nullable
-    private String mUnacknowledgedUrgentCallSessionName;
-
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
     }
@@ -144,6 +138,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mActivity.getTerminalView().onScreenUpdated();
         openTagsForSession(mActivity.getCurrentSession());
         updateTagsForSession(mActivity.getCurrentSession());
+        callToUserTagsForSession(mActivity.getCurrentSession());
     }
 
     /**
@@ -195,6 +190,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.getTerminalView().onScreenUpdated();
             openTagsForSession(changedSession);
             updateTagsForSession(changedSession);
+            callToUserTagsForSession(changedSession);
         }
     }
 
@@ -229,6 +225,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         updateTagUpdateController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
     }
 
+    private void callToUserTagsForSession(TerminalSession session) {
+        if (session == null) return;
+
+        CallToUserTagController callToUserTagController = mActivity.getCallToUserTagController();
+        if (callToUserTagController == null) return;
+
+        TerminalEmulator emulator = session.getEmulator();
+        if (emulator == null) return;
+
+        TerminalBuffer screen = emulator.getScreen();
+        if (screen == null) return;
+
+        callToUserTagController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+    }
+
     @Override
     public void onTitleChanged(@NonNull TerminalSession updatedSession) {
         if (!mActivity.isVisible()) return;
@@ -258,6 +269,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getUpdateTagUpdateController() != null)
             mActivity.getUpdateTagUpdateController().forgetSession(finishedSession.mHandle);
+
+        if (mActivity.getCallToUserTagController() != null)
+            mActivity.getCallToUserTagController().forgetSession(finishedSession.mHandle);
 
         int index = service.getIndexOfSession(finishedSession);
 
@@ -332,52 +346,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Override
-    public void onMarkerNotification(@NonNull TerminalSession session, @NonNull String reason) {
-        recordExplicitCallForSession(session, reason);
-    }
-
-    @Override
-    public void onUrgentNotification(@NonNull TerminalSession session, @NonNull String reason) {
-        recordExplicitCallForSession(session, reason);
-        mMainThreadHandler.post(() -> handleUrgentNotificationOnMainThread(session));
-    }
-
-    @Override
     public void onSpeakNotification(@NonNull TerminalSession session, @NonNull String text) {
         if (mActivity.getCurrentSession() != session) return;
         if (!mActivity.getPreferences().isSpeakTagAutoReadEnabled()) return;
         TtsManager ttsManager = mActivity.getTtsManager();
         if (ttsManager == null) return;
         ttsManager.speak(text);
-    }
-
-    private void handleUrgentNotificationOnMainThread(@NonNull TerminalSession session) {
-        playUrgentNotificationSound();
-        if (session.mHandle != null)
-            mActivity.getPreferences().setCurrentSession(session.mHandle);
-        mUnacknowledgedUrgentCallSessionName = session.mSessionName;
-        TermuxActivity.startTermuxActivity(mActivity);
-        forceDisplaySession(session);
-        mMainThreadHandler.post(() -> forceDisplaySession(session));
-    }
-
-    private void forceDisplaySession(@NonNull TerminalSession session) {
-        setCurrentSession(session);
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-        if (browserController != null)
-            browserController.showTerminal();
-    }
-
-    private void playUrgentNotificationSound() {
-        Uri notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        if (notificationUri == null) return;
-
-        Ringtone ringtone = RingtoneManager.getRingtone(mActivity, notificationUri);
-        if (ringtone == null) return;
-        ringtone.setAudioAttributes(new AudioAttributes.Builder()
-            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION).build());
-        ringtone.play();
     }
 
     private void recordNewOutputActivityForSession(@NonNull TerminalSession session) {
@@ -401,22 +375,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private boolean isExplicitCallSeenSuppressed(@NonNull String sessionName) {
-        if (UrgentCallSeenSuppression.shouldSuppressSeen(
-                mUnacknowledgedUrgentCallSessionName, sessionName)) {
-            return true;
-        }
         return mActivity.getSessionNewActivityStore().hasPendingExplicitCall(sessionName);
     }
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
         return mActivity.isVisible() && mActivity.getCurrentSession() == session;
-    }
-
-    private void recordExplicitCallForSession(@NonNull TerminalSession session, @NonNull String reason) {
-        if (session.mSessionName == null) return;
-        mActivity.getSessionNewActivityStore().recordExplicitCall(
-            session.mSessionName, System.currentTimeMillis(), reason);
-        termuxSessionListNotifyUpdated();
     }
 
     @Nullable
@@ -427,8 +390,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
-        if (sessionName.equals(mUnacknowledgedUrgentCallSessionName))
-            mUnacknowledgedUrgentCallSessionName = null;
         mSessionOutputProgressTracker.forget(sessionName);
         mActivity.getSessionNewActivityStore().purgeSession(sessionName);
         termuxSessionListNotifyUpdated();
@@ -453,7 +414,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void acknowledgeExplicitCallOnGenuineSwitch(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
-        if (session.mSessionName.equals(mUnacknowledgedUrgentCallSessionName)) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (!store.hasPendingExplicitCall(session.mSessionName)) return;
         store.recordSeen(session.mSessionName, System.currentTimeMillis());
@@ -545,11 +505,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /** Try switching to session. */
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
-
-        if (UrgentCallSeenSuppression.clearsSuppressionOnSwitch(
-                mUnacknowledgedUrgentCallSessionName, session.mSessionName)) {
-            mUnacknowledgedUrgentCallSessionName = null;
-        }
 
         stopActiveSessionSeenTick();
 

@@ -65,17 +65,6 @@ public class ScreenContentVersionTest extends TerminalTestCase {
             versionBefore, mTerminal.getScreenContentVersion());
     }
 
-    public void testUrgentOscMarkerDoesNotAdvanceCounter() {
-        withTerminalSized(10, 3);
-        long versionBefore = mTerminal.getScreenContentVersion();
-
-        enterString("\033]9998;claude-urgent\007");
-
-        assertEquals("an OSC 9998 urgent marker writes no cell and must not advance the counter",
-            versionBefore, mTerminal.getScreenContentVersion());
-        assertEquals(1, mOutput.urgentNotifications);
-    }
-
     public void testWindowTitleOscDoesNotAdvanceCounter() {
         withTerminalSized(10, 3);
         long versionBefore = mTerminal.getScreenContentVersion();
