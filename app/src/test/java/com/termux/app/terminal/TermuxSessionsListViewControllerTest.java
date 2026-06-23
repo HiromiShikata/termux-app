@@ -395,7 +395,7 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void disableToggleIsClickableAndFocusableSoTheRowItemClickDoesNotConsumeItsTap() {
+    public void disableToggleIsClickableButNotFocusableSoTheRowItemClickDoesNotConsumeItsTap() {
         Context context = themedContext();
         View row = LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
@@ -403,7 +403,34 @@ public class TermuxSessionsListViewControllerTest {
         View disableToggle = row.findViewById(R.id.session_disable_toggle);
 
         Assert.assertTrue(disableToggle.isClickable());
-        Assert.assertTrue(disableToggle.isFocusable());
+        Assert.assertFalse(disableToggle.isFocusable());
+        Assert.assertFalse(disableToggle.isFocusableInTouchMode());
+    }
+
+    @Test
+    public void rowDoesNotReportFocusableSoTheListDeliversTheTapToTheClickableDisableToggle() {
+        Context context = themedContext();
+        ViewGroup row = (ViewGroup) LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        Assert.assertFalse("a row reporting focusable descendants makes AbsListView consume the toggle tap as a row item-click",
+            row.hasFocusable());
+    }
+
+    @Test
+    public void tappingTheDisableToggleInvokesItsClickHandlerRatherThanSelectingTheRow() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View disableToggle = row.findViewById(R.id.session_disable_toggle);
+        boolean[] toggled = {false};
+        disableToggle.setOnClickListener(v -> toggled[0] = true);
+
+        boolean handled = disableToggle.performClick();
+
+        Assert.assertTrue(handled);
+        Assert.assertTrue(toggled[0]);
     }
 
     @Test
