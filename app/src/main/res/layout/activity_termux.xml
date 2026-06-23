@@ -155,6 +155,19 @@
                                     android:text="@string/action_browser_open_first_ten_tasks" />
                             </LinearLayout>
                         </FrameLayout>
+
+                        <HorizontalScrollView
+                            android:id="@+id/browser_tab_strip_scroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:scrollbars="none"
+                            android:visibility="gone">
+                            <LinearLayout
+                                android:id="@+id/browser_tab_strip_container"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal" />
+                        </HorizontalScrollView>
                     </LinearLayout>
 
                     <LinearLayout
