@@ -389,5 +389,7 @@
     <string name="apk_update_downloading">Downloading update…</string>
     <string name="apk_update_download_failed">Update download failed: %1$s</string>
     <string name="apk_update_install_permission_required">Allow installing unknown apps, then tap update again</string>
+    <string name="update_tag_install_dialog_title">Install update</string>
+    <string name="update_tag_install_dialog_message">Version %1$s has been downloaded.\n\nReason: %2$s\n\nInstall it now?</string>
 
 </resources>

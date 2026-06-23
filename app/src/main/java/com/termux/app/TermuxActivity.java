@@ -32,6 +32,8 @@ import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.apkupdate.ApkUpdateAutoCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateUiController;
+import com.termux.app.apkupdate.UpdateTagUpdateController;
+import com.termux.app.apkupdate.UpdateTagUpdateRunner;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
@@ -223,6 +225,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * Opens an `http`/`https` URL inside a `<open>...</open>` tag in the terminal output in the in-app browser.
      */
     OpenTagBrowserController mOpenTagBrowserController;
+
+    UpdateTagUpdateController mUpdateTagUpdateController;
 
     /**
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
@@ -915,6 +919,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mTermuxBrowserController = new TermuxBrowserController(this);
         mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
         mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInTabForSession);
+        mUpdateTagUpdateController = new UpdateTagUpdateController(new UpdateTagUpdateRunner(this));
     }
 
     private void setBrowserToggleBarView() {
@@ -1249,6 +1254,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public OpenTagBrowserController getOpenTagBrowserController() {
         return mOpenTagBrowserController;
+    }
+
+    public UpdateTagUpdateController getUpdateTagUpdateController() {
+        return mUpdateTagUpdateController;
     }
 
 

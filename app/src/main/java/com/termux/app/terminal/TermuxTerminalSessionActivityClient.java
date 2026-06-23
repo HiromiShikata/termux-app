@@ -31,6 +31,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
+import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.ProjectBrowserSessionDismissal;
@@ -142,6 +143,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // a refresh of the displayed terminal.
         mActivity.getTerminalView().onScreenUpdated();
         openTagsForSession(mActivity.getCurrentSession());
+        updateTagsForSession(mActivity.getCurrentSession());
     }
 
     /**
@@ -192,6 +194,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getCurrentSession() == changedSession) {
             mActivity.getTerminalView().onScreenUpdated();
             openTagsForSession(changedSession);
+            updateTagsForSession(changedSession);
         }
     }
 
@@ -209,6 +212,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (screen == null) return;
 
         openTagBrowserController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+    }
+
+    private void updateTagsForSession(TerminalSession session) {
+        if (session == null) return;
+
+        UpdateTagUpdateController updateTagUpdateController = mActivity.getUpdateTagUpdateController();
+        if (updateTagUpdateController == null) return;
+
+        TerminalEmulator emulator = session.getEmulator();
+        if (emulator == null) return;
+
+        TerminalBuffer screen = emulator.getScreen();
+        if (screen == null) return;
+
+        updateTagUpdateController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
     }
 
     @Override
@@ -237,6 +255,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getOpenTagBrowserController() != null)
             mActivity.getOpenTagBrowserController().forgetSession(finishedSession.mHandle);
+
+        if (mActivity.getUpdateTagUpdateController() != null)
+            mActivity.getUpdateTagUpdateController().forgetSession(finishedSession.mHandle);
 
         int index = service.getIndexOfSession(finishedSession);
 
@@ -568,6 +589,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             projectBrowser.hide();
 
         openTagsForSession(session);
+        updateTagsForSession(session);
 
         enforceActiveSessionViewBinding(session);
 
