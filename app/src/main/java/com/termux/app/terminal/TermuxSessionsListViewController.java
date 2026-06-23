@@ -68,6 +68,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
     static final int SUBDUED_TEXT_ALPHA = 0x99;
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
+    private static final float SESSION_TITLE_RELATIVE_SIZE = 0.75f;
     private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
@@ -1052,6 +1053,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         if (sessionTitleStart >= 0) {
             fullSessionTitleStyled.setSpan(italicSpan, sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(SESSION_TITLE_RELATIVE_SIZE), sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (explicitCallReasonStart >= 0) {
             int reasonColor = ContextCompat.getColor(mActivity, R.color.session_explicit_call_reason_text);
