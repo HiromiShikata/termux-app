@@ -770,7 +770,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             hasSecondaryLine = true;
         }
 
-        String timestampLine = buildTimestampLine(sessionRow, sessionAtRow.mSessionName);
+        String timestampLine = buildTimestampLine(sessionAtRow.mSessionName);
         int timestampLineStart = -1;
         int timestampLineEnd = -1;
         if (!timestampLine.isEmpty()) {
@@ -858,36 +858,25 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
-    private String buildTimestampLine(@NonNull SessionRow sessionRow, @Nullable String sessionName) {
+    private String buildTimestampLine(@Nullable String sessionName) {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return "";
-        return buildTimestampLine(store, sessionName, sessionRow.isCurrent(), System.currentTimeMillis());
+        return buildTimestampLine(store, sessionName, System.currentTimeMillis());
     }
 
     @NonNull
     static String buildTimestampLine(@NonNull SessionNewActivityStore store,
                                      @Nullable String sessionName,
-                                     boolean isCurrent,
                                      long nowMillis) {
         if (sessionName == null || sessionName.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        Long callTime = store.getLastExplicitCallTimeMillis(sessionName);
-        if (callTime != null) {
-            sb.append("call: ").append(SessionNewActivityStore.formatRelativeTime(nowMillis - callTime));
-        }
-        Long outTime = store.getLastOutputActivityTimeMillis(sessionName);
-        if (outTime != null) {
-            if (sb.length() > 0) sb.append("  ");
-            sb.append("out: ").append(SessionNewActivityStore.formatRelativeTime(nowMillis - outTime));
-        }
-        if (!isCurrent) {
-            Long seenTime = store.getLastSeenTimeMillis(sessionName);
-            if (seenTime != null) {
-                if (sb.length() > 0) sb.append("  ");
-                sb.append("seen: ").append(SessionNewActivityStore.formatRelativeTime(nowMillis - seenTime));
-            }
-        }
-        return sb.toString();
+        return "call: " + relativeAgeOrDash(store.getLastExplicitCallTimeMillis(sessionName), nowMillis)
+            + "  out: " + relativeAgeOrDash(store.getLastOutputActivityTimeMillis(sessionName), nowMillis)
+            + "  seen: " + relativeAgeOrDash(store.getLastSeenTimeMillis(sessionName), nowMillis);
+    }
+
+    @NonNull
+    private static String relativeAgeOrDash(@Nullable Long timeMillis, long nowMillis) {
+        return timeMillis == null ? "-" : SessionNewActivityStore.formatRelativeTime(nowMillis - timeMillis);
     }
 
     @NonNull
