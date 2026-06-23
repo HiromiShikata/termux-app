@@ -17,28 +17,6 @@ public class VisibleContentVersionTest extends TerminalTestCase {
             mTerminal.getVisibleContentVersion() > 0L);
     }
 
-    public void testUrgentOscMarkerDoesNotAdvanceCounter() {
-        withTerminalSized(10, 3);
-        long versionBeforeMarker = mTerminal.getVisibleContentVersion();
-
-        enterString("\033]9998;claude-urgent\007");
-
-        assertEquals("an OSC 9998 urgent marker carries no visible output",
-            versionBeforeMarker, mTerminal.getVisibleContentVersion());
-        assertEquals(1, mOutput.urgentNotifications);
-    }
-
-    public void testCompletionOscMarkerDoesNotAdvanceCounter() {
-        withTerminalSized(10, 3);
-        long versionBeforeMarker = mTerminal.getVisibleContentVersion();
-
-        enterString("\033]9999;claude-done\007");
-
-        assertEquals("an OSC 9999 completion marker carries no visible output",
-            versionBeforeMarker, mTerminal.getVisibleContentVersion());
-        assertEquals(1, mOutput.markerNotifications);
-    }
-
     public void testCursorMovementEscapeSequenceDoesNotAdvanceCounter() {
         withTerminalSized(10, 3);
         long versionBeforeEscape = mTerminal.getVisibleContentVersion();
@@ -71,7 +49,7 @@ public class VisibleContentVersionTest extends TerminalTestCase {
 
     public void testGenuineTextAfterControlSequencesStillAdvancesCounter() {
         withTerminalSized(10, 3);
-        enterString("\033]9998;claude-urgent\007\033[2;1H\033[31m");
+        enterString("\033]0;my title\007\033[2;1H\033[31m");
         long versionAfterControlOnly = mTerminal.getVisibleContentVersion();
 
         enterString("X");

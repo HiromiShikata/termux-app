@@ -322,16 +322,6 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     @Override
-    public void onMarkerNotification(String reason) {
-        mClient.onMarkerNotification(this, reason);
-    }
-
-    @Override
-    public void onUrgentNotification(String reason) {
-        mClient.onUrgentNotification(this, reason);
-    }
-
-    @Override
     public void onSpeakNotification(String text) {
         mClient.onSpeakNotification(this, text);
     }

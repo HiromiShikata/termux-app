@@ -22,10 +22,6 @@ public interface TerminalSessionClient {
 
     void onBell(@NonNull TerminalSession session);
 
-    void onMarkerNotification(@NonNull TerminalSession session, @NonNull String reason);
-
-    void onUrgentNotification(@NonNull TerminalSession session, @NonNull String reason);
-
     void onSpeakNotification(@NonNull TerminalSession session, @NonNull String text);
 
     void onColorsChanged(@NonNull TerminalSession session);
