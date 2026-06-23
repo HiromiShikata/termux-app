@@ -180,6 +180,12 @@ public class SessionNewActivityStore {
     }
 
     @Nullable
+    public String lastOutputActivityAgeLabel(@NonNull String sessionName, long nowMillis) {
+        Long t = getLastOutputActivityTimeMillis(sessionName);
+        return t == null ? null : formatRelativeTime(nowMillis - t);
+    }
+
+    @Nullable
     public String lastOutputActivityAgeLabelJapanese(@NonNull String sessionName, long nowMillis) {
         Long lastOutputActivityTimeMillis = getLastOutputActivityTimeMillis(sessionName);
         if (lastOutputActivityTimeMillis == null) {
