@@ -2619,6 +2619,10 @@ public final class TerminalEmulator {
         return mVisibleContentVersion;
     }
 
+    public long getScreenContentVersion() {
+        return mMainBuffer.getCellWriteVersion() + mAltBuffer.getCellWriteVersion();
+    }
+
     public boolean isAutoScrollDisabled() {
         return mAutoScrollDisabled;
     }

@@ -232,6 +232,10 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator == null ? 0L : mEmulator.getVisibleContentVersion();
     }
 
+    public long getScreenContentVersion() {
+        return mEmulator == null ? 0L : mEmulator.getScreenContentVersion();
+    }
+
     /** Notify the {@link #mClient} that the screen has changed. */
     protected void notifyScreenUpdate() {
         mClient.onTextChanged(this);

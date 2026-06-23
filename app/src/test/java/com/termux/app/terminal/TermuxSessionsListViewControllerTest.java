@@ -503,4 +503,48 @@ public class TermuxSessionsListViewControllerTest {
 
         Assert.assertEquals(0, row.getMinimumHeight());
     }
+
+    @Test
+    public void outValueDiffersBetweenSessionsWithDifferentLastOutputTimes() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("alpha", 10_000L);
+        store.recordOutputActivity("beta", 130_000L);
+        long nowMillis = 190_000L;
+
+        String alphaLine = TermuxSessionsListViewController.buildTimestampLine(store, "alpha", nowMillis);
+        String betaLine = TermuxSessionsListViewController.buildTimestampLine(store, "beta", nowMillis);
+
+        Assert.assertEquals("call: -  out: 3m ago  seen: -", alphaLine);
+        Assert.assertEquals("call: -  out: 1m ago  seen: -", betaLine);
+        Assert.assertNotEquals(alphaLine, betaLine);
+    }
+
+    @Test
+    public void outValueKeepsGrowingPastOneMinuteWithoutResetting() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        String at30Seconds = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 31_000L);
+        String at90Seconds = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 91_000L);
+        String at150Seconds = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 151_000L);
+        String at10Minutes = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 601_000L);
+
+        Assert.assertEquals("call: -  out: 30s ago  seen: -", at30Seconds);
+        Assert.assertEquals("call: -  out: 1m ago  seen: -", at90Seconds);
+        Assert.assertEquals("call: -  out: 2m ago  seen: -", at150Seconds);
+        Assert.assertEquals("call: -  out: 10m ago  seen: -", at10Minutes);
+    }
+
+    @Test
+    public void outValueIsUnchangedByARefreshTickThatRecordsNoNewOutput() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        String firstRender = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 121_000L);
+        String secondRenderSameClock = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 121_000L);
+
+        Assert.assertEquals("call: -  out: 2m ago  seen: -", firstRender);
+        Assert.assertEquals(firstRender, secondRenderSameClock);
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastOutputActivityTimeMillis("worker"));
+    }
 }

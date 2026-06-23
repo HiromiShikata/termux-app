@@ -56,4 +56,14 @@ public class SessionOutputProgressTrackerTest {
 
         Assert.assertTrue(tracker.hasNewOutput("session-one", 7L));
     }
+
+    @Test
+    public void repeatedRefreshTicksAtTheSameVersionNeverReportNewOutput() {
+        SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
+        tracker.hasNewOutput("worker", 42L);
+
+        for (int refreshTick = 0; refreshTick < 120; refreshTick++) {
+            Assert.assertFalse(tracker.hasNewOutput("worker", 42L));
+        }
+    }
 }
