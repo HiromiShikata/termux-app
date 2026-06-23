@@ -77,6 +77,8 @@ public final class TerminalSession extends TerminalOutput {
     private final Integer mTranscriptRows;
 
 
+    private long mTotalBytesProcessed = 0L;
+
     private static final String LOG_TAG = "TerminalSession";
 
     public TerminalSession(String shellPath, String cwd, String[] args, String[] env, Integer transcriptRows, TerminalSessionClient client) {
@@ -223,6 +225,8 @@ public final class TerminalSession extends TerminalOutput {
     public long getNeverResetScrolledLineCount() {
         return mEmulator == null ? 0L : mEmulator.getNeverResetScrolledLineCount();
     }
+
+    public long getTotalBytesProcessed() { return mTotalBytesProcessed; }
 
     /** Notify the {@link #mClient} that the screen has changed. */
     protected void notifyScreenUpdate() {
@@ -382,6 +386,7 @@ public final class TerminalSession extends TerminalOutput {
         public void handleMessage(Message msg) {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
             if (bytesRead > 0) {
+                mTotalBytesProcessed += bytesRead;
                 mEmulator.append(mReceiveBuffer, bytesRead);
                 notifyScreenUpdate();
             }

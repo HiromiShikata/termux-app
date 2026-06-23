@@ -7,18 +7,18 @@ import java.util.Map;
 
 public final class SessionOutputProgressTracker {
 
-    private final Map<String, Long> mLastScrolledLineCountByName = new HashMap<>();
+    private final Map<String, Long> mLastBytesProcessedByName = new HashMap<>();
 
-    public boolean hasNewOutput(@NonNull String sessionName, long scrolledLineCount) {
-        Long lastScrolledLineCount = mLastScrolledLineCountByName.get(sessionName);
-        mLastScrolledLineCountByName.put(sessionName, scrolledLineCount);
-        if (lastScrolledLineCount == null) {
-            return scrolledLineCount > 0L;
+    public boolean hasNewOutput(@NonNull String sessionName, long totalBytesProcessed) {
+        Long lastBytesProcessed = mLastBytesProcessedByName.get(sessionName);
+        mLastBytesProcessedByName.put(sessionName, totalBytesProcessed);
+        if (lastBytesProcessed == null) {
+            return totalBytesProcessed > 0L;
         }
-        return scrolledLineCount > lastScrolledLineCount;
+        return totalBytesProcessed > lastBytesProcessed;
     }
 
     public void forget(@NonNull String sessionName) {
-        mLastScrolledLineCountByName.remove(sessionName);
+        mLastBytesProcessedByName.remove(sessionName);
     }
 }

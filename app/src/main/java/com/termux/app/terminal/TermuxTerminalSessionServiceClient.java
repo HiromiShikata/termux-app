@@ -27,7 +27,7 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     public void onTextChanged(@NonNull TerminalSession changedSession) {
         if (changedSession.mSessionName == null) return;
         if (!mSessionOutputProgressTracker.hasNewOutput(
-                changedSession.mSessionName, changedSession.getNeverResetScrolledLineCount())) {
+                changedSession.mSessionName, changedSession.getTotalBytesProcessed())) {
             return;
         }
         recordOutputActivity(changedSession);
