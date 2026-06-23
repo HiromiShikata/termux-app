@@ -226,9 +226,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     OpenTagBrowserController mOpenTagBrowserController;
 
-    /**
-     * Triggers the in-app APK update flow when a `<update-termux-up>REASON</update-termux-up>` tag appears in the terminal output.
-     */
     UpdateTagUpdateController mUpdateTagUpdateController;
 
     /**
