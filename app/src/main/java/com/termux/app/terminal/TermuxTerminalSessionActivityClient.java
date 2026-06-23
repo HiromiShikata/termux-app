@@ -1138,6 +1138,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         savePersistedSessions();
         service.pruneSessionNewActivityStoreToLiveSessions();
+
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            attachBrowserTabForUrlSessionName(terminalSession, terminalSession.mSessionName);
+        }
     }
 
     public void termuxSessionListNotifyUpdated() {
