@@ -2,7 +2,7 @@ package com.termux.app.terminal;
 
 public final class SessionListBottomSheetDragDecision {
 
-    static final int DEFAULT_HEIGHT_SCREEN_FRACTION_DENOMINATOR = 3;
+    static final int DEFAULT_HEIGHT_SCREEN_FRACTION_DENOMINATOR = 2;
     static final int MIN_HEIGHT_SCREEN_FRACTION_DENOMINATOR = 4;
     static final int MAX_HEIGHT_SCREEN_PERCENT_NUMERATOR = 85;
     static final int MAX_HEIGHT_SCREEN_PERCENT_DENOMINATOR = 100;
