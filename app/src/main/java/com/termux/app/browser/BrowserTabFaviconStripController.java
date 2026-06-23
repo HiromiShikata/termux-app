@@ -1,9 +1,6 @@
 package com.termux.app.browser;
 
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.HorizontalScrollView;
@@ -44,33 +41,21 @@ public final class BrowserTabFaviconStripController {
             View item = inflater.inflate(R.layout.item_browser_tab_favicon_strip, mContainer, false);
             ImageView faviconView = item.findViewById(R.id.browser_tab_strip_favicon);
             View indicator = item.findViewById(R.id.browser_tab_strip_active_indicator);
+            View closeButton = item.findViewById(R.id.browser_tab_strip_close_button);
             Bitmap favicon = tab.getFavicon();
             if (favicon != null) {
                 faviconView.setImageBitmap(favicon);
             } else {
-                faviconView.setImageBitmap(makeLetterBitmap(tab));
+                faviconView.setImageBitmap(BrowserTabFaviconPlaceholder.letterBitmapForTab(tab));
             }
             indicator.setVisibility(tab == activeTab ? View.VISIBLE : View.INVISIBLE);
             item.setOnClickListener(v -> mListener.openTab(tab));
+            closeButton.setOnClickListener(v -> mListener.closeTab(tab));
             mContainer.addView(item);
         }
-    }
-
-    private Bitmap makeLetterBitmap(@NonNull BrowserTab tab) {
-        int size = 64;
-        Bitmap bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bmp);
-        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bg.setColor(0xFF455A64);
-        canvas.drawRect(0, 0, size, size, bg);
-        Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
-        text.setColor(Color.WHITE);
-        text.setTextSize(size * 0.5f);
-        text.setTextAlign(Paint.Align.CENTER);
-        String title = tab.getTitle();
-        char letter = (title != null && !title.isEmpty()) ? Character.toUpperCase(title.charAt(0)) : '?';
-        float yPos = (size / 2f) - ((text.descent() + text.ascent()) / 2f);
-        canvas.drawText(String.valueOf(letter), size / 2f, yPos, text);
-        return bmp;
+        View addItem = inflater.inflate(R.layout.item_browser_tab_favicon_strip_add, mContainer, false);
+        View addButton = addItem.findViewById(R.id.browser_tab_strip_add_button);
+        addButton.setOnClickListener(v -> mListener.promptNewTab());
+        mContainer.addView(addItem);
     }
 }
