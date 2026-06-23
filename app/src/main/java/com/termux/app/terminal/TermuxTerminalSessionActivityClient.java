@@ -371,12 +371,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         long nowMillis = System.currentTimeMillis();
-        mActivity.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, nowMillis);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        store.recordOutputActivity(session.mSessionName, nowMillis);
         if (isCurrentlyViewedSession(session)
-                && !UrgentCallSeenSuppression.shouldSuppressSeen(
-                    mUnacknowledgedUrgentCallSessionName, session.mSessionName))
-            mActivity.getSessionNewActivityStore().recordSeen(session.mSessionName, nowMillis);
+                && !isExplicitCallSeenSuppressed(session.mSessionName))
+            store.recordSeen(session.mSessionName, nowMillis);
         termuxSessionListNotifyUpdated();
+    }
+
+    private boolean isExplicitCallSeenSuppressed(@NonNull String sessionName) {
+        if (UrgentCallSeenSuppression.shouldSuppressSeen(
+                mUnacknowledgedUrgentCallSessionName, sessionName)) {
+            return true;
+        }
+        return mActivity.getSessionNewActivityStore().hasPendingExplicitCall(sessionName);
     }
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
@@ -417,9 +425,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordActiveSessionSeen() {
         String sessionName = activeSessionName();
         if (sessionName == null) return;
-        if (UrgentCallSeenSuppression.shouldSuppressSeen(mUnacknowledgedUrgentCallSessionName, sessionName))
+        if (isExplicitCallSeenSuppressed(sessionName))
             return;
         mActivity.getSessionNewActivityStore().recordSeen(sessionName, System.currentTimeMillis());
+    }
+
+    private void acknowledgeExplicitCallOnGenuineSwitch(@NonNull TerminalSession session) {
+        if (session.mSessionName == null) return;
+        if (session.mSessionName.equals(mUnacknowledgedUrgentCallSessionName)) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (!store.hasPendingExplicitCall(session.mSessionName)) return;
+        store.recordSeen(session.mSessionName, System.currentTimeMillis());
     }
 
     public void startActiveSessionSeenTick() {
@@ -520,6 +536,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         boolean switchingSessions = previousSession != null && previousSession != session;
 
         if (switchingSessions) {
+            acknowledgeExplicitCallOnGenuineSwitch(session);
             TtsManager ttsManager = mActivity.getTtsManager();
             if (ttsManager != null) ttsManager.stop();
         }

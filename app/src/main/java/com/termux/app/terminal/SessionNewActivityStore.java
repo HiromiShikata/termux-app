@@ -130,6 +130,10 @@ public class SessionNewActivityStore {
         return tierFor(sessionName) != SessionNewActivityTier.NONE;
     }
 
+    public boolean hasPendingExplicitCall(@NonNull String sessionName) {
+        return tierFor(sessionName) == SessionNewActivityTier.RED;
+    }
+
     @Nullable
     Long pendingSignalTimeMillis(@NonNull String sessionName) {
         switch (tierFor(sessionName)) {
