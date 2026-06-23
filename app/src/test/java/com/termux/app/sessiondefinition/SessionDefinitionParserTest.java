@@ -461,4 +461,76 @@ public class SessionDefinitionParserTest {
             "umino.v4.json?k=TESTKEY");
         Assert.assertEquals("https://example.test/in-tmux-by-human/umino.v4.json?k=TESTKEY", resolved);
     }
+
+    @Test
+    public void parseGroupEmitsProjectLevelEntryWhenGroupsArrayIsEmpty() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"tdpmConsoleUrl\":\"https://example.test/tdpm-console?k=TESTKEY\","
+            + "\"newIssueUrl\":\"https://example.test/new-issue?k=TESTKEY\","
+            + "\"groups\":[]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(1, entries.size());
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("umino", entry.getGroupLabel());
+        Assert.assertEquals("", entry.getEntryLabel());
+        Assert.assertTrue(entry.getUrls().isEmpty());
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", entry.getOverviewUrl());
+        Assert.assertEquals("https://example.test/tdpm-console?k=TESTKEY", entry.getTdpmConsoleUrl());
+        Assert.assertEquals("https://example.test/new-issue?k=TESTKEY", entry.getNewIssueUrl());
+    }
+
+    @Test
+    public void parseGroupEmitsProjectLevelEntryWhenGroupsArrayIsEmptyAndOnlyOverviewUrlPresent()
+            throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"groups\":[]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(1, entries.size());
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("umino", entry.getGroupLabel());
+        Assert.assertTrue(entry.getUrls().isEmpty());
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", entry.getOverviewUrl());
+        Assert.assertNull(entry.getTdpmConsoleUrl());
+        Assert.assertNull(entry.getNewIssueUrl());
+    }
+
+    @Test
+    public void parseGroupEmitsProjectLevelEntryWhenGroupsArrayIsEmptyAndNoProjectUrlsPresent()
+            throws JSONException {
+        String json = "{\"version\":4,\"groups\":[]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(1, entries.size());
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("umino", entry.getGroupLabel());
+        Assert.assertTrue(entry.getUrls().isEmpty());
+        Assert.assertNull(entry.getOverviewUrl());
+        Assert.assertNull(entry.getTdpmConsoleUrl());
+        Assert.assertNull(entry.getNewIssueUrl());
+    }
+
+    @Test
+    public void parseGroupDoesNotEmitProjectLevelEntryWhenGroupsArrayHasStories() throws JSONException {
+        String json = "{"
+            + "\"version\":4,"
+            + "\"overviewUrl\":\"https://github.com/HiromiShikata/projects/7\","
+            + "\"groups\":[{\"story\":\"story-one\",\"urls\":[\"https://example.test/a1\"]}]}";
+
+        List<SessionDefinitionEntry> entries = parser.parseGroup("umino", json);
+
+        Assert.assertEquals(1, entries.size());
+        SessionDefinitionEntry entry = entries.get(0);
+        Assert.assertEquals("story-one", entry.getEntryLabel());
+        Assert.assertEquals(1, entry.getUrls().size());
+        Assert.assertEquals("https://example.test/a1", entry.getUrls().get(0));
+    }
 }

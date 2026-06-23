@@ -57,7 +57,12 @@ public final class SessionDefinitionParser {
             String tdpmConsoleUrl = nonEmptyOrNull(projectObject.optString("tdpmConsoleUrl", null));
             String newIssueUrl = nonEmptyOrNull(projectObject.optString("newIssueUrl", null));
             JSONArray groupArray = projectObject.getJSONArray("groups");
-            return parseEntryArray(groupLabel, groupArray, overviewUrl, tdpmConsoleUrl, newIssueUrl);
+            List<SessionDefinitionEntry> entries =
+                parseEntryArray(groupLabel, groupArray, overviewUrl, tdpmConsoleUrl, newIssueUrl);
+            if (entries.isEmpty()) {
+                entries.add(emptyProjectEntry(groupLabel, overviewUrl, tdpmConsoleUrl, newIssueUrl));
+            }
+            return entries;
         }
         if (root instanceof JSONArray) {
             return parseEntryArray(groupLabel, (JSONArray) root, null, null, null);
@@ -104,6 +109,13 @@ public final class SessionDefinitionParser {
                 tdpmConsoleUrl, newIssueUrl));
         }
         return entries;
+    }
+
+    private static SessionDefinitionEntry emptyProjectEntry(String groupLabel, @Nullable String overviewUrl,
+                                                            @Nullable String tdpmConsoleUrl,
+                                                            @Nullable String newIssueUrl) {
+        return new SessionDefinitionEntry(groupLabel, "", new ArrayList<>(), new LinkedHashMap<>(), overviewUrl,
+            tdpmConsoleUrl, newIssueUrl);
     }
 
     public String resolveUrl(String baseUrl, String reference) throws MalformedURLException {
