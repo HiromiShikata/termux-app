@@ -24,7 +24,7 @@ public class UpdateTagUpdateControllerTest {
         RecordingTrigger trigger = new RecordingTrigger();
         UpdateTagUpdateController controller = new UpdateTagUpdateController(trigger);
 
-        controller.onSessionTextChanged("session-1", "log <update-termux-up>new build</update-termux-up>");
+        controller.onSessionTextChanged("session-1", "log <update-termux-app>new build</update-termux-app>");
 
         assertEquals(1, trigger.reasons.size());
         assertEquals("new build", trigger.reasons.get(0));
@@ -44,7 +44,7 @@ public class UpdateTagUpdateControllerTest {
     public void doesNotRetriggerSameTagOnRedraw() {
         RecordingTrigger trigger = new RecordingTrigger();
         UpdateTagUpdateController controller = new UpdateTagUpdateController(trigger);
-        String output = "log <update-termux-up>same reason</update-termux-up> log";
+        String output = "log <update-termux-app>same reason</update-termux-app> log";
 
         controller.onSessionTextChanged("session-1", output);
         controller.onSessionTextChanged("session-1", output);
@@ -58,9 +58,9 @@ public class UpdateTagUpdateControllerTest {
         RecordingTrigger trigger = new RecordingTrigger();
         UpdateTagUpdateController controller = new UpdateTagUpdateController(trigger);
 
-        controller.onSessionTextChanged("session-1", "<update-termux-up>first</update-termux-up>");
+        controller.onSessionTextChanged("session-1", "<update-termux-app>first</update-termux-app>");
         controller.onSessionTextChanged("session-1",
-            "<update-termux-up>first</update-termux-up><update-termux-up>second</update-termux-up>");
+            "<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>");
 
         assertEquals(2, trigger.reasons.size());
         assertEquals("first", trigger.reasons.get(0));
@@ -71,7 +71,7 @@ public class UpdateTagUpdateControllerTest {
     public void tracksReasonsPerSessionIndependently() {
         RecordingTrigger trigger = new RecordingTrigger();
         UpdateTagUpdateController controller = new UpdateTagUpdateController(trigger);
-        String output = "<update-termux-up>shared reason</update-termux-up>";
+        String output = "<update-termux-app>shared reason</update-termux-app>";
 
         controller.onSessionTextChanged("session-1", output);
         controller.onSessionTextChanged("session-2", output);
@@ -83,7 +83,7 @@ public class UpdateTagUpdateControllerTest {
     public void retriggersAfterSessionForgotten() {
         RecordingTrigger trigger = new RecordingTrigger();
         UpdateTagUpdateController controller = new UpdateTagUpdateController(trigger);
-        String output = "<update-termux-up>reason</update-termux-up>";
+        String output = "<update-termux-app>reason</update-termux-app>";
 
         controller.onSessionTextChanged("session-1", output);
         controller.forgetSession("session-1");
@@ -97,7 +97,7 @@ public class UpdateTagUpdateControllerTest {
         RecordingTrigger trigger = new RecordingTrigger();
         UpdateTagUpdateController controller = new UpdateTagUpdateController(trigger);
 
-        controller.onSessionTextChanged(null, "<update-termux-up>reason</update-termux-up>");
+        controller.onSessionTextChanged(null, "<update-termux-app>reason</update-termux-app>");
 
         assertTrue(trigger.reasons.isEmpty());
     }

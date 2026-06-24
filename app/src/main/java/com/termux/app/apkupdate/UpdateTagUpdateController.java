@@ -11,7 +11,7 @@ public final class UpdateTagUpdateController {
 
     private final ReasonTrigger reasonTrigger;
 
-    private final Map<String, UpdateTermuxUpTagScanner> mScannerBySessionKey = new HashMap<>();
+    private final Map<String, UpdateTermuxAppTagScanner> mScannerBySessionKey = new HashMap<>();
 
     public UpdateTagUpdateController(ReasonTrigger reasonTrigger) {
         this.reasonTrigger = reasonTrigger;
@@ -20,7 +20,7 @@ public final class UpdateTagUpdateController {
     public void onSessionTextChanged(String sessionKey, String screenText) {
         if (sessionKey == null) return;
 
-        UpdateTermuxUpTagScanner scanner = scannerForSession(sessionKey);
+        UpdateTermuxAppTagScanner scanner = scannerForSession(sessionKey);
         String reason = scanner.newReason(screenText);
         if (reason == null) return;
 
@@ -33,10 +33,10 @@ public final class UpdateTagUpdateController {
         mScannerBySessionKey.remove(sessionKey);
     }
 
-    private UpdateTermuxUpTagScanner scannerForSession(String sessionKey) {
-        UpdateTermuxUpTagScanner scanner = mScannerBySessionKey.get(sessionKey);
+    private UpdateTermuxAppTagScanner scannerForSession(String sessionKey) {
+        UpdateTermuxAppTagScanner scanner = mScannerBySessionKey.get(sessionKey);
         if (scanner == null) {
-            scanner = new UpdateTermuxUpTagScanner();
+            scanner = new UpdateTermuxAppTagScanner();
             mScannerBySessionKey.put(sessionKey, scanner);
         }
         return scanner;

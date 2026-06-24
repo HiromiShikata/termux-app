@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class UpdateTermuxUpTagScanner {
+public final class UpdateTermuxAppTagScanner {
 
     private static final Pattern UPDATE_BLOCK_PATTERN =
-        Pattern.compile("<update-termux-up>([\\s\\S]*?)</update-termux-up>");
+        Pattern.compile("<update-termux-app>([\\s\\S]*?)</update-termux-app>");
 
     private String lastTriggeredReason;
 
