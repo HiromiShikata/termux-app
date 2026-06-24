@@ -76,6 +76,36 @@ public final class BrowserTabManager {
         mActiveTabBySessionHandle.put(tab.getSessionHandle(), tab);
     }
 
+    public int getActiveTabIndex(@NonNull String sessionHandle) {
+        List<BrowserTab> tabs = getTabs(sessionHandle);
+        BrowserTab activeTab = mActiveTabBySessionHandle.get(sessionHandle);
+        if (activeTab == null) return -1;
+        return tabs.indexOf(activeTab);
+    }
+
+    public boolean hasTabs(@NonNull String sessionHandle) {
+        List<BrowserTab> tabs = mTabsBySessionHandle.get(sessionHandle);
+        return tabs != null && !tabs.isEmpty();
+    }
+
+    public void restoreTabs(
+            @NonNull String sessionHandle,
+            @NonNull List<BrowserPersistedTab> persistedTabs,
+            int activeTabIndex) {
+        if (persistedTabs.isEmpty() || hasTabs(sessionHandle)) return;
+        List<BrowserTab> tabs = getTabs(sessionHandle);
+        for (BrowserPersistedTab persistedTab : persistedTabs) {
+            BrowserTab tab = new BrowserTab(sessionHandle, persistedTab.getUrl());
+            tab.setTitle(persistedTab.getTitle());
+            tab.setDesktopMode(persistedTab.isDesktopMode());
+            tabs.add(tab);
+        }
+        int boundedIndex = activeTabIndex;
+        if (boundedIndex < 0) boundedIndex = 0;
+        if (boundedIndex >= tabs.size()) boundedIndex = tabs.size() - 1;
+        mActiveTabBySessionHandle.put(sessionHandle, tabs.get(boundedIndex));
+    }
+
     public void removeSession(@NonNull String sessionHandle) {
         mTabsBySessionHandle.remove(sessionHandle);
         mActiveTabBySessionHandle.remove(sessionHandle);

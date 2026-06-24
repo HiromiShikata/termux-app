@@ -77,7 +77,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class TermuxBrowserController implements BrowserTabSelectionListener {
@@ -101,6 +103,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserOpenSessionNamesSerializer mOpenSessionNamesSerializer = new BrowserOpenSessionNamesSerializer();
 
     private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
+
+    private final BrowserPersistedTabsSerializer mPersistedTabsSerializer = new BrowserPersistedTabsSerializer();
+
+    private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
     private final WebView mWebView;
 
@@ -178,6 +184,70 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureBrowserSplitDivider();
         configureHeaderInteractions();
         configureBrowserOpenStatePersistence();
+        loadPersistedSessionTabs();
+    }
+
+    private void loadPersistedSessionTabs() {
+        mPersistedTabsBySessionName.clear();
+        try {
+            List<BrowserPersistedSessionTabs> persistedSessionTabs =
+                mPersistedTabsSerializer.deserialize(mActivity.getPreferences().getBrowserSessionTabs());
+            for (BrowserPersistedSessionTabs sessionTabs : persistedSessionTabs) {
+                mPersistedTabsBySessionName.put(sessionTabs.getSessionName(), sessionTabs);
+            }
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load persisted browser session tabs", e);
+        }
+    }
+
+    private void restorePersistedTabsForSession(@Nullable String sessionHandle, @Nullable String sessionName) {
+        if (sessionHandle == null || sessionName == null || sessionName.isEmpty()) return;
+        if (mTabManager.hasTabs(sessionHandle)) return;
+        BrowserPersistedSessionTabs persistedSessionTabs = mPersistedTabsBySessionName.get(sessionName);
+        if (persistedSessionTabs == null) return;
+        mTabManager.restoreTabs(
+            sessionHandle, persistedSessionTabs.getTabs(), persistedSessionTabs.getActiveTabIndex());
+    }
+
+    private void persistSessionTabs() {
+        for (String sessionHandle : liveSessionHandlesWithName().keySet()) {
+            String sessionName = liveSessionHandlesWithName().get(sessionHandle);
+            if (sessionName == null || sessionName.isEmpty()) continue;
+            List<BrowserTab> tabs = mTabManager.getTabs(sessionHandle);
+            if (tabs.isEmpty()) {
+                mPersistedTabsBySessionName.remove(sessionName);
+                continue;
+            }
+            List<BrowserPersistedTab> persistedTabs = new ArrayList<>();
+            for (BrowserTab tab : tabs) {
+                persistedTabs.add(new BrowserPersistedTab(tab.getUrl(), tab.getTitle(), tab.isDesktopMode()));
+            }
+            int activeTabIndex = mTabManager.getActiveTabIndex(sessionHandle);
+            mPersistedTabsBySessionName.put(sessionName,
+                new BrowserPersistedSessionTabs(sessionName, persistedTabs, Math.max(activeTabIndex, 0)));
+        }
+        writePersistedSessionTabs();
+    }
+
+    private void writePersistedSessionTabs() {
+        try {
+            mActivity.getPreferences().setBrowserSessionTabs(
+                mPersistedTabsSerializer.serialize(new ArrayList<>(mPersistedTabsBySessionName.values())));
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to persist browser session tabs", e);
+        }
+    }
+
+    @NonNull
+    private Map<String, String> liveSessionHandlesWithName() {
+        Map<String, String> liveSessionNamesByHandle = new LinkedHashMap<>();
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return liveSessionNamesByHandle;
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            liveSessionNamesByHandle.put(terminalSession.mHandle, terminalSession.mSessionName);
+        }
+        return liveSessionNamesByHandle;
     }
 
     private void configureBrowserOpenStatePersistence() {
@@ -490,6 +560,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     loadingTab.setUrl(url);
                     loadingTab.setTitle(view.getTitle());
                     notifyTabsUpdated();
+                    persistSessionTabs();
                 }
                 updatePageHeader();
                 applyDesktopViewport(view, loadingTab);
@@ -541,6 +612,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 if (loadingTab != null) {
                     loadingTab.setTitle(title);
                     notifyTabsUpdated();
+                    persistSessionTabs();
                 }
                 updatePageHeader();
             }
@@ -916,6 +988,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         updateDesktopModeToggleState();
         renderFrame(activeTab);
         mWebView.reload();
+        persistSessionTabs();
     }
 
     private void applyUserAgent(@NonNull BrowserTab tab) {
@@ -948,6 +1021,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
+        restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
         rebindTabsList();
         updateDesktopModeToggleState();
         if (switchingSession) {
@@ -992,6 +1066,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             blankFrame();
         mTabManager.removeSession(session.mHandle);
         mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
+        if (session.mSessionName != null && !session.mSessionName.isEmpty()) {
+            mPersistedTabsBySessionName.remove(session.mSessionName);
+            writePersistedSessionTabs();
+        }
     }
 
     public void toggleBrowser() {
@@ -1082,6 +1160,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mActivity.getDrawer().closeDrawers();
         hideSessionListBottomSheet();
         updateSessionNameOverlay();
+        persistSessionTabs();
     }
 
     private void hideSessionListBottomSheet() {
@@ -1101,6 +1180,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         } else {
             updateDesktopModeToggleState();
         }
+        persistSessionTabs();
     }
 
     public void openUrlInNewTab(@NonNull String url) {
@@ -1121,12 +1201,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return;
         }
         mSessionVisibilityState.setBrowserVisible(sessionHandle, resolveSessionName(sessionHandle), true);
+        persistSessionTabs();
     }
 
     public void attachBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
+        restorePersistedTabsForSession(sessionHandle, resolveSessionName(sessionHandle));
         mTabManager.attachOrActivateTab(sessionHandle, normalizeUrl(url));
         mSessionVisibilityState.setBrowserVisible(sessionHandle, resolveSessionName(sessionHandle), true);
         if (sessionHandle.equals(mCurrentSessionHandle)) notifyTabsUpdated();
+        persistSessionTabs();
     }
 
     public void promptNewTab() {
