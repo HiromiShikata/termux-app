@@ -21,11 +21,9 @@ public final class CallToUserTagController {
         if (sessionKey == null) return;
 
         CallToUserTagScanner scanner = scannerForSession(sessionKey);
-        String reason = scanner.newReason(screenText);
-        if (reason == null) return;
-
-        scanner.markTriggered(reason);
-        callTrigger.onCallToUser(sessionKey, reason);
+        for (String reason : scanner.newReasons(screenText)) {
+            callTrigger.onCallToUser(sessionKey, reason);
+        }
     }
 
     public void forgetSession(String sessionKey) {
