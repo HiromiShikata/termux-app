@@ -367,27 +367,18 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordOutputActivity(session.mSessionName, nowMillis);
-        if (isCurrentlyViewedSession(session)
-                && !isExplicitCallSeenSuppressed(session.mSessionName))
+        // The genuinely-viewed session (app visible AND this is the current session) is seen
+        // unconditionally, so output — or a call — arriving while the user is present is immediately
+        // marked seen and leaves no leftover indicator when the user switches away. Seen is never
+        // recorded here for a non-viewed session, so a call to a non-viewed session keeps its red dot
+        // until the user genuinely switches to it.
+        if (isCurrentlyViewedSession(session))
             store.recordSeen(session.mSessionName, nowMillis);
         termuxSessionListNotifyUpdated();
     }
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
         return mActivity.isVisible() && mActivity.getCurrentSession() == session;
-    }
-
-    /**
-     * A session that has a pending explicit call (RED tier) must keep its red dot until the user
-     * genuinely switches to it. The automatic per-second seen tick and the output-driven seen of the
-     * currently-selected session would otherwise advance lastSeen past the recorded explicit call and
-     * clear the RED tier before the user can notice it — for example while the user is browsing the
-     * session list looking for which session called. The pending call is acknowledged only by
-     * {@link #acknowledgeExplicitCallOnGenuineSwitch} on a genuine user switch to the session.
-     */
-    private boolean isExplicitCallSeenSuppressed(@NonNull String sessionName) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        return store != null && store.hasPendingExplicitCall(sessionName);
     }
 
     @Nullable
@@ -415,9 +406,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void recordActiveSessionSeen() {
+        // The genuinely-viewed current session's seen MUST advance every second unconditionally so
+        // that activity occurring while the user is present is treated as seen and leaves no stale
+        // indicator after the user switches away. This tick only ever records the current session
+        // (activeSessionName resolves to getCurrentSession), so a non-viewed session's seen is never
+        // advanced and its explicit-call red dot persists until the user genuinely switches to it.
         String sessionName = activeSessionName();
         if (sessionName == null) return;
-        if (isExplicitCallSeenSuppressed(sessionName)) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordSeen(sessionName, System.currentTimeMillis());
