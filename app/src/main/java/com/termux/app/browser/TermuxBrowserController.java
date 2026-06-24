@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -71,6 +72,7 @@ import com.termux.shared.logger.Logger;
 
 import org.json.JSONException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -89,6 +91,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public static final int REQUEST_BROWSER_FILE_CHOOSER = 3000;
 
     private static final String BROWSER_PAGE_TEXT_FILE_NAME = "browser-page.txt";
+
+    private static final String BROWSER_SCREENSHOT_PNG_FILE_NAME = "browser-screenshot.png";
+
+    private static final int BROWSER_SCREENSHOT_PNG_QUALITY = 100;
 
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
@@ -898,6 +904,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mActivity.findViewById(R.id.browser_new_tab_button).setOnClickListener(v -> promptNewTab());
         mActivity.findViewById(R.id.browser_open_in_chrome_button).setOnClickListener(v -> openCurrentPageInChrome());
         mActivity.findViewById(R.id.browser_send_page_text_button).setOnClickListener(v -> sendCurrentPageTextToTerminal());
+        mActivity.findViewById(R.id.browser_send_screenshot_button).setOnClickListener(v -> sendCurrentScreenshotToTerminal());
         mActivity.findViewById(R.id.browser_clear_cache_button).setOnClickListener(v -> clearCurrentTabCache());
         mDesktopModeToggle = mActivity.findViewById(R.id.browser_desktop_mode_toggle);
         mDesktopModeToggle.setOnClickListener(v -> toggleActiveTabDesktopMode());
@@ -937,6 +944,52 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         session.write("cat " + captureFile.getAbsolutePath() + "\n");
         mActivity.showToast(mActivity.getString(R.string.msg_browser_page_text_sent), false);
+    }
+
+    private void sendCurrentScreenshotToTerminal() {
+        if (!mBrowserVisible) return;
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session == null || !session.isRunning()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_session), false);
+            return;
+        }
+        int width = mWebView.getWidth();
+        int height = mWebView.getHeight();
+        if (width <= 0 || height <= 0) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_screenshot_failed), true);
+            return;
+        }
+        byte[] pngBytes = renderVisibleWebViewToPng(width, height);
+        if (pngBytes == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_screenshot_failed), true);
+            return;
+        }
+        writeCapturedScreenshotToSession(session, pngBytes);
+    }
+
+    @Nullable
+    private byte[] renderVisibleWebViewToPng(int width, int height) {
+        Bitmap bitmap = null;
+        try {
+            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            canvas.drawColor(Color.WHITE);
+            mWebView.draw(canvas);
+            ByteArrayOutputStream pngStream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, BROWSER_SCREENSHOT_PNG_QUALITY, pngStream);
+            return pngStream.toByteArray();
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to render browser screenshot", e);
+            return null;
+        } finally {
+            if (bitmap != null) bitmap.recycle();
+        }
+    }
+
+    private void writeCapturedScreenshotToSession(@NonNull TerminalSession session, @NonNull byte[] pngBytes) {
+        session.write(BrowserScreenshotCapture.buildDeliveryCommand(
+            pngBytes, BROWSER_SCREENSHOT_PNG_FILE_NAME));
+        mActivity.showToast(mActivity.getString(R.string.msg_browser_screenshot_sent), false);
     }
 
     private void clearCurrentTabCache() {

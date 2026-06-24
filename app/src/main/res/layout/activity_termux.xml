@@ -267,6 +267,16 @@
                         android:tint="?attr/termuxActivityDrawerImageTint" />
 
                     <ImageButton
+                        android:id="@+id/browser_send_screenshot_button"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_browser_send_screenshot"
+                        android:src="@drawable/ic_browser_screenshot"
+                        android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                    <ImageButton
                         android:id="@+id/browser_clear_cache_button"
                         android:layout_width="0dp"
                         android:layout_height="44dp"
