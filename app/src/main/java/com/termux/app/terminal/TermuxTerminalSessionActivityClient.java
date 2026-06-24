@@ -319,7 +319,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onBell(@NonNull TerminalSession session) {
-        recordOutputActivityForSession(session);
+        // Record output activity only when genuinely new process output accompanies the bell, using
+        // the same genuine-output gate as onTextChanged. A bell is delivered on every BEL byte,
+        // including bells echoed back from the user's own keystrokes and repeated bells that carry no
+        // new process output; recording output activity unconditionally on each bell pinned the
+        // out: time to "now" on every refresh, so it never advanced past 0 seconds.
+        recordNewOutputActivityForSession(session);
 
         if (!mActivity.isVisible()) return;
 
@@ -362,13 +367,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordOutputActivity(session.mSessionName, nowMillis);
-        if (isCurrentlyViewedSession(session))
+        if (isCurrentlyViewedSession(session)
+                && !isExplicitCallSeenSuppressed(session.mSessionName))
             store.recordSeen(session.mSessionName, nowMillis);
         termuxSessionListNotifyUpdated();
     }
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
         return mActivity.isVisible() && mActivity.getCurrentSession() == session;
+    }
+
+    /**
+     * A session that has a pending explicit call (RED tier) must keep its red dot until the user
+     * genuinely switches to it. The automatic per-second seen tick and the output-driven seen of the
+     * currently-selected session would otherwise advance lastSeen past the recorded explicit call and
+     * clear the RED tier before the user can notice it — for example while the user is browsing the
+     * session list looking for which session called. The pending call is acknowledged only by
+     * {@link #acknowledgeExplicitCallOnGenuineSwitch} on a genuine user switch to the session.
+     */
+    private boolean isExplicitCallSeenSuppressed(@NonNull String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        return store != null && store.hasPendingExplicitCall(sessionName);
     }
 
     @Nullable
@@ -398,6 +417,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordActiveSessionSeen() {
         String sessionName = activeSessionName();
         if (sessionName == null) return;
+        if (isExplicitCallSeenSuppressed(sessionName)) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordSeen(sessionName, System.currentTimeMillis());
