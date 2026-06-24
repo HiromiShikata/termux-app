@@ -94,6 +94,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         BrowserWebAuthentication.apply(settings);
 
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
+        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
+            BrowserPullToRefreshGate.canWebViewScrollUp(mWebView.getScrollY()));
 
         mWebView.setWebViewClient(new BrowserDesktopViewportWebViewClient() {
             @Override
