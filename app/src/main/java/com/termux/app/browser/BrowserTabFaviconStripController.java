@@ -31,10 +31,6 @@ public final class BrowserTabFaviconStripController {
 
     public void update(@NonNull List<BrowserTab> tabs, @Nullable BrowserTab activeTab) {
         mContainer.removeAllViews();
-        if (tabs.size() <= 1) {
-            mScrollView.setVisibility(View.GONE);
-            return;
-        }
         mScrollView.setVisibility(View.VISIBLE);
         LayoutInflater inflater = LayoutInflater.from(mContainer.getContext());
         for (BrowserTab tab : tabs) {
