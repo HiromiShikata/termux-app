@@ -17,7 +17,7 @@ public final class TerminalInputEchoFilter {
         }
     }
 
-    public synchronized int countGenuineOutput(byte[] data, int offset, int length) {
+    public synchronized int consumeEchoPrefixReturningGenuineOffset(byte[] data, int offset, int length) {
         int index = offset;
         int end = offset + length;
         while (index < end && !mPendingEchoBytes.isEmpty() && mPendingEchoBytes.peekFirst() == data[index]) {
@@ -27,7 +27,11 @@ public final class TerminalInputEchoFilter {
         if (index < end) {
             mPendingEchoBytes.clear();
         }
-        return end - index;
+        return index;
+    }
+
+    public synchronized int countGenuineOutput(byte[] data, int offset, int length) {
+        return offset + length - consumeEchoPrefixReturningGenuineOffset(data, offset, length);
     }
 
     public synchronized boolean hasPendingEcho() {
