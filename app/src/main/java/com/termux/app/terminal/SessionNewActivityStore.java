@@ -16,8 +16,6 @@ public class SessionNewActivityStore {
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
 
-    public static final long NO_OUTPUT_DEFAULT_TIME_MILLIS = 0L;
-
     private final Map<String, Long> mLastOutputActivityTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
     private final Map<String, String> mLastExplicitCallReasonByName = new HashMap<>();
@@ -174,46 +172,9 @@ public class SessionNewActivityStore {
         return (clampedElapsedMillis / ONE_HOUR_MILLIS) + "h ago";
     }
 
-    public static String formatRelativeTimeJapanese(long elapsedMillis) {
-        long clampedElapsedMillis = Math.max(0L, elapsedMillis);
-        if (clampedElapsedMillis < ONE_MINUTE_MILLIS) {
-            return (clampedElapsedMillis / ONE_SECOND_MILLIS) + "秒前";
-        }
-        if (clampedElapsedMillis < ONE_HOUR_MILLIS) {
-            return (clampedElapsedMillis / ONE_MINUTE_MILLIS) + "分前";
-        }
-        return (clampedElapsedMillis / ONE_HOUR_MILLIS) + "時間前";
-    }
-
     @Nullable
     public String lastOutputActivityAgeLabel(@NonNull String sessionName, long nowMillis) {
         Long t = getLastOutputActivityTimeMillis(sessionName);
         return t == null ? null : formatRelativeTime(nowMillis - t);
-    }
-
-    @NonNull
-    public String lastOutputActivityAgeLabelTreatingNoDataAsVeryOld(@NonNull String sessionName,
-                                                                    long nowMillis) {
-        Long lastOutputActivityTimeMillis = getLastOutputActivityTimeMillis(sessionName);
-        long resolvedTimeMillis = lastOutputActivityTimeMillis == null
-            ? NO_OUTPUT_DEFAULT_TIME_MILLIS : lastOutputActivityTimeMillis;
-        return formatRelativeTime(saturatingElapsedMillis(nowMillis, resolvedTimeMillis));
-    }
-
-    static long saturatingElapsedMillis(long nowMillis, long sinceMillis) {
-        long elapsedMillis = nowMillis - sinceMillis;
-        if (((nowMillis ^ sinceMillis) & (nowMillis ^ elapsedMillis)) < 0L) {
-            return Long.MAX_VALUE;
-        }
-        return elapsedMillis;
-    }
-
-    @Nullable
-    public String lastOutputActivityAgeLabelJapanese(@NonNull String sessionName, long nowMillis) {
-        Long lastOutputActivityTimeMillis = getLastOutputActivityTimeMillis(sessionName);
-        if (lastOutputActivityTimeMillis == null) {
-            return null;
-        }
-        return formatRelativeTimeJapanese(nowMillis - lastOutputActivityTimeMillis);
     }
 }
