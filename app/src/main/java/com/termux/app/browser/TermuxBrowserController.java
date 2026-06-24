@@ -450,6 +450,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         BrowserWebViewAutofill.apply(mWebView, Build.VERSION.SDK_INT);
 
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
+        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
+            BrowserPullToRefreshGate.canWebViewScrollUp(mWebView.getScrollY()));
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
