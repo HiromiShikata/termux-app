@@ -63,46 +63,41 @@ public class CallToUserTagScannerTest {
     }
 
     @Test
-    public void newReasonReturnsLatestBlock() {
+    public void newReasonsReturnsEachReasonInOrderOnFirstScan() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
-        assertEquals("second",
-            scanner.newReason("<call-to-user>first</call-to-user><call-to-user>second</call-to-user>"));
+        List<String> reasons = scanner.newReasons(
+            "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>");
+        assertEquals(2, reasons.size());
+        assertEquals("first", reasons.get(0));
+        assertEquals("second", reasons.get(1));
     }
 
     @Test
-    public void deduplicatesAlreadyTriggeredReasonOnRedraw() {
+    public void deduplicatesAlreadyFiredReasonOnRedraw() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
         String output = "prompt <call-to-user>needs approval</call-to-user> prompt";
 
-        String firstScan = scanner.newReason(output);
-        assertEquals("needs approval", firstScan);
-        scanner.markTriggered(firstScan);
-
-        assertNull(scanner.newReason(output));
+        assertEquals(1, scanner.newReasons(output).size());
+        assertTrue(scanner.newReasons(output).isEmpty());
     }
 
     @Test
-    public void triggersNextNewReasonAfterPreviousTriggered() {
+    public void firesNextNewReasonAfterPreviousFired() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
-        String firstScan = scanner.newReason("<call-to-user>first</call-to-user>");
-        assertEquals("first", firstScan);
-        scanner.markTriggered(firstScan);
-
-        String secondScan = scanner.newReason(
-            "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>");
-        assertEquals("second", secondScan);
-        scanner.markTriggered(secondScan);
-
-        assertNull(scanner.newReason(
-            "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>"));
+        assertEquals(List.of("first"),
+            scanner.newReasons("<call-to-user>first</call-to-user>"));
+        assertEquals(List.of("second"),
+            scanner.newReasons("<call-to-user>first</call-to-user><call-to-user>second</call-to-user>"));
+        assertTrue(scanner.newReasons(
+            "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>").isEmpty());
     }
 
     @Test
-    public void returnsNullWhenNoBlockPresent() {
+    public void returnsEmptyWhenNoBlockPresent() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
-        assertNull(scanner.newReason("plain terminal output"));
-        assertNull(scanner.newReason(null));
+        assertTrue(scanner.newReasons("plain terminal output").isEmpty());
+        assertTrue(scanner.newReasons(null).isEmpty());
     }
 
     @Test
@@ -116,34 +111,51 @@ public class CallToUserTagScannerTest {
     public void doesNotReFireWhenAnAlreadyFiredTagRemainsInScrollbackAndMoreOutputArrives() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
-        assertEquals("approval", scanner.newReason("<call-to-user>approval</call-to-user>"));
+        assertEquals(List.of("approval"),
+            scanner.newReasons("<call-to-user>approval</call-to-user>"));
 
-        assertNull(scanner.newReason("<call-to-user>approval</call-to-user>\nmore output line 1"));
-        assertNull(scanner.newReason(
-            "<call-to-user>approval</call-to-user>\nmore output line 1\nmore output line 2"));
+        assertTrue(scanner.newReasons(
+            "<call-to-user>approval</call-to-user>\nmore output line 1").isEmpty());
+        assertTrue(scanner.newReasons(
+            "<call-to-user>approval</call-to-user>\nmore output line 1\nmore output line 2").isEmpty());
     }
 
     @Test
-    public void doesNotReFireEarlierTagWhenALaterTagScrollsOutOfTheTranscript() {
+    public void firesTwoNewTagsAppearingInASingleUpdateEachExactlyOnce() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
-        assertEquals("alpha", scanner.newReason("<call-to-user>alpha</call-to-user>"));
-        assertEquals("beta", scanner.newReason(
-            "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user>"));
+        assertEquals(List.of("alpha"),
+            scanner.newReasons("<call-to-user>alpha</call-to-user>"));
 
-        assertNull(scanner.newReason("<call-to-user>alpha</call-to-user>"));
+        List<String> burst = scanner.newReasons(
+            "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user><call-to-user>gamma</call-to-user>");
+        assertEquals(2, burst.size());
+        assertEquals("beta", burst.get(0));
+        assertEquals("gamma", burst.get(1));
     }
 
     @Test
-    public void firesAGenuinelyNewTagAfterAnEarlierTagScrolledOut() {
+    public void firesAGenuinelyNewTagAfterEarlierTagsHaveBeenTrimmedOutOfTheTranscript() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
-        assertEquals("alpha", scanner.newReason("<call-to-user>alpha</call-to-user>"));
-        assertEquals("beta", scanner.newReason(
-            "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user>"));
-        assertNull(scanner.newReason("<call-to-user>alpha</call-to-user>"));
+        StringBuilder longTranscript = new StringBuilder("<call-to-user>approval</call-to-user>\n");
+        for (int line = 0; line < 5000; line++) {
+            longTranscript.append("output line ").append(line).append('\n');
+        }
+        assertEquals(List.of("approval"), scanner.newReasons(longTranscript.toString()));
 
-        assertEquals("gamma", scanner.newReason(
-            "<call-to-user>alpha</call-to-user><call-to-user>gamma</call-to-user>"));
+        String trimmedWithNewTag =
+            "output line 4998\noutput line 4999\n<call-to-user>review now</call-to-user>\n";
+        assertEquals(List.of("review now"), scanner.newReasons(trimmedWithNewTag));
+    }
+
+    @Test
+    public void doesNotReFireAnAlreadyFiredTagWhenLaterTranscriptHasTrimmedTheTagAway() {
+        CallToUserTagScanner scanner = new CallToUserTagScanner();
+
+        assertEquals(List.of("approval"),
+            scanner.newReasons("<call-to-user>approval</call-to-user>\nline a\nline b\n"));
+        assertTrue(scanner.newReasons(
+            "line a\nline b\nstill the same already fired output\n").isEmpty());
     }
 }

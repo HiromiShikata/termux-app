@@ -1,7 +1,6 @@
 package com.termux.app.browser;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -57,9 +56,13 @@ public class OpenTagScannerTest {
     }
 
     @Test
-    public void newOpenUrlReturnsLatestBlock() {
+    public void newOpenUrlsReturnsEachUrlInOrderOnFirstScan() {
         OpenTagScanner scanner = new OpenTagScanner();
-        assertEquals("https://second.example", scanner.newOpenUrl("<open>https://first.example</open><open>https://second.example</open>"));
+        List<String> openUrls = scanner.newOpenUrls(
+            "<open>https://first.example</open><open>https://second.example</open>");
+        assertEquals(2, openUrls.size());
+        assertEquals("https://first.example", openUrls.get(0));
+        assertEquals("https://second.example", openUrls.get(1));
     }
 
     @Test
@@ -67,32 +70,68 @@ public class OpenTagScannerTest {
         OpenTagScanner scanner = new OpenTagScanner();
         String output = "prompt <open>https://example.com</open> prompt";
 
-        String firstScan = scanner.newOpenUrl(output);
-        assertEquals("https://example.com", firstScan);
-        scanner.markOpened(firstScan);
-
-        assertNull(scanner.newOpenUrl(output));
+        assertEquals(1, scanner.newOpenUrls(output).size());
+        assertTrue(scanner.newOpenUrls(output).isEmpty());
     }
 
     @Test
     public void opensNextNewUrlAfterPreviousOpened() {
         OpenTagScanner scanner = new OpenTagScanner();
 
-        String firstScan = scanner.newOpenUrl("<open>https://first.example</open>");
-        assertEquals("https://first.example", firstScan);
-        scanner.markOpened(firstScan);
-
-        String secondScan = scanner.newOpenUrl("<open>https://first.example</open><open>https://second.example</open>");
-        assertEquals("https://second.example", secondScan);
-        scanner.markOpened(secondScan);
-
-        assertNull(scanner.newOpenUrl("<open>https://first.example</open><open>https://second.example</open>"));
+        assertEquals(List.of("https://first.example"),
+            scanner.newOpenUrls("<open>https://first.example</open>"));
+        assertEquals(List.of("https://second.example"),
+            scanner.newOpenUrls("<open>https://first.example</open><open>https://second.example</open>"));
+        assertTrue(scanner.newOpenUrls(
+            "<open>https://first.example</open><open>https://second.example</open>").isEmpty());
     }
 
     @Test
-    public void returnsNullWhenNoBlockPresent() {
+    public void returnsEmptyWhenNoBlockPresent() {
         OpenTagScanner scanner = new OpenTagScanner();
-        assertNull(scanner.newOpenUrl("plain terminal output"));
-        assertNull(scanner.newOpenUrl(null));
+        assertTrue(scanner.newOpenUrls("plain terminal output").isEmpty());
+        assertTrue(scanner.newOpenUrls(null).isEmpty());
+    }
+
+    @Test
+    public void doesNotReOpenAnAlreadyOpenedUrlThatRemainsInScrollbackWhenMoreOutputArrives() {
+        OpenTagScanner scanner = new OpenTagScanner();
+
+        assertEquals(List.of("https://example.com/a"),
+            scanner.newOpenUrls("<open>https://example.com/a</open>"));
+
+        assertTrue(scanner.newOpenUrls(
+            "<open>https://example.com/a</open>\nmore output line 1").isEmpty());
+        assertTrue(scanner.newOpenUrls(
+            "<open>https://example.com/a</open>\nmore output line 1\nmore output line 2").isEmpty());
+    }
+
+    @Test
+    public void firesTwoNewUrlsAppearingInASingleUpdateEachExactlyOnce() {
+        OpenTagScanner scanner = new OpenTagScanner();
+
+        assertEquals(List.of("https://example.com/a"),
+            scanner.newOpenUrls("<open>https://example.com/a</open>"));
+
+        List<String> burst = scanner.newOpenUrls(
+            "<open>https://example.com/a</open><open>https://example.com/b</open><open>https://example.com/c</open>");
+        assertEquals(2, burst.size());
+        assertEquals("https://example.com/b", burst.get(0));
+        assertEquals("https://example.com/c", burst.get(1));
+    }
+
+    @Test
+    public void opensAGenuinelyNewUrlAfterEarlierUrlsHaveBeenTrimmedOutOfTheTranscript() {
+        OpenTagScanner scanner = new OpenTagScanner();
+
+        StringBuilder longTranscript = new StringBuilder("<open>https://example.com/a</open>\n");
+        for (int line = 0; line < 5000; line++) {
+            longTranscript.append("output line ").append(line).append('\n');
+        }
+        assertEquals(List.of("https://example.com/a"), scanner.newOpenUrls(longTranscript.toString()));
+
+        String trimmedWithNewTag =
+            "output line 4998\noutput line 4999\n<open>https://example.com/b</open>\n";
+        assertEquals(List.of("https://example.com/b"), scanner.newOpenUrls(trimmedWithNewTag));
     }
 }

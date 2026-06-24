@@ -21,11 +21,9 @@ public final class UpdateTagUpdateController {
         if (sessionKey == null) return;
 
         UpdateTermuxAppTagScanner scanner = scannerForSession(sessionKey);
-        String reason = scanner.newReason(screenText);
-        if (reason == null) return;
-
-        scanner.markTriggered(reason);
-        reasonTrigger.onUpdateRequested(reason);
+        for (String reason : scanner.newReasons(screenText)) {
+            reasonTrigger.onUpdateRequested(reason);
+        }
     }
 
     public void forgetSession(String sessionKey) {

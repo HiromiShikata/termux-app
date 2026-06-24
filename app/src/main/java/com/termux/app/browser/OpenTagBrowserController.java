@@ -33,11 +33,9 @@ public final class OpenTagBrowserController {
         if (!isAutoOpenEnabled()) return;
 
         OpenTagScanner scanner = scannerForSession(sessionKey);
-        String openUrl = scanner.newOpenUrl(screenText);
-        if (openUrl == null) return;
-
-        scanner.markOpened(openUrl);
-        mUrlOpener.openUrlInTabForSession(sessionKey, openUrl);
+        for (String openUrl : scanner.newOpenUrls(screenText)) {
+            mUrlOpener.openUrlInTabForSession(sessionKey, openUrl);
+        }
     }
 
     public void forgetSession(String sessionKey) {

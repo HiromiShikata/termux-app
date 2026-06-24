@@ -64,10 +64,13 @@ public class UpdateTermuxAppTagScannerTest {
     }
 
     @Test
-    public void newReasonReturnsLatestBlock() {
+    public void newReasonsReturnsEachReasonInOrderOnFirstScan() {
         UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
-        assertEquals("second",
-            scanner.newReason("<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>"));
+        List<String> reasons = scanner.newReasons(
+            "<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>");
+        assertEquals(2, reasons.size());
+        assertEquals("first", reasons.get(0));
+        assertEquals("second", reasons.get(1));
     }
 
     @Test
@@ -75,35 +78,27 @@ public class UpdateTermuxAppTagScannerTest {
         UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
         String output = "prompt <update-termux-app>update now</update-termux-app> prompt";
 
-        String firstScan = scanner.newReason(output);
-        assertEquals("update now", firstScan);
-        scanner.markTriggered(firstScan);
-
-        assertNull(scanner.newReason(output));
+        assertEquals(1, scanner.newReasons(output).size());
+        assertTrue(scanner.newReasons(output).isEmpty());
     }
 
     @Test
     public void triggersNextNewReasonAfterPreviousTriggered() {
         UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
 
-        String firstScan = scanner.newReason("<update-termux-app>first</update-termux-app>");
-        assertEquals("first", firstScan);
-        scanner.markTriggered(firstScan);
-
-        String secondScan = scanner.newReason(
-            "<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>");
-        assertEquals("second", secondScan);
-        scanner.markTriggered(secondScan);
-
-        assertNull(scanner.newReason(
-            "<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>"));
+        assertEquals(List.of("first"),
+            scanner.newReasons("<update-termux-app>first</update-termux-app>"));
+        assertEquals(List.of("second"),
+            scanner.newReasons("<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>"));
+        assertTrue(scanner.newReasons(
+            "<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app>").isEmpty());
     }
 
     @Test
-    public void returnsNullWhenNoBlockPresent() {
+    public void returnsEmptyWhenNoBlockPresent() {
         UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
-        assertNull(scanner.newReason("plain terminal output"));
-        assertNull(scanner.newReason(null));
+        assertTrue(scanner.newReasons("plain terminal output").isEmpty());
+        assertTrue(scanner.newReasons(null).isEmpty());
     }
 
     @Test
@@ -111,5 +106,47 @@ public class UpdateTermuxAppTagScannerTest {
         List<String> reasons = UpdateTermuxAppTagScanner.extractReasons(
             "<update-termux>x</update-termux><update-termux-update>y</update-termux-update>");
         assertTrue(reasons.isEmpty());
+    }
+
+    @Test
+    public void doesNotReTriggerWhenAnAlreadyTriggeredTagRemainsInScrollbackAndMoreOutputArrives() {
+        UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
+
+        assertEquals(List.of("update now"),
+            scanner.newReasons("<update-termux-app>update now</update-termux-app>"));
+
+        assertTrue(scanner.newReasons(
+            "<update-termux-app>update now</update-termux-app>\nmore output line 1").isEmpty());
+        assertTrue(scanner.newReasons(
+            "<update-termux-app>update now</update-termux-app>\nmore output line 1\nmore output line 2").isEmpty());
+    }
+
+    @Test
+    public void triggersTwoNewTagsAppearingInASingleUpdateEachExactlyOnce() {
+        UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
+
+        assertEquals(List.of("first"),
+            scanner.newReasons("<update-termux-app>first</update-termux-app>"));
+
+        List<String> burst = scanner.newReasons(
+            "<update-termux-app>first</update-termux-app><update-termux-app>second</update-termux-app><update-termux-app>third</update-termux-app>");
+        assertEquals(2, burst.size());
+        assertEquals("second", burst.get(0));
+        assertEquals("third", burst.get(1));
+    }
+
+    @Test
+    public void triggersAGenuinelyNewTagAfterEarlierTagsHaveBeenTrimmedOutOfTheTranscript() {
+        UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
+
+        StringBuilder longTranscript = new StringBuilder("<update-termux-app>update now</update-termux-app>\n");
+        for (int line = 0; line < 5000; line++) {
+            longTranscript.append("output line ").append(line).append('\n');
+        }
+        assertEquals(List.of("update now"), scanner.newReasons(longTranscript.toString()));
+
+        String trimmedWithNewTag =
+            "output line 4998\noutput line 4999\n<update-termux-app>update again</update-termux-app>\n";
+        assertEquals(List.of("update again"), scanner.newReasons(trimmedWithNewTag));
     }
 }
