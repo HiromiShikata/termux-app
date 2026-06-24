@@ -79,6 +79,10 @@ public final class TerminalSession extends TerminalOutput {
 
     private long mTotalBytesProcessed = 0L;
 
+    private final TerminalInputEchoFilter mInputEchoFilter = new TerminalInputEchoFilter();
+
+    private long mGenuineOutputVersion = 0L;
+
     private static final String LOG_TAG = "TerminalSession";
 
     public TerminalSession(String shellPath, String cwd, String[] args, String[] env, Integer transcriptRows, TerminalSessionClient client) {
@@ -178,7 +182,10 @@ public final class TerminalSession extends TerminalOutput {
     /** Write data to the shell process. */
     @Override
     public void write(byte[] data, int offset, int count) {
-        if (mShellPid > 0) mTerminalToProcessIOQueue.write(data, offset, count);
+        if (mShellPid > 0) {
+            mInputEchoFilter.recordUserInput(data, offset, count);
+            mTerminalToProcessIOQueue.write(data, offset, count);
+        }
     }
 
     /** Write the Unicode code point to the terminal encoded in UTF-8. */
@@ -234,6 +241,10 @@ public final class TerminalSession extends TerminalOutput {
 
     public long getScreenContentVersion() {
         return mEmulator == null ? 0L : mEmulator.getScreenContentVersion();
+    }
+
+    public long getGenuineOutputVersion() {
+        return mGenuineOutputVersion;
     }
 
     /** Notify the {@link #mClient} that the screen has changed. */
@@ -385,6 +396,8 @@ public final class TerminalSession extends TerminalOutput {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
             if (bytesRead > 0) {
                 mTotalBytesProcessed += bytesRead;
+                int genuineOutputBytes = mInputEchoFilter.countGenuineOutput(mReceiveBuffer, 0, bytesRead);
+                if (genuineOutputBytes > 0) mGenuineOutputVersion += genuineOutputBytes;
                 mEmulator.append(mReceiveBuffer, bytesRead);
                 notifyScreenUpdate();
             }
