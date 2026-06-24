@@ -503,4 +503,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_BOOKMARKS, value, false);
     }
 
+
+
+    public String getBrowserOpenSessionNames() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_OPEN_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_OPEN_SESSION_NAMES, false);
+    }
+
+    public void setBrowserOpenSessionNames(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_OPEN_SESSION_NAMES, value, false);
+    }
+
 }
