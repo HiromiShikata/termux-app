@@ -71,6 +71,20 @@ public class SessionNewActivityIndicatorTest {
     }
 
     @Test
+    public void unseenExplicitCallStaysRedEvenWhenOutputActivityIsMoreRecentThanTheCall() {
+        // An unseen explicit call (call newer than seen) must always resolve RED with absolute
+        // precedence over yellow, even when output activity is the most recent signal of all. A
+        // newer lastOutput (the yellow condition) must never cancel or override a pending red.
+        // lastOutput=9000 (newest), lastExplicitCall=2000, lastSeen=1000 -> call > seen (unseen),
+        // and output > call, yet the indicator MUST be RED, labelled by the call age.
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(9_000L, 2_000L, 1_000L, 32_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, indicator.getTier());
+        Assert.assertEquals("30s ago", indicator.getLabel());
+    }
+
+    @Test
     public void signalWithoutAnyLastSeenProducesVisibleIndicator() {
         SessionNewActivityIndicator indicator =
             SessionNewActivityIndicator.indicatorFor(1_000L, null, null, 31_000L);
