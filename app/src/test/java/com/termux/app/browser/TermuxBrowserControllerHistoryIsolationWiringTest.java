@@ -24,7 +24,7 @@ public class TermuxBrowserControllerHistoryIsolationWiringTest {
     }
 
     private String displayTabMethodBody(String source) {
-        int displayIndex = source.indexOf("private void displayTabInWebView(@NonNull BrowserTab tab)");
+        int displayIndex = source.indexOf("private void displayTab(@NonNull BrowserTab tab, boolean forceReload)");
         Assert.assertTrue(displayIndex >= 0);
         int methodEnd = source.indexOf("\n    }", displayIndex);
         Assert.assertTrue(methodEnd > displayIndex);
@@ -32,28 +32,27 @@ public class TermuxBrowserControllerHistoryIsolationWiringTest {
     }
 
     @Test
-    public void displayingATabLoadsTheTargetTabsOwnUrl() throws IOException {
+    public void switchingToATabRoutesThroughThePerTabWebViewHostInsteadOfReloadingASharedWebView()
+            throws IOException {
         String methodBody = displayTabMethodBody(readControllerSource());
 
-        Assert.assertTrue(methodBody.contains("mWebView.loadUrl(targetUrl)"));
-        Assert.assertTrue(methodBody.contains("String targetUrl = tab.getUrl()"));
+        Assert.assertTrue(methodBody.contains("mWebViewHost.showTab(tab)"));
     }
 
     @Test
-    public void crossTabSwitchClearsHistoryGuardedByTheSwitchDecision() throws IOException {
+    public void switchingToAnAlreadyLoadedTabDoesNotReloadIt() throws IOException {
         String methodBody = displayTabMethodBody(readControllerSource());
 
-        Assert.assertTrue(methodBody.contains(
-            "BrowserHistoryIsolation.resolve(previouslyDisplayedTab != tab)"));
-        Assert.assertTrue(methodBody.contains("mWebView.clearHistory()"));
+        Assert.assertTrue(methodBody.contains("boolean firstDisplay = !mWebViewHost.hasWebViewForTab(tab)"));
+        Assert.assertTrue(methodBody.contains("if (forceReload && !firstDisplay) webView.reload()"));
     }
 
     @Test
     public void noWebViewStateSaveOrRestoreRemainsInTheSwitchPath() throws IOException {
         String source = readControllerSource();
 
-        Assert.assertFalse(source.contains("mWebView.saveState"));
-        Assert.assertFalse(source.contains("mWebView.restoreState"));
+        Assert.assertFalse(source.contains(".saveState"));
+        Assert.assertFalse(source.contains(".restoreState"));
         Assert.assertFalse(source.contains("captureDisplayedTabStateBeforeSwitchingTo"));
     }
 }

@@ -23,15 +23,12 @@ public final class BrowserBulkOpenController {
 
     private final TermuxActivity mActivity;
 
-    private final WebView mWebView;
-
-    public BrowserBulkOpenController(@NonNull TermuxActivity activity, @NonNull WebView webView) {
+    public BrowserBulkOpenController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
-        this.mWebView = webView;
     }
 
-    public void openDisplayedTaskUrls(int limit) {
-        mWebView.evaluateJavascript(BrowserGithubTaskUrls.COLLECT_SCRIPT, new ValueCallback<String>() {
+    public void openDisplayedTaskUrls(@NonNull WebView webView, int limit) {
+        webView.evaluateJavascript(BrowserGithubTaskUrls.COLLECT_SCRIPT, new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String collectedUrlsJson) {
                 List<String> displayedUrls;

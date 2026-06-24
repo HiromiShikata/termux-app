@@ -58,7 +58,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mProgressBar = activity.findViewById(R.id.project_browser_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.project_browser_web_view_cover);
         this.mOverviewActionsView = activity.findViewById(R.id.project_browser_overview_actions);
-        this.mBulkOpenController = new BrowserBulkOpenController(activity, mWebView);
+        this.mBulkOpenController = new BrowserBulkOpenController(activity);
         configureWebView();
         configureLinkContextMenu();
         configureCloseButton();
@@ -171,10 +171,10 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     private void configureOverviewActions() {
         mActivity.findViewById(R.id.project_browser_open_all_tasks_button)
-            .setOnClickListener(view -> mBulkOpenController.openDisplayedTaskUrls(0));
+            .setOnClickListener(view -> mBulkOpenController.openDisplayedTaskUrls(mWebView, 0));
         mActivity.findViewById(R.id.project_browser_open_first_ten_tasks_button)
             .setOnClickListener(view ->
-                mBulkOpenController.openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+                mBulkOpenController.openDisplayedTaskUrls(mWebView, BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
     }
 
     @Override
