@@ -111,4 +111,39 @@ public class CallToUserTagScannerTest {
             "<call-to>x</call-to><call-to-user-extra>y</call-to-user-extra>");
         assertTrue(reasons.isEmpty());
     }
+
+    @Test
+    public void doesNotReFireWhenAnAlreadyFiredTagRemainsInScrollbackAndMoreOutputArrives() {
+        CallToUserTagScanner scanner = new CallToUserTagScanner();
+
+        assertEquals("approval", scanner.newReason("<call-to-user>approval</call-to-user>"));
+
+        assertNull(scanner.newReason("<call-to-user>approval</call-to-user>\nmore output line 1"));
+        assertNull(scanner.newReason(
+            "<call-to-user>approval</call-to-user>\nmore output line 1\nmore output line 2"));
+    }
+
+    @Test
+    public void doesNotReFireEarlierTagWhenALaterTagScrollsOutOfTheTranscript() {
+        CallToUserTagScanner scanner = new CallToUserTagScanner();
+
+        assertEquals("alpha", scanner.newReason("<call-to-user>alpha</call-to-user>"));
+        assertEquals("beta", scanner.newReason(
+            "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user>"));
+
+        assertNull(scanner.newReason("<call-to-user>alpha</call-to-user>"));
+    }
+
+    @Test
+    public void firesAGenuinelyNewTagAfterAnEarlierTagScrolledOut() {
+        CallToUserTagScanner scanner = new CallToUserTagScanner();
+
+        assertEquals("alpha", scanner.newReason("<call-to-user>alpha</call-to-user>"));
+        assertEquals("beta", scanner.newReason(
+            "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user>"));
+        assertNull(scanner.newReason("<call-to-user>alpha</call-to-user>"));
+
+        assertEquals("gamma", scanner.newReason(
+            "<call-to-user>alpha</call-to-user><call-to-user>gamma</call-to-user>"));
+    }
 }

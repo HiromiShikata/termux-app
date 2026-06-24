@@ -117,4 +117,19 @@ public class CallToUserTagControllerTest {
 
         assertTrue(trigger.reasons.isEmpty());
     }
+
+    @Test
+    public void doesNotRecordANewCallWhenRescanningATranscriptThatStillContainsAnAlreadyFiredTag() {
+        RecordingTrigger trigger = new RecordingTrigger();
+        CallToUserTagController controller = new CallToUserTagController(trigger);
+
+        controller.onSessionTextChanged("session-1", "<call-to-user>approval</call-to-user>");
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>approval</call-to-user>\nfollow-up output line 1");
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>approval</call-to-user>\nfollow-up output line 1\nfollow-up output line 2");
+
+        assertEquals(1, trigger.reasons.size());
+        assertEquals("approval", trigger.reasons.get(0));
+    }
 }

@@ -369,15 +369,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordOutputActivity(session.mSessionName, nowMillis);
-        if (isCurrentlyViewedSession(session)
-                && !isExplicitCallSeenSuppressed(session.mSessionName))
+        if (isCurrentlyViewedSession(session))
             store.recordSeen(session.mSessionName, nowMillis);
         termuxSessionListNotifyUpdated();
-    }
-
-    private boolean isExplicitCallSeenSuppressed(@NonNull String sessionName) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        return store != null && store.hasPendingExplicitCall(sessionName);
     }
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
@@ -411,8 +405,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordActiveSessionSeen() {
         String sessionName = activeSessionName();
         if (sessionName == null) return;
-        if (isExplicitCallSeenSuppressed(sessionName))
-            return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordSeen(sessionName, System.currentTimeMillis());
