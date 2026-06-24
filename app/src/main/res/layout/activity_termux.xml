@@ -253,7 +253,7 @@
                         android:layout_weight="1"
                         android:background="?android:attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/action_browser_open_in_chrome"
-                        android:src="@drawable/ic_google"
+                        android:src="@drawable/ic_open_in_new"
                         android:tint="?attr/termuxActivityDrawerImageTint" />
 
                     <ImageButton
