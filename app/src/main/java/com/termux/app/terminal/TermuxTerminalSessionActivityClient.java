@@ -367,6 +367,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (session.mSessionName == null) return;
         long nowMillis = System.currentTimeMillis();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
         store.recordOutputActivity(session.mSessionName, nowMillis);
         if (isCurrentlyViewedSession(session)
                 && !isExplicitCallSeenSuppressed(session.mSessionName))
@@ -375,7 +376,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private boolean isExplicitCallSeenSuppressed(@NonNull String sessionName) {
-        return mActivity.getSessionNewActivityStore().hasPendingExplicitCall(sessionName);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        return store != null && store.hasPendingExplicitCall(sessionName);
     }
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
@@ -391,7 +393,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
         mSessionOutputProgressTracker.forget(sessionName);
-        mActivity.getSessionNewActivityStore().purgeSession(sessionName);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        store.purgeSession(sessionName);
         termuxSessionListNotifyUpdated();
     }
 
@@ -409,12 +413,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (sessionName == null) return;
         if (isExplicitCallSeenSuppressed(sessionName))
             return;
-        mActivity.getSessionNewActivityStore().recordSeen(sessionName, System.currentTimeMillis());
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        store.recordSeen(sessionName, System.currentTimeMillis());
     }
 
     private void acknowledgeExplicitCallOnGenuineSwitch(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
         if (!store.hasPendingExplicitCall(session.mSessionName)) return;
         store.recordSeen(session.mSessionName, System.currentTimeMillis());
     }

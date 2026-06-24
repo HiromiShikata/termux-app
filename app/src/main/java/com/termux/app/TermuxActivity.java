@@ -1260,8 +1260,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mSessionSwitchPickerController;
     }
 
+    @Nullable
     public SessionNewActivityStore getSessionNewActivityStore() {
-        return mTermuxService.getSessionNewActivityStore();
+        return sessionNewActivityStoreOrNull(mTermuxService);
+    }
+
+    @Nullable
+    static SessionNewActivityStore sessionNewActivityStoreOrNull(@Nullable TermuxService termuxService) {
+        if (termuxService == null) {
+            return null;
+        }
+        return termuxService.getSessionNewActivityStore();
     }
 
     public TermuxBrowserController getTermuxBrowserController() {
