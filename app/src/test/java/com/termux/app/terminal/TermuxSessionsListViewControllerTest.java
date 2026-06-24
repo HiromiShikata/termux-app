@@ -88,6 +88,31 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void projectHeaderActionIconsExposeAtLeastTheAccessibilityMinimumTouchTarget() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        int minimumTouchTargetPx = Math.round(48f
+            * context.getResources().getDisplayMetrics().density);
+
+        int[] actionIconIds = {
+            R.id.session_project_header_overview_browser_icon,
+            R.id.session_project_header_tdpm_console_icon,
+            R.id.session_project_header_new_issue_icon
+        };
+
+        for (int actionIconId : actionIconIds) {
+            View actionIcon = projectHeader.findViewById(actionIconId);
+            ViewGroup.LayoutParams layoutParams = actionIcon.getLayoutParams();
+            Assert.assertTrue("touch target width below the accessibility minimum",
+                layoutParams.width >= minimumTouchTargetPx);
+            Assert.assertTrue("touch target height below the accessibility minimum",
+                layoutParams.height >= minimumTouchTargetPx);
+        }
+    }
+
+    @Test
     public void projectHeaderTitleAppendsSessionCountInParenthesesAfterTheName() {
         Assert.assertEquals("ProjectName (3)",
             TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 3));
