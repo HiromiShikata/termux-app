@@ -69,7 +69,7 @@ public class BrowserTabFaviconStripControllerTest {
     }
 
     @Test
-    public void stripIsHiddenWhenOnlyOneTabExists() {
+    public void stripAndAddButtonAreShownWhenOnlyOneTabExists() {
         Context context = themedContext();
         HorizontalScrollView scrollView = new HorizontalScrollView(context);
         LinearLayout container = new LinearLayout(context);
@@ -78,8 +78,32 @@ public class BrowserTabFaviconStripControllerTest {
 
         controllerFor(listener, scrollView, container).update(Arrays.asList(tab), tab);
 
-        Assert.assertEquals(View.GONE, scrollView.getVisibility());
-        Assert.assertEquals(0, container.getChildCount());
+        Assert.assertEquals(View.VISIBLE, scrollView.getVisibility());
+        Assert.assertEquals(2, container.getChildCount());
+
+        View addItem = container.getChildAt(1);
+        View addButton = addItem.findViewById(R.id.browser_tab_strip_add_button);
+        addButton.performClick();
+
+        Assert.assertEquals(1, listener.newTabPromptCount);
+        Assert.assertTrue(listener.openedTabs.isEmpty());
+        Assert.assertTrue(listener.closedTabs.isEmpty());
+    }
+
+    @Test
+    public void tappingSingleTabItemOpensThatTab() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab tab = new BrowserTab(SESSION, "https://only.example/");
+
+        controllerFor(listener, scrollView, container).update(Arrays.asList(tab), tab);
+
+        container.getChildAt(0).performClick();
+
+        Assert.assertEquals(1, listener.openedTabs.size());
+        Assert.assertSame(tab, listener.openedTabs.get(0));
     }
 
     @Test
