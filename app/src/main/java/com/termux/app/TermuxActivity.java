@@ -48,6 +48,7 @@ import com.termux.shared.data.IntentUtils;
 import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
+import com.termux.app.sessiondefinition.SessionDefinitionAutoReloadScheduler;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
@@ -206,6 +207,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         baseUrl -> mSessionDefinitionRepository.load(baseUrl, this::onSessionDefinitionDocumentPrewarmed));
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+
+    private final SessionDefinitionAutoReloadScheduler mSessionDefinitionAutoReloadScheduler =
+        new SessionDefinitionAutoReloadScheduler(this::loadSessionsFromDefinition);
 
     private final SessionEagerLoader mSessionEagerLoader = new SessionEagerLoader(
         this::collectSessionsToEagerLoad,
@@ -510,6 +514,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             addTermuxActivityRootViewGlobalLayoutListener();
 
         registerTermuxActivityBroadcastReceiver();
+
+        mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
     }
 
     @Override
@@ -542,6 +548,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mIsInvalidState) return;
 
         mIsVisible = false;
+
+        mSessionDefinitionAutoReloadScheduler.onBackground();
 
         if (mTermuxService != null)
             mTermuxService.onActivityBackgrounded();

@@ -24,6 +24,7 @@ public class SessionDefinitionConfigActivity extends AppCompatActivity {
         AppCompatActivityUtils.setShowBackButtonInActionBar(this, true);
 
         EditText urlInput = findViewById(R.id.session_definition_url_input);
+        EditText reloadIntervalInput = findViewById(R.id.session_definition_reload_interval_input);
 
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this, true);
         if (preferences == null) {
@@ -32,11 +33,26 @@ public class SessionDefinitionConfigActivity extends AppCompatActivity {
         }
 
         urlInput.setText(preferences.getSessionDefinitionUrl());
+        reloadIntervalInput.setText(String.valueOf(preferences.getSessionDefinitionReloadIntervalMinutes()));
 
         findViewById(R.id.session_definition_config_save_button).setOnClickListener(v -> {
             preferences.setSessionDefinitionUrl(urlInput.getText().toString().trim());
+            preferences.setSessionDefinitionReloadIntervalMinutes(
+                parseReloadIntervalMinutes(reloadIntervalInput.getText().toString()));
             finish();
         });
+    }
+
+    static int parseReloadIntervalMinutes(String value) {
+        if (value == null) {
+            return 0;
+        }
+        try {
+            int minutes = Integer.parseInt(value.trim());
+            return minutes < 0 ? 0 : minutes;
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     @Override
