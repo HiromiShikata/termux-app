@@ -39,11 +39,7 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         // output-progress early return below so a tag is never skipped on a redraw-only update.
         scanOutputTags(changedSession);
 
-        if (!mSessionOutputProgressTracker.hasNewOutput(
-                changedSession.mSessionName, changedSession.getGenuineOutputVersion())) {
-            return;
-        }
-        recordOutputActivity(changedSession);
+        recordGenuineOutputActivity(changedSession);
     }
 
     private void scanOutputTags(@NonNull TerminalSession session) {
@@ -60,11 +56,19 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
 
     @Override
     public void onBell(@NonNull TerminalSession session) {
-        recordOutputActivity(session);
+        // A bell is delivered on every BEL byte, including bells echoed back from the user's own
+        // keystrokes and repeated bells that carry no new process output. Record output activity
+        // only when genuinely new process output accompanies it, using the same genuine-output gate
+        // as onTextChanged, so out: is not pinned to "now" on every bell.
+        recordGenuineOutputActivity(session);
     }
 
-    private void recordOutputActivity(@NonNull TerminalSession session) {
+    private void recordGenuineOutputActivity(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
+        if (!mSessionOutputProgressTracker.hasNewOutput(
+                session.mSessionName, session.getGenuineOutputVersion())) {
+            return;
+        }
         mService.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
     }
 

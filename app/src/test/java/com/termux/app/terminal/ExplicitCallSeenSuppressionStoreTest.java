@@ -43,17 +43,43 @@ public class ExplicitCallSeenSuppressionStoreTest {
     }
 
     @Test
-    public void activeSessionSeenTickAdvancesSeenUnconditionallyAndClearsRedWithinASecond() {
+    public void activeSessionSeenTickIsSuppressedWhileAnExplicitCallIsPendingSoRedSurvives() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall(CALLED_SESSION, 2_000L, "needs approval");
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
 
-        // The viewed session's per-second seen tick records seen as now without any
-        // explicit-call suppression, so the red tier clears on the next tick.
-        store.recordSeen(CALLED_SESSION, 3_000L);
+        // The viewed session's per-second seen tick is suppressed while an explicit call is pending,
+        // so the tick MUST NOT advance seen and clear the red tier. This mirrors the guard in
+        // TermuxTerminalSessionActivityClient.recordActiveSessionSeen: it skips recordSeen when
+        // hasPendingExplicitCall is true. Without this guard the red dot was cleared within a second,
+        // before the user — who may be browsing the session list to find which session called —
+        // could ever notice it.
+        for (long nowMillis = 3_000L; nowMillis <= 60_000L; nowMillis += 1_000L) {
+            if (!store.hasPendingExplicitCall(CALLED_SESSION)) {
+                store.recordSeen(CALLED_SESSION, nowMillis);
+            }
+        }
 
-        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
+        Assert.assertEquals("needs approval", store.getLastExplicitCallReason(CALLED_SESSION));
+    }
+
+    @Test
+    public void outputDrivenSeenOfTheViewedSessionIsSuppressedWhileAnExplicitCallIsPending() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall(CALLED_SESSION, 2_000L, "needs approval");
+
+        // Genuine output of the currently-viewed session records output activity and would normally
+        // also record seen; while an explicit call is pending that seen is suppressed so the red dot
+        // is not cleared by the session's own continuing output.
+        long outputMillis = 4_000L;
+        store.recordOutputActivity(CALLED_SESSION, outputMillis);
+        if (!store.hasPendingExplicitCall(CALLED_SESSION)) {
+            store.recordSeen(CALLED_SESSION, outputMillis);
+        }
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
     }
 
     @Test
