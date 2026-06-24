@@ -181,6 +181,12 @@ public class BrowserTabFaviconStripControllerTest {
             "Close button must be a smaller target than the favicon select area",
             closeButton.getLayoutParams().width < faviconView.getLayoutParams().width);
 
+        float density = context.getResources().getDisplayMetrics().density;
+        int fifteenDpInPx = Math.round(15f * density);
+        Assert.assertTrue(
+            "Close button must be at least one step larger than the prior 13dp target",
+            closeButton.getLayoutParams().width >= fifteenDpInPx);
+
         FrameLayout.LayoutParams closeParams =
             (FrameLayout.LayoutParams) closeButton.getLayoutParams();
         int horizontalGravity = closeParams.gravity & Gravity.HORIZONTAL_GRAVITY_MASK;
@@ -191,6 +197,12 @@ public class BrowserTabFaviconStripControllerTest {
         Assert.assertEquals(
             "Close button must stay pinned to the top edge",
             Gravity.TOP, verticalGravity);
+        Assert.assertEquals(
+            "Close button must sit flush in the top-right corner with no top margin",
+            0, closeParams.topMargin);
+        Assert.assertEquals(
+            "Close button must sit flush in the top-right corner with no end margin",
+            0, closeParams.getMarginEnd());
         Assert.assertTrue(
             "Close button glyph padding must shrink the drawn icon",
             closeButton.getPaddingLeft() > 0);
