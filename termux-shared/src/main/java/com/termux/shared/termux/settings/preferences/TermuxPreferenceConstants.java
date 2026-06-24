@@ -1,7 +1,7 @@
 package com.termux.shared.termux.settings.preferences;
 
 /*
- * Version: v0.22.0
+ * Version: v0.24.0
  *
  * Changelog
  *
@@ -99,6 +99,12 @@ package com.termux.shared.termux.settings.preferences;
  *      - Changed `DEFAULT_VALUE_KEY_OPEN_TAG_AUTO_OPEN_ENABLED` from `false` to `true` so that
  *          `http`/`https` URLs inside `<open>...</open>` tags auto-open in the in-app browser out of
  *          the box. The behavior remains user-configurable via the existing settings toggle.
+ *
+ * - 0.24.0 (2026-06-24)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_BROWSER_OPEN_SESSION_NAMES` and `DEFAULT_VALUE_KEY_BROWSER_OPEN_SESSION_NAMES`, which
+ *          persist the set of session names whose in-app browser area was left open so the open state
+ *          is restored when returning to a session and after an app restart.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -240,6 +246,9 @@ public final class TermuxPreferenceConstants {
 
         public static final String KEY_BROWSER_BOOKMARKS = "browser_bookmarks";
         public static final String DEFAULT_VALUE_KEY_BROWSER_BOOKMARKS = "";
+
+        public static final String KEY_BROWSER_OPEN_SESSION_NAMES = "browser_open_session_names";
+        public static final String DEFAULT_VALUE_KEY_BROWSER_OPEN_SESSION_NAMES = "";
 
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.

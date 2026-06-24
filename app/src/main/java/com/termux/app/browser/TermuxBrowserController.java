@@ -55,12 +55,14 @@ import androidx.webkit.WebViewFeature;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
 import com.termux.shared.view.KeyboardUtils;
@@ -95,6 +97,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserTabManager mTabManager = new BrowserTabManager();
 
     private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
+
+    private final BrowserOpenSessionNamesSerializer mOpenSessionNamesSerializer = new BrowserOpenSessionNamesSerializer();
 
     private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
 
@@ -173,6 +177,28 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureProjectOverviewActions();
         configureBrowserSplitDivider();
         configureHeaderInteractions();
+        configureBrowserOpenStatePersistence();
+    }
+
+    private void configureBrowserOpenStatePersistence() {
+        mSessionVisibilityState.setPersistedOpenSessionNames(
+            mOpenSessionNamesSerializer.deserialize(mActivity.getPreferences().getBrowserOpenSessionNames()));
+        mSessionVisibilityState.setPersistedNamesListener(openSessionNames ->
+            mActivity.getPreferences().setBrowserOpenSessionNames(
+                mOpenSessionNamesSerializer.serialize(openSessionNames)));
+    }
+
+    @Nullable
+    private String resolveSessionName(@Nullable String sessionHandle) {
+        if (sessionHandle == null) return null;
+        if (sessionHandle.equals(mCurrentSessionHandle)) return mCurrentSessionName;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (sessionHandle.equals(terminalSession.mHandle)) return terminalSession.mSessionName;
+        }
+        return null;
     }
 
     private void configureHeaderInteractions() {
@@ -918,7 +944,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         boolean switchingSession =
             BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
         if (switchingSession) {
-            mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mBrowserVisible);
+            mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, mBrowserVisible);
         }
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
@@ -938,8 +964,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void restoreSessionVisibility() {
+        boolean hasActiveTab = getActiveTab() != null;
         boolean restoreBrowser = mSessionVisibilityState.shouldRestoreBrowserOnSessionChange(
-            mCurrentSessionHandle, getActiveTab() != null);
+            mCurrentSessionHandle, hasActiveTab)
+            || (hasActiveTab && mSessionVisibilityState.wasBrowserOpenForSessionName(mCurrentSessionName));
         if (restoreBrowser) {
             showBrowser();
         } else {
@@ -963,7 +991,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (session.mHandle.equals(mRenderedFrame.getOwnerSessionHandle()))
             blankFrame();
         mTabManager.removeSession(session.mHandle);
-        mSessionVisibilityState.clearSession(session.mHandle);
+        mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
     }
 
     public void toggleBrowser() {
@@ -982,7 +1010,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return;
         }
         mBrowserVisible = true;
-        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, true);
+        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, true);
         loadActiveTab();
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
@@ -1002,7 +1030,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void showTerminal() {
         mBrowserVisible = false;
-        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, false);
+        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, false);
         resetWebViewToBlankForForeignFrame();
         revealWebView();
         hidePageLoadProgress();
@@ -1044,7 +1072,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         boolean browserWasHidden = !mBrowserVisible;
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
-        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, true);
+        mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, true);
         loadActiveTab(browserWasHidden);
         updatePageHeader();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
@@ -1092,12 +1120,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             openTab(tab);
             return;
         }
-        mSessionVisibilityState.setBrowserVisible(sessionHandle, true);
+        mSessionVisibilityState.setBrowserVisible(sessionHandle, resolveSessionName(sessionHandle), true);
     }
 
     public void attachBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
         mTabManager.attachOrActivateTab(sessionHandle, normalizeUrl(url));
-        mSessionVisibilityState.setBrowserVisible(sessionHandle, true);
+        mSessionVisibilityState.setBrowserVisible(sessionHandle, resolveSessionName(sessionHandle), true);
         if (sessionHandle.equals(mCurrentSessionHandle)) notifyTabsUpdated();
     }
 
