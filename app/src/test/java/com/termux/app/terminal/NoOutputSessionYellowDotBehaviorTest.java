@@ -8,11 +8,11 @@ public class NoOutputSessionYellowDotBehaviorTest {
     private static final String SESSION = "no-output-session";
 
     @Test
-    public void controlOnlyOutputThatDoesNotEmitVisibleContentIsNotTreatedAsNewOutput() {
+    public void firstObservationSeedsTheBaselineAndIsNotTreatedAsNewOutput() {
         SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
 
         long visibleContentVersionAfterPrompt = 5L;
-        Assert.assertTrue(tracker.hasNewOutput(SESSION, visibleContentVersionAfterPrompt));
+        Assert.assertFalse(tracker.hasNewOutput(SESSION, visibleContentVersionAfterPrompt));
 
         long unchangedVisibleContentVersion = visibleContentVersionAfterPrompt;
         for (int repaint = 0; repaint < 100; repaint++) {
@@ -21,7 +21,7 @@ public class NoOutputSessionYellowDotBehaviorTest {
     }
 
     @Test
-    public void genuineVisibleOutputAfterControlOnlyOutputIsTreatedAsNewOutput() {
+    public void genuineVisibleOutputAfterTheSeededBaselineIsTreatedAsNewOutput() {
         SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
         tracker.hasNewOutput(SESSION, 5L);
 
@@ -38,27 +38,24 @@ public class NoOutputSessionYellowDotBehaviorTest {
     }
 
     @Test
-    public void noOutputDataOutAgeRendersAsVeryOldRatherThanZeroSecondsAgo() {
+    public void noOutputDataOutAgeRendersADashRatherThanAnAge() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         long realisticNowMillis = 1_750_000_000_000L;
-        String outAgeLabel =
-            store.lastOutputActivityAgeLabelTreatingNoDataAsVeryOld(SESSION, realisticNowMillis);
 
-        Assert.assertNotEquals("0s ago", outAgeLabel);
-        Assert.assertTrue(outAgeLabel.endsWith("h ago"));
+        Assert.assertNull(store.lastOutputActivityAgeLabel(SESSION, realisticNowMillis));
     }
 
     @Test
-    public void recentOutputDataOutAgeRendersAsTheActualRecentAge() {
+    public void recordedOutputDataOutAgeRendersAsTheActualAge() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long realisticNowMillis = 1_750_000_000_000L;
         store.recordOutputActivity(SESSION, realisticNowMillis);
 
         Assert.assertEquals("0s ago",
-            store.lastOutputActivityAgeLabelTreatingNoDataAsVeryOld(SESSION, realisticNowMillis));
+            store.lastOutputActivityAgeLabel(SESSION, realisticNowMillis));
         Assert.assertEquals("5s ago",
-            store.lastOutputActivityAgeLabelTreatingNoDataAsVeryOld(SESSION, realisticNowMillis + 5_000L));
+            store.lastOutputActivityAgeLabel(SESSION, realisticNowMillis + 5_000L));
     }
 
     @Test
@@ -66,23 +63,5 @@ public class NoOutputSessionYellowDotBehaviorTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor(SESSION));
-    }
-
-    @Test
-    public void noOutputDefaultIsTheEarliestSystemTimeNotTheCurrentTime() {
-        Assert.assertEquals(0L, SessionNewActivityStore.NO_OUTPUT_DEFAULT_TIME_MILLIS);
-    }
-
-    @Test
-    public void saturatingElapsedMillisDoesNotOverflowForTheMinimumTimestamp() {
-        long elapsedMillis = SessionNewActivityStore.saturatingElapsedMillis(50_000L, Long.MIN_VALUE);
-
-        Assert.assertEquals(Long.MAX_VALUE, elapsedMillis);
-    }
-
-    @Test
-    public void saturatingElapsedMillisComputesNormalDifferenceWhenNoOverflow() {
-        Assert.assertEquals(5_000L,
-            SessionNewActivityStore.saturatingElapsedMillis(55_000L, 50_000L));
     }
 }

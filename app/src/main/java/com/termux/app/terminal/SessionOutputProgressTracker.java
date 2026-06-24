@@ -13,7 +13,7 @@ public final class SessionOutputProgressTracker {
         Long lastBytesProcessed = mLastBytesProcessedByName.get(sessionName);
         mLastBytesProcessedByName.put(sessionName, totalBytesProcessed);
         if (lastBytesProcessed == null) {
-            return totalBytesProcessed > 0L;
+            return false;
         }
         return totalBytesProcessed > lastBytesProcessed;
     }

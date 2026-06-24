@@ -6,10 +6,18 @@ import org.junit.Test;
 public class SessionOutputProgressTrackerTest {
 
     @Test
-    public void firstObservationWithGenuineOutputReportsNewOutput() {
+    public void firstObservationSeedsTheBaselineAndReportsNoNewOutput() {
         SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
 
-        Assert.assertTrue(tracker.hasNewOutput("session-one", 3L));
+        Assert.assertFalse(tracker.hasNewOutput("session-one", 3L));
+    }
+
+    @Test
+    public void outputThatAdvancesPastTheSeededBaselineReportsNewOutput() {
+        SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
+        tracker.hasNewOutput("session-one", 3L);
+
+        Assert.assertTrue(tracker.hasNewOutput("session-one", 4L));
     }
 
     @Test
@@ -48,13 +56,23 @@ public class SessionOutputProgressTrackerTest {
     }
 
     @Test
-    public void forgettingSessionResetsItsProgressBaseline() {
+    public void forgettingSessionResetsItsProgressBaselineSoTheNextObservationReseeds() {
         SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
         tracker.hasNewOutput("session-one", 7L);
+        tracker.hasNewOutput("session-one", 9L);
 
         tracker.forget("session-one");
 
-        Assert.assertTrue(tracker.hasNewOutput("session-one", 7L));
+        Assert.assertFalse(tracker.hasNewOutput("session-one", 9L));
+        Assert.assertTrue(tracker.hasNewOutput("session-one", 10L));
+    }
+
+    @Test
+    public void restoredTranscriptWithPreExistingContentIsNotCountedAsNewOutputOnFirstObservation() {
+        SessionOutputProgressTracker tracker = new SessionOutputProgressTracker();
+
+        Assert.assertFalse(tracker.hasNewOutput("restored-session", 4096L));
+        Assert.assertFalse(tracker.hasNewOutput("restored-session", 4096L));
     }
 
     @Test
