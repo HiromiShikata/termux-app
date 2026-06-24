@@ -250,6 +250,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_BROWSER_OPEN_SESSION_NAMES = "browser_open_session_names";
         public static final String DEFAULT_VALUE_KEY_BROWSER_OPEN_SESSION_NAMES = "";
 
+        public static final String KEY_BROWSER_SESSION_TABS = "browser_session_tabs";
+        public static final String DEFAULT_VALUE_KEY_BROWSER_SESSION_TABS = "";
+
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
          */
