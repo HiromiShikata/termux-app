@@ -13,6 +13,22 @@
         android:inputType="textUri"
         android:gravity="top" />
 
+    <TextView
+        android:id="@+id/session_definition_reload_interval_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/label_session_definition_reload_interval_minutes" />
+
+    <EditText
+        android:id="@+id/session_definition_reload_interval_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/hint_session_definition_reload_interval_minutes"
+        android:inputType="number"
+        android:gravity="top" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/session_definition_config_save_button"
         android:layout_width="match_parent"

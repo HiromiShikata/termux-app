@@ -312,6 +312,16 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public int getSessionDefinitionReloadIntervalMinutes() {
+        int value = SharedPreferenceUtils.getInt(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES);
+        return value < 0 ? 0 : value;
+    }
+
+    public void setSessionDefinitionReloadIntervalMinutes(int value) {
+        SharedPreferenceUtils.setInt(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES, value < 0 ? 0 : value, false);
+    }
+
+
     public String getAlwaysNaSessionNamesText() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_ALWAYS_NA_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES, false);
     }
