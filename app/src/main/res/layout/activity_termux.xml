@@ -101,8 +101,8 @@
                                 android:layout_height="match_parent"
                                 android:background="?attr/termuxActivityDrawerBackground">
 
-                                <WebView
-                                    android:id="@+id/browser_web_view"
+                                <FrameLayout
+                                    android:id="@+id/browser_web_view_container"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:importantForAutofill="yes"

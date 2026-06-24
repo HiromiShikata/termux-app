@@ -40,6 +40,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -114,7 +115,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
-    private final WebView mWebView;
+    private final FrameLayout mWebViewContainer;
+
+    private final BrowserTabWebViewHost mWebViewHost;
 
     private final View mBrowserContentContainer;
 
@@ -170,7 +173,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
-        this.mWebView = activity.findViewById(R.id.browser_web_view);
+        this.mWebViewContainer = activity.findViewById(R.id.browser_web_view_container);
+        this.mWebViewHost = new BrowserTabWebViewHost(mWebViewContainer, this::createWebViewForTab);
         this.mBrowserContentContainer = activity.findViewById(R.id.browser_content_container);
         this.mBrowserTerminalDivider = activity.findViewById(R.id.browser_terminal_divider);
         this.mPageTitleUrlHeaderView = activity.findViewById(R.id.browser_page_title_url_header);
@@ -450,7 +454,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         activeTab.setUrl(targetUrl);
         renderFrame(activeTab);
         notifyTabsUpdated();
-        mWebView.loadUrl(targetUrl);
+        WebView webView = mWebViewHost.showTab(activeTab);
+        webView.loadUrl(targetUrl);
     }
 
     @Nullable
@@ -508,10 +513,33 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mBrowserTerminalDivider.setVisibility(View.VISIBLE);
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView() {
-        WebSettings settings = mWebView.getSettings();
-        mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
+        mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView);
+        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
+            WebView displayedWebView = currentWebView();
+            return displayedWebView != null
+                && BrowserPullToRefreshGate.canWebViewScrollUp(displayedWebView.getScrollY());
+        });
+    }
+
+    @Nullable
+    private WebView currentWebView() {
+        return mWebViewHost.getDisplayedWebView();
+    }
+
+    private void reloadDisplayedWebView() {
+        WebView displayedWebView = currentWebView();
+        if (displayedWebView != null) displayedWebView.reload();
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    @NonNull
+    private WebView createWebViewForTab(@NonNull BrowserTab tab) {
+        WebView webView = new WebView(mActivity);
+        WebSettings settings = webView.getSettings();
+        if (mDefaultUserAgent == null) {
+            mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
+        }
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
@@ -520,80 +548,74 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         settings.setLoadWithOverviewMode(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+        settings.setUserAgentString(BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
 
         applyDarkModeRendering(settings);
         BrowserWebAuthentication.apply(settings);
-        BrowserWebViewAutofill.apply(mWebView, Build.VERSION.SDK_INT);
+        BrowserWebViewAutofill.apply(webView, Build.VERSION.SDK_INT);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
-        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
-            BrowserPullToRefreshGate.canWebViewScrollUp(mWebView.getScrollY()));
-
-        mWebView.setWebViewClient(new WebViewClient() {
+        webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                if (BrowserPageTransition.requiresCoverWhileLoading(
-                        mRenderedFrame.getCommittedUrl(), url, mBrowserVisible)) {
-                    showWebViewCover();
+                tab.setUrl(url);
+                if (isDisplayedTab(tab)) {
+                    if (BrowserPageTransition.requiresCoverWhileLoading(
+                            mRenderedFrame.getCommittedUrl(), url, mBrowserVisible)) {
+                        showWebViewCover();
+                    }
+                    showPageLoadProgress(0);
+                    updatePageHeader();
                 }
-                showPageLoadProgress(0);
-                BrowserTab loadingTab = tabForUrlCallback(url, view.getUrl());
-                if (loadingTab != null) {
-                    loadingTab.setUrl(url);
-                    notifyTabsUpdated();
-                }
-                updatePageHeader();
-                applyDesktopViewport(view, loadingTab);
+                notifyTabsUpdated();
+                applyDesktopViewport(view, tab);
             }
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
+                if (!isDisplayedTab(tab)) return;
                 commitRenderedFrameUrl(url);
                 revealWebView();
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (mBrowserVisible && "about:blank".equals(url)) {
+                if (isDisplayedTab(tab) && mBrowserVisible && "about:blank".equals(url)) {
                     showTerminal();
                     return;
                 }
-                commitRenderedFrameUrl(url);
-                revealWebView();
-                hidePageLoadProgress();
-                mSwipeRefreshLayout.setRefreshing(false);
+                tab.setUrl(url);
+                tab.setTitle(view.getTitle());
                 CookieManager.getInstance().flush();
-                BrowserTab loadingTab = tabForUrlCallback(url, view.getUrl());
-                if (loadingTab != null) {
-                    loadingTab.setUrl(url);
-                    loadingTab.setTitle(view.getTitle());
-                    notifyTabsUpdated();
-                    persistSessionTabs();
+                if (isDisplayedTab(tab)) {
+                    commitRenderedFrameUrl(url);
+                    revealWebView();
+                    hidePageLoadProgress();
+                    mSwipeRefreshLayout.setRefreshing(false);
+                    updatePageHeader();
                 }
-                updatePageHeader();
-                applyDesktopViewport(view, loadingTab);
+                notifyTabsUpdated();
+                persistSessionTabs();
+                applyDesktopViewport(view, tab);
             }
 
             @Override
             public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
-                BrowserTab loadingTab = tabForUrlCallback(url, view.getUrl());
-                if (loadingTab != null) {
-                    loadingTab.setUrl(url);
-                    notifyTabsUpdated();
-                }
-                updatePageHeader();
+                tab.setUrl(url);
+                if (isDisplayedTab(tab)) updatePageHeader();
+                notifyTabsUpdated();
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (!request.isForMainFrame()) return;
-                onMainFrameError();
+                if (isDisplayedTab(tab)) onMainFrameError();
             }
 
             @Override
             @SuppressWarnings("deprecation")
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                onMainFrameError();
+                if (isDisplayedTab(tab)) onMainFrameError();
             }
 
             @Override
@@ -602,9 +624,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         });
 
-        mWebView.setWebChromeClient(new WebChromeClient() {
+        webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
+                if (!isDisplayedTab(tab)) return;
                 BrowserPageLoadProgressState progressState =
                     BrowserPageLoadProgressState.forProgress(newProgress);
                 if (progressState.isVisible()) {
@@ -616,22 +639,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void onReceivedTitle(WebView view, String title) {
-                BrowserTab loadingTab = tabForTitleCallback(view.getUrl());
-                if (loadingTab != null) {
-                    loadingTab.setTitle(title);
-                    notifyTabsUpdated();
-                    persistSessionTabs();
-                }
-                updatePageHeader();
+                tab.setTitle(title);
+                if (isDisplayedTab(tab)) updatePageHeader();
+                notifyTabsUpdated();
+                persistSessionTabs();
             }
 
             @Override
             public void onReceivedIcon(WebView view, Bitmap icon) {
-                BrowserTab loadingTab = tabForUrlCallback(view.getUrl(), view.getUrl());
-                if (loadingTab != null && icon != null) {
-                    loadingTab.setFavicon(icon);
-                    notifyTabsUpdated();
-                }
+                if (icon == null) return;
+                tab.setFavicon(icon);
+                notifyTabsUpdated();
             }
 
             @Override
@@ -641,10 +659,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         });
 
-        mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
             enqueueDownload(url, userAgent, contentDisposition, mimetype));
 
-        new BrowserLinkContextMenuController(mActivity, mWebView, new BrowserLinkContextMenuController.Actions() {
+        new BrowserLinkContextMenuController(mActivity, webView, new BrowserLinkContextMenuController.Actions() {
             @Override
             public void openLinkInBrowser(@NonNull String linkUrl) {
                 openUrlInNewTab(linkUrl);
@@ -655,6 +673,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
             }
         }).attach();
+
+        return webView;
+    }
+
+    private boolean isDisplayedTab(@NonNull BrowserTab tab) {
+        return mWebViewHost.getDisplayedTab() == tab;
     }
 
     private boolean showFileChooser(@Nullable ValueCallback<Uri[]> filePathCallback,
@@ -895,9 +919,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void configureCookies() {
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(mWebView, true);
+        CookieManager.getInstance().setAcceptCookie(true);
     }
 
     private void configureDrawerControls() {
@@ -917,7 +939,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_session), false);
             return;
         }
-        mWebView.evaluateJavascript(BrowserPageTextCapture.CAPTURE_SCRIPT, new ValueCallback<String>() {
+        WebView displayedWebView = currentWebView();
+        if (displayedWebView == null) return;
+        displayedWebView.evaluateJavascript(BrowserPageTextCapture.CAPTURE_SCRIPT, new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String capturedTextJson) {
                 String pageText;
@@ -953,13 +977,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_session), false);
             return;
         }
-        int width = mWebView.getWidth();
-        int height = mWebView.getHeight();
+        WebView displayedWebView = currentWebView();
+        if (displayedWebView == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_screenshot_failed), true);
+            return;
+        }
+        int width = displayedWebView.getWidth();
+        int height = displayedWebView.getHeight();
         if (width <= 0 || height <= 0) {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_screenshot_failed), true);
             return;
         }
-        byte[] pngBytes = renderVisibleWebViewToPng(width, height);
+        byte[] pngBytes = renderVisibleWebViewToPng(displayedWebView, width, height);
         if (pngBytes == null) {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_screenshot_failed), true);
             return;
@@ -968,13 +997,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     @Nullable
-    private byte[] renderVisibleWebViewToPng(int width, int height) {
+    private byte[] renderVisibleWebViewToPng(@NonNull WebView webView, int width, int height) {
         Bitmap bitmap = null;
         try {
             bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(bitmap);
             canvas.drawColor(Color.WHITE);
-            mWebView.draw(canvas);
+            webView.draw(canvas);
             ByteArrayOutputStream pngStream = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.PNG, BROWSER_SCREENSHOT_PNG_QUALITY, pngStream);
             return pngStream.toByteArray();
@@ -996,14 +1025,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (!mBrowserVisible) return;
         BrowserTab activeTab = getActiveTab();
         if (activeTab == null) return;
-        restampRenderedFrameNavigation();
-        mWebView.clearCache(true);
-        mWebView.reload();
+        WebView displayedWebView = currentWebView();
+        if (displayedWebView == null) return;
+        displayedWebView.clearCache(true);
+        displayedWebView.reload();
         mActivity.showToast(mActivity.getString(R.string.msg_browser_cache_cleared), false);
     }
 
     private void openCurrentPageInChrome() {
-        String currentUrl = mWebView.getUrl();
+        WebView displayedWebView = currentWebView();
+        String currentUrl = displayedWebView == null ? null : displayedWebView.getUrl();
         if (currentUrl == null || currentUrl.trim().isEmpty()) {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
             return;
@@ -1012,11 +1043,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void configureProjectOverviewActions() {
-        mBulkOpenController = new BrowserBulkOpenController(mActivity, mWebView);
+        mBulkOpenController = new BrowserBulkOpenController(mActivity);
         mActivity.findViewById(R.id.browser_open_all_tasks_button)
-            .setOnClickListener(v -> mBulkOpenController.openDisplayedTaskUrls(0));
+            .setOnClickListener(v -> openDisplayedTaskUrls(0));
         mActivity.findViewById(R.id.browser_open_first_ten_tasks_button)
-            .setOnClickListener(v -> mBulkOpenController.openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+            .setOnClickListener(v -> openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+    }
+
+    private void openDisplayedTaskUrls(int limit) {
+        WebView displayedWebView = currentWebView();
+        if (displayedWebView == null) return;
+        mBulkOpenController.openDisplayedTaskUrls(displayedWebView, limit);
     }
 
     private void updateProjectOverviewActionsVisibility() {
@@ -1042,12 +1079,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
         renderFrame(activeTab);
-        mWebView.reload();
+        reloadDisplayedWebView();
         persistSessionTabs();
     }
 
     private void applyUserAgent(@NonNull BrowserTab tab) {
-        mWebView.getSettings().setUserAgentString(
+        WebView displayedWebView = currentWebView();
+        if (displayedWebView == null) return;
+        displayedWebView.getSettings().setUserAgentString(
             BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
     }
 
@@ -1119,6 +1158,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void onSessionRemoved(@NonNull TerminalSession session) {
         if (session.mHandle.equals(mRenderedFrame.getOwnerSessionHandle()))
             blankFrame();
+        mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
         mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
         if (session.mSessionName != null && !session.mSessionName.isEmpty()) {
@@ -1164,7 +1204,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void showTerminal() {
         mBrowserVisible = false;
         mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, false);
-        resetWebViewToBlankForForeignFrame();
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
@@ -1224,6 +1263,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void closeTab(@NonNull BrowserTab tab) {
         mTabManager.removeTab(tab);
+        mWebViewHost.removeTab(tab);
         if (mRenderedFrame.isDisplaying(tab)) blankFrame();
         notifyTabsUpdated();
         BrowserTab activeTab = getActiveTab();
@@ -1289,37 +1329,21 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void loadActiveTab(boolean forceReload) {
         BrowserTab activeTab = getActiveTab();
-        BrowserDisplayedTabResolution resolution = BrowserDisplayedTabResolution.resolve(
-            mCurrentSessionHandle, activeTab == null ? null : activeTab.getSessionHandle(),
-            mRenderedFrame.getOwnerSessionHandle(),
-            mRenderedFrame.getTab() == null ? null : mRenderedFrame.getTab().getSessionHandle(),
-            forceReload);
-        if (!resolution.shouldDisplay()) {
-            resetWebViewToBlankForForeignFrame();
+        if (activeTab == null) {
+            blankFrame();
             return;
         }
-        applyUserAgent(activeTab);
         updateDesktopModeToggleState();
-        boolean sameTabAlreadyShown = mRenderedFrame.isDisplaying(activeTab);
-        if (!resolution.shouldLoadWebView() && sameTabAlreadyShown) return;
-        displayTabInWebView(activeTab);
+        displayTab(activeTab, forceReload);
     }
 
-    private void displayTabInWebView(@NonNull BrowserTab tab) {
-        BrowserTab previouslyDisplayedTab = mRenderedFrame.getTab();
-        String targetUrl = tab.getUrl();
-        if (BrowserRenderedFrameOwnership.requiresCoverForFrame(
-                mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle(),
-                mRenderedFrame.getCommittedUrl(), targetUrl, mBrowserVisible)) {
-            showWebViewCover();
-        }
+    private void displayTab(@NonNull BrowserTab tab, boolean forceReload) {
+        boolean firstDisplay = !mWebViewHost.hasWebViewForTab(tab);
+        if (firstDisplay) showWebViewCover();
         renderFrame(tab);
-        mWebView.loadUrl(targetUrl);
-        BrowserHistoryIsolation historyIsolation =
-            BrowserHistoryIsolation.resolve(previouslyDisplayedTab != tab);
-        if (historyIsolation.shouldClearHistory()) {
-            mWebView.clearHistory();
-        }
+        WebView webView = mWebViewHost.showTab(tab);
+        if (forceReload && !firstDisplay) webView.reload();
+        else if (!firstDisplay) revealWebView();
     }
 
     private void renderFrame(@NonNull BrowserTab tab) {
@@ -1333,34 +1357,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void commitRenderedFrameUrl(@Nullable String committedUrl) {
         mRenderedFrame = mRenderedFrame.withCommittedUrl(committedUrl);
-    }
-
-    private void restampRenderedFrameNavigation() {
-        mRenderedFrame = mRenderedFrame.withRestampedNavigation();
-    }
-
-    private void resetWebViewToBlankForForeignFrame() {
-        boolean renderedFrameIsForeign = BrowserRenderedFrameOwnership.isRenderedFrameForeign(
-            mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle());
-        if (!renderedFrameIsForeign) return;
-        blankFrame();
-        mWebView.loadUrl("about:blank");
-    }
-
-    @Nullable
-    private BrowserTab tabForUrlCallback(@Nullable String callbackUrl, @Nullable String webViewCurrentUrl) {
-        BrowserWebViewNavigation inFlightNavigation = mRenderedFrame.getInFlightNavigation();
-        if (inFlightNavigation == null) return null;
-        return inFlightNavigation.tabForUrlCallback(
-            mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle(), callbackUrl, webViewCurrentUrl);
-    }
-
-    @Nullable
-    private BrowserTab tabForTitleCallback(@Nullable String webViewCurrentUrl) {
-        BrowserWebViewNavigation inFlightNavigation = mRenderedFrame.getInFlightNavigation();
-        if (inFlightNavigation == null) return null;
-        return inFlightNavigation.tabForTitleCallback(
-            mCurrentSessionHandle, mRenderedFrame.getOwnerSessionHandle(), webViewCurrentUrl);
     }
 
     @Nullable
@@ -1380,13 +1376,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public boolean onBackPressed() {
-        if (mBrowserVisible && mWebView.canGoBack()) {
-            WebBackForwardList backForwardList = mWebView.copyBackForwardList();
+        WebView displayedWebView = currentWebView();
+        if (mBrowserVisible && displayedWebView != null && displayedWebView.canGoBack()) {
+            WebBackForwardList backForwardList = displayedWebView.copyBackForwardList();
             int previousIndex = backForwardList.getCurrentIndex() - 1;
             if (previousIndex >= 0 && "about:blank".equals(backForwardList.getItemAtIndex(previousIndex).getUrl())) {
                 showTerminal();
             } else {
-                mWebView.goBack();
+                displayedWebView.goBack();
             }
             return true;
         }
@@ -1416,10 +1413,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void onActivityDestroy() {
         cancelPendingFileChooser();
         unregisterDownloadCompleteReceiver();
-        mWebView.stopLoading();
-        mWebView.setWebViewClient(new WebViewClient());
-        mWebView.loadUrl("about:blank");
-        mWebView.removeAllViews();
-        mWebView.destroy();
+        mWebViewHost.destroyAll();
     }
 }
