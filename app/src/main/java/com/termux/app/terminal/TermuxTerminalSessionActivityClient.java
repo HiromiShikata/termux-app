@@ -28,7 +28,6 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
-import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.ProjectBrowserSessionDismissal;
@@ -137,8 +136,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // a refresh of the displayed terminal.
         mActivity.getTerminalView().onScreenUpdated();
         openTagsForSession(mActivity.getCurrentSession());
-        updateTagsForSession(mActivity.getCurrentSession());
-        callToUserTagsForSession(mActivity.getCurrentSession());
+        backgroundOutputTagsForSession(mActivity.getCurrentSession());
     }
 
     /**
@@ -184,13 +182,19 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onTextChanged(@NonNull TerminalSession changedSession) {
         recordNewOutputActivityForSession(changedSession);
 
+        // The explicit-call and app-update tags MUST be detected for every session that produces
+        // output, not only the session currently being viewed, so that a non-current or backgrounded
+        // session that calls the user records its red dot without the owner having to open it. These
+        // run regardless of which session is current and regardless of activity visibility.
+        backgroundOutputTagsForSession(changedSession);
+
         if (!mActivity.isVisible()) return;
 
         if (mActivity.getCurrentSession() == changedSession) {
             mActivity.getTerminalView().onScreenUpdated();
+            // The open-URL tag stays scoped to the current session only: auto-opening a URL is a
+            // foreground action and opening a non-viewed session's URL would be jarring.
             openTagsForSession(changedSession);
-            updateTagsForSession(changedSession);
-            callToUserTagsForSession(changedSession);
         }
     }
 
@@ -210,34 +214,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         openTagBrowserController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
     }
 
-    private void updateTagsForSession(TerminalSession session) {
+    private void backgroundOutputTagsForSession(TerminalSession session) {
         if (session == null) return;
 
-        UpdateTagUpdateController updateTagUpdateController = mActivity.getUpdateTagUpdateController();
-        if (updateTagUpdateController == null) return;
-
+        // The shared service-owned controllers are used so the explicit call is recorded into the
+        // shared activity store and the per-session scanner dedup state is the same instance the
+        // service client feeds, keeping each tag firing exactly once across activity
+        // foreground/background transitions.
         TerminalEmulator emulator = session.getEmulator();
         if (emulator == null) return;
 
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
-        updateTagUpdateController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
-    }
-
-    private void callToUserTagsForSession(TerminalSession session) {
-        if (session == null) return;
-
-        CallToUserTagController callToUserTagController = mActivity.getCallToUserTagController();
-        if (callToUserTagController == null) return;
-
-        TerminalEmulator emulator = session.getEmulator();
-        if (emulator == null) return;
-
-        TerminalBuffer screen = emulator.getScreen();
-        if (screen == null) return;
-
-        callToUserTagController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+        new BackgroundOutputTagScanner(
+            mActivity.getCallToUserTagController(),
+            mActivity.getUpdateTagUpdateController())
+            .scan(session.mHandle, screen.getTranscriptText());
     }
 
     @Override
@@ -543,7 +536,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             projectBrowser.hide();
 
         openTagsForSession(session);
-        updateTagsForSession(session);
+        backgroundOutputTagsForSession(session);
 
         enforceActiveSessionViewBinding(session);
 

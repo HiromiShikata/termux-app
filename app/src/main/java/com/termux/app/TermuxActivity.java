@@ -231,9 +231,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     OpenTagBrowserController mOpenTagBrowserController;
 
-    UpdateTagUpdateController mUpdateTagUpdateController;
-
-    CallToUserTagController mCallToUserTagController;
+    /**
+     * The foreground update-flow trigger (download and install-prompt). It requires this activity for
+     * its UI, so it is registered with the service-owned {@link UpdateTagUpdateController} only while
+     * the activity is bound; the controller itself lives in {@link TermuxService} so the update tag is
+     * detected for every session even when this activity is not the one currently shown.
+     */
+    UpdateTagUpdateRunner mUpdateTagUpdateRunner;
 
     /**
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
@@ -579,6 +583,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxService != null) {
             // Do not leave service and session clients with references to activity.
+            mTermuxService.setUpdateTagReasonTrigger(null);
             mTermuxService.unsetTermuxTerminalSessionClient();
             mTermuxService = null;
         }
@@ -662,6 +667,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         // Update the {@link TerminalSession} and {@link TerminalEmulator} clients.
         mTermuxService.setTermuxTerminalSessionClient(mTermuxTerminalSessionActivityClient);
+
+        // Register the foreground update-flow trigger so a detected update tag (from any session)
+        // can run the download and install-prompt while this activity is in the foreground.
+        if (mUpdateTagUpdateRunner != null)
+            mTermuxService.setUpdateTagReasonTrigger(mUpdateTagUpdateRunner);
 
         eagerLoadAllSessions();
     }
@@ -930,18 +940,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mTermuxBrowserController = new TermuxBrowserController(this);
         mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
         mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInTabForSession);
-        mUpdateTagUpdateController = new UpdateTagUpdateController(new UpdateTagUpdateRunner(this));
-        mCallToUserTagController = new CallToUserTagController(this::recordCallToUserForSessionHandle);
-    }
-
-    private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {
-        if (mTermuxService == null) return;
-        TerminalSession session = mTermuxService.getTerminalSessionForHandle(sessionHandle);
-        if (session == null || session.mSessionName == null) return;
-        mTermuxService.getSessionNewActivityStore().recordExplicitCall(
-            session.mSessionName, System.currentTimeMillis(), reason);
-        if (mTermuxTerminalSessionActivityClient != null)
-            mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
+        // The update-flow trigger only needs the activity for its UI; it is registered with the
+        // service-owned controller in onServiceConnected once the service is bound.
+        mUpdateTagUpdateRunner = new UpdateTagUpdateRunner(this);
     }
 
     private void setBrowserToggleBarView() {
@@ -1294,11 +1295,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public UpdateTagUpdateController getUpdateTagUpdateController() {
-        return mUpdateTagUpdateController;
+        return mTermuxService == null ? null : mTermuxService.getUpdateTagUpdateController();
     }
 
     public CallToUserTagController getCallToUserTagController() {
-        return mCallToUserTagController;
+        return mTermuxService == null ? null : mTermuxService.getCallToUserTagController();
     }
 
 

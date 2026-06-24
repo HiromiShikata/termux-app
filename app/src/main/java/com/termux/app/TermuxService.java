@@ -20,6 +20,8 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
+import com.termux.app.apkupdate.UpdateTagUpdateController;
+import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
@@ -94,6 +96,25 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private final TermuxTerminalSessionServiceClient mTermuxTerminalSessionServiceClient = new TermuxTerminalSessionServiceClient(this);
 
     private SessionNewActivityStore mSessionNewActivityStore = new SessionNewActivityStore();
+
+    /** Detects the explicit-call output tag for every session regardless of which session is currently
+     * viewed or whether the activity is foregrounded, recording the explicit call into the shared
+     * {@link SessionNewActivityStore}. Owned by the service so a single per-session scanner survives
+     * activity foreground/background transitions and both terminal session clients share the same
+     * deduplication state. */
+    private final CallToUserTagController mCallToUserTagController =
+        new CallToUserTagController(this::recordCallToUserForSessionHandle);
+
+    /** Detects the app-update output tag for every session. Owned by the service so detection runs in
+     * any session and survives activity transitions; the actual update flow (download and install
+     * prompt) is dispatched to {@link #mUpdateTagReasonTrigger} which is only registered while the
+     * activity is bound, so the install dialog appears only when the app is in the foreground. */
+    private final UpdateTagUpdateController mUpdateTagUpdateController =
+        new UpdateTagUpdateController(this::dispatchUpdateTagReason);
+
+    /** The foreground update-flow trigger registered by the bound activity, or null when no activity
+     * is bound (app backgrounded). */
+    private UpdateTagUpdateController.ReasonTrigger mUpdateTagReasonTrigger;
 
     /**
      * Termux app shared properties manager, loaded from termux.properties
@@ -947,6 +968,41 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     public SessionNewActivityStore getSessionNewActivityStore() {
         return mSessionNewActivityStore;
+    }
+
+    /** The shared explicit-call tag controller. Both the activity client and the service client feed
+     * every session's output here so the explicit call is recorded for current, non-current, and
+     * backgrounded sessions alike. */
+    public CallToUserTagController getCallToUserTagController() {
+        return mCallToUserTagController;
+    }
+
+    /** The shared app-update tag controller. Both the activity client and the service client feed
+     * every session's output here so the update tag is detected regardless of which session is
+     * viewed or whether the app is foregrounded. */
+    public UpdateTagUpdateController getUpdateTagUpdateController() {
+        return mUpdateTagUpdateController;
+    }
+
+    /** Registers the foreground update-flow trigger supplied by the bound activity. Passing null
+     * unregisters it when the activity is destroyed so no activity reference is retained. */
+    public void setUpdateTagReasonTrigger(UpdateTagUpdateController.ReasonTrigger trigger) {
+        mUpdateTagReasonTrigger = trigger;
+    }
+
+    private void dispatchUpdateTagReason(String reason) {
+        UpdateTagUpdateController.ReasonTrigger trigger = mUpdateTagReasonTrigger;
+        if (trigger == null) return;
+        trigger.onUpdateRequested(reason);
+    }
+
+    private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {
+        TerminalSession session = getTerminalSessionForHandle(sessionHandle);
+        if (session == null || session.mSessionName == null) return;
+        mSessionNewActivityStore.recordExplicitCall(session.mSessionName, System.currentTimeMillis(), reason);
+        TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
+        if (activityClient != null)
+            activityClient.termuxSessionListNotifyUpdated();
     }
 
     public synchronized void pruneSessionNewActivityStoreToLiveSessions() {
