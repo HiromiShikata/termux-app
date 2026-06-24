@@ -82,10 +82,71 @@ public class OutputTagScannerTest {
     }
 
     @Test
-    public void treatsNullTranscriptAsResettingProcessedState() {
+    public void treatsNullTranscriptAsNoNewValuesWithoutForgettingFiredTags() {
         OutputTagScanner scanner = trimNormalizingScanner();
         assertEquals(List.of("a"), scanner.newValues("<tag>a</tag>"));
+        // A transient null transcript must not reset dedup state, otherwise the same tag would
+        // re-fire on the next non-null scan that still shows it.
         assertTrue(scanner.newValues(null).isEmpty());
-        assertEquals(List.of("a"), scanner.newValues("<tag>a</tag>"));
+        assertTrue(scanner.newValues("<tag>a</tag>").isEmpty());
+    }
+
+    // --- Transcript-trimming and reflow regressions (the endless re-fire loop) ---
+
+    @Test
+    public void doesNotReFireAnAlreadyFiredTagThatIsStillVisibleAfterTheFrontWasTrimmed() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        // The transcript window is full: leading filler precedes a fired tag, trailing filler follows.
+        assertEquals(List.of("keep"),
+            scanner.newValues("X0\nX1\nX2\nX3\n<tag>keep</tag>\nA\nB\nC\n"));
+
+        // The window slides forward: the oldest lines (X0, X1) are overwritten and a clean-append
+        // suffix no longer exists, but the tag is still visible. It MUST NOT re-fire.
+        assertTrue(scanner.newValues("X2\nX3\n<tag>keep</tag>\nA\nB\nC\nD\nE\n").isEmpty());
+
+        // It continues to not re-fire as the window keeps sliding while the tag remains visible.
+        assertTrue(scanner.newValues("<tag>keep</tag>\nA\nB\nC\nD\nE\nF\nG\n").isEmpty());
+    }
+
+    @Test
+    public void doesNotReFireAnAlreadyFiredVisibleTagAfterAColumnResizeReflow() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        assertEquals(List.of("keep"),
+            scanner.newValues("aaaa\nbbbb\n<tag>keep</tag>\ncccc\ndddd\n"));
+
+        // A column resize reflows the wrapping: the leading lines are rejoined differently and a
+        // new line is appended, so the rendered text is not a clean extension of the previous one.
+        // The still-visible tag MUST NOT re-fire because its value is unchanged.
+        assertTrue(scanner.newValues("aaaabbbb\n<tag>keep</tag>\ncccc\ndddd\neeee\n").isEmpty());
+    }
+
+    @Test
+    public void firesAGenuinelyNewTagThatAppearsWhileAnEarlierTagIsStillVisibleAfterTrimming() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        assertEquals(List.of("one"),
+            scanner.newValues("p0\np1\n<tag>one</tag>\nq0\nq1\n"));
+
+        // Front trimmed (p0 gone) and a brand-new tag appended at the tail while "one" stays visible.
+        assertEquals(List.of("two"),
+            scanner.newValues("p1\n<tag>one</tag>\nq0\nq1\n<tag>two</tag>\n"));
+
+        // Re-scanning the same window fires nothing.
+        assertTrue(scanner.newValues("p1\n<tag>one</tag>\nq0\nq1\n<tag>two</tag>\n").isEmpty());
+    }
+
+    @Test
+    public void firesANewOccurrenceOfARepeatedValueWithoutReFiringTheEarlierOne() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        assertEquals(List.of("dup"), scanner.newValues("<tag>dup</tag>\nline\n"));
+        // A second occurrence of the same value appears while the first is still visible: only the
+        // new occurrence fires.
+        assertEquals(List.of("dup"),
+            scanner.newValues("<tag>dup</tag>\nline\n<tag>dup</tag>\n"));
+        // Re-scan: nothing new.
+        assertTrue(scanner.newValues("<tag>dup</tag>\nline\n<tag>dup</tag>\n").isEmpty());
     }
 }
