@@ -2,7 +2,9 @@ package com.termux.app.browser;
 
 import android.content.Context;
 import android.view.ContextThemeWrapper;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -133,6 +135,41 @@ public class BrowserTabFaviconStripControllerTest {
         Assert.assertEquals(1, listener.closedTabs.size());
         Assert.assertSame(secondTab, listener.closedTabs.get(0));
         Assert.assertTrue(listener.openedTabs.isEmpty());
+    }
+
+    @Test
+    public void closeButtonIsSmallCornerTargetSeparatedFromTabSelectArea() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab firstTab = new BrowserTab(SESSION, "https://first.example/");
+        BrowserTab secondTab = new BrowserTab(SESSION, "https://second.example/");
+
+        controllerFor(listener, scrollView, container)
+            .update(Arrays.asList(firstTab, secondTab), firstTab);
+
+        View item = container.getChildAt(0);
+        ImageView faviconView = item.findViewById(R.id.browser_tab_strip_favicon);
+        ImageView closeButton = item.findViewById(R.id.browser_tab_strip_close_button);
+
+        Assert.assertTrue(
+            "Close button must be a smaller target than the favicon select area",
+            closeButton.getLayoutParams().width < faviconView.getLayoutParams().width);
+
+        FrameLayout.LayoutParams closeParams =
+            (FrameLayout.LayoutParams) closeButton.getLayoutParams();
+        int horizontalGravity = closeParams.gravity & Gravity.HORIZONTAL_GRAVITY_MASK;
+        int verticalGravity = closeParams.gravity & Gravity.VERTICAL_GRAVITY_MASK;
+        Assert.assertEquals(
+            "Close button must stay pinned to the end (right) edge",
+            Gravity.RIGHT, horizontalGravity);
+        Assert.assertEquals(
+            "Close button must stay pinned to the top edge",
+            Gravity.TOP, verticalGravity);
+        Assert.assertTrue(
+            "Close button glyph padding must shrink the drawn icon",
+            closeButton.getPaddingLeft() > 0);
     }
 
     @Test
