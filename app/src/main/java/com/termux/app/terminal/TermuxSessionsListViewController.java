@@ -568,7 +568,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                 return getHeaderView(row, convertView, parent,
                     R.layout.item_terminal_sessions_story_header, R.id.session_story_header_title);
             default:
-                return getSessionView(row, convertView, parent);
+                return getSessionView(row, convertView, parent, position);
         }
     }
 
@@ -693,12 +693,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @SuppressLint("SetTextI18n")
-    private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent) {
+    private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent,
+                                int position) {
         View sessionRowView = convertView;
         if (sessionRowView == null) {
             LayoutInflater inflater = mActivity.getLayoutInflater();
             sessionRowView = inflater.inflate(R.layout.item_terminal_sessions_list, parent, false);
         }
+
+        applySessionRowGroupDividerVisibility(sessionRowView, position);
 
         TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
 
@@ -736,72 +739,31 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String sessionNamePart = sessionRow.getName();
 
         String bellNotificationLabelPart = buildBellNotificationLabel(sessionRow);
-
-        StringBuilder fullSessionTitleBuilder = new StringBuilder();
-        int bellNotificationLabelStart = -1;
-        int bellNotificationLabelEnd = -1;
-        if (!bellNotificationLabelPart.isEmpty()) {
-            bellNotificationLabelStart = 0;
-            fullSessionTitleBuilder.append(bellNotificationLabelPart);
-            bellNotificationLabelEnd = fullSessionTitleBuilder.length();
-        }
-        int sessionNameStart = fullSessionTitleBuilder.length();
-        fullSessionTitleBuilder.append(sessionNamePart);
-        boolean hasSecondaryLine = !sessionNamePart.isEmpty();
-
         String timestampLine = buildTimestampLine(sessionAtRow.mSessionName);
-        int timestampLineStart = -1;
-        int timestampLineEnd = -1;
-        if (!timestampLine.isEmpty()) {
-            if (hasSecondaryLine) {
-                fullSessionTitleBuilder.append("\n");
-            }
-            timestampLineStart = fullSessionTitleBuilder.length();
-            fullSessionTitleBuilder.append(timestampLine);
-            timestampLineEnd = fullSessionTitleBuilder.length();
-            hasSecondaryLine = true;
-        }
-
-        int definitionTitleStart = -1;
-        int definitionTitleEnd = -1;
-        if (!TextUtils.isEmpty(definitionTitle)) {
-            if (hasSecondaryLine) {
-                fullSessionTitleBuilder.append("\n");
-            }
-            definitionTitleStart = fullSessionTitleBuilder.length();
-            fullSessionTitleBuilder.append(definitionTitle);
-            definitionTitleEnd = fullSessionTitleBuilder.length();
-            hasSecondaryLine = true;
-        }
-        int sessionTitleStart = -1;
-        int sessionTitleEnd = -1;
-        if (!TextUtils.isEmpty(sessionTitle)) {
-            if (hasSecondaryLine) {
-                fullSessionTitleBuilder.append("\n");
-            }
-            sessionTitleStart = fullSessionTitleBuilder.length();
-            fullSessionTitleBuilder.append(sessionTitle);
-            sessionTitleEnd = fullSessionTitleBuilder.length();
-            hasSecondaryLine = true;
-        }
         String explicitCallReasonPart = explicitCallReasonLabel(sessionRow);
-        int explicitCallReasonStart = -1;
-        int explicitCallReasonEnd = -1;
-        if (!explicitCallReasonPart.isEmpty()) {
-            if (hasSecondaryLine) {
-                fullSessionTitleBuilder.append("\n");
-            }
-            explicitCallReasonStart = fullSessionTitleBuilder.length();
-            fullSessionTitleBuilder.append(explicitCallReasonPart);
-            explicitCallReasonEnd = fullSessionTitleBuilder.length();
-            hasSecondaryLine = true;
-        }
 
-        String fullSessionTitle = fullSessionTitleBuilder.toString();
+        SessionInfoBlock sessionInfoBlock = SessionInfoBlock.compose(bellNotificationLabelPart, sessionNamePart,
+            timestampLine, definitionTitle, sessionTitle, explicitCallReasonPart);
+
+        int bellNotificationLabelStart = sessionInfoBlock.startOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
+        int bellNotificationLabelEnd = sessionInfoBlock.endOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
+        int sessionNameStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_NAME);
+        int timestampLineStart = sessionInfoBlock.startOf(SessionInfoLine.TIMESTAMP);
+        int timestampLineEnd = sessionInfoBlock.endOf(SessionInfoLine.TIMESTAMP);
+        int definitionTitleStart = sessionInfoBlock.startOf(SessionInfoLine.DEFINITION_TITLE);
+        int definitionTitleEnd = sessionInfoBlock.endOf(SessionInfoLine.DEFINITION_TITLE);
+        int sessionTitleStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_TITLE);
+        int sessionTitleEnd = sessionInfoBlock.endOf(SessionInfoLine.SESSION_TITLE);
+        int explicitCallReasonStart = sessionInfoBlock.startOf(SessionInfoLine.EXPLICIT_CALL_REASON);
+        int explicitCallReasonEnd = sessionInfoBlock.endOf(SessionInfoLine.EXPLICIT_CALL_REASON);
+
+        String fullSessionTitle = sessionInfoBlock.text();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
-        applySessionNameStyling(fullSessionTitleStyled, sessionNameStart, sessionNameStart + sessionNamePart.length(), boldSpan);
-        if (activeIndicator.useAccentNameColor) {
-            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), sessionNameStart, sessionNameStart + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (sessionNameStart >= 0) {
+            applySessionNameStyling(fullSessionTitleStyled, sessionNameStart, sessionNameStart + sessionNamePart.length(), boldSpan);
+            if (activeIndicator.useAccentNameColor) {
+                fullSessionTitleStyled.setSpan(new ForegroundColorSpan(activeIndicatorColor), sessionNameStart, sessionNameStart + sessionNamePart.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
         }
         applyBellNotificationLabelStyling(fullSessionTitleStyled, bellNotificationLabelStart, bellNotificationLabelEnd, italicSpan);
         if (definitionTitleStart >= 0) {
@@ -840,6 +802,19 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
         return sessionRowView;
+    }
+
+    private void applySessionRowGroupDividerVisibility(@NonNull View sessionRowView, int position) {
+        View groupDividerView = sessionRowView.findViewById(R.id.session_row_group_divider);
+        SessionHierarchyRow.Type previousRowType = position > 0
+            ? mRows.get(position - 1).getType()
+            : null;
+        boolean showDivider = shouldShowSessionRowGroupDivider(previousRowType);
+        groupDividerView.setVisibility(showDivider ? View.VISIBLE : View.GONE);
+    }
+
+    static boolean shouldShowSessionRowGroupDivider(@Nullable SessionHierarchyRow.Type previousRowType) {
+        return previousRowType == SessionHierarchyRow.Type.SESSION;
     }
 
     private void bindSessionDisableToggle(@NonNull View sessionRowView, @NonNull SessionRow sessionRow,
