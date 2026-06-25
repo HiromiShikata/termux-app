@@ -286,19 +286,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 mActivity.showToast(toToastTitle(finishedSession) + " - exited", true);
         }
 
-        if (mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK)) {
-            // On Android TV devices we need to use older behaviour because we may
-            // not be able to have multiple launcher icons.
-            if (service.getTermuxSessionsSize() > 1 || isPluginExecutionCommandWithPendingResult) {
-                removeFinishedSession(finishedSession);
-            }
-        } else {
-            // Once we have a separate launcher icon for the failsafe session, it
-            // should be safe to auto-close session on exit code '0' or '130'.
-            if (finishedSession.getExitStatus() == 0 || finishedSession.getExitStatus() == 130 || isPluginExecutionCommandWithPendingResult) {
-                removeFinishedSession(finishedSession);
-            }
+        boolean isLeanbackDevice = mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+        if (shouldRemoveFinishedSession(isLeanbackDevice, service.getTermuxSessionsSize(), isPluginExecutionCommandWithPendingResult)) {
+            removeFinishedSession(finishedSession);
         }
+    }
+
+    static boolean shouldRemoveFinishedSession(boolean isLeanbackDevice, int sessionCount, boolean isPluginExecutionCommandWithPendingResult) {
+        if (isLeanbackDevice) {
+            return sessionCount > 1 || isPluginExecutionCommandWithPendingResult;
+        }
+        return true;
     }
 
     @Override

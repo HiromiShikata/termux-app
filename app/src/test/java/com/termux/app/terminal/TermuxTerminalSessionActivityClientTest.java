@@ -85,4 +85,32 @@ public class TermuxTerminalSessionActivityClientTest {
             TermuxTerminalSessionActivityClient.shouldReselectCurrentSessionAfterRemoval(
                 finishedSessionWasCurrent, currentSessionStillPresent));
     }
+
+    @Test
+    public void removesFinishedSessionOnNormalDeviceRegardlessOfExitStatus() {
+        boolean isLeanbackDevice = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(isLeanbackDevice, 1, false));
+    }
+
+    @Test
+    public void keepsLastFinishedSessionOnLeanbackDeviceWithoutPendingPluginResult() {
+        boolean isLeanbackDevice = true;
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(isLeanbackDevice, 1, false));
+    }
+
+    @Test
+    public void removesFinishedSessionOnLeanbackDeviceWhenMoreSessionsRemain() {
+        boolean isLeanbackDevice = true;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(isLeanbackDevice, 2, false));
+    }
+
+    @Test
+    public void removesFinishedSessionOnLeanbackDeviceForPluginCommandWithPendingResult() {
+        boolean isLeanbackDevice = true;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(isLeanbackDevice, 1, true));
+    }
 }
