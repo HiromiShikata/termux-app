@@ -53,6 +53,52 @@ public class SessionNewActivityTierAwayThresholdTest {
     }
 
     @Test
+    public void yellowAppearsWhenRealOutputIsOneMinuteAgoAndUserIsAway() {
+        long lastOutputActivity = SEEN + 1L;
+        long oneMinute = 60L * 1000L;
+        long nowOneMinuteAfterOutput = lastOutputActivity + oneMinute;
+
+        SessionNewActivityTier tier = SessionNewActivityTier.resolve(
+            lastOutputActivity, null, SEEN, nowOneMinuteAfterOutput);
+
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, tier);
+    }
+
+    @Test
+    public void noneWhenRealOutputIsElevenMinutesAgo() {
+        long lastOutputActivity = SEEN + 1L;
+        long elevenMinutes = 11L * 60L * 1000L;
+        long nowElevenMinutesAfterOutput = lastOutputActivity + elevenMinutes;
+
+        SessionNewActivityTier tier = SessionNewActivityTier.resolve(
+            lastOutputActivity, null, SEEN, nowElevenMinutesAfterOutput);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, tier);
+    }
+
+    @Test
+    public void exactlyTenMinutesAgoIsStillYellowBecauseTheRecencyBoundaryIsInclusive() {
+        long lastOutputActivity = SEEN + 1L;
+        long nowAtRecencyBoundary = lastOutputActivity + SessionNewActivityTier.YELLOW_MAX_AGE_MILLIS;
+
+        SessionNewActivityTier tier = SessionNewActivityTier.resolve(
+            lastOutputActivity, null, SEEN, nowAtRecencyBoundary);
+
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, tier);
+    }
+
+    @Test
+    public void noneOneMillisecondPastTheTenMinuteRecencyBoundary() {
+        long lastOutputActivity = SEEN + 1L;
+        long nowJustPastRecencyBoundary = lastOutputActivity + SessionNewActivityTier.YELLOW_MAX_AGE_MILLIS + 1L;
+
+        SessionNewActivityTier tier = SessionNewActivityTier.resolve(
+            lastOutputActivity, null, SEEN, nowJustPastRecencyBoundary);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, tier);
+    }
+
+    @Test
     public void redExplicitCallIsNeverDelayedByTheAwayThreshold() {
         long lastExplicitCall = SEEN + 1L;
         long nowJustAfterLeaving = SEEN + 5L;
