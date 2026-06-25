@@ -59,6 +59,13 @@ public class ProjectBrowserMobileViewInstrumentedTest {
             + "<title>Project overview</title></head>"
             + "<body><h1>Project overview</h1></body></html>";
 
+    private static final String NO_VIEWPORT_FIXED_WIDTH_PROJECT_PAGE_HTML =
+        "<!DOCTYPE html><html><head>"
+            + "<title>Project overview</title>"
+            + "<style>html,body{margin:0;padding:0;}"
+            + "body{width:320px;}</style></head>"
+            + "<body><h1>Project overview</h1></body></html>";
+
     @Test
     public void mobileConfigurationKeepsDefaultMobileUserAgent() {
         AtomicReference<WebSettings> settingsRef = new AtomicReference<>();
@@ -167,6 +174,56 @@ public class ProjectBrowserMobileViewInstrumentedTest {
         assertEquals(
             "window.innerWidth (" + innerWidth + ") did not fill the device width ("
                 + expectedDeviceWidthCssPx + " CSS px); the page rendered in a narrow column",
+            expectedDeviceWidthCssPx, innerWidth, FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX);
+    }
+
+    @Test
+    public void mobileConfigurationForcesNoViewportFixedWidthPageToFullDeviceWidth()
+        throws InterruptedException {
+        AtomicReference<WebView> webViewRef = new AtomicReference<>();
+        AtomicReference<CountDownLatch> pageFinishedLatchRef =
+            new AtomicReference<>(new CountDownLatch(1));
+
+        runOnMainSync(() -> {
+            WebView webView = new WebView(targetContext());
+            BrowserMobileWebViewConfigurator.apply(webView.getSettings());
+            webView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    super.onPageFinished(view, url);
+                    pageFinishedLatchRef.get().countDown();
+                }
+            });
+            layoutOffscreen(webView);
+            webViewRef.set(webView);
+            webView.loadDataWithBaseURL(WARM_UP_PAGE_URL, WARM_UP_PAGE_HTML,
+                "text/html", "utf-8", null);
+        });
+
+        assertTrue("warm up page did not finish loading within timeout",
+            pageFinishedLatchRef.get().await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+        WebView webView = webViewRef.get();
+        pageFinishedLatchRef.set(new CountDownLatch(1));
+        runOnMainSync(() -> webView.loadDataWithBaseURL(PROJECT_URL,
+            NO_VIEWPORT_FIXED_WIDTH_PROJECT_PAGE_HTML, "text/html", "utf-8", null));
+
+        assertTrue("project page did not finish loading within timeout",
+            pageFinishedLatchRef.get().await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+        int innerWidth = pollInnerWidthUntilMobileLayoutWidth(webView);
+        double devicePixelRatio = readDouble(webView, READ_DEVICE_PIXEL_RATIO_SCRIPT);
+        int documentClientWidth = readInt(webView, READ_DOCUMENT_CLIENT_WIDTH_SCRIPT);
+        double expectedDeviceWidthCssPx = WEB_VIEW_PHYSICAL_WIDTH_PX / devicePixelRatio;
+
+        assertEquals(
+            "window.innerWidth (" + innerWidth + ") did not match the document layout width ("
+                + documentClientWidth + "); the no-viewport page was not forced to device width",
+            documentClientWidth, innerWidth);
+        assertEquals(
+            "window.innerWidth (" + innerWidth + ") did not fill the device width ("
+                + expectedDeviceWidthCssPx + " CSS px); the no-viewport page rendered in a "
+                + "fallback wide column instead of the forced device width",
             expectedDeviceWidthCssPx, innerWidth, FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX);
     }
 
