@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
+import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
@@ -116,6 +117,18 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * is bound (app backgrounded). */
     private UpdateTagUpdateController.ReasonTrigger mUpdateTagReasonTrigger;
 
+    /** Detects the open-URL output tag for the currently viewed session. Owned by the service so the
+     * single per-session scanner deduplication state survives activity recreation: the terminal
+     * transcript lives in the long-lived service, so a still-visible already-opened tag MUST NOT
+     * re-fire when the activity is recreated. The actual tab open is dispatched to
+     * {@link #mOpenTagUrlOpener}, registered only while the activity is bound, so a URL opens only
+     * when the app is in the foreground. */
+    private OpenTagBrowserController mOpenTagBrowserController;
+
+    /** The foreground URL opener registered by the bound activity, or null when no activity is bound
+     * (app backgrounded). */
+    private OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
+
     /**
      * Termux app shared properties manager, loaded from termux.properties
      */
@@ -150,6 +163,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         mShellManager = TermuxShellManager.getShellManager();
 
         mSessionNewActivityStore = buildSessionNewActivityStore();
+
+        TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
+        if (openTagPreferences != null)
+            mOpenTagBrowserController =
+                new OpenTagBrowserController(openTagPreferences, this::dispatchOpenTagUrl);
 
         runStartForeground();
 
@@ -994,6 +1012,30 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         UpdateTagUpdateController.ReasonTrigger trigger = mUpdateTagReasonTrigger;
         if (trigger == null) return;
         trigger.onUpdateRequested(reason);
+    }
+
+    /** The shared open-URL tag controller. The activity client feeds the currently viewed session's
+     * output here so the open tag is deduplicated by a single per-session scanner that survives
+     * activity recreation, preventing an already-opened tag still visible in the transcript from
+     * re-firing and spawning duplicate tabs. Null when preferences were unavailable at service
+     * creation, in which case the open-tag auto-open feature is inactive. */
+    @Nullable
+    public OpenTagBrowserController getOpenTagBrowserController() {
+        return mOpenTagBrowserController;
+    }
+
+    /** Registers the foreground URL opener supplied by the bound activity. Passing null unregisters
+     * it when the activity is destroyed so no activity reference is retained. */
+    public void setOpenTagUrlOpener(OpenTagBrowserController.UrlOpener opener) {
+        mOpenTagUrlOpener = opener;
+        if (mOpenTagBrowserController != null)
+            mOpenTagBrowserController.setUrlOpener(opener);
+    }
+
+    private void dispatchOpenTagUrl(@NonNull String sessionHandle, @NonNull String url) {
+        OpenTagBrowserController.UrlOpener opener = mOpenTagUrlOpener;
+        if (opener == null) return;
+        opener.openUrlInTabForSession(sessionHandle, url);
     }
 
     private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {

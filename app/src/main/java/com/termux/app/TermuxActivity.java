@@ -227,9 +227,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     ProjectBrowserOverlayController mProjectBrowserOverlayController;
 
     /**
-     * Opens an `http`/`https` URL inside a `<open>...</open>` tag in the terminal output in the in-app browser.
+     * The foreground URL opener for `<open>...</open>` tags. Opening a tab is a foreground action, so
+     * this opener is registered with the service-owned {@link OpenTagBrowserController} only while the
+     * activity is bound; the controller itself (and its per-session deduplication state) lives in
+     * {@link TermuxService} so an already-opened tag still visible in the transcript does not re-fire
+     * and spawn duplicate tabs when this activity is recreated.
      */
-    OpenTagBrowserController mOpenTagBrowserController;
+    OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
 
     /**
      * The foreground update-flow trigger (download and install-prompt). It requires this activity for
@@ -584,6 +588,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mTermuxService != null) {
             // Do not leave service and session clients with references to activity.
             mTermuxService.setUpdateTagReasonTrigger(null);
+            mTermuxService.setOpenTagUrlOpener(null);
             mTermuxService.unsetTermuxTerminalSessionClient();
             mTermuxService = null;
         }
@@ -672,6 +677,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // can run the download and install-prompt while this activity is in the foreground.
         if (mUpdateTagUpdateRunner != null)
             mTermuxService.setUpdateTagReasonTrigger(mUpdateTagUpdateRunner);
+
+        // Register the foreground URL opener so a detected open tag opens a tab while this activity is
+        // in the foreground; the deduplication state stays in the service-owned controller.
+        if (mOpenTagUrlOpener != null)
+            mTermuxService.setOpenTagUrlOpener(mOpenTagUrlOpener);
 
         eagerLoadAllSessions();
     }
@@ -939,7 +949,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
         mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
-        mOpenTagBrowserController = new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInTabForSession);
+        mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession;
         // The update-flow trigger only needs the activity for its UI; it is registered with the
         // service-owned controller in onServiceConnected once the service is bound.
         mUpdateTagUpdateRunner = new UpdateTagUpdateRunner(this);
@@ -1289,8 +1299,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mProjectBrowserOverlayController;
     }
 
+    @Nullable
     public OpenTagBrowserController getOpenTagBrowserController() {
-        return mOpenTagBrowserController;
+        return mTermuxService == null ? null : mTermuxService.getOpenTagBrowserController();
     }
 
     public UpdateTagUpdateController getUpdateTagUpdateController() {

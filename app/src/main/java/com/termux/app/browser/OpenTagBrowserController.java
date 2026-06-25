@@ -1,6 +1,7 @@
 package com.termux.app.browser;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
@@ -15,12 +16,16 @@ public final class OpenTagBrowserController {
 
     private final TermuxAppSharedPreferences mPreferences;
 
-    private final UrlOpener mUrlOpener;
-
     private final Map<String, OpenTagScanner> mScannerBySessionKey = new HashMap<>();
 
-    public OpenTagBrowserController(@NonNull TermuxAppSharedPreferences preferences, @NonNull UrlOpener urlOpener) {
+    private UrlOpener mUrlOpener;
+
+    public OpenTagBrowserController(@NonNull TermuxAppSharedPreferences preferences, @Nullable UrlOpener urlOpener) {
         mPreferences = preferences;
+        mUrlOpener = urlOpener;
+    }
+
+    public void setUrlOpener(@Nullable UrlOpener urlOpener) {
         mUrlOpener = urlOpener;
     }
 
@@ -32,9 +37,12 @@ public final class OpenTagBrowserController {
         if (sessionKey == null) return;
         if (!isAutoOpenEnabled()) return;
 
+        UrlOpener urlOpener = mUrlOpener;
+        if (urlOpener == null) return;
+
         OpenTagScanner scanner = scannerForSession(sessionKey);
         for (String openUrl : scanner.newOpenUrls(screenText)) {
-            mUrlOpener.openUrlInTabForSession(sessionKey, openUrl);
+            urlOpener.openUrlInTabForSession(sessionKey, openUrl);
         }
     }
 
