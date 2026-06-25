@@ -231,6 +231,10 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator == null ? 0L : mEmulator.getNeverResetScrolledLineCount();
     }
 
+    public long getCommittedOutputLineCount() {
+        return mEmulator == null ? 0L : mEmulator.getCommittedOutputLineCount();
+    }
+
     public long getTotalBytesProcessed() { return mTotalBytesProcessed; }
 
     public long getVisibleContentVersion() {

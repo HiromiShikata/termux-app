@@ -95,6 +95,26 @@ public class GenuineOutputActivitySignalTest {
     }
 
     @Test
+    public void newLinesThatFitWithinScreenAdvanceOutputActivityTimestamp() throws Exception {
+        TerminalEmulator emulator = newEmulator();
+        TerminalSession session = sessionWithEmulator(emulator);
+
+        emitGenuineOutput(emulator, "first reply line\r\n");
+        client.onGenuineOutput(session);
+        Assert.assertNull("the first observation only establishes the baseline counter", lastOutputActivity());
+        Assert.assertEquals("the lines printed so far must fit within the visible screen without scrolling off the top",
+            0L, emulator.getNeverResetScrolledLineCount());
+
+        emitGenuineOutput(emulator, "second reply line\r\nthird reply line\r\n");
+        client.onGenuineOutput(session);
+
+        Assert.assertEquals("output that fits within the visible screen must not have scrolled off the top",
+            0L, emulator.getNeverResetScrolledLineCount());
+        Assert.assertNotNull("output that fits within the visible screen must still record output activity",
+            lastOutputActivity());
+    }
+
+    @Test
     public void newLineScrolledIntoHistoryAdvancesOutputActivityTimestamp() throws Exception {
         TerminalEmulator emulator = newEmulator();
         TerminalSession session = sessionWithEmulator(emulator);
