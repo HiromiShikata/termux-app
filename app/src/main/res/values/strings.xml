@@ -91,6 +91,7 @@
     <string name="action_browser_close_tab">Close tab</string>
     <string name="action_project_browser_close">Close project browser</string>
     <string name="action_scroll_to_call_to_user_tag">Scroll to call-to-user message</string>
+    <string name="session_last_reply_label">Last reply: %1$s</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_open_url">Open URL</string>
     <string name="hint_browser_url">https://example.com</string>

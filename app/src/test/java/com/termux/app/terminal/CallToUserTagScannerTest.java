@@ -63,28 +63,22 @@ public class CallToUserTagScannerTest {
     }
 
     @Test
-    public void collapsesRunsOfHorizontalWhitespaceButPreservesNewlines() {
-        assertEquals("a b\nc d", CallToUserTagScanner.normalizeReason("a    b\nc  d"));
+    public void preservesRunsOfHorizontalWhitespaceWhenTrimmingOnly() {
+        assertEquals("a    b\nc  d", CallToUserTagScanner.normalizeReason("a    b\nc  d"));
     }
 
     @Test
-    public void collapsesTabsAndMixedHorizontalWhitespaceToSingleSpace() {
-        assertEquals("a b\nc d",
+    public void preservesTabsAndMixedHorizontalWhitespace() {
+        assertEquals("a \t \t b\nc\t\td",
             CallToUserTagScanner.normalizeReason("a \t \t b\nc\t\td"));
     }
 
     @Test
-    public void preservesBlankLinesBetweenContentLines() {
-        assertEquals("first line\n\nsecond line",
-            CallToUserTagScanner.normalizeReason("first    line\n   \nsecond  line"));
-    }
-
-    @Test
-    public void extractedReasonHasCollapsedHorizontalWhitespaceWithNewlinesKept() {
+    public void extractedReasonPreservesInternalWhitespaceRaw() {
         List<String> reasons = CallToUserTagScanner.extractReasons(
             "<call-to-user>please    review\nthe    diff</call-to-user>");
         assertEquals(1, reasons.size());
-        assertEquals("please review\nthe diff", reasons.get(0));
+        assertEquals("please    review\nthe    diff", reasons.get(0));
     }
 
     @Test
@@ -172,6 +166,17 @@ public class CallToUserTagScannerTest {
         String trimmedWithNewTag =
             "output line 4998\noutput line 4999\n<call-to-user>review now</call-to-user>\n";
         assertEquals(List.of("review now"), scanner.newReasons(trimmedWithNewTag));
+    }
+
+    @Test
+    public void doesNotReFireAnAlreadyFiredTagWithInternalWhitespaceOnReScan() {
+        CallToUserTagScanner scanner = new CallToUserTagScanner();
+        String output = "prompt <call-to-user>needs    review of   diff</call-to-user> tail";
+
+        assertEquals(List.of("needs    review of   diff"), scanner.newReasons(output));
+        assertTrue(scanner.newReasons(output).isEmpty());
+        assertTrue(scanner.newReasons(
+            output + "\nmore output appended after the answer").isEmpty());
     }
 
     @Test

@@ -195,4 +195,10 @@ public class SessionNewActivityStore {
         Long t = getLastOutputActivityTimeMillis(sessionName);
         return t == null ? null : formatRelativeTime(nowMillis - t);
     }
+
+    @Nullable
+    public String lastUserInputAgeLabel(@NonNull String sessionName, long nowMillis) {
+        Long t = getLastUserInputTimeMillis(sessionName);
+        return t == null ? null : formatRelativeTime(nowMillis - t);
+    }
 }
