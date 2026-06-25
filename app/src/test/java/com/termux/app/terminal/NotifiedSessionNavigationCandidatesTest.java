@@ -34,7 +34,7 @@ public class NotifiedSessionNavigationCandidatesTest {
     }
 
     @Test
-    public void restrictsToYellowSessionsWhenNoRedButYellowExists() {
+    public void returnsFullNavigableListWhenNoRedButYellowExists() {
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3);
         Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
             1, SessionNewActivityTier.YELLOW,
@@ -43,7 +43,7 @@ public class NotifiedSessionNavigationCandidatesTest {
         List<Integer> candidates =
             NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
 
-        Assert.assertEquals(Arrays.asList(1, 3), candidates);
+        Assert.assertEquals(navigable, candidates);
     }
 
     @Test
@@ -92,7 +92,7 @@ public class NotifiedSessionNavigationCandidatesTest {
     }
 
     @Test
-    public void yellowCyclingVisitsOnlyYellowSessionsWhenNoRedExists() {
+    public void sequentialCyclingVisitsEverySessionWhenOnlyYellowExists() {
         List<Integer> ordered = Arrays.asList(0, 1, 2, 3, 4);
         List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
         Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
@@ -101,15 +101,17 @@ public class NotifiedSessionNavigationCandidatesTest {
         List<Integer> candidates =
             NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, tiersByIndex);
 
+        Assert.assertEquals(navigable, candidates);
+
         List<Integer> visited = new ArrayList<>();
-        int current = 3;
+        int current = 0;
         visited.add(current);
-        for (int step = 0; step < 3; step++) {
-            current = VisibleSessionNavigator.nextSessionIndex(ordered, candidates, current, false);
+        for (int step = 0; step < 5; step++) {
+            current = VisibleSessionNavigator.nextSessionIndex(ordered, candidates, current, true);
             visited.add(current);
         }
 
-        Assert.assertEquals(Arrays.asList(3, 1, 3, 1), visited);
+        Assert.assertEquals(Arrays.asList(0, 1, 2, 3, 4, 0), visited);
     }
 
     @Test
@@ -131,7 +133,7 @@ public class NotifiedSessionNavigationCandidatesTest {
     }
 
     @Test
-    public void tierTransitionsFromRedToYellowToAllAsSessionsClear() {
+    public void redRestrictsButYellowAndNoneBothNavigateAllSessions() {
         List<Integer> navigable = Arrays.asList(0, 1, 2);
         Map<Integer, SessionNewActivityTier> withRed = tiers(
             0, SessionNewActivityTier.RED,
@@ -141,7 +143,7 @@ public class NotifiedSessionNavigationCandidatesTest {
 
         Map<Integer, SessionNewActivityTier> yellowOnly = tiers(
             1, SessionNewActivityTier.YELLOW);
-        Assert.assertEquals(Arrays.asList(1),
+        Assert.assertEquals(navigable,
             NotifiedSessionNavigationCandidates.restrictToActiveTier(navigable, yellowOnly));
 
         Assert.assertEquals(navigable,

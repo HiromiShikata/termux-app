@@ -985,10 +985,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         SessionActivityDirection direction = computeSessionActivityDirection();
         int redColor = ContextCompat.getColor(this, R.color.session_activity_tier_red);
-        int yellowColor = ContextCompat.getColor(this, R.color.session_activity_tier_yellow);
         int defaultColor = ContextCompat.getColor(this, com.termux.shared.R.color.white);
         SessionNavigationButtonsBinder.applyDirectionTier(
-            mPreviousSessionButton, mNextSessionButton, direction, redColor, yellowColor, defaultColor);
+            mPreviousSessionButton, mNextSessionButton, direction, redColor, defaultColor);
     }
 
     @NonNull

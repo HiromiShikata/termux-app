@@ -75,15 +75,15 @@ public class SessionActivityDirectionTest {
     }
 
     @Test
-    public void yellowTierWhenNoRedAndYellowPerDirection() {
+    public void yellowSessionsNeverColorArrowsWhenNoRedExists() {
         SessionActivityDirection direction = SessionActivityDirection.compute(
             Arrays.asList(0, 1, 2, 3, 4), 2,
             tiers(1, SessionNewActivityTier.YELLOW,
                 4, SessionNewActivityTier.YELLOW));
 
-        Assert.assertEquals(SessionNewActivityTier.YELLOW, direction.getTier());
-        Assert.assertTrue(direction.hasActiveAbove());
-        Assert.assertTrue(direction.hasActiveBelow());
+        Assert.assertEquals(SessionNewActivityTier.NONE, direction.getTier());
+        Assert.assertFalse(direction.hasActiveAbove());
+        Assert.assertFalse(direction.hasActiveBelow());
     }
 
     @Test
@@ -117,14 +117,14 @@ public class SessionActivityDirectionTest {
     }
 
     @Test
-    public void onlyVisibleSessionsRetainedInTiersDriveTheArrowColorWhenAHiddenRedSessionIsExcluded() {
+    public void visibleYellowSessionsNeverDriveTheArrowColorWhenNoRedExists() {
         SessionActivityDirection direction = SessionActivityDirection.compute(
             Arrays.asList(0, 1, 2, 3), 1,
             tiers(3, SessionNewActivityTier.YELLOW));
 
-        Assert.assertEquals(SessionNewActivityTier.YELLOW, direction.getTier());
+        Assert.assertEquals(SessionNewActivityTier.NONE, direction.getTier());
         Assert.assertFalse(direction.hasActiveAbove());
-        Assert.assertTrue(direction.hasActiveBelow());
+        Assert.assertFalse(direction.hasActiveBelow());
     }
 
     @Test
