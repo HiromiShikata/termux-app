@@ -217,7 +217,6 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private void show() {
         mVisible = true;
         mOverlayContainer.setVisibility(View.VISIBLE);
-        mOverlayContainer.bringToFront();
         mWebView.requestFocus();
         updateOverviewActionsVisibility();
     }
