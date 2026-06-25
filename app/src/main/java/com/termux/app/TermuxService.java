@@ -164,8 +164,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         mSessionNewActivityStore = buildSessionNewActivityStore();
 
-        mOpenTagBrowserController =
-            new OpenTagBrowserController(TermuxAppSharedPreferences.build(this, true), this::dispatchOpenTagUrl);
+        TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
+        if (openTagPreferences != null)
+            mOpenTagBrowserController =
+                new OpenTagBrowserController(openTagPreferences, this::dispatchOpenTagUrl);
 
         runStartForeground();
 
@@ -1015,7 +1017,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /** The shared open-URL tag controller. The activity client feeds the currently viewed session's
      * output here so the open tag is deduplicated by a single per-session scanner that survives
      * activity recreation, preventing an already-opened tag still visible in the transcript from
-     * re-firing and spawning duplicate tabs. */
+     * re-firing and spawning duplicate tabs. Null when preferences were unavailable at service
+     * creation, in which case the open-tag auto-open feature is inactive. */
+    @Nullable
     public OpenTagBrowserController getOpenTagBrowserController() {
         return mOpenTagBrowserController;
     }
