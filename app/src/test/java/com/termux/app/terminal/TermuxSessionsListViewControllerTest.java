@@ -556,6 +556,56 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void sessionRowHostsAGroupDividerSoStackedSessionBlocksAreVisuallySeparated() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View groupDivider = row.findViewById(R.id.session_row_group_divider);
+
+        Assert.assertNotNull(groupDivider);
+    }
+
+    @Test
+    public void groupDividerIsShownBetweenTwoConsecutiveSessionRowsSoEachSessionInfoBlockIsDistinct() {
+        Assert.assertTrue(TermuxSessionsListViewController.shouldShowSessionRowGroupDivider(
+            SessionHierarchyRow.Type.SESSION));
+    }
+
+    @Test
+    public void groupDividerIsHiddenForTheFirstSessionUnderAStoryHeaderSoNoStrayLineSitsBelowTheHeader() {
+        Assert.assertFalse(TermuxSessionsListViewController.shouldShowSessionRowGroupDivider(
+            SessionHierarchyRow.Type.STORY_HEADER));
+    }
+
+    @Test
+    public void groupDividerIsHiddenForTheFirstSessionUnderAProjectHeaderSoNoStrayLineSitsBelowTheHeader() {
+        Assert.assertFalse(TermuxSessionsListViewController.shouldShowSessionRowGroupDivider(
+            SessionHierarchyRow.Type.PROJECT_HEADER));
+    }
+
+    @Test
+    public void groupDividerIsHiddenForTheVeryFirstRowWhichHasNoPrecedingRow() {
+        Assert.assertFalse(TermuxSessionsListViewController.shouldShowSessionRowGroupDivider(null));
+    }
+
+    @Test
+    public void disableToggleIsVerticallyCenteredSoItAlignsWithTheRowContentRatherThanSittingAtTheTop() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View disableToggle = row.findViewById(R.id.session_disable_toggle);
+        android.widget.LinearLayout.LayoutParams layoutParams =
+            (android.widget.LinearLayout.LayoutParams) disableToggle.getLayoutParams();
+
+        Assert.assertEquals(android.view.Gravity.CENTER_VERTICAL,
+            layoutParams.gravity & android.view.Gravity.VERTICAL_GRAVITY_MASK);
+        Assert.assertNotEquals(android.view.Gravity.TOP,
+            layoutParams.gravity & android.view.Gravity.VERTICAL_GRAVITY_MASK);
+    }
+
+    @Test
     public void sessionRowDoesNotReserveAForcedMinimumHeightSoUntitledRowsStayCompact() {
         Context context = themedContext();
         View row = LayoutInflater.from(context)
