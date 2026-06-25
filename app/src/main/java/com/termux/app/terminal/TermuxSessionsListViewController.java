@@ -561,7 +561,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                     R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
                 bindProjectHeaderTitle(projectHeaderView, row);
                 bindProjectCollapseIndicator(projectHeaderView, row);
-                bindProjectHeaderRowToggle(projectHeaderView, row);
                 bindProjectOverviewBrowserIcon(projectHeaderView, row);
                 bindProjectTdpmConsoleIcon(projectHeaderView, row);
                 bindProjectNewIssueIcon(projectHeaderView, row);
@@ -609,19 +608,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         boolean collapsed = mCollapsedProjectKeys.contains(row.getLabel());
         collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
         collapseIndicatorView.setTextColor(surfacePrimaryTextColor());
-    }
-
-    private void bindProjectHeaderRowToggle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
-        applyProjectHeaderRowToggle(projectHeaderView, row.getLabel(), this::toggleProjectCollapsed);
-    }
-
-    static void applyProjectHeaderRowToggle(@NonNull View projectHeaderView, @Nullable String projectKey,
-                                            @NonNull ProjectCollapseToggle toggle) {
-        projectHeaderView.setOnClickListener(v -> toggle.toggle(projectKey));
-    }
-
-    interface ProjectCollapseToggle {
-        void toggle(@Nullable String projectKey);
     }
 
     private void bindProjectOverviewBrowserIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {

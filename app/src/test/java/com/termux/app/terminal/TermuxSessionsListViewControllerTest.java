@@ -145,34 +145,33 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void tappingTheProjectHeaderRowTogglesThatProjectsCollapsedState() {
+    public void projectHeaderRowBlocksDescendantsSoTheListDeliversEveryRowTapToOnItemClick() {
         Context context = themedContext();
-        View projectHeader = LayoutInflater.from(context)
+        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-        String[] toggledProjectKey = {null};
 
-        TermuxSessionsListViewController.applyProjectHeaderRowToggle(
-            projectHeader, "ProjectName", projectKey -> toggledProjectKey[0] = projectKey);
-
-        Assert.assertTrue("the header row must be clickable so a tap outside the action icons toggles the accordion",
-            projectHeader.isClickable());
-        Assert.assertTrue(projectHeader.hasOnClickListeners());
-
-        projectHeader.performClick();
-
-        Assert.assertEquals("ProjectName", toggledProjectKey[0]);
+        Assert.assertEquals("the row must block descendant focusability so AbsListView passes its hasFocusable() gate and fires onItemClick on the first row tap",
+            ViewGroup.FOCUS_BLOCK_DESCENDANTS, projectHeader.getDescendantFocusability());
     }
 
     @Test
-    public void tappingAProjectHeaderActionIconRunsItsActionWithoutTogglingTheAccordion() {
+    public void projectHeaderRowIsNotClickableItselfSoItDoesNotStealTheFirstTapFromTheActionIcons() {
         Context context = themedContext();
-        View projectHeader = LayoutInflater.from(context)
+        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-        int[] toggleCount = {0};
+
+        Assert.assertFalse("a self-clickable row routes ACTION_DOWN through AbsListView row pressed-state handling and consumes the first tap that lands on an action icon",
+            projectHeader.isClickable());
+        Assert.assertFalse(projectHeader.hasOnClickListeners());
+    }
+
+    @Test
+    public void tappingAProjectHeaderActionIconRunsItsActionOnTheFirstTapWithoutTheRowConsumingIt() {
+        Context context = themedContext();
+        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
         boolean[] overviewOpened = {false};
 
-        TermuxSessionsListViewController.applyProjectHeaderRowToggle(
-            projectHeader, "ProjectName", projectKey -> toggleCount[0]++);
         View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
         TermuxSessionsListViewController.applyProjectHeaderIconVisibility(
             overviewIcon, () -> overviewOpened[0] = true);
@@ -180,7 +179,8 @@ public class TermuxSessionsListViewControllerTest {
         overviewIcon.performClick();
 
         Assert.assertTrue("the action icon must perform its own action on a single tap", overviewOpened[0]);
-        Assert.assertEquals("an action-icon tap must not toggle the accordion", 0, toggleCount[0]);
+        Assert.assertFalse("the row must not be clickable, so the action-icon tap cannot also toggle the accordion",
+            projectHeader.isClickable());
     }
 
     @Test
