@@ -9,13 +9,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class ProjectBrowserDesktopViewTest {
-
-    private static final String CONTROLLER_RELATIVE_PATH =
-        "src/main/java/com/termux/app/browser/ProjectBrowserOverlayController.java";
+public class BrowserViewportWebViewClientTest {
 
     private static final String DESKTOP_VIEWPORT_CLIENT_RELATIVE_PATH =
         "src/main/java/com/termux/app/browser/BrowserDesktopViewportWebViewClient.java";
+
+    private static final String MOBILE_VIEWPORT_CLIENT_RELATIVE_PATH =
+        "src/main/java/com/termux/app/browser/BrowserMobileViewportWebViewClient.java";
 
     private static final String INJECTION_CALL =
         "view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null)";
@@ -31,38 +31,18 @@ public class ProjectBrowserDesktopViewTest {
         return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
     }
 
-    private String readControllerSource() throws IOException {
-        return readModuleSource(CONTROLLER_RELATIVE_PATH);
-    }
-
     private String readDesktopViewportClientSource() throws IOException {
         return readModuleSource(DESKTOP_VIEWPORT_CLIENT_RELATIVE_PATH);
     }
 
-    @Test
-    public void desktopUserAgentIsTheDesktopViewConfiguration() {
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Mobile"));
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Android"));
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("wv"));
+    private String readMobileViewportClientSource() throws IOException {
+        return readModuleSource(MOBILE_VIEWPORT_CLIENT_RELATIVE_PATH);
     }
 
     @Test
     public void desktopViewportScriptForcesFullDesktopWidth() {
         Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT.contains("width=1280"));
         Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT.contains("meta[name=\"viewport\"]"));
-    }
-
-    @Test
-    public void projectBrowserAppliesDesktopUserAgent() throws IOException {
-        String source = readControllerSource();
-        Assert.assertTrue(source.contains(
-            "settings.setUserAgentString(BrowserUserAgent.DESKTOP_USER_AGENT)"));
-    }
-
-    @Test
-    public void projectBrowserUsesSharedDesktopViewportWebViewClient() throws IOException {
-        String source = readControllerSource();
-        Assert.assertTrue(source.contains("new BrowserDesktopViewportWebViewClient()"));
     }
 
     @Test
@@ -106,9 +86,15 @@ public class ProjectBrowserDesktopViewTest {
     }
 
     @Test
-    public void projectBrowserKeepsWideViewportAndOverviewMode() throws IOException {
-        String source = readControllerSource();
-        Assert.assertTrue(source.contains("settings.setUseWideViewPort(true)"));
-        Assert.assertTrue(source.contains("settings.setLoadWithOverviewMode(true)"));
+    public void mobileViewportClientDoesNotInjectDesktopViewportScript() throws IOException {
+        String source = readMobileViewportClientSource();
+        Assert.assertFalse(source.contains(INJECTION_CALL));
+        Assert.assertFalse(source.contains(INJECTION_INVOCATION));
+    }
+
+    @Test
+    public void mobileViewportClientInheritsHttpAuthHandling() throws IOException {
+        String source = readMobileViewportClientSource();
+        Assert.assertTrue(source.contains("extends BrowserHttpAuthWebViewClient"));
     }
 }

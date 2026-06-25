@@ -1,6 +1,5 @@
 package com.termux.app.browser;
 
-import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -8,7 +7,6 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebBackForwardList;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
@@ -79,25 +77,14 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         }).attach();
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
     private void configureWebView() {
-        WebSettings settings = mWebView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUserAgentString(BrowserUserAgent.DESKTOP_USER_AGENT);
-        settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
-        BrowserWebAuthentication.apply(settings);
+        BrowserMobileWebViewConfigurator.apply(mWebView.getSettings());
 
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
         mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
             BrowserPullToRefreshGate.canWebViewScrollUp(mWebView.getScrollY()));
 
-        mWebView.setWebViewClient(new BrowserDesktopViewportWebViewClient() {
+        mWebView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
