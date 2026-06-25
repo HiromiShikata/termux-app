@@ -84,12 +84,13 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
             launchInstall(apkFile);
             return;
         }
-        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
+        AlertDialog installDialog = DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
             .setTitle(R.string.update_tag_install_dialog_title)
             .setMessage(activity.getString(R.string.update_tag_install_dialog_message, latestVersionName, reason))
             .setPositiveButton(R.string.apk_update_dialog_install,
                 (dialog, which) -> launchInstall(apkFile))
             .setNegativeButton(R.string.apk_update_dialog_cancel, null));
+        UpdateDialogContentTextSizeReducer.reduceContentTextToHalf(installDialog);
     }
 
     private void launchInstall(File apkFile) {
