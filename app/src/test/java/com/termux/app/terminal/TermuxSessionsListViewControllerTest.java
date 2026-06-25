@@ -145,6 +145,45 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void tappingTheProjectHeaderRowTogglesThatProjectsCollapsedState() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+        String[] toggledProjectKey = {null};
+
+        TermuxSessionsListViewController.applyProjectHeaderRowToggle(
+            projectHeader, "ProjectName", projectKey -> toggledProjectKey[0] = projectKey);
+
+        Assert.assertTrue("the header row must be clickable so a tap outside the action icons toggles the accordion",
+            projectHeader.isClickable());
+        Assert.assertTrue(projectHeader.hasOnClickListeners());
+
+        projectHeader.performClick();
+
+        Assert.assertEquals("ProjectName", toggledProjectKey[0]);
+    }
+
+    @Test
+    public void tappingAProjectHeaderActionIconRunsItsActionWithoutTogglingTheAccordion() {
+        Context context = themedContext();
+        View projectHeader = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+        int[] toggleCount = {0};
+        boolean[] overviewOpened = {false};
+
+        TermuxSessionsListViewController.applyProjectHeaderRowToggle(
+            projectHeader, "ProjectName", projectKey -> toggleCount[0]++);
+        View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
+        TermuxSessionsListViewController.applyProjectHeaderIconVisibility(
+            overviewIcon, () -> overviewOpened[0] = true);
+
+        overviewIcon.performClick();
+
+        Assert.assertTrue("the action icon must perform its own action on a single tap", overviewOpened[0]);
+        Assert.assertEquals("an action-icon tap must not toggle the accordion", 0, toggleCount[0]);
+    }
+
+    @Test
     public void projectHeaderTitleAppendsSessionCountInParenthesesAfterTheName() {
         Assert.assertEquals("ProjectName (3)",
             TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 3));
