@@ -3,6 +3,10 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public final class SessionNewActivityState {
 
     @NonNull
@@ -23,18 +27,34 @@ public final class SessionNewActivityState {
     @Nullable
     private final Long mLastUserInputTimeMillis;
 
+    @Nullable
+    private final List<String> mUnacknowledgedCallReasons;
+
     public SessionNewActivityState(@NonNull String sessionName,
                                    @Nullable Long lastOutputActivityTimeMillis,
                                    @Nullable Long lastExplicitCallTimeMillis,
                                    @Nullable String lastExplicitCallReason,
                                    @Nullable Long lastSeenTimeMillis,
                                    @Nullable Long lastUserInputTimeMillis) {
+        this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
+            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis, null);
+    }
+
+    public SessionNewActivityState(@NonNull String sessionName,
+                                   @Nullable Long lastOutputActivityTimeMillis,
+                                   @Nullable Long lastExplicitCallTimeMillis,
+                                   @Nullable String lastExplicitCallReason,
+                                   @Nullable Long lastSeenTimeMillis,
+                                   @Nullable Long lastUserInputTimeMillis,
+                                   @Nullable List<String> unacknowledgedCallReasons) {
         mSessionName = sessionName;
         mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
         mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
         mLastExplicitCallReason = lastExplicitCallReason;
         mLastSeenTimeMillis = lastSeenTimeMillis;
         mLastUserInputTimeMillis = lastUserInputTimeMillis;
+        mUnacknowledgedCallReasons = unacknowledgedCallReasons == null
+            ? null : Collections.unmodifiableList(new ArrayList<>(unacknowledgedCallReasons));
     }
 
     @NonNull
@@ -65,5 +85,10 @@ public final class SessionNewActivityState {
     @Nullable
     public Long getLastUserInputTimeMillis() {
         return mLastUserInputTimeMillis;
+    }
+
+    @Nullable
+    public List<String> getUnacknowledgedCallReasons() {
+        return mUnacknowledgedCallReasons;
     }
 }

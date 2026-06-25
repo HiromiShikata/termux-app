@@ -489,4 +489,114 @@ public class SessionNewActivityStoreTest {
 
         Assert.assertEquals("needs approval", afterRestart.getLastExplicitCallReason("worker"));
     }
+
+    @Test
+    public void unacknowledgedCallReasonsAreEmptyForUnknownSession() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("never-called").isEmpty());
+    }
+
+    @Test
+    public void multipleExplicitCallsAccumulateAllUnacknowledgedReasons() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordExplicitCall("worker", 2_000L, "second reason");
+        store.recordExplicitCall("worker", 3_000L, "third reason");
+
+        Assert.assertEquals(
+            java.util.Arrays.asList("first reason", "second reason", "third reason"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
+    public void explicitCallWithEmptyReasonDoesNotAddToUnacknowledgedReasons() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordExplicitCall("worker", 2_000L, "");
+        store.recordExplicitCall("worker", 3_000L, "   ");
+
+        Assert.assertEquals(
+            Collections.singletonList("first reason"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
+    public void userReplyClearsUnacknowledgedCallReasons() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordExplicitCall("worker", 2_000L, "second reason");
+
+        store.recordUserInput("worker", 3_000L);
+
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+    }
+
+    @Test
+    public void newCallAfterReplyStartsAFreshUnacknowledgedReasonsList() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordUserInput("worker", 2_000L);
+
+        store.recordExplicitCall("worker", 3_000L, "third reason");
+
+        Assert.assertEquals(
+            Collections.singletonList("third reason"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
+    public void purgeSessionClearsUnacknowledgedCallReasons() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+
+        store.purgeSession("worker");
+
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+    }
+
+    @Test
+    public void pruneToSessionNamesDropsUnacknowledgedReasonsForUnknownNames() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("alive", 1_000L, "alive reason");
+        store.recordExplicitCall("gone", 2_000L, "gone reason");
+
+        store.pruneToSessionNames(new HashSet<>(Collections.singletonList("alive")));
+
+        Assert.assertEquals(
+            Collections.singletonList("alive reason"),
+            store.getUnacknowledgedCallReasons("alive"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("gone").isEmpty());
+    }
+
+    @Test
+    public void unacknowledgedCallReasonsSurvivePersistenceReload() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
+        beforeRestart.recordExplicitCall("worker", 1_000L, "first reason");
+        beforeRestart.recordExplicitCall("worker", 2_000L, "second reason");
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(
+            java.util.Arrays.asList("first reason", "second reason"),
+            afterRestart.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
+    public void getUnacknowledgedCallReasonsReturnsImmutableCopy() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+
+        try {
+            store.getUnacknowledgedCallReasons("worker").add("mutated");
+            Assert.fail("Expected returned list to be immutable");
+        } catch (UnsupportedOperationException expected) {
+            // The store must not expose a mutable view of its internal reasons list.
+        }
+
+        Assert.assertEquals(
+            Collections.singletonList("first reason"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
 }

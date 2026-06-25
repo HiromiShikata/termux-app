@@ -108,4 +108,27 @@ public class SessionNewActivityStateSerializerTest {
 
         Assert.assertTrue(result.isEmpty());
     }
+
+    @Test
+    public void roundTripPreservesUnacknowledgedCallReasons() throws JSONException {
+        List<SessionNewActivityState> states = Arrays.asList(
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, "second reason", 3_000L, 4_000L,
+                Arrays.asList("first reason", "second reason")));
+
+        List<SessionNewActivityState> result = serializer.deserialize(serializer.serialize(states));
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(
+            Arrays.asList("first reason", "second reason"),
+            result.get(0).getUnacknowledgedCallReasons());
+    }
+
+    @Test
+    public void legacyEntryWithoutUnacknowledgedCallReasonsDeserializesToNull() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"lastExplicitCallTimeMillis\":1000,\"lastExplicitCallReason\":\"needs approval\"}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertNull(result.get(0).getUnacknowledgedCallReasons());
+    }
 }
