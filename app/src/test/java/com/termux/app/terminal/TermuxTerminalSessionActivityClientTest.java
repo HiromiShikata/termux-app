@@ -58,4 +58,31 @@ public class TermuxTerminalSessionActivityClientTest {
         Assert.assertEquals(2,
             TermuxTerminalSessionActivityClient.wrapAroundSessionIndex(0, 3, false));
     }
+
+    @Test
+    public void closingNonCurrentSessionPreservesCurrentSession() {
+        boolean finishedSessionWasCurrent = false;
+        boolean currentSessionStillPresent = true;
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.shouldReselectCurrentSessionAfterRemoval(
+                finishedSessionWasCurrent, currentSessionStillPresent));
+    }
+
+    @Test
+    public void closingCurrentSessionSelectsNextVisibleSession() {
+        boolean finishedSessionWasCurrent = true;
+        boolean currentSessionStillPresent = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldReselectCurrentSessionAfterRemoval(
+                finishedSessionWasCurrent, currentSessionStillPresent));
+    }
+
+    @Test
+    public void reselectsWhenCurrentSessionNoLongerPresentEvenIfNotTheFinishedSession() {
+        boolean finishedSessionWasCurrent = false;
+        boolean currentSessionStillPresent = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldReselectCurrentSessionAfterRemoval(
+                finishedSessionWasCurrent, currentSessionStillPresent));
+    }
 }
