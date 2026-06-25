@@ -149,4 +149,66 @@ public class OutputTagScannerTest {
         // Re-scan: nothing new.
         assertTrue(scanner.newValues("<tag>dup</tag>\nline\n<tag>dup</tag>\n").isEmpty());
     }
+
+    @Test
+    public void doesNotReFireAnEarlierValueWhenAReFedWindowShowsItWhileTheNewerValueScrolledOffTheTail() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        // Two distinct values fire over the session.
+        assertEquals(List.of("first"), scanner.newValues("<tag>first</tag>\n"));
+        assertEquals(List.of("second"),
+            scanner.newValues("<tag>first</tag>\n<tag>second</tag>\n"));
+
+        // The viewport is re-fed (bottom sheet opened / session switched) showing the older value at
+        // the front while the newer value is no longer in the rendered window, so the fired tail no
+        // longer prefixes the window. The older value MUST NOT re-fire.
+        assertTrue(scanner.newValues("<tag>first</tag>\nplain output\n").isEmpty());
+    }
+
+    @Test
+    public void stillFiresAGenuinelyNewValueAfterAReFedWindowShowedOnlyOlderFiredValues() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        assertEquals(List.of("first"), scanner.newValues("<tag>first</tag>\n"));
+        assertEquals(List.of("second"),
+            scanner.newValues("<tag>first</tag>\n<tag>second</tag>\n"));
+        assertTrue(scanner.newValues("<tag>first</tag>\nplain output\n").isEmpty());
+
+        // A genuinely new value appended later still fires once.
+        assertEquals(List.of("third"),
+            scanner.newValues("<tag>first</tag>\nplain output\n<tag>third</tag>\n"));
+        assertTrue(scanner.newValues("<tag>first</tag>\nplain output\n<tag>third</tag>\n").isEmpty());
+    }
+
+    @Test
+    public void firesANewValueShownRightAfterAnOlderValueWhenTheInteriorValueScrolledOut() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        assertEquals(List.of("first"), scanner.newValues("<tag>first</tag>\n"));
+        assertEquals(List.of("middle"),
+            scanner.newValues("<tag>first</tag>\n<tag>middle</tag>\n"));
+
+        // The interior value scrolled out of the window, so the window shows the oldest value at the
+        // front immediately followed by a genuinely new value. Only the new value fires; the older
+        // value does not re-fire.
+        assertEquals(List.of("newest"),
+            scanner.newValues("<tag>first</tag>\n<tag>newest</tag>\n"));
+        // Re-scanning that same window fires nothing.
+        assertTrue(scanner.newValues("<tag>first</tag>\n<tag>newest</tag>\n").isEmpty());
+    }
+
+    @Test
+    public void firesAGenuinelyNewOccurrenceOfARepeatedValueAfterAReFedWindowAndDoesNotReFireOnReScan() {
+        OutputTagScanner scanner = trimNormalizingScanner();
+
+        assertEquals(List.of("repeat"), scanner.newValues("<tag>repeat</tag>\n"));
+        assertEquals(List.of("other"),
+            scanner.newValues("<tag>repeat</tag>\n<tag>other</tag>\n"));
+        assertTrue(scanner.newValues("<tag>repeat</tag>\nplain\n").isEmpty());
+
+        // A second genuine occurrence of the repeated value appears later: it fires exactly once.
+        assertEquals(List.of("repeat"),
+            scanner.newValues("<tag>repeat</tag>\nplain\n<tag>repeat</tag>\n"));
+        assertTrue(scanner.newValues("<tag>repeat</tag>\nplain\n<tag>repeat</tag>\n").isEmpty());
+    }
 }
