@@ -403,6 +403,22 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void lastUserInputAgeLabelReflectsRecordedUserInputInEnglish() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordUserInput("worker", 1_000L);
+
+        Assert.assertEquals("5s ago", store.lastUserInputAgeLabel("worker", 6_000L));
+    }
+
+    @Test
+    public void lastUserInputAgeLabelIsNullWhenUserInputUnknown() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        Assert.assertNull(store.lastUserInputAgeLabel("worker", 6_000L));
+    }
+
+    @Test
     public void lastOutputActivityAgeLabelIsNullWhenOutputActivityUnknown() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L);

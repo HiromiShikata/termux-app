@@ -2615,6 +2615,10 @@ public final class TerminalEmulator {
         mAutoScrollDisabled = !mAutoScrollDisabled;
     }
 
+    public void setAutoScrollDisabled(boolean autoScrollDisabled) {
+        mAutoScrollDisabled = autoScrollDisabled;
+    }
+
 
     /** Reset terminal state so user can interact with it regardless of present state. */
     public void reset() {

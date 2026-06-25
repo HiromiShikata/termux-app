@@ -603,6 +603,32 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             updateSessionProjectStoryBar(currentSessionRow);
         }
         updatePendingCallToUserBar(sessionName);
+        updateSessionLastReplyBar(sessionName);
+    }
+
+    private void updateSessionLastReplyBar(@Nullable String sessionName) {
+        TextView lastReplyBar = mActivity.findViewById(R.id.session_last_reply_bar);
+        if (lastReplyBar == null) return;
+
+        SessionLastReplyLine line = resolveSessionLastReplyLine(sessionName);
+        if (line.isVisible()) {
+            lastReplyBar.setText(
+                mActivity.getString(R.string.session_last_reply_label, line.getAgeLabel()));
+            lastReplyBar.setVisibility(View.VISIBLE);
+        } else {
+            lastReplyBar.setText("");
+            lastReplyBar.setVisibility(View.GONE);
+        }
+    }
+
+    @NonNull
+    private SessionLastReplyLine resolveSessionLastReplyLine(@Nullable String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null || sessionName == null) {
+            return SessionLastReplyLine.of(null);
+        }
+        return SessionLastReplyLine.of(
+            store.lastUserInputAgeLabel(sessionName, System.currentTimeMillis()));
     }
 
     private void updatePendingCallToUserBar(@Nullable String sessionName) {
@@ -656,6 +682,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             return;
         }
 
+        emulator.setAutoScrollDisabled(true);
         terminalView.setTopRow(targetTopRow);
         terminalView.invalidate();
     }
