@@ -54,6 +54,7 @@
     <string name="action_copy_session_name">Copy session name</string>
     <string name="action_rename_session">Rename</string>
     <string name="action_hide_session">Hide</string>
+    <string name="action_kill_host_session">Kill host session</string>
     <string name="action_delete_session">Delete</string>
     <string name="action_create_named_session_confirm">Create</string>
     <string name="action_toggle_session_navigation_disabled">Skip this session when switching with volume keys</string>

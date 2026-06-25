@@ -733,6 +733,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             setCurrentSession(currentSession);
     }
 
+    public void killHostSession(final TerminalSession sessionToKill) {
+        if (sessionToKill == null) return;
+
+        String killCommand = HostTmuxSessionKillCommand.forSessionName(sessionToKill.mSessionName);
+        if (killCommand != null) {
+            sessionToKill.write(killCommand);
+        }
+        deleteSession(sessionToKill);
+    }
+
     private void renameSession(TerminalSession sessionToRename, String text) {
         if (sessionToRename == null) return;
         sessionToRename.mSessionName = text;
