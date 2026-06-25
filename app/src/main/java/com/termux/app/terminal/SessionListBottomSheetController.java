@@ -102,7 +102,7 @@ public class SessionListBottomSheetController {
             return;
         }
         if (shouldHideBrowserOnOpen(browserController.isBrowserVisible())) {
-            browserController.showTerminal();
+            browserController.hideBrowserForSessionOverlay();
         }
         ProjectBrowserOverlayController projectBrowserOverlayController = mActivity.getProjectBrowserOverlayController();
         if (projectBrowserOverlayController != null && projectBrowserOverlayController.isVisible()) {

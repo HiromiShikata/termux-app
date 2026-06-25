@@ -1110,9 +1110,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         String newSessionHandle = (session == null) ? null : session.mHandle;
         boolean switchingSession =
             BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
-        if (switchingSession) {
-            mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, mBrowserVisible);
-        }
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
@@ -1202,8 +1199,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void showTerminal() {
-        mBrowserVisible = false;
         mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, false);
+        hideBrowserViews();
+    }
+
+    public void hideBrowserForSessionOverlay() {
+        hideBrowserViews();
+    }
+
+    private void hideBrowserViews() {
+        mBrowserVisible = false;
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);

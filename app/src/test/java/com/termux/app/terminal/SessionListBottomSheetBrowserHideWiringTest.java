@@ -35,7 +35,7 @@ public class SessionListBottomSheetBrowserHideWiringTest {
     }
 
     @Test
-    public void hideBrowserStepGatesOnVisibilityAndRestoresTerminalWithoutLoadingAnyUrl() throws IOException {
+    public void hideBrowserStepGatesOnVisibilityAndHidesBrowserOverlayWithoutForgettingItOrLoadingAnyUrl() throws IOException {
         String source = readControllerSource();
         int methodIndex = source.indexOf("private void hideBrowserIfShowing() {");
         Assert.assertTrue(methodIndex >= 0);
@@ -44,7 +44,8 @@ public class SessionListBottomSheetBrowserHideWiringTest {
         String methodBody = source.substring(methodIndex, methodEnd);
         Assert.assertTrue(methodBody.contains("isBrowserVisible()"));
         Assert.assertTrue(methodBody.contains("shouldHideBrowserOnOpen"));
-        Assert.assertTrue(methodBody.contains("showTerminal()"));
+        Assert.assertTrue(methodBody.contains("hideBrowserForSessionOverlay()"));
+        Assert.assertFalse(methodBody.contains("showTerminal()"));
         Assert.assertFalse(methodBody.contains("loadUrl"));
         Assert.assertFalse(methodBody.contains("openUrlInNewTab"));
         Assert.assertFalse(methodBody.contains("showBrowser"));
