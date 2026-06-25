@@ -280,6 +280,8 @@ public final class TerminalEmulator {
 
     private long mVisibleContentVersion = 0L;
 
+    private long mRealOutputVersion = 0L;
+
     /** If automatic scrolling of terminal is disabled */
     private boolean mAutoScrollDisabled;
 
@@ -518,6 +520,25 @@ public final class TerminalEmulator {
     public void append(byte[] buffer, int length) {
         for (int i = 0; i < length; i++)
             processByte(buffer[i]);
+    }
+
+    /**
+     * Append a slice of session output that has already had the user's keystroke echo stripped, while measuring how
+     * many distinct screen rows it changes. A genuinely idle terminal user interface such as a tmux status bar
+     * repaints only its own fixed row each period, so it changes a single row; real program output lands on the
+     * content area and changes more than one row. The real-output version advances only in the latter case, so the
+     * session list "out:" age keeps growing while only periodic single-row redraws happen.
+     */
+    public void appendGenuineOutput(byte[] buffer, int offset, int length) {
+        mScreen.resetRowsWrittenSinceReset();
+        for (int i = 0; i < length; i++)
+            processByte(buffer[offset + i]);
+        if (mScreen.getDistinctRowsWrittenSinceReset() > 1)
+            mRealOutputVersion++;
+    }
+
+    public long getRealOutputVersion() {
+        return mRealOutputVersion;
     }
 
     private void processByte(byte byteToProcess) {

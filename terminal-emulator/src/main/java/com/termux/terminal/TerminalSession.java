@@ -81,8 +81,6 @@ public final class TerminalSession extends TerminalOutput {
 
     private final TerminalInputEchoFilter mInputEchoFilter = new TerminalInputEchoFilter();
 
-    private long mGenuineOutputVersion = 0L;
-
     private static final String LOG_TAG = "TerminalSession";
 
     public TerminalSession(String shellPath, String cwd, String[] args, String[] env, Integer transcriptRows, TerminalSessionClient client) {
@@ -243,8 +241,8 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator == null ? 0L : mEmulator.getScreenContentVersion();
     }
 
-    public long getGenuineOutputVersion() {
-        return mGenuineOutputVersion;
+    public long getRealOutputVersion() {
+        return mEmulator == null ? 0L : mEmulator.getRealOutputVersion();
     }
 
     /** Notify the {@link #mClient} that the screen has changed. */
@@ -396,9 +394,9 @@ public final class TerminalSession extends TerminalOutput {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
             if (bytesRead > 0) {
                 mTotalBytesProcessed += bytesRead;
-                int genuineOutputBytes = mInputEchoFilter.countGenuineOutput(mReceiveBuffer, 0, bytesRead);
-                if (genuineOutputBytes > 0) mGenuineOutputVersion += genuineOutputBytes;
-                mEmulator.append(mReceiveBuffer, bytesRead);
+                int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
+                if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
+                mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, bytesRead - genuineOffset);
                 notifyScreenUpdate();
             }
 
