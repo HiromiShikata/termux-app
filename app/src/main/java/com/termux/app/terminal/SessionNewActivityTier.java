@@ -10,6 +10,8 @@ public enum SessionNewActivityTier {
 
     static final long YELLOW_MIN_AWAY_MILLIS = 30_000L;
 
+    static final long YELLOW_MAX_AGE_MILLIS = 10L * 60L * 1000L;
+
     public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
                                                  @Nullable Long lastExplicitCallTimeMillis,
                                                  @Nullable Long lastSeenTimeMillis) {
@@ -29,10 +31,18 @@ public enum SessionNewActivityTier {
         if (isPending(lastExplicitCallTimeMillis, lastSeenTimeMillis, 0L, nowMillis)) {
             return RED;
         }
-        if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis, YELLOW_MIN_AWAY_MILLIS, nowMillis)) {
+        if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis, YELLOW_MIN_AWAY_MILLIS, nowMillis)
+            && isWithinRecencyWindow(lastOutputActivityTimeMillis, nowMillis)) {
             return YELLOW;
         }
         return NONE;
+    }
+
+    private static boolean isWithinRecencyWindow(@Nullable Long lastOutputActivityTimeMillis, long nowMillis) {
+        if (lastOutputActivityTimeMillis == null) {
+            return false;
+        }
+        return nowMillis - lastOutputActivityTimeMillis <= YELLOW_MAX_AGE_MILLIS;
     }
 
     private static boolean isPending(@Nullable Long signalTimeMillis, @Nullable Long lastSeenTimeMillis,
