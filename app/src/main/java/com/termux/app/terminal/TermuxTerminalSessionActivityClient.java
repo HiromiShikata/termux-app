@@ -181,9 +181,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
 
     @Override
-    public void onTextChanged(@NonNull TerminalSession changedSession) {
+    public void onGenuineOutput(@NonNull TerminalSession changedSession) {
         recordNewOutputActivityForSession(changedSession);
+    }
 
+    @Override
+    public void onTextChanged(@NonNull TerminalSession changedSession) {
         // The explicit-call and app-update tags MUST be detected for every session that produces
         // output, not only the session currently being viewed, so that a non-current or backgrounded
         // session that calls the user records its red dot without the owner having to open it. These
@@ -358,7 +361,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordNewOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         if (!mSessionOutputProgressTracker.hasNewOutput(
-                session.mSessionName, session.getRealOutputVersion())) {
+                session.mSessionName, session.getNeverResetScrolledLineCount())) {
             return;
         }
         recordOutputActivityForSession(session);

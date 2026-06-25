@@ -250,6 +250,16 @@ public final class TerminalSession extends TerminalOutput {
         mClient.onTextChanged(this);
     }
 
+    /**
+     * Notify the {@link #mClient} that the running process genuinely emitted output. This fires only
+     * from the pseudo-teletype input path after {@link TerminalEmulator#appendGenuineOutput}, never
+     * from scrolling, viewport changes, or any redraw, so output-activity recording cannot be
+     * triggered by anything other than real process output.
+     */
+    protected void notifyGenuineOutput() {
+        mClient.onGenuineOutput(this);
+    }
+
     /** Reset state for terminal emulator state. */
     public void reset() {
         mEmulator.reset();
@@ -398,6 +408,7 @@ public final class TerminalSession extends TerminalOutput {
                 if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
                 mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, bytesRead - genuineOffset);
                 notifyScreenUpdate();
+                notifyGenuineOutput();
             }
 
             if (msg.what == MSG_PROCESS_EXITED) {

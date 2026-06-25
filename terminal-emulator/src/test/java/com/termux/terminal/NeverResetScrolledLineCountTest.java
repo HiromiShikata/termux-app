@@ -41,4 +41,29 @@ public class NeverResetScrolledLineCountTest extends TerminalTestCase {
         assertEquals(countBeforeClear, mTerminal.getNeverResetScrolledLineCount());
         assertTrue(countBeforeClear > 0L);
     }
+
+    public void testAlternateBufferInternalScrollDoesNotAdvanceCounter() {
+        withTerminalSized(10, 3);
+        enterString("a\r\nb\r\nc");
+        enterString("\033[?1049h");
+        assertTrue(mTerminal.isAlternateBufferActive());
+        long countAfterEnteringAltBuffer = mTerminal.getNeverResetScrolledLineCount();
+
+        enterString("x\r\ny\r\nz\r\nw\r\nv\r\nu");
+
+        assertEquals("internal scrolling in the alternate screen buffer must not advance the scrolled-line count",
+            countAfterEnteringAltBuffer, mTerminal.getNeverResetScrolledLineCount());
+    }
+
+    public void testAlternateBufferScrollStillAdvancesRenderScrollCounter() {
+        withTerminalSized(10, 3);
+        enterString("\033[?1049h");
+        assertTrue(mTerminal.isAlternateBufferActive());
+        mTerminal.clearScrollCounter();
+
+        enterString("x\r\ny\r\nz\r\nw\r\nv\r\nu");
+
+        assertTrue("render-side scroll counter must still track alt-buffer scrolling so text selection follows it",
+            mTerminal.getScrollCounter() > 0);
+    }
 }
