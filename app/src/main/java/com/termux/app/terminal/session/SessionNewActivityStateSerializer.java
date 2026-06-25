@@ -16,6 +16,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_LAST_EXPLICIT_CALL_TIME_MILLIS = "lastExplicitCallTimeMillis";
     private static final String KEY_LAST_EXPLICIT_CALL_REASON = "lastExplicitCallReason";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
+    private static final String KEY_LAST_USER_INPUT_TIME_MILLIS = "lastUserInputTimeMillis";
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
@@ -30,6 +31,8 @@ public final class SessionNewActivityStateSerializer {
                 object.put(KEY_LAST_EXPLICIT_CALL_REASON, state.getLastExplicitCallReason());
             if (state.getLastSeenTimeMillis() != null)
                 object.put(KEY_LAST_SEEN_TIME_MILLIS, state.getLastSeenTimeMillis().longValue());
+            if (state.getLastUserInputTimeMillis() != null)
+                object.put(KEY_LAST_USER_INPUT_TIME_MILLIS, state.getLastUserInputTimeMillis().longValue());
             array.put(object);
         }
         return array.toString();
@@ -51,9 +54,11 @@ public final class SessionNewActivityStateSerializer {
             Long lastExplicitCallTimeMillis = optionalLong(object, KEY_LAST_EXPLICIT_CALL_TIME_MILLIS);
             String lastExplicitCallReason = optionalString(object, KEY_LAST_EXPLICIT_CALL_REASON);
             Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
+            Long lastUserInputTimeMillis = optionalLong(object, KEY_LAST_USER_INPUT_TIME_MILLIS);
 
             states.add(new SessionNewActivityState(sessionName, lastOutputActivityTimeMillis,
-                lastExplicitCallTimeMillis, lastExplicitCallReason, lastSeenTimeMillis));
+                lastExplicitCallTimeMillis, lastExplicitCallReason, lastSeenTimeMillis,
+                lastUserInputTimeMillis));
         }
         return states;
     }

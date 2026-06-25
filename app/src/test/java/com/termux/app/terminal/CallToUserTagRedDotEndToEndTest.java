@@ -38,15 +38,13 @@ public class CallToUserTagRedDotEndToEndTest {
     }
 
     @Test
-    public void redDotOnABackgroundCalledSessionSurvivesUntilThatSessionIsViewed() {
+    public void redDotOnABackgroundCalledSessionSurvivesViewingAndClearsOnlyWhenTheUserReplies() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         CallToUserTagController controller = controllerRecordingInto(store);
 
         controller.onSessionTextChanged(CALLED_SESSION,
             "<call-to-user>needs approval</call-to-user>");
 
-        // While the called session is in the background, only the active session's seen
-        // is ticked; the called session's seen is never recorded, so its red dot stays.
         long nowMillis = System.currentTimeMillis();
         for (long tick = nowMillis + 1_000L; tick <= nowMillis + 30_000L; tick += 1_000L) {
             store.recordSeen(OTHER_SESSION, tick);
@@ -54,14 +52,17 @@ public class CallToUserTagRedDotEndToEndTest {
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
 
-        // Viewing the called session records its seen and clears the red dot.
         store.recordSeen(CALLED_SESSION, nowMillis + 31_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
+
+        store.recordUserInput(CALLED_SESSION, nowMillis + 32_000L);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
     }
 
     @Test
-    public void redDotOnTheActivelyViewedCalledSessionClearsOnTheNextSeenTick() {
+    public void redDotOnTheActivelyViewedCalledSessionPersistsThroughSeenTicksUntilTheUserReplies() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         CallToUserTagController controller = controllerRecordingInto(store);
 
@@ -70,10 +71,12 @@ public class CallToUserTagRedDotEndToEndTest {
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
 
-        // The actively viewed session's per-second seen tick records seen unconditionally,
-        // so the red dot clears within about a second without a manual switch.
         long nowMillis = System.currentTimeMillis();
         store.recordSeen(CALLED_SESSION, nowMillis + 1_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
+
+        store.recordUserInput(CALLED_SESSION, nowMillis + 2_000L);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
     }

@@ -52,25 +52,27 @@ public class SessionBellTwoTimestampBehaviorTest {
     }
 
     @Test
-    public void viewingASessionClearsTheSignalOnceTheSeenTimeAdvancesPastIt() {
+    public void viewingASessionDoesNotClearTheRedCallEvenAfterTheSeenTimeAdvancesPastIt() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("viewed", 5_000L);
 
         store.recordSeen("viewed", 6_100L);
 
-        Assert.assertFalse(indicatorFor(store, "viewed", 6_200L).isVisible());
+        Assert.assertTrue(indicatorFor(store, "viewed", 6_200L).isVisible());
+        Assert.assertEquals(SessionNewActivityTier.RED, indicatorFor(store, "viewed", 6_200L).getTier());
     }
 
     @Test
-    public void aSignalArrivingAfterTheSessionWasSeenReappears() {
+    public void aCallArrivingAfterTheUserRepliedReappears() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session", 1_000L);
-        store.recordSeen("session", 2_000L);
+        store.recordUserInput("session", 2_000L);
         Assert.assertFalse(indicatorFor(store, "session", 2_500L).isVisible());
 
         store.recordExplicitCall("session", 9_000L);
 
         Assert.assertTrue(indicatorFor(store, "session", 9_500L).isVisible());
+        Assert.assertEquals(SessionNewActivityTier.RED, indicatorFor(store, "session", 9_500L).getTier());
     }
 
     @Test

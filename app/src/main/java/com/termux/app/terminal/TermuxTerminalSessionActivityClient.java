@@ -418,14 +418,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         store.recordSeen(sessionName, System.currentTimeMillis());
     }
 
-    private void acknowledgeExplicitCallOnGenuineSwitch(@NonNull TerminalSession session) {
-        if (session.mSessionName == null) return;
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) return;
-        if (!store.hasPendingExplicitCall(session.mSessionName)) return;
-        store.recordSeen(session.mSessionName, System.currentTimeMillis());
-    }
-
     public void startActiveSessionSeenTick() {
         if (mActivity.isVisible())
             recordActiveSessionSeen();
@@ -519,7 +511,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         boolean switchingSessions = previousSession != null && previousSession != session;
 
         if (switchingSessions) {
-            acknowledgeExplicitCallOnGenuineSwitch(session);
             TtsManager ttsManager = mActivity.getTtsManager();
             if (ttsManager != null) ttsManager.stop();
         }

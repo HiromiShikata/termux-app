@@ -73,11 +73,22 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void seenAfterBothSignalsClearsTier() {
+    public void seenAfterBothSignalsLeavesRedBecauseTheUserHasNotReplied() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordOutputActivity("session-one", 1_000L);
         store.recordExplicitCall("session-one", 2_000L);
         store.recordSeen("session-one", 3_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
+    }
+
+    @Test
+    public void userInputAfterBothSignalsClearsTier() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("session-one", 1_000L);
+        store.recordExplicitCall("session-one", 2_000L);
+        store.recordSeen("session-one", 3_000L);
+        store.recordUserInput("session-one", 3_000L);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
     }
@@ -112,20 +123,20 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void seenClearsRedButLeavesNewerOutputActivityAsYellow() {
+    public void userReplyClearsRedButLeavesNewerOutputActivityAsYellow() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session-one", 1_000L);
-        store.recordSeen("session-one", 2_000L);
+        store.recordUserInput("session-one", 2_000L);
         store.recordOutputActivity("session-one", 3_000L);
 
         Assert.assertEquals(SessionNewActivityTier.YELLOW, store.tierFor("session-one"));
     }
 
     @Test
-    public void tierClearedWhenSeenAtExactSignalTime() {
+    public void redClearedWhenUserRepliesAtExactCallTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session-one", 1_000L);
-        store.recordSeen("session-one", 1_000L);
+        store.recordUserInput("session-one", 1_000L);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
     }
@@ -185,7 +196,7 @@ public class SessionNewActivityStoreTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session-one", 1_000L);
         store.recordExplicitCall("session-two", 2_000L);
-        store.recordSeen("session-one", 9_000L);
+        store.recordUserInput("session-one", 9_000L);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-two"));
@@ -234,7 +245,19 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void reconstructedStoreReportsNoneForSessionThatWasSeen() {
+    public void reconstructedStoreReportsNoneForSessionTheUserHasRepliedTo() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordExplicitCall("replied", 5_000L);
+        store.recordUserInput("replied", 9_000L);
+
+        SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, reconstructed.tierFor("replied"));
+    }
+
+    @Test
+    public void reconstructedStoreStillReportsRedForBackgroundSessionThatWasOnlySeen() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
         store.recordExplicitCall("seen", 5_000L);
@@ -242,7 +265,52 @@ public class SessionNewActivityStoreTest {
 
         SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
 
-        Assert.assertEquals(SessionNewActivityTier.NONE, reconstructed.tierFor("seen"));
+        Assert.assertEquals(SessionNewActivityTier.RED, reconstructed.tierFor("seen"));
+    }
+
+    @Test
+    public void recordsAndExposesLastUserInputTimeByName() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        Assert.assertNull(store.getLastUserInputTimeMillis("session-one"));
+
+        store.recordUserInput("session-one", 4_000L);
+
+        Assert.assertEquals(Long.valueOf(4_000L), store.getLastUserInputTimeMillis("session-one"));
+    }
+
+    @Test
+    public void newCallAfterAPriorReplyMakesRedReappear() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("session-one", 1_000L);
+        store.recordUserInput("session-one", 2_000L);
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
+
+        store.recordExplicitCall("session-one", 5_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
+    }
+
+    @Test
+    public void lastUserInputTimeSurvivesPersistenceReload() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
+        beforeRestart.recordExplicitCall("worker", 1_000L);
+        beforeRestart.recordUserInput("worker", 2_000L);
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(Long.valueOf(2_000L), afterRestart.getLastUserInputTimeMillis("worker"));
+        Assert.assertEquals(SessionNewActivityTier.NONE, afterRestart.tierFor("worker"));
+    }
+
+    @Test
+    public void purgeRemovesUserInputTimestamp() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordUserInput("session-one", 1_000L);
+
+        store.purgeSession("session-one");
+
+        Assert.assertNull(store.getLastUserInputTimeMillis("session-one"));
     }
 
     @Test

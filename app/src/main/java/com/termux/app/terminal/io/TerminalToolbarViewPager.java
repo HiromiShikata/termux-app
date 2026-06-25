@@ -15,6 +15,7 @@ import androidx.viewpager.widget.PagerAdapter;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
@@ -124,6 +125,7 @@ public class TerminalToolbarViewPager {
                 if (session.isRunning()) {
                     if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput, submitWhenEmpty)) {
                         session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
+                        recordUserInputForSession(session);
                     }
                 } else {
                     mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
@@ -131,6 +133,13 @@ public class TerminalToolbarViewPager {
                 editText.setText("");
                 mSessionTextInputs.remove(session);
             }
+        }
+
+        private void recordUserInputForSession(@NonNull TerminalSession session) {
+            if (session.mSessionName == null) return;
+            SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+            if (store == null) return;
+            store.recordUserInput(session.mSessionName, System.currentTimeMillis());
         }
 
         void showSubmittedTextInputHistory(final EditText editText) {

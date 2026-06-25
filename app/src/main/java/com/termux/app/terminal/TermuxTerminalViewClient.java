@@ -16,6 +16,8 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
+
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
@@ -480,6 +482,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public boolean onCodePoint(final int codePoint, boolean ctrlDown, TerminalSession session) {
+        recordUserInputForSession(session);
         if (mVirtualFnKeyDown) {
             VirtualFunctionKeyMapper.Result mapping = VirtualFunctionKeyMapper.map(codePoint);
             int resultingKeyCode = mapping.keyCode;
@@ -538,6 +541,13 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         }
 
         return false;
+    }
+
+    private void recordUserInputForSession(@Nullable TerminalSession session) {
+        if (session == null || session.mSessionName == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        store.recordUserInput(session.mSessionName, System.currentTimeMillis());
     }
 
     /**

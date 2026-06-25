@@ -13,10 +13,10 @@ import java.util.Set;
 public class SessionActiveBellSuppressionTest {
 
     @Test
-    public void activeSessionShowsNoDotOnceTheSeenTickHasAdvancedPastTheSignal() {
+    public void activeSessionShowsNoDotOnceTheUserHasRepliedPastTheSignal() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("active", 5_000L);
-        store.recordSeen("active", 5_050L);
+        store.recordUserInput("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "active", 5_050L);
@@ -26,11 +26,11 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void backgroundUnseenSessionStillShowsTheDotWhileTheActiveSessionIsCleared() {
+    public void backgroundUnansweredSessionStillShowsTheDotWhileTheRepliedSessionIsCleared() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("background", 1_000L);
         store.recordExplicitCall("active", 5_000L);
-        store.recordSeen("active", 31_000L);
+        store.recordUserInput("active", 31_000L);
 
         SessionNewActivityIndicator background = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 31_000L);
@@ -40,10 +40,10 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void bothRenderersAgreeThatTheClearedSessionShowsNoDot() {
+    public void bothRenderersAgreeThatTheRepliedSessionShowsNoDot() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("active", 5_000L);
-        store.recordSeen("active", 5_050L);
+        store.recordUserInput("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "active", 5_050L);
@@ -59,10 +59,10 @@ public class SessionActiveBellSuppressionTest {
     }
 
     @Test
-    public void pickerOmitsTheDotForTheSeenCurrentSessionAndKeepsItForTheBackgroundSession() {
+    public void pickerOmitsTheDotForTheRepliedCurrentSessionAndKeepsItForTheBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("active", 5_000L);
-        store.recordSeen("active", 5_050L);
+        store.recordUserInput("active", 5_050L);
         store.recordExplicitCall("background", 1_000L);
 
         long nowMillis = 5_050L;

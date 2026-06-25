@@ -20,16 +20,21 @@ public final class SessionNewActivityState {
     @Nullable
     private final Long mLastSeenTimeMillis;
 
+    @Nullable
+    private final Long mLastUserInputTimeMillis;
+
     public SessionNewActivityState(@NonNull String sessionName,
                                    @Nullable Long lastOutputActivityTimeMillis,
                                    @Nullable Long lastExplicitCallTimeMillis,
                                    @Nullable String lastExplicitCallReason,
-                                   @Nullable Long lastSeenTimeMillis) {
+                                   @Nullable Long lastSeenTimeMillis,
+                                   @Nullable Long lastUserInputTimeMillis) {
         mSessionName = sessionName;
         mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
         mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
         mLastExplicitCallReason = lastExplicitCallReason;
         mLastSeenTimeMillis = lastSeenTimeMillis;
+        mLastUserInputTimeMillis = lastUserInputTimeMillis;
     }
 
     @NonNull
@@ -55,5 +60,10 @@ public final class SessionNewActivityState {
     @Nullable
     public Long getLastSeenTimeMillis() {
         return mLastSeenTimeMillis;
+    }
+
+    @Nullable
+    public Long getLastUserInputTimeMillis() {
+        return mLastUserInputTimeMillis;
     }
 }

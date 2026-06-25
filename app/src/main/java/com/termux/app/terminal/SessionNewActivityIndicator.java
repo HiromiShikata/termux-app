@@ -33,9 +33,11 @@ public final class SessionNewActivityIndicator {
     @NonNull
     public static SessionNewActivityIndicator indicatorFor(@Nullable Long lastOutputActivityTimeMillis,
                                                            @Nullable Long lastExplicitCallTimeMillis,
+                                                           @Nullable Long lastUserInputTimeMillis,
                                                            @Nullable Long lastSeenTimeMillis, long nowMillis) {
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastSeenTimeMillis, nowMillis);
+            lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastUserInputTimeMillis,
+            lastSeenTimeMillis, nowMillis);
         switch (tier) {
             case RED:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.RED,

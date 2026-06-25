@@ -33,6 +33,10 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
             recordSeenForCurrentSession();
         }
 
+        void replyToCurrentSession() {
+            newActivityStore.recordUserInput(sessionNames.get(currentSessionIndex), nowMillis);
+        }
+
         private void recordSeenForCurrentSession() {
             newActivityStore.recordSeen(sessionNames.get(currentSessionIndex), nowMillis);
         }
@@ -80,7 +84,7 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     }
 
     @Test
-    public void immediateSwitchPickerMarksTheJustSwitchedSessionAsCurrentAndClearsItsBellViaSeenTick() {
+    public void immediateSwitchPickerMarksTheJustSwitchedSessionAsCurrentAndKeepsItsRedDotUntilReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session-1", 1_000L);
         FakeSessionRuntime runtime = new FakeSessionRuntime(
@@ -90,15 +94,19 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
         List<SessionPickerOverlayLine> lines = presentAndCaptureRenderedLines(runtime, 1, true);
 
         Assert.assertTrue(lines.get(1).isCurrent());
-        Assert.assertFalse(lines.get(1).isMarked());
-        Assert.assertEquals("", lines.get(1).getNewActivityLabel());
+        Assert.assertTrue(lines.get(1).isMarked());
 
         Assert.assertFalse(lines.get(0).isCurrent());
         Assert.assertTrue(lines.get(0).isMarked());
+
+        runtime.replyToCurrentSession();
+        List<SessionPickerOverlayLine> afterReply = presentAndCaptureRenderedLines(runtime, 1, true);
+        Assert.assertFalse(afterReply.get(1).isMarked());
+        Assert.assertEquals("", afterReply.get(1).getNewActivityLabel());
     }
 
     @Test
-    public void previewFirstPickerMarksTheStillActiveSessionAsCurrentAndClearsItsBellViaSeenTick() {
+    public void previewFirstPickerMarksTheStillActiveSessionAsCurrentAndKeepsItsRedDotUntilReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("session-0", 1_000L);
         store.recordExplicitCall("session-1", 1_000L);
@@ -108,8 +116,12 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
         List<SessionPickerOverlayLine> lines = presentAndCaptureRenderedLines(runtime, 1, false);
 
         Assert.assertTrue(lines.get(0).isCurrent());
-        Assert.assertFalse(lines.get(0).isMarked());
+        Assert.assertTrue(lines.get(0).isMarked());
         Assert.assertFalse(lines.get(1).isCurrent());
         Assert.assertTrue(lines.get(1).isMarked());
+
+        runtime.replyToCurrentSession();
+        List<SessionPickerOverlayLine> afterReply = presentAndCaptureRenderedLines(runtime, 1, false);
+        Assert.assertFalse(afterReply.get(0).isMarked());
     }
 }

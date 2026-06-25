@@ -14,8 +14,9 @@ public enum SessionNewActivityTier {
 
     public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
                                                  @Nullable Long lastExplicitCallTimeMillis,
+                                                 @Nullable Long lastUserInputTimeMillis,
                                                  @Nullable Long lastSeenTimeMillis) {
-        if (isPending(lastExplicitCallTimeMillis, lastSeenTimeMillis, 0L, null)) {
+        if (isExplicitCallUnanswered(lastExplicitCallTimeMillis, lastUserInputTimeMillis)) {
             return RED;
         }
         if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis, 0L, null)) {
@@ -26,9 +27,10 @@ public enum SessionNewActivityTier {
 
     public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
                                                  @Nullable Long lastExplicitCallTimeMillis,
+                                                 @Nullable Long lastUserInputTimeMillis,
                                                  @Nullable Long lastSeenTimeMillis,
                                                  long nowMillis) {
-        if (isPending(lastExplicitCallTimeMillis, lastSeenTimeMillis, 0L, nowMillis)) {
+        if (isExplicitCallUnanswered(lastExplicitCallTimeMillis, lastUserInputTimeMillis)) {
             return RED;
         }
         if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis, YELLOW_MIN_AWAY_MILLIS, nowMillis)
@@ -36,6 +38,14 @@ public enum SessionNewActivityTier {
             return YELLOW;
         }
         return NONE;
+    }
+
+    private static boolean isExplicitCallUnanswered(@Nullable Long lastExplicitCallTimeMillis,
+                                                    @Nullable Long lastUserInputTimeMillis) {
+        if (lastExplicitCallTimeMillis == null) {
+            return false;
+        }
+        return lastUserInputTimeMillis == null || lastExplicitCallTimeMillis > lastUserInputTimeMillis;
     }
 
     private static boolean isWithinRecencyWindow(@Nullable Long lastOutputActivityTimeMillis, long nowMillis) {

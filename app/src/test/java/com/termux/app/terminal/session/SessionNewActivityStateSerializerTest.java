@@ -19,10 +19,10 @@ public class SessionNewActivityStateSerializerTest {
     private final SessionNewActivityStateSerializer serializer = new SessionNewActivityStateSerializer();
 
     @Test
-    public void roundTripPreservesSessionNameOutputActivityExplicitCallAndSeenTimes() throws JSONException {
+    public void roundTripPreservesSessionNameOutputActivityExplicitCallSeenAndUserInputTimes() throws JSONException {
         List<SessionNewActivityState> states = Arrays.asList(
-            new SessionNewActivityState("session-one", 1_000L, 2_000L, "deploy failed", 3_000L),
-            new SessionNewActivityState("session-two", 7_000L, null, null, null));
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, "deploy failed", 3_000L, 4_000L),
+            new SessionNewActivityState("session-two", 7_000L, null, null, null, null));
 
         List<SessionNewActivityState> result = serializer.deserialize(serializer.serialize(states));
 
@@ -32,17 +32,19 @@ public class SessionNewActivityStateSerializerTest {
         Assert.assertEquals(Long.valueOf(2_000L), result.get(0).getLastExplicitCallTimeMillis());
         Assert.assertEquals("deploy failed", result.get(0).getLastExplicitCallReason());
         Assert.assertEquals(Long.valueOf(3_000L), result.get(0).getLastSeenTimeMillis());
+        Assert.assertEquals(Long.valueOf(4_000L), result.get(0).getLastUserInputTimeMillis());
         Assert.assertEquals("session-two", result.get(1).getSessionName());
         Assert.assertEquals(Long.valueOf(7_000L), result.get(1).getLastOutputActivityTimeMillis());
         Assert.assertNull(result.get(1).getLastExplicitCallTimeMillis());
         Assert.assertNull(result.get(1).getLastExplicitCallReason());
         Assert.assertNull(result.get(1).getLastSeenTimeMillis());
+        Assert.assertNull(result.get(1).getLastUserInputTimeMillis());
     }
 
     @Test
     public void serializeUsesSessionNameKey() throws JSONException {
         List<SessionNewActivityState> states = Arrays.asList(
-            new SessionNewActivityState("session-one", 1_000L, 2_000L, "", 3_000L));
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, "", 3_000L, 4_000L));
 
         String serialized = serializer.serialize(states);
 
@@ -80,6 +82,7 @@ public class SessionNewActivityStateSerializerTest {
         Assert.assertEquals(SessionNewActivityTier.NONE, SessionNewActivityTier.resolve(
             state.getLastOutputActivityTimeMillis(),
             state.getLastExplicitCallTimeMillis(),
+            state.getLastUserInputTimeMillis(),
             state.getLastSeenTimeMillis()));
     }
 
