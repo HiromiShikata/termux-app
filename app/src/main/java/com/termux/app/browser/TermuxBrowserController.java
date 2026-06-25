@@ -323,6 +323,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         Button cancelButton = dialogView.findViewById(R.id.browser_edit_url_cancel);
         Button addBookmarkButton = dialogView.findViewById(R.id.browser_edit_url_add_bookmark);
         Button bookmarksButton = dialogView.findViewById(R.id.browser_edit_url_bookmarks);
+        Button openInChromeButton = dialogView.findViewById(R.id.browser_edit_url_open_in_chrome);
 
         goButton.setText(R.string.action_browser_edit_url_confirm);
         copyButton.setText(R.string.action_browser_edit_url_copy);
@@ -330,6 +331,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         cancelButton.setText(android.R.string.cancel);
         addBookmarkButton.setText(R.string.action_browser_edit_url_add_bookmark);
         bookmarksButton.setText(R.string.action_browser_edit_url_bookmarks);
+        openInChromeButton.setText(R.string.action_browser_open_in_chrome);
 
         goButton.setOnClickListener(view -> {
             navigateCurrentTabToUrl(urlInput.getText().toString());
@@ -344,6 +346,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         bookmarksButton.setOnClickListener(view -> {
             dialog.dismiss();
             showBookmarksList();
+        });
+        openInChromeButton.setOnClickListener(view -> {
+            openEditedUrlInChrome(urlInput.getText().toString());
+            dialog.dismiss();
         });
         cancelButton.setOnClickListener(view -> dialog.dismiss());
 
@@ -364,6 +370,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         ShareUtils.copyTextToClipboard(mActivity, url,
             mActivity.getString(R.string.msg_browser_url_copied));
+    }
+
+    private void openEditedUrlInChrome(@Nullable String editedUrl) {
+        String url = BrowserEditedUrl.trimmedOrNull(editedUrl);
+        if (url == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        ShareUtils.openUrlInChrome(mActivity, url);
     }
 
     private void createSessionForEditedUrl(@Nullable String editedUrl) {
