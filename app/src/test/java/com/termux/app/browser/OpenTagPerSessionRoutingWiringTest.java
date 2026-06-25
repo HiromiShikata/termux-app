@@ -25,7 +25,7 @@ public class OpenTagPerSessionRoutingWiringTest {
         String source = readModuleSource(
             "src/main/java/com/termux/app/browser/OpenTagBrowserController.java");
         Assert.assertTrue(source.contains("void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url)"));
-        Assert.assertTrue(source.contains("mUrlOpener.openUrlInTabForSession(sessionKey, openUrl)"));
+        Assert.assertTrue(source.contains("urlOpener.openUrlInTabForSession(sessionKey, openUrl)"));
         Assert.assertFalse(source.contains("openUrlInNewTab(openUrl)"));
     }
 
@@ -33,9 +33,9 @@ public class OpenTagPerSessionRoutingWiringTest {
     public void termuxActivityWiresOpenTagOpenerToSessionTargetedMethod() throws IOException {
         String source = readModuleSource("src/main/java/com/termux/app/TermuxActivity.java");
         Assert.assertTrue(source.contains(
-            "new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInTabForSession)"));
+            "mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession"));
         Assert.assertFalse(source.contains(
-            "new OpenTagBrowserController(mPreferences, mTermuxBrowserController::openUrlInNewTab)"));
+            "mOpenTagUrlOpener = mTermuxBrowserController::openUrlInNewTab"));
     }
 
     @Test
