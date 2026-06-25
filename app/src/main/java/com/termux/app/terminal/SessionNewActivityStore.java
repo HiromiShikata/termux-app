@@ -20,6 +20,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
     private final Map<String, String> mLastExplicitCallReasonByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -39,6 +40,8 @@ public class SessionNewActivityStore {
                 mLastExplicitCallReasonByName.put(state.getSessionName(), state.getLastExplicitCallReason());
             if (state.getLastSeenTimeMillis() != null)
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
+            if (state.getLastUserInputTimeMillis() != null)
+                mLastUserInputTimeMillisByName.put(state.getSessionName(), state.getLastUserInputTimeMillis());
         }
     }
 
@@ -63,11 +66,17 @@ public class SessionNewActivityStore {
         save();
     }
 
+    public void recordUserInput(@NonNull String sessionName, long userInputTimeMillis) {
+        mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
+        save();
+    }
+
     public void purgeSession(@NonNull String sessionName) {
         mLastOutputActivityTimeMillisByName.remove(sessionName);
         mLastExplicitCallTimeMillisByName.remove(sessionName);
         mLastExplicitCallReasonByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
+        mLastUserInputTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -76,6 +85,7 @@ public class SessionNewActivityStore {
         changed |= mLastExplicitCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastExplicitCallReasonByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
@@ -101,11 +111,17 @@ public class SessionNewActivityStore {
         return mLastSeenTimeMillisByName.get(sessionName);
     }
 
+    @Nullable
+    public Long getLastUserInputTimeMillis(@NonNull String sessionName) {
+        return mLastUserInputTimeMillisByName.get(sessionName);
+    }
+
     @NonNull
     public SessionNewActivityTier tierFor(@NonNull String sessionName) {
         return SessionNewActivityTier.resolve(
             getLastOutputActivityTimeMillis(sessionName),
             getLastExplicitCallTimeMillis(sessionName),
+            getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName));
     }
 
@@ -150,13 +166,15 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mLastExplicitCallTimeMillisByName.keySet());
         sessionNames.addAll(mLastExplicitCallReasonByName.keySet());
         sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
+        sessionNames.addAll(mLastUserInputTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             states.add(new SessionNewActivityState(sessionName,
                 mLastOutputActivityTimeMillisByName.get(sessionName),
                 mLastExplicitCallTimeMillisByName.get(sessionName),
                 mLastExplicitCallReasonByName.get(sessionName),
-                mLastSeenTimeMillisByName.get(sessionName)));
+                mLastSeenTimeMillisByName.get(sessionName),
+                mLastUserInputTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
     }

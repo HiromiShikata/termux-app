@@ -58,10 +58,10 @@ public class SessionPickerOverlayAgeLabelTest {
     }
 
     @Test
-    public void pickerHidesTheDotForTheSeenCurrentSessionButShowsItForAnUnseenBackgroundSession() {
+    public void pickerHidesTheDotForTheRepliedCurrentSessionButShowsItForAnUnansweredBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("current", 1_000L);
-        store.recordSeen("current", 5_000L);
+        store.recordUserInput("current", 5_000L);
         store.recordExplicitCall("background", 1_000L);
 
         long nowMillis = 31_000L;

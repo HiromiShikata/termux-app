@@ -404,11 +404,12 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                                                             @Nullable String sessionName,
                                                             long nowMillis) {
         if (sessionName == null) {
-            return SessionNewActivityIndicator.indicatorFor(null, null, null, nowMillis);
+            return SessionNewActivityIndicator.indicatorFor(null, null, null, null, nowMillis);
         }
         return SessionNewActivityIndicator.indicatorFor(
             store.getLastOutputActivityTimeMillis(sessionName),
             store.getLastExplicitCallTimeMillis(sessionName),
+            store.getLastUserInputTimeMillis(sessionName),
             store.getLastSeenTimeMillis(sessionName), nowMillis);
     }
 

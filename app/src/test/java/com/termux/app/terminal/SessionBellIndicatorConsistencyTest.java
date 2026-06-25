@@ -66,10 +66,10 @@ public class SessionBellIndicatorConsistencyTest {
     }
 
     @Test
-    public void activeSessionShowsNoIndicatorPurelyBecauseLastSeenCaughtUpToTheSignal() {
+    public void sessionShowsNoIndicatorOnceTheUserHasRepliedToTheExplicitCall() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("active", 1_000L);
-        store.recordSeen("active", 2_000L);
+        store.recordUserInput("active", 2_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "active", 4_000L);
 

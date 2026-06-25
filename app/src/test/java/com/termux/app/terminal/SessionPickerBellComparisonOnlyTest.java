@@ -26,10 +26,10 @@ public class SessionPickerBellComparisonOnlyTest {
     }
 
     @Test
-    public void renderedTierMatchesSignalGreaterThanLastSeenForEverySession() {
+    public void redIsClearedByUserReplyWhileOutputOnlySessionStaysYellow() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("alpha", 5_000L);
-        store.recordSeen("alpha", 6_000L);
+        store.recordUserInput("alpha", 6_000L);
         store.recordOutputActivity("beta", 5_000L);
 
         List<SessionPickerOverlayLine> lines = render(store,
@@ -41,7 +41,7 @@ public class SessionPickerBellComparisonOnlyTest {
     }
 
     @Test
-    public void advancingLastSeenViaSeenTickRemovesTheDotWithoutAnyExplicitClear() {
+    public void advancingLastSeenViaSeenTickDoesNotRemoveTheRedDotButReplyingDoes() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("current", 5_000L);
 
@@ -53,7 +53,13 @@ public class SessionPickerBellComparisonOnlyTest {
 
         List<SessionPickerOverlayLine> afterTick = render(store,
             Collections.singletonList("current"), 0, 6_500L);
-        Assert.assertFalse(afterTick.get(0).isMarked());
+        Assert.assertTrue(afterTick.get(0).isMarked());
+
+        store.recordUserInput("current", 7_000L);
+
+        List<SessionPickerOverlayLine> afterReply = render(store,
+            Collections.singletonList("current"), 0, 7_500L);
+        Assert.assertFalse(afterReply.get(0).isMarked());
     }
 
     private static List<SessionPickerOverlayLine> render(SessionNewActivityStore store,
