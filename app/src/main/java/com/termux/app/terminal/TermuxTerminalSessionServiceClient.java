@@ -35,10 +35,12 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         // without the owner having to open the producing session. The open-URL tag stays
         // activity-only (handled by the activity client for the current session) and is not
         // scanned here. The controllers keep one scanner per session and deduplicate, so calling
-        // them on every text change fires each tag exactly once. They are scanned before the
-        // output-progress early return below so a tag is never skipped on a redraw-only update.
+        // them on every text change fires each tag exactly once.
         scanOutputTags(changedSession);
+    }
 
+    @Override
+    public void onGenuineOutput(@NonNull TerminalSession changedSession) {
         recordGenuineOutputActivity(changedSession);
     }
 
@@ -66,7 +68,7 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     private void recordGenuineOutputActivity(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         if (!mSessionOutputProgressTracker.hasNewOutput(
-                session.mSessionName, session.getRealOutputVersion())) {
+                session.mSessionName, session.getNeverResetScrolledLineCount())) {
             return;
         }
         mService.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
