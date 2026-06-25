@@ -41,7 +41,7 @@ public final class OpenTagBrowserController {
         if (urlOpener == null) return;
 
         OpenTagScanner scanner = scannerForSession(sessionKey);
-        for (String openUrl : scanner.newOpenUrls(screenText)) {
+        for (String openUrl : scanner.urlsToOpen(screenText)) {
             urlOpener.openUrlInTabForSession(sessionKey, openUrl);
         }
     }

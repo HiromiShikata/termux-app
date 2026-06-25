@@ -89,6 +89,42 @@ public class OpenTagBrowserControllerTest {
     }
 
     @Test
+    public void reScanningTheSameOutputDoesNotReopenButANewUrlStillOpens() {
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        String transcriptWithFirstUrl = "<open>" + URL_A + "</open>";
+        controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstUrl);
+        Assert.assertEquals(1, opener.opens.size());
+
+        for (int bottomSheetOpen = 0; bottomSheetOpen < 5; bottomSheetOpen++) {
+            controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstUrl);
+        }
+        Assert.assertEquals(1, opener.opens.size());
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE,
+            "<open>" + URL_A + "</open>\noutput\n<open>" + URL_B + "</open>");
+
+        Assert.assertEquals(2, opener.opens.size());
+        Assert.assertEquals(URL_B, opener.opens.get(1).url);
+    }
+
+    @Test
+    public void doesNotReopenAnEarlierUrlWhenAReScanShowsItAfterALaterUrlScrolledOut() {
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "header\n<open>" + URL_A + "</open>\n");
+        controller.onSessionTextChanged(SESSION_A_HANDLE,
+            "<open>" + URL_A + "</open>\nmid\n<open>" + URL_B + "</open>\n");
+        Assert.assertEquals(2, opener.opens.size());
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "old\n<open>" + URL_A + "</open>\nold2\n");
+
+        Assert.assertEquals(2, opener.opens.size());
+    }
+
+    @Test
     public void tracksPerSessionScannerStateSoEachSessionOpensItsOwnLatestUrl() {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
