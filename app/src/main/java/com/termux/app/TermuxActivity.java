@@ -1299,6 +1299,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mProjectBrowserOverlayController;
     }
 
+    @Nullable
     public OpenTagBrowserController getOpenTagBrowserController() {
         return mTermuxService == null ? null : mTermuxService.getOpenTagBrowserController();
     }
