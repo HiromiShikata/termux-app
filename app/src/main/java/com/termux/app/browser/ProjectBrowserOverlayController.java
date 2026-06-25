@@ -143,6 +143,12 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
                 super.onReceivedError(view, errorCode, description, failingUrl);
                 onMainFrameError();
             }
+
+            @Override
+            protected void injectMobileViewport(@NonNull WebView view) {
+                if (mViewMode.isDesktop()) return;
+                super.injectMobileViewport(view);
+            }
         });
 
         mWebView.setWebChromeClient(new WebChromeClient() {
