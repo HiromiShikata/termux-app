@@ -19,11 +19,6 @@ public final class NotifiedSessionNavigationCandidates {
         if (!redCandidates.isEmpty()) {
             return redCandidates;
         }
-        List<Integer> yellowCandidates = candidatesForTier(
-            navigableSessionIndexes, tiersByIndex, SessionNewActivityTier.YELLOW);
-        if (!yellowCandidates.isEmpty()) {
-            return yellowCandidates;
-        }
         return new ArrayList<>(navigableSessionIndexes);
     }
 

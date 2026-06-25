@@ -62,17 +62,12 @@ public final class SessionActivityDirection {
     @NonNull
     private static SessionNewActivityTier globalActiveTier(@NonNull List<Integer> orderedSessionIndexes,
                                                            @NonNull Map<Integer, SessionNewActivityTier> tiersByIndex) {
-        SessionNewActivityTier activeTier = SessionNewActivityTier.NONE;
         for (int position = 0; position < orderedSessionIndexes.size(); position++) {
-            SessionNewActivityTier tier = tierAt(orderedSessionIndexes, position, tiersByIndex);
-            if (tier == SessionNewActivityTier.RED) {
+            if (tierAt(orderedSessionIndexes, position, tiersByIndex) == SessionNewActivityTier.RED) {
                 return SessionNewActivityTier.RED;
             }
-            if (tier == SessionNewActivityTier.YELLOW) {
-                activeTier = SessionNewActivityTier.YELLOW;
-            }
         }
-        return activeTier;
+        return SessionNewActivityTier.NONE;
     }
 
     @NonNull

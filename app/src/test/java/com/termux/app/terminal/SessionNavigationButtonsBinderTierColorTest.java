@@ -43,7 +43,7 @@ public class SessionNavigationButtonsBinderTierColorTest {
             Arrays.asList(0, 1, 2), 1,
             tiers(0, SessionNewActivityTier.RED, 2, SessionNewActivityTier.RED));
 
-        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, YELLOW, DEFAULT);
+        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, DEFAULT);
 
         Assert.assertEquals(RED, colorOf(previous));
         Assert.assertEquals(RED, colorOf(next));
@@ -57,7 +57,7 @@ public class SessionNavigationButtonsBinderTierColorTest {
             Arrays.asList(0, 1, 2), 1,
             tiers(0, SessionNewActivityTier.YELLOW, 2, SessionNewActivityTier.RED));
 
-        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, YELLOW, DEFAULT);
+        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, DEFAULT);
 
         Assert.assertEquals(DEFAULT, colorOf(previous));
         Assert.assertEquals(RED, colorOf(next));
@@ -66,17 +66,19 @@ public class SessionNavigationButtonsBinderTierColorTest {
     }
 
     @Test
-    public void yellowTierTintsArrowsYellowWhenNoRedExists() {
+    public void yellowSessionsLeaveBothArrowsDefaultWhenNoRedExists() {
         ImageButton previous = new ImageButton(RuntimeEnvironment.getApplication());
         ImageButton next = new ImageButton(RuntimeEnvironment.getApplication());
         SessionActivityDirection direction = SessionActivityDirection.compute(
             Arrays.asList(0, 1, 2), 1,
             tiers(0, SessionNewActivityTier.YELLOW));
 
-        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, YELLOW, DEFAULT);
+        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, DEFAULT);
 
-        Assert.assertEquals(YELLOW, colorOf(previous));
+        Assert.assertEquals(DEFAULT, colorOf(previous));
         Assert.assertEquals(DEFAULT, colorOf(next));
+        Assert.assertNotEquals(YELLOW, colorOf(previous));
+        Assert.assertNotEquals(YELLOW, colorOf(next));
     }
 
     @Test
@@ -86,19 +88,19 @@ public class SessionNavigationButtonsBinderTierColorTest {
         SessionActivityDirection direction = SessionActivityDirection.compute(
             Arrays.asList(0, 1, 2), 1, tiers());
 
-        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, YELLOW, DEFAULT);
+        SessionNavigationButtonsBinder.applyDirectionTier(previous, next, direction, RED, DEFAULT);
 
         Assert.assertEquals(DEFAULT, colorOf(previous));
         Assert.assertEquals(DEFAULT, colorOf(next));
     }
 
     @Test
-    public void tierColorMappingResolvesEachTier() {
+    public void tierColorMapsOnlyRedToRedAndEveryOtherTierToDefault() {
         Assert.assertEquals(RED,
-            SessionNavigationButtonsBinder.tierColor(SessionNewActivityTier.RED, RED, YELLOW, DEFAULT));
-        Assert.assertEquals(YELLOW,
-            SessionNavigationButtonsBinder.tierColor(SessionNewActivityTier.YELLOW, RED, YELLOW, DEFAULT));
+            SessionNavigationButtonsBinder.tierColor(SessionNewActivityTier.RED, RED, DEFAULT));
         Assert.assertEquals(DEFAULT,
-            SessionNavigationButtonsBinder.tierColor(SessionNewActivityTier.NONE, RED, YELLOW, DEFAULT));
+            SessionNavigationButtonsBinder.tierColor(SessionNewActivityTier.YELLOW, RED, DEFAULT));
+        Assert.assertEquals(DEFAULT,
+            SessionNavigationButtonsBinder.tierColor(SessionNewActivityTier.NONE, RED, DEFAULT));
     }
 }

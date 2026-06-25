@@ -23,21 +23,13 @@ public final class SessionNavigationButtonsBinder {
     public static void applyDirectionTier(@NonNull ImageView previousSessionButton,
                                           @NonNull ImageView nextSessionButton,
                                           @NonNull SessionActivityDirection direction,
-                                          int redColor, int yellowColor, int defaultColor) {
-        int tierColor = tierColor(direction.getTier(), redColor, yellowColor, defaultColor);
+                                          int redColor, int defaultColor) {
+        int tierColor = tierColor(direction.getTier(), redColor, defaultColor);
         previousSessionButton.setColorFilter(direction.hasActiveAbove() ? tierColor : defaultColor);
         nextSessionButton.setColorFilter(direction.hasActiveBelow() ? tierColor : defaultColor);
     }
 
-    static int tierColor(@NonNull SessionNewActivityTier tier, int redColor, int yellowColor, int defaultColor) {
-        switch (tier) {
-            case RED:
-                return redColor;
-            case YELLOW:
-                return yellowColor;
-            case NONE:
-            default:
-                return defaultColor;
-        }
+    static int tierColor(@NonNull SessionNewActivityTier tier, int redColor, int defaultColor) {
+        return tier == SessionNewActivityTier.RED ? redColor : defaultColor;
     }
 }
