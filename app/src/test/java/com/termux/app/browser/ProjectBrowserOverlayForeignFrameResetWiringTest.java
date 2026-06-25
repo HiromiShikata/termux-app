@@ -44,7 +44,8 @@ public class ProjectBrowserOverlayForeignFrameResetWiringTest {
     @Test
     public void openProjectUrlShowsCoverWhileTheNextPageLoads() throws IOException {
         String source = readControllerSource();
-        int openIndex = source.indexOf("public void openProjectUrl(@NonNull String url)");
+        int openIndex = source.indexOf(
+            "public void openProjectUrl(@NonNull String url, @NonNull BrowserViewMode viewMode)");
         Assert.assertTrue(openIndex >= 0);
         int openEnd = source.indexOf("\n    }", openIndex);
         String openBody = source.substring(openIndex, openEnd);

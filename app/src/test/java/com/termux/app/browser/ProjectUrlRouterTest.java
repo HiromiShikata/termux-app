@@ -17,10 +17,12 @@ public class ProjectUrlRouterTest {
 
     private static final class RecordingProjectUrlOpener implements ProjectUrlOpener {
         final List<String> openedUrls = new ArrayList<>();
+        final List<BrowserViewMode> openedViewModes = new ArrayList<>();
 
         @Override
-        public void openProjectUrl(@NonNull String url) {
+        public void openProjectUrl(@NonNull String url, @NonNull BrowserViewMode viewMode) {
             openedUrls.add(url);
+            openedViewModes.add(viewMode);
         }
     }
 
@@ -29,7 +31,7 @@ public class ProjectUrlRouterTest {
         RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
         ProjectUrlRouter router = new ProjectUrlRouter(opener);
 
-        router.route("https://github.com/org/repo/issues/1");
+        router.route("https://github.com/org/repo/issues/1", BrowserViewMode.DESKTOP);
 
         Assert.assertEquals(1, opener.openedUrls.size());
         Assert.assertEquals("https://github.com/org/repo/issues/1", opener.openedUrls.get(0));
@@ -40,9 +42,29 @@ public class ProjectUrlRouterTest {
         RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
         ProjectUrlRouter router = new ProjectUrlRouter(opener);
 
-        router.route("example.com/overview");
+        router.route("example.com/overview", BrowserViewMode.DESKTOP);
 
         Assert.assertEquals("https://example.com/overview", opener.openedUrls.get(0));
+    }
+
+    @Test
+    public void forwardsMobileViewModeToOpener() {
+        RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
+        ProjectUrlRouter router = new ProjectUrlRouter(opener);
+
+        router.route("https://tdpm.example/console", BrowserViewMode.MOBILE);
+
+        Assert.assertEquals(BrowserViewMode.MOBILE, opener.openedViewModes.get(0));
+    }
+
+    @Test
+    public void forwardsDesktopViewModeToOpener() {
+        RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
+        ProjectUrlRouter router = new ProjectUrlRouter(opener);
+
+        router.route("https://github.com/org/repo", BrowserViewMode.DESKTOP);
+
+        Assert.assertEquals(BrowserViewMode.DESKTOP, opener.openedViewModes.get(0));
     }
 
     @Test
@@ -50,7 +72,7 @@ public class ProjectUrlRouterTest {
         RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
         ProjectUrlRouter router = new ProjectUrlRouter(opener);
 
-        router.route(null);
+        router.route(null, BrowserViewMode.DESKTOP);
 
         Assert.assertTrue(opener.openedUrls.isEmpty());
     }
@@ -60,7 +82,7 @@ public class ProjectUrlRouterTest {
         RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
         ProjectUrlRouter router = new ProjectUrlRouter(opener);
 
-        router.route("   ");
+        router.route("   ", BrowserViewMode.DESKTOP);
 
         Assert.assertTrue(opener.openedUrls.isEmpty());
     }
@@ -71,7 +93,7 @@ public class ProjectUrlRouterTest {
         RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
         ProjectUrlRouter router = new ProjectUrlRouter(opener);
 
-        router.route("https://github.com/org/repo");
+        router.route("https://github.com/org/repo", BrowserViewMode.DESKTOP);
 
         Assert.assertEquals(1, opener.openedUrls.size());
         Assert.assertTrue(perSessionTabManager.getTabs(SESSION).isEmpty());
@@ -84,9 +106,9 @@ public class ProjectUrlRouterTest {
         RecordingProjectUrlOpener opener = new RecordingProjectUrlOpener();
         ProjectUrlRouter router = new ProjectUrlRouter(opener);
 
-        router.route("https://github.com/org/repo");
-        router.route("https://tdpm.example/console");
-        router.route("https://github.com/org/repo/issues/new");
+        router.route("https://github.com/org/repo", BrowserViewMode.DESKTOP);
+        router.route("https://tdpm.example/console", BrowserViewMode.MOBILE);
+        router.route("https://github.com/org/repo/issues/new", BrowserViewMode.DESKTOP);
 
         Assert.assertEquals(3, opener.openedUrls.size());
         Assert.assertEquals(0, perSessionTabManager.getTabs(SESSION).size());

@@ -1,5 +1,6 @@
 package com.termux.app.browser;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
@@ -40,6 +41,13 @@ public class ProjectBrowserMobileViewInstrumentedTest {
     private static final String WARM_UP_PAGE_URL = "https://github.com/HiromiShikata";
 
     private static final String READ_INNER_WIDTH_SCRIPT = "window.innerWidth";
+
+    private static final String READ_DEVICE_PIXEL_RATIO_SCRIPT = "window.devicePixelRatio";
+
+    private static final String READ_DOCUMENT_CLIENT_WIDTH_SCRIPT =
+        "document.documentElement.clientWidth";
+
+    private static final double FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX = 4.0;
 
     private static final String WARM_UP_PAGE_HTML =
         "<!DOCTYPE html><html><head><title>Warm up</title></head>"
@@ -113,6 +121,55 @@ public class ProjectBrowserMobileViewInstrumentedTest {
             innerWidth > 0 && innerWidth <= MOBILE_DEVICE_WIDTH_UPPER_BOUND_CSS_PX);
     }
 
+    @Test
+    public void mobileConfigurationRendersDeviceWidthViewportAtFullDeviceWidth()
+        throws InterruptedException {
+        AtomicReference<WebView> webViewRef = new AtomicReference<>();
+        AtomicReference<CountDownLatch> pageFinishedLatchRef =
+            new AtomicReference<>(new CountDownLatch(1));
+
+        runOnMainSync(() -> {
+            WebView webView = new WebView(targetContext());
+            BrowserMobileWebViewConfigurator.apply(webView.getSettings());
+            webView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    super.onPageFinished(view, url);
+                    pageFinishedLatchRef.get().countDown();
+                }
+            });
+            layoutOffscreen(webView);
+            webViewRef.set(webView);
+            webView.loadDataWithBaseURL(WARM_UP_PAGE_URL, WARM_UP_PAGE_HTML,
+                "text/html", "utf-8", null);
+        });
+
+        assertTrue("warm up page did not finish loading within timeout",
+            pageFinishedLatchRef.get().await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+        WebView webView = webViewRef.get();
+        pageFinishedLatchRef.set(new CountDownLatch(1));
+        runOnMainSync(() -> webView.loadDataWithBaseURL(PROJECT_URL,
+            MOBILE_VIEWPORT_PROJECT_PAGE_HTML, "text/html", "utf-8", null));
+
+        assertTrue("project page did not finish loading within timeout",
+            pageFinishedLatchRef.get().await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+        int innerWidth = pollInnerWidthUntilMobileLayoutWidth(webView);
+        double devicePixelRatio = readDouble(webView, READ_DEVICE_PIXEL_RATIO_SCRIPT);
+        int documentClientWidth = readInt(webView, READ_DOCUMENT_CLIENT_WIDTH_SCRIPT);
+        double expectedDeviceWidthCssPx = WEB_VIEW_PHYSICAL_WIDTH_PX / devicePixelRatio;
+
+        assertEquals(
+            "window.innerWidth (" + innerWidth + ") did not match the document layout width ("
+                + documentClientWidth + "); the page rendered in a narrow column",
+            documentClientWidth, innerWidth);
+        assertEquals(
+            "window.innerWidth (" + innerWidth + ") did not fill the device width ("
+                + expectedDeviceWidthCssPx + " CSS px); the page rendered in a narrow column",
+            expectedDeviceWidthCssPx, innerWidth, FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX);
+    }
+
     private int pollInnerWidthUntilMobileLayoutWidth(WebView webView) throws InterruptedException {
         int innerWidth = -1;
         long deadline = System.currentTimeMillis() + INNER_WIDTH_POLL_TIMEOUT_MILLIS;
@@ -127,12 +184,28 @@ public class ProjectBrowserMobileViewInstrumentedTest {
     }
 
     private int readInnerWidth(WebView webView) throws InterruptedException {
-        String value = stripJsonStringQuotes(evaluateJavascript(webView, READ_INNER_WIDTH_SCRIPT));
+        return readInt(webView, READ_INNER_WIDTH_SCRIPT);
+    }
+
+    private int readInt(WebView webView, String script) throws InterruptedException {
+        String value = stripJsonStringQuotes(evaluateJavascript(webView, script));
         if (value == null) {
             return -1;
         }
         try {
             return (int) Math.round(Double.parseDouble(value.trim()));
+        } catch (NumberFormatException numberFormatException) {
+            return -1;
+        }
+    }
+
+    private double readDouble(WebView webView, String script) throws InterruptedException {
+        String value = stripJsonStringQuotes(evaluateJavascript(webView, script));
+        if (value == null) {
+            return -1;
+        }
+        try {
+            return Double.parseDouble(value.trim());
         } catch (NumberFormatException numberFormatException) {
             return -1;
         }

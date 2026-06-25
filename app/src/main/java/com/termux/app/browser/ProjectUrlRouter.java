@@ -11,8 +11,8 @@ public final class ProjectUrlRouter {
         this.mProjectBrowserOpener = projectBrowserOpener;
     }
 
-    public void route(@Nullable String url) {
+    public void route(@Nullable String url, @NonNull BrowserViewMode viewMode) {
         if (url == null || url.trim().isEmpty()) return;
-        mProjectBrowserOpener.openProjectUrl(BrowserUrlInput.normalize(url));
+        mProjectBrowserOpener.openProjectUrl(BrowserUrlInput.normalize(url), viewMode);
     }
 }
