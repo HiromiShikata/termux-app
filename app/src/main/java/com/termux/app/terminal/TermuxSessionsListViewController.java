@@ -999,34 +999,61 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return true;
     }
 
+    enum SessionAction {
+        COPY_NAME(R.string.action_copy_session_name),
+        RENAME(R.string.action_rename_session),
+        HIDE(R.string.action_hide_session),
+        KILL_HOST_SESSION(R.string.action_kill_host_session),
+        DELETE(R.string.action_delete_session);
+
+        final int labelResId;
+
+        SessionAction(int labelResId) {
+            this.labelResId = labelResId;
+        }
+
+        static SessionAction atIndex(int index) {
+            return values()[index];
+        }
+    }
+
     private void showSessionActionChooser(final TerminalSession session) {
         if (session == null) {
             return;
         }
 
-        CharSequence[] actions = {
-            mActivity.getString(R.string.action_copy_session_name),
-            mActivity.getString(R.string.action_rename_session),
-            mActivity.getString(R.string.action_hide_session),
-            mActivity.getString(R.string.action_delete_session)
-        };
+        SessionAction[] sessionActions = SessionAction.values();
+        CharSequence[] actionLabels = new CharSequence[sessionActions.length];
+        for (int index = 0; index < sessionActions.length; index++) {
+            actionLabels[index] = mActivity.getString(sessionActions[index].labelResId);
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(mActivity);
         if (!TextUtils.isEmpty(session.mSessionName)) {
             builder.setTitle(session.mSessionName);
         }
-        builder.setItems(actions, (dialog, which) -> {
-            if (which == 0) {
-                mActivity.getTermuxTerminalSessionClient().copySessionNameToClipboard(session);
-            } else if (which == 1) {
-                mActivity.getTermuxTerminalSessionClient().renameSession(session);
-            } else if (which == 2) {
-                hideSession(session.mSessionName);
-            } else if (which == 3) {
-                mActivity.getTermuxTerminalSessionClient().deleteSession(session);
-            }
-        });
+        builder.setItems(actionLabels, (dialog, which) -> onSessionActionSelected(SessionAction.atIndex(which), session));
         DialogUtils.showDismissibleOnTouchOutside(builder);
+    }
+
+    private void onSessionActionSelected(SessionAction action, TerminalSession session) {
+        switch (action) {
+            case COPY_NAME:
+                mActivity.getTermuxTerminalSessionClient().copySessionNameToClipboard(session);
+                break;
+            case RENAME:
+                mActivity.getTermuxTerminalSessionClient().renameSession(session);
+                break;
+            case HIDE:
+                hideSession(session.mSessionName);
+                break;
+            case KILL_HOST_SESSION:
+                mActivity.getTermuxTerminalSessionClient().killHostSession(session);
+                break;
+            case DELETE:
+                mActivity.getTermuxTerminalSessionClient().deleteSession(session);
+                break;
+        }
     }
 
 }
