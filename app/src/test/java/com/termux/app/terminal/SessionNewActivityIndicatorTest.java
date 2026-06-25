@@ -16,24 +16,37 @@ public class SessionNewActivityIndicatorTest {
     }
 
     @Test
-    public void outputActivityBeforeLastSeenProducesNoIndicator() {
+    public void recentOutputBeforeLastSeenStillProducesYellowBecauseYellowDoesNotClearOnView() {
         SessionNewActivityIndicator indicator =
             SessionNewActivityIndicator.indicatorFor(1_000L, null, null, 5_000L, 31_000L);
 
-        Assert.assertFalse(indicator.isVisible());
-        Assert.assertEquals(SessionNewActivityTier.NONE, indicator.getTier());
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
     }
 
     @Test
-    public void outputActivityEqualToLastSeenProducesNoIndicator() {
+    public void recentOutputEqualToLastSeenStillProducesYellow() {
         SessionNewActivityIndicator indicator =
             SessionNewActivityIndicator.indicatorFor(5_000L, null, null, 5_000L, 31_000L);
 
-        Assert.assertFalse(indicator.isVisible());
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
     }
 
     @Test
-    public void outputActivityAfterLastSeenProducesYellowIndicatorWithRelativeTimeLabel() {
+    public void idleOutputOlderThanTenMinutesProducesGrayIndicator() {
+        long lastOutputActivity = 1_000L;
+        long elevenMinutesLater = lastOutputActivity + 11L * 60L * 1000L;
+
+        SessionNewActivityIndicator indicator =
+            SessionNewActivityIndicator.indicatorFor(lastOutputActivity, null, null, 500L, elevenMinutesLater);
+
+        Assert.assertTrue(indicator.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.GRAY, indicator.getTier());
+    }
+
+    @Test
+    public void outputActivityWithinTenMinutesProducesYellowIndicatorWithRelativeTimeLabel() {
         SessionNewActivityIndicator indicator =
             SessionNewActivityIndicator.indicatorFor(1_000L, null, null, 500L, 31_000L);
 
@@ -62,7 +75,7 @@ public class SessionNewActivityIndicatorTest {
     }
 
     @Test
-    public void answeredExplicitCallFallsBackToPendingOutputActivityAsYellow() {
+    public void answeredExplicitCallFallsBackToRecentOutputActivityAsYellow() {
         SessionNewActivityIndicator indicator =
             SessionNewActivityIndicator.indicatorFor(2_000L, 1_000L, 1_500L, 1_500L, 32_000L);
 
@@ -80,7 +93,7 @@ public class SessionNewActivityIndicatorTest {
     }
 
     @Test
-    public void signalWithoutAnyLastSeenProducesVisibleIndicator() {
+    public void recentOutputWithoutAnyLastSeenProducesVisibleYellowIndicator() {
         SessionNewActivityIndicator indicator =
             SessionNewActivityIndicator.indicatorFor(1_000L, null, null, null, 31_000L);
 
