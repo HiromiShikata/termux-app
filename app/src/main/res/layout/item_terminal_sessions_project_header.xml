@@ -2,6 +2,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
+    android:descendantFocusability="blocksDescendants"
     android:gravity="start|center_vertical"
     android:background="@color/schema_surface_elevated"
     android:paddingStart="6dip"
