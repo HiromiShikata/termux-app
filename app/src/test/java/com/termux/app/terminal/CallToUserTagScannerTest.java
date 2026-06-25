@@ -63,6 +63,31 @@ public class CallToUserTagScannerTest {
     }
 
     @Test
+    public void collapsesRunsOfHorizontalWhitespaceButPreservesNewlines() {
+        assertEquals("a b\nc d", CallToUserTagScanner.normalizeReason("a    b\nc  d"));
+    }
+
+    @Test
+    public void collapsesTabsAndMixedHorizontalWhitespaceToSingleSpace() {
+        assertEquals("a b\nc d",
+            CallToUserTagScanner.normalizeReason("a \t \t b\nc\t\td"));
+    }
+
+    @Test
+    public void preservesBlankLinesBetweenContentLines() {
+        assertEquals("first line\n\nsecond line",
+            CallToUserTagScanner.normalizeReason("first    line\n   \nsecond  line"));
+    }
+
+    @Test
+    public void extractedReasonHasCollapsedHorizontalWhitespaceWithNewlinesKept() {
+        List<String> reasons = CallToUserTagScanner.extractReasons(
+            "<call-to-user>please    review\nthe    diff</call-to-user>");
+        assertEquals(1, reasons.size());
+        assertEquals("please review\nthe diff", reasons.get(0));
+    }
+
+    @Test
     public void newReasonsReturnsEachReasonInOrderOnFirstScan() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
         List<String> reasons = scanner.newReasons(

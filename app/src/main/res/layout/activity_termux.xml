@@ -298,6 +298,39 @@
                 android:textColor="#80FFFFFF"
                 android:textSize="11sp"
                 android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/session_pending_call_to_user_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/session_pending_call_to_user_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:longClickable="false"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="2dp"
+                    android:paddingVertical="2dp"
+                    android:textColor="@color/session_explicit_call_reason_text"
+                    android:textSize="11sp" />
+
+                <ImageButton
+                    android:id="@+id/session_pending_call_to_user_scroll_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/action_scroll_to_call_to_user_tag"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_scroll_to_call_to_user"
+                    android:tint="@color/session_explicit_call_reason_text" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout

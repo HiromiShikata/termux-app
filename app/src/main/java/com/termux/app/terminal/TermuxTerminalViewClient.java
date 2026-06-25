@@ -548,6 +548,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.recordUserInput(session.mSessionName, System.currentTimeMillis());
+        if (mTermuxTerminalSessionActivityClient != null
+            && session == mActivity.getCurrentSession()) {
+            mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();
+        }
     }
 
     /**
