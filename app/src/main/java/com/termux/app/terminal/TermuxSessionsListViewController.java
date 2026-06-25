@@ -60,6 +60,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
     private static final float TIMESTAMP_ROW_RELATIVE_SIZE = 0.65f;
+    private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
     private static final int TIMESTAMP_VALUE_FIELD_WIDTH = 8;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
@@ -681,6 +682,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         styled.setSpan(new RelativeSizeSpan(BELL_NOTIFICATION_LABEL_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
+    static void applyExplicitCallReasonStyling(@NonNull SpannableString styled, int start, int end,
+                                                @NonNull StyleSpan boldSpan) {
+        if (start < 0 || end <= start) {
+            return;
+        }
+        styled.setSpan(new RelativeSizeSpan(EXPLICIT_CALL_REASON_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(boldSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
     @SuppressLint("SetTextI18n")
     private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent) {
         View sessionRowView = convertView;
@@ -804,8 +814,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         if (explicitCallReasonStart >= 0) {
             int reasonColor = ContextCompat.getColor(mActivity, R.color.session_explicit_call_reason_text);
+            applyExplicitCallReasonStyling(fullSessionTitleStyled, explicitCallReasonStart, explicitCallReasonEnd, boldSpan);
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(reasonColor), explicitCallReasonStart, explicitCallReasonEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            fullSessionTitleStyled.setSpan(boldSpan, explicitCallReasonStart, explicitCallReasonEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (timestampLineStart >= 0) {
             int fadedColor = (0x99 << 24) | (surfacePrimaryTextColor() & 0x00FFFFFF);
