@@ -87,6 +87,16 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
+    public void sessionInfoIsHiddenWhileSheetIsOpenSoItDoesNotShowBeneathTheSheet() {
+        Assert.assertEquals(View.INVISIBLE, SessionListBottomSheetController.sessionInfoVisibilityForSheet(View.VISIBLE));
+    }
+
+    @Test
+    public void sessionInfoIsVisibleWhileSheetIsClosedSoItShowsAboveTheButtonArea() {
+        Assert.assertEquals(View.VISIBLE, SessionListBottomSheetController.sessionInfoVisibilityForSheet(View.GONE));
+    }
+
+    @Test
     public void hideIfPresentDoesNothingWhenControllerIsNull() {
         SessionListBottomSheetController.hideIfPresent(null);
     }
