@@ -103,6 +103,41 @@ public class OpenTagBrowserControllerTest {
     }
 
     @Test
+    public void doesNotReopenAlreadyOpenedUrlAcrossActivityRecreationsThatReRegisterTheOpener() {
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, null);
+        String stillVisibleTranscript = "<open>" + URL_A + "</open>";
+
+        RecordingUrlOpener firstActivityOpener = new RecordingUrlOpener();
+        controller.setUrlOpener(firstActivityOpener);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript);
+
+        for (int activityRecreation = 0; activityRecreation < 5; activityRecreation++) {
+            controller.setUrlOpener(null);
+            RecordingUrlOpener recreatedActivityOpener = new RecordingUrlOpener();
+            controller.setUrlOpener(recreatedActivityOpener);
+            controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript);
+            Assert.assertTrue(recreatedActivityOpener.opens.isEmpty());
+        }
+
+        Assert.assertEquals(1, firstActivityOpener.opens.size());
+        Assert.assertEquals(URL_A, firstActivityOpener.opens.get(0).url);
+    }
+
+    @Test
+    public void doesNotScanWhileNoForegroundOpenerIsRegistered() {
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, null);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        controller.setUrlOpener(opener);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+
+        Assert.assertEquals(1, opener.opens.size());
+        Assert.assertEquals(URL_A, opener.opens.get(0).url);
+    }
+
+    @Test
     public void doesNotOpenWhenAutoOpenDisabled() {
         preferences.setOpenTagAutoOpenEnabled(false);
         RecordingUrlOpener opener = new RecordingUrlOpener();
