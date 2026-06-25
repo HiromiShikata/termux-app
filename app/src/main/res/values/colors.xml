@@ -4,5 +4,6 @@
     <color name="session_bell_direction_glow">#FFD54F</color>
     <color name="session_activity_tier_red">#E53935</color>
     <color name="session_activity_tier_yellow">#FFB300</color>
+    <color name="session_activity_tier_gray">#9E9E9E</color>
     <color name="session_explicit_call_reason_text">#B35900</color>
 </resources>

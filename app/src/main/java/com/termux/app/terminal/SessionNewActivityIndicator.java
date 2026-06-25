@@ -45,6 +45,9 @@ public final class SessionNewActivityIndicator {
             case YELLOW:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.YELLOW,
                     SessionNewActivityStore.formatRelativeTime(nowMillis - lastOutputActivityTimeMillis));
+            case GRAY:
+                return new SessionNewActivityIndicator(SessionNewActivityTier.GRAY,
+                    SessionNewActivityStore.formatRelativeTime(nowMillis - lastOutputActivityTimeMillis));
             case NONE:
             default:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.NONE, "");

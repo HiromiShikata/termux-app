@@ -15,6 +15,8 @@ public final class SessionActivityTierDrawables {
                 return R.drawable.ic_session_activity_dot_red;
             case YELLOW:
                 return R.drawable.ic_session_activity_dot_yellow;
+            case GRAY:
+                return R.drawable.ic_session_activity_dot_gray;
             case NONE:
             default:
                 return R.drawable.ic_session_activity_dot_placeholder;

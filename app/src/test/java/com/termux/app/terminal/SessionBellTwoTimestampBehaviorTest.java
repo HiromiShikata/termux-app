@@ -88,14 +88,28 @@ public class SessionBellTwoTimestampBehaviorTest {
     }
 
     @Test
-    public void outputInTheViewedSessionIsSeenImmediatelyAndShowsNoIndicator() {
+    public void recentOutputInTheViewedSessionStaysYellowBecauseYellowDoesNotClearOnView() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long viewedOutputMillis = 1_000L;
         store.recordOutputActivity("viewed", viewedOutputMillis);
         store.recordSeen("viewed", viewedOutputMillis);
 
-        Assert.assertFalse(indicatorFor(store, "viewed", 1_500L).isVisible());
-        Assert.assertFalse(indicatorFor(store, "viewed", 60_000L).isVisible());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW,
+            indicatorFor(store, "viewed", 1_500L).getTier());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW,
+            indicatorFor(store, "viewed", 60_000L).getTier());
+    }
+
+    @Test
+    public void idleOutputOlderThanTenMinutesInTheViewedSessionShowsGray() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long viewedOutputMillis = 1_000L;
+        store.recordOutputActivity("viewed", viewedOutputMillis);
+        store.recordSeen("viewed", viewedOutputMillis);
+
+        long elevenMinutesLater = viewedOutputMillis + 11L * 60L * 1000L;
+        Assert.assertEquals(SessionNewActivityTier.GRAY,
+            indicatorFor(store, "viewed", elevenMinutesLater).getTier());
     }
 
     @Test

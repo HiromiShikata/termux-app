@@ -5,10 +5,9 @@ import androidx.annotation.Nullable;
 public enum SessionNewActivityTier {
 
     NONE,
+    GRAY,
     YELLOW,
     RED;
-
-    static final long YELLOW_MIN_AWAY_MILLIS = 30_000L;
 
     static final long YELLOW_MAX_AGE_MILLIS = 10L * 60L * 1000L;
 
@@ -19,7 +18,7 @@ public enum SessionNewActivityTier {
         if (isExplicitCallUnanswered(lastExplicitCallTimeMillis, lastUserInputTimeMillis)) {
             return RED;
         }
-        if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis, 0L, null)) {
+        if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis)) {
             return YELLOW;
         }
         return NONE;
@@ -33,11 +32,13 @@ public enum SessionNewActivityTier {
         if (isExplicitCallUnanswered(lastExplicitCallTimeMillis, lastUserInputTimeMillis)) {
             return RED;
         }
-        if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis, YELLOW_MIN_AWAY_MILLIS, nowMillis)
-            && isWithinRecencyWindow(lastOutputActivityTimeMillis, nowMillis)) {
+        if (lastOutputActivityTimeMillis == null) {
+            return NONE;
+        }
+        if (nowMillis - lastOutputActivityTimeMillis <= YELLOW_MAX_AGE_MILLIS) {
             return YELLOW;
         }
-        return NONE;
+        return GRAY;
     }
 
     private static boolean isExplicitCallUnanswered(@Nullable Long lastExplicitCallTimeMillis,
@@ -48,27 +49,13 @@ public enum SessionNewActivityTier {
         return lastUserInputTimeMillis == null || lastExplicitCallTimeMillis > lastUserInputTimeMillis;
     }
 
-    private static boolean isWithinRecencyWindow(@Nullable Long lastOutputActivityTimeMillis, long nowMillis) {
-        if (lastOutputActivityTimeMillis == null) {
-            return false;
-        }
-        return nowMillis - lastOutputActivityTimeMillis <= YELLOW_MAX_AGE_MILLIS;
-    }
-
-    private static boolean isPending(@Nullable Long signalTimeMillis, @Nullable Long lastSeenTimeMillis,
-                                     long minAwayMillis, @Nullable Long nowMillis) {
+    private static boolean isPending(@Nullable Long signalTimeMillis, @Nullable Long lastSeenTimeMillis) {
         if (signalTimeMillis == null) {
             return false;
         }
         if (lastSeenTimeMillis == null) {
             return true;
         }
-        if (signalTimeMillis <= lastSeenTimeMillis) {
-            return false;
-        }
-        if (minAwayMillis <= 0L || nowMillis == null) {
-            return true;
-        }
-        return nowMillis - lastSeenTimeMillis >= minAwayMillis;
+        return signalTimeMillis > lastSeenTimeMillis;
     }
 }
