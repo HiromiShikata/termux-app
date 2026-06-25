@@ -17,6 +17,7 @@ import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.style.RelativeSizeSpan;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -57,6 +58,7 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 import com.termux.terminal.TextStyle;
+import com.termux.view.TerminalView;
 
 import org.json.JSONException;
 
@@ -192,6 +194,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getCurrentSession() == changedSession) {
             mActivity.getTerminalView().onScreenUpdated();
+            updateSessionNameOverlay();
             // The open-URL tag stays scoped to the current session only: auto-opening a URL is a
             // foreground action and opening a non-viewed session's URL would be jarring.
             openTagsForSession(changedSession);
@@ -599,6 +602,62 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setOnClickListener(view -> onSessionNameBarTapped());
             updateSessionProjectStoryBar(currentSessionRow);
         }
+        updatePendingCallToUserBar(sessionName);
+    }
+
+    private void updatePendingCallToUserBar(@Nullable String sessionName) {
+        View pendingCallToUserBar = mActivity.findViewById(R.id.session_pending_call_to_user_bar);
+        TextView pendingCallToUserText = mActivity.findViewById(R.id.session_pending_call_to_user_text);
+        ImageButton pendingCallToUserScrollButton =
+            mActivity.findViewById(R.id.session_pending_call_to_user_scroll_button);
+        if (pendingCallToUserBar == null || pendingCallToUserText == null
+            || pendingCallToUserScrollButton == null) {
+            return;
+        }
+
+        PendingCallToUserFooterDecision decision = resolvePendingCallToUserFooterDecision(sessionName);
+        PendingCallToUserFooterBinder.bind(pendingCallToUserBar, pendingCallToUserText,
+            pendingCallToUserScrollButton, decision, this::scrollToMostRecentCallToUserTag);
+    }
+
+    @NonNull
+    private PendingCallToUserFooterDecision resolvePendingCallToUserFooterDecision(
+            @Nullable String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null || sessionName == null) {
+            return PendingCallToUserFooterDecision.resolve(SessionNewActivityTier.NONE, null);
+        }
+        return PendingCallToUserFooterDecision.resolve(
+            store.tierFor(sessionName), store.getLastExplicitCallReason(sessionName));
+    }
+
+    private void scrollToMostRecentCallToUserTag() {
+        TerminalView terminalView = mActivity.getTerminalView();
+        if (terminalView == null) return;
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session == null) return;
+        TerminalEmulator emulator = session.getEmulator();
+        if (emulator == null) return;
+        TerminalBuffer screen = emulator.getScreen();
+        if (screen == null) return;
+
+        int screenRows = emulator.mRows;
+        int activeTranscriptRows = screen.getActiveTranscriptRows();
+        int firstRowExternalIndex = -activeTranscriptRows;
+        List<String> rowTexts = new ArrayList<>();
+        for (int externalRow = firstRowExternalIndex; externalRow < screenRows; externalRow++) {
+            rowTexts.add(screen.getSelectedText(
+                0, externalRow, emulator.mColumns, externalRow, false, false));
+        }
+
+        int targetTopRow = CallToUserTagScrollLocator.scrollTargetTopRow(
+            rowTexts, firstRowExternalIndex, activeTranscriptRows);
+        if (targetTopRow == CallToUserTagScrollLocator.NO_TAG_ROW) {
+            return;
+        }
+
+        terminalView.setTopRow(targetTopRow);
+        terminalView.invalidate();
     }
 
     @NonNull
