@@ -64,8 +64,16 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mBulkOpenController = new BrowserBulkOpenController(activity);
         configureWebView();
         configureLinkContextMenu();
+        configureHeaderUrlMenu();
         configureCloseButton();
         configureOverviewActions();
+    }
+
+    private void configureHeaderUrlMenu() {
+        BrowserHeaderUrlMenuController menuController =
+            new BrowserHeaderUrlMenuController(mActivity, url ->
+                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(url));
+        mHeaderUrlView.setOnClickListener(view -> menuController.showHeaderUrlMenu(mCurrentUrl));
     }
 
     private void configureLinkContextMenu() {
