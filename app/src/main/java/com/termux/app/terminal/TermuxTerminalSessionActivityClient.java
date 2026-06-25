@@ -361,7 +361,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void recordNewOutputActivityForSession(@NonNull TerminalSession session) {
         if (session.mSessionName == null) return;
         if (!mSessionOutputProgressTracker.hasNewOutput(
-                session.mSessionName, session.getNeverResetScrolledLineCount())) {
+                session.mSessionName, session.getCommittedOutputLineCount())) {
             return;
         }
         recordOutputActivityForSession(session);

@@ -278,6 +278,8 @@ public final class TerminalEmulator {
 
     private long mNeverResetScrolledLineCount = 0L;
 
+    private long mCommittedOutputLineCount = 0L;
+
     private long mVisibleContentVersion = 0L;
 
     private long mRealOutputVersion = 0L;
@@ -1426,6 +1428,7 @@ public final class TerminalEmulator {
             // Move down (but not scroll) as long as we are above the last row.
             if (mCursorRow != mRows - 1) {
                 setCursorRow(newCursorRow);
+                countCommittedOutputLine();
             }
         } else {
             if (newCursorRow == mBottomMargin) {
@@ -1433,7 +1436,13 @@ public final class TerminalEmulator {
                 newCursorRow = mBottomMargin - 1;
             }
             setCursorRow(newCursorRow);
+            countCommittedOutputLine();
         }
+    }
+
+    private void countCommittedOutputLine() {
+        if (!isAlternateBufferActive())
+            mCommittedOutputLineCount++;
     }
 
     private void continueSequence(int state) {
@@ -2536,6 +2545,7 @@ public final class TerminalEmulator {
                 } else {
                     scrollDownOneLine();
                 }
+                countCommittedOutputLine();
             }
         } else if (cursorInLastColumn && displayWidth == 2) {
             // The behaviour when a wide character is output with cursor in the last column when
@@ -2598,6 +2608,10 @@ public final class TerminalEmulator {
 
     public long getNeverResetScrolledLineCount() {
         return mNeverResetScrolledLineCount;
+    }
+
+    public long getCommittedOutputLineCount() {
+        return mCommittedOutputLineCount;
     }
 
     public long getVisibleContentVersion() {
