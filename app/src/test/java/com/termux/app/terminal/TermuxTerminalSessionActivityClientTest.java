@@ -85,4 +85,49 @@ public class TermuxTerminalSessionActivityClientTest {
             TermuxTerminalSessionActivityClient.shouldReselectCurrentSessionAfterRemoval(
                 finishedSessionWasCurrent, currentSessionStillPresent));
     }
+
+    @Test
+    public void removesFinishedSessionOnNormalDeviceRegardlessOfExitStatus() {
+        boolean isAndroidTV = false;
+        boolean isPluginExecutionCommandWithPendingResult = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
+                isAndroidTV, 1, isPluginExecutionCommandWithPendingResult));
+    }
+
+    @Test
+    public void removesFinishedSessionOnNormalDeviceWithMultipleSessions() {
+        boolean isAndroidTV = false;
+        boolean isPluginExecutionCommandWithPendingResult = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
+                isAndroidTV, 5, isPluginExecutionCommandWithPendingResult));
+    }
+
+    @Test
+    public void retainsSoleFinishedSessionOnAndroidTV() {
+        boolean isAndroidTV = true;
+        boolean isPluginExecutionCommandWithPendingResult = false;
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
+                isAndroidTV, 1, isPluginExecutionCommandWithPendingResult));
+    }
+
+    @Test
+    public void removesFinishedSessionOnAndroidTVWhenOtherSessionsRemain() {
+        boolean isAndroidTV = true;
+        boolean isPluginExecutionCommandWithPendingResult = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
+                isAndroidTV, 2, isPluginExecutionCommandWithPendingResult));
+    }
+
+    @Test
+    public void removesSoleFinishedSessionOnAndroidTVWhenPluginResultPending() {
+        boolean isAndroidTV = true;
+        boolean isPluginExecutionCommandWithPendingResult = true;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
+                isAndroidTV, 1, isPluginExecutionCommandWithPendingResult));
+    }
 }
