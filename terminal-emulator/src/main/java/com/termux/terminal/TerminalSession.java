@@ -256,9 +256,12 @@ public final class TerminalSession extends TerminalOutput {
 
     /**
      * Notify the {@link #mClient} that the running process genuinely emitted output. This fires only
-     * from the pseudo-teletype input path after {@link TerminalEmulator#appendGenuineOutput}, never
-     * from scrolling, viewport changes, or any redraw, so output-activity recording cannot be
-     * triggered by anything other than real process output.
+     * from the pseudo-teletype input path after {@link TerminalEmulator#appendGenuineOutput} and only
+     * when the received bytes contained genuine process output past the stripped keystroke echo. It
+     * never fires from scrolling, viewport changes, redraws, or pure keystroke echoes, so
+     * output-activity recording cannot be triggered by anything other than real process output. It
+     * fires regardless of whether the main or the alternate screen buffer is active, so a full-screen
+     * alternate-buffer program emitting output is registered as genuine output.
      */
     protected void notifyGenuineOutput() {
         mClient.onGenuineOutput(this);
@@ -410,9 +413,10 @@ public final class TerminalSession extends TerminalOutput {
                 mTotalBytesProcessed += bytesRead;
                 int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
                 if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
-                mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, bytesRead - genuineOffset);
+                int genuineByteCount = bytesRead - genuineOffset;
+                mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
                 notifyScreenUpdate();
-                notifyGenuineOutput();
+                if (genuineByteCount > 0) notifyGenuineOutput();
             }
 
             if (msg.what == MSG_PROCESS_EXITED) {

@@ -101,9 +101,10 @@ public class GenuineOutputActivitySignalTest {
 
         emitGenuineOutput(emulator, "first reply line\r\n");
         client.onGenuineOutput(session);
-        Assert.assertNull("the first observation only establishes the baseline counter", lastOutputActivity());
         Assert.assertEquals("the lines printed so far must fit within the visible screen without scrolling off the top",
             0L, emulator.getNeverResetScrolledLineCount());
+        Assert.assertNotNull("genuine process output records output activity even on the first event",
+            lastOutputActivity());
 
         emitGenuineOutput(emulator, "second reply line\r\nthird reply line\r\n");
         client.onGenuineOutput(session);
@@ -111,6 +112,15 @@ public class GenuineOutputActivitySignalTest {
         Assert.assertEquals("output that fits within the visible screen must not have scrolled off the top",
             0L, emulator.getNeverResetScrolledLineCount());
         Assert.assertNotNull("output that fits within the visible screen must still record output activity",
+            lastOutputActivity());
+    }
+
+    @Test
+    public void sessionWithNoGenuineOutputDoesNotRecordOutputActivity() throws Exception {
+        TerminalEmulator emulator = newEmulator();
+        TerminalSession session = sessionWithEmulator(emulator);
+
+        Assert.assertNull("a session that has emitted no process output records no output activity",
             lastOutputActivity());
     }
 
@@ -129,7 +139,7 @@ public class GenuineOutputActivitySignalTest {
     }
 
     @Test
-    public void multiRowInPlaceRepaintDoesNotAdvanceOutputActivityTimestamp() throws Exception {
+    public void multiRowInPlaceRepaintAdvancesOutputActivityTimestamp() throws Exception {
         TerminalEmulator emulator = newEmulator();
         TerminalSession session = sessionWithEmulator(emulator);
 
@@ -151,7 +161,10 @@ public class GenuineOutputActivitySignalTest {
         Assert.assertEquals("a multi-row in-place repaint must not grow scrollback history",
             scrollbackBeforeRepaint, emulator.getNeverResetScrolledLineCount());
 
-        Assert.assertEquals(afterRealOutput, lastOutputActivity());
+        Assert.assertNotNull("a full-screen program repainting in place is genuine process output and advances out:",
+            lastOutputActivity());
+        Assert.assertTrue("a genuine in-place repaint must keep the out: time at or beyond the earlier output",
+            lastOutputActivity() >= afterRealOutput);
     }
 
     @Test
@@ -169,27 +182,43 @@ public class GenuineOutputActivitySignalTest {
     }
 
     @Test
-    public void alternateBufferInternalScrollDoesNotAdvanceOutputActivityTimestamp() throws Exception {
+    public void alternateBufferOutputAdvancesOutputActivityTimestamp() throws Exception {
         TerminalEmulator emulator = newEmulator();
         TerminalSession session = sessionWithEmulator(emulator);
 
-        fillScreen(emulator);
-        client.onGenuineOutput(session);
-        emitGenuineOutput(emulator, "history line one\r\nhistory line two\r\n");
-        client.onGenuineOutput(session);
-        Long afterRealOutput = lastOutputActivity();
-        Assert.assertNotNull(afterRealOutput);
-
         emitGenuineOutput(emulator, "\033[?1049h");
-        Assert.assertTrue(emulator.isAlternateBufferActive());
-        long scrollbackBeforeAltScroll = emulator.getNeverResetScrolledLineCount();
+        Assert.assertTrue("the program switched to the alternate screen buffer",
+            emulator.isAlternateBufferActive());
+        Assert.assertNull("no output activity has been recorded before the alternate-buffer program emits output",
+            lastOutputActivity());
+
+        long committedBeforeAltOutput = session.getCommittedOutputLineCount();
         for (int line = 0; line < 40; line++) {
             emitGenuineOutput(emulator, "alt screen line " + line + "\r\n");
             client.onGenuineOutput(session);
         }
-        Assert.assertEquals("internal scrolling in the alternate screen buffer must not grow scrollback history",
-            scrollbackBeforeAltScroll, emulator.getNeverResetScrolledLineCount());
 
-        Assert.assertEquals(afterRealOutput, lastOutputActivity());
+        Assert.assertEquals("internal scrolling in the alternate screen buffer must not grow the committed output line count",
+            committedBeforeAltOutput, session.getCommittedOutputLineCount());
+        Assert.assertNotNull("a program emitting output while in the alternate screen buffer must advance out:",
+            lastOutputActivity());
+    }
+
+    @Test
+    public void terminalViewScrollThroughOnTextChangedDoesNotAdvanceOutputActivityWhileInAlternateBuffer()
+            throws Exception {
+        TerminalEmulator emulator = newEmulator();
+        TerminalSession session = sessionWithEmulator(emulator);
+
+        emitGenuineOutput(emulator, "\033[?1049h");
+        Assert.assertTrue(emulator.isAlternateBufferActive());
+        emitGenuineOutput(emulator, "alt screen content\r\n");
+
+        client.onTextChanged(session);
+        client.onTextChanged(session);
+        client.onTextChanged(session);
+
+        Assert.assertNull("scrolling the terminal view reaches only onTextChanged and must not advance out:",
+            lastOutputActivity());
     }
 }
