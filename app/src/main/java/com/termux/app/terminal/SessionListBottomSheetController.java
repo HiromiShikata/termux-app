@@ -34,6 +34,7 @@ public class SessionListBottomSheetController {
     private final TermuxActivity mActivity;
     private final View mSheetView;
     private final View mScrimView;
+    private final View mSessionInfoBottomContainer;
     private final View mDragHandleView;
     private final TextView mTitleView;
     private final ListView mSessionListView;
@@ -57,6 +58,7 @@ public class SessionListBottomSheetController {
         this.mActivity = activity;
         this.mSheetView = activity.findViewById(R.id.session_list_bottom_sheet);
         this.mScrimView = activity.findViewById(R.id.session_list_bottom_sheet_scrim);
+        this.mSessionInfoBottomContainer = activity.findViewById(R.id.session_info_bottom_container);
         this.mDragHandleView = activity.findViewById(R.id.session_list_bottom_sheet_drag_handle);
         this.mTitleView = activity.findViewById(R.id.session_list_bottom_sheet_title);
         this.mSessionListView = activity.findViewById(R.id.session_list_bottom_sheet_list);
@@ -229,6 +231,7 @@ public class SessionListBottomSheetController {
         applySessionCountTitle(listController);
         mSheetView.animate().cancel();
         mScrimView.setVisibility(scrimVisibilityForSheet(View.VISIBLE));
+        applySessionInfoVisibilityForSheet(View.VISIBLE);
         mSheetView.setVisibility(View.VISIBLE);
         mSheetView.setTranslationY(sheetHeightPixels());
         mSheetView.animate()
@@ -316,7 +319,19 @@ public class SessionListBottomSheetController {
             return;
         }
         mScrimView.setVisibility(scrimVisibilityForSheet(View.GONE));
+        applySessionInfoVisibilityForSheet(View.GONE);
         animateDismiss();
+    }
+
+    private void applySessionInfoVisibilityForSheet(int sheetVisibility) {
+        if (mSessionInfoBottomContainer == null) {
+            return;
+        }
+        mSessionInfoBottomContainer.setVisibility(sessionInfoVisibilityForSheet(sheetVisibility));
+    }
+
+    static int sessionInfoVisibilityForSheet(int sheetVisibility) {
+        return sheetVisibility == View.VISIBLE ? View.INVISIBLE : View.VISIBLE;
     }
 
     public static void hideIfPresent(@Nullable SessionListBottomSheetController controller) {
