@@ -130,4 +130,61 @@ public class SessionNameStylingTest {
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
     }
+
+    @Test
+    public void explicitCallReasonLineReceivesARelativeSizeOfAboutOneHalfSoItStopsDominatingTheRow() {
+        String sessionName = "mySession";
+        String reasonLabel = "\nMANUAL CALL: needs your decision";
+        String fullTitle = sessionName + reasonLabel;
+        SpannableString styled = new SpannableString(fullTitle);
+        int reasonStart = sessionName.length();
+        int reasonEnd = fullTitle.length();
+
+        TermuxSessionsListViewController.applyExplicitCallReasonStyling(
+            styled, reasonStart, reasonEnd, new StyleSpan(Typeface.BOLD));
+
+        RelativeSizeSpan[] sizeSpans = styled.getSpans(reasonStart, reasonEnd, RelativeSizeSpan.class);
+        Assert.assertEquals(1, sizeSpans.length);
+        Assert.assertEquals(0.5f, sizeSpans[0].getSizeChange(), 0.0001f);
+        Assert.assertEquals(reasonStart, styled.getSpanStart(sizeSpans[0]));
+        Assert.assertEquals(reasonEnd, styled.getSpanEnd(sizeSpans[0]));
+    }
+
+    @Test
+    public void explicitCallReasonLineRelativeSizeIsSmallerThanTheTimestampAndBellLines() {
+        String reasonLabel = "MANUAL CALL: needs your decision";
+        SpannableString styled = new SpannableString(reasonLabel);
+
+        TermuxSessionsListViewController.applyExplicitCallReasonStyling(
+            styled, 0, reasonLabel.length(), new StyleSpan(Typeface.BOLD));
+
+        RelativeSizeSpan[] sizeSpans = styled.getSpans(0, reasonLabel.length(), RelativeSizeSpan.class);
+        Assert.assertEquals(1, sizeSpans.length);
+        Assert.assertTrue(sizeSpans[0].getSizeChange() < 0.65f);
+        Assert.assertTrue(sizeSpans[0].getSizeChange() < 0.75f);
+    }
+
+    @Test
+    public void explicitCallReasonStylingKeepsTheLineBoldWhileShrinkingIt() {
+        String reasonLabel = "MANUAL CALL: needs your decision";
+        SpannableString styled = new SpannableString(reasonLabel);
+        StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
+
+        TermuxSessionsListViewController.applyExplicitCallReasonStyling(styled, 0, reasonLabel.length(), boldSpan);
+
+        StyleSpan[] styleSpans = styled.getSpans(0, reasonLabel.length(), StyleSpan.class);
+        Assert.assertEquals(1, styleSpans.length);
+        Assert.assertEquals(Typeface.BOLD, styleSpans[0].getStyle());
+    }
+
+    @Test
+    public void explicitCallReasonStylingDoesNothingWhenStartIsNegative() {
+        SpannableString styled = new SpannableString("MANUAL CALL: needs your decision");
+
+        TermuxSessionsListViewController.applyExplicitCallReasonStyling(
+            styled, -1, styled.length(), new StyleSpan(Typeface.BOLD));
+
+        Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
+        Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
+    }
 }
