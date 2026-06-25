@@ -323,19 +323,27 @@
                 android:orientation="horizontal"
                 android:visibility="gone">
 
-                <TextView
-                    android:id="@+id/session_pending_call_to_user_text"
+                <ScrollView
+                    android:id="@+id/session_pending_call_to_user_scroll"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:longClickable="false"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="2dp"
-                    android:paddingVertical="2dp"
-                    android:textColor="@color/session_explicit_call_reason_text"
-                    android:textSize="9sp" />
+                    android:maxHeight="68sp"
+                    android:scrollbars="vertical">
+
+                    <TextView
+                        android:id="@+id/session_pending_call_to_user_text"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:longClickable="false"
+                        android:paddingStart="6dp"
+                        android:paddingEnd="2dp"
+                        android:paddingVertical="2dp"
+                        android:textColor="@color/session_explicit_call_reason_text"
+                        android:textSize="9sp" />
+                </ScrollView>
 
                 <ImageButton
                     android:id="@+id/session_pending_call_to_user_scroll_button"
