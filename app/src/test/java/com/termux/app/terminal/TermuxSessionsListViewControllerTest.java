@@ -113,7 +113,7 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void projectHeaderActionIconsAreInteractiveChildrenSoTheTapDoesNotFallThroughToTheRowCollapseToggle() {
+    public void projectHeaderActionIconsAreClickableButNotFocusableSoTheRowItemClickDoesNotConsumeTheirTap() {
         Context context = themedContext();
         View projectHeader = LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
@@ -128,9 +128,20 @@ public class TermuxSessionsListViewControllerTest {
             View actionIcon = projectHeader.findViewById(actionIconId);
             Assert.assertTrue("action icon must be clickable so it wins the touch over the row click",
                 actionIcon.isClickable());
-            Assert.assertTrue("action icon must be focusable so it is treated as an interactive child",
+            Assert.assertFalse("a focusable action icon makes AbsListView treat the row as a single clickable unit and swallow the tap",
                 actionIcon.isFocusable());
+            Assert.assertFalse(actionIcon.isFocusableInTouchMode());
         }
+    }
+
+    @Test
+    public void projectHeaderRowDoesNotReportFocusableSoTheListDeliversTheTapToTheClickableActionIcons() {
+        Context context = themedContext();
+        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        Assert.assertFalse("a row reporting focusable descendants makes AbsListView consume the action-icon tap as a row item-click",
+            projectHeader.hasFocusable());
     }
 
     @Test
