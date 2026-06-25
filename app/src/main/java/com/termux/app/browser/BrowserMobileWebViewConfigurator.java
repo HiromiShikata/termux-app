@@ -16,8 +16,8 @@ public final class BrowserMobileWebViewConfigurator {
         settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(false);
-        settings.setLoadWithOverviewMode(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         BrowserWebAuthentication.apply(settings);

@@ -28,23 +28,21 @@ public class ProjectBrowserMobileViewTest {
     }
 
     @Test
-    public void projectBrowserAppliesMobileWebViewConfigurator() throws IOException {
+    public void projectBrowserAppliesMobileWebViewConfiguratorForMobileMode() throws IOException {
         String source = readControllerSource();
-        Assert.assertTrue(source.contains(
-            "BrowserMobileWebViewConfigurator.apply(mWebView.getSettings())"));
+        Assert.assertTrue(source.contains("BrowserMobileWebViewConfigurator.apply(settings)"));
     }
 
     @Test
-    public void projectBrowserDoesNotApplyDesktopWebViewConfigurator() throws IOException {
+    public void projectBrowserAppliesDesktopWebViewConfiguratorForDesktopMode() throws IOException {
         String source = readControllerSource();
-        Assert.assertFalse(source.contains("BrowserDesktopWebViewConfigurator"));
+        Assert.assertTrue(source.contains("BrowserDesktopWebViewConfigurator.apply(settings)"));
     }
 
     @Test
-    public void projectBrowserDoesNotOverrideUserAgentString() throws IOException {
+    public void projectBrowserSelectsConfiguratorByDesktopFlag() throws IOException {
         String source = readControllerSource();
-        Assert.assertFalse(source.contains("settings.setUserAgentString("));
-        Assert.assertFalse(source.contains("BrowserUserAgent.DESKTOP_USER_AGENT"));
+        Assert.assertTrue(source.contains("viewMode.isDesktop()"));
     }
 
     @Test
@@ -54,8 +52,14 @@ public class ProjectBrowserMobileViewTest {
     }
 
     @Test
-    public void projectBrowserDoesNotUseDesktopViewportWebViewClient() throws IOException {
+    public void projectBrowserInjectsDesktopViewportOnlyForDesktopMode() throws IOException {
         String source = readControllerSource();
-        Assert.assertFalse(source.contains("new BrowserDesktopViewportWebViewClient()"));
+        Assert.assertTrue(source.contains("injectDesktopViewportIfNeeded"));
+        int methodIndex = source.indexOf("private void injectDesktopViewportIfNeeded");
+        Assert.assertTrue(methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue(methodBody.contains("mViewMode.isDesktop()"));
+        Assert.assertTrue(methodBody.contains("BrowserDesktopViewport.INJECTION_SCRIPT"));
     }
 }

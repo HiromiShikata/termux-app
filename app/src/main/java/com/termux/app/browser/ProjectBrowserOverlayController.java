@@ -7,6 +7,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebBackForwardList;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
@@ -45,6 +46,10 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     private String mLoadedUrl;
 
+    private BrowserViewMode mViewMode = BrowserViewMode.MOBILE;
+
+    private String mDefaultUserAgent;
+
     private final ProjectUrlRouter mRouter = new ProjectUrlRouter(this);
 
     public ProjectBrowserOverlayController(@NonNull TermuxActivity activity) {
@@ -67,7 +72,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         new BrowserLinkContextMenuController(mActivity, mWebView, new BrowserLinkContextMenuController.Actions() {
             @Override
             public void openLinkInBrowser(@NonNull String linkUrl) {
-                openProjectUrl(linkUrl);
+                openProjectUrl(linkUrl, mViewMode);
             }
 
             @Override
@@ -78,7 +83,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     }
 
     private void configureWebView() {
-        BrowserMobileWebViewConfigurator.apply(mWebView.getSettings());
+        applyViewModeConfiguration(mViewMode);
 
         mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
         mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
@@ -88,6 +93,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+                injectDesktopViewportIfNeeded(view);
                 if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, mVisible)) {
                     mWebViewCover.setVisibility(View.VISIBLE);
                 }
@@ -101,6 +107,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             @Override
             public void onPageCommitVisible(WebView view, String url) {
                 super.onPageCommitVisible(view, url);
+                injectDesktopViewportIfNeeded(view);
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
             }
@@ -108,6 +115,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                injectDesktopViewportIfNeeded(view);
                 if (mVisible && "about:blank".equals(url)) {
                     hide();
                     return;
@@ -165,7 +173,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     }
 
     @Override
-    public void openProjectUrl(@NonNull String url) {
+    public void openProjectUrl(@NonNull String url, @NonNull BrowserViewMode viewMode) {
+        applyViewModeConfiguration(viewMode);
         if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, true)) {
             mWebViewCover.setVisibility(View.VISIBLE);
         }
@@ -175,8 +184,28 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         show();
     }
 
-    public void route(@NonNull String url) {
-        mRouter.route(url);
+    private void applyViewModeConfiguration(@NonNull BrowserViewMode viewMode) {
+        mViewMode = viewMode;
+        WebSettings settings = mWebView.getSettings();
+        if (mDefaultUserAgent == null) {
+            mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
+        }
+        if (viewMode.isDesktop()) {
+            BrowserDesktopWebViewConfigurator.apply(settings);
+        } else {
+            BrowserMobileWebViewConfigurator.apply(settings);
+            settings.setUserAgentString(mDefaultUserAgent);
+        }
+    }
+
+    private void injectDesktopViewportIfNeeded(@NonNull WebView view) {
+        if (mViewMode.isDesktop()) {
+            view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
+        }
+    }
+
+    public void route(@NonNull String url, @NonNull BrowserViewMode viewMode) {
+        mRouter.route(url, viewMode);
     }
 
     private void onMainFrameError() {
