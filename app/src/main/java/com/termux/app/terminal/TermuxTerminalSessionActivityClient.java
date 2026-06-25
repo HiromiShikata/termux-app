@@ -940,6 +940,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mPersistedSessionBySession.remove(finishedSession) != null)
             savePersistedSessions();
 
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        boolean finishedSessionWasCurrent = currentSession != null && currentSession == finishedSession;
+
         service.removeTermuxSession(finishedSession);
 
         int size = service.getTermuxSessionsSize();
@@ -947,9 +950,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             // There are no sessions to show, so finish the activity.
             mActivity.finishActivityIfNotFinishing();
         } else {
-            TermuxSession nextSession = selectNextVisibleSession();
-            if (nextSession != null)
-                setCurrentSession(nextSession.getTerminalSession());
+            boolean currentSessionStillPresent = currentSession != null && service.getIndexOfSession(currentSession) >= 0;
+            if (shouldReselectCurrentSessionAfterRemoval(finishedSessionWasCurrent, currentSessionStillPresent)) {
+                TermuxSession nextSession = selectNextVisibleSession();
+                if (nextSession != null)
+                    setCurrentSession(nextSession.getTerminalSession());
+            } else {
+                termuxSessionListNotifyUpdated();
+            }
         }
 
         TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
@@ -976,6 +984,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
         if (toolbarAdapter != null)
             toolbarAdapter.removeTextInputForSession(sessionToRemove);
+    }
+
+    static boolean shouldReselectCurrentSessionAfterRemoval(boolean finishedSessionWasCurrent, boolean currentSessionStillPresent) {
+        return finishedSessionWasCurrent || !currentSessionStillPresent;
     }
 
     @Nullable
