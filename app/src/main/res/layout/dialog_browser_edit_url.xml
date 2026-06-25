@@ -103,5 +103,19 @@
             android:paddingRight="4dp"
             android:textSize="11sp"
             android:text="@string/action_browser_edit_url_bookmarks" />
+
+        <Button
+            android:id="@+id/browser_edit_url_open_in_chrome"
+            style="?android:attr/buttonBarButtonStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:drawableStart="@drawable/ic_open_in_new"
+            android:drawablePadding="2dp"
+            android:minWidth="0dp"
+            android:paddingLeft="4dp"
+            android:paddingRight="4dp"
+            android:textSize="11sp"
+            android:text="@string/action_browser_open_in_chrome" />
     </LinearLayout>
 </LinearLayout>
