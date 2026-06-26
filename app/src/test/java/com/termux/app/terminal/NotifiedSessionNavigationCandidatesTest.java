@@ -133,6 +133,55 @@ public class NotifiedSessionNavigationCandidatesTest {
     }
 
     @Test
+    public void relaxesToSequentialWhenOnlyRedIsCurrentSessionSoArrowMovesToAdjacent() {
+        List<Integer> ordered = Arrays.asList(0, 1, 2, 3, 4);
+        List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
+        int currentSessionIndex = 2;
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            2, SessionNewActivityTier.RED);
+
+        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToActiveTier(
+            navigable, tiersByIndex, currentSessionIndex);
+
+        Assert.assertEquals(navigable, candidates);
+
+        int forwardTarget = VisibleSessionNavigator.nextSessionIndex(
+            ordered, candidates, currentSessionIndex, true);
+        Assert.assertEquals(3, forwardTarget);
+
+        int backwardTarget = VisibleSessionNavigator.nextSessionIndex(
+            ordered, candidates, currentSessionIndex, false);
+        Assert.assertEquals(1, backwardTarget);
+    }
+
+    @Test
+    public void keepsRedCyclingWhenTheSingleRedSessionIsNotTheCurrentSession() {
+        List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
+        int currentSessionIndex = 0;
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            3, SessionNewActivityTier.RED);
+
+        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToActiveTier(
+            navigable, tiersByIndex, currentSessionIndex);
+
+        Assert.assertEquals(Arrays.asList(3), candidates);
+    }
+
+    @Test
+    public void keepsRedCyclingWhenMultipleRedSessionsExistIncludingCurrent() {
+        List<Integer> navigable = Arrays.asList(0, 1, 2, 3, 4);
+        int currentSessionIndex = 1;
+        Map<Integer, SessionNewActivityTier> tiersByIndex = tiers(
+            1, SessionNewActivityTier.RED,
+            4, SessionNewActivityTier.RED);
+
+        List<Integer> candidates = NotifiedSessionNavigationCandidates.restrictToActiveTier(
+            navigable, tiersByIndex, currentSessionIndex);
+
+        Assert.assertEquals(Arrays.asList(1, 4), candidates);
+    }
+
+    @Test
     public void redRestrictsButYellowAndNoneBothNavigateAllSessions() {
         List<Integer> navigable = Arrays.asList(0, 1, 2);
         Map<Integer, SessionNewActivityTier> withRed = tiers(

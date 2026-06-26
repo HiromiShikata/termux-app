@@ -185,7 +185,8 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     @NonNull
     public List<Integer> getNavigationCandidateSessionIndexes() {
         return NotifiedSessionNavigationCandidates.restrictToActiveTier(
-            getNavigableSessionIndexes(), getSessionTiersByIndex());
+            getNavigableSessionIndexes(), getSessionTiersByIndex(),
+            indexOfSession(mActivity.getCurrentSession()));
     }
 
     @NonNull
