@@ -3,4 +3,8 @@
     <attr name="termuxActivityDrawerBackground" format="reference" />
     <attr name="termuxActivityDrawerImageTint" format="reference" />
     <attr name="termuxActivityBottomSeparatorColor" format="reference" />
+
+    <declare-styleable name="MaxHeightScrollView">
+        <attr name="maxScrollHeight" format="dimension" />
+    </declare-styleable>
 </resources>
