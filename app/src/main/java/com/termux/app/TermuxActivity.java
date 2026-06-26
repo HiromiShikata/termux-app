@@ -1222,6 +1222,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
             return;
         }
+        if (requestCode == ProjectBrowserOverlayController.REQUEST_PROJECT_BROWSER_FILE_CHOOSER) {
+            if (mProjectBrowserOverlayController != null) {
+                mProjectBrowserOverlayController.deliverFileChooserResult(resultCode, data);
+            }
+            return;
+        }
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         }

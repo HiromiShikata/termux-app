@@ -1,9 +1,10 @@
 package com.termux.app.browser;
 
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebBackForwardList;
@@ -21,6 +22,8 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 
 public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
+
+    public static final int REQUEST_PROJECT_BROWSER_FILE_CHOOSER = 3001;
 
     private final TermuxActivity mActivity;
 
@@ -51,6 +54,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private String mDefaultUserAgent;
 
     private final ProjectUrlRouter mRouter = new ProjectUrlRouter(this);
+
+    private BrowserCoreWebChromeClient mWebChromeClient;
 
     public ProjectBrowserOverlayController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -159,18 +164,42 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             }
         });
 
-        mWebView.setWebChromeClient(new WebChromeClient() {
+        mWebChromeClient = new BrowserCoreWebChromeClient(new BrowserCoreWebChromeClient.Host() {
+            @NonNull
             @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                BrowserPageLoadProgressState progressState =
-                    BrowserPageLoadProgressState.forProgress(newProgress);
+            public Context getDialogContext() {
+                return mActivity;
+            }
+
+            @Override
+            public void launchFileChooser(@NonNull Intent intent) {
+                mActivity.startActivityForResult(intent, REQUEST_PROJECT_BROWSER_FILE_CHOOSER);
+            }
+
+            @Override
+            public void onProgressChanged(@NonNull BrowserPageLoadProgressState progressState) {
                 mProgressBar.setProgress(progressState.getProgress());
                 mProgressBar.setVisibility(progressState.isVisible() ? View.VISIBLE : View.GONE);
                 if (!progressState.isVisible()) {
                     mWebViewCover.setVisibility(View.GONE);
                 }
             }
+
+            @Override
+            public void onReceivedTitle(@Nullable String title) {
+            }
+
+            @Override
+            public void onReceivedIcon(@NonNull Bitmap icon) {
+            }
         });
+        mWebView.setWebChromeClient(mWebChromeClient);
+    }
+
+    public void deliverFileChooserResult(int resultCode, @Nullable Intent data) {
+        if (mWebChromeClient != null) {
+            mWebChromeClient.deliverFileChooserResult(resultCode, data);
+        }
     }
 
     private void configureCloseButton() {
@@ -283,6 +312,9 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     }
 
     public void onActivityDestroy() {
+        if (mWebChromeClient != null) {
+            mWebChromeClient.cancelPendingFileChooser();
+        }
         mWebView.stopLoading();
         mWebView.setWebViewClient(new WebViewClient());
         mWebView.loadUrl("about:blank");
