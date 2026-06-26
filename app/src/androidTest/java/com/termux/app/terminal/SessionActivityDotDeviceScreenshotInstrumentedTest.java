@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.TextView;
 
@@ -67,8 +68,8 @@ public class SessionActivityDotDeviceScreenshotInstrumentedTest {
 
     @Test
     public void nineHourOldOutRendersGrayDotOnDeviceNotYellow() throws Exception {
-        Context context = ApplicationProvider.getApplicationContext();
-        context.setTheme(R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+        Context appContext = ApplicationProvider.getApplicationContext();
+        Context context = new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordOutputActivity(SESSION_NAME, NOW_MILLIS - NINE_HOURS_MILLIS);
@@ -99,7 +100,7 @@ public class SessionActivityDotDeviceScreenshotInstrumentedTest {
         grayRow.draw(canvas);
         canvas.restore();
 
-        File outDir = context.getExternalFilesDir(null);
+        File outDir = appContext.getExternalFilesDir(null);
         File out = new File(outDir, "session-activity-dot-device-gray-9h.png");
         try (FileOutputStream stream = new FileOutputStream(out)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
