@@ -56,7 +56,21 @@ public class BrowserWebViewConfiguratorTest {
     }
 
     @Test
-    public void mobileAndDesktopShareIdenticalCommonSettings() {
+    public void mobileModeDisablesOverviewModeSoPagesAreNotZoomedOutToFitWideContent() {
+        WebSettings settings = newSettings();
+        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        Assert.assertFalse(settings.getLoadWithOverviewMode());
+    }
+
+    @Test
+    public void desktopModeEnablesOverviewModeToFitWideDesktopLayout() {
+        WebSettings settings = newSettings();
+        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        Assert.assertTrue(settings.getLoadWithOverviewMode());
+    }
+
+    @Test
+    public void mobileAndDesktopShareIdenticalCommonSettingsExceptOverviewMode() {
         WebSettings mobile = newSettings();
         WebSettings desktop = newSettings();
         BrowserWebViewConfigurator.apply(mobile, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
@@ -73,11 +87,11 @@ public class BrowserWebViewConfiguratorTest {
         Assert.assertEquals(
             mobile.getUseWideViewPort(), desktop.getUseWideViewPort());
         Assert.assertEquals(
-            mobile.getLoadWithOverviewMode(), desktop.getLoadWithOverviewMode());
-        Assert.assertEquals(
             mobile.getAllowFileAccess(), desktop.getAllowFileAccess());
         Assert.assertEquals(
             mobile.getAllowContentAccess(), desktop.getAllowContentAccess());
+        Assert.assertNotEquals(
+            mobile.getLoadWithOverviewMode(), desktop.getLoadWithOverviewMode());
     }
 
     @Test
@@ -94,7 +108,6 @@ public class BrowserWebViewConfiguratorTest {
         Assert.assertTrue(settings.getBuiltInZoomControls());
         Assert.assertFalse(settings.getDisplayZoomControls());
         Assert.assertTrue(settings.getUseWideViewPort());
-        Assert.assertTrue(settings.getLoadWithOverviewMode());
         Assert.assertFalse(settings.getAllowFileAccess());
         Assert.assertFalse(settings.getAllowContentAccess());
     }

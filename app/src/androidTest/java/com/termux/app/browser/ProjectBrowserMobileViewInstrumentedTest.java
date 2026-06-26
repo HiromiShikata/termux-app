@@ -47,7 +47,12 @@ public class ProjectBrowserMobileViewInstrumentedTest {
     private static final String READ_DOCUMENT_CLIENT_WIDTH_SCRIPT =
         "document.documentElement.clientWidth";
 
+    private static final String READ_VISUAL_VIEWPORT_SCALE_SCRIPT =
+        "(window.visualViewport ? window.visualViewport.scale : 1)";
+
     private static final double FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX = 4.0;
+
+    private static final double VISUAL_VIEWPORT_SCALE_TOLERANCE = 0.05;
 
     private static final String WARM_UP_PAGE_HTML =
         "<!DOCTYPE html><html><head><title>Warm up</title></head>"
@@ -65,6 +70,17 @@ public class ProjectBrowserMobileViewInstrumentedTest {
             + "<style>html,body{margin:0;padding:0;}"
             + "body{width:320px;}</style></head>"
             + "<body><h1>Project overview</h1></body></html>";
+
+    private static final int WIDE_FIXED_ELEMENT_WIDTH_CSS_PX = 1400;
+
+    private static final String RESPONSIVE_PAGE_WITH_WIDE_ELEMENT_HTML =
+        "<!DOCTYPE html><html><head>"
+            + "<title>Project overview</title>"
+            + "<style>html,body{margin:0;padding:0;}"
+            + ".wide{width:" + WIDE_FIXED_ELEMENT_WIDTH_CSS_PX + "px;height:40px;"
+            + "background:#ccc;}</style></head>"
+            + "<body><h1>Project overview</h1>"
+            + "<div class=\"wide\">wide fixed element</div></body></html>";
 
     @Test
     public void mobileConfigurationKeepsDefaultMobileUserAgent() {
@@ -229,6 +245,66 @@ public class ProjectBrowserMobileViewInstrumentedTest {
                 + expectedDeviceWidthCssPx + " CSS px); the no-viewport page rendered in a "
                 + "fallback wide column instead of the forced device width",
             expectedDeviceWidthCssPx, innerWidth, FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX);
+    }
+
+    @Test
+    public void mobileConfigurationKeepsDeviceWidthAndUnitScaleForResponsivePageWithWideElement()
+        throws InterruptedException {
+        AtomicReference<WebView> webViewRef = new AtomicReference<>();
+        AtomicReference<CountDownLatch> pageFinishedLatchRef =
+            new AtomicReference<>(new CountDownLatch(1));
+
+        runOnMainSync(() -> {
+            WebView webView = new WebView(targetContext());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.MOBILE,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
+            webView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    super.onPageFinished(view, url);
+                    pageFinishedLatchRef.get().countDown();
+                }
+            });
+            layoutOffscreen(webView);
+            webViewRef.set(webView);
+            webView.loadDataWithBaseURL(WARM_UP_PAGE_URL, WARM_UP_PAGE_HTML,
+                "text/html", "utf-8", null);
+        });
+
+        assertTrue("warm up page did not finish loading within timeout",
+            pageFinishedLatchRef.get().await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+        WebView webView = webViewRef.get();
+        pageFinishedLatchRef.set(new CountDownLatch(1));
+        runOnMainSync(() -> webView.loadDataWithBaseURL(PROJECT_URL,
+            RESPONSIVE_PAGE_WITH_WIDE_ELEMENT_HTML, "text/html", "utf-8", null));
+
+        assertTrue("project page did not finish loading within timeout",
+            pageFinishedLatchRef.get().await(CALLBACK_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+
+        int innerWidth = pollInnerWidthUntilMobileLayoutWidth(webView);
+        double devicePixelRatio = readDouble(webView, READ_DEVICE_PIXEL_RATIO_SCRIPT);
+        int documentClientWidth = readInt(webView, READ_DOCUMENT_CLIENT_WIDTH_SCRIPT);
+        double visualViewportScale = readDouble(webView, READ_VISUAL_VIEWPORT_SCALE_SCRIPT);
+        double expectedDeviceWidthCssPx = WEB_VIEW_PHYSICAL_WIDTH_PX / devicePixelRatio;
+
+        assertTrue(
+            "window.innerWidth (" + innerWidth + ") was widened to fit the wide element ("
+                + WIDE_FIXED_ELEMENT_WIDTH_CSS_PX + " CSS px); the layout was not pinned to "
+                + "device width",
+            innerWidth < WIDE_FIXED_ELEMENT_WIDTH_CSS_PX);
+        assertEquals(
+            "window.innerWidth (" + innerWidth + ") did not match the document layout width ("
+                + documentClientWidth + "); the page was laid out at a wider virtual viewport",
+            documentClientWidth, innerWidth);
+        assertEquals(
+            "window.innerWidth (" + innerWidth + ") did not fill the device width ("
+                + expectedDeviceWidthCssPx + " CSS px); the wide element forced a wider layout",
+            expectedDeviceWidthCssPx, innerWidth, FULL_DEVICE_WIDTH_TOLERANCE_CSS_PX);
+        assertEquals(
+            "window.visualViewport.scale (" + visualViewportScale + ") was not approximately 1.0; "
+                + "the wide element triggered a global zoom-out instead of horizontal overflow",
+            1.0, visualViewportScale, VISUAL_VIEWPORT_SCALE_TOLERANCE);
     }
 
     private int pollInnerWidthUntilMobileLayoutWidth(WebView webView) throws InterruptedException {

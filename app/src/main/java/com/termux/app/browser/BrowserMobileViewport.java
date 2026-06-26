@@ -2,7 +2,8 @@ package com.termux.app.browser;
 
 public final class BrowserMobileViewport {
 
-    public static final String LAYOUT_CONTENT = "width=device-width, initial-scale=1, shrink-to-fit=no";
+    public static final String LAYOUT_CONTENT =
+        "width=device-width, initial-scale=1, minimum-scale=1, shrink-to-fit=no";
 
     public static final String INJECTION_SCRIPT =
         "(function(){"

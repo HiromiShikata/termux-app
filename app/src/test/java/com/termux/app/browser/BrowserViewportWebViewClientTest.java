@@ -86,6 +86,14 @@ public class BrowserViewportWebViewClientTest {
     }
 
     @Test
+    public void mobileViewportScriptPinsLayoutToDeviceWidthWithoutZoomOut() {
+        Assert.assertTrue(BrowserMobileViewport.LAYOUT_CONTENT.contains("width=device-width"));
+        Assert.assertTrue(BrowserMobileViewport.LAYOUT_CONTENT.contains("initial-scale=1"));
+        Assert.assertTrue(BrowserMobileViewport.LAYOUT_CONTENT.contains("minimum-scale=1"));
+        Assert.assertTrue(BrowserMobileViewport.INJECTION_SCRIPT.contains("minimum-scale=1"));
+    }
+
+    @Test
     public void mobileViewportClientDoesNotInjectDesktopViewportScript() throws IOException {
         String source = readMobileViewportClientSource();
         Assert.assertFalse(source.contains(INJECTION_CALL));
