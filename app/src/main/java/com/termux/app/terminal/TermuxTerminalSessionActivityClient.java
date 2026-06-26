@@ -134,9 +134,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onStart() {
         // The service has connected, but data may have changed since we were last in the foreground.
         // Get the session stored in shared preferences stored by {@link #onStop} if its valid,
-        // otherwise get the last session currently running.
+        // otherwise get the last session currently running. A session already displayed and still
+        // live is preserved, so returning to the foreground never yanks the user away from the
+        // session they are working in.
         if (mActivity.getTermuxService() != null) {
-            setCurrentSession(getCurrentStoredSessionOrLast());
+            if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
+                setCurrentSession(getCurrentStoredSessionOrLast());
             termuxSessionListNotifyUpdated();
             mActivity.prewarmSessionDefinitionDocument();
             mActivity.eagerLoadAllSessions();
@@ -437,6 +440,28 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private boolean isCurrentlyViewedSession(@NonNull TerminalSession session) {
         return mActivity.isVisible() && mActivity.getCurrentSession() == session;
+    }
+
+    /**
+     * Whether a session is currently displayed in the terminal view and is still a live session of
+     * the bound service. Reconnect, reload and restore paths use this to avoid yanking the user away
+     * from the session they are actively working in: they only set the displayed session when none
+     * is already displayed.
+     */
+    private boolean hasValidCurrentDisplayedSession() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        return currentSession != null && service.getIndexOfSession(currentSession) >= 0;
+    }
+
+    /**
+     * Whether a reconnect, reload or restore path should switch the displayed session. The displayed
+     * session MUST only change due to an explicit user selection, so these background paths switch
+     * only when no valid session is already displayed (e.g. the very first session at startup).
+     */
+    static boolean shouldSwitchSessionOnReconnect(boolean hasValidCurrentDisplayedSession) {
+        return !hasValidCurrentDisplayedSession;
     }
 
     @Nullable
@@ -1032,6 +1057,31 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         browserController.attachBackgroundTab(session.mHandle, browserTabUrl);
     }
 
+    /**
+     * Switch to the stored-or-last session only when no valid session is already displayed. Used on
+     * service reconnect so an activity rebinding to a service with running sessions does not yank the
+     * user away from the session they are actively working in.
+     */
+    public void setCurrentSessionOnReconnectIfNoneDisplayed() {
+        if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
+            setCurrentSession(getCurrentStoredSessionOrLast());
+    }
+
+    /**
+     * Restore the session that was displayed before a reload to the displayed session if it is still
+     * a live session. A session-definition reload creates and removes sessions, and each creation
+     * switches the displayed session; restoring the pre-reload session afterwards keeps the user on
+     * the session they were working in instead of being yanked to the last reloaded session.
+     */
+    public void restoreDisplayedSessionAfterReloadIfStillLive(@Nullable TerminalSession sessionBeforeReload) {
+        if (sessionBeforeReload == null) return;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        if (service.getIndexOfSession(sessionBeforeReload) < 0) return;
+        if (mActivity.getCurrentSession() == sessionBeforeReload) return;
+        setCurrentSession(sessionBeforeReload);
+    }
+
     public void setCurrentStoredSession() {
         TerminalSession currentSession = mActivity.getCurrentSession();
         if (currentSession != null)
@@ -1241,7 +1291,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         savePersistedSessions();
         service.pruneSessionNewActivityStoreToLiveSessions();
-        setCurrentSession(firstRestoredSession);
+        if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
+            setCurrentSession(firstRestoredSession);
         mActivity.getDrawer().closeDrawers();
         return true;
     }
@@ -1298,7 +1349,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (firstCreatedSession == null) return false;
 
-        setCurrentSession(firstCreatedSession);
+        if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
+            setCurrentSession(firstCreatedSession);
         mActivity.getDrawer().closeDrawers();
         return true;
     }

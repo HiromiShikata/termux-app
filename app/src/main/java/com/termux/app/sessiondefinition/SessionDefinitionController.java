@@ -89,6 +89,8 @@ public final class SessionDefinitionController {
         List<SessionDefinitionPlannedSession> sessionsToCreate =
             SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, liveSessionNames);
 
+        TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
+
         removeSessionsWithDisappearedDefinition(entries);
 
         int configuredLimit = activity.getPreferences().getSessionDefinitionMaxSessions();
@@ -116,6 +118,9 @@ public final class SessionDefinitionController {
         activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions();
 
         activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
+
+        activity.getTermuxTerminalSessionClient()
+            .restoreDisplayedSessionAfterReloadIfStillLive(displayedSessionBeforeReload);
     }
 
     private Set<String> collectLiveSessionNames() {

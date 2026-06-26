@@ -666,7 +666,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 boolean isFailSafe = intent.getBooleanExtra(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                 mTermuxTerminalSessionActivityClient.addNewSession(isFailSafe, null);
             } else {
-                mTermuxTerminalSessionActivityClient.setCurrentSession(mTermuxTerminalSessionActivityClient.getCurrentStoredSessionOrLast());
+                mTermuxTerminalSessionActivityClient.setCurrentSessionOnReconnectIfNoneDisplayed();
             }
         }
 
