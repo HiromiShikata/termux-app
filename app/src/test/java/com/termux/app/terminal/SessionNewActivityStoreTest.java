@@ -639,4 +639,66 @@ public class SessionNewActivityStoreTest {
             Collections.singletonList("first reason"),
             store.getUnacknowledgedCallReasons("worker"));
     }
+
+    @Test
+    public void reDetectingAnAlreadyRecordedCallKeepsItsFirstDetectionTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+
+        store.recordExplicitCall("worker", 5_000L, "needs approval");
+        store.recordExplicitCall("worker", 9_000L, "needs approval");
+
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastExplicitCallTimeMillis("worker"));
+    }
+
+    @Test
+    public void reDetectingAnAlreadyRecordedCallDoesNotReArmTheRedTier() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+        store.recordSeen("worker", 2_000L);
+        store.recordUserInput("worker", 3_000L);
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+
+        store.recordExplicitCall("worker", 9_000L, "needs approval");
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+    }
+
+    @Test
+    public void reDetectingAnAlreadyClearedCallAfterReplyDoesNotRefreshItsTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+        store.recordUserInput("worker", 3_000L);
+
+        store.recordExplicitCall("worker", 9_000L, "needs approval");
+
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastExplicitCallTimeMillis("worker"));
+    }
+
+    @Test
+    public void aGenuinelyNewReasonStillFiresAfterAPriorReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordUserInput("worker", 2_000L);
+
+        store.recordExplicitCall("worker", 5_000L, "second reason");
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertEquals(Long.valueOf(5_000L), store.getLastExplicitCallTimeMillis("worker"));
+    }
+
+    @Test
+    public void clearedCallStaysClearedAcrossPersistenceReloadWhenReDetected() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
+        beforeRestart.recordExplicitCall("worker", 1_000L, "needs approval");
+        beforeRestart.recordUserInput("worker", 2_000L);
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+        afterRestart.recordExplicitCall("worker", 9_000L, "needs approval");
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, afterRestart.tierFor("worker"));
+        Assert.assertEquals(Long.valueOf(1_000L), afterRestart.getLastExplicitCallTimeMillis("worker"));
+    }
 }
