@@ -17,7 +17,6 @@ import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.style.RelativeSizeSpan;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -682,61 +681,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setOnClickListener(view -> onSessionNameBarTapped());
             updateSessionProjectStoryBar(currentSessionRow);
         }
-        updatePendingCallToUserBar(sessionName);
-        updateSessionLastReplyBar(sessionName);
+        updateSessionInfoBottomBars(sessionName);
     }
 
-    private void updateSessionLastReplyBar(@Nullable String sessionName) {
-        TextView lastReplyBar = mActivity.findViewById(R.id.session_last_reply_bar);
-        if (lastReplyBar == null) return;
-
-        SessionTimesLine line = resolveSessionTimesLine(sessionName);
-        if (line.isVisible()) {
-            lastReplyBar.setText(line.getText());
-            lastReplyBar.setVisibility(View.VISIBLE);
-        } else {
-            lastReplyBar.setText("");
-            lastReplyBar.setVisibility(View.GONE);
-        }
-    }
-
-    @NonNull
-    private SessionTimesLine resolveSessionTimesLine(@Nullable String sessionName) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null || sessionName == null) {
-            return SessionTimesLine.hidden();
-        }
-        return SessionTimesLine.of(
-            store.getStatuslineCallTimeMillis(sessionName),
-            store.getStatuslineOutTimeMillis(sessionName),
-            store.getStatuslineReplyTimeMillis(sessionName),
-            System.currentTimeMillis());
-    }
-
-    private void updatePendingCallToUserBar(@Nullable String sessionName) {
-        View pendingCallToUserBar = mActivity.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView pendingCallToUserText = mActivity.findViewById(R.id.session_pending_call_to_user_text);
-        ImageButton pendingCallToUserScrollButton =
-            mActivity.findViewById(R.id.session_pending_call_to_user_scroll_button);
-        if (pendingCallToUserBar == null || pendingCallToUserText == null
-            || pendingCallToUserScrollButton == null) {
-            return;
-        }
-
-        PendingCallToUserFooterDecision decision = resolvePendingCallToUserFooterDecision(sessionName);
-        PendingCallToUserFooterBinder.bind(pendingCallToUserBar, pendingCallToUserText,
-            pendingCallToUserScrollButton, decision, this::scrollToMostRecentCallToUserTag);
-    }
-
-    @NonNull
-    private PendingCallToUserFooterDecision resolvePendingCallToUserFooterDecision(
-            @Nullable String sessionName) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null || sessionName == null) {
-            return PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.NONE, null);
-        }
-        return PendingCallToUserFooterDecision.resolveAll(
-            store.tierFor(sessionName), store.getUnacknowledgedCallReasons(sessionName));
+    private void updateSessionInfoBottomBars(@Nullable String sessionName) {
+        View sessionInfoRoot = mActivity.findViewById(android.R.id.content);
+        if (sessionInfoRoot == null) return;
+        SessionInfoBottomBarsBinder.bind(sessionInfoRoot, mActivity.getSessionNewActivityStore(),
+            sessionName, System.currentTimeMillis(), this::scrollToMostRecentCallToUserTag);
     }
 
     private void scrollToMostRecentCallToUserTag() {
