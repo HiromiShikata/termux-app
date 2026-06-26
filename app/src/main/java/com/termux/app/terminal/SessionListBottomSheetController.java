@@ -1,5 +1,6 @@
 package com.termux.app.terminal;
 
+import android.annotation.SuppressLint;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
@@ -53,6 +54,8 @@ public class SessionListBottomSheetController {
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
     private final Runnable mRelativeTimeRefreshRunnable = this::onRelativeTimeRefreshTick;
     private boolean mRelativeTimeRefreshScheduled;
+    private boolean mSessionListTouchInProgress;
+    private boolean mRelativeTimeRefreshDeferredByTouch;
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -248,11 +251,44 @@ public class SessionListBottomSheetController {
         if (!shouldKeepRefreshing(mSheetView.getVisibility())) {
             return;
         }
+        if (!shouldRefreshNow(mSessionListTouchInProgress)) {
+            mRelativeTimeRefreshDeferredByTouch = true;
+            return;
+        }
+        refreshSessionRowsForRelativeTime();
+        scheduleRelativeTimeRefresh();
+    }
+
+    private void refreshSessionRowsForRelativeTime() {
         TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
         if (listController != null) {
             listController.notifyDataSetChanged();
         }
+    }
+
+    private void onSessionListTouchStarted() {
+        mSessionListTouchInProgress = true;
+    }
+
+    private void onSessionListTouchEnded() {
+        mSessionListTouchInProgress = false;
+        if (!mRelativeTimeRefreshDeferredByTouch) {
+            return;
+        }
+        mRelativeTimeRefreshDeferredByTouch = false;
+        if (!shouldKeepRefreshing(mSheetView.getVisibility())) {
+            return;
+        }
         scheduleRelativeTimeRefresh();
+    }
+
+    static boolean shouldRefreshNow(boolean sessionListTouchInProgress) {
+        return !sessionListTouchInProgress;
+    }
+
+    static boolean isSessionListTouchInteractionEnd(int maskedAction) {
+        return maskedAction == MotionEvent.ACTION_UP
+            || maskedAction == MotionEvent.ACTION_CANCEL;
     }
 
     private void startRelativeTimeRefresh() {
@@ -273,6 +309,7 @@ public class SessionListBottomSheetController {
 
     private void stopRelativeTimeRefresh() {
         mRelativeTimeRefreshScheduled = false;
+        mRelativeTimeRefreshDeferredByTouch = false;
         mMainThreadHandler.removeCallbacks(mRelativeTimeRefreshRunnable);
     }
 
@@ -388,7 +425,21 @@ public class SessionListBottomSheetController {
         listController.setSessionClickHost(this::dismissAfterSessionSelected);
         mSessionListView.setOnItemClickListener(listController);
         mSessionListView.setOnItemLongClickListener(listController);
+        bindSessionListTouchTracking();
         mAdapterBound = true;
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void bindSessionListTouchTracking() {
+        mSessionListView.setOnTouchListener((view, event) -> {
+            int maskedAction = event.getActionMasked();
+            if (maskedAction == MotionEvent.ACTION_DOWN) {
+                onSessionListTouchStarted();
+            } else if (isSessionListTouchInteractionEnd(maskedAction)) {
+                onSessionListTouchEnded();
+            }
+            return false;
+        });
     }
 
     private void dismissAfterSessionSelected() {
