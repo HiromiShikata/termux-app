@@ -11,7 +11,6 @@ import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
-import android.text.style.TypefaceSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -60,7 +59,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
-    private static final float TIMESTAMP_ROW_RELATIVE_SIZE = 0.65f;
     private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
@@ -751,13 +749,13 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String explicitCallReasonPart = explicitCallReasonLabel(sessionRow);
 
         SessionInfoBlock sessionInfoBlock = SessionInfoBlock.compose(bellNotificationLabelPart, sessionNamePart,
-            timestampLine, definitionTitle, sessionTitle, explicitCallReasonPart);
+            "", definitionTitle, sessionTitle, explicitCallReasonPart);
+
+        bindSessionRowTimes(sessionRowView, timestampLine);
 
         int bellNotificationLabelStart = sessionInfoBlock.startOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
         int bellNotificationLabelEnd = sessionInfoBlock.endOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
         int sessionNameStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_NAME);
-        int timestampLineStart = sessionInfoBlock.startOf(SessionInfoLine.TIMESTAMP);
-        int timestampLineEnd = sessionInfoBlock.endOf(SessionInfoLine.TIMESTAMP);
         int definitionTitleStart = sessionInfoBlock.startOf(SessionInfoLine.DEFINITION_TITLE);
         int definitionTitleEnd = sessionInfoBlock.endOf(SessionInfoLine.DEFINITION_TITLE);
         int sessionTitleStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_TITLE);
@@ -788,13 +786,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             applyExplicitCallReasonStyling(fullSessionTitleStyled, explicitCallReasonStart, explicitCallReasonEnd, boldSpan);
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(reasonColor), explicitCallReasonStart, explicitCallReasonEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        if (timestampLineStart >= 0) {
-            int fadedColor = (0x99 << 24) | (surfacePrimaryTextColor() & 0x00FFFFFF);
-            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(TIMESTAMP_ROW_RELATIVE_SIZE), timestampLineStart, timestampLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(fadedColor), timestampLineStart, timestampLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            fullSessionTitleStyled.setSpan(new TypefaceSpan("monospace"), timestampLineStart, timestampLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-
         sessionTitleView.setText(fullSessionTitleStyled);
 
         applyBellNotificationIcon(sessionTitleView, sessionRow);
@@ -842,6 +833,19 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
         return "";
+    }
+
+    private void bindSessionRowTimes(@NonNull View sessionRowView, @NonNull String timestampLine) {
+        TextView sessionRowTimesView = sessionRowView.findViewById(R.id.session_row_times);
+        if (timestampLine.isEmpty()) {
+            sessionRowTimesView.setText("");
+            sessionRowTimesView.setVisibility(View.GONE);
+            return;
+        }
+        int fadedColor = (0x99 << 24) | (surfacePrimaryTextColor() & 0x00FFFFFF);
+        sessionRowTimesView.setTextColor(fadedColor);
+        sessionRowTimesView.setText(timestampLine);
+        sessionRowTimesView.setVisibility(View.VISIBLE);
     }
 
     @NonNull
