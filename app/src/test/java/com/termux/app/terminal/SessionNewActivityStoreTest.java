@@ -689,6 +689,30 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void reDetectingAReflowedReasonDoesNotReArmTheRedTierAfterReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "please approve the deploy to production now");
+        store.recordUserInput("worker", 3_000L);
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+
+        // The same reason re-rendered after a column resize wraps across a different line boundary.
+        store.recordExplicitCall("worker", 9_000L, "please approve the deploy\nto production now");
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+    }
+
+    @Test
+    public void reDetectingAReflowedReasonKeepsItsFirstDetectionTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs    review of   the diff");
+
+        // Reflow collapses or shifts interior whitespace but the call is the same.
+        store.recordExplicitCall("worker", 9_000L, "needs review of the diff");
+
+        Assert.assertEquals(Long.valueOf(1_000L), store.getLastExplicitCallTimeMillis("worker"));
+    }
+
+    @Test
     public void clearedCallStaysClearedAcrossPersistenceReloadWhenReDetected() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);

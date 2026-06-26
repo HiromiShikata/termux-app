@@ -82,12 +82,36 @@ public class SessionNewActivityStore {
     }
 
     private boolean isAlreadyKnownCall(@NonNull String sessionName, @NonNull String reason) {
-        List<String> unacknowledged = mUnacknowledgedCallReasonsByName.get(sessionName);
-        if (unacknowledged != null && unacknowledged.contains(reason)) {
-            return true;
+        return containsCanonically(mUnacknowledgedCallReasonsByName.get(sessionName), reason)
+            || containsCanonically(mAcknowledgedCallReasonsByName.get(sessionName), reason);
+    }
+
+    private static boolean containsCanonically(@Nullable List<String> reasons, @NonNull String reason) {
+        if (reasons == null) {
+            return false;
         }
-        List<String> acknowledged = mAcknowledgedCallReasonsByName.get(sessionName);
-        return acknowledged != null && acknowledged.contains(reason);
+        String canonicalReason = canonicalReasonKey(reason);
+        for (String knownReason : reasons) {
+            if (knownReason != null && canonicalReasonKey(knownReason).equals(canonicalReason)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The reflow-insensitive identity of a call-to-user reason used for deduplication only (the
+     * stored and displayed reason text keeps its original whitespace). The same {@code
+     * <call-to-user>} tag re-rendered after a terminal column resize or a scrollback reflow wraps its
+     * inner text across different line boundaries, so a re-scan on the load/reload path produces the
+     * same reason with interior newlines and spaces shifted. Collapsing every run of whitespace to a
+     * single space and trimming yields a stable key, so a reloaded session whose call-to-user was
+     * already recorded or acknowledged is recognized as already known and {@code recordExplicitCall}
+     * stays a no-op — it does not bump the timestamp or re-arm the red tier.
+     */
+    @NonNull
+    private static String canonicalReasonKey(@NonNull String reason) {
+        return reason.replaceAll("\\s+", " ").trim();
     }
 
     public void recordSeen(@NonNull String sessionName, long seenTimeMillis) {
