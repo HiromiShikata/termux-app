@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Message;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
 import android.webkit.ValueCallback;
@@ -32,6 +33,10 @@ public final class BrowserCoreWebChromeClient extends WebChromeClient {
         void onReceivedTitle(@Nullable String title);
 
         void onReceivedIcon(@NonNull Bitmap icon);
+
+        default boolean openNewTabForUrl(@NonNull String url) {
+            return false;
+        }
     }
 
     private final Host mHost;
@@ -76,6 +81,17 @@ public final class BrowserCoreWebChromeClient extends WebChromeClient {
             filePathCallback.onReceiveValue(null);
             return false;
         }
+    }
+
+    @Override
+    public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+        if (resultMsg == null || view == null) return false;
+        WebView hrefProbeWebView = new WebView(view.getContext());
+        hrefProbeWebView.setWebViewClient(new BrowserNewWindowUrlProbeWebViewClient(mHost::openNewTabForUrl));
+        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+        transport.setWebView(hrefProbeWebView);
+        resultMsg.sendToTarget();
+        return true;
     }
 
     @Override

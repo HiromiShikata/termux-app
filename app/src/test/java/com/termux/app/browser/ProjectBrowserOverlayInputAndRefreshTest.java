@@ -38,9 +38,9 @@ public class ProjectBrowserOverlayInputAndRefreshTest {
     }
 
     @Test
-    public void overlayWebViewIsFocusableInTouchModeInLayout() throws IOException {
+    public void overlayWebViewContainerIsFocusableInTouchModeInLayout() throws IOException {
         String layout = readLayout();
-        int webViewIndex = layout.indexOf("@+id/project_browser_web_view");
+        int webViewIndex = layout.indexOf("@+id/project_browser_web_view_container");
         Assert.assertTrue(webViewIndex >= 0);
         int closingBracket = layout.indexOf("/>", webViewIndex);
         Assert.assertTrue(closingBracket > webViewIndex);
@@ -54,17 +54,17 @@ public class ProjectBrowserOverlayInputAndRefreshTest {
         String source = readControllerSource();
         int showIndex = source.indexOf("private void show()");
         Assert.assertTrue(showIndex >= 0);
-        int requestFocusIndex = source.indexOf("mWebView.requestFocus()", showIndex);
+        int requestFocusIndex = source.indexOf("displayedWebView.requestFocus()", showIndex);
         int nextMethodIndex = source.indexOf("public void hide()", showIndex);
         Assert.assertTrue(requestFocusIndex > showIndex);
         Assert.assertTrue(requestFocusIndex < nextMethodIndex);
     }
 
     @Test
-    public void overlayWebViewIsWrappedInSwipeRefreshLayout() throws IOException {
+    public void overlayWebViewContainerIsWrappedInSwipeRefreshLayout() throws IOException {
         String layout = readLayout();
         int swipeRefreshIndex = layout.indexOf("@+id/project_browser_swipe_refresh");
-        int webViewIndex = layout.indexOf("@+id/project_browser_web_view");
+        int webViewIndex = layout.indexOf("@+id/project_browser_web_view_container");
         int swipeRefreshCloseIndex =
             layout.indexOf("</com.termux.app.browser.BrowserPinchAwareSwipeRefreshLayout>", swipeRefreshIndex);
         Assert.assertTrue(swipeRefreshIndex >= 0);
@@ -73,10 +73,10 @@ public class ProjectBrowserOverlayInputAndRefreshTest {
     }
 
     @Test
-    public void overlayWiresSwipeRefreshToWebViewReload() throws IOException {
+    public void overlayWiresSwipeRefreshToDisplayedWebViewReload() throws IOException {
         String source = readControllerSource();
         Assert.assertTrue(source.contains(
-            "mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload)"));
+            "mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView)"));
     }
 
     @Test

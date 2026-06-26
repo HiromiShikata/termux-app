@@ -31,7 +31,7 @@ public class ProjectBrowserMobileViewTest {
     public void projectBrowserAppliesSharedWebViewConfiguratorWithViewMode() throws IOException {
         String source = readControllerSource();
         Assert.assertTrue(source.contains(
-            "BrowserWebViewConfigurator.apply(settings, viewMode, mDefaultUserAgent)"));
+            "BrowserWebViewConfigurator.apply(settings, tab.getViewMode(), mDefaultUserAgent)"));
     }
 
     @Test

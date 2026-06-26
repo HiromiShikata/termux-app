@@ -27,7 +27,7 @@ public class ProjectBrowserOverviewActionsTest {
     public void wiresOpenAllButtonToBulkOpenWithNoLimit() throws IOException {
         String source = readControllerSource();
         Assert.assertTrue(source.contains("R.id.project_browser_open_all_tasks_button"));
-        Assert.assertTrue(source.contains("mBulkOpenController.openDisplayedTaskUrls(mWebView, 0)"));
+        Assert.assertTrue(source.contains("openDisplayedTaskUrls(0)"));
     }
 
     @Test
@@ -35,7 +35,9 @@ public class ProjectBrowserOverviewActionsTest {
         String source = readControllerSource();
         Assert.assertTrue(source.contains("R.id.project_browser_open_first_ten_tasks_button"));
         Assert.assertTrue(source.contains(
-            "mBulkOpenController.openDisplayedTaskUrls(mWebView, BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT)"));
+            "openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT)"));
+        Assert.assertTrue(source.contains(
+            "mBulkOpenController.openDisplayedTaskUrls(displayedWebView, limit)"));
     }
 
     @Test

@@ -53,7 +53,7 @@ public class BrowserDownloadControllerWiringTest {
     public void projectControllerGainsDownloadSupport() throws IOException {
         String source = readModuleSource(PROJECT_CONTROLLER_PATH);
         Assert.assertTrue(source.contains("new BrowserDownloadController("));
-        Assert.assertTrue(source.contains("mWebView.setDownloadListener("));
+        Assert.assertTrue(source.contains("webView.setDownloadListener("));
         Assert.assertTrue(source.contains(
             "mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype)"));
         Assert.assertTrue(source.contains("mDownloadController.unregisterDownloadCompleteReceiver()"));

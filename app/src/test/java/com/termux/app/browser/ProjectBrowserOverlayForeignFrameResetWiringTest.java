@@ -24,28 +24,29 @@ public class ProjectBrowserOverlayForeignFrameResetWiringTest {
     }
 
     @Test
-    public void hideBlanksTheWebViewAndClearsLoadedUrlBookkeeping() throws IOException {
+    public void hideBlanksTheTabsAndClearsLoadedUrlBookkeeping() throws IOException {
         String source = readControllerSource();
         int hideIndex = source.indexOf("public void hide()");
         Assert.assertTrue(hideIndex >= 0);
         int hideEnd = source.indexOf("\n    }", hideIndex);
         String hideBody = source.substring(hideIndex, hideEnd);
-        Assert.assertTrue(hideBody.contains("resetWebViewToBlank()"));
+        Assert.assertTrue(hideBody.contains("resetTabsToBlank()"));
 
-        int resetIndex = source.indexOf("private void resetWebViewToBlank()");
+        int resetIndex = source.indexOf("private void resetTabsToBlank()");
         Assert.assertTrue(resetIndex >= 0);
         int resetEnd = source.indexOf("\n    }", resetIndex);
         String resetBody = source.substring(resetIndex, resetEnd);
         Assert.assertTrue(resetBody.contains("mCurrentUrl = null"));
         Assert.assertTrue(resetBody.contains("mLoadedUrl = null"));
-        Assert.assertTrue(resetBody.contains("mWebView.loadUrl(\"about:blank\")"));
+        Assert.assertTrue(resetBody.contains("mTabManager.removeSession(PROJECT_BROWSER_SESSION_HANDLE)"));
+        Assert.assertTrue(resetBody.contains("mWebViewHost.removeSession(PROJECT_BROWSER_SESSION_HANDLE)"));
     }
 
     @Test
     public void openProjectUrlShowsCoverWhileTheNextPageLoads() throws IOException {
         String source = readControllerSource();
         int openIndex = source.indexOf(
-            "public void openProjectUrl(@NonNull String url, @NonNull BrowserViewMode viewMode)");
+            "private void displayTab(@NonNull BrowserTab tab, @NonNull String url)");
         Assert.assertTrue(openIndex >= 0);
         int openEnd = source.indexOf("\n    }", openIndex);
         String openBody = source.substring(openIndex, openEnd);
@@ -54,12 +55,12 @@ public class ProjectBrowserOverlayForeignFrameResetWiringTest {
     }
 
     @Test
-    public void activityDestroyStillBlanksTheWebView() throws IOException {
+    public void activityDestroyTearsDownEveryPerTabWebView() throws IOException {
         String source = readControllerSource();
         int destroyIndex = source.indexOf("public void onActivityDestroy()");
         Assert.assertTrue(destroyIndex >= 0);
         int destroyEnd = source.indexOf("\n    }", destroyIndex);
         String destroyBody = source.substring(destroyIndex, destroyEnd);
-        Assert.assertTrue(destroyBody.contains("mWebView.loadUrl(\"about:blank\")"));
+        Assert.assertTrue(destroyBody.contains("mWebViewHost.destroyAll()"));
     }
 }

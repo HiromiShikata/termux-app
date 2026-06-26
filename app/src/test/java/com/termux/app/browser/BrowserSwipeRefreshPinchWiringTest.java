@@ -43,15 +43,15 @@ public class BrowserSwipeRefreshPinchWiringTest {
     }
 
     @Test
-    public void projectBrowserWebViewIsWrappedInThePinchAwareSwipeRefreshLayout()
+    public void projectBrowserWebViewContainerIsWrappedInThePinchAwareSwipeRefreshLayout()
             throws IOException {
         String layout = readLayout();
         int swipeRefreshIndex = layout.indexOf("@+id/project_browser_swipe_refresh");
-        int webViewIndex = layout.indexOf("@+id/project_browser_web_view");
+        int webViewContainerIndex = layout.indexOf("@+id/project_browser_web_view_container");
         int swipeRefreshCloseIndex = layout.indexOf(
             "</com.termux.app.browser.BrowserPinchAwareSwipeRefreshLayout>", swipeRefreshIndex);
         Assert.assertTrue(swipeRefreshIndex >= 0);
-        Assert.assertTrue(webViewIndex > swipeRefreshIndex);
-        Assert.assertTrue(swipeRefreshCloseIndex > webViewIndex);
+        Assert.assertTrue(webViewContainerIndex > swipeRefreshIndex);
+        Assert.assertTrue(swipeRefreshCloseIndex > webViewContainerIndex);
     }
 }

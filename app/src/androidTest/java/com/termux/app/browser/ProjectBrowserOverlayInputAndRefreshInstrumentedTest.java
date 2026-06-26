@@ -4,7 +4,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import android.view.View;
 import android.webkit.WebView;
+import android.widget.FrameLayout;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.test.core.app.ActivityScenario;
@@ -19,27 +21,56 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ProjectBrowserOverlayInputAndRefreshInstrumentedTest {
 
+    private static final String PROJECT_URL = "https://github.com/HiromiShikata/termux-app";
+
     @Test
-    public void overlayWebViewIsFocusableInTouchModeForHardwareKeyboardInput() {
+    public void overlayWebViewContainerIsFocusableInTouchModeForHardwareKeyboardInput() {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
         scenario.onActivity(activity -> {
-            WebView overlayWebView = activity.findViewById(R.id.project_browser_web_view);
-            assertNotNull(overlayWebView);
-            assertTrue(overlayWebView.isFocusable());
-            assertTrue(overlayWebView.isFocusableInTouchMode());
+            FrameLayout overlayWebViewContainer =
+                activity.findViewById(R.id.project_browser_web_view_container);
+            assertNotNull(overlayWebViewContainer);
+            assertTrue(overlayWebViewContainer.isFocusable());
+            assertTrue(overlayWebViewContainer.isFocusableInTouchMode());
         });
     }
 
     @Test
-    public void overlaySwipeRefreshLayoutIsInflatedAndWrapsWebView() {
+    public void overlaySwipeRefreshLayoutIsInflatedAndWrapsTheWebViewContainer() {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
         scenario.onActivity(activity -> {
             SwipeRefreshLayout swipeRefreshLayout =
                 activity.findViewById(R.id.project_browser_swipe_refresh);
-            WebView overlayWebView = activity.findViewById(R.id.project_browser_web_view);
+            FrameLayout overlayWebViewContainer =
+                activity.findViewById(R.id.project_browser_web_view_container);
             assertNotNull(swipeRefreshLayout);
-            assertNotNull(overlayWebView);
-            assertSame(swipeRefreshLayout, overlayWebView.getParent());
+            assertNotNull(overlayWebViewContainer);
+            assertSame(swipeRefreshLayout, overlayWebViewContainer.getParent());
         });
+    }
+
+    @Test
+    public void openingAProjectUrlHostsAPerTabWebViewInsideTheContainer() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            ProjectBrowserOverlayController controller = activity.getProjectBrowserOverlayController();
+            controller.openProjectUrl(PROJECT_URL, BrowserViewMode.DESKTOP);
+
+            FrameLayout overlayWebViewContainer =
+                activity.findViewById(R.id.project_browser_web_view_container);
+            WebView perTabWebView = findFirstWebView(overlayWebViewContainer);
+            assertNotNull(perTabWebView);
+            assertSame(overlayWebViewContainer, perTabWebView.getParent());
+        });
+    }
+
+    private static WebView findFirstWebView(FrameLayout container) {
+        for (int childIndex = 0; childIndex < container.getChildCount(); childIndex++) {
+            View child = container.getChildAt(childIndex);
+            if (child instanceof WebView) {
+                return (WebView) child;
+            }
+        }
+        return null;
     }
 }

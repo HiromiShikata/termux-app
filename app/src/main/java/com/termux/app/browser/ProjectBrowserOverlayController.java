@@ -9,8 +9,10 @@ import android.webkit.CookieManager;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -23,23 +25,32 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
+import com.termux.shared.termux.interact.TextInputDialogUtils;
 
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
-public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
+public final class ProjectBrowserOverlayController implements ProjectUrlOpener, BrowserTabSelectionListener {
 
     private static final String LOG_TAG = "ProjectBrowserOverlayController";
 
     public static final int REQUEST_PROJECT_BROWSER_FILE_CHOOSER = 3001;
 
+    private static final String PROJECT_BROWSER_SESSION_HANDLE = "project-browser-overlay";
+
     private final TermuxActivity mActivity;
 
     private final View mOverlayContainer;
 
-    private final WebView mWebView;
+    private final FrameLayout mWebViewContainer;
+
+    private final BrowserTabWebViewHost mWebViewHost;
+
+    private final BrowserTabManager mTabManager = new BrowserTabManager();
 
     private final SwipeRefreshLayout mSwipeRefreshLayout;
 
@@ -56,6 +67,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private final View mFooterTdpmConsoleIconView;
 
     private final View mFooterNewIssueIconView;
+
+    private final BrowserTabFaviconStripController mTabFaviconStripController;
 
     private final BrowserBulkOpenController mBulkOpenController;
 
@@ -74,8 +87,6 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private String mCurrentUrl;
 
     private String mLoadedUrl;
-
-    private BrowserViewMode mViewMode = BrowserViewMode.MOBILE;
 
     private String mDefaultUserAgent;
 
@@ -110,12 +121,15 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             }
         });
 
+    private final Map<BrowserTab, BrowserCoreWebChromeClient> mWebChromeClientByTab = new IdentityHashMap<>();
+
     private BrowserCoreWebChromeClient mWebChromeClient;
 
     public ProjectBrowserOverlayController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
         this.mOverlayContainer = activity.findViewById(R.id.project_browser_overlay);
-        this.mWebView = activity.findViewById(R.id.project_browser_web_view);
+        this.mWebViewContainer = activity.findViewById(R.id.project_browser_web_view_container);
+        this.mWebViewHost = new BrowserTabWebViewHost(mWebViewContainer, this::createWebViewForTab);
         this.mSwipeRefreshLayout = activity.findViewById(R.id.project_browser_swipe_refresh);
         this.mHeaderUrlView = activity.findViewById(R.id.project_browser_header_url);
         this.mProgressBar = activity.findViewById(R.id.project_browser_progress_bar);
@@ -124,9 +138,11 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mFooterOverviewIconView = activity.findViewById(R.id.project_browser_footer_overview_icon);
         this.mFooterTdpmConsoleIconView = activity.findViewById(R.id.project_browser_footer_tdpm_console_icon);
         this.mFooterNewIssueIconView = activity.findViewById(R.id.project_browser_footer_new_issue_icon);
+        HorizontalScrollView tabStripScroll = activity.findViewById(R.id.project_browser_tab_strip_scroll);
+        LinearLayout tabStripContainer = activity.findViewById(R.id.project_browser_tab_strip_container);
+        this.mTabFaviconStripController = new BrowserTabFaviconStripController(tabStripScroll, tabStripContainer, this);
         this.mBulkOpenController = new BrowserBulkOpenController(activity);
-        configureWebView();
-        configureLinkContextMenu();
+        configureSwipeRefresh();
         configureHeaderUrlMenu();
         configureCloseButton();
         configureOverviewActions();
@@ -147,7 +163,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
             @Override
             public void navigateToUrl(@NonNull String editedUrl) {
-                openProjectUrl(BrowserUrlInput.normalize(editedUrl), mViewMode);
+                openProjectUrl(BrowserUrlInput.normalize(editedUrl), activeViewMode());
             }
 
             @Override
@@ -181,7 +197,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
             return;
         }
-        String title = mWebView.getTitle();
+        WebView activeWebView = mWebViewHost.getDisplayedWebView();
+        String title = activeWebView == null ? null : activeWebView.getTitle();
         BrowserBookmark bookmark = new BrowserBookmark(mCurrentUrl, title == null ? mCurrentUrl : title);
         saveBookmarks(loadBookmarks().added(bookmark));
         mActivity.showToast(mActivity.getString(R.string.msg_browser_bookmarked), false);
@@ -205,7 +222,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             .create();
         dialog.setCanceledOnTouchOutside(true);
         listView.setOnItemClickListener((parent, view, position, id) -> {
-            openProjectUrl(bookmarks.get(position).getUrl(), mViewMode);
+            openProjectUrl(bookmarks.get(position).getUrl(), activeViewMode());
             dialog.dismiss();
         });
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
@@ -247,32 +264,37 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         }
     }
 
-    private void configureLinkContextMenu() {
-        new BrowserLinkContextMenuController(mActivity, mWebView, new BrowserLinkContextMenuController.Actions() {
-            @Override
-            public void openLinkInBrowser(@NonNull String linkUrl) {
-                openProjectUrl(linkUrl, mViewMode);
-            }
-
-            @Override
-            public void createSessionForLink(@NonNull String linkUrl) {
-                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
-            }
-        }).attach();
+    private void configureSwipeRefresh() {
+        mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView);
+        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
+            WebView displayedWebView = mWebViewHost.getDisplayedWebView();
+            return displayedWebView != null
+                && BrowserPullToRefreshGate.canWebViewScrollUp(displayedWebView.getScrollY());
+        });
     }
 
-    private void configureWebView() {
-        applyViewModeConfiguration(mViewMode);
+    private void reloadDisplayedWebView() {
+        WebView displayedWebView = mWebViewHost.getDisplayedWebView();
+        if (displayedWebView != null) displayedWebView.reload();
+    }
 
-        mSwipeRefreshLayout.setOnRefreshListener(mWebView::reload);
-        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
-            BrowserPullToRefreshGate.canWebViewScrollUp(mWebView.getScrollY()));
+    @NonNull
+    private WebView createWebViewForTab(@NonNull BrowserTab tab) {
+        WebView webView = new WebView(mActivity);
+        WebSettings settings = webView.getSettings();
+        if (mDefaultUserAgent == null) {
+            mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
+        }
+        BrowserWebViewConfigurator.apply(settings, tab.getViewMode(), mDefaultUserAgent);
+        settings.setSupportMultipleWindows(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        mWebView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
+        webView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
             @NonNull
             @Override
             public BrowserViewMode getViewMode() {
-                return mViewMode;
+                return tab.getViewMode();
             }
 
             @Override
@@ -282,6 +304,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
             @Override
             public void onPageStarted(@NonNull WebView view, @Nullable String url) {
+                tab.setUrl(url);
+                if (!isDisplayedTab(tab)) return;
                 if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, mVisible)) {
                     mWebViewCover.setVisibility(View.VISIBLE);
                 }
@@ -294,15 +318,23 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
             @Override
             public void onPageCommitVisible(@NonNull WebView view, @Nullable String url) {
+                if (!isDisplayedTab(tab)) return;
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
             }
 
             @Override
             public boolean onPageFinished(@NonNull WebView view, @Nullable String url) {
-                if (mVisible && "about:blank".equals(url)) {
+                if (isDisplayedTab(tab) && mVisible && "about:blank".equals(url)) {
                     hide();
                     return true;
+                }
+                tab.setUrl(url);
+                tab.setTitle(view.getTitle());
+                CookieManager.getInstance().flush();
+                if (!isDisplayedTab(tab)) {
+                    notifyTabsUpdated();
+                    return false;
                 }
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
@@ -311,7 +343,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
                 mHeaderUrlView.setText(url);
                 mCurrentUrl = url;
                 updateOverviewActionsVisibility();
-                CookieManager.getInstance().flush();
+                notifyTabsUpdated();
                 return false;
             }
 
@@ -321,14 +353,14 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
             @Override
             public void onMainFrameError(@NonNull WebView view) {
-                handleMainFrameError();
+                if (isDisplayedTab(tab)) handleMainFrameError();
             }
         }));
 
-        mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
             mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype));
 
-        mWebChromeClient = new BrowserCoreWebChromeClient(new BrowserCoreWebChromeClient.Host() {
+        BrowserCoreWebChromeClient chromeClient = new BrowserCoreWebChromeClient(new BrowserCoreWebChromeClient.Host() {
             @NonNull
             @Override
             public Context getDialogContext() {
@@ -342,6 +374,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
             @Override
             public void onProgressChanged(@NonNull BrowserPageLoadProgressState progressState) {
+                if (!isDisplayedTab(tab)) return;
                 mProgressBar.setProgress(progressState.getProgress());
                 mProgressBar.setVisibility(progressState.isVisible() ? View.VISIBLE : View.GONE);
                 if (!progressState.isVisible()) {
@@ -351,19 +384,56 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
             @Override
             public void onReceivedTitle(@Nullable String title) {
+                tab.setTitle(title);
+                notifyTabsUpdated();
             }
 
             @Override
             public void onReceivedIcon(@NonNull Bitmap icon) {
+                tab.setFavicon(icon);
+                notifyTabsUpdated();
+            }
+
+            @Override
+            public boolean openNewTabForUrl(@NonNull String url) {
+                openProjectUrlInNewTab(url, tab.getViewMode());
+                return true;
             }
         });
-        mWebView.setWebChromeClient(mWebChromeClient);
+        mWebChromeClient = chromeClient;
+        mWebChromeClientByTab.put(tab, chromeClient);
+        webView.setWebChromeClient(mWebChromeClient);
+
+        new BrowserLinkContextMenuController(mActivity, webView, new BrowserLinkContextMenuController.Actions() {
+            @Override
+            public void openLinkInBrowser(@NonNull String linkUrl) {
+                openProjectUrlInNewTab(linkUrl, tab.getViewMode());
+            }
+
+            @Override
+            public void createSessionForLink(@NonNull String linkUrl) {
+                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
+            }
+        }).attach();
+
+        return webView;
+    }
+
+    private boolean isDisplayedTab(@NonNull BrowserTab tab) {
+        return mWebViewHost.getDisplayedTab() == tab;
     }
 
     public void deliverFileChooserResult(int resultCode, @Nullable Intent data) {
-        if (mWebChromeClient != null) {
-            mWebChromeClient.deliverFileChooserResult(resultCode, data);
+        BrowserCoreWebChromeClient displayedChromeClient = displayedWebChromeClient();
+        if (displayedChromeClient != null) {
+            displayedChromeClient.deliverFileChooserResult(resultCode, data);
         }
+    }
+
+    @Nullable
+    private BrowserCoreWebChromeClient displayedWebChromeClient() {
+        BrowserTab displayedTab = mWebViewHost.getDisplayedTab();
+        return displayedTab == null ? mWebChromeClient : mWebChromeClientByTab.get(displayedTab);
     }
 
     private void configureCloseButton() {
@@ -373,10 +443,15 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     private void configureOverviewActions() {
         mActivity.findViewById(R.id.project_browser_open_all_tasks_button)
-            .setOnClickListener(view -> mBulkOpenController.openDisplayedTaskUrls(mWebView, 0));
+            .setOnClickListener(view -> openDisplayedTaskUrls(0));
         mActivity.findViewById(R.id.project_browser_open_first_ten_tasks_button)
-            .setOnClickListener(view ->
-                mBulkOpenController.openDisplayedTaskUrls(mWebView, BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+            .setOnClickListener(view -> openDisplayedTaskUrls(BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+    }
+
+    private void openDisplayedTaskUrls(int limit) {
+        WebView displayedWebView = mWebViewHost.getDisplayedWebView();
+        if (displayedWebView == null) return;
+        mBulkOpenController.openDisplayedTaskUrls(displayedWebView, limit);
     }
 
     private void configureFooterActions() {
@@ -409,27 +484,91 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     @Override
     public void openProjectUrl(@NonNull String url, @NonNull BrowserViewMode viewMode) {
-        applyViewModeConfiguration(viewMode);
+        BrowserTab tab = mTabManager.attachOrActivateTab(PROJECT_BROWSER_SESSION_HANDLE, url);
+        tab.setViewMode(viewMode);
+        displayTab(tab, url);
+        show();
+    }
+
+    public void openProjectUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
+        String normalizedUrl = BrowserUrlInput.normalize(url);
+        BrowserTab tab = mTabManager.addTab(PROJECT_BROWSER_SESSION_HANDLE, normalizedUrl);
+        tab.setViewMode(viewMode);
+        displayTab(tab, normalizedUrl);
+        show();
+    }
+
+    private void displayTab(@NonNull BrowserTab tab, @NonNull String url) {
+        mTabManager.setActiveTab(tab);
         if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, true)) {
             mWebViewCover.setVisibility(View.VISIBLE);
         }
         mHeaderUrlView.setText(url);
         mCurrentUrl = url;
-        mWebView.loadUrl(url);
-        show();
-    }
-
-    private void applyViewModeConfiguration(@NonNull BrowserViewMode viewMode) {
-        mViewMode = viewMode;
-        WebSettings settings = mWebView.getSettings();
-        if (mDefaultUserAgent == null) {
-            mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
+        WebView webView = mWebViewHost.showTab(tab);
+        BrowserWebViewConfigurator.apply(webView.getSettings(), tab.getViewMode(), mDefaultUserAgent);
+        if (!url.equals(webView.getUrl())) {
+            webView.loadUrl(url);
         }
-        BrowserWebViewConfigurator.apply(settings, viewMode, mDefaultUserAgent);
+        notifyTabsUpdated();
     }
 
     public void route(@NonNull String url, @NonNull BrowserViewMode viewMode) {
         mRouter.route(url, viewMode);
+    }
+
+    @Override
+    public void openTab(@NonNull BrowserTab tab) {
+        mTabManager.setActiveTab(tab);
+        WebView webView = mWebViewHost.showTab(tab);
+        String tabUrl = tab.getUrl();
+        mCurrentUrl = tabUrl;
+        mLoadedUrl = webView.getUrl();
+        mHeaderUrlView.setText(tabUrl);
+        updateOverviewActionsVisibility();
+        notifyTabsUpdated();
+        show();
+    }
+
+    @Override
+    public void closeTab(@NonNull BrowserTab tab) {
+        BrowserCoreWebChromeClient chromeClient = mWebChromeClientByTab.remove(tab);
+        if (chromeClient != null) chromeClient.cancelPendingFileChooser();
+        mTabManager.removeTab(tab);
+        mWebViewHost.removeTab(tab);
+        BrowserTab activeTab = getActiveTab();
+        if (activeTab == null) {
+            notifyTabsUpdated();
+            hide();
+            return;
+        }
+        openTab(activeTab);
+    }
+
+    @Override
+    public void promptNewTab() {
+        TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
+            R.string.action_browser_open_url_confirm, text ->
+                openProjectUrlInNewTab(BrowserUrlInput.normalize(text), activeViewMode()),
+            -1, null, android.R.string.cancel, null, null);
+    }
+
+    @Nullable
+    @Override
+    public BrowserTab getActiveTab() {
+        return mTabManager.getActiveTab(PROJECT_BROWSER_SESSION_HANDLE);
+    }
+
+    @NonNull
+    private BrowserViewMode activeViewMode() {
+        BrowserTab activeTab = getActiveTab();
+        return activeTab == null ? BrowserViewMode.MOBILE : activeTab.getViewMode();
+    }
+
+    private void notifyTabsUpdated() {
+        mTabFaviconStripController.update(
+            mTabManager.getTabs(PROJECT_BROWSER_SESSION_HANDLE),
+            getActiveTab());
     }
 
     private void handleMainFrameError() {
@@ -441,7 +580,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private void show() {
         mVisible = true;
         mOverlayContainer.setVisibility(View.VISIBLE);
-        mWebView.requestFocus();
+        WebView displayedWebView = mWebViewHost.getDisplayedWebView();
+        if (displayedWebView != null) displayedWebView.requestFocus();
         updateOverviewActionsVisibility();
     }
 
@@ -451,15 +591,21 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mWebViewCover.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(false);
         mOverlayContainer.setVisibility(View.GONE);
-        resetWebViewToBlank();
+        resetTabsToBlank();
         updateOverviewActionsVisibility();
     }
 
-    private void resetWebViewToBlank() {
+    private void resetTabsToBlank() {
         mCurrentUrl = null;
         mLoadedUrl = null;
         mHeaderUrlView.setText("");
-        mWebView.loadUrl("about:blank");
+        for (BrowserCoreWebChromeClient chromeClient : mWebChromeClientByTab.values()) {
+            chromeClient.cancelPendingFileChooser();
+        }
+        mWebChromeClientByTab.clear();
+        mTabManager.removeSession(PROJECT_BROWSER_SESSION_HANDLE);
+        mWebViewHost.removeSession(PROJECT_BROWSER_SESSION_HANDLE);
+        notifyTabsUpdated();
     }
 
     private void updateOverviewActionsVisibility() {
@@ -478,13 +624,14 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     public boolean onBackPressed() {
         if (!mVisible) return false;
-        if (mWebView.canGoBack()) {
-            WebBackForwardList backForwardList = mWebView.copyBackForwardList();
+        WebView displayedWebView = mWebViewHost.getDisplayedWebView();
+        if (displayedWebView != null && displayedWebView.canGoBack()) {
+            WebBackForwardList backForwardList = displayedWebView.copyBackForwardList();
             int previousIndex = backForwardList.getCurrentIndex() - 1;
             if (previousIndex >= 0 && "about:blank".equals(backForwardList.getItemAtIndex(previousIndex).getUrl())) {
                 hide();
             } else {
-                mWebView.goBack();
+                displayedWebView.goBack();
             }
             return true;
         }
@@ -493,14 +640,11 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     }
 
     public void onActivityDestroy() {
-        if (mWebChromeClient != null) {
-            mWebChromeClient.cancelPendingFileChooser();
+        for (BrowserCoreWebChromeClient chromeClient : mWebChromeClientByTab.values()) {
+            chromeClient.cancelPendingFileChooser();
         }
+        mWebChromeClientByTab.clear();
         mDownloadController.unregisterDownloadCompleteReceiver();
-        mWebView.stopLoading();
-        mWebView.setWebViewClient(new WebViewClient());
-        mWebView.loadUrl("about:blank");
-        mWebView.removeAllViews();
-        mWebView.destroy();
+        mWebViewHost.destroyAll();
     }
 }

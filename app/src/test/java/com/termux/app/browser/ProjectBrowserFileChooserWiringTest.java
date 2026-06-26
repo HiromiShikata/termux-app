@@ -30,7 +30,7 @@ public class ProjectBrowserFileChooserWiringTest {
     public void projectControllerUsesSharedCoreWebChromeClient() throws IOException {
         String source = readSource(CONTROLLER_RELATIVE_PATH);
         Assert.assertTrue(source.contains("new BrowserCoreWebChromeClient("));
-        Assert.assertTrue(source.contains("mWebView.setWebChromeClient(mWebChromeClient)"));
+        Assert.assertTrue(source.contains("webView.setWebChromeClient(mWebChromeClient)"));
     }
 
     @Test
@@ -49,7 +49,7 @@ public class ProjectBrowserFileChooserWiringTest {
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
         String methodBody = source.substring(methodIndex, methodEnd);
-        Assert.assertTrue(methodBody.contains("mWebChromeClient.deliverFileChooserResult(resultCode, data)"));
+        Assert.assertTrue(methodBody.contains("displayedChromeClient.deliverFileChooserResult(resultCode, data)"));
     }
 
     @Test
@@ -60,7 +60,7 @@ public class ProjectBrowserFileChooserWiringTest {
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
         String methodBody = source.substring(methodIndex, methodEnd);
-        Assert.assertTrue(methodBody.contains("mWebChromeClient.cancelPendingFileChooser()"));
+        Assert.assertTrue(methodBody.contains("chromeClient.cancelPendingFileChooser()"));
     }
 
     @Test
