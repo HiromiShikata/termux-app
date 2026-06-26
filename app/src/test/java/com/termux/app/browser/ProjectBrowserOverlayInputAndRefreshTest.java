@@ -14,6 +14,9 @@ public class ProjectBrowserOverlayInputAndRefreshTest {
     private static final String CONTROLLER_RELATIVE_PATH =
         "src/main/java/com/termux/app/browser/ProjectBrowserOverlayController.java";
 
+    private static final String CORE_WEB_VIEW_CLIENT_RELATIVE_PATH =
+        "src/main/java/com/termux/app/browser/BrowserCoreWebViewClient.java";
+
     private static final String LAYOUT_RELATIVE_PATH =
         "src/main/res/layout/activity_termux.xml";
 
@@ -89,11 +92,12 @@ public class ProjectBrowserOverlayInputAndRefreshTest {
     @Test
     public void overlayStopsRefreshingIndicatorOnMainFrameError() throws IOException {
         String source = readControllerSource();
-        int onMainFrameErrorIndex = source.indexOf("private void onMainFrameError()");
+        int onMainFrameErrorIndex = source.indexOf("private void handleMainFrameError()");
         Assert.assertTrue(onMainFrameErrorIndex >= 0);
         int setRefreshingFalseIndex =
             source.indexOf("mSwipeRefreshLayout.setRefreshing(false)", onMainFrameErrorIndex);
         Assert.assertTrue(setRefreshingFalseIndex > onMainFrameErrorIndex);
-        Assert.assertTrue(source.contains("request.isForMainFrame()"));
+        String coreClientSource = readModuleResource(CORE_WEB_VIEW_CLIENT_RELATIVE_PATH);
+        Assert.assertTrue(coreClientSource.contains("if (!request.isForMainFrame()) return;"));
     }
 }

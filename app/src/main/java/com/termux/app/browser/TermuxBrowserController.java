@@ -2,38 +2,27 @@ package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
-import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.HttpAuthHandler;
-import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.EditText;
@@ -46,7 +35,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
@@ -76,11 +64,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public final class TermuxBrowserController implements BrowserTabSelectionListener {
 
@@ -162,11 +148,34 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private boolean mBrowserVisible;
 
-    private final Set<Long> mEnqueuedDownloadIds = new HashSet<>();
+    private final BrowserDownloadController mDownloadController = new BrowserDownloadController(
+        new BrowserDownloadController.Host() {
+            @NonNull
+            @Override
+            public Context getDownloadContext() {
+                return mActivity;
+            }
 
-    private BroadcastReceiver mDownloadCompleteReceiver;
+            @Override
+            public boolean isActivityVisible() {
+                return mActivity.isVisible();
+            }
 
-    private boolean mDownloadReceiverRegistered;
+            @Override
+            public void onDownloadStarted(@NonNull String fileName) {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_download_started, fileName), false);
+            }
+
+            @Override
+            public void onDownloadComplete() {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
+            }
+
+            @Override
+            public void onDownloadFailed() {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+            }
+        });
 
     private ValueCallback<Uri[]> mPendingFileChooserCallback;
 
@@ -260,7 +269,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
             List<BrowserPersistedTab> persistedTabs = new ArrayList<>();
             for (BrowserTab tab : tabs) {
-                persistedTabs.add(new BrowserPersistedTab(tab.getUrl(), tab.getTitle(), tab.isDesktopMode()));
+                persistedTabs.add(
+                    new BrowserPersistedTab(tab.getUrl(), tab.getTitle(), tab.getViewMode().isDesktop()));
             }
             int activeTabIndex = mTabManager.getActiveTabIndex(sessionHandle);
             mPersistedTabsBySessionName.put(sessionName,
@@ -506,18 +516,26 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (mDefaultUserAgent == null) {
             mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
         }
-        BrowserWebViewConfigurator.apply(
-            settings,
-            tab.isDesktopMode() ? BrowserViewMode.DESKTOP : BrowserViewMode.MOBILE,
-            mDefaultUserAgent);
+        BrowserWebViewConfigurator.apply(settings, tab.getViewMode(), mDefaultUserAgent);
 
         applyDarkModeRendering(settings);
         BrowserWebViewAutofill.apply(webView, Build.VERSION.SDK_INT);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        webView.setWebViewClient(new WebViewClient() {
+        webView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
+            @NonNull
             @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            public BrowserViewMode getViewMode() {
+                return tab.getViewMode();
+            }
+
+            @Override
+            public boolean shouldInjectMobileViewport() {
+                return false;
+            }
+
+            @Override
+            public void onPageStarted(@NonNull WebView view, @Nullable String url) {
                 tab.setUrl(url);
                 if (isDisplayedTab(tab)) {
                     if (BrowserPageTransition.requiresCoverWhileLoading(
@@ -528,21 +546,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     updatePageHeader();
                 }
                 notifyTabsUpdated();
-                applyDesktopViewport(view, tab);
             }
 
             @Override
-            public void onPageCommitVisible(WebView view, String url) {
+            public void onPageCommitVisible(@NonNull WebView view, @Nullable String url) {
                 if (!isDisplayedTab(tab)) return;
                 commitRenderedFrameUrl(url);
                 revealWebView();
             }
 
             @Override
-            public void onPageFinished(WebView view, String url) {
+            public boolean onPageFinished(@NonNull WebView view, @Nullable String url) {
                 if (isDisplayedTab(tab) && mBrowserVisible && "about:blank".equals(url)) {
                     showTerminal();
-                    return;
+                    return true;
                 }
                 tab.setUrl(url);
                 tab.setTitle(view.getTitle());
@@ -556,33 +573,21 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 }
                 notifyTabsUpdated();
                 persistSessionTabs();
-                applyDesktopViewport(view, tab);
+                return false;
             }
 
             @Override
-            public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+            public void onVisitedHistoryUpdated(@NonNull WebView view, @Nullable String url, boolean isReload) {
                 tab.setUrl(url);
                 if (isDisplayedTab(tab)) updatePageHeader();
                 notifyTabsUpdated();
             }
 
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (!request.isForMainFrame()) return;
-                if (isDisplayedTab(tab)) onMainFrameError();
+            public void onMainFrameError(@NonNull WebView view) {
+                if (isDisplayedTab(tab)) handleMainFrameError();
             }
-
-            @Override
-            @SuppressWarnings("deprecation")
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                if (isDisplayedTab(tab)) onMainFrameError();
-            }
-
-            @Override
-            public void onReceivedHttpAuthRequest(WebView view, HttpAuthHandler handler, String host, String realm) {
-                BrowserHttpAuthDialog.show(view.getContext(), handler, host, realm);
-            }
-        });
+        }));
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -620,7 +625,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         });
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
-            enqueueDownload(url, userAgent, contentDisposition, mimetype));
+            mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype));
 
         new BrowserLinkContextMenuController(mActivity, webView, new BrowserLinkContextMenuController.Actions() {
             @Override
@@ -698,7 +703,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
-    private void onMainFrameError() {
+    private void handleMainFrameError() {
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
@@ -779,103 +784,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private static int secondaryColor(int primaryColor) {
         return Color.argb(HEADER_SECONDARY_TEXT_ALPHA, Color.red(primaryColor),
             Color.green(primaryColor), Color.blue(primaryColor));
-    }
-
-    private void enqueueDownload(@Nullable String url, @Nullable String userAgent,
-                                 @Nullable String contentDisposition, @Nullable String mimetype) {
-        DownloadManager downloadManager =
-            (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
-        if (downloadManager == null || url == null) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
-            return;
-        }
-        try {
-            String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-            if (!TextUtils.isEmpty(mimetype)) {
-                request.setMimeType(mimetype);
-            }
-            if (!TextUtils.isEmpty(userAgent)) {
-                request.addRequestHeader("User-Agent", userAgent);
-            }
-            String cookie = CookieManager.getInstance().getCookie(url);
-            if (!TextUtils.isEmpty(cookie)) {
-                request.addRequestHeader("Cookie", cookie);
-            }
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-            boolean receiverReady = registerDownloadCompleteReceiver();
-            long downloadId = downloadManager.enqueue(request);
-            if (receiverReady) {
-                mEnqueuedDownloadIds.add(downloadId);
-            }
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_started, fileName), false);
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to enqueue browser download", e);
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
-        }
-    }
-
-    private boolean registerDownloadCompleteReceiver() {
-        if (mDownloadReceiverRegistered) return true;
-        mDownloadCompleteReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                if (!mEnqueuedDownloadIds.remove(completedId)) return;
-                if (isDownloadSuccessful(completedId)) {
-                    openDownloadsView();
-                } else {
-                    mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
-                }
-            }
-        };
-        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        try {
-            ContextCompat.registerReceiver(mActivity, mDownloadCompleteReceiver, filter,
-                ContextCompat.RECEIVER_NOT_EXPORTED);
-            mDownloadReceiverRegistered = true;
-            return true;
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to register download receiver", e);
-            mDownloadCompleteReceiver = null;
-            return false;
-        }
-    }
-
-    private void unregisterDownloadCompleteReceiver() {
-        if (!mDownloadReceiverRegistered) return;
-        try {
-            mActivity.unregisterReceiver(mDownloadCompleteReceiver);
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to unregister download receiver", e);
-        }
-        mDownloadReceiverRegistered = false;
-    }
-
-    private boolean isDownloadSuccessful(long downloadId) {
-        DownloadManager downloadManager =
-            (DownloadManager) mActivity.getSystemService(Context.DOWNLOAD_SERVICE);
-        if (downloadManager == null) return false;
-        try (Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadId))) {
-            if (cursor == null || !cursor.moveToFirst()) return false;
-            int statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-            if (statusColumn < 0) return false;
-            return cursor.getInt(statusColumn) == DownloadManager.STATUS_SUCCESSFUL;
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to query download status", e);
-            return false;
-        }
-    }
-
-    private void openDownloadsView() {
-        if (!mActivity.isVisible()) return;
-        try {
-            mActivity.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open downloads view", e);
-        }
     }
 
     private void configureCookies() {
@@ -1035,7 +943,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             updateDesktopModeToggleState();
             return;
         }
-        activeTab.setDesktopMode(!activeTab.isDesktopMode());
+        activeTab.setViewMode(BrowserViewMode.forDesktopFlag(!activeTab.getViewMode().isDesktop()));
         applyUserAgent(activeTab);
         updateDesktopModeToggleState();
         renderFrame(activeTab);
@@ -1047,18 +955,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         WebView displayedWebView = currentWebView();
         if (displayedWebView == null) return;
         displayedWebView.getSettings().setUserAgentString(
-            BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
-    }
-
-    private void applyDesktopViewport(@NonNull WebView view, @Nullable BrowserTab tab) {
-        if (!BrowserDesktopViewport.appliesTo(tab)) return;
-        view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
+            BrowserUserAgent.resolve(tab.getViewMode().isDesktop(), mDefaultUserAgent));
     }
 
     private void updateDesktopModeToggleState() {
         if (mDesktopModeToggle == null) return;
         BrowserTab activeTab = getActiveTab();
-        boolean isDesktop = activeTab != null && activeTab.isDesktopMode();
+        boolean isDesktop = activeTab != null && activeTab.getViewMode().isDesktop();
         if (isDesktop) {
             mDesktopModeToggle.setColorFilter(0xFF03A9F4);
         } else {
@@ -1377,7 +1280,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void onActivityDestroy() {
         cancelPendingFileChooser();
-        unregisterDownloadCompleteReceiver();
+        mDownloadController.unregisterDownloadCompleteReceiver();
         mWebViewHost.destroyAll();
     }
 }

@@ -42,20 +42,21 @@ public class ProjectBrowserMobileViewTest {
     }
 
     @Test
-    public void projectBrowserUsesMobileViewportWebViewClient() throws IOException {
+    public void projectBrowserUsesSharedCoreWebViewClient() throws IOException {
         String source = readControllerSource();
-        Assert.assertTrue(source.contains("new BrowserMobileViewportWebViewClient()"));
+        Assert.assertTrue(source.contains("new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host()"));
+        Assert.assertFalse(source.contains("new BrowserMobileViewportWebViewClient()"));
     }
 
     @Test
-    public void projectBrowserInjectsDesktopViewportOnlyForDesktopMode() throws IOException {
+    public void projectBrowserInjectsMobileViewportThroughSharedClient() throws IOException {
         String source = readControllerSource();
-        Assert.assertTrue(source.contains("injectDesktopViewportIfNeeded"));
-        int methodIndex = source.indexOf("private void injectDesktopViewportIfNeeded");
-        Assert.assertTrue(methodIndex >= 0);
-        int methodEnd = source.indexOf("\n    }", methodIndex);
-        String methodBody = source.substring(methodIndex, methodEnd);
-        Assert.assertTrue(methodBody.contains("mViewMode.isDesktop()"));
-        Assert.assertTrue(methodBody.contains("BrowserDesktopViewport.INJECTION_SCRIPT"));
+        int hostStart = source.indexOf("new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host()");
+        Assert.assertTrue(hostStart >= 0);
+        int shouldInjectIndex = source.indexOf("public boolean shouldInjectMobileViewport()", hostStart);
+        Assert.assertTrue(shouldInjectIndex > hostStart);
+        int returnTrueIndex = source.indexOf("return true;", shouldInjectIndex);
+        int nextMethodIndex = source.indexOf("public void onPageStarted", shouldInjectIndex);
+        Assert.assertTrue(returnTrueIndex > shouldInjectIndex && returnTrueIndex < nextMethodIndex);
     }
 }
