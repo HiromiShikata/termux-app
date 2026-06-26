@@ -24,6 +24,8 @@ public class SessionListBottomSheetControllerTest {
     private static class StringListAdapter extends BaseAdapter {
 
         private final List<String> items;
+        int notifyDataSetChangedCount;
+        final List<Integer> reboundPositions = new java.util.ArrayList<>();
 
         StringListAdapter(List<String> items) {
             this.items = items;
@@ -44,10 +46,21 @@ public class SessionListBottomSheetControllerTest {
             return position;
         }
 
+        @Override
+        public void notifyDataSetChanged() {
+            notifyDataSetChangedCount++;
+            super.notifyDataSetChanged();
+        }
+
         @NonNull
         @Override
         public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-            TextView textView = new TextView(parent.getContext());
+            TextView textView = convertView instanceof TextView
+                ? (TextView) convertView
+                : new TextView(parent.getContext());
+            if (convertView != null) {
+                reboundPositions.add(position);
+            }
             textView.setText(items.get(position));
             return textView;
         }
@@ -156,6 +169,52 @@ public class SessionListBottomSheetControllerTest {
         Assert.assertTrue(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_CANCEL));
         Assert.assertFalse(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_DOWN));
         Assert.assertFalse(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_MOVE));
+    }
+
+    @Test
+    public void rebindableRowPositionsAreThoseWithinTheAdapterCount() {
+        Assert.assertTrue(SessionListBottomSheetController.isRebindablePosition(0, 3));
+        Assert.assertTrue(SessionListBottomSheetController.isRebindablePosition(2, 3));
+        Assert.assertFalse(SessionListBottomSheetController.isRebindablePosition(3, 3));
+        Assert.assertFalse(SessionListBottomSheetController.isRebindablePosition(-1, 3));
+        Assert.assertFalse(SessionListBottomSheetController.isRebindablePosition(0, 0));
+    }
+
+    @Test
+    public void perSecondTickRebindsVisibleRowsInPlaceWithoutAFullDataSetChange() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        StringListAdapter delegate =
+            new StringListAdapter(Arrays.asList("session a", "session b", "session c"));
+        listView.setAdapter(delegate);
+        layoutListView(listView);
+
+        Assert.assertTrue("the laid-out ListView must have visible child rows to rebind",
+            listView.getChildCount() > 0);
+
+        SessionListBottomSheetController.rebindVisibleSessionRowsInPlace(listView);
+
+        Assert.assertEquals("the per-second tick must not trigger a full data-set change",
+            0, delegate.notifyDataSetChangedCount);
+        Assert.assertFalse("the per-second tick must rebind the existing visible row views in place",
+            delegate.reboundPositions.isEmpty());
+        for (int reboundPosition : delegate.reboundPositions) {
+            Assert.assertTrue("only positions inside the adapter may be rebound",
+                reboundPosition >= 0 && reboundPosition < delegate.getCount());
+        }
+    }
+
+    @Test
+    public void inPlaceRebindDoesNothingWhenTheListViewHasNoAdapter() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+
+        SessionListBottomSheetController.rebindVisibleSessionRowsInPlace(listView);
+    }
+
+    private static void layoutListView(@NonNull ListView listView) {
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY);
+        listView.measure(widthSpec, heightSpec);
+        listView.layout(0, 0, 600, 800);
     }
 
     @Test
