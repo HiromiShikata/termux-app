@@ -455,10 +455,12 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         List<SessionHierarchyRow> allRows = buildAllRows();
         for (ProjectActionToken projectActionToken : projectActionTokens) {
+            SessionHierarchyRow projectHeaderRow = SessionHierarchyBuilder.projectHeaderRowForProject(
+                allRows, projectActionToken.getNormalizedProjectName());
             String url = SessionHierarchyBuilder.projectActionUrl(allRows,
                 projectActionToken.getNormalizedProjectName(), projectActionToken.getAction());
             if (url != null && !url.isEmpty()) {
-                openProjectUrlInNewTab(url, BrowserViewMode.DESKTOP);
+                openProjectUrlInNewTab(url, BrowserViewMode.DESKTOP, projectHeaderRow);
             }
             int topSessionIndex = SessionHierarchyBuilder.firstSessionIndexForProject(allRows,
                 projectActionToken.getNormalizedProjectName());
@@ -615,7 +617,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String overviewUrl = row.getOverviewUrl();
         Runnable openAction = (overviewUrl == null || overviewUrl.isEmpty())
             ? null
-            : () -> openProjectUrlInNewTab(overviewUrl, BrowserViewMode.DESKTOP);
+            : () -> openProjectUrlInNewTab(overviewUrl, BrowserViewMode.DESKTOP, row);
         applyProjectHeaderIconVisibility(overviewBrowserIconView, openAction);
     }
 
@@ -624,7 +626,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String tdpmConsoleUrl = row.getTdpmConsoleUrl();
         Runnable openAction = (tdpmConsoleUrl == null || tdpmConsoleUrl.isEmpty())
             ? null
-            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.MOBILE);
+            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.MOBILE, row);
         applyProjectHeaderIconVisibility(tdpmConsoleIconView, openAction);
     }
 
@@ -633,7 +635,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         String newIssueUrl = row.getNewIssueUrl();
         Runnable openAction = (newIssueUrl == null || newIssueUrl.isEmpty())
             ? null
-            : () -> openProjectUrlInNewTab(newIssueUrl, BrowserViewMode.DESKTOP);
+            : () -> openProjectUrlInNewTab(newIssueUrl, BrowserViewMode.DESKTOP, row);
         applyProjectHeaderIconVisibility(newIssueIconView, openAction);
     }
 
@@ -659,10 +661,15 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
     }
 
-    private void openProjectUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
+    private void openProjectUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode,
+                                        @Nullable SessionHierarchyRow projectHeaderRow) {
         ProjectBrowserOverlayController projectBrowserController = mActivity.getProjectBrowserOverlayController();
         if (projectBrowserController == null) {
             return;
+        }
+        if (projectHeaderRow != null) {
+            projectBrowserController.setProjectContext(projectHeaderRow.getOverviewUrl(),
+                projectHeaderRow.getTdpmConsoleUrl(), projectHeaderRow.getNewIssueUrl());
         }
         projectBrowserController.route(url, viewMode);
     }

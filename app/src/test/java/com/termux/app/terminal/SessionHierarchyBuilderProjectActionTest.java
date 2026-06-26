@@ -55,6 +55,24 @@ public class SessionHierarchyBuilderProjectActionTest {
     }
 
     @Test
+    public void projectHeaderRowForProjectReturnsMatchingProjectHeaderWithAllUrls() {
+        SessionHierarchyRow row =
+            SessionHierarchyBuilder.projectHeaderRowForProject(sampleRows(), "xmile");
+
+        Assert.assertNotNull(row);
+        Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
+        Assert.assertEquals("https://overview.example/xmile", row.getOverviewUrl());
+        Assert.assertEquals("https://console.example/xmile", row.getTdpmConsoleUrl());
+        Assert.assertEquals("https://newissue.example/xmile", row.getNewIssueUrl());
+    }
+
+    @Test
+    public void projectHeaderRowForProjectReturnsNullWhenProjectIsNotPresent() {
+        Assert.assertNull(
+            SessionHierarchyBuilder.projectHeaderRowForProject(sampleRows(), "secretary"));
+    }
+
+    @Test
     public void firstSessionIndexForProjectReturnsTopSessionUnderHeader() {
         Assert.assertEquals(4,
             SessionHierarchyBuilder.firstSessionIndexForProject(sampleRows(), "xmile"));
