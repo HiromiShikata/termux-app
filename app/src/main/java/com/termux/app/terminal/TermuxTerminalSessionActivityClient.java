@@ -182,7 +182,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Override
     public void onGenuineOutput(@NonNull TerminalSession changedSession) {
-        recordNewOutputActivityForSession(changedSession);
+        // onGenuineOutput fires only on genuine process output past the stripped keystroke echo,
+        // regardless of whether the main or the alternate screen buffer is active, and never from
+        // scrolling, viewport changes, or redraws. Recording output activity directly on every such
+        // event keeps a full-screen alternate-buffer program's out: time advancing while it emits
+        // output, without keying on committed scrollback growth (which never advances in the
+        // alternate buffer). Scrolling the terminal view does not reach this path and so does not
+        // advance the out: time.
+        recordOutputActivityForSession(changedSession);
     }
 
     @Override

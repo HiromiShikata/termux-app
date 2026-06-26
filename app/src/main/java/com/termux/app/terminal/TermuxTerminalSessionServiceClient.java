@@ -41,7 +41,13 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
 
     @Override
     public void onGenuineOutput(@NonNull TerminalSession changedSession) {
-        recordGenuineOutputActivity(changedSession);
+        // onGenuineOutput fires only on genuine process output past the stripped keystroke echo,
+        // regardless of whether the main or the alternate screen buffer is active, and never from
+        // scrolling, viewport changes, or redraws. Recording output activity directly on every such
+        // event keeps a full-screen alternate-buffer program's out: time advancing while it emits
+        // output, without keying on committed scrollback growth (which never advances in the
+        // alternate buffer).
+        recordOutputActivity(changedSession);
     }
 
     private void scanOutputTags(@NonNull TerminalSession session) {
@@ -71,6 +77,11 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
                 session.mSessionName, session.getCommittedOutputLineCount())) {
             return;
         }
+        recordOutputActivity(session);
+    }
+
+    private void recordOutputActivity(@NonNull TerminalSession session) {
+        if (session.mSessionName == null) return;
         mService.getSessionNewActivityStore().recordOutputActivity(session.mSessionName, System.currentTimeMillis());
     }
 
