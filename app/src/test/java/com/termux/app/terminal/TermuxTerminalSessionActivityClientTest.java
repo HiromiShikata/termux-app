@@ -130,4 +130,20 @@ public class TermuxTerminalSessionActivityClientTest {
             TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
                 isAndroidTV, 1, isPluginExecutionCommandWithPendingResult));
     }
+
+    @Test
+    public void reconnectDoesNotSwitchWhenAValidSessionIsAlreadyDisplayed() {
+        boolean hasValidCurrentDisplayedSession = true;
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.shouldSwitchSessionOnReconnect(
+                hasValidCurrentDisplayedSession));
+    }
+
+    @Test
+    public void reconnectSwitchesWhenNoSessionIsDisplayed() {
+        boolean hasValidCurrentDisplayedSession = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldSwitchSessionOnReconnect(
+                hasValidCurrentDisplayedSession));
+    }
 }
