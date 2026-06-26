@@ -82,6 +82,40 @@ public class CallToUserTagRedDotEndToEndTest {
     }
 
     @Test
+    public void reScanningTheSameCallToUserAfterScannerStateLossKeepsTheFirstDetectionTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        String transcript = "running <call-to-user>needs approval</call-to-user>";
+
+        controllerRecordingAtFixedTime(store, 1_000L).onSessionTextChanged(CALLED_SESSION, transcript);
+        Long firstDetectionTime = store.getLastExplicitCallTimeMillis(CALLED_SESSION);
+
+        controllerRecordingAtFixedTime(store, 50_000L).onSessionTextChanged(CALLED_SESSION, transcript);
+        controllerRecordingAtFixedTime(store, 90_000L).onSessionTextChanged(CALLED_SESSION, transcript);
+
+        Assert.assertEquals(firstDetectionTime, store.getLastExplicitCallTimeMillis(CALLED_SESSION));
+    }
+
+    @Test
+    public void reScanningTheSameCallToUserAfterTheUserRepliedDoesNotReArmTheRedDot() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        String transcript = "running <call-to-user>needs approval</call-to-user>";
+
+        controllerRecordingAtFixedTime(store, 1_000L).onSessionTextChanged(CALLED_SESSION, transcript);
+        store.recordUserInput(CALLED_SESSION, 2_000L);
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
+
+        controllerRecordingAtFixedTime(store, 90_000L).onSessionTextChanged(CALLED_SESSION, transcript);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
+    }
+
+    private static CallToUserTagController controllerRecordingAtFixedTime(SessionNewActivityStore store,
+                                                                          long fixedTimeMillis) {
+        return new CallToUserTagController((sessionKey, reason) ->
+            store.recordExplicitCall(sessionKey, fixedTimeMillis, reason));
+    }
+
+    @Test
     public void redDotIsScopedToTheCallingSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         CallToUserTagController controller = controllerRecordingInto(store);

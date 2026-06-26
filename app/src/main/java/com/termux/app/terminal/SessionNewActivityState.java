@@ -30,6 +30,9 @@ public final class SessionNewActivityState {
     @Nullable
     private final List<String> mUnacknowledgedCallReasons;
 
+    @Nullable
+    private final List<String> mAcknowledgedCallReasons;
+
     public SessionNewActivityState(@NonNull String sessionName,
                                    @Nullable Long lastOutputActivityTimeMillis,
                                    @Nullable Long lastExplicitCallTimeMillis,
@@ -37,7 +40,7 @@ public final class SessionNewActivityState {
                                    @Nullable Long lastSeenTimeMillis,
                                    @Nullable Long lastUserInputTimeMillis) {
         this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
-            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis, null);
+            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis, null, null);
     }
 
     public SessionNewActivityState(@NonNull String sessionName,
@@ -47,6 +50,19 @@ public final class SessionNewActivityState {
                                    @Nullable Long lastSeenTimeMillis,
                                    @Nullable Long lastUserInputTimeMillis,
                                    @Nullable List<String> unacknowledgedCallReasons) {
+        this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
+            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis,
+            unacknowledgedCallReasons, null);
+    }
+
+    public SessionNewActivityState(@NonNull String sessionName,
+                                   @Nullable Long lastOutputActivityTimeMillis,
+                                   @Nullable Long lastExplicitCallTimeMillis,
+                                   @Nullable String lastExplicitCallReason,
+                                   @Nullable Long lastSeenTimeMillis,
+                                   @Nullable Long lastUserInputTimeMillis,
+                                   @Nullable List<String> unacknowledgedCallReasons,
+                                   @Nullable List<String> acknowledgedCallReasons) {
         mSessionName = sessionName;
         mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
         mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
@@ -55,6 +71,8 @@ public final class SessionNewActivityState {
         mLastUserInputTimeMillis = lastUserInputTimeMillis;
         mUnacknowledgedCallReasons = unacknowledgedCallReasons == null
             ? null : Collections.unmodifiableList(new ArrayList<>(unacknowledgedCallReasons));
+        mAcknowledgedCallReasons = acknowledgedCallReasons == null
+            ? null : Collections.unmodifiableList(new ArrayList<>(acknowledgedCallReasons));
     }
 
     @NonNull
@@ -90,5 +108,10 @@ public final class SessionNewActivityState {
     @Nullable
     public List<String> getUnacknowledgedCallReasons() {
         return mUnacknowledgedCallReasons;
+    }
+
+    @Nullable
+    public List<String> getAcknowledgedCallReasons() {
+        return mAcknowledgedCallReasons;
     }
 }

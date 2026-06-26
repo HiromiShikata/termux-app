@@ -21,6 +21,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
     private final Map<String, String> mLastExplicitCallReasonByName = new HashMap<>();
     private final Map<String, List<String>> mUnacknowledgedCallReasonsByName = new HashMap<>();
+    private final Map<String, List<String>> mAcknowledgedCallReasonsByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
 
@@ -43,6 +44,9 @@ public class SessionNewActivityStore {
             if (state.getUnacknowledgedCallReasons() != null)
                 mUnacknowledgedCallReasonsByName.put(state.getSessionName(),
                     new ArrayList<>(state.getUnacknowledgedCallReasons()));
+            if (state.getAcknowledgedCallReasons() != null)
+                mAcknowledgedCallReasonsByName.put(state.getSessionName(),
+                    new ArrayList<>(state.getAcknowledgedCallReasons()));
             if (state.getLastSeenTimeMillis() != null)
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
             if (state.getLastUserInputTimeMillis() != null)
@@ -61,6 +65,9 @@ public class SessionNewActivityStore {
 
     public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
                                    @NonNull String reason) {
+        if (!reason.trim().isEmpty() && isAlreadyKnownCall(sessionName, reason)) {
+            return;
+        }
         mLastExplicitCallTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         mLastExplicitCallReasonByName.put(sessionName, reason);
         if (!reason.trim().isEmpty()) {
@@ -69,11 +76,18 @@ public class SessionNewActivityStore {
                 reasons = new ArrayList<>();
                 mUnacknowledgedCallReasonsByName.put(sessionName, reasons);
             }
-            if (!reasons.contains(reason)) {
-                reasons.add(reason);
-            }
+            reasons.add(reason);
         }
         save();
+    }
+
+    private boolean isAlreadyKnownCall(@NonNull String sessionName, @NonNull String reason) {
+        List<String> unacknowledged = mUnacknowledgedCallReasonsByName.get(sessionName);
+        if (unacknowledged != null && unacknowledged.contains(reason)) {
+            return true;
+        }
+        List<String> acknowledged = mAcknowledgedCallReasonsByName.get(sessionName);
+        return acknowledged != null && acknowledged.contains(reason);
     }
 
     public void recordSeen(@NonNull String sessionName, long seenTimeMillis) {
@@ -83,7 +97,19 @@ public class SessionNewActivityStore {
 
     public void recordUserInput(@NonNull String sessionName, long userInputTimeMillis) {
         mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
-        mUnacknowledgedCallReasonsByName.remove(sessionName);
+        List<String> clearedReasons = mUnacknowledgedCallReasonsByName.remove(sessionName);
+        if (clearedReasons != null) {
+            List<String> acknowledged = mAcknowledgedCallReasonsByName.get(sessionName);
+            if (acknowledged == null) {
+                acknowledged = new ArrayList<>();
+                mAcknowledgedCallReasonsByName.put(sessionName, acknowledged);
+            }
+            for (String reason : clearedReasons) {
+                if (!acknowledged.contains(reason)) {
+                    acknowledged.add(reason);
+                }
+            }
+        }
         save();
     }
 
@@ -92,6 +118,7 @@ public class SessionNewActivityStore {
         mLastExplicitCallTimeMillisByName.remove(sessionName);
         mLastExplicitCallReasonByName.remove(sessionName);
         mUnacknowledgedCallReasonsByName.remove(sessionName);
+        mAcknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
         save();
@@ -102,6 +129,7 @@ public class SessionNewActivityStore {
         changed |= mLastExplicitCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastExplicitCallReasonByName.keySet().retainAll(knownSessionNames);
         changed |= mUnacknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
+        changed |= mAcknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
@@ -193,18 +221,21 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mLastExplicitCallTimeMillisByName.keySet());
         sessionNames.addAll(mLastExplicitCallReasonByName.keySet());
         sessionNames.addAll(mUnacknowledgedCallReasonsByName.keySet());
+        sessionNames.addAll(mAcknowledgedCallReasonsByName.keySet());
         sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
         sessionNames.addAll(mLastUserInputTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
+            List<String> acknowledgedReasons = mAcknowledgedCallReasonsByName.get(sessionName);
             states.add(new SessionNewActivityState(sessionName,
                 mLastOutputActivityTimeMillisByName.get(sessionName),
                 mLastExplicitCallTimeMillisByName.get(sessionName),
                 mLastExplicitCallReasonByName.get(sessionName),
                 mLastSeenTimeMillisByName.get(sessionName),
                 mLastUserInputTimeMillisByName.get(sessionName),
-                reasons == null ? null : new ArrayList<>(reasons)));
+                reasons == null ? null : new ArrayList<>(reasons),
+                acknowledgedReasons == null ? null : new ArrayList<>(acknowledgedReasons)));
         }
         mPersistence.save(states);
     }
