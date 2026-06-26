@@ -149,4 +149,20 @@ public class UpdateTermuxAppTagScannerTest {
             "output line 4998\noutput line 4999\n<update-termux-app>update again</update-termux-app>\n";
         assertEquals(List.of("update again"), scanner.newReasons(trimmedWithNewTag));
     }
+
+    @Test
+    public void doesNotReTriggerAnEarlierReasonWhenAReFedWindowShowsItWhileTheNewerReasonScrolledOffTheTail() {
+        UpdateTermuxAppTagScanner scanner = new UpdateTermuxAppTagScanner();
+
+        assertEquals(List.of("first"),
+            scanner.newReasons("<update-termux-app>first</update-termux-app>\n"));
+        assertEquals(List.of("second"),
+            scanner.newReasons("<update-termux-app>first</update-termux-app>\n<update-termux-app>second</update-termux-app>\n"));
+
+        assertTrue(scanner.newReasons(
+            "<update-termux-app>first</update-termux-app>\nlater plain output\n").isEmpty());
+
+        assertEquals(List.of("third"),
+            scanner.newReasons("<update-termux-app>first</update-termux-app>\nlater plain output\n<update-termux-app>third</update-termux-app>\n"));
+    }
 }

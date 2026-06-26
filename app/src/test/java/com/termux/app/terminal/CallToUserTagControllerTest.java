@@ -132,4 +132,44 @@ public class CallToUserTagControllerTest {
         assertEquals(1, trigger.reasons.size());
         assertEquals("approval", trigger.reasons.get(0));
     }
+
+    @Test
+    public void doesNotRecordANewCallWhenABottomSheetReFeedShowsAnEarlierCallWhileTheNewerCallScrolledOffTheTail() {
+        RecordingTrigger trigger = new RecordingTrigger();
+        CallToUserTagController controller = new CallToUserTagController(trigger);
+
+        controller.onSessionTextChanged("session-1", "<call-to-user>first approval</call-to-user>\n");
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>first approval</call-to-user>\n<call-to-user>second approval</call-to-user>\n");
+
+        assertEquals(2, trigger.reasons.size());
+
+        // Opening the session-list bottom sheet re-feeds the scrollback window. The window shows the
+        // earlier call at the front while the newer call is no longer rendered, which previously
+        // collapsed the dedup boundary and re-recorded the earlier call with the current time.
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>first approval</call-to-user>\nlater plain output\n");
+
+        assertEquals(2, trigger.reasons.size());
+    }
+
+    @Test
+    public void recordsANewCallWhenAGenuinelyNewTagIsAppendedAfterAReFedWindow() {
+        RecordingTrigger trigger = new RecordingTrigger();
+        CallToUserTagController controller = new CallToUserTagController(trigger);
+
+        controller.onSessionTextChanged("session-1", "<call-to-user>first approval</call-to-user>\n");
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>first approval</call-to-user>\n<call-to-user>second approval</call-to-user>\n");
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>first approval</call-to-user>\nlater plain output\n");
+
+        assertEquals(2, trigger.reasons.size());
+
+        controller.onSessionTextChanged("session-1",
+            "<call-to-user>first approval</call-to-user>\nlater plain output\n<call-to-user>third approval</call-to-user>\n");
+
+        assertEquals(3, trigger.reasons.size());
+        assertEquals("third approval", trigger.reasons.get(2));
+    }
 }

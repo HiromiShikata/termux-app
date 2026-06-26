@@ -21,10 +21,24 @@ import java.util.regex.Pattern;
  * <p>Deduplication is therefore anchored to the monotonic sequence of normalized tag VALUES that
  * have streamed through, not to positions in the rendered string. Whitespace, line wrapping, and how
  * much of the front has scrolled away do not change that value sequence, so a still-visible tag is
- * recognized as already fired and does not re-fire. The rendered window always contains a contiguous
- * tail-window of the full value stream (some leading values scrolled away, some new values appended
- * at the end); the longest already-fired tail that prefixes the current window marks the boundary,
- * and only the values beyond it are new.
+ * recognized as already fired and does not re-fire. The tags visible in the rendered window are a
+ * SUBSEQUENCE of the full fired-value stream: leading values have scrolled off the front, interior
+ * values may have scrolled off so that values still visible are no longer contiguous in the stream,
+ * and trailing values can also drop off the tail when the viewport is re-fed from a fixed scrollback
+ * window (for example when the session-list bottom sheet is opened or the session is switched). After
+ * the already-fired subsequence come the genuinely new values appended since the last scan.
+ *
+ * <p>The already-fired leading portion of the current window is found by walking both forward: each
+ * current value is matched against the fired stream at or after a monotonically advancing cursor,
+ * skipping over interior values that scrolled out of the window. The first current value that cannot
+ * be located in the remaining fired stream begins the genuinely new suffix; everything from there on
+ * is reported as new and appended to the fired stream. Advancing a cursor (rather than requiring the
+ * fired TAIL to prefix the window) is what makes re-feeding the same transcript safe: when more than
+ * one value has fired and a re-fed window shows an older already-fired value at the front while the
+ * newest fired value is no longer a clean suffix anchor, the forward walk still recognizes every
+ * visible value as already fired, so the re-scan fires nothing while a genuinely new appended value
+ * still fires. Because the cursor only moves forward, a repeated value matches a distinct earlier
+ * occurrence, so a genuinely new occurrence of an already-seen value is still reported.
  */
 public final class OutputTagScanner {
 
@@ -64,7 +78,7 @@ public final class OutputTagScanner {
 
         List<String> currentValues = extractValues(currentText);
 
-        int alreadyFiredInWindow = longestFiredSuffixThatPrefixesCurrent(currentValues);
+        int alreadyFiredInWindow = alreadyFiredPrefixLength(currentValues);
 
         List<String> newValues = new ArrayList<>(
             currentValues.subList(alreadyFiredInWindow, currentValues.size()));
@@ -73,28 +87,31 @@ public final class OutputTagScanner {
     }
 
     /**
-     * Returns the length of the prefix of {@code currentValues} that has already fired. The rendered
-     * window is a contiguous tail-window of the full value stream, so the already-fired portion still
-     * visible is exactly the longest suffix of {@link #firedValues} that equals a prefix of
-     * {@code currentValues}. Everything after that prefix is genuinely new.
+     * Returns the length of the leading portion of {@code currentValues} that has already fired. The
+     * visible tags are a subsequence of {@link #firedValues}: a forward cursor over the fired stream
+     * matches each current value at or after the last match, skipping interior values that scrolled
+     * out of the rendered window. The first current value that cannot be located in the remaining
+     * fired stream begins the genuinely new suffix, so every value from that index on is new.
      */
-    private int longestFiredSuffixThatPrefixesCurrent(List<String> currentValues) {
-        int maxOverlap = Math.min(firedValues.size(), currentValues.size());
-        for (int overlap = maxOverlap; overlap > 0; overlap--) {
-            if (firedSuffixEqualsCurrentPrefix(overlap, currentValues)) {
-                return overlap;
+    private int alreadyFiredPrefixLength(List<String> currentValues) {
+        int firedCursor = 0;
+        int currentIndex = 0;
+        for (; currentIndex < currentValues.size(); currentIndex++) {
+            int matchIndex = indexOfValueFrom(currentValues.get(currentIndex), firedCursor);
+            if (matchIndex < 0) {
+                break;
             }
+            firedCursor = matchIndex + 1;
         }
-        return 0;
+        return currentIndex;
     }
 
-    private boolean firedSuffixEqualsCurrentPrefix(int overlap, List<String> currentValues) {
-        int firedStart = firedValues.size() - overlap;
-        for (int i = 0; i < overlap; i++) {
-            if (!firedValues.get(firedStart + i).equals(currentValues.get(i))) {
-                return false;
+    private int indexOfValueFrom(String value, int firedStart) {
+        for (int firedIndex = firedStart; firedIndex < firedValues.size(); firedIndex++) {
+            if (firedValues.get(firedIndex).equals(value)) {
+                return firedIndex;
             }
         }
-        return true;
+        return -1;
     }
 }

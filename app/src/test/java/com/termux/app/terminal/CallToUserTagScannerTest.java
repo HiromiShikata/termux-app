@@ -188,4 +188,20 @@ public class CallToUserTagScannerTest {
         assertTrue(scanner.newReasons(
             "line a\nline b\nstill the same already fired output\n").isEmpty());
     }
+
+    @Test
+    public void doesNotReFireAnEarlierReasonWhenAReFedWindowShowsItWhileTheNewerReasonScrolledOffTheTail() {
+        CallToUserTagScanner scanner = new CallToUserTagScanner();
+
+        assertEquals(List.of("first"),
+            scanner.newReasons("<call-to-user>first</call-to-user>\n"));
+        assertEquals(List.of("second"),
+            scanner.newReasons("<call-to-user>first</call-to-user>\n<call-to-user>second</call-to-user>\n"));
+
+        assertTrue(scanner.newReasons(
+            "<call-to-user>first</call-to-user>\nlater plain output\n").isEmpty());
+
+        assertEquals(List.of("third"),
+            scanner.newReasons("<call-to-user>first</call-to-user>\nlater plain output\n<call-to-user>third</call-to-user>\n"));
+    }
 }
