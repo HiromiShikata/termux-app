@@ -2,6 +2,7 @@ package com.termux.app.sessiondefinition;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -98,6 +99,31 @@ public class SessionDefinitionControllerWashReplaceTest {
         assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
         assertTrue(service.getIndexOfSession(stillDefined.getTerminalSession()) >= 0);
         assertTrue(service.getIndexOfSession(disappearedDefinition.getTerminalSession()) < 0);
+    }
+
+    @Test
+    public void removeSessionsWithDisappearedDefinitionPurgesActivityStoreAndDoesNotReviveWithoutPreviousEntries()
+        throws Exception {
+        TermuxSession stillDefined = session("https://example.test/a");
+        TermuxSession disappearedDefinition = session("https://example.test/b");
+        shellManager.mTermuxSessions.add(stillDefined);
+        shellManager.mTermuxSessions.add(disappearedDefinition);
+
+        com.termux.app.terminal.SessionNewActivityStore store = service.getSessionNewActivityStore();
+        store.recordOutputActivity("https://example.test/a", 1_000L);
+        store.recordOutputActivity("https://example.test/b", 2_000L);
+
+        adapter.setEntries(Collections.emptyList());
+
+        List<SessionDefinitionEntry> reloadedEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        invokeRemoveSessionsWithDisappearedDefinition(reloadedEntries);
+
+        assertEquals(Collections.singletonList("https://example.test/a"), remainingSessionNames());
+        assertNull(store.getLastOutputActivityTimeMillis("https://example.test/b"));
+        assertEquals(Long.valueOf(1_000L), store.getLastOutputActivityTimeMillis("https://example.test/a"));
     }
 
     @Test
