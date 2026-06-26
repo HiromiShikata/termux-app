@@ -555,18 +555,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (mDefaultUserAgent == null) {
             mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
         }
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setBuiltInZoomControls(true);
-        settings.setDisplayZoomControls(false);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
-        settings.setUserAgentString(BrowserUserAgent.resolve(tab.isDesktopMode(), mDefaultUserAgent));
+        BrowserWebViewConfigurator.apply(
+            settings,
+            tab.isDesktopMode() ? BrowserViewMode.DESKTOP : BrowserViewMode.MOBILE,
+            mDefaultUserAgent);
 
         applyDarkModeRendering(settings);
-        BrowserWebAuthentication.apply(settings);
         BrowserWebViewAutofill.apply(webView, Build.VERSION.SDK_INT);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 

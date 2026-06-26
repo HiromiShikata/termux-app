@@ -28,21 +28,17 @@ public class ProjectBrowserMobileViewTest {
     }
 
     @Test
-    public void projectBrowserAppliesMobileWebViewConfiguratorForMobileMode() throws IOException {
+    public void projectBrowserAppliesSharedWebViewConfiguratorWithViewMode() throws IOException {
         String source = readControllerSource();
-        Assert.assertTrue(source.contains("BrowserMobileWebViewConfigurator.apply(settings)"));
+        Assert.assertTrue(source.contains(
+            "BrowserWebViewConfigurator.apply(settings, viewMode, mDefaultUserAgent)"));
     }
 
     @Test
-    public void projectBrowserAppliesDesktopWebViewConfiguratorForDesktopMode() throws IOException {
+    public void projectBrowserDoesNotUsePerModeConfigurators() throws IOException {
         String source = readControllerSource();
-        Assert.assertTrue(source.contains("BrowserDesktopWebViewConfigurator.apply(settings)"));
-    }
-
-    @Test
-    public void projectBrowserSelectsConfiguratorByDesktopFlag() throws IOException {
-        String source = readControllerSource();
-        Assert.assertTrue(source.contains("viewMode.isDesktop()"));
+        Assert.assertFalse(source.contains("BrowserMobileWebViewConfigurator"));
+        Assert.assertFalse(source.contains("BrowserDesktopWebViewConfigurator"));
     }
 
     @Test
