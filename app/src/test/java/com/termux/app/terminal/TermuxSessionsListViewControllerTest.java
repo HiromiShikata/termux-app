@@ -184,6 +184,36 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void everyProjectHeaderActionIconRunsOnlyItsOwnActionWithoutTogglingTheAccordion() {
+        Context context = themedContext();
+        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
+
+        int[] actionIconIds = {
+            R.id.session_project_header_overview_browser_icon,
+            R.id.session_project_header_tdpm_console_icon,
+            R.id.session_project_header_new_issue_icon
+        };
+
+        for (int actionIconId : actionIconIds) {
+            boolean[] actionRan = {false};
+            View actionIcon = projectHeader.findViewById(actionIconId);
+            TermuxSessionsListViewController.applyProjectHeaderIconVisibility(
+                actionIcon, () -> actionRan[0] = true);
+
+            boolean handled = actionIcon.performClick();
+
+            Assert.assertTrue("the right-end action icon must consume its own tap", handled);
+            Assert.assertTrue("tapping the right-end action icon must run its action", actionRan[0]);
+        }
+
+        Assert.assertFalse("the project header row must not be clickable, so a right-end action tap cannot also toggle the accordion",
+            projectHeader.isClickable());
+        Assert.assertFalse("the project header row must report no focusable descendants, so AbsListView delivers the tap to the action icon rather than firing onItemClick (accordion toggle)",
+            projectHeader.hasFocusable());
+    }
+
+    @Test
     public void projectHeaderTitleAppendsSessionCountInParenthesesAfterTheName() {
         Assert.assertEquals("ProjectName (3)",
             TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 3));
@@ -527,6 +557,28 @@ public class TermuxSessionsListViewControllerTest {
 
         Assert.assertTrue(handled);
         Assert.assertTrue(toggled[0]);
+    }
+
+    @Test
+    public void disableToggleExposesAtLeastTheAccessibilityMinimumTouchTargetSoTapsDoNotFallThroughToTheRow() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View disableToggle = row.findViewById(R.id.session_disable_toggle);
+        ViewGroup.LayoutParams layoutParams = disableToggle.getLayoutParams();
+
+        int minimumTouchTargetPx = Math.round(48f
+            * context.getResources().getDisplayMetrics().density);
+
+        Assert.assertTrue("disable toggle touch target width below the accessibility minimum",
+            layoutParams.width >= minimumTouchTargetPx);
+        Assert.assertTrue("disable toggle touch target height below the accessibility minimum",
+            layoutParams.height >= minimumTouchTargetPx);
+        Assert.assertTrue("disable toggle minWidth below the accessibility minimum",
+            disableToggle.getMinimumWidth() >= minimumTouchTargetPx);
+        Assert.assertTrue("disable toggle minHeight below the accessibility minimum",
+            disableToggle.getMinimumHeight() >= minimumTouchTargetPx);
     }
 
     @Test
