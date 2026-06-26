@@ -1,5 +1,6 @@
 package com.termux.app.terminal;
 
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -137,5 +138,99 @@ public class SessionListBottomSheetControllerTest {
     public void relativeTimeRefreshIntervalIsAboutOneSecond() {
         Assert.assertEquals(1000L,
             SessionListBottomSheetController.RELATIVE_TIME_REFRESH_INTERVAL_MILLISECONDS);
+    }
+
+    @Test
+    public void relativeTimeRefreshRunsWhileNoSessionRowTapIsInProgress() {
+        Assert.assertTrue(SessionListBottomSheetController.shouldRefreshNow(false));
+    }
+
+    @Test
+    public void relativeTimeRefreshIsSuppressedWhileASessionRowTapIsInProgressSoTheFirstTapNavigates() {
+        Assert.assertFalse(SessionListBottomSheetController.shouldRefreshNow(true));
+    }
+
+    @Test
+    public void sessionRowTouchInteractionEndsOnPointerUpOrCancelSoTheDeferredRefreshCanResume() {
+        Assert.assertTrue(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_UP));
+        Assert.assertTrue(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_CANCEL));
+        Assert.assertFalse(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_DOWN));
+        Assert.assertFalse(SessionListBottomSheetController.isSessionListTouchInteractionEnd(MotionEvent.ACTION_MOVE));
+    }
+
+    @Test
+    public void aSingleTapOnASessionRowNavigatesOnTheFirstTapBecauseNoRefreshRebindsTheRowDuringTheTouch() {
+        TouchGatedRefreshHarness harness = new TouchGatedRefreshHarness();
+        int[] navigatedPosition = {-1};
+
+        harness.onTouch(MotionEvent.ACTION_DOWN);
+        harness.requestPeriodicRefreshTick();
+        harness.onTouch(MotionEvent.ACTION_UP);
+        navigatedPosition[0] = 1;
+
+        Assert.assertEquals("no notifyDataSetChanged may run between ACTION_DOWN and ACTION_UP, so AbsListView keeps the pending item click",
+            0, harness.refreshCountDuringTouch);
+        Assert.assertEquals("the first tap must navigate to the tapped session", 1, navigatedPosition[0]);
+    }
+
+    @Test
+    public void aPeriodicRefreshRequestedDuringATapIsDeferredUntilTheTapEndsThenRunsOnce() {
+        TouchGatedRefreshHarness harness = new TouchGatedRefreshHarness();
+
+        harness.onTouch(MotionEvent.ACTION_DOWN);
+        harness.requestPeriodicRefreshTick();
+
+        Assert.assertEquals("the refresh requested mid-tap must not run while the finger is down",
+            0, harness.totalRefreshCount);
+
+        harness.onTouch(MotionEvent.ACTION_UP);
+
+        Assert.assertEquals("the deferred refresh must run exactly once after the tap ends",
+            1, harness.totalRefreshCount);
+    }
+
+    @Test
+    public void periodicRefreshTicksNormallyWhenNoTapIsInProgress() {
+        TouchGatedRefreshHarness harness = new TouchGatedRefreshHarness();
+
+        harness.requestPeriodicRefreshTick();
+        harness.requestPeriodicRefreshTick();
+
+        Assert.assertEquals("with no touch in progress, every tick refreshes immediately",
+            2, harness.totalRefreshCount);
+    }
+
+    private static final class TouchGatedRefreshHarness {
+        private boolean touchInProgress;
+        private boolean refreshDeferredByTouch;
+        int totalRefreshCount;
+        int refreshCountDuringTouch;
+
+        void onTouch(int maskedAction) {
+            if (maskedAction == MotionEvent.ACTION_DOWN) {
+                touchInProgress = true;
+            } else if (SessionListBottomSheetController.isSessionListTouchInteractionEnd(maskedAction)) {
+                touchInProgress = false;
+                if (refreshDeferredByTouch) {
+                    refreshDeferredByTouch = false;
+                    runRefresh();
+                }
+            }
+        }
+
+        void requestPeriodicRefreshTick() {
+            if (!SessionListBottomSheetController.shouldRefreshNow(touchInProgress)) {
+                refreshDeferredByTouch = true;
+                return;
+            }
+            runRefresh();
+        }
+
+        private void runRefresh() {
+            totalRefreshCount++;
+            if (touchInProgress) {
+                refreshCountDuringTouch++;
+            }
+        }
     }
 }
