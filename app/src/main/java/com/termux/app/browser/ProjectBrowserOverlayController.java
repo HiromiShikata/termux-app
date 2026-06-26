@@ -266,6 +266,8 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
 
     private void configureSwipeRefresh() {
         mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView);
+        mSwipeRefreshLayout.setDistanceToTriggerSync(BrowserPullToRefreshGate.resolveTriggerDistancePixels(
+            mActivity.getResources().getDisplayMetrics().density));
         mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
             WebView displayedWebView = mWebViewHost.getDisplayedWebView();
             return displayedWebView != null

@@ -491,6 +491,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void configureWebView() {
         mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView);
+        mSwipeRefreshLayout.setDistanceToTriggerSync(BrowserPullToRefreshGate.resolveTriggerDistancePixels(
+            mActivity.getResources().getDisplayMetrics().density));
         mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
             WebView displayedWebView = currentWebView();
             return displayedWebView != null
