@@ -265,6 +265,16 @@ public class SessionNewActivityStore {
     }
 
     @NonNull
+    public SessionNewActivityTier tierFor(@NonNull String sessionName, long nowMillis) {
+        return SessionNewActivityTier.resolve(
+            getLastOutputActivityTimeMillis(sessionName),
+            getLastExplicitCallTimeMillis(sessionName),
+            getLastUserInputTimeMillis(sessionName),
+            getLastSeenTimeMillis(sessionName),
+            nowMillis);
+    }
+
+    @NonNull
     public SessionNewActivityTier globalActiveTier(@NonNull Set<String> sessionNames) {
         SessionNewActivityTier activeTier = SessionNewActivityTier.NONE;
         for (String sessionName : sessionNames) {
