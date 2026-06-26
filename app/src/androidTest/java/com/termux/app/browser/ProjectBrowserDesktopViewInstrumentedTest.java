@@ -59,7 +59,8 @@ public class ProjectBrowserDesktopViewInstrumentedTest {
         AtomicReference<WebSettings> settingsRef = new AtomicReference<>();
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserDesktopWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.DESKTOP,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             settingsRef.set(webView.getSettings());
         });
 
@@ -80,7 +81,8 @@ public class ProjectBrowserDesktopViewInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserDesktopWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.DESKTOP,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             webView.setWebViewClient(new WebViewClient() {
                 @Override
                 public void onPageFinished(WebView view, String url) {
@@ -116,7 +118,8 @@ public class ProjectBrowserDesktopViewInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserDesktopWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.DESKTOP,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             webView.setWebViewClient(new BrowserDesktopViewportWebViewClient() {
                 @Override
                 public void onPageFinished(WebView view, String url) {

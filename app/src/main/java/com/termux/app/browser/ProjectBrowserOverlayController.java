@@ -233,12 +233,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         if (mDefaultUserAgent == null) {
             mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
         }
-        if (viewMode.isDesktop()) {
-            BrowserDesktopWebViewConfigurator.apply(settings);
-        } else {
-            BrowserMobileWebViewConfigurator.apply(settings);
-            settings.setUserAgentString(mDefaultUserAgent);
-        }
+        BrowserWebViewConfigurator.apply(settings, viewMode, mDefaultUserAgent);
     }
 
     private void injectDesktopViewportIfNeeded(@NonNull WebView view) {

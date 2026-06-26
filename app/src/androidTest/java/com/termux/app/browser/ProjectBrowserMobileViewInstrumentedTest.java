@@ -71,7 +71,8 @@ public class ProjectBrowserMobileViewInstrumentedTest {
         AtomicReference<WebSettings> settingsRef = new AtomicReference<>();
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserMobileWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.MOBILE,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             settingsRef.set(webView.getSettings());
         });
 
@@ -93,7 +94,8 @@ public class ProjectBrowserMobileViewInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserMobileWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.MOBILE,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             webView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
                 @Override
                 public void onPageFinished(WebView view, String url) {
@@ -137,7 +139,8 @@ public class ProjectBrowserMobileViewInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserMobileWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.MOBILE,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             webView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
                 @Override
                 public void onPageFinished(WebView view, String url) {
@@ -186,7 +189,8 @@ public class ProjectBrowserMobileViewInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserMobileWebViewConfigurator.apply(webView.getSettings());
+            BrowserWebViewConfigurator.apply(webView.getSettings(), BrowserViewMode.MOBILE,
+                BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             webView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
                 @Override
                 public void onPageFinished(WebView view, String url) {
