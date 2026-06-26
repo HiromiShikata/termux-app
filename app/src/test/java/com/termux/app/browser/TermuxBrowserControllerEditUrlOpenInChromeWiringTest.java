@@ -11,8 +11,8 @@ import java.nio.file.Paths;
 
 public class TermuxBrowserControllerEditUrlOpenInChromeWiringTest {
 
-    private static final String CONTROLLER_RELATIVE_PATH =
-        "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
+    private static final String URL_ACTIONS_RELATIVE_PATH =
+        "src/main/java/com/termux/app/browser/BrowserUrlActions.java";
 
     private static final String EDIT_URL_LAYOUT_RELATIVE_PATH =
         "src/main/res/layout/dialog_browser_edit_url.xml";
@@ -38,7 +38,7 @@ public class TermuxBrowserControllerEditUrlOpenInChromeWiringTest {
     public void editUrlDialogLayoutExposesOpenInChromeButtonWithOpenInNewIcon() throws IOException {
         String layout = readModuleFile(EDIT_URL_LAYOUT_RELATIVE_PATH);
 
-        Assert.assertTrue("Open in Chrome button is missing from the per-tab edit URL menu",
+        Assert.assertTrue("Open in Chrome button is missing from the shared edit URL menu",
             layout.contains("@+id/browser_edit_url_open_in_chrome"));
         Assert.assertTrue("Open in Chrome button must use the standard open-in-new icon",
             layout.contains("@drawable/ic_open_in_new"));
@@ -49,7 +49,7 @@ public class TermuxBrowserControllerEditUrlOpenInChromeWiringTest {
     @Test
     public void editUrlDialogWiresOpenInChromeButtonToExternalOpenPath() throws IOException {
         String dialogBody = methodBody(
-            readModuleFile(CONTROLLER_RELATIVE_PATH), "private void promptEditCurrentPageUrl() {");
+            readModuleFile(URL_ACTIONS_RELATIVE_PATH), "public void promptEditCurrentPageUrl() {");
 
         Assert.assertTrue("Open in Chrome button must be resolved from the dialog view",
             dialogBody.contains("R.id.browser_edit_url_open_in_chrome"));
@@ -62,10 +62,10 @@ public class TermuxBrowserControllerEditUrlOpenInChromeWiringTest {
     @Test
     public void openEditedUrlInChromeUsesExistingExternalOpenMechanism() throws IOException {
         String handlerBody = methodBody(
-            readModuleFile(CONTROLLER_RELATIVE_PATH), "private void openEditedUrlInChrome(");
+            readModuleFile(URL_ACTIONS_RELATIVE_PATH), "public void openEditedUrlInChrome(");
 
         Assert.assertTrue("handler must reuse the shared external open-in-chrome mechanism",
-            handlerBody.contains("ShareUtils.openUrlInChrome(mActivity, url)"));
+            handlerBody.contains("ShareUtils.openUrlInChrome(mContext, url)"));
         Assert.assertTrue("handler must guard against an empty or invalid URL",
             handlerBody.contains("BrowserEditedUrl.trimmedOrNull(editedUrl)"));
     }
