@@ -73,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TimeZone;
 
 /** The {@link TerminalSessionClient} implementation that may require an {@link Activity} for its interface methods. */
 public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionClientBase {
@@ -244,6 +245,43 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.getCallToUserTagController(),
             mActivity.getUpdateTagUpdateController())
             .scan(session.mHandle, screen.getTranscriptText());
+
+        recordStatuslineTimesForSession(session, emulator, screen);
+    }
+
+    private void recordStatuslineTimesForSession(@NonNull TerminalSession session,
+                                                 @NonNull TerminalEmulator emulator,
+                                                 @NonNull TerminalBuffer screen) {
+        if (session.mSessionName == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+
+        String visibleScreenText = visibleScreenText(emulator, screen);
+        long nowMillis = System.currentTimeMillis();
+        ClaudeStatuslineTimes statuslineTimes =
+            ClaudeStatuslineTimes.parse(visibleScreenText, nowMillis, TimeZone.getDefault());
+        if (!statuslineTimes.hasAnyToken()) return;
+
+        store.recordStatuslineTimes(session.mSessionName,
+            statuslineTimes.getCallTimeMillis(),
+            statuslineTimes.getOutTimeMillis(),
+            statuslineTimes.getReplyTimeMillis());
+        termuxSessionListNotifyUpdated();
+    }
+
+    @NonNull
+    private static String visibleScreenText(@NonNull TerminalEmulator emulator,
+                                            @NonNull TerminalBuffer screen) {
+        int screenRows = emulator.mRows;
+        int columns = emulator.mColumns;
+        StringBuilder builder = new StringBuilder();
+        for (int row = 0; row < screenRows; row++) {
+            if (row > 0) {
+                builder.append('\n');
+            }
+            builder.append(screen.getSelectedText(0, row, columns, row, false, false));
+        }
+        return builder.toString();
     }
 
     @Override
@@ -620,10 +658,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TextView lastReplyBar = mActivity.findViewById(R.id.session_last_reply_bar);
         if (lastReplyBar == null) return;
 
-        SessionLastReplyLine line = resolveSessionLastReplyLine(sessionName);
+        SessionTimesLine line = resolveSessionTimesLine(sessionName);
         if (line.isVisible()) {
-            lastReplyBar.setText(
-                mActivity.getString(R.string.session_last_reply_label, line.getAgeLabel()));
+            lastReplyBar.setText(line.getText());
             lastReplyBar.setVisibility(View.VISIBLE);
         } else {
             lastReplyBar.setText("");
@@ -632,13 +669,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @NonNull
-    private SessionLastReplyLine resolveSessionLastReplyLine(@Nullable String sessionName) {
+    private SessionTimesLine resolveSessionTimesLine(@Nullable String sessionName) {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null || sessionName == null) {
-            return SessionLastReplyLine.of(null);
+            return SessionTimesLine.of(null, null, null, System.currentTimeMillis());
         }
-        return SessionLastReplyLine.of(
-            store.lastUserInputAgeLabel(sessionName, System.currentTimeMillis()));
+        return SessionTimesLine.of(
+            store.getLastExplicitCallTimeMillis(sessionName),
+            store.getLastOutputActivityTimeMillis(sessionName),
+            store.getLastUserInputTimeMillis(sessionName),
+            System.currentTimeMillis());
     }
 
     private void updatePendingCallToUserBar(@Nullable String sessionName) {

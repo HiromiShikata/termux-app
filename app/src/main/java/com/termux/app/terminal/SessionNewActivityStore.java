@@ -16,6 +16,8 @@ public class SessionNewActivityStore {
     private static final long ONE_SECOND_MILLIS = 1000L;
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
+    private static final long ONE_DAY_MILLIS = 24L * ONE_HOUR_MILLIS;
+    static final String MORE_THAN_ONE_DAY_LABEL = ">1 day";
 
     private final Map<String, Long> mLastOutputActivityTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
@@ -121,20 +123,45 @@ public class SessionNewActivityStore {
 
     public void recordUserInput(@NonNull String sessionName, long userInputTimeMillis) {
         mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
-        List<String> clearedReasons = mUnacknowledgedCallReasonsByName.remove(sessionName);
-        if (clearedReasons != null) {
-            List<String> acknowledged = mAcknowledgedCallReasonsByName.get(sessionName);
-            if (acknowledged == null) {
-                acknowledged = new ArrayList<>();
-                mAcknowledgedCallReasonsByName.put(sessionName, acknowledged);
-            }
-            for (String reason : clearedReasons) {
-                if (!acknowledged.contains(reason)) {
-                    acknowledged.add(reason);
-                }
+        acknowledgeCallReasons(sessionName);
+        save();
+    }
+
+    public void recordStatuslineTimes(@NonNull String sessionName,
+                                      @Nullable Long callTimeMillis,
+                                      @Nullable Long outTimeMillis,
+                                      @Nullable Long replyTimeMillis) {
+        if (callTimeMillis != null) {
+            mLastExplicitCallTimeMillisByName.put(sessionName, callTimeMillis);
+        }
+        if (outTimeMillis != null) {
+            mLastOutputActivityTimeMillisByName.put(sessionName, outTimeMillis);
+        }
+        if (replyTimeMillis != null) {
+            mLastUserInputTimeMillisByName.put(sessionName, replyTimeMillis);
+            boolean replyAnsweredCall = callTimeMillis == null || replyTimeMillis >= callTimeMillis;
+            if (replyAnsweredCall) {
+                acknowledgeCallReasons(sessionName);
             }
         }
         save();
+    }
+
+    private void acknowledgeCallReasons(@NonNull String sessionName) {
+        List<String> clearedReasons = mUnacknowledgedCallReasonsByName.remove(sessionName);
+        if (clearedReasons == null) {
+            return;
+        }
+        List<String> acknowledged = mAcknowledgedCallReasonsByName.get(sessionName);
+        if (acknowledged == null) {
+            acknowledged = new ArrayList<>();
+            mAcknowledgedCallReasonsByName.put(sessionName, acknowledged);
+        }
+        for (String reason : clearedReasons) {
+            if (!acknowledged.contains(reason)) {
+                acknowledged.add(reason);
+            }
+        }
     }
 
     public void purgeSession(@NonNull String sessionName) {
@@ -273,6 +300,23 @@ public class SessionNewActivityStore {
             return (clampedElapsedMillis / ONE_MINUTE_MILLIS) + "m ago";
         }
         return (clampedElapsedMillis / ONE_HOUR_MILLIS) + "h ago";
+    }
+
+    public static String formatRelativeAge(long timeMillis, long nowMillis) {
+        if (timeMillis > nowMillis) {
+            return MORE_THAN_ONE_DAY_LABEL;
+        }
+        long elapsedMillis = nowMillis - timeMillis;
+        if (elapsedMillis >= ONE_DAY_MILLIS) {
+            return MORE_THAN_ONE_DAY_LABEL;
+        }
+        if (elapsedMillis < ONE_MINUTE_MILLIS) {
+            return (elapsedMillis / ONE_SECOND_MILLIS) + "s";
+        }
+        if (elapsedMillis < ONE_HOUR_MILLIS) {
+            return (elapsedMillis / ONE_MINUTE_MILLIS) + "m";
+        }
+        return (elapsedMillis / ONE_HOUR_MILLIS) + "h";
     }
 
     @Nullable

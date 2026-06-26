@@ -725,4 +725,47 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(SessionNewActivityTier.NONE, afterRestart.tierFor("worker"));
         Assert.assertEquals(Long.valueOf(1_000L), afterRestart.getLastExplicitCallTimeMillis("worker"));
     }
+
+    @Test
+    public void statuslineTimesSetCallOutAndReplyDirectly() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", 3_000L, 5_000L, 4_000L);
+
+        Assert.assertEquals(Long.valueOf(3_000L), store.getLastExplicitCallTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(5_000L), store.getLastOutputActivityTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(4_000L), store.getLastUserInputTimeMillis("worker"));
+    }
+
+    @Test
+    public void statuslineCallNewerThanReplyDrivesRedTier() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+    }
+
+    @Test
+    public void statuslineReplyNewerThanCallAcknowledgesPendingCall() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+
+        store.recordStatuslineTimes("worker", 1_000L, 1_000L, 5_000L);
+
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+    }
+
+    @Test
+    public void statuslineTimesIgnoreNullComponents() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        store.recordStatuslineTimes("worker", null, 7_000L, null);
+
+        Assert.assertNull(store.getLastExplicitCallTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(7_000L), store.getLastOutputActivityTimeMillis("worker"));
+        Assert.assertNull(store.getLastUserInputTimeMillis("worker"));
+    }
 }
