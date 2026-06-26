@@ -63,7 +63,7 @@ public class ProjectBrowserOverlayInputAndRefreshTest {
         int swipeRefreshIndex = layout.indexOf("@+id/project_browser_swipe_refresh");
         int webViewIndex = layout.indexOf("@+id/project_browser_web_view");
         int swipeRefreshCloseIndex =
-            layout.indexOf("</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>", swipeRefreshIndex);
+            layout.indexOf("</com.termux.app.browser.BrowserPinchAwareSwipeRefreshLayout>", swipeRefreshIndex);
         Assert.assertTrue(swipeRefreshIndex >= 0);
         Assert.assertTrue(webViewIndex > swipeRefreshIndex);
         Assert.assertTrue(swipeRefreshCloseIndex > webViewIndex);
