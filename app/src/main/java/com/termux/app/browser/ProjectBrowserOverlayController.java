@@ -1,5 +1,6 @@
 package com.termux.app.browser;
 
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -11,6 +12,8 @@ import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -20,8 +23,17 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.shared.interact.DialogUtils;
+import com.termux.shared.logger.Logger;
+
+import org.json.JSONException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
+
+    private static final String LOG_TAG = "ProjectBrowserOverlayController";
 
     public static final int REQUEST_PROJECT_BROWSER_FILE_CHOOSER = 3001;
 
@@ -42,6 +54,10 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private final View mOverviewActionsView;
 
     private final BrowserBulkOpenController mBulkOpenController;
+
+    private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
+
+    private BrowserUrlActions mUrlActions;
 
     private boolean mVisible;
 
@@ -75,10 +91,117 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     }
 
     private void configureHeaderUrlMenu() {
-        BrowserHeaderUrlMenuController menuController =
-            new BrowserHeaderUrlMenuController(mActivity, url ->
-                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(url));
-        mHeaderUrlView.setOnClickListener(view -> menuController.showHeaderUrlMenu(mCurrentUrl));
+        mUrlActions = new BrowserUrlActions(mActivity, new BrowserUrlActions.Host() {
+            @Override
+            public String currentPageUrl() {
+                return BrowserHeaderUrlMenuEligibility.canShowMenuFor(mCurrentUrl) ? mCurrentUrl : null;
+            }
+
+            @Override
+            public void showNoCurrentUrlMessage() {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            }
+
+            @Override
+            public void navigateToUrl(@NonNull String editedUrl) {
+                openProjectUrl(BrowserUrlInput.normalize(editedUrl), mViewMode);
+            }
+
+            @Override
+            public void createSessionForUrl(@NonNull String editedUrl) {
+                String sessionName = BrowserEditedUrl.sessionNameFor(editedUrl);
+                if (sessionName == null) {
+                    mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+                    return;
+                }
+                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(sessionName);
+            }
+
+            @Override
+            public void addCurrentPageBookmark() {
+                addCurrentPageBookmarkToStore();
+            }
+
+            @Override
+            public void showBookmarksList() {
+                showBookmarksListDialog();
+            }
+        });
+        mHeaderUrlView.setOnClickListener(view -> {
+            if (!BrowserHeaderUrlMenuEligibility.canShowMenuFor(mCurrentUrl)) return;
+            mUrlActions.promptEditCurrentPageUrl();
+        });
+    }
+
+    private void addCurrentPageBookmarkToStore() {
+        if (!BrowserHeaderUrlMenuEligibility.canShowMenuFor(mCurrentUrl)) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        String title = mWebView.getTitle();
+        BrowserBookmark bookmark = new BrowserBookmark(mCurrentUrl, title == null ? mCurrentUrl : title);
+        saveBookmarks(loadBookmarks().added(bookmark));
+        mActivity.showToast(mActivity.getString(R.string.msg_browser_bookmarked), false);
+    }
+
+    private void showBookmarksListDialog() {
+        List<BrowserBookmark> bookmarks = loadBookmarks().getBookmarks();
+        if (bookmarks.isEmpty()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_bookmarks), false);
+            return;
+        }
+        List<String> labels = new ArrayList<>();
+        for (BrowserBookmark bookmark : bookmarks) {
+            labels.add(bookmark.getTitle() + "\n" + bookmark.getUrl());
+        }
+        ListView listView = new ListView(mActivity);
+        listView.setAdapter(new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, labels));
+        AlertDialog dialog = new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_browser_bookmarks)
+            .setView(listView)
+            .create();
+        dialog.setCanceledOnTouchOutside(true);
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            openProjectUrl(bookmarks.get(position).getUrl(), mViewMode);
+            dialog.dismiss();
+        });
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            dialog.dismiss();
+            promptDeleteBookmark(bookmarks.get(position));
+            return true;
+        });
+        dialog.show();
+    }
+
+    private void promptDeleteBookmark(@NonNull BrowserBookmark bookmark) {
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_browser_bookmark_delete)
+            .setMessage(bookmark.getUrl())
+            .setPositiveButton(R.string.action_browser_bookmark_delete, (dialog, which) -> {
+                saveBookmarks(loadBookmarks().removed(bookmark.getUrl()));
+                showBookmarksListDialog();
+            })
+            .setNegativeButton(android.R.string.cancel, (dialog, which) -> showBookmarksListDialog()));
+    }
+
+    @NonNull
+    private BrowserBookmarkCollection loadBookmarks() {
+        try {
+            return new BrowserBookmarkCollection(
+                mBookmarkSerializer.deserialize(mActivity.getPreferences().getBrowserBookmarks()));
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to deserialize browser bookmarks, clearing the store", e);
+            mActivity.getPreferences().setBrowserBookmarks(null);
+            return new BrowserBookmarkCollection(new ArrayList<>());
+        }
+    }
+
+    private void saveBookmarks(@NonNull BrowserBookmarkCollection bookmarks) {
+        try {
+            mActivity.getPreferences().setBrowserBookmarks(mBookmarkSerializer.serialize(bookmarks.getBookmarks()));
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize browser bookmarks", e);
+        }
     }
 
     private void configureLinkContextMenu() {

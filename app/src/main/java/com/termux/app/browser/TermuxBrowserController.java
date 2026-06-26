@@ -15,14 +15,12 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
-import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -37,7 +35,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -110,6 +107,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserOpenSessionNamesSerializer mOpenSessionNamesSerializer = new BrowserOpenSessionNamesSerializer();
 
     private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
+
+    private final BrowserUrlActions mUrlActions;
 
     private final BrowserPersistedTabsSerializer mPersistedTabsSerializer = new BrowserPersistedTabsSerializer();
 
@@ -187,6 +186,37 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         HorizontalScrollView tabStripScroll = activity.findViewById(R.id.browser_tab_strip_scroll);
         LinearLayout tabStripContainer = activity.findViewById(R.id.browser_tab_strip_container);
         mTabFaviconStripController = new BrowserTabFaviconStripController(tabStripScroll, tabStripContainer, this);
+        this.mUrlActions = new BrowserUrlActions(mActivity, new BrowserUrlActions.Host() {
+            @Override
+            public String currentPageUrl() {
+                return currentPageFullUrl();
+            }
+
+            @Override
+            public void showNoCurrentUrlMessage() {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            }
+
+            @Override
+            public void navigateToUrl(@NonNull String editedUrl) {
+                navigateCurrentTabToUrl(editedUrl);
+            }
+
+            @Override
+            public void createSessionForUrl(@NonNull String editedUrl) {
+                createSessionForEditedUrl(editedUrl);
+            }
+
+            @Override
+            public void addCurrentPageBookmark() {
+                TermuxBrowserController.this.addCurrentPageBookmark();
+            }
+
+            @Override
+            public void showBookmarksList() {
+                TermuxBrowserController.this.showBookmarksList();
+            }
+        });
         configureWebView();
         configureCookies();
         configureDrawerControls();
@@ -299,86 +329,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void promptEditCurrentPageUrl() {
         if (mCurrentSessionHandle == null) return;
-        String currentUrl = currentPageFullUrl();
-        if (currentUrl == null) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
-            return;
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(mActivity)
-            .setTitle(R.string.title_browser_edit_url);
-        View dialogView = LayoutInflater.from(builder.getContext())
-            .inflate(R.layout.dialog_browser_edit_url, null);
-        builder.setView(dialogView);
-        AlertDialog dialog = builder.create();
-        dialog.setCanceledOnTouchOutside(true);
-
-        EditText urlInput = dialogView.findViewById(R.id.browser_edit_url_input);
-        urlInput.setText(currentUrl);
-        Selection.setSelection(urlInput.getText(), currentUrl.length());
-
-        Button goButton = dialogView.findViewById(R.id.browser_edit_url_go);
-        Button copyButton = dialogView.findViewById(R.id.browser_edit_url_copy);
-        Button createSessionButton = dialogView.findViewById(R.id.browser_edit_url_create_session);
-        Button cancelButton = dialogView.findViewById(R.id.browser_edit_url_cancel);
-        Button addBookmarkButton = dialogView.findViewById(R.id.browser_edit_url_add_bookmark);
-        Button bookmarksButton = dialogView.findViewById(R.id.browser_edit_url_bookmarks);
-        Button openInChromeButton = dialogView.findViewById(R.id.browser_edit_url_open_in_chrome);
-
-        goButton.setText(R.string.action_browser_edit_url_confirm);
-        copyButton.setText(R.string.action_browser_edit_url_copy);
-        createSessionButton.setText(R.string.action_browser_edit_url_create_session);
-        cancelButton.setText(android.R.string.cancel);
-        addBookmarkButton.setText(R.string.action_browser_edit_url_add_bookmark);
-        bookmarksButton.setText(R.string.action_browser_edit_url_bookmarks);
-        openInChromeButton.setText(R.string.action_browser_open_in_chrome);
-
-        goButton.setOnClickListener(view -> {
-            navigateCurrentTabToUrl(urlInput.getText().toString());
-            dialog.dismiss();
-        });
-        copyButton.setOnClickListener(view -> copyEditedUrlToClipboard(urlInput.getText().toString()));
-        createSessionButton.setOnClickListener(view -> {
-            createSessionForEditedUrl(urlInput.getText().toString());
-            dialog.dismiss();
-        });
-        addBookmarkButton.setOnClickListener(view -> addCurrentPageBookmark());
-        bookmarksButton.setOnClickListener(view -> {
-            dialog.dismiss();
-            showBookmarksList();
-        });
-        openInChromeButton.setOnClickListener(view -> {
-            openEditedUrlInChrome(urlInput.getText().toString());
-            dialog.dismiss();
-        });
-        cancelButton.setOnClickListener(view -> dialog.dismiss());
-
-        urlInput.setOnEditorActionListener((view, actionId, event) -> {
-            navigateCurrentTabToUrl(urlInput.getText().toString());
-            dialog.dismiss();
-            return true;
-        });
-
-        dialog.show();
-    }
-
-    private void copyEditedUrlToClipboard(@Nullable String editedUrl) {
-        String url = BrowserEditedUrl.trimmedOrNull(editedUrl);
-        if (url == null) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
-            return;
-        }
-        ShareUtils.copyTextToClipboard(mActivity, url,
-            mActivity.getString(R.string.msg_browser_url_copied));
-    }
-
-    private void openEditedUrlInChrome(@Nullable String editedUrl) {
-        String url = BrowserEditedUrl.trimmedOrNull(editedUrl);
-        if (url == null) {
-            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
-            return;
-        }
-        ShareUtils.openUrlInChrome(mActivity, url);
+        mUrlActions.promptEditCurrentPageUrl();
     }
 
     private void createSessionForEditedUrl(@Nullable String editedUrl) {
