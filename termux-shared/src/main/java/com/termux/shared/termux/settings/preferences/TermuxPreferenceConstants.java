@@ -226,6 +226,10 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES = "session_definition_reload_interval_minutes";
         public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES = 0;
 
+        public static final String KEY_SESSION_DEFINITION_MAX_SESSIONS = "session_definition_max_sessions";
+        public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 32;
+        public static final int MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 1;
+
         public static final String KEY_ALWAYS_NA_SESSION_NAMES = "always_na_session_names";
         public static final String DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES = "";
 

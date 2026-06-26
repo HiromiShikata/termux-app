@@ -44,9 +44,10 @@ public final class SessionDefinitionController {
 
         setLoadingProgressVisible(true);
 
-        repository.loadForRebuild(baseUrl, entries -> {
+        repository.loadForRebuild(baseUrl, result -> {
             try {
-                buildSessions(entries);
+                notifyPartialLoad(result);
+                buildSessions(result.getEntries());
             } finally {
                 setLoadingProgressVisible(false);
             }
@@ -58,6 +59,14 @@ public final class SessionDefinitionController {
                 setLoadingProgressVisible(false);
             }
         });
+    }
+
+    private void notifyPartialLoad(SessionDefinitionLoadResult result) {
+        if (!result.hasFailedGroups()) {
+            return;
+        }
+        activity.showToast(activity.getString(R.string.msg_session_definition_load_partial,
+            result.getFailedGroupCount(), result.getTotalGroupCount()), true);
     }
 
     private void setLoadingProgressVisible(boolean visible) {
@@ -82,12 +91,26 @@ public final class SessionDefinitionController {
 
         removeSessionsWithDisappearedDefinition(entries);
 
+        int configuredLimit = activity.getPreferences().getSessionDefinitionMaxSessions();
+        SessionDefinitionLimitPlan limitPlan =
+            SessionDefinitionLimitPlan.forCapacity(sessionsToCreate.size(), liveSessionNames.size(), configuredLimit);
+
+        int createdCount = 0;
         for (SessionDefinitionPlannedSession plannedSession : sessionsToCreate) {
+            if (createdCount >= limitPlan.getSessionsToCreateCount()) {
+                break;
+            }
             if (plannedSession.hasCommand()) {
                 activity.getTermuxTerminalSessionClient().addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), false);
             } else {
                 activity.getTermuxTerminalSessionClient().addNewSession(false, plannedSession.getName(), false);
             }
+            createdCount++;
+        }
+
+        if (limitPlan.exceedsLimit()) {
+            activity.showToast(activity.getString(R.string.msg_session_limit_exceeded,
+                configuredLimit, limitPlan.getDroppedSessionCount()), true);
         }
 
         activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions();
