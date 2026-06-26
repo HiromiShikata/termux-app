@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +20,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mLastOutputActivityTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
     private final Map<String, String> mLastExplicitCallReasonByName = new HashMap<>();
+    private final Map<String, List<String>> mUnacknowledgedCallReasonsByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
 
@@ -38,6 +40,9 @@ public class SessionNewActivityStore {
                 mLastExplicitCallTimeMillisByName.put(state.getSessionName(), state.getLastExplicitCallTimeMillis());
             if (state.getLastExplicitCallReason() != null)
                 mLastExplicitCallReasonByName.put(state.getSessionName(), state.getLastExplicitCallReason());
+            if (state.getUnacknowledgedCallReasons() != null)
+                mUnacknowledgedCallReasonsByName.put(state.getSessionName(),
+                    new ArrayList<>(state.getUnacknowledgedCallReasons()));
             if (state.getLastSeenTimeMillis() != null)
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
             if (state.getLastUserInputTimeMillis() != null)
@@ -58,6 +63,14 @@ public class SessionNewActivityStore {
                                    @NonNull String reason) {
         mLastExplicitCallTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         mLastExplicitCallReasonByName.put(sessionName, reason);
+        if (!reason.trim().isEmpty()) {
+            List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
+            if (reasons == null) {
+                reasons = new ArrayList<>();
+                mUnacknowledgedCallReasonsByName.put(sessionName, reasons);
+            }
+            reasons.add(reason);
+        }
         save();
     }
 
@@ -68,6 +81,7 @@ public class SessionNewActivityStore {
 
     public void recordUserInput(@NonNull String sessionName, long userInputTimeMillis) {
         mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
+        mUnacknowledgedCallReasonsByName.remove(sessionName);
         save();
     }
 
@@ -75,6 +89,7 @@ public class SessionNewActivityStore {
         mLastOutputActivityTimeMillisByName.remove(sessionName);
         mLastExplicitCallTimeMillisByName.remove(sessionName);
         mLastExplicitCallReasonByName.remove(sessionName);
+        mUnacknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
         save();
@@ -84,6 +99,7 @@ public class SessionNewActivityStore {
         boolean changed = mLastOutputActivityTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastExplicitCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastExplicitCallReasonByName.keySet().retainAll(knownSessionNames);
+        changed |= mUnacknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
@@ -104,6 +120,15 @@ public class SessionNewActivityStore {
     public String getLastExplicitCallReason(@NonNull String sessionName) {
         String reason = mLastExplicitCallReasonByName.get(sessionName);
         return reason == null ? "" : reason;
+    }
+
+    @NonNull
+    public List<String> getUnacknowledgedCallReasons(@NonNull String sessionName) {
+        List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
+        if (reasons == null) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(new ArrayList<>(reasons));
     }
 
     @Nullable
@@ -165,16 +190,19 @@ public class SessionNewActivityStore {
         Set<String> sessionNames = new HashSet<>(mLastOutputActivityTimeMillisByName.keySet());
         sessionNames.addAll(mLastExplicitCallTimeMillisByName.keySet());
         sessionNames.addAll(mLastExplicitCallReasonByName.keySet());
+        sessionNames.addAll(mUnacknowledgedCallReasonsByName.keySet());
         sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
         sessionNames.addAll(mLastUserInputTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
+            List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
             states.add(new SessionNewActivityState(sessionName,
                 mLastOutputActivityTimeMillisByName.get(sessionName),
                 mLastExplicitCallTimeMillisByName.get(sessionName),
                 mLastExplicitCallReasonByName.get(sessionName),
                 mLastSeenTimeMillisByName.get(sessionName),
-                mLastUserInputTimeMillisByName.get(sessionName)));
+                mLastUserInputTimeMillisByName.get(sessionName),
+                reasons == null ? null : new ArrayList<>(reasons)));
         }
         mPersistence.save(states);
     }

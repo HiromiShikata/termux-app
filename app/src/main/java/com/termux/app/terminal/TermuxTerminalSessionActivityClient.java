@@ -661,10 +661,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             @Nullable String sessionName) {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null || sessionName == null) {
-            return PendingCallToUserFooterDecision.resolve(SessionNewActivityTier.NONE, null);
+            return PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.NONE, null);
         }
-        return PendingCallToUserFooterDecision.resolve(
-            store.tierFor(sessionName), store.getLastExplicitCallReason(sessionName));
+        return PendingCallToUserFooterDecision.resolveAll(
+            store.tierFor(sessionName), store.getUnacknowledgedCallReasons(sessionName));
     }
 
     private void scrollToMostRecentCallToUserTag() {
