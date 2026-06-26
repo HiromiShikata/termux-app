@@ -587,7 +587,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1 day    out: >1 day    reply: >1 day", line);
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day", line);
     }
 
     @Test
@@ -600,7 +600,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1 day    out: >1 day    reply: >1 day", line);
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day", line);
     }
 
     @Test
@@ -619,7 +619,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1 day    out: 1m        reply: >1 day", line);
+        Assert.assertEquals("call: >1 day  out: 1m  reply: >1 day", line);
     }
 
     @Test
@@ -629,7 +629,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
 
-        Assert.assertEquals("call: 1m        out: 1m        reply: >1 day", line);
+        Assert.assertEquals("call: 1m  out: 1m  reply: >1 day", line);
     }
 
     @Test
@@ -639,7 +639,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
 
-        Assert.assertEquals("call: >1 day    out: >1 day    reply: 1m", line);
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: 1m", line);
     }
 
     @Test
@@ -649,7 +649,23 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: 1m        out: 1m        reply: 1m", line);
+        Assert.assertEquals("call: 1m  out: 1m  reply: 1m", line);
+    }
+
+    @Test
+    public void timestampLineMatchesTheCurrentSessionInfoAreaLineFromTheSameStatuslineSource() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, null);
+        long nowMillis = 62_000L;
+
+        String rowLine = TermuxSessionsListViewController.buildTimestampLine(store, "worker", nowMillis);
+        String infoAreaLine = SessionTimesLine.of(
+            store.getStatuslineCallTimeMillis("worker"),
+            store.getStatuslineOutTimeMillis("worker"),
+            store.getStatuslineReplyTimeMillis("worker"),
+            nowMillis).getText();
+
+        Assert.assertEquals(infoAreaLine, rowLine);
     }
 
     @Test
@@ -721,8 +737,8 @@ public class TermuxSessionsListViewControllerTest {
         String alphaLine = TermuxSessionsListViewController.buildTimestampLine(store, "alpha", nowMillis);
         String betaLine = TermuxSessionsListViewController.buildTimestampLine(store, "beta", nowMillis);
 
-        Assert.assertEquals("call: >1 day    out: 3m        reply: >1 day", alphaLine);
-        Assert.assertEquals("call: >1 day    out: 1m        reply: >1 day", betaLine);
+        Assert.assertEquals("call: >1 day  out: 3m  reply: >1 day", alphaLine);
+        Assert.assertEquals("call: >1 day  out: 1m  reply: >1 day", betaLine);
         Assert.assertNotEquals(alphaLine, betaLine);
     }
 
@@ -736,10 +752,10 @@ public class TermuxSessionsListViewControllerTest {
         String at150Seconds = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 151_000L);
         String at10Minutes = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 601_000L);
 
-        Assert.assertEquals("call: >1 day    out: 30s       reply: >1 day", at30Seconds);
-        Assert.assertEquals("call: >1 day    out: 1m        reply: >1 day", at90Seconds);
-        Assert.assertEquals("call: >1 day    out: 2m        reply: >1 day", at150Seconds);
-        Assert.assertEquals("call: >1 day    out: 10m       reply: >1 day", at10Minutes);
+        Assert.assertEquals("call: >1 day  out: 30s  reply: >1 day", at30Seconds);
+        Assert.assertEquals("call: >1 day  out: 1m  reply: >1 day", at90Seconds);
+        Assert.assertEquals("call: >1 day  out: 2m  reply: >1 day", at150Seconds);
+        Assert.assertEquals("call: >1 day  out: 10m  reply: >1 day", at10Minutes);
     }
 
     @Test
@@ -750,7 +766,7 @@ public class TermuxSessionsListViewControllerTest {
         String firstRender = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 121_000L);
         String secondRenderSameClock = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 121_000L);
 
-        Assert.assertEquals("call: >1 day    out: 2m        reply: >1 day", firstRender);
+        Assert.assertEquals("call: >1 day  out: 2m  reply: >1 day", firstRender);
         Assert.assertEquals(firstRender, secondRenderSameClock);
         Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineOutTimeMillis("worker"));
     }

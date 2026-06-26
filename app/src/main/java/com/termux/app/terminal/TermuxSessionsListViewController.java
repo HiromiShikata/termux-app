@@ -62,7 +62,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
     private static final float TIMESTAMP_ROW_RELATIVE_SIZE = 0.65f;
     private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
-    private static final int TIMESTAMP_VALUE_FIELD_WIDTH = 8;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
@@ -869,27 +868,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                                      @Nullable String sessionName,
                                      long nowMillis) {
         if (sessionName == null || sessionName.isEmpty()) return "";
-        return "call: " + padTimestampValue(relativeAgeOrMoreThanOneDay(store.getStatuslineCallTimeMillis(sessionName), nowMillis))
-            + "  out: " + padTimestampValue(relativeAgeOrMoreThanOneDay(store.getStatuslineOutTimeMillis(sessionName), nowMillis))
-            + "  reply: " + relativeAgeOrMoreThanOneDay(store.getStatuslineReplyTimeMillis(sessionName), nowMillis);
-    }
-
-    @NonNull
-    static String padTimestampValue(@NonNull String value) {
-        if (value.length() >= TIMESTAMP_VALUE_FIELD_WIDTH) {
-            return value;
-        }
-        StringBuilder padded = new StringBuilder(value);
-        while (padded.length() < TIMESTAMP_VALUE_FIELD_WIDTH) {
-            padded.append(' ');
-        }
-        return padded.toString();
-    }
-
-    @NonNull
-    private static String relativeAgeOrMoreThanOneDay(@Nullable Long timeMillis, long nowMillis) {
-        return timeMillis == null ? SessionNewActivityStore.MORE_THAN_ONE_DAY_LABEL
-            : SessionNewActivityStore.formatRelativeAge(timeMillis, nowMillis);
+        return SessionTimesLine.of(
+            store.getStatuslineCallTimeMillis(sessionName),
+            store.getStatuslineOutTimeMillis(sessionName),
+            store.getStatuslineReplyTimeMillis(sessionName),
+            nowMillis).getText();
     }
 
     @NonNull
