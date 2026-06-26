@@ -302,6 +302,20 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void sessionRowLayoutHostsADedicatedTimesViewThatWrapsAndIsHiddenUntilBound() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        android.widget.TextView timesView = row.findViewById(R.id.session_row_times);
+
+        Assert.assertNotNull(timesView);
+        Assert.assertEquals(View.GONE, timesView.getVisibility());
+        Assert.assertNull(timesView.getEllipsize());
+        Assert.assertTrue(timesView.getMaxLines() > 1);
+    }
+
+    @Test
     public void currentSessionRowShowsTheAccentColoredIndicatorBar() {
         View activeIndicatorBar = new View(RuntimeEnvironment.getApplication());
         int accentColor = 0xFF8AB4C8;
