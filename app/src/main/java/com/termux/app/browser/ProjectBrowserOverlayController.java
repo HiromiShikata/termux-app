@@ -51,11 +51,23 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
 
     private final View mOverviewActionsView;
 
+    private final View mFooterOverviewIconView;
+
+    private final View mFooterTdpmConsoleIconView;
+
+    private final View mFooterNewIssueIconView;
+
     private final BrowserBulkOpenController mBulkOpenController;
 
     private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
 
     private BrowserUrlActions mUrlActions;
+
+    private String mProjectOverviewUrl;
+
+    private String mProjectTdpmConsoleUrl;
+
+    private String mProjectNewIssueUrl;
 
     private boolean mVisible;
 
@@ -109,12 +121,16 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         this.mProgressBar = activity.findViewById(R.id.project_browser_progress_bar);
         this.mWebViewCover = activity.findViewById(R.id.project_browser_web_view_cover);
         this.mOverviewActionsView = activity.findViewById(R.id.project_browser_overview_actions);
+        this.mFooterOverviewIconView = activity.findViewById(R.id.project_browser_footer_overview_icon);
+        this.mFooterTdpmConsoleIconView = activity.findViewById(R.id.project_browser_footer_tdpm_console_icon);
+        this.mFooterNewIssueIconView = activity.findViewById(R.id.project_browser_footer_new_issue_icon);
         this.mBulkOpenController = new BrowserBulkOpenController(activity);
         configureWebView();
         configureLinkContextMenu();
         configureHeaderUrlMenu();
         configureCloseButton();
         configureOverviewActions();
+        configureFooterActions();
     }
 
     private void configureHeaderUrlMenu() {
@@ -361,6 +377,34 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mActivity.findViewById(R.id.project_browser_open_first_ten_tasks_button)
             .setOnClickListener(view ->
                 mBulkOpenController.openDisplayedTaskUrls(mWebView, BrowserGithubTaskUrls.OPEN_FIRST_N_LIMIT));
+    }
+
+    private void configureFooterActions() {
+        mFooterOverviewIconView.setOnClickListener(view ->
+            route(mProjectOverviewUrl, BrowserViewMode.DESKTOP));
+        mFooterTdpmConsoleIconView.setOnClickListener(view ->
+            route(mProjectTdpmConsoleUrl, BrowserViewMode.MOBILE));
+        mFooterNewIssueIconView.setOnClickListener(view ->
+            route(mProjectNewIssueUrl, BrowserViewMode.DESKTOP));
+        updateFooterActionsVisibility();
+    }
+
+    public void setProjectContext(@Nullable String overviewUrl, @Nullable String tdpmConsoleUrl,
+                                  @Nullable String newIssueUrl) {
+        mProjectOverviewUrl = overviewUrl;
+        mProjectTdpmConsoleUrl = tdpmConsoleUrl;
+        mProjectNewIssueUrl = newIssueUrl;
+        updateFooterActionsVisibility();
+    }
+
+    private void updateFooterActionsVisibility() {
+        applyFooterIconVisibility(mFooterOverviewIconView, mProjectOverviewUrl);
+        applyFooterIconVisibility(mFooterTdpmConsoleIconView, mProjectTdpmConsoleUrl);
+        applyFooterIconVisibility(mFooterNewIssueIconView, mProjectNewIssueUrl);
+    }
+
+    private static void applyFooterIconVisibility(@NonNull View iconView, @Nullable String url) {
+        iconView.setVisibility(url == null || url.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     @Override

@@ -158,10 +158,17 @@ public final class SessionHierarchyBuilder {
     public static String projectActionUrl(@NonNull List<SessionHierarchyRow> rows,
                                           @NonNull String normalizedProjectLabel,
                                           @NonNull ProjectAction action) {
+        SessionHierarchyRow projectHeaderRow = projectHeaderRowForProject(rows, normalizedProjectLabel);
+        return projectHeaderRow == null ? null : actionUrl(projectHeaderRow, action);
+    }
+
+    @Nullable
+    public static SessionHierarchyRow projectHeaderRowForProject(@NonNull List<SessionHierarchyRow> rows,
+                                                                 @NonNull String normalizedProjectLabel) {
         for (SessionHierarchyRow row : rows) {
             if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER
                     && matchesProjectLabel(row, normalizedProjectLabel)) {
-                return actionUrl(row, action);
+                return row;
             }
         }
         return null;
