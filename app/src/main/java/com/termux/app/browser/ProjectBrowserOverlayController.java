@@ -6,8 +6,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.view.View;
 import android.webkit.CookieManager;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -70,6 +68,35 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
     private String mDefaultUserAgent;
 
     private final ProjectUrlRouter mRouter = new ProjectUrlRouter(this);
+
+    private final BrowserDownloadController mDownloadController = new BrowserDownloadController(
+        new BrowserDownloadController.Host() {
+            @NonNull
+            @Override
+            public Context getDownloadContext() {
+                return mActivity;
+            }
+
+            @Override
+            public boolean isActivityVisible() {
+                return mActivity.isVisible();
+            }
+
+            @Override
+            public void onDownloadStarted(@NonNull String fileName) {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_download_started, fileName), false);
+            }
+
+            @Override
+            public void onDownloadComplete() {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_download_complete), false);
+            }
+
+            @Override
+            public void onDownloadFailed() {
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_download_failed), true);
+            }
+        });
 
     private BrowserCoreWebChromeClient mWebChromeClient;
 
@@ -225,11 +252,20 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
             BrowserPullToRefreshGate.canWebViewScrollUp(mWebView.getScrollY()));
 
-        mWebView.setWebViewClient(new BrowserMobileViewportWebViewClient() {
+        mWebView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
+            @NonNull
             @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                super.onPageStarted(view, url, favicon);
-                injectDesktopViewportIfNeeded(view);
+            public BrowserViewMode getViewMode() {
+                return mViewMode;
+            }
+
+            @Override
+            public boolean shouldInjectMobileViewport() {
+                return true;
+            }
+
+            @Override
+            public void onPageStarted(@NonNull WebView view, @Nullable String url) {
                 if (BrowserPageTransition.requiresCoverWhileLoading(mLoadedUrl, url, mVisible)) {
                     mWebViewCover.setVisibility(View.VISIBLE);
                 }
@@ -241,20 +277,16 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
             }
 
             @Override
-            public void onPageCommitVisible(WebView view, String url) {
-                super.onPageCommitVisible(view, url);
-                injectDesktopViewportIfNeeded(view);
+            public void onPageCommitVisible(@NonNull WebView view, @Nullable String url) {
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
             }
 
             @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                injectDesktopViewportIfNeeded(view);
+            public boolean onPageFinished(@NonNull WebView view, @Nullable String url) {
                 if (mVisible && "about:blank".equals(url)) {
                     hide();
-                    return;
+                    return true;
                 }
                 mLoadedUrl = url;
                 mWebViewCover.setVisibility(View.GONE);
@@ -264,28 +296,21 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
                 mCurrentUrl = url;
                 updateOverviewActionsVisibility();
                 CookieManager.getInstance().flush();
+                return false;
             }
 
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                super.onReceivedError(view, request, error);
-                if (!request.isForMainFrame()) return;
-                onMainFrameError();
+            public void onVisitedHistoryUpdated(@NonNull WebView view, @Nullable String url, boolean isReload) {
             }
 
             @Override
-            @SuppressWarnings("deprecation")
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                super.onReceivedError(view, errorCode, description, failingUrl);
-                onMainFrameError();
+            public void onMainFrameError(@NonNull WebView view) {
+                handleMainFrameError();
             }
+        }));
 
-            @Override
-            protected void injectMobileViewport(@NonNull WebView view) {
-                if (mViewMode.isDesktop()) return;
-                super.injectMobileViewport(view);
-            }
-        });
+        mWebView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
+            mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype));
 
         mWebChromeClient = new BrowserCoreWebChromeClient(new BrowserCoreWebChromeClient.Host() {
             @NonNull
@@ -359,17 +384,11 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         BrowserWebViewConfigurator.apply(settings, viewMode, mDefaultUserAgent);
     }
 
-    private void injectDesktopViewportIfNeeded(@NonNull WebView view) {
-        if (mViewMode.isDesktop()) {
-            view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
-        }
-    }
-
     public void route(@NonNull String url, @NonNull BrowserViewMode viewMode) {
         mRouter.route(url, viewMode);
     }
 
-    private void onMainFrameError() {
+    private void handleMainFrameError() {
         mWebViewCover.setVisibility(View.GONE);
         mProgressBar.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(false);
@@ -433,6 +452,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener {
         if (mWebChromeClient != null) {
             mWebChromeClient.cancelPendingFileChooser();
         }
+        mDownloadController.unregisterDownloadCompleteReceiver();
         mWebView.stopLoading();
         mWebView.setWebViewClient(new WebViewClient());
         mWebView.loadUrl("about:blank");

@@ -14,6 +14,12 @@ public class BrowserHttpAuthWiringTest {
     private static final String TERMUX_BROWSER_CONTROLLER_PATH =
         "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
 
+    private static final String CORE_WEB_VIEW_CLIENT_PATH =
+        "src/main/java/com/termux/app/browser/BrowserCoreWebViewClient.java";
+
+    private static final String HTTP_AUTH_CLIENT_PATH =
+        "src/main/java/com/termux/app/browser/BrowserHttpAuthWebViewClient.java";
+
     private static final String DESKTOP_VIEWPORT_CLIENT_PATH =
         "src/main/java/com/termux/app/browser/BrowserDesktopViewportWebViewClient.java";
 
@@ -30,10 +36,18 @@ public class BrowserHttpAuthWiringTest {
     }
 
     @Test
-    public void termuxBrowserControllerOverridesHttpAuthRequest() throws IOException {
-        String source = readModuleSource(TERMUX_BROWSER_CONTROLLER_PATH);
-        Assert.assertTrue(source.contains("public void onReceivedHttpAuthRequest"));
-        Assert.assertTrue(source.contains(
+    public void termuxBrowserControllerInheritsHttpAuthThroughSharedCoreClient() throws IOException {
+        String controllerSource = readModuleSource(TERMUX_BROWSER_CONTROLLER_PATH);
+        Assert.assertTrue(controllerSource.contains(
+            "new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host()"));
+
+        String coreClientSource = readModuleSource(CORE_WEB_VIEW_CLIENT_PATH);
+        Assert.assertTrue(coreClientSource.contains(
+            "class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient"));
+
+        String httpAuthClientSource = readModuleSource(HTTP_AUTH_CLIENT_PATH);
+        Assert.assertTrue(httpAuthClientSource.contains("public void onReceivedHttpAuthRequest"));
+        Assert.assertTrue(httpAuthClientSource.contains(
             "BrowserHttpAuthDialog.show(view.getContext(), handler, host, realm)"));
     }
 

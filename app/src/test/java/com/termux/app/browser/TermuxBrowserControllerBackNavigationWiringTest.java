@@ -40,7 +40,8 @@ public class TermuxBrowserControllerBackNavigationWiringTest {
     @Test
     public void onPageFinishedClosesTheBrowserWhenAboutBlankIsLoadedWhileBrowserIsVisible() throws IOException {
         String source = readControllerSource();
-        int onPageFinishedIndex = source.indexOf("public void onPageFinished(WebView view, String url)");
+        int onPageFinishedIndex = source.indexOf(
+            "public boolean onPageFinished(@NonNull WebView view, @Nullable String url)");
         Assert.assertTrue(onPageFinishedIndex >= 0);
         int methodEnd = source.indexOf("\n            }", onPageFinishedIndex);
         Assert.assertTrue(methodEnd > onPageFinishedIndex);

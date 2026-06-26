@@ -19,7 +19,7 @@ public final class BrowserTab {
 
     private String mTitle;
 
-    private boolean mDesktopMode = true;
+    private BrowserViewMode mViewMode = BrowserViewMode.DESKTOP;
 
     private Bitmap mFavicon;
 
@@ -57,12 +57,21 @@ public final class BrowserTab {
         this.mTitle = (title == null || title.isEmpty()) ? mUrl : title;
     }
 
+    @NonNull
+    public BrowserViewMode getViewMode() {
+        return mViewMode;
+    }
+
+    public void setViewMode(@NonNull BrowserViewMode viewMode) {
+        this.mViewMode = viewMode;
+    }
+
     public boolean isDesktopMode() {
-        return mDesktopMode;
+        return mViewMode.isDesktop();
     }
 
     public void setDesktopMode(boolean desktopMode) {
-        this.mDesktopMode = desktopMode;
+        this.mViewMode = desktopMode ? BrowserViewMode.DESKTOP : BrowserViewMode.MOBILE;
     }
 
     @Nullable
