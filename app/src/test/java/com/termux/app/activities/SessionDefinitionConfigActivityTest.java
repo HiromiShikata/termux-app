@@ -150,4 +150,93 @@ public class SessionDefinitionConfigActivityTest {
         Assert.assertEquals(12, SessionDefinitionConfigActivity.parseReloadIntervalMinutes("12"));
         Assert.assertEquals(3, SessionDefinitionConfigActivity.parseReloadIntervalMinutes("  3  "));
     }
+
+    @Test
+    public void maxSessionsKeyIsStable() {
+        Assert.assertEquals("session_definition_max_sessions",
+            TermuxPreferenceConstants.TERMUX_APP.KEY_SESSION_DEFINITION_MAX_SESSIONS);
+    }
+
+    @Test
+    public void maxSessionsDefaultValueIsThirtyTwo() {
+        Assert.assertEquals(32,
+            TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
+    }
+
+    @Test
+    public void maxSessionsGetReturnsDefaultWhenUnset() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        Assert.assertEquals(32, prefs.getSessionDefinitionMaxSessions());
+    }
+
+    @Test
+    public void maxSessionsSetThenGetRoundTrips() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        prefs.setSessionDefinitionMaxSessions(64);
+        Assert.assertEquals(64, prefs.getSessionDefinitionMaxSessions());
+    }
+
+    @Test
+    public void maxSessionsBelowMinimumIsClampedToOneOnSet() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        prefs.setSessionDefinitionMaxSessions(0);
+        Assert.assertEquals(1, prefs.getSessionDefinitionMaxSessions());
+    }
+
+    @Test
+    public void saveButtonPersistsMaxSessionsToPreferences() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+
+        EditText maxSessionsInput = activity.findViewById(R.id.session_definition_max_sessions_input);
+        maxSessionsInput.setText("48");
+        activity.findViewById(R.id.session_definition_config_save_button).performClick();
+
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        Assert.assertEquals(48, prefs.getSessionDefinitionMaxSessions());
+    }
+
+    @Test
+    public void onCreateLoadsStoredMaxSessionsIntoEditText() {
+        SessionDefinitionConfigActivity setupActivity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(setupActivity, true);
+        Assert.assertNotNull(prefs);
+        prefs.setSessionDefinitionMaxSessions(20);
+
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        EditText maxSessionsInput = activity.findViewById(R.id.session_definition_max_sessions_input);
+        Assert.assertEquals("20", maxSessionsInput.getText().toString());
+    }
+
+    @Test
+    public void parseMaxSessionsHandlesBlankAndInvalidAsDefault() {
+        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions(""));
+        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions("   "));
+        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions("abc"));
+        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions(null));
+    }
+
+    @Test
+    public void parseMaxSessionsClampsBelowMinimumToOne() {
+        Assert.assertEquals(1, SessionDefinitionConfigActivity.parseMaxSessions("0"));
+        Assert.assertEquals(1, SessionDefinitionConfigActivity.parseMaxSessions("-7"));
+    }
+
+    @Test
+    public void parseMaxSessionsParsesValidNumber() {
+        Assert.assertEquals(50, SessionDefinitionConfigActivity.parseMaxSessions("50"));
+        Assert.assertEquals(8, SessionDefinitionConfigActivity.parseMaxSessions("  8  "));
+    }
 }

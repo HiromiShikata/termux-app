@@ -91,7 +91,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
-    private static final int MAX_SESSIONS = 32;
+    private int maxSessions() {
+        return mActivity.getPreferences().getSessionDefinitionMaxSessions();
+    }
+
+    private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
+        if (droppedSessionCount <= 0) return;
+        mActivity.showToast(mActivity.getString(R.string.msg_session_limit_exceeded, configuredLimit, droppedSessionCount), true);
+    }
 
     private SoundPool mBellSoundPool;
 
@@ -904,7 +911,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
-        if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
+        if (service.getTermuxSessionsSize() >= maxSessions()) {
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
                 .setPositiveButton(android.R.string.ok, null));
         } else {
@@ -956,7 +963,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
-        if (service.getTermuxSessionsSize() >= MAX_SESSIONS) {
+        if (service.getTermuxSessionsSize() >= maxSessions()) {
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
                 .setPositiveButton(android.R.string.ok, null));
         } else {
@@ -1203,10 +1210,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         Set<String> restoredNames = new HashSet<>();
         TerminalSession firstRestoredSession = null;
 
+        int configuredLimit = maxSessions();
+        int droppedSessionCount = 0;
+
         for (PersistedSessionRestoreData persistedSession : persistedSessions) {
             String name = persistedSession.getName();
             if (name != null && !restoredNames.add(name)) continue;
-            if (service.getTermuxSessionsSize() >= MAX_SESSIONS) break;
+            if (service.getTermuxSessionsSize() >= configuredLimit) {
+                droppedSessionCount++;
+                continue;
+            }
 
             TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
                 persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
@@ -1221,6 +1234,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (firstRestoredSession == null)
                 firstRestoredSession = newTerminalSession;
         }
+
+        notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
 
         if (firstRestoredSession == null) return false;
 
@@ -1255,9 +1270,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
         String workingDirectory = mActivity.getProperties().getDefaultWorkingDirectory();
 
+        int configuredLimit = maxSessions();
+        int droppedSessionCount = 0;
+
         TerminalSession firstCreatedSession = null;
         for (String sessionName : missingSessionNames) {
-            if (service.getTermuxSessionsSize() >= MAX_SESSIONS) break;
+            if (service.getTermuxSessionsSize() >= configuredLimit) {
+                droppedSessionCount++;
+                continue;
+            }
 
             AlwaysPresentSessionStartup startup =
                 mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
@@ -1272,6 +1293,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (firstCreatedSession == null)
                 firstCreatedSession = newTerminalSession;
         }
+
+        notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
 
         if (firstCreatedSession == null) return false;
 

@@ -49,7 +49,8 @@ public class SessionDefinitionLoaderTest {
         SessionDefinitionLoader loader =
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
 
-        List<SessionDefinitionEntry> entries = loader.load("https://example.test/base/index.json");
+        List<SessionDefinitionEntry> entries =
+            loader.load("https://example.test/base/index.json").getEntries();
 
         Assert.assertEquals(3, entries.size());
         Assert.assertEquals("groupOne/entryA", entries.get(0).getSessionName());
@@ -76,7 +77,8 @@ public class SessionDefinitionLoaderTest {
         SessionDefinitionLoader loader =
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
 
-        List<SessionDefinitionEntry> entries = loader.load("https://example.test/base/index.v2.json");
+        List<SessionDefinitionEntry> entries =
+            loader.load("https://example.test/base/index.v2.json").getEntries();
 
         Assert.assertEquals(1, entries.size());
         SessionDefinitionEntry entry = entries.get(0);
@@ -110,7 +112,8 @@ public class SessionDefinitionLoaderTest {
         SessionDefinitionLoader loader =
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
 
-        List<SessionDefinitionEntry> entries = loader.load("https://example.test/base/index.v3.json");
+        List<SessionDefinitionEntry> entries =
+            loader.load("https://example.test/base/index.v3.json").getEntries();
 
         Assert.assertEquals(2, entries.size());
         SessionDefinitionEntry uminoEntry = entries.get(0);
@@ -127,10 +130,71 @@ public class SessionDefinitionLoaderTest {
     }
 
     @Test(expected = IOException.class)
-    public void loadPropagatesFetchFailure() throws Exception {
+    public void loadPropagatesIndexFetchFailure() throws Exception {
         RecordingFetcher fetcher = new RecordingFetcher();
         SessionDefinitionLoader loader =
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
         loader.load("https://example.test/missing/index.json");
+    }
+
+    @Test
+    public void loadSkipsGroupThatFailsToFetchAndKeepsRemainingGroups() throws Exception {
+        RecordingFetcher fetcher = new RecordingFetcher();
+        fetcher.register("https://example.test/base/index.json",
+            "{\"projects\":[\"groupOne\",\"groupMissing\",\"groupThree\"]}");
+        fetcher.register("https://example.test/base/groupOne.json",
+            "[{\"story\":\"entryA\",\"urls\":[\"https://example.test/a\"]}]");
+        fetcher.register("https://example.test/base/groupThree.json",
+            "[{\"story\":\"entryC\",\"urls\":[\"https://example.test/c\"]}]");
+
+        SessionDefinitionLoader loader =
+            new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
+
+        SessionDefinitionLoadResult result = loader.load("https://example.test/base/index.json");
+
+        Assert.assertEquals(2, result.getEntries().size());
+        Assert.assertEquals("groupOne/entryA", result.getEntries().get(0).getSessionName());
+        Assert.assertEquals("groupThree/entryC", result.getEntries().get(1).getSessionName());
+        Assert.assertEquals(3, result.getTotalGroupCount());
+        Assert.assertEquals(1, result.getFailedGroupCount());
+        Assert.assertTrue(result.hasFailedGroups());
+        Assert.assertEquals("groupMissing", result.getFailedGroupLabels().get(0));
+    }
+
+    @Test
+    public void loadSkipsGroupWithMalformedJsonAndKeepsRemainingGroups() throws Exception {
+        RecordingFetcher fetcher = new RecordingFetcher();
+        fetcher.register("https://example.test/base/index.json",
+            "{\"projects\":[\"groupBroken\",\"groupGood\"]}");
+        fetcher.register("https://example.test/base/groupBroken.json", "{not valid json");
+        fetcher.register("https://example.test/base/groupGood.json",
+            "[{\"story\":\"entryB\",\"urls\":[\"https://example.test/b\"]}]");
+
+        SessionDefinitionLoader loader =
+            new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
+
+        SessionDefinitionLoadResult result = loader.load("https://example.test/base/index.json");
+
+        Assert.assertEquals(1, result.getEntries().size());
+        Assert.assertEquals("groupGood/entryB", result.getEntries().get(0).getSessionName());
+        Assert.assertEquals(1, result.getFailedGroupCount());
+        Assert.assertEquals("groupBroken", result.getFailedGroupLabels().get(0));
+    }
+
+    @Test
+    public void loadReportsNoFailedGroupsWhenAllGroupsLoad() throws Exception {
+        RecordingFetcher fetcher = new RecordingFetcher();
+        fetcher.register("https://example.test/base/index.json", "{\"projects\":[\"groupOne\"]}");
+        fetcher.register("https://example.test/base/groupOne.json",
+            "[{\"story\":\"entryA\",\"urls\":[\"https://example.test/a\"]}]");
+
+        SessionDefinitionLoader loader =
+            new SessionDefinitionLoader(fetcher, new SessionDefinitionParser());
+
+        SessionDefinitionLoadResult result = loader.load("https://example.test/base/index.json");
+
+        Assert.assertFalse(result.hasFailedGroups());
+        Assert.assertEquals(0, result.getFailedGroupCount());
+        Assert.assertEquals(1, result.getTotalGroupCount());
     }
 }

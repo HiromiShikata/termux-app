@@ -83,14 +83,15 @@ public class SessionDefinitionRepositoryTest {
         CountingFetcher fetcher = fetcherWithTwoEntries();
         SessionDefinitionRepository repository = repositoryWith(fetcher);
 
-        AtomicReference<List<SessionDefinitionEntry>> delivered = new AtomicReference<>();
+        AtomicReference<SessionDefinitionLoadResult> delivered = new AtomicReference<>();
         repository.loadForRebuild(INDEX_URL, delivered::set, (exception) -> {});
 
         flushMainLooper();
 
-        assertEquals(2, delivered.get().size());
+        assertEquals(2, delivered.get().getEntries().size());
         assertTrue(repository.isLoaded());
-        assertSame(delivered.get(), repository.getCachedEntries());
+        assertSame(delivered.get().getEntries(), repository.getCachedEntries());
+        assertFalse(delivered.get().hasFailedGroups());
         assertEquals(1, fetcher.indexFetchCount.get());
     }
 
@@ -102,11 +103,11 @@ public class SessionDefinitionRepositoryTest {
         repository.loadForRebuild(INDEX_URL, (entries) -> {}, (exception) -> {});
         flushMainLooper();
 
-        AtomicReference<List<SessionDefinitionEntry>> secondDelivery = new AtomicReference<>();
+        AtomicReference<SessionDefinitionLoadResult> secondDelivery = new AtomicReference<>();
         repository.loadForRebuild(INDEX_URL, secondDelivery::set, (exception) -> {});
         flushMainLooper();
 
-        assertSame(repository.getCachedEntries(), secondDelivery.get());
+        assertSame(repository.getCachedEntries(), secondDelivery.get().getEntries());
         assertEquals(1, fetcher.indexFetchCount.get());
     }
 
@@ -122,11 +123,11 @@ public class SessionDefinitionRepositoryTest {
         assertEquals(1, listListenerCalls.get());
         assertEquals(2, repository.getCachedEntries().size());
 
-        AtomicReference<List<SessionDefinitionEntry>> rebuildDelivery = new AtomicReference<>();
+        AtomicReference<SessionDefinitionLoadResult> rebuildDelivery = new AtomicReference<>();
         repository.loadForRebuild(INDEX_URL, rebuildDelivery::set, (exception) -> {});
         flushMainLooper();
 
-        assertSame(repository.getCachedEntries(), rebuildDelivery.get());
+        assertSame(repository.getCachedEntries(), rebuildDelivery.get().getEntries());
         assertEquals(1, fetcher.indexFetchCount.get());
     }
 

@@ -132,11 +132,15 @@
     <string name="hint_session_definition_url">Session definition index URL</string>
     <string name="hint_session_definition_reload_interval_minutes">Auto-reload interval in minutes (0 to disable)</string>
     <string name="label_session_definition_reload_interval_minutes">Auto-reload the session list every N minutes while the app is open. Set to 0 to disable.</string>
+    <string name="hint_session_definition_max_sessions">Maximum number of sessions</string>
+    <string name="label_session_definition_max_sessions">Maximum number of sessions that can be open at once. Sessions beyond this limit are dropped. Default is 32.</string>
     <string name="action_session_definition_config_save">Save</string>
     <string name="action_load_session_definition">Load Sessions</string>
     <string name="msg_session_definition_url_not_set">Set the session definition URL first.</string>
     <string name="msg_session_definition_load_failed">Failed to load session definition.</string>
+    <string name="msg_session_definition_load_partial">Some session groups failed to load (%1$d of %2$d). Showing the rest.</string>
     <string name="msg_session_definition_no_entries">No sessions found in the session definition.</string>
+    <string name="msg_session_limit_exceeded">Session limit of %1$d reached; %2$d session(s) were not loaded. Increase it in Session Definition Config.</string>
 
     <string name="action_open_always_na_session_names_config">Always N/A Session Names</string>
     <string name="title_always_na_session_names_config">Always N/A Session Names</string>

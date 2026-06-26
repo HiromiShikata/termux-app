@@ -17,7 +17,7 @@ public final class SessionDefinitionRepository {
     }
 
     public interface OnEntriesReadyListener {
-        void onEntriesReady(@NonNull List<SessionDefinitionEntry> entries);
+        void onEntriesReady(@NonNull SessionDefinitionLoadResult result);
     }
 
     public interface OnLoadFailedListener {
@@ -26,9 +26,12 @@ public final class SessionDefinitionRepository {
 
     private static final String LOG_TAG = "SessionDefinitionRepository";
 
+    private static final SessionDefinitionLoadResult EMPTY_RESULT =
+        new SessionDefinitionLoadResult(Collections.emptyList(), 0, Collections.emptyList());
+
     private final SessionDefinitionLoader loader;
 
-    private List<SessionDefinitionEntry> entries = Collections.emptyList();
+    private SessionDefinitionLoadResult result = EMPTY_RESULT;
 
     private boolean loaded;
 
@@ -44,7 +47,7 @@ public final class SessionDefinitionRepository {
 
     @NonNull
     public List<SessionDefinitionEntry> getCachedEntries() {
-        return entries;
+        return result.getEntries();
     }
 
     public boolean isLoaded() {
@@ -63,9 +66,9 @@ public final class SessionDefinitionRepository {
         Handler mainThreadHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
             try {
-                List<SessionDefinitionEntry> loadedEntries = loader.load(baseUrl);
+                SessionDefinitionLoadResult loadResult = loader.load(baseUrl);
                 mainThreadHandler.post(() -> {
-                    entries = loadedEntries;
+                    result = loadResult;
                     loaded = true;
                     loading = false;
                     listener.onEntriesLoaded();
@@ -80,16 +83,16 @@ public final class SessionDefinitionRepository {
     public void loadForRebuild(@NonNull String baseUrl, @NonNull OnEntriesReadyListener onEntriesReady, @NonNull OnLoadFailedListener onLoadFailed) {
         Handler mainThreadHandler = new Handler(Looper.getMainLooper());
         if (loaded) {
-            mainThreadHandler.post(() -> onEntriesReady.onEntriesReady(entries));
+            mainThreadHandler.post(() -> onEntriesReady.onEntriesReady(result));
             return;
         }
         new Thread(() -> {
             try {
-                List<SessionDefinitionEntry> loadedEntries = loader.load(baseUrl);
+                SessionDefinitionLoadResult loadResult = loader.load(baseUrl);
                 mainThreadHandler.post(() -> {
-                    entries = loadedEntries;
+                    result = loadResult;
                     loaded = true;
-                    onEntriesReady.onEntriesReady(loadedEntries);
+                    onEntriesReady.onEntriesReady(loadResult);
                 });
             } catch (Exception exception) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);

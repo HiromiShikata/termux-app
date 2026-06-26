@@ -29,6 +29,22 @@
         android:inputType="number"
         android:gravity="top" />
 
+    <TextView
+        android:id="@+id/session_definition_max_sessions_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/label_session_definition_max_sessions" />
+
+    <EditText
+        android:id="@+id/session_definition_max_sessions_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="@string/hint_session_definition_max_sessions"
+        android:inputType="number"
+        android:gravity="top" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/session_definition_config_save_button"
         android:layout_width="match_parent"

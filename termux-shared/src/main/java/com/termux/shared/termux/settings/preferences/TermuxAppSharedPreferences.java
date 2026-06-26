@@ -322,6 +322,19 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public int getSessionDefinitionMaxSessions() {
+        int value = SharedPreferenceUtils.getInt(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_MAX_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
+        return value < TERMUX_APP.MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS
+            ? TERMUX_APP.MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS : value;
+    }
+
+    public void setSessionDefinitionMaxSessions(int value) {
+        int sanitized = value < TERMUX_APP.MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS
+            ? TERMUX_APP.MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS : value;
+        SharedPreferenceUtils.setInt(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_MAX_SESSIONS, sanitized, false);
+    }
+
+
     public String getAlwaysNaSessionNamesText() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_ALWAYS_NA_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES, false);
     }
