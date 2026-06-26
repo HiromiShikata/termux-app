@@ -8,6 +8,7 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.Adapter;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -260,10 +261,32 @@ public class SessionListBottomSheetController {
     }
 
     private void refreshSessionRowsForRelativeTime() {
-        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
-        if (listController != null) {
-            listController.notifyDataSetChanged();
+        rebindVisibleSessionRowsInPlace(mSessionListView);
+    }
+
+    static void rebindVisibleSessionRowsInPlace(@NonNull ListView listView) {
+        Adapter adapter = listView.getAdapter();
+        if (adapter == null) {
+            return;
         }
+        int firstVisiblePosition = listView.getFirstVisiblePosition();
+        int childCount = listView.getChildCount();
+        int adapterCount = adapter.getCount();
+        for (int childIndex = 0; childIndex < childCount; childIndex++) {
+            int position = firstVisiblePosition + childIndex;
+            if (!isRebindablePosition(position, adapterCount)) {
+                continue;
+            }
+            View childView = listView.getChildAt(childIndex);
+            if (childView == null) {
+                continue;
+            }
+            adapter.getView(position, childView, listView);
+        }
+    }
+
+    static boolean isRebindablePosition(int position, int adapterCount) {
+        return position >= 0 && position < adapterCount;
     }
 
     private void onSessionListTouchStarted() {
