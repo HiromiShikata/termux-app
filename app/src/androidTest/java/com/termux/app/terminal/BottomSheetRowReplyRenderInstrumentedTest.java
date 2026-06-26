@@ -36,7 +36,7 @@ public class BottomSheetRowReplyRenderInstrumentedTest {
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
         SessionNewActivityStore store = new SessionNewActivityStore();
-        String sessionName = "umino-corporait-operation-issues-29625-worker";
+        String sessionName = "demo-long-session-name-0123456789-worker";
         String timestamp = TermuxSessionsListViewController.buildTimestampLine(store, sessionName, 61_000L);
 
         SessionInfoBlock titleBlock = SessionInfoBlock.compose("", sessionName, "",
@@ -93,7 +93,7 @@ public class BottomSheetRowReplyRenderInstrumentedTest {
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
         SessionNewActivityStore store = new SessionNewActivityStore();
-        String sessionName = "umino-corporait-operation-issues-29625-worker";
+        String sessionName = "demo-long-session-name-0123456789-worker";
         String timestamp = TermuxSessionsListViewController.buildTimestampLine(store, sessionName, 61_000L);
 
         SessionInfoBlock sharedBlock = SessionInfoBlock.compose("", sessionName, timestamp,
