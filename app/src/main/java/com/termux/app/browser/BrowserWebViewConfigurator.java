@@ -21,7 +21,7 @@ public final class BrowserWebViewConfigurator {
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
+        settings.setLoadWithOverviewMode(viewMode.isDesktop());
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
         settings.setUserAgentString(BrowserUserAgent.resolve(viewMode.isDesktop(), defaultUserAgent));
