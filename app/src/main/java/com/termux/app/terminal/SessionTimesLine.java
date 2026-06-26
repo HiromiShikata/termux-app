@@ -5,8 +5,6 @@ import androidx.annotation.Nullable;
 
 public final class SessionTimesLine {
 
-    private static final String ABSENT_VALUE = "-";
-
     private final boolean mVisible;
 
     @NonNull
@@ -18,16 +16,18 @@ public final class SessionTimesLine {
     }
 
     @NonNull
+    public static SessionTimesLine hidden() {
+        return new SessionTimesLine(false, "");
+    }
+
+    @NonNull
     public static SessionTimesLine of(@Nullable Long callTimeMillis,
                                       @Nullable Long outTimeMillis,
                                       @Nullable Long replyTimeMillis,
                                       long nowMillis) {
-        if (callTimeMillis == null && outTimeMillis == null && replyTimeMillis == null) {
-            return new SessionTimesLine(false, "");
-        }
-        String text = "call: " + relativeAgeOrAbsent(callTimeMillis, nowMillis)
-            + "  out: " + relativeAgeOrAbsent(outTimeMillis, nowMillis)
-            + "  reply: " + relativeAgeOrAbsent(replyTimeMillis, nowMillis);
+        String text = "call: " + relativeAgeOrMoreThanOneDay(callTimeMillis, nowMillis)
+            + "  out: " + relativeAgeOrMoreThanOneDay(outTimeMillis, nowMillis)
+            + "  reply: " + relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis);
         return new SessionTimesLine(true, text);
     }
 
@@ -41,8 +41,8 @@ public final class SessionTimesLine {
     }
 
     @NonNull
-    private static String relativeAgeOrAbsent(@Nullable Long timeMillis, long nowMillis) {
-        return timeMillis == null ? ABSENT_VALUE
+    private static String relativeAgeOrMoreThanOneDay(@Nullable Long timeMillis, long nowMillis) {
+        return timeMillis == null ? SessionNewActivityStore.MORE_THAN_ONE_DAY_LABEL
             : SessionNewActivityStore.formatRelativeAge(timeMillis, nowMillis);
     }
 }

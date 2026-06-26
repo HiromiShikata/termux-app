@@ -869,9 +869,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                                      @Nullable String sessionName,
                                      long nowMillis) {
         if (sessionName == null || sessionName.isEmpty()) return "";
-        return "call: " + padTimestampValue(relativeAgeOrDash(store.getLastExplicitCallTimeMillis(sessionName), nowMillis))
-            + "  out: " + padTimestampValue(relativeAgeOrDash(store.getLastOutputActivityTimeMillis(sessionName), nowMillis))
-            + "  seen: " + relativeAgeOrDash(store.getLastSeenTimeMillis(sessionName), nowMillis);
+        return "call: " + padTimestampValue(relativeAgeOrMoreThanOneDay(store.getStatuslineCallTimeMillis(sessionName), nowMillis))
+            + "  out: " + padTimestampValue(relativeAgeOrMoreThanOneDay(store.getStatuslineOutTimeMillis(sessionName), nowMillis))
+            + "  reply: " + relativeAgeOrMoreThanOneDay(store.getStatuslineReplyTimeMillis(sessionName), nowMillis);
     }
 
     @NonNull
@@ -887,8 +887,9 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @NonNull
-    private static String relativeAgeOrDash(@Nullable Long timeMillis, long nowMillis) {
-        return timeMillis == null ? "-" : SessionNewActivityStore.formatRelativeTime(nowMillis - timeMillis);
+    private static String relativeAgeOrMoreThanOneDay(@Nullable Long timeMillis, long nowMillis) {
+        return timeMillis == null ? SessionNewActivityStore.MORE_THAN_ONE_DAY_LABEL
+            : SessionNewActivityStore.formatRelativeAge(timeMillis, nowMillis);
     }
 
     @NonNull

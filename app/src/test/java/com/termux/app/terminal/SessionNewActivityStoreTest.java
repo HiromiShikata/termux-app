@@ -768,4 +768,65 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(Long.valueOf(7_000L), store.getLastOutputActivityTimeMillis("worker"));
         Assert.assertNull(store.getLastUserInputTimeMillis("worker"));
     }
+
+    @Test
+    public void statuslineDisplayGettersExposeOnlyStatuslineSourcedCallOutAndReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", 3_000L, 5_000L, 4_000L);
+
+        Assert.assertEquals(Long.valueOf(3_000L), store.getStatuslineCallTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(5_000L), store.getStatuslineOutTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(4_000L), store.getStatuslineReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void statuslineDisplayGettersStayAbsentForGenuineActivityRecordersSoNoFakeTimeIsSubstituted() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+        store.recordExplicitCall("worker", 2_000L, "needs approval");
+        store.recordUserInput("worker", 3_000L);
+        store.recordSeen("worker", 4_000L);
+
+        Assert.assertNull(store.getStatuslineCallTimeMillis("worker"));
+        Assert.assertNull(store.getStatuslineOutTimeMillis("worker"));
+        Assert.assertNull(store.getStatuslineReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void statuslineDisplayGettersIgnoreNullComponentsSoAbsentTokensStayUnknown() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", null, 7_000L, null);
+
+        Assert.assertNull(store.getStatuslineCallTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(7_000L), store.getStatuslineOutTimeMillis("worker"));
+        Assert.assertNull(store.getStatuslineReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void statuslineDisplayTimesSurviveRestartThroughPersistence() {
+        InMemorySessionNewActivityPersistence persistence =
+            new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", 3_000L, 5_000L, 4_000L);
+
+        SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(Long.valueOf(3_000L), afterRestart.getStatuslineCallTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(5_000L), afterRestart.getStatuslineOutTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(4_000L), afterRestart.getStatuslineReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void purgeSessionClearsStatuslineDisplayTimes() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 3_000L, 5_000L, 4_000L);
+
+        store.purgeSession("worker");
+
+        Assert.assertNull(store.getStatuslineCallTimeMillis("worker"));
+        Assert.assertNull(store.getStatuslineOutTimeMillis("worker"));
+        Assert.assertNull(store.getStatuslineReplyTimeMillis("worker"));
+    }
 }
