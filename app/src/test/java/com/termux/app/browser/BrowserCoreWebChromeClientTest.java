@@ -255,6 +255,48 @@ public class BrowserCoreWebChromeClientTest {
     }
 
     @Test
+    public void defaultHostDoesNotOpenNewTabsSoSessionBrowserBehaviorIsUnchanged() {
+        RecordingHost host = new RecordingHost();
+        Assert.assertFalse(host.openNewTabForUrl("https://example.com/new"));
+    }
+
+    @Test
+    public void hostThatOpensNewTabsReceivesTheRequestedNewWindowUrl() {
+        AtomicReference<String> openedUrlRef = new AtomicReference<>();
+        BrowserCoreWebChromeClient.Host host = new BrowserCoreWebChromeClient.Host() {
+            @NonNull
+            @Override
+            public Context getDialogContext() {
+                return RuntimeEnvironment.getApplication();
+            }
+
+            @Override
+            public void launchFileChooser(@NonNull Intent intent) {
+            }
+
+            @Override
+            public void onProgressChanged(@NonNull BrowserPageLoadProgressState progressState) {
+            }
+
+            @Override
+            public void onReceivedTitle(@Nullable String title) {
+            }
+
+            @Override
+            public void onReceivedIcon(@NonNull Bitmap icon) {
+            }
+
+            @Override
+            public boolean openNewTabForUrl(@NonNull String url) {
+                openedUrlRef.set(url);
+                return true;
+            }
+        };
+        Assert.assertTrue(host.openNewTabForUrl("https://example.com/new"));
+        Assert.assertEquals("https://example.com/new", openedUrlRef.get());
+    }
+
+    @Test
     public void onJsAlertShowsDialogAndReturnsTrue() {
         RecordingHost host = new RecordingHost();
         BrowserCoreWebChromeClient client = new BrowserCoreWebChromeClient(host);

@@ -408,12 +408,13 @@
                     android:layout_height="match_parent"
                     android:background="?attr/termuxActivityDrawerBackground">
 
-                    <WebView
-                        android:id="@+id/project_browser_web_view"
+                    <FrameLayout
+                        android:id="@+id/project_browser_web_view_container"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
+                        android:importantForAutofill="yes"
                         android:background="?attr/termuxActivityDrawerBackground" />
                 </com.termux.app.browser.BrowserPinchAwareSwipeRefreshLayout>
 
@@ -463,6 +464,19 @@
                         android:text="@string/action_browser_open_first_ten_tasks" />
                 </LinearLayout>
             </FrameLayout>
+
+            <HorizontalScrollView
+                android:id="@+id/project_browser_tab_strip_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/project_browser_tab_strip_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
 
             <LinearLayout
                 android:id="@+id/project_browser_footer"
