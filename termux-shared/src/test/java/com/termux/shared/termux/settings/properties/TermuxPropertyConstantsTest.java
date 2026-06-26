@@ -158,7 +158,7 @@ public class TermuxPropertyConstantsTest {
     public void terminalMarginConstantsHaveExpectedRanges() {
         Assert.assertEquals(0, TermuxPropertyConstants.IVALUE_TERMINAL_MARGIN_HORIZONTAL_MIN);
         Assert.assertEquals(100, TermuxPropertyConstants.IVALUE_TERMINAL_MARGIN_HORIZONTAL_MAX);
-        Assert.assertEquals(3, TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_MARGIN_HORIZONTAL);
+        Assert.assertEquals(0, TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_MARGIN_HORIZONTAL);
         Assert.assertEquals(0, TermuxPropertyConstants.IVALUE_TERMINAL_MARGIN_VERTICAL_MIN);
         Assert.assertEquals(100, TermuxPropertyConstants.IVALUE_TERMINAL_MARGIN_VERTICAL_MAX);
         Assert.assertEquals(0, TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_MARGIN_VERTICAL);
