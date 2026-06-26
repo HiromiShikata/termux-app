@@ -69,7 +69,9 @@ public class SessionNewActivityStore {
                 reasons = new ArrayList<>();
                 mUnacknowledgedCallReasonsByName.put(sessionName, reasons);
             }
-            reasons.add(reason);
+            if (!reasons.contains(reason)) {
+                reasons.add(reason);
+            }
         }
         save();
     }

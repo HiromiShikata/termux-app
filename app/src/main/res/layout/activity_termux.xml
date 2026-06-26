@@ -323,13 +323,13 @@
                 android:orientation="horizontal"
                 android:visibility="gone">
 
-                <ScrollView
+                <com.termux.app.terminal.MaxHeightScrollView
                     android:id="@+id/session_pending_call_to_user_scroll"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:maxHeight="68sp"
-                    android:scrollbars="vertical">
+                    android:scrollbars="vertical"
+                    app:maxScrollHeight="68sp">
 
                     <TextView
                         android:id="@+id/session_pending_call_to_user_text"
@@ -343,7 +343,7 @@
                         android:paddingVertical="2dp"
                         android:textColor="@color/session_explicit_call_reason_text"
                         android:textSize="9sp" />
-                </ScrollView>
+                </com.termux.app.terminal.MaxHeightScrollView>
 
                 <ImageButton
                     android:id="@+id/session_pending_call_to_user_scroll_button"

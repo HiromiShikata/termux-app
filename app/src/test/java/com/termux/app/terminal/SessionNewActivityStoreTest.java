@@ -510,6 +510,46 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void reRecordingAnAlreadyPresentReasonDoesNotAppendADuplicate() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "deploy failed");
+        store.recordExplicitCall("worker", 2_000L, "deploy failed");
+        store.recordExplicitCall("worker", 3_000L, "deploy failed");
+
+        Assert.assertEquals(
+            Collections.singletonList("deploy failed"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
+    public void reScanningTheSameReasonsManyTimesKeepsEachReasonExactlyOnce() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        for (int scan = 0; scan < 20; scan++) {
+            store.recordExplicitCall("worker", 1_000L + scan, "first reason");
+            store.recordExplicitCall("worker", 2_000L + scan, "second reason");
+        }
+
+        Assert.assertEquals(
+            java.util.Arrays.asList("first reason", "second reason"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
+    public void distinctReasonsStillAccumulateWhenInterleavedWithDuplicateReRecords() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "first reason");
+        store.recordExplicitCall("worker", 2_000L, "first reason");
+        store.recordExplicitCall("worker", 3_000L, "second reason");
+        store.recordExplicitCall("worker", 4_000L, "first reason");
+        store.recordExplicitCall("worker", 5_000L, "second reason");
+
+        Assert.assertEquals(
+            java.util.Arrays.asList("first reason", "second reason"),
+            store.getUnacknowledgedCallReasons("worker"));
+    }
+
+    @Test
     public void explicitCallWithEmptyReasonDoesNotAddToUnacknowledgedReasons() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L, "first reason");
