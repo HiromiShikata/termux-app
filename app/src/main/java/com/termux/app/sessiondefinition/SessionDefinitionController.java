@@ -6,14 +6,16 @@ import android.widget.ProgressBar;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
-import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class SessionDefinitionController {
@@ -23,7 +25,8 @@ public final class SessionDefinitionController {
     private final TermuxActivity activity;
     private final SessionDefinitionRepository repository;
     private final SessionDefinitionPlanner planner;
-    private final SessionDefinitionEntryMatcher matcher = new SessionDefinitionEntryMatcher();
+    private final SessionDefinitionDisappearedSessionPlanner disappearedSessionPlanner =
+        new SessionDefinitionDisappearedSessionPlanner();
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
@@ -139,30 +142,32 @@ public final class SessionDefinitionController {
         if (service == null) {
             return;
         }
-        List<SessionDefinitionEntry> previousEntries = previousDefinitionEntries();
-        List<TerminalSession> sessionsToRemove = new ArrayList<>();
+        Map<String, TerminalSession> sessionByName = new HashMap<>();
+        List<SessionDefinitionDisappearedSessionPlanner.LiveSession> liveSessions = new ArrayList<>();
         for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == null) {
                 continue;
             }
             String sessionName = terminalSession.mSessionName;
-            boolean wasProjectLinked = matcher.findEntryForSessionName(previousEntries, sessionName) != null;
-            boolean isStillDefined = matcher.findEntryForSessionName(currentEntries, sessionName) != null;
-            if (wasProjectLinked && !isStillDefined) {
-                sessionsToRemove.add(terminalSession);
-            }
+            sessionByName.put(sessionName, terminalSession);
+            liveSessions.add(new SessionDefinitionDisappearedSessionPlanner.LiveSession(
+                sessionName, terminalSession.isRunning()));
         }
-        for (TerminalSession terminalSession : sessionsToRemove) {
-            activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
+        List<String> sessionNamesToRemove = disappearedSessionPlanner.planSessionNamesToRemove(
+            currentEntries, alwaysPresentSessionNames(), liveSessions);
+        for (String sessionName : sessionNamesToRemove) {
+            TerminalSession terminalSession = sessionByName.get(sessionName);
+            if (terminalSession != null) {
+                activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
+            }
         }
     }
 
-    private List<SessionDefinitionEntry> previousDefinitionEntries() {
-        TermuxSessionsListViewController listViewController = activity.getTermuxSessionListViewController();
-        if (listViewController == null) {
-            return new ArrayList<>();
+    private Set<String> alwaysPresentSessionNames() {
+        if (activity.getPreferences() == null) {
+            return Collections.emptySet();
         }
-        return listViewController.getEntries();
+        return activity.getPreferences().getAlwaysNaSessionNames();
     }
 }
