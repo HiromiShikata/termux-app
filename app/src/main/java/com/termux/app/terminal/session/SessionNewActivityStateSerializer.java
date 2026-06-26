@@ -19,6 +19,9 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_ACKNOWLEDGED_CALL_REASONS = "acknowledgedCallReasons";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
     private static final String KEY_LAST_USER_INPUT_TIME_MILLIS = "lastUserInputTimeMillis";
+    private static final String KEY_STATUSLINE_CALL_TIME_MILLIS = "statuslineCallTimeMillis";
+    private static final String KEY_STATUSLINE_OUT_TIME_MILLIS = "statuslineOutTimeMillis";
+    private static final String KEY_STATUSLINE_REPLY_TIME_MILLIS = "statuslineReplyTimeMillis";
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
@@ -41,6 +44,12 @@ public final class SessionNewActivityStateSerializer {
                 object.put(KEY_LAST_SEEN_TIME_MILLIS, state.getLastSeenTimeMillis().longValue());
             if (state.getLastUserInputTimeMillis() != null)
                 object.put(KEY_LAST_USER_INPUT_TIME_MILLIS, state.getLastUserInputTimeMillis().longValue());
+            if (state.getStatuslineCallTimeMillis() != null)
+                object.put(KEY_STATUSLINE_CALL_TIME_MILLIS, state.getStatuslineCallTimeMillis().longValue());
+            if (state.getStatuslineOutTimeMillis() != null)
+                object.put(KEY_STATUSLINE_OUT_TIME_MILLIS, state.getStatuslineOutTimeMillis().longValue());
+            if (state.getStatuslineReplyTimeMillis() != null)
+                object.put(KEY_STATUSLINE_REPLY_TIME_MILLIS, state.getStatuslineReplyTimeMillis().longValue());
             array.put(object);
         }
         return array.toString();
@@ -67,10 +76,14 @@ public final class SessionNewActivityStateSerializer {
                 optionalStringList(object, KEY_ACKNOWLEDGED_CALL_REASONS);
             Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
             Long lastUserInputTimeMillis = optionalLong(object, KEY_LAST_USER_INPUT_TIME_MILLIS);
+            Long statuslineCallTimeMillis = optionalLong(object, KEY_STATUSLINE_CALL_TIME_MILLIS);
+            Long statuslineOutTimeMillis = optionalLong(object, KEY_STATUSLINE_OUT_TIME_MILLIS);
+            Long statuslineReplyTimeMillis = optionalLong(object, KEY_STATUSLINE_REPLY_TIME_MILLIS);
 
             states.add(new SessionNewActivityState(sessionName, lastOutputActivityTimeMillis,
                 lastExplicitCallTimeMillis, lastExplicitCallReason, lastSeenTimeMillis,
-                lastUserInputTimeMillis, unacknowledgedCallReasons, acknowledgedCallReasons));
+                lastUserInputTimeMillis, unacknowledgedCallReasons, acknowledgedCallReasons,
+                statuslineCallTimeMillis, statuslineOutTimeMillis, statuslineReplyTimeMillis));
         }
         return states;
     }

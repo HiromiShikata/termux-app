@@ -26,6 +26,9 @@ public class SessionNewActivityStore {
     private final Map<String, List<String>> mAcknowledgedCallReasonsByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mStatuslineCallTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mStatuslineOutTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mStatuslineReplyTimeMillisByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -53,6 +56,12 @@ public class SessionNewActivityStore {
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
             if (state.getLastUserInputTimeMillis() != null)
                 mLastUserInputTimeMillisByName.put(state.getSessionName(), state.getLastUserInputTimeMillis());
+            if (state.getStatuslineCallTimeMillis() != null)
+                mStatuslineCallTimeMillisByName.put(state.getSessionName(), state.getStatuslineCallTimeMillis());
+            if (state.getStatuslineOutTimeMillis() != null)
+                mStatuslineOutTimeMillisByName.put(state.getSessionName(), state.getStatuslineOutTimeMillis());
+            if (state.getStatuslineReplyTimeMillis() != null)
+                mStatuslineReplyTimeMillisByName.put(state.getSessionName(), state.getStatuslineReplyTimeMillis());
         }
     }
 
@@ -132,12 +141,15 @@ public class SessionNewActivityStore {
                                       @Nullable Long outTimeMillis,
                                       @Nullable Long replyTimeMillis) {
         if (callTimeMillis != null) {
+            mStatuslineCallTimeMillisByName.put(sessionName, callTimeMillis);
             mLastExplicitCallTimeMillisByName.put(sessionName, callTimeMillis);
         }
         if (outTimeMillis != null) {
+            mStatuslineOutTimeMillisByName.put(sessionName, outTimeMillis);
             mLastOutputActivityTimeMillisByName.put(sessionName, outTimeMillis);
         }
         if (replyTimeMillis != null) {
+            mStatuslineReplyTimeMillisByName.put(sessionName, replyTimeMillis);
             mLastUserInputTimeMillisByName.put(sessionName, replyTimeMillis);
             boolean replyAnsweredCall = callTimeMillis == null || replyTimeMillis >= callTimeMillis;
             if (replyAnsweredCall) {
@@ -172,6 +184,9 @@ public class SessionNewActivityStore {
         mAcknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
+        mStatuslineCallTimeMillisByName.remove(sessionName);
+        mStatuslineOutTimeMillisByName.remove(sessionName);
+        mStatuslineReplyTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -183,6 +198,9 @@ public class SessionNewActivityStore {
         changed |= mAcknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mStatuslineCallTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mStatuslineOutTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mStatuslineReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
@@ -220,6 +238,21 @@ public class SessionNewActivityStore {
     @Nullable
     public Long getLastUserInputTimeMillis(@NonNull String sessionName) {
         return mLastUserInputTimeMillisByName.get(sessionName);
+    }
+
+    @Nullable
+    public Long getStatuslineCallTimeMillis(@NonNull String sessionName) {
+        return mStatuslineCallTimeMillisByName.get(sessionName);
+    }
+
+    @Nullable
+    public Long getStatuslineOutTimeMillis(@NonNull String sessionName) {
+        return mStatuslineOutTimeMillisByName.get(sessionName);
+    }
+
+    @Nullable
+    public Long getStatuslineReplyTimeMillis(@NonNull String sessionName) {
+        return mStatuslineReplyTimeMillisByName.get(sessionName);
     }
 
     @NonNull
@@ -275,6 +308,9 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mAcknowledgedCallReasonsByName.keySet());
         sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
         sessionNames.addAll(mLastUserInputTimeMillisByName.keySet());
+        sessionNames.addAll(mStatuslineCallTimeMillisByName.keySet());
+        sessionNames.addAll(mStatuslineOutTimeMillisByName.keySet());
+        sessionNames.addAll(mStatuslineReplyTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
@@ -286,7 +322,10 @@ public class SessionNewActivityStore {
                 mLastSeenTimeMillisByName.get(sessionName),
                 mLastUserInputTimeMillisByName.get(sessionName),
                 reasons == null ? null : new ArrayList<>(reasons),
-                acknowledgedReasons == null ? null : new ArrayList<>(acknowledgedReasons)));
+                acknowledgedReasons == null ? null : new ArrayList<>(acknowledgedReasons),
+                mStatuslineCallTimeMillisByName.get(sessionName),
+                mStatuslineOutTimeMillisByName.get(sessionName),
+                mStatuslineReplyTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
     }

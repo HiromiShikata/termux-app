@@ -33,6 +33,15 @@ public final class SessionNewActivityState {
     @Nullable
     private final List<String> mAcknowledgedCallReasons;
 
+    @Nullable
+    private final Long mStatuslineCallTimeMillis;
+
+    @Nullable
+    private final Long mStatuslineOutTimeMillis;
+
+    @Nullable
+    private final Long mStatuslineReplyTimeMillis;
+
     public SessionNewActivityState(@NonNull String sessionName,
                                    @Nullable Long lastOutputActivityTimeMillis,
                                    @Nullable Long lastExplicitCallTimeMillis,
@@ -63,6 +72,22 @@ public final class SessionNewActivityState {
                                    @Nullable Long lastUserInputTimeMillis,
                                    @Nullable List<String> unacknowledgedCallReasons,
                                    @Nullable List<String> acknowledgedCallReasons) {
+        this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
+            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis,
+            unacknowledgedCallReasons, acknowledgedCallReasons, null, null, null);
+    }
+
+    public SessionNewActivityState(@NonNull String sessionName,
+                                   @Nullable Long lastOutputActivityTimeMillis,
+                                   @Nullable Long lastExplicitCallTimeMillis,
+                                   @Nullable String lastExplicitCallReason,
+                                   @Nullable Long lastSeenTimeMillis,
+                                   @Nullable Long lastUserInputTimeMillis,
+                                   @Nullable List<String> unacknowledgedCallReasons,
+                                   @Nullable List<String> acknowledgedCallReasons,
+                                   @Nullable Long statuslineCallTimeMillis,
+                                   @Nullable Long statuslineOutTimeMillis,
+                                   @Nullable Long statuslineReplyTimeMillis) {
         mSessionName = sessionName;
         mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
         mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
@@ -73,6 +98,9 @@ public final class SessionNewActivityState {
             ? null : Collections.unmodifiableList(new ArrayList<>(unacknowledgedCallReasons));
         mAcknowledgedCallReasons = acknowledgedCallReasons == null
             ? null : Collections.unmodifiableList(new ArrayList<>(acknowledgedCallReasons));
+        mStatuslineCallTimeMillis = statuslineCallTimeMillis;
+        mStatuslineOutTimeMillis = statuslineOutTimeMillis;
+        mStatuslineReplyTimeMillis = statuslineReplyTimeMillis;
     }
 
     @NonNull
@@ -113,5 +141,20 @@ public final class SessionNewActivityState {
     @Nullable
     public List<String> getAcknowledgedCallReasons() {
         return mAcknowledgedCallReasons;
+    }
+
+    @Nullable
+    public Long getStatuslineCallTimeMillis() {
+        return mStatuslineCallTimeMillis;
+    }
+
+    @Nullable
+    public Long getStatuslineOutTimeMillis() {
+        return mStatuslineOutTimeMillis;
+    }
+
+    @Nullable
+    public Long getStatuslineReplyTimeMillis() {
+        return mStatuslineReplyTimeMillis;
     }
 }

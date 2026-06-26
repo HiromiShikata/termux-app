@@ -23,12 +23,12 @@ public class SessionTimesLineTest {
     }
 
     @Test
-    public void showsDashForAbsentValues() {
+    public void showsMoreThanOneDayForAbsentStatuslineValues() {
         SessionTimesLine line = SessionTimesLine.of(
             null, NOW - 12L * ONE_MINUTE_MILLIS, null, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: -  out: 12m  reply: -", line.getText());
+        Assert.assertEquals("call: >1 day  out: 12m  reply: >1 day", line.getText());
     }
 
     @Test
@@ -40,10 +40,10 @@ public class SessionTimesLineTest {
     }
 
     @Test
-    public void isNotVisibleWhenNoTimesAreKnown() {
+    public void staysVisibleAndShowsMoreThanOneDayForEveryValueWhenNoStatuslineTimesAreKnown() {
         SessionTimesLine line = SessionTimesLine.of(null, null, null, NOW);
 
-        Assert.assertFalse(line.isVisible());
-        Assert.assertEquals("", line.getText());
+        Assert.assertTrue(line.isVisible());
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day", line.getText());
     }
 }

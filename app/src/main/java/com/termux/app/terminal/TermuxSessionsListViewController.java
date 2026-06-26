@@ -62,7 +62,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
     private static final float TIMESTAMP_ROW_RELATIVE_SIZE = 0.65f;
     private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
-    private static final int TIMESTAMP_VALUE_FIELD_WIDTH = 8;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
@@ -869,26 +868,11 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
                                      @Nullable String sessionName,
                                      long nowMillis) {
         if (sessionName == null || sessionName.isEmpty()) return "";
-        return "call: " + padTimestampValue(relativeAgeOrDash(store.getLastExplicitCallTimeMillis(sessionName), nowMillis))
-            + "  out: " + padTimestampValue(relativeAgeOrDash(store.getLastOutputActivityTimeMillis(sessionName), nowMillis))
-            + "  seen: " + relativeAgeOrDash(store.getLastSeenTimeMillis(sessionName), nowMillis);
-    }
-
-    @NonNull
-    static String padTimestampValue(@NonNull String value) {
-        if (value.length() >= TIMESTAMP_VALUE_FIELD_WIDTH) {
-            return value;
-        }
-        StringBuilder padded = new StringBuilder(value);
-        while (padded.length() < TIMESTAMP_VALUE_FIELD_WIDTH) {
-            padded.append(' ');
-        }
-        return padded.toString();
-    }
-
-    @NonNull
-    private static String relativeAgeOrDash(@Nullable Long timeMillis, long nowMillis) {
-        return timeMillis == null ? "-" : SessionNewActivityStore.formatRelativeTime(nowMillis - timeMillis);
+        return SessionTimesLine.of(
+            store.getStatuslineCallTimeMillis(sessionName),
+            store.getStatuslineOutTimeMillis(sessionName),
+            store.getStatuslineReplyTimeMillis(sessionName),
+            nowMillis).getText();
     }
 
     @NonNull

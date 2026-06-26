@@ -672,12 +672,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private SessionTimesLine resolveSessionTimesLine(@Nullable String sessionName) {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null || sessionName == null) {
-            return SessionTimesLine.of(null, null, null, System.currentTimeMillis());
+            return SessionTimesLine.hidden();
         }
         return SessionTimesLine.of(
-            store.getLastExplicitCallTimeMillis(sessionName),
-            store.getLastOutputActivityTimeMillis(sessionName),
-            store.getLastUserInputTimeMillis(sessionName),
+            store.getStatuslineCallTimeMillis(sessionName),
+            store.getStatuslineOutTimeMillis(sessionName),
+            store.getStatuslineReplyTimeMillis(sessionName),
             System.currentTimeMillis());
     }
 
