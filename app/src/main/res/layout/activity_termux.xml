@@ -570,12 +570,15 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <androidx.recyclerview.widget.RecyclerView
+            <ListView
                 android:id="@+id/session_list_bottom_sheet_list"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:scrollbars="vertical" />
+                android:choiceMode="singleChoice"
+                android:divider="@android:color/transparent"
+                android:dividerHeight="0dp"
+                android:longClickable="true" />
 
             <LinearLayout
                 android:layout_width="match_parent"

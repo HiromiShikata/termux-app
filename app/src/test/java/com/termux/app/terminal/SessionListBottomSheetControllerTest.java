@@ -3,11 +3,11 @@ package com.termux.app.terminal;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -21,81 +21,102 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 public class SessionListBottomSheetControllerTest {
 
-    private static class StringRecyclerAdapter extends RecyclerView.Adapter<StringRecyclerAdapter.Holder> {
+    private static class StringListAdapter extends BaseAdapter {
 
         private final List<String> items;
-        final List<Integer> fullBindPositions = new java.util.ArrayList<>();
-        final List<Integer> payloadBindPositions = new java.util.ArrayList<>();
 
-        StringRecyclerAdapter(List<String> items) {
+        StringListAdapter(List<String> items) {
             this.items = items;
-            setHasStableIds(true);
         }
 
         @Override
-        public int getItemCount() {
+        public int getCount() {
             return items.size();
         }
 
         @Override
+        public Object getItem(int position) {
+            return items.get(position);
+        }
+
+        @Override
         public long getItemId(int position) {
-            return items.get(position).hashCode();
+            return position;
         }
 
         @NonNull
         @Override
-        public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new Holder(new TextView(parent.getContext()));
+        public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+            TextView textView = convertView instanceof TextView
+                ? (TextView) convertView
+                : new TextView(parent.getContext());
+            textView.setText(items.get(position));
+            return textView;
+        }
+    }
+
+    private static class TimeOnlyRefreshAdapter extends BaseAdapter
+        implements SessionListBottomSheetController.SessionRowRelativeTimeUpdater {
+
+        private final List<String> items;
+        int notifyDataSetChangedCount;
+        int getViewCallCount;
+        final List<Integer> timeUpdatedPositions = new java.util.ArrayList<>();
+
+        TimeOnlyRefreshAdapter(List<String> items) {
+            this.items = items;
         }
 
         @Override
-        public void onBindViewHolder(@NonNull Holder holder, int position) {
-            fullBindPositions.add(position);
-            ((TextView) holder.itemView).setText(items.get(position));
+        public int getCount() {
+            return items.size();
         }
 
         @Override
-        public void onBindViewHolder(@NonNull Holder holder, int position, @NonNull List<Object> payloads) {
-            if (!payloads.isEmpty()) {
-                payloadBindPositions.add(position);
-                return;
-            }
-            super.onBindViewHolder(holder, position, payloads);
+        public Object getItem(int position) {
+            return items.get(position);
         }
 
-        static final class Holder extends RecyclerView.ViewHolder {
-            Holder(@NonNull View itemView) {
-                super(itemView);
-            }
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public void notifyDataSetChanged() {
+            notifyDataSetChangedCount++;
+            super.notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+            getViewCallCount++;
+            TextView textView = convertView instanceof TextView
+                ? (TextView) convertView
+                : new TextView(parent.getContext());
+            textView.setText(items.get(position));
+            return textView;
+        }
+
+        @Override
+        public void updateSessionRowRelativeTimeInPlace(int position, @NonNull View rowView) {
+            timeUpdatedPositions.add(position);
         }
     }
 
     @Test
-    public void bindsSessionListAdapterWithAVerticalLayoutManagerOntoTheRecyclerView() {
-        RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
-        StringRecyclerAdapter delegate =
-            new StringRecyclerAdapter(Arrays.asList("project header", "session a", "session b"));
+    public void bindsSessionListInSameOrderAsLeftDrawerWithoutReversing() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        StringListAdapter delegate =
+            new StringListAdapter(Arrays.asList("project header", "session a", "session b"));
 
-        SessionListBottomSheetController.bindSessionListAdapter(recyclerView, delegate);
+        SessionListBottomSheetController.bindSessionListAdapter(listView, delegate);
 
-        Assert.assertSame(delegate, recyclerView.getAdapter());
-        Assert.assertTrue("the bottom-sheet list must use a vertical LinearLayoutManager",
-            recyclerView.getLayoutManager() instanceof LinearLayoutManager);
-        Assert.assertEquals(RecyclerView.VERTICAL,
-            ((LinearLayoutManager) recyclerView.getLayoutManager()).getOrientation());
-    }
-
-    @Test
-    public void bindsSessionListAdapterPreservesRowOrderWithoutReversing() {
-        RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
-        StringRecyclerAdapter delegate =
-            new StringRecyclerAdapter(Arrays.asList("project header", "session a", "session b"));
-
-        SessionListBottomSheetController.bindSessionListAdapter(recyclerView, delegate);
-        layoutRecyclerView(recyclerView);
-
-        Assert.assertTrue("the laid-out RecyclerView must have visible child rows", recyclerView.getChildCount() > 0);
-        Assert.assertEquals(Arrays.asList(0, 1, 2), delegate.fullBindPositions);
+        Assert.assertSame(delegate, listView.getAdapter());
+        Assert.assertEquals("project header", listView.getAdapter().getItem(0));
+        Assert.assertEquals("session a", listView.getAdapter().getItem(1));
+        Assert.assertEquals("session b", listView.getAdapter().getItem(2));
     }
 
     @Test
@@ -190,45 +211,117 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
-    public void perSecondTickUpdatesVisibleRowsViaPayloadOnlyWithoutAFullRebind() {
-        RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
-        StringRecyclerAdapter delegate =
-            new StringRecyclerAdapter(Arrays.asList("session a", "session b", "session c"));
-        SessionListBottomSheetController.bindSessionListAdapter(recyclerView, delegate);
-        layoutRecyclerView(recyclerView);
-
-        Assert.assertTrue("the laid-out RecyclerView must have visible child rows to update",
-            recyclerView.getChildCount() > 0);
-        delegate.fullBindPositions.clear();
-        delegate.payloadBindPositions.clear();
-
-        Object timePayload = new Object();
-        delegate.notifyItemRangeChanged(0, delegate.getItemCount(), timePayload);
-        layoutRecyclerView(recyclerView);
-
-        Assert.assertTrue("the per-second tick must update visible rows through the payload bind path",
-            !delegate.payloadBindPositions.isEmpty());
-        Assert.assertTrue("the per-second tick must not run a full rebind of any visible row",
-            delegate.fullBindPositions.isEmpty());
+    public void rebindableRowPositionsAreThoseWithinTheAdapterCount() {
+        Assert.assertTrue(SessionListBottomSheetController.isRebindablePosition(0, 3));
+        Assert.assertTrue(SessionListBottomSheetController.isRebindablePosition(2, 3));
+        Assert.assertFalse(SessionListBottomSheetController.isRebindablePosition(3, 3));
+        Assert.assertFalse(SessionListBottomSheetController.isRebindablePosition(-1, 3));
+        Assert.assertFalse(SessionListBottomSheetController.isRebindablePosition(0, 0));
     }
 
     @Test
-    public void stableIdsLetTheAdapterReuseTheSameRowIdentityAcrossUpdates() {
-        StringRecyclerAdapter delegate =
-            new StringRecyclerAdapter(Arrays.asList("project header", "session a", "session b"));
+    public void perSecondTickUpdatesOnlyTheTimeTextInPlaceWithoutAFullDataSetChangeOrViewReplacement() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a", "session b", "session c"));
+        listView.setAdapter(delegate);
+        layoutListView(listView);
 
-        Assert.assertTrue("the bottom-sheet adapter must expose stable ids for partial updates",
-            delegate.hasStableIds());
-        Assert.assertEquals("project header".hashCode(), delegate.getItemId(0));
-        Assert.assertEquals("session a".hashCode(), delegate.getItemId(1));
-        Assert.assertNotEquals(delegate.getItemId(0), delegate.getItemId(1));
+        Assert.assertTrue("the laid-out ListView must have visible child rows to update",
+            listView.getChildCount() > 0);
+        delegate.getViewCallCount = 0;
+        delegate.notifyDataSetChangedCount = 0;
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+
+        Assert.assertEquals("the per-second tick must not trigger a full data-set change",
+            0, delegate.notifyDataSetChangedCount);
+        Assert.assertEquals("the per-second tick must not re-run the full row bind via getView",
+            0, delegate.getViewCallCount);
+        Assert.assertFalse("the per-second tick must update the existing visible row time text in place",
+            delegate.timeUpdatedPositions.isEmpty());
+        for (int updatedPosition : delegate.timeUpdatedPositions) {
+            Assert.assertTrue("only positions inside the adapter may be updated",
+                updatedPosition >= 0 && updatedPosition < delegate.getCount());
+        }
     }
 
-    private static void layoutRecyclerView(@NonNull RecyclerView recyclerView) {
+    @Test
+    public void perSecondTickKeepsTheRowClickHandlingIntactSoTapsStillNavigateAfterTheTick() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a", "session b"));
+        listView.setAdapter(delegate);
+        layoutListView(listView);
+
+        View firstRow = listView.getChildAt(0);
+        boolean[] rowClicked = {false};
+        firstRow.setOnClickListener(v -> rowClicked[0] = true);
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+
+        Assert.assertTrue("the time-only tick must not tear down the row click listener it does not touch",
+            firstRow.hasOnClickListeners());
+        firstRow.performClick();
+        Assert.assertTrue("a tap on the row must still navigate after the time-only tick",
+            rowClicked[0]);
+    }
+
+    @Test
+    public void perSecondTickDoesNothingWhenNoUpdaterIsBound() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a"));
+        listView.setAdapter(delegate);
+        layoutListView(listView);
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, null);
+
+        Assert.assertTrue("with no updater bound the tick must not update any row time text",
+            delegate.timeUpdatedPositions.isEmpty());
+    }
+
+    @Test
+    public void inPlaceTimeUpdateDoesNothingWhenTheListViewHasNoAdapter() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter updater = new TimeOnlyRefreshAdapter(Arrays.asList("session a"));
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, updater);
+
+        Assert.assertTrue("an update with no adapter present must touch no row",
+            updater.timeUpdatedPositions.isEmpty());
+    }
+
+    @Test
+    public void aPeriodicTimeTickRequestedDuringATapIsSkippedSoTheTapKeepsItsRowAndClickHandling() {
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a", "session b"));
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        listView.setAdapter(delegate);
+        layoutListView(listView);
+
+        boolean touchInProgress = true;
+        if (SessionListBottomSheetController.shouldRefreshNow(touchInProgress)) {
+            SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+        }
+
+        Assert.assertTrue("the time tick must be skipped while a session-row tap is in progress",
+            delegate.timeUpdatedPositions.isEmpty());
+
+        touchInProgress = false;
+        if (SessionListBottomSheetController.shouldRefreshNow(touchInProgress)) {
+            SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+        }
+
+        Assert.assertFalse("once the tap ends the time tick may update the visible row time text",
+            delegate.timeUpdatedPositions.isEmpty());
+    }
+
+    private static void layoutListView(@NonNull ListView listView) {
         int widthSpec = View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY);
-        recyclerView.measure(widthSpec, heightSpec);
-        recyclerView.layout(0, 0, 600, 800);
+        listView.measure(widthSpec, heightSpec);
+        listView.layout(0, 0, 600, 800);
     }
 
     @Test
