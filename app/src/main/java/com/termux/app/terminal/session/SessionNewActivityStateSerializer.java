@@ -22,6 +22,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_STATUSLINE_CALL_TIME_MILLIS = "statuslineCallTimeMillis";
     private static final String KEY_STATUSLINE_OUT_TIME_MILLIS = "statuslineOutTimeMillis";
     private static final String KEY_STATUSLINE_REPLY_TIME_MILLIS = "statuslineReplyTimeMillis";
+    private static final String KEY_SUBAGENT_COUNT = "subagentCount";
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
@@ -50,6 +51,8 @@ public final class SessionNewActivityStateSerializer {
                 object.put(KEY_STATUSLINE_OUT_TIME_MILLIS, state.getStatuslineOutTimeMillis().longValue());
             if (state.getStatuslineReplyTimeMillis() != null)
                 object.put(KEY_STATUSLINE_REPLY_TIME_MILLIS, state.getStatuslineReplyTimeMillis().longValue());
+            if (state.getSubagentCount() != null)
+                object.put(KEY_SUBAGENT_COUNT, state.getSubagentCount().intValue());
             array.put(object);
         }
         return array.toString();
@@ -79,18 +82,23 @@ public final class SessionNewActivityStateSerializer {
             Long statuslineCallTimeMillis = optionalLong(object, KEY_STATUSLINE_CALL_TIME_MILLIS);
             Long statuslineOutTimeMillis = optionalLong(object, KEY_STATUSLINE_OUT_TIME_MILLIS);
             Long statuslineReplyTimeMillis = optionalLong(object, KEY_STATUSLINE_REPLY_TIME_MILLIS);
+            Integer subagentCount = optionalInt(object, KEY_SUBAGENT_COUNT);
 
             states.add(SessionNewActivityStateCaps.capState(new SessionNewActivityState(sessionName,
                 lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastExplicitCallReason,
                 lastSeenTimeMillis, lastUserInputTimeMillis, unacknowledgedCallReasons,
                 acknowledgedCallReasons, statuslineCallTimeMillis, statuslineOutTimeMillis,
-                statuslineReplyTimeMillis)));
+                statuslineReplyTimeMillis, subagentCount)));
         }
         return states;
     }
 
     private static Long optionalLong(JSONObject object, String key) throws JSONException {
         return object.isNull(key) ? null : object.getLong(key);
+    }
+
+    private static Integer optionalInt(JSONObject object, String key) throws JSONException {
+        return object.isNull(key) ? null : object.getInt(key);
     }
 
     private static String optionalString(JSONObject object, String key) throws JSONException {

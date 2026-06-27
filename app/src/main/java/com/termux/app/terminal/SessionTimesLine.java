@@ -24,10 +24,12 @@ public final class SessionTimesLine {
     public static SessionTimesLine of(@Nullable Long callTimeMillis,
                                       @Nullable Long outTimeMillis,
                                       @Nullable Long replyTimeMillis,
+                                      int subagentCount,
                                       long nowMillis) {
         String text = "call: " + relativeAgeOrMoreThanOneDay(callTimeMillis, nowMillis)
             + "  out: " + relativeAgeOrMoreThanOneDay(outTimeMillis, nowMillis)
-            + "  reply: " + relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis);
+            + "  reply: " + relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis)
+            + "  sub: " + subagentCount;
         return new SessionTimesLine(true, text);
     }
 

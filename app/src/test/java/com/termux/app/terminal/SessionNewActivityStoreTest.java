@@ -1020,6 +1020,46 @@ public class SessionNewActivityStoreTest {
         Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
     }
 
+    @Test
+    public void subagentCountDefaultsToZeroForAnUnknownSession() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        Assert.assertEquals(0, store.getSubagentCount("worker"));
+    }
+
+    @Test
+    public void recordStatuslineTimesStoresTheSubagentCount() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L, 5);
+
+        Assert.assertEquals(5, store.getSubagentCount("worker"));
+    }
+
+    @Test
+    public void recordStatuslineTimesPersistsAgainWhenOnlyTheSubagentCountChanges() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L, 1);
+        int saveCountAfterFirstRecord = persistence.getSaveCount();
+
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L, 4);
+
+        Assert.assertEquals(saveCountAfterFirstRecord + 1, persistence.getSaveCount());
+        Assert.assertEquals(4, store.getSubagentCount("worker"));
+    }
+
+    @Test
+    public void subagentCountSurvivesAStoreReloadFromPersistence() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L, 6);
+
+        SessionNewActivityStore reloadedStore = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(6, reloadedStore.getSubagentCount("worker"));
+    }
+
     private static final class SaveCountingPersistence implements SessionNewActivityPersistence {
 
         private List<SessionNewActivityState> mStates = new ArrayList<>();

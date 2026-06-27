@@ -48,7 +48,7 @@ public class SessionInfoBottomBarsProductionRenderTest {
 
         Assert.assertEquals(View.VISIBLE, timesBar.getVisibility());
         Assert.assertEquals(View.VISIBLE, sceneBar.getVisibility());
-        Assert.assertEquals("call: 3h  out: 12m  reply: 45s", timesBar.getText().toString());
+        Assert.assertEquals("call: 3h  out: 12m  reply: 45s  sub: 0", timesBar.getText().toString());
         Assert.assertEquals("the current-session info area must show only the single most recent "
                 + "call-to-user message, never a pile-up of every unacknowledged reason",
             "waiting for the secret value", sceneText.getText().toString());

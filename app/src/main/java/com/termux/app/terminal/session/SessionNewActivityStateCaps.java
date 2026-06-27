@@ -63,6 +63,7 @@ public final class SessionNewActivityStateCaps {
             capReasons(state.getAcknowledgedCallReasons()),
             state.getStatuslineCallTimeMillis(),
             state.getStatuslineOutTimeMillis(),
-            state.getStatuslineReplyTimeMillis());
+            state.getStatuslineReplyTimeMillis(),
+            state.getSubagentCount());
     }
 }

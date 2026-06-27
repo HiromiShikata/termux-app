@@ -286,7 +286,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         store.recordStatuslineTimes(session.mSessionName,
             statuslineTimes.getCallTimeMillis(),
             statuslineTimes.getOutTimeMillis(),
-            statuslineTimes.getReplyTimeMillis());
+            statuslineTimes.getReplyTimeMillis(),
+            statuslineTimes.getSubagentCount());
         termuxSessionListNotifyUpdated();
     }
 
