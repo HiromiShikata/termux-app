@@ -348,7 +348,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
             return;
         }
-        mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(sessionName);
+        mActivity.getTermuxTerminalSessionClient().addNewSessionForBrowserUrl(sessionName);
     }
 
     private void addCurrentPageBookmark() {
@@ -637,7 +637,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void createSessionForLink(@NonNull String linkUrl) {
-                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
+                mActivity.getTermuxTerminalSessionClient().addNewSessionForBrowserUrl(linkUrl);
             }
         }).attach();
 
