@@ -32,16 +32,18 @@ public final class SessionNewActivityIndicator {
 
     @NonNull
     public static SessionNewActivityIndicator indicatorFor(@Nullable Long lastOutputActivityTimeMillis,
-                                                           @Nullable Long lastExplicitCallTimeMillis,
+                                                           @Nullable Long pendingCallToUserTimeMillis,
+                                                           @Nullable Long statuslineCallPendingTimeMillis,
                                                            @Nullable Long lastUserInputTimeMillis,
                                                            @Nullable Long lastSeenTimeMillis, long nowMillis) {
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastUserInputTimeMillis,
-            lastSeenTimeMillis, nowMillis);
+            lastOutputActivityTimeMillis, pendingCallToUserTimeMillis, statuslineCallPendingTimeMillis,
+            lastUserInputTimeMillis, lastSeenTimeMillis, nowMillis);
         switch (tier) {
             case RED:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.RED,
-                    SessionNewActivityStore.formatRelativeTime(nowMillis - lastExplicitCallTimeMillis));
+                    SessionNewActivityStore.formatRelativeTime(nowMillis
+                        - redCallTimeMillis(pendingCallToUserTimeMillis, statuslineCallPendingTimeMillis)));
             case YELLOW:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.YELLOW,
                     SessionNewActivityStore.formatRelativeTime(nowMillis - lastOutputActivityTimeMillis));
@@ -52,5 +54,13 @@ public final class SessionNewActivityIndicator {
             default:
                 return new SessionNewActivityIndicator(SessionNewActivityTier.NONE, "");
         }
+    }
+
+    private static long redCallTimeMillis(@Nullable Long pendingCallToUserTimeMillis,
+                                          @Nullable Long statuslineCallPendingTimeMillis) {
+        if (pendingCallToUserTimeMillis != null) {
+            return pendingCallToUserTimeMillis;
+        }
+        return statuslineCallPendingTimeMillis;
     }
 }

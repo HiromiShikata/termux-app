@@ -12,10 +12,12 @@ public enum SessionNewActivityTier {
     static final long YELLOW_MAX_AGE_MILLIS = 10L * 60L * 1000L;
 
     public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
-                                                 @Nullable Long lastExplicitCallTimeMillis,
+                                                 @Nullable Long pendingCallToUserTimeMillis,
+                                                 @Nullable Long statuslineCallPendingTimeMillis,
                                                  @Nullable Long lastUserInputTimeMillis,
                                                  @Nullable Long lastSeenTimeMillis) {
-        if (isExplicitCallUnanswered(lastExplicitCallTimeMillis, lastUserInputTimeMillis)) {
+        if (isCallToUserPending(pendingCallToUserTimeMillis, statuslineCallPendingTimeMillis,
+            lastUserInputTimeMillis)) {
             return RED;
         }
         if (isPending(lastOutputActivityTimeMillis, lastSeenTimeMillis)) {
@@ -25,11 +27,13 @@ public enum SessionNewActivityTier {
     }
 
     public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
-                                                 @Nullable Long lastExplicitCallTimeMillis,
+                                                 @Nullable Long pendingCallToUserTimeMillis,
+                                                 @Nullable Long statuslineCallPendingTimeMillis,
                                                  @Nullable Long lastUserInputTimeMillis,
                                                  @Nullable Long lastSeenTimeMillis,
                                                  long nowMillis) {
-        if (isExplicitCallUnanswered(lastExplicitCallTimeMillis, lastUserInputTimeMillis)) {
+        if (isCallToUserPending(pendingCallToUserTimeMillis, statuslineCallPendingTimeMillis,
+            lastUserInputTimeMillis)) {
             return RED;
         }
         if (lastOutputActivityTimeMillis == null) {
@@ -39,6 +43,15 @@ public enum SessionNewActivityTier {
             return YELLOW;
         }
         return GRAY;
+    }
+
+    private static boolean isCallToUserPending(@Nullable Long pendingCallToUserTimeMillis,
+                                               @Nullable Long statuslineCallPendingTimeMillis,
+                                               @Nullable Long lastUserInputTimeMillis) {
+        if (statuslineCallPendingTimeMillis != null) {
+            return true;
+        }
+        return isExplicitCallUnanswered(pendingCallToUserTimeMillis, lastUserInputTimeMillis);
     }
 
     private static boolean isExplicitCallUnanswered(@Nullable Long lastExplicitCallTimeMillis,

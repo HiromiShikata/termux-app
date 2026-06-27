@@ -82,6 +82,7 @@ public class SessionNewActivityStateSerializerTest {
         Assert.assertEquals(SessionNewActivityTier.NONE, SessionNewActivityTier.resolve(
             state.getLastOutputActivityTimeMillis(),
             state.getLastExplicitCallTimeMillis(),
+            null,
             state.getLastUserInputTimeMillis(),
             state.getLastSeenTimeMillis()));
     }

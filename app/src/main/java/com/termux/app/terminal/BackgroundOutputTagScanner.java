@@ -29,16 +29,25 @@ public final class BackgroundOutputTagScanner {
     }
 
     /**
-     * Scans the explicit-call and app-update tags for the given session.
+     * Scans the app-update tag for the given session, and the explicit-call tag only when {@code
+     * scanCallToUserTag} is true.
+     *
+     * <p>The explicit-call (call-to-user) reason/scene scan is the expensive per-output work: it
+     * reads the full transcript and extracts the reason text. It runs only when the session actually
+     * has a pending call (its statusline {@code call:} token is newer than its {@code reply:} token),
+     * or when the session has no statusline at all (a non-Claude session that has no reliable
+     * statusline-pending signal and so keeps the tag scan as its sole call-to-user source). The
+     * app-update tag scan always runs, because it is unrelated to the call-to-user pending state.
      *
      * @param sessionKey the session handle the scanners deduplicate per; a null key is ignored.
      * @param transcript the current terminal transcript text; a null transcript is ignored.
+     * @param scanCallToUserTag whether to run the explicit-call (call-to-user) reason/scene scan.
      */
-    public void scan(String sessionKey, String transcript) {
+    public void scan(String sessionKey, String transcript, boolean scanCallToUserTag) {
         if (sessionKey == null) return;
         if (transcript == null) return;
 
-        if (callToUserTagController != null)
+        if (scanCallToUserTag && callToUserTagController != null)
             callToUserTagController.onSessionTextChanged(sessionKey, transcript);
 
         if (updateTagUpdateController != null)

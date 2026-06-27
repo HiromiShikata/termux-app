@@ -383,6 +383,7 @@ public class SessionNewActivityStore {
         return SessionNewActivityTier.resolve(
             getLastOutputActivityTimeMillis(sessionName),
             pendingCallToUserTimeMillis(sessionName),
+            statuslineCallPendingTimeMillis(sessionName),
             getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName));
     }
@@ -392,6 +393,7 @@ public class SessionNewActivityStore {
         return SessionNewActivityTier.resolve(
             outActivityTimeMillisForDotTier(sessionName),
             pendingCallToUserTimeMillis(sessionName),
+            statuslineCallPendingTimeMillis(sessionName),
             getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName),
             nowMillis);
@@ -419,6 +421,53 @@ public class SessionNewActivityStore {
             return null;
         }
         return mUnacknowledgedCallReasonsRecordedTimeMillisByName.get(sessionName);
+    }
+
+    /**
+     * The reliable statusline-derived pending-call signal that arms the RED tier even when the
+     * throttled transcript {@code <call-to-user>} tag scan missed the tag. A Claude Code session
+     * renders a statusline whose {@code call:} and {@code reply:} clock tokens are reparsed on every
+     * tick ({@link #recordStatuslineTimes} keeps {@link #mStatuslineCallTimeMillisByName} and {@link
+     * #mStatuslineReplyTimeMillisByName} fresh), so the call-newer-than-reply relation is observed
+     * reliably, unlike the one-shot tag whose last firing before idle can land inside the scan
+     * throttle window and never be re-scanned. The session is pending exactly when a {@code call:}
+     * token exists and no {@code reply:} has caught up to it ({@code reply == null || call > reply}),
+     * in which case the call token time is returned; otherwise null. A session with no statusline at
+     * all (a non-Claude session) has a null {@code call:} token and is never armed through this
+     * signal, leaving the tag-scan path as its sole, unchanged source of the RED tier.
+     */
+    @Nullable
+    public Long statuslineCallPendingTimeMillis(@NonNull String sessionName) {
+        Long statuslineCallTimeMillis = mStatuslineCallTimeMillisByName.get(sessionName);
+        if (statuslineCallTimeMillis == null) {
+            return null;
+        }
+        Long statuslineReplyTimeMillis = mStatuslineReplyTimeMillisByName.get(sessionName);
+        if (statuslineReplyTimeMillis == null || statuslineCallTimeMillis > statuslineReplyTimeMillis) {
+            return statuslineCallTimeMillis;
+        }
+        return null;
+    }
+
+    /**
+     * Whether the expensive transcript {@code <call-to-user>} reason/scene scan should run for this
+     * session. It runs only when the session has a pending call on its reliable statusline signal
+     * ({@link #statuslineCallPendingTimeMillis} is non-null, i.e. {@code call: > reply:}), or when the
+     * session has no statusline at all (a non-Claude session with neither a {@code call:} nor a {@code
+     * reply:} token, which has no statusline-pending signal and so keeps the tag scan as its sole
+     * call-to-user source). A session whose statusline shows a reply caught up to the call is not
+     * pending and skips the scan, removing the per-output tag-scan cost for the common idle case.
+     */
+    public boolean shouldScanCallToUserTag(@NonNull String sessionName) {
+        if (statuslineCallPendingTimeMillis(sessionName) != null) {
+            return true;
+        }
+        return !hasStatusline(sessionName);
+    }
+
+    private boolean hasStatusline(@NonNull String sessionName) {
+        return mStatuslineCallTimeMillisByName.get(sessionName) != null
+            || mStatuslineReplyTimeMillisByName.get(sessionName) != null;
     }
 
     /**

@@ -262,12 +262,24 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        // The statusline is parsed first so the call-to-user scan gate below reads fresh call:/reply:
+        // values from this same render. The expensive transcript reason/scene scan then runs only when
+        // the session has a pending call (or has no statusline at all, the non-Claude fallback); the
+        // app-update tag scan always runs.
+        recordStatuslineTimesForSession(session, emulator, screen);
+
         new BackgroundOutputTagScanner(
             mActivity.getCallToUserTagController(),
             mActivity.getUpdateTagUpdateController())
-            .scan(session.mHandle, screen.getTranscriptText());
+            .scan(session.mHandle, screen.getTranscriptText(),
+                shouldScanCallToUserTagForSession(session));
+    }
 
-        recordStatuslineTimesForSession(session, emulator, screen);
+    private boolean shouldScanCallToUserTagForSession(@NonNull TerminalSession session) {
+        if (session.mSessionName == null) return true;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return true;
+        return store.shouldScanCallToUserTag(session.mSessionName);
     }
 
     private void recordStatuslineTimesForSession(@NonNull TerminalSession session,
