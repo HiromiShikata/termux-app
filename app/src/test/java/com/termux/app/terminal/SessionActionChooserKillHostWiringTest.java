@@ -24,8 +24,8 @@ public class SessionActionChooserKillHostWiringTest {
     @Test
     public void killHostSessionActionIssuesHostSideKillForSelectedSessionName() {
         String selectedSessionName = SessionAction.atIndex(3) == SessionAction.KILL_HOST_SESSION
-            ? "umino" : null;
-        Assert.assertEquals("tmux kill-session -t 'umino'\n",
+            ? "host-session" : null;
+        Assert.assertEquals(":kill-session -t 'host-session'\n",
             HostTmuxSessionKillCommand.forSessionName(selectedSessionName));
     }
 }
