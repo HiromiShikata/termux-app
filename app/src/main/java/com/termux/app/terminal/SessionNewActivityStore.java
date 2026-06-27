@@ -23,6 +23,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();
     private final Map<String, String> mLastExplicitCallReasonByName = new HashMap<>();
     private final Map<String, List<String>> mUnacknowledgedCallReasonsByName = new HashMap<>();
+    private final Map<String, Long> mUnacknowledgedCallReasonsRecordedTimeMillisByName = new HashMap<>();
     private final Map<String, List<String>> mAcknowledgedCallReasonsByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
@@ -46,9 +47,14 @@ public class SessionNewActivityStore {
                 mLastExplicitCallTimeMillisByName.put(state.getSessionName(), state.getLastExplicitCallTimeMillis());
             if (state.getLastExplicitCallReason() != null)
                 mLastExplicitCallReasonByName.put(state.getSessionName(), state.getLastExplicitCallReason());
-            if (state.getUnacknowledgedCallReasons() != null)
+            if (state.getUnacknowledgedCallReasons() != null) {
                 mUnacknowledgedCallReasonsByName.put(state.getSessionName(),
                     new ArrayList<>(state.getUnacknowledgedCallReasons()));
+                if (!state.getUnacknowledgedCallReasons().isEmpty()
+                    && state.getLastExplicitCallTimeMillis() != null)
+                    mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(state.getSessionName(),
+                        state.getLastExplicitCallTimeMillis());
+            }
             if (state.getAcknowledgedCallReasons() != null)
                 mAcknowledgedCallReasonsByName.put(state.getSessionName(),
                     new ArrayList<>(state.getAcknowledgedCallReasons()));
@@ -88,6 +94,7 @@ public class SessionNewActivityStore {
                 mUnacknowledgedCallReasonsByName.put(sessionName, reasons);
             }
             reasons.add(reason);
+            mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         }
         save();
     }
@@ -151,15 +158,25 @@ public class SessionNewActivityStore {
         if (replyTimeMillis != null) {
             mStatuslineReplyTimeMillisByName.put(sessionName, replyTimeMillis);
             mLastUserInputTimeMillisByName.put(sessionName, replyTimeMillis);
-            boolean replyAnsweredCall = callTimeMillis == null || replyTimeMillis >= callTimeMillis;
-            if (replyAnsweredCall) {
+            if (statuslineReplyAcknowledgesPendingReasons(sessionName, replyTimeMillis)) {
                 acknowledgeCallReasons(sessionName);
             }
         }
         save();
     }
 
+    private boolean statuslineReplyAcknowledgesPendingReasons(@NonNull String sessionName,
+                                                              long replyTimeMillis) {
+        Long pendingRecordedTimeMillis =
+            mUnacknowledgedCallReasonsRecordedTimeMillisByName.get(sessionName);
+        if (pendingRecordedTimeMillis == null) {
+            return true;
+        }
+        return replyTimeMillis >= pendingRecordedTimeMillis;
+    }
+
     private void acknowledgeCallReasons(@NonNull String sessionName) {
+        mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
         List<String> clearedReasons = mUnacknowledgedCallReasonsByName.remove(sessionName);
         if (clearedReasons == null) {
             return;
@@ -181,6 +198,7 @@ public class SessionNewActivityStore {
         mLastExplicitCallTimeMillisByName.remove(sessionName);
         mLastExplicitCallReasonByName.remove(sessionName);
         mUnacknowledgedCallReasonsByName.remove(sessionName);
+        mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
         mAcknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
@@ -195,6 +213,7 @@ public class SessionNewActivityStore {
         changed |= mLastExplicitCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastExplicitCallReasonByName.keySet().retainAll(knownSessionNames);
         changed |= mUnacknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
+        changed |= mUnacknowledgedCallReasonsRecordedTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mAcknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
