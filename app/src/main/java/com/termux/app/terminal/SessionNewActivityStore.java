@@ -160,9 +160,25 @@ public class SessionNewActivityStore {
     }
 
     public void recordUserInput(@NonNull String sessionName, long userInputTimeMillis) {
-        mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
+        advanceLastUserInputTime(sessionName, userInputTimeMillis);
         acknowledgeCallReasons(sessionName);
         save();
+    }
+
+    private void advanceLastUserInputTime(@NonNull String sessionName, long userInputTimeMillis) {
+        Long stored = mLastUserInputTimeMillisByName.get(sessionName);
+        if (stored != null && stored >= userInputTimeMillis) {
+            return;
+        }
+        mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
+    }
+
+    private void advanceStatuslineReplyTime(@NonNull String sessionName, long replyTimeMillis) {
+        Long stored = mStatuslineReplyTimeMillisByName.get(sessionName);
+        if (stored != null && stored >= replyTimeMillis) {
+            return;
+        }
+        mStatuslineReplyTimeMillisByName.put(sessionName, replyTimeMillis);
     }
 
     public void recordStatuslineTimes(@NonNull String sessionName,
@@ -191,9 +207,8 @@ public class SessionNewActivityStore {
             mLastOutputActivityTimeMillisByName.put(sessionName, outTimeMillis);
         }
         if (replyTimeMillis != null) {
-            mStatuslineReplyTimeMillisByName.put(sessionName, replyTimeMillis);
+            advanceStatuslineReplyTime(sessionName, replyTimeMillis);
             if (statuslineReplyAcknowledgesPendingReasons(sessionName, replyTimeMillis)) {
-                mLastUserInputTimeMillisByName.put(sessionName, replyTimeMillis);
                 acknowledgeCallReasons(sessionName);
             }
         }
