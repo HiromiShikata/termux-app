@@ -9,14 +9,14 @@ public final class SessionActivityDirection {
 
     @NonNull
     private final SessionNewActivityTier tier;
-    private final boolean activeAbove;
-    private final boolean activeBelow;
+    private final int activeAboveCount;
+    private final int activeBelowCount;
 
     private SessionActivityDirection(@NonNull SessionNewActivityTier tier,
-                                     boolean activeAbove, boolean activeBelow) {
+                                     int activeAboveCount, int activeBelowCount) {
         this.tier = tier;
-        this.activeAbove = activeAbove;
-        this.activeBelow = activeBelow;
+        this.activeAboveCount = activeAboveCount;
+        this.activeBelowCount = activeBelowCount;
     }
 
     @NonNull
@@ -25,11 +25,19 @@ public final class SessionActivityDirection {
     }
 
     public boolean hasActiveAbove() {
-        return activeAbove;
+        return activeAboveCount > 0;
     }
 
     public boolean hasActiveBelow() {
-        return activeBelow;
+        return activeBelowCount > 0;
+    }
+
+    public int getActiveAboveCount() {
+        return activeAboveCount;
+    }
+
+    public int getActiveBelowCount() {
+        return activeBelowCount;
     }
 
     @NonNull
@@ -38,11 +46,11 @@ public final class SessionActivityDirection {
                                                    @NonNull Map<Integer, SessionNewActivityTier> tiersByIndex) {
         SessionNewActivityTier activeTier = globalActiveTier(orderedSessionIndexes, tiersByIndex);
         if (activeTier == SessionNewActivityTier.NONE) {
-            return new SessionActivityDirection(SessionNewActivityTier.NONE, false, false);
+            return new SessionActivityDirection(SessionNewActivityTier.NONE, 0, 0);
         }
         int currentPosition = orderedSessionIndexes.indexOf(currentSessionIndex);
-        boolean activeAbove = false;
-        boolean activeBelow = false;
+        int activeAboveCount = 0;
+        int activeBelowCount = 0;
         for (int position = 0; position < orderedSessionIndexes.size(); position++) {
             if (position == currentPosition) {
                 continue;
@@ -51,12 +59,12 @@ public final class SessionActivityDirection {
                 continue;
             }
             if (currentPosition < 0 || position < currentPosition) {
-                activeAbove = true;
+                activeAboveCount++;
             } else {
-                activeBelow = true;
+                activeBelowCount++;
             }
         }
-        return new SessionActivityDirection(activeTier, activeAbove, activeBelow);
+        return new SessionActivityDirection(activeTier, activeAboveCount, activeBelowCount);
     }
 
     @NonNull

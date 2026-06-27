@@ -134,4 +134,75 @@ public class SessionActivityDirectionTest {
 
         Assert.assertEquals(SessionNewActivityTier.NONE, direction.getTier());
     }
+
+    @Test
+    public void countsExcludeTheCurrentSessionFromBothDirections() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2), 1,
+            tiers(0, SessionNewActivityTier.RED,
+                1, SessionNewActivityTier.RED,
+                2, SessionNewActivityTier.RED));
+
+        Assert.assertEquals(1, direction.getActiveAboveCount());
+        Assert.assertEquals(1, direction.getActiveBelowCount());
+    }
+
+    @Test
+    public void countsAreZeroInADirectionWithNoCallToUserSession() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2, 3, 4), 2,
+            tiers(0, SessionNewActivityTier.RED));
+
+        Assert.assertEquals(1, direction.getActiveAboveCount());
+        Assert.assertEquals(0, direction.getActiveBelowCount());
+        Assert.assertTrue(direction.hasActiveAbove());
+        Assert.assertFalse(direction.hasActiveBelow());
+    }
+
+    @Test
+    public void countsMultipleCallToUserSessionsAboveAndBelow() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2, 3, 4, 5, 6), 3,
+            tiers(0, SessionNewActivityTier.RED,
+                1, SessionNewActivityTier.RED,
+                4, SessionNewActivityTier.RED,
+                5, SessionNewActivityTier.RED,
+                6, SessionNewActivityTier.RED));
+
+        Assert.assertEquals(2, direction.getActiveAboveCount());
+        Assert.assertEquals(3, direction.getActiveBelowCount());
+    }
+
+    @Test
+    public void currentSessionCallToUserIsExcludedFromBothCounts() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2, 3, 4), 2,
+            tiers(1, SessionNewActivityTier.RED,
+                2, SessionNewActivityTier.RED,
+                3, SessionNewActivityTier.RED));
+
+        Assert.assertEquals(1, direction.getActiveAboveCount());
+        Assert.assertEquals(1, direction.getActiveBelowCount());
+    }
+
+    @Test
+    public void noCallToUserSessionsProducesZeroCountsInBothDirections() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2), 1,
+            tiers(0, SessionNewActivityTier.YELLOW));
+
+        Assert.assertEquals(0, direction.getActiveAboveCount());
+        Assert.assertEquals(0, direction.getActiveBelowCount());
+    }
+
+    @Test
+    public void absentCurrentSessionCountsEveryCallToUserSessionAsAbove() {
+        SessionActivityDirection direction = SessionActivityDirection.compute(
+            Arrays.asList(0, 1, 2), -1,
+            tiers(0, SessionNewActivityTier.RED,
+                2, SessionNewActivityTier.RED));
+
+        Assert.assertEquals(2, direction.getActiveAboveCount());
+        Assert.assertEquals(0, direction.getActiveBelowCount());
+    }
 }
