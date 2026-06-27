@@ -25,6 +25,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.termux.R;
@@ -187,6 +188,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private ImageButton mPreviousSessionButton;
 
     private ImageButton mNextSessionButton;
+
+    private TextView mPreviousSessionCountBadge;
+
+    private TextView mNextSessionCountBadge;
 
     private final SessionDefinitionRepository mSessionDefinitionRepository =
         new SessionDefinitionRepository();
@@ -983,6 +988,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setSessionNavigationButtonsView() {
         mPreviousSessionButton = findViewById(R.id.terminal_toolbar_previous_session_button);
         mNextSessionButton = findViewById(R.id.terminal_toolbar_next_session_button);
+        mPreviousSessionCountBadge = findViewById(R.id.terminal_toolbar_previous_session_count_badge);
+        mNextSessionCountBadge = findViewById(R.id.terminal_toolbar_next_session_count_badge);
         SessionNavigationButtonsBinder.bind(
             mPreviousSessionButton,
             mNextSessionButton,
@@ -998,6 +1005,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         int defaultColor = ContextCompat.getColor(this, com.termux.shared.R.color.white);
         SessionNavigationButtonsBinder.applyDirectionTier(
             mPreviousSessionButton, mNextSessionButton, direction, redColor, defaultColor);
+        if (mPreviousSessionCountBadge != null && mNextSessionCountBadge != null) {
+            SessionNavigationButtonsBinder.applyDirectionCountBadges(
+                mPreviousSessionCountBadge, mNextSessionCountBadge, direction);
+        }
     }
 
     @NonNull

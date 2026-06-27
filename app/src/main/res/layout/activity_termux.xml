@@ -691,29 +691,67 @@
                             android:src="@drawable/ic_keyboard_toggle"
                             android:tint="@color/white" />
 
-                        <ImageButton
-                            android:id="@+id/terminal_toolbar_previous_session_button"
+                        <FrameLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="?android:attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="@string/action_switch_to_previous_session"
-                            android:layout_gravity="center_vertical"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
-                            android:src="@drawable/ic_toolbar_session_prev"
-                            android:tint="@color/white" />
+                            android:layout_gravity="center_vertical">
 
-                        <ImageButton
-                            android:id="@+id/terminal_toolbar_next_session_button"
+                            <ImageButton
+                                android:id="@+id/terminal_toolbar_previous_session_button"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="?android:attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/action_switch_to_previous_session"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="4dp"
+                                android:src="@drawable/ic_toolbar_session_prev"
+                                android:tint="@color/white" />
+
+                            <TextView
+                                android:id="@+id/terminal_toolbar_previous_session_count_badge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="top|end"
+                                android:background="@drawable/bg_session_nav_count_badge"
+                                android:minWidth="16dp"
+                                android:gravity="center"
+                                android:paddingHorizontal="4dp"
+                                android:textColor="@color/white"
+                                android:textSize="10sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
+                        </FrameLayout>
+
+                        <FrameLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:background="?android:attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="@string/action_switch_to_next_session"
-                            android:layout_gravity="center_vertical"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
-                            android:src="@drawable/ic_toolbar_session_next"
-                            android:tint="@color/white" />
+                            android:layout_gravity="center_vertical">
+
+                            <ImageButton
+                                android:id="@+id/terminal_toolbar_next_session_button"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="?android:attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/action_switch_to_next_session"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="4dp"
+                                android:src="@drawable/ic_toolbar_session_next"
+                                android:tint="@color/white" />
+
+                            <TextView
+                                android:id="@+id/terminal_toolbar_next_session_count_badge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="top|end"
+                                android:background="@drawable/bg_session_nav_count_badge"
+                                android:minWidth="16dp"
+                                android:gravity="center"
+                                android:paddingHorizontal="4dp"
+                                android:textColor="@color/white"
+                                android:textSize="10sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
+                        </FrameLayout>
 
                         <ImageButton
                             android:id="@+id/terminal_toolbar_session_sheet_button"

@@ -2,6 +2,7 @@ package com.termux.app.terminal;
 
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
@@ -31,5 +32,22 @@ public final class SessionNavigationButtonsBinder {
 
     static int tierColor(@NonNull SessionNewActivityTier tier, int redColor, int defaultColor) {
         return tier == SessionNewActivityTier.RED ? redColor : defaultColor;
+    }
+
+    public static void applyDirectionCountBadges(@NonNull TextView previousSessionCountBadge,
+                                                 @NonNull TextView nextSessionCountBadge,
+                                                 @NonNull SessionActivityDirection direction) {
+        applyCountBadge(previousSessionCountBadge, direction.getActiveAboveCount());
+        applyCountBadge(nextSessionCountBadge, direction.getActiveBelowCount());
+    }
+
+    static void applyCountBadge(@NonNull TextView countBadge, int count) {
+        if (count <= 0) {
+            countBadge.setText("");
+            countBadge.setVisibility(View.GONE);
+            return;
+        }
+        countBadge.setText(String.valueOf(count));
+        countBadge.setVisibility(View.VISIBLE);
     }
 }
