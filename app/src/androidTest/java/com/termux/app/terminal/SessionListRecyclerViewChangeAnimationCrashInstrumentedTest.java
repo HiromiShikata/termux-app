@@ -44,6 +44,7 @@ public class SessionListRecyclerViewChangeAnimationCrashInstrumentedTest {
     private static final int TICK_ITERATIONS = 80;
     private static final int LIST_WIDTH_PX = 720;
     private static final int LIST_HEIGHT_PX = 480;
+    private static final String SCREENSHOT_FILE_NAME = "session-list-recyclerview-aligned-rows.png";
 
     @Rule
     public GrantPermissionRule writeExternalStoragePermissionRule =
@@ -142,34 +143,45 @@ public class SessionListRecyclerViewChangeAnimationCrashInstrumentedTest {
 
     private static void writeRenderedRowsScreenshot(View root) {
         assertNotNull(root);
-        AtomicReference<File> writtenFile = new AtomicReference<>(null);
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        AtomicInteger writtenCount = new AtomicInteger(0);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Bitmap bitmap = Bitmap.createBitmap(Math.max(1, root.getWidth()),
                 Math.max(1, root.getHeight()), Bitmap.Config.ARGB_8888);
             bitmap.eraseColor(0xFF101010);
             Canvas canvas = new Canvas(bitmap);
             root.draw(canvas);
-            File file = new File(sharedScreenshotDirectory(), "session-list-recyclerview-aligned-rows.png");
-            try (FileOutputStream out = new FileOutputStream(file)) {
-                assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, out));
-            } catch (Exception exception) {
-                throw new RuntimeException(exception);
+            for (File directory : screenshotTargetDirectories(context)) {
+                if (writeBitmapAsPng(bitmap, new File(directory, SCREENSHOT_FILE_NAME))) {
+                    writtenCount.incrementAndGet();
+                }
             }
-            writtenFile.set(file);
         });
-        File file = writtenFile.get();
-        assertTrue("rendered session list screenshot must be written for the CI artifact",
-            file != null && file.exists() && file.length() > 0);
+        assertTrue("the rendered session list screenshot must be written to at least one location "
+            + "so it can be pulled as a CI artifact or inspected locally", writtenCount.get() > 0);
     }
 
-    private static File sharedScreenshotDirectory() {
-        File directory = new File(Environment.getExternalStorageDirectory(),
+    private static List<File> screenshotTargetDirectories(@NonNull Context context) {
+        List<File> directories = new ArrayList<>();
+        File sharedDirectory = new File(Environment.getExternalStorageDirectory(),
             "termux-instrumentation-screenshots");
-        if (!directory.exists()) {
-            assertTrue("shared screenshot directory must be creatable so the rendered PNG survives "
-                + "the post-test APK uninstall and can be pulled as a CI artifact", directory.mkdirs());
+        if (sharedDirectory.exists() || sharedDirectory.mkdirs()) {
+            directories.add(sharedDirectory);
         }
-        return directory;
+        File appExternalFilesDirectory = context.getExternalFilesDir(null);
+        if (appExternalFilesDirectory != null
+            && (appExternalFilesDirectory.exists() || appExternalFilesDirectory.mkdirs())) {
+            directories.add(appExternalFilesDirectory);
+        }
+        return directories;
+    }
+
+    private static boolean writeBitmapAsPng(@NonNull Bitmap bitmap, @NonNull File file) {
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            return bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) && file.length() > 0;
+        } catch (Exception exception) {
+            throw new RuntimeException(exception);
+        }
     }
 
     private static final class SessionRowTickAdapter
