@@ -12,6 +12,8 @@ public final class OpenTagScanner {
     private final OutputTagScanner outputTagScanner =
         new OutputTagScanner("open", OpenTagScanner::normalizeUrl);
 
+    private final BareUrlScanner bareUrlScanner = new BareUrlScanner();
+
     private final Set<String> openedUrls = new HashSet<>();
 
     public static List<String> extractOpenUrls(String output) {
@@ -29,6 +31,11 @@ public final class OpenTagScanner {
     public List<String> urlsToOpen(String output) {
         List<String> urlsToOpen = new ArrayList<>();
         for (String url : outputTagScanner.extractValues(output)) {
+            if (openedUrls.add(url)) {
+                urlsToOpen.add(url);
+            }
+        }
+        for (String url : bareUrlScanner.urlsToOpen(output)) {
             if (openedUrls.add(url)) {
                 urlsToOpen.add(url);
             }

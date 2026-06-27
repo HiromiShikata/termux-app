@@ -42,9 +42,7 @@ import java.util.regex.Pattern;
  */
 public final class OutputTagScanner {
 
-    private final Pattern blockPattern;
-
-    private final ValueNormalizer valueNormalizer;
+    private final ValueExtractor valueExtractor;
 
     /** The full ordered sequence of normalized values that have already fired, oldest first. This is
      * the monotonic stream prefix; it never shrinks even when the rendered window trims its front. */
@@ -54,21 +52,45 @@ public final class OutputTagScanner {
         String normalize(String innerText);
     }
 
+    public interface ValueExtractor {
+        List<String> extractValues(String output);
+    }
+
     public OutputTagScanner(String tagName, ValueNormalizer valueNormalizer) {
-        this.blockPattern = Pattern.compile("<" + tagName + ">([\\s\\S]*?)</" + tagName + ">");
-        this.valueNormalizer = valueNormalizer;
+        this(new TagBlockValueExtractor(tagName, valueNormalizer));
+    }
+
+    public OutputTagScanner(ValueExtractor valueExtractor) {
+        this.valueExtractor = valueExtractor;
     }
 
     public List<String> extractValues(String output) {
-        List<String> values = new ArrayList<>();
-        if (output == null) return values;
+        return valueExtractor.extractValues(output);
+    }
 
-        Matcher matcher = blockPattern.matcher(output);
-        while (matcher.find()) {
-            String value = valueNormalizer.normalize(matcher.group(1));
-            if (value != null) values.add(value);
+    private static final class TagBlockValueExtractor implements ValueExtractor {
+
+        private final Pattern blockPattern;
+
+        private final ValueNormalizer valueNormalizer;
+
+        TagBlockValueExtractor(String tagName, ValueNormalizer valueNormalizer) {
+            this.blockPattern = Pattern.compile("<" + tagName + ">([\\s\\S]*?)</" + tagName + ">");
+            this.valueNormalizer = valueNormalizer;
         }
-        return values;
+
+        @Override
+        public List<String> extractValues(String output) {
+            List<String> values = new ArrayList<>();
+            if (output == null) return values;
+
+            Matcher matcher = blockPattern.matcher(output);
+            while (matcher.find()) {
+                String value = valueNormalizer.normalize(matcher.group(1));
+                if (value != null) values.add(value);
+            }
+            return values;
+        }
     }
 
     public List<String> newValues(String currentText) {
