@@ -717,7 +717,7 @@
                                 android:gravity="center"
                                 android:paddingHorizontal="4dp"
                                 android:textColor="@color/white"
-                                android:textSize="10sp"
+                                android:textSize="8sp"
                                 android:textStyle="bold"
                                 android:visibility="gone" />
                         </FrameLayout>
@@ -748,7 +748,7 @@
                                 android:gravity="center"
                                 android:paddingHorizontal="4dp"
                                 android:textColor="@color/white"
-                                android:textSize="10sp"
+                                android:textSize="8sp"
                                 android:textStyle="bold"
                                 android:visibility="gone" />
                         </FrameLayout>
