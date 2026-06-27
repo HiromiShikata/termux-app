@@ -38,14 +38,14 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     public void onPageStarted(WebView view, String url, Bitmap favicon) {
         super.onPageStarted(view, url, favicon);
         mHost.onPageStarted(view, url);
-        injectViewport(view);
+        injectViewport(view, url);
     }
 
     @Override
     public void onPageCommitVisible(WebView view, String url) {
         super.onPageCommitVisible(view, url);
         mHost.onPageCommitVisible(view, url);
-        injectViewport(view);
+        injectViewport(view, url);
     }
 
     @Override
@@ -53,7 +53,7 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         super.onPageFinished(view, url);
         boolean dismissed = mHost.onPageFinished(view, url);
         if (dismissed) return;
-        injectViewport(view);
+        injectViewport(view, url);
     }
 
     @Override
@@ -76,7 +76,11 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         mHost.onMainFrameError(view);
     }
 
-    private void injectViewport(@NonNull WebView view) {
+    private void injectViewport(@NonNull WebView view, @Nullable String url) {
+        if (BrowserProjectOverviewPage.isOverviewUrl(url)) {
+            view.evaluateJavascript(BrowserMobileViewport.INJECTION_SCRIPT, null);
+            return;
+        }
         if (mHost.getViewMode().isDesktop()) {
             view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
         } else if (mHost.shouldInjectMobileViewport()) {
