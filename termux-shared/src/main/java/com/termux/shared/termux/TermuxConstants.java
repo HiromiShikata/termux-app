@@ -847,6 +847,13 @@ public final class TermuxConstants {
     /** Termux app unique notification id used by {@link TERMUX_APP.TERMUX_SERVICE} */
     public static final int TERMUX_APP_NOTIFICATION_ID = 1337;
 
+    /** Termux app notification channel id for the pending call-to-user count indicator used by {@link TERMUX_APP.TERMUX_SERVICE} */
+    public static final String TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_ID = "termux_pending_call_notification_channel";
+    /** Termux app notification channel name for the pending call-to-user count indicator used by {@link TERMUX_APP.TERMUX_SERVICE} */
+    public static final String TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_NAME = TermuxConstants.TERMUX_APP_NAME + " Pending Calls";
+    /** Termux app unique notification id for the pending call-to-user count indicator used by {@link TERMUX_APP.TERMUX_SERVICE} */
+    public static final int TERMUX_APP_PENDING_CALL_NOTIFICATION_ID = 1340;
+
     /** Termux app notification channel id used by {@link TERMUX_APP.RUN_COMMAND_SERVICE} */
     public static final String TERMUX_RUN_COMMAND_NOTIFICATION_CHANNEL_ID = "termux_run_command_notification_channel";
     /** Termux app notification channel name used by {@link TERMUX_APP.RUN_COMMAND_SERVICE} */
