@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
@@ -783,5 +784,98 @@ public class TermuxSessionsListViewControllerTest {
         Assert.assertEquals("call: >1 day  out: 2m  reply: >1 day", firstRender);
         Assert.assertEquals(firstRender, secondRenderSameClock);
         Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineOutTimeMillis("worker"));
+    }
+
+    @Test
+    public void aConvertViewWhoseTaggedTypeMatchesThePositionViewTypeIsReusedForTheInPlaceRebind() {
+        Context context = themedContext();
+        View storyHeaderView = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_story_header, new FrameLayout(context), false);
+        TermuxSessionsListViewController.tagWithViewType(storyHeaderView, TermuxSessionsListViewController.VIEW_TYPE_STORY_HEADER);
+
+        View reusable = TermuxSessionsListViewController.convertViewMatchingViewType(
+            storyHeaderView, TermuxSessionsListViewController.VIEW_TYPE_STORY_HEADER);
+
+        Assert.assertSame("a convertView of the expected type must be reused so the in-place rebind refreshes it",
+            storyHeaderView, reusable);
+    }
+
+    @Test
+    public void aSessionRowConvertViewIsRejectedWhenAHeaderPositionExpectsAHeaderViewTypeSoTheHeaderReInflatesInsteadOfCrashing() {
+        Context context = themedContext();
+        View sessionRowView = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+        TermuxSessionsListViewController.tagWithViewType(sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_SESSION);
+
+        View reusable = TermuxSessionsListViewController.convertViewMatchingViewType(
+            sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_STORY_HEADER);
+
+        Assert.assertNull("a non-header convertView must be discarded for a header position so getHeaderView re-inflates rather than calling findViewById on the wrong layout",
+            reusable);
+    }
+
+    @Test
+    public void anUntaggedConvertViewIsRejectedSoNoMismatchedLayoutReachesTheTitleLookup() {
+        Context context = themedContext();
+        View sessionRowView = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View reusable = TermuxSessionsListViewController.convertViewMatchingViewType(
+            sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_STORY_HEADER);
+
+        Assert.assertNull("a convertView with no recorded view type must not be trusted as a header row",
+            reusable);
+    }
+
+    @Test
+    public void blindlyReusingASessionRowAsAStoryHeaderConvertViewThrowsTheReportedNullPointerException() {
+        Context context = themedContext();
+        View sessionRowView = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        try {
+            TextView headerTitleView = sessionRowView.findViewById(R.id.session_story_header_title);
+            headerTitleView.setText("worker story");
+            Assert.fail("reusing a session row as a header convertView without a type guard must reach the reported NullPointerException");
+        } catch (NullPointerException expected) {
+            Assert.assertTrue("the crash originates from setText on the missing header title view",
+                String.valueOf(expected.getMessage()).contains("setText"));
+        }
+    }
+
+    @Test
+    public void theTypeGuardRejectsTheSessionRowSoTheRebindNeverReachesTheNullTitleLookup() {
+        Context context = themedContext();
+        View sessionRowView = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+        TermuxSessionsListViewController.tagWithViewType(sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_SESSION);
+
+        View reusableForHeader = TermuxSessionsListViewController.convertViewMatchingViewType(
+            sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_STORY_HEADER);
+
+        Assert.assertNull("the guard must discard the session row so getHeaderView re-inflates the real header layout instead of crashing",
+            reusableForHeader);
+    }
+
+    @Test
+    public void rebindingAStoryHeaderRowThroughTheTypeGuardRefreshesItsTitleWithoutCrashing() {
+        Context context = themedContext();
+        View sessionRowView = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+        TermuxSessionsListViewController.tagWithViewType(sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_SESSION);
+
+        View reusableForHeader = TermuxSessionsListViewController.convertViewMatchingViewType(
+            sessionRowView, TermuxSessionsListViewController.VIEW_TYPE_STORY_HEADER);
+        View headerRowView = reusableForHeader != null
+            ? reusableForHeader
+            : LayoutInflater.from(context)
+                .inflate(R.layout.item_terminal_sessions_story_header, new FrameLayout(context), false);
+
+        TextView headerTitleView = headerRowView.findViewById(R.id.session_story_header_title);
+        Assert.assertNotNull("the type guard must force a re-inflate of the real header layout so the title lookup resolves",
+            headerTitleView);
+        headerTitleView.setText("worker story");
+
+        Assert.assertEquals("worker story", headerTitleView.getText().toString());
     }
 }

@@ -46,10 +46,10 @@ import java.util.Set;
 
 public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
 
-    private static final int VIEW_TYPE_SESSION = 0;
-    private static final int VIEW_TYPE_PROJECT_HEADER = 1;
-    private static final int VIEW_TYPE_STORY_HEADER = 2;
-    private static final int VIEW_TYPE_COUNT = 3;
+    static final int VIEW_TYPE_SESSION = 0;
+    static final int VIEW_TYPE_PROJECT_HEADER = 1;
+    static final int VIEW_TYPE_STORY_HEADER = 2;
+    static final int VIEW_TYPE_COUNT = 3;
 
     private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
@@ -555,22 +555,43 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         SessionHierarchyRow row = mRows.get(position);
+        int expectedViewType = getItemViewType(position);
+        View reusableView = convertViewMatchingViewType(convertView, expectedViewType);
         switch (row.getType()) {
             case PROJECT_HEADER:
-                View projectHeaderView = getHeaderView(row, convertView, parent,
+                View projectHeaderView = getHeaderView(row, reusableView, parent,
                     R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
                 bindProjectHeaderTitle(projectHeaderView, row);
                 bindProjectCollapseIndicator(projectHeaderView, row);
                 bindProjectOverviewBrowserIcon(projectHeaderView, row);
                 bindProjectTdpmConsoleIcon(projectHeaderView, row);
                 bindProjectNewIssueIcon(projectHeaderView, row);
-                return projectHeaderView;
+                return tagWithViewType(projectHeaderView, expectedViewType);
             case STORY_HEADER:
-                return getHeaderView(row, convertView, parent,
+                View storyHeaderView = getHeaderView(row, reusableView, parent,
                     R.layout.item_terminal_sessions_story_header, R.id.session_story_header_title);
+                return tagWithViewType(storyHeaderView, expectedViewType);
             default:
-                return getSessionView(row, convertView, parent, position);
+                return tagWithViewType(getSessionView(row, reusableView, parent, position), expectedViewType);
         }
+    }
+
+    @Nullable
+    static View convertViewMatchingViewType(@Nullable View convertView, int expectedViewType) {
+        if (convertView == null) {
+            return null;
+        }
+        Object taggedViewType = convertView.getTag(R.id.session_row_view_type_tag);
+        if (taggedViewType instanceof Integer && (Integer) taggedViewType == expectedViewType) {
+            return convertView;
+        }
+        return null;
+    }
+
+    @NonNull
+    static View tagWithViewType(@NonNull View rowView, int viewType) {
+        rowView.setTag(R.id.session_row_view_type_tag, viewType);
+        return rowView;
     }
 
     private View getHeaderView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent,
