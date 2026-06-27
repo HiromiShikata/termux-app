@@ -56,10 +56,14 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        // The service client runs while the activity is unbound (app backgrounded) and does not parse
+        // the statusline, so its stored statusline times can be stale here; it keeps the call-to-user
+        // tag scan unconditional as the backgrounded safety net so a session that calls the user while
+        // backgrounded still records its red dot regardless of the statusline-pending gate.
         new BackgroundOutputTagScanner(
             mService.getCallToUserTagController(),
             mService.getUpdateTagUpdateController())
-            .scan(session.mHandle, screen.getTranscriptText());
+            .scan(session.mHandle, screen.getTranscriptText(), true);
     }
 
     @Override

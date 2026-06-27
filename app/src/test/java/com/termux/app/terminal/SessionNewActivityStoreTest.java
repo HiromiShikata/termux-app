@@ -743,14 +743,16 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void statuslineCallTokenAloneDoesNotDriveRedTierBecauseItCarriesNoScene() {
+    public void statuslineCallNewerThanReplyDrivesRedTierEvenWhenTheTagScanCapturedNoScene() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
 
-        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
-        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertTrue(store.hasPendingExplicitCall("worker"));
         Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+        Assert.assertFalse(PendingCallToUserFooterDecision.resolve(
+            store.tierFor("worker"), mostRecentReason(store, "worker")).isVisible());
     }
 
     @Test
@@ -840,9 +842,15 @@ public class SessionNewActivityStoreTest {
     private static void assertTierAndSceneAgree(SessionNewActivityStore store, String sessionName) {
         boolean isRed = store.tierFor(sessionName) == SessionNewActivityTier.RED;
         boolean hasReasons = !store.getUnacknowledgedCallReasons(sessionName).isEmpty();
-        Assert.assertEquals("the RED call-to-user tier and the unacknowledged-reasons scene must "
-            + "always agree: there must be no RED-with-empty-scene state and no scene-with-no-pending-"
-            + "call state for session " + sessionName, isRed, hasReasons);
+        boolean statuslinePending = store.statuslineCallPendingTimeMillis(sessionName) != null;
+        Assert.assertEquals("the RED call-to-user tier must be armed exactly when a call is pending: "
+            + "either the unacknowledged-reasons scene is non-empty or the reliable statusline call: is "
+            + "newer than reply:; a scene must never show while the tier is not RED for session "
+            + sessionName, isRed, hasReasons || statuslinePending);
+        if (hasReasons) {
+            Assert.assertTrue("an unacknowledged-reasons scene must never show while the tier is not "
+                + "RED for session " + sessionName, isRed);
+        }
     }
 
     private static String mostRecentReason(SessionNewActivityStore store, String sessionName) {
@@ -895,17 +903,19 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void aStatuslineCallTokenArrivingAfterAReplyDoesNotReArmRedWithAnEmptyScene() {
+    public void aStatuslineCallTokenNewerThanTheLastReplyReArmsRedOnTheReliableSignalEvenWithAnEmptyScene() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L, "needs approval");
         store.recordUserInput("worker", 2_000L);
-        assertTierAndSceneAgree(store, "worker");
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
 
         store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
 
-        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertTrue(store.hasPendingExplicitCall("worker"));
         Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
-        assertTierAndSceneAgree(store, "worker");
+        Assert.assertFalse(PendingCallToUserFooterDecision.resolve(
+            store.tierFor("worker"), mostRecentReason(store, "worker")).isVisible());
     }
 
     @Test

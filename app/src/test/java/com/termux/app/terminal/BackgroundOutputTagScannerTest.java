@@ -46,7 +46,7 @@ public class BackgroundOutputTagScannerTest {
 
         // The called session is not the current/viewed session: the scanner is fed its handle
         // directly, exactly as the service client and the activity client now do for every session.
-        scanner.scan(CALLED_SESSION, "running <call-to-user>needs approval</call-to-user>");
+        scanner.scan(CALLED_SESSION, "running <call-to-user>needs approval</call-to-user>", true);
 
         assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
         assertEquals("needs approval", store.getLastExplicitCallReason(CALLED_SESSION));
@@ -59,7 +59,7 @@ public class BackgroundOutputTagScannerTest {
         RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
         BackgroundOutputTagScanner scanner = scannerRecordingInto(store, updateTrigger);
 
-        scanner.scan(OTHER_SESSION, "log <update-termux-app>new release</update-termux-app>");
+        scanner.scan(OTHER_SESSION, "log <update-termux-app>new release</update-termux-app>", true);
 
         assertEquals(1, updateTrigger.reasons.size());
         assertEquals("new release", updateTrigger.reasons.get(0));
@@ -75,7 +75,7 @@ public class BackgroundOutputTagScannerTest {
 
         // An open-URL tag in a non-current session must not record an explicit call or trigger an
         // update; auto-open stays current-session-only and is handled elsewhere by the activity.
-        scanner.scan(OTHER_SESSION, "see <open>https://example.com</open>");
+        scanner.scan(OTHER_SESSION, "see <open>https://example.com</open>", true);
 
         assertEquals(SessionNewActivityTier.NONE, store.tierFor(OTHER_SESSION));
         assertNull(store.getLastExplicitCallTimeMillis(OTHER_SESSION));
@@ -92,12 +92,12 @@ public class BackgroundOutputTagScannerTest {
             new BackgroundOutputTagScanner(callToUserTagController, new UpdateTagUpdateController(updateTrigger));
 
         String transcript = "<call-to-user>approval</call-to-user>";
-        scanner.scan(CALLED_SESSION, transcript);
+        scanner.scan(CALLED_SESSION, transcript, true);
         Long firstCallTime = store.getLastExplicitCallTimeMillis(CALLED_SESSION);
 
         // Re-scanning a transcript that still contains the already-fired tag must not re-fire it.
-        scanner.scan(CALLED_SESSION, transcript + "\nfollow-up line 1");
-        scanner.scan(CALLED_SESSION, transcript + "\nfollow-up line 1\nfollow-up line 2");
+        scanner.scan(CALLED_SESSION, transcript + "\nfollow-up line 1", true);
+        scanner.scan(CALLED_SESSION, transcript + "\nfollow-up line 1\nfollow-up line 2", true);
 
         assertEquals(firstCallTime, store.getLastExplicitCallTimeMillis(CALLED_SESSION));
     }
@@ -109,8 +109,8 @@ public class BackgroundOutputTagScannerTest {
         BackgroundOutputTagScanner scanner = scannerRecordingInto(store, updateTrigger);
 
         String transcript = "<update-termux-app>release one</update-termux-app>";
-        scanner.scan(CALLED_SESSION, transcript);
-        scanner.scan(CALLED_SESSION, transcript + "\nmore output");
+        scanner.scan(CALLED_SESSION, transcript, true);
+        scanner.scan(CALLED_SESSION, transcript + "\nmore output", true);
 
         assertEquals(1, updateTrigger.reasons.size());
     }
@@ -122,11 +122,37 @@ public class BackgroundOutputTagScannerTest {
         BackgroundOutputTagScanner scanner = scannerRecordingInto(store, updateTrigger);
 
         String transcript = "<call-to-user>shared reason</call-to-user>";
-        scanner.scan(CALLED_SESSION, transcript);
-        scanner.scan(OTHER_SESSION, transcript);
+        scanner.scan(CALLED_SESSION, transcript, true);
+        scanner.scan(OTHER_SESSION, transcript, true);
 
         assertEquals(SessionNewActivityTier.RED, store.tierFor(CALLED_SESSION));
         assertEquals(SessionNewActivityTier.RED, store.tierFor(OTHER_SESSION));
+    }
+
+    @Test
+    public void callToUserTagIsNotScannedWhenScanCallToUserTagIsFalse() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
+        BackgroundOutputTagScanner scanner = scannerRecordingInto(store, updateTrigger);
+
+        scanner.scan(CALLED_SESSION,
+            "running <call-to-user>needs approval</call-to-user>", false);
+
+        assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
+        assertNull(store.getLastExplicitCallTimeMillis(CALLED_SESSION));
+    }
+
+    @Test
+    public void updateTagStillScansWhenScanCallToUserTagIsFalse() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
+        BackgroundOutputTagScanner scanner = scannerRecordingInto(store, updateTrigger);
+
+        scanner.scan(OTHER_SESSION,
+            "log <update-termux-app>new release</update-termux-app>", false);
+
+        assertEquals(1, updateTrigger.reasons.size());
+        assertEquals("new release", updateTrigger.reasons.get(0));
     }
 
     @Test
@@ -135,8 +161,8 @@ public class BackgroundOutputTagScannerTest {
         RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
         BackgroundOutputTagScanner scanner = scannerRecordingInto(store, updateTrigger);
 
-        scanner.scan(null, "<call-to-user>reason</call-to-user>");
-        scanner.scan(CALLED_SESSION, null);
+        scanner.scan(null, "<call-to-user>reason</call-to-user>", true);
+        scanner.scan(CALLED_SESSION, null, true);
 
         assertTrue(updateTrigger.reasons.isEmpty());
         assertEquals(SessionNewActivityTier.NONE, store.tierFor(CALLED_SESSION));
