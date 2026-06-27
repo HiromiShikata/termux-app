@@ -63,7 +63,7 @@ public final class SessionInfoBottomBarsBinder {
         return SessionTimesLine.of(
             store.getStatuslineCallTimeMillis(sessionName),
             store.getStatuslineOutTimeMillis(sessionName),
-            store.getStatuslineReplyTimeMillis(sessionName),
+            store.effectiveReplyTimeMillis(sessionName),
             store.getSubagentCount(sessionName),
             nowMillis);
     }

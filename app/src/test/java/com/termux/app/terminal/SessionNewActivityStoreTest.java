@@ -919,6 +919,91 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void appInputAtOrAfterTheStatuslineCallClearsTheRedDotInstantlyBeforeTheReplyTokenCatchesUp() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+
+        store.recordUserInput("worker", 9_000L);
+
+        Assert.assertNull(store.statuslineCallPendingTimeMillis("worker"));
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+    }
+
+    @Test
+    public void appInputNewerThanTheStatuslineCallClearsTheRedDotInstantly() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+
+        store.recordUserInput("worker", 12_000L);
+
+        Assert.assertNull(store.statuslineCallPendingTimeMillis("worker"));
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+    }
+
+    @Test
+    public void appInputOlderThanTheStatuslineCallLeavesTheRedDotArmed() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+
+        store.recordUserInput("worker", 5_000L);
+
+        Assert.assertEquals(Long.valueOf(9_000L), store.statuslineCallPendingTimeMillis("worker"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+    }
+
+    @Test
+    public void withoutAnyAppInputTheStatuslineReplyAloneStillDrivesThePendingCheck() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+
+        Assert.assertNull(store.getLastUserInputTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(9_000L), store.statuslineCallPendingTimeMillis("worker"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+    }
+
+    @Test
+    public void effectiveReplyPrefersAppInputWhenItIsNewerThanTheStatuslineReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+
+        store.recordUserInput("worker", 7_000L);
+
+        Assert.assertEquals(Long.valueOf(7_000L), store.effectiveReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void effectiveReplyKeepsTheStatuslineReplyWhenItIsNewerThanTheAppInput() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 10_000L, 10_000L, 4_000L);
+        store.recordUserInput("worker", 3_000L);
+
+        Assert.assertEquals(Long.valueOf(4_000L), store.effectiveReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void effectiveReplyFallsBackToTheStatuslineReplyWhenNoAppInputExists() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 4_000L);
+
+        Assert.assertNull(store.getLastUserInputTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(4_000L), store.effectiveReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void effectiveReplyIsNullWhenNeitherAppInputNorStatuslineReplyExists() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordOutputActivity("worker", 1_000L);
+
+        Assert.assertNull(store.effectiveReplyTimeMillis("worker"));
+    }
+
+    @Test
     public void tierAndSceneStayConsistentAcrossRecordStatuslineInputPurgeAndReload() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
