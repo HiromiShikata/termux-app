@@ -9,8 +9,6 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 
-import java.util.List;
-
 public final class SessionInfoBottomBarsBinder {
 
     private SessionInfoBottomBarsBinder() {
@@ -76,16 +74,6 @@ public final class SessionInfoBottomBarsBinder {
             return PendingCallToUserFooterDecision.resolve(SessionNewActivityTier.NONE, null);
         }
         return PendingCallToUserFooterDecision.resolve(
-            store.tierFor(sessionName), mostRecentUnacknowledgedReason(store, sessionName));
-    }
-
-    @Nullable
-    private static String mostRecentUnacknowledgedReason(@NonNull SessionNewActivityStore store,
-                                                         @NonNull String sessionName) {
-        List<String> reasons = store.getUnacknowledgedCallReasons(sessionName);
-        if (reasons.isEmpty()) {
-            return null;
-        }
-        return reasons.get(reasons.size() - 1);
+            store.tierFor(sessionName), store.currentPendingCallToUserReason(sessionName));
     }
 }
