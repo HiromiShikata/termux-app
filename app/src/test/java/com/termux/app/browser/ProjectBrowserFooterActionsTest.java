@@ -46,10 +46,10 @@ public class ProjectBrowserFooterActionsTest {
     }
 
     @Test
-    public void wiresTdpmConsoleFooterIconToMobileRoute() throws IOException {
+    public void wiresTdpmConsoleFooterIconToDesktopRoute() throws IOException {
         String source = readControllerSource();
         Assert.assertTrue(source.contains("R.id.project_browser_footer_tdpm_console_icon"));
-        Assert.assertTrue(source.contains("route(mProjectTdpmConsoleUrl, BrowserViewMode.MOBILE)"));
+        Assert.assertTrue(source.contains("route(mProjectTdpmConsoleUrl, BrowserViewMode.DESKTOP)"));
     }
 
     @Test
