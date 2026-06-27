@@ -48,10 +48,12 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
 
     private static String taggedOutputWithOlderStatuslineReply() {
         Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
-        calendar.add(Calendar.MINUTE, -2);
+        int secondsSinceMidnight = calendar.get(Calendar.HOUR_OF_DAY) * 3600
+            + calendar.get(Calendar.MINUTE) * 60 + calendar.get(Calendar.SECOND);
+        int replySecondsSinceMidnight = Math.max(0, secondsSinceMidnight - 120);
         String replyClock = String.format(Locale.US, "%02d:%02d:%02d",
-            calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE),
-            calendar.get(Calendar.SECOND));
+            replySecondsSinceMidnight / 3600, (replySecondsSinceMidnight % 3600) / 60,
+            replySecondsSinceMidnight % 60);
         return "build finished\r\n"
             + "<call-to-user>" + REASON + "</call-to-user>\r\n"
             + "claude  out:" + replyClock + "  reply:" + replyClock + "\r\n";
