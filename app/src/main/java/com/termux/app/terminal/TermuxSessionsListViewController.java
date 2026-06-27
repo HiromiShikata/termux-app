@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
@@ -71,7 +73,22 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private static final String EXPLICIT_CALL_REASON_PREFIX = "⚠ ";
 
+    static final long REFRESH_DEBOUNCE_WINDOW_MILLIS = 200L;
+
+    private static final String CONTENT_FIELD_DELIMITER = "\u0001";
+
     final TermuxActivity mActivity;
+
+    private final Handler mRefreshDebounceHandler = new Handler(Looper.getMainLooper());
+
+    private final Runnable mRefreshDebounceRunnable = this::onRefreshCooldownElapsed;
+
+    @Nullable
+    private Runnable mCoalescedRefreshRunnable;
+
+    private boolean mRefreshCooldownActive;
+
+    private boolean mRefreshPendingDuringCooldown;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
@@ -87,6 +104,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private List<SessionHierarchyRow> mRows = Collections.emptyList();
 
     private Map<Integer, SessionRow> mSessionRowsByIndex = Collections.emptyMap();
+
+    private Map<Integer, SessionNewActivityIndicator> mSessionActivityIndicatorsByIndex = Collections.emptyMap();
+
+    private Map<Long, SessionRowContent> mRowContentByItemId = Collections.emptyMap();
 
     private int mTotalSessionCount;
 
@@ -139,11 +160,43 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return Collections.unmodifiableList(mEntries);
     }
 
+    public void setCoalescedRefreshRunnable(@Nullable Runnable coalescedRefreshRunnable) {
+        this.mCoalescedRefreshRunnable = coalescedRefreshRunnable;
+    }
+
+    public void requestSessionListRefresh() {
+        if (mRefreshCooldownActive) {
+            mRefreshPendingDuringCooldown = true;
+            return;
+        }
+        mRefreshCooldownActive = true;
+        runCoalescedRefresh();
+        mRefreshDebounceHandler.postDelayed(mRefreshDebounceRunnable, REFRESH_DEBOUNCE_WINDOW_MILLIS);
+    }
+
+    private void onRefreshCooldownElapsed() {
+        mRefreshCooldownActive = false;
+        if (mRefreshPendingDuringCooldown) {
+            mRefreshPendingDuringCooldown = false;
+            requestSessionListRefresh();
+        }
+    }
+
+    private void runCoalescedRefresh() {
+        if (mCoalescedRefreshRunnable != null) {
+            mCoalescedRefreshRunnable.run();
+            return;
+        }
+        refreshSessionList();
+    }
+
     public void refreshSessionList() {
         List<SessionHierarchyRow> previousRows = mRows;
+        Map<Long, SessionRowContent> previousRowContentByItemId = mRowContentByItemId;
         rebuildRows();
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
-            new SessionRowDiffCallback(previousRows, mRows), true);
+            new SessionRowDiffCallback(previousRows, mRows,
+                previousRowContentByItemId, mRowContentByItemId), true);
         diffResult.dispatchUpdatesTo(this);
     }
 
@@ -155,15 +208,21 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
     }
 
-    private static final class SessionRowDiffCallback extends DiffUtil.Callback {
+    static final class SessionRowDiffCallback extends DiffUtil.Callback {
 
         private final List<SessionHierarchyRow> previousRows;
         private final List<SessionHierarchyRow> currentRows;
+        private final Map<Long, SessionRowContent> previousRowContentByItemId;
+        private final Map<Long, SessionRowContent> currentRowContentByItemId;
 
         SessionRowDiffCallback(@NonNull List<SessionHierarchyRow> previousRows,
-                               @NonNull List<SessionHierarchyRow> currentRows) {
+                               @NonNull List<SessionHierarchyRow> currentRows,
+                               @NonNull Map<Long, SessionRowContent> previousRowContentByItemId,
+                               @NonNull Map<Long, SessionRowContent> currentRowContentByItemId) {
             this.previousRows = previousRows;
             this.currentRows = currentRows;
+            this.previousRowContentByItemId = previousRowContentByItemId;
+            this.currentRowContentByItemId = currentRowContentByItemId;
         }
 
         @Override
@@ -183,7 +242,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
         @Override
         public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
-            return false;
+            SessionRowContent previousContent = previousRowContentByItemId.get(
+                rowItemId(previousRows.get(oldItemPosition)));
+            SessionRowContent currentContent = currentRowContentByItemId.get(
+                rowItemId(currentRows.get(newItemPosition)));
+            return SessionRowContent.sameContent(previousContent, currentContent);
         }
     }
 
@@ -220,9 +283,75 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private void rebuildRows() {
         List<SessionHierarchyRow> allRows = buildAllRows();
         mRows = mHierarchyBuilder.filterCollapsedProjects(allRows, mCollapsedProjectKeys);
+        mSessionActivityIndicatorsByIndex = sessionActivityIndicatorsByIndex();
         mSessionRowsByIndex = getSessionRows();
         mTotalSessionCount = SessionHierarchyBuilder.totalSessionCount(allRows);
         mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(allRows);
+        mRowContentByItemId = buildRowContentByItemId();
+    }
+
+    @NonNull
+    private Map<Long, SessionRowContent> buildRowContentByItemId() {
+        Map<Long, SessionRowContent> rowContentByItemId = new LinkedHashMap<>();
+        for (int position = 0; position < mRows.size(); position++) {
+            SessionHierarchyRow row = mRows.get(position);
+            SessionHierarchyRow.Type previousRowType = position > 0 ? mRows.get(position - 1).getType() : null;
+            rowContentByItemId.put(rowItemId(row), new SessionRowContent(rowContentText(row, previousRowType)));
+        }
+        return rowContentByItemId;
+    }
+
+    @NonNull
+    private String rowContentText(@NonNull SessionHierarchyRow row,
+                                  @Nullable SessionHierarchyRow.Type previousRowType) {
+        switch (row.getType()) {
+            case PROJECT_HEADER:
+                return joinContentFields("P",
+                    projectHeaderTitle(row.getLabel(), projectSessionCount(row.getLabel())),
+                    String.valueOf(mCollapsedProjectKeys.contains(row.getLabel())));
+            case STORY_HEADER:
+                return joinContentFields("S", nullToEmpty(row.getLabel()));
+            default:
+                return sessionRowContentText(row, previousRowType);
+        }
+    }
+
+    @NonNull
+    private String sessionRowContentText(@NonNull SessionHierarchyRow row,
+                                         @Nullable SessionHierarchyRow.Type previousRowType) {
+        int sessionIndex = row.getSessionIndex();
+        boolean showDivider = shouldShowSessionRowGroupDivider(previousRowType);
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+            return joinContentFields("X", String.valueOf(sessionIndex));
+        }
+        TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
+        if (sessionAtRow == null) {
+            return joinContentFields("X", String.valueOf(sessionIndex));
+        }
+        SessionRow sessionRow = SessionRow.rowOrEmpty(mSessionRowsByIndex, sessionIndex);
+        return joinContentFields("R",
+            String.valueOf(sessionIndex),
+            sessionRow.getName(),
+            sessionRow.getResolvedTitle(),
+            String.valueOf(sessionRow.getTier()),
+            String.valueOf(sessionRow.isDisabled()),
+            String.valueOf(sessionRow.isCurrent()),
+            String.valueOf(sessionAtRow.isRunning()),
+            String.valueOf(sessionAtRow.getExitStatus()),
+            nullToEmpty(sessionAtRow.getTitle()),
+            buildTimestampLine(sessionAtRow.mSessionName),
+            explicitCallReasonLabel(sessionRow),
+            String.valueOf(showDivider));
+    }
+
+    @NonNull
+    static String joinContentFields(@NonNull String... fields) {
+        return TextUtils.join(CONTENT_FIELD_DELIMITER, fields);
+    }
+
+    @NonNull
+    private static String nullToEmpty(@Nullable String value) {
+        return value == null ? "" : value;
     }
 
     public int getTotalSessionCount() {
@@ -355,14 +484,14 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     public Set<Integer> getMarkedSessionIndexes() {
-        return new LinkedHashSet<>(sessionActivityIndicatorsByIndex().keySet());
+        return new LinkedHashSet<>(mSessionActivityIndicatorsByIndex.keySet());
     }
 
     @NonNull
     public Map<Integer, SessionNewActivityTier> getSessionTiersByIndex() {
         Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
         for (Map.Entry<Integer, SessionNewActivityIndicator> entry
-                : sessionActivityIndicatorsByIndex().entrySet()) {
+                : mSessionActivityIndicatorsByIndex.entrySet()) {
             tiersByIndex.put(entry.getKey(), entry.getValue().getTier());
         }
         return tiersByIndex;
@@ -416,19 +545,27 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     private Map<Integer, SessionNewActivityIndicator> sessionActivityIndicatorsByIndex() {
-        Map<Integer, SessionNewActivityIndicator> indicatorsBySessionIndex = new LinkedHashMap<>();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) {
-            return indicatorsBySessionIndex;
+            return Collections.emptyMap();
         }
-        long nowMillis = System.currentTimeMillis();
-        Set<String> disabledSessionNames = disabledSessionNames();
-        for (int sessionIndex : getVisibleSessionIndexes()) {
-            if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+        return sessionActivityIndicatorsByIndex(store, getVisibleSessionIndexes(),
+            sessionNamesByIndex(), disabledSessionNames(), System.currentTimeMillis());
+    }
+
+    @NonNull
+    static Map<Integer, SessionNewActivityIndicator> sessionActivityIndicatorsByIndex(
+            @NonNull SessionNewActivityStore store,
+            @NonNull List<Integer> visibleSessionIndexes,
+            @NonNull List<String> sessionNamesByIndex,
+            @NonNull Set<String> disabledSessionNames,
+            long nowMillis) {
+        Map<Integer, SessionNewActivityIndicator> indicatorsBySessionIndex = new LinkedHashMap<>();
+        for (int sessionIndex : visibleSessionIndexes) {
+            if (!isSessionIndexInRange(sessionIndex, sessionNamesByIndex.size())) {
                 continue;
             }
-            TerminalSession terminalSession = mSessionList.get(sessionIndex).getTerminalSession();
-            String sessionName = terminalSession == null ? null : terminalSession.mSessionName;
+            String sessionName = sessionNamesByIndex.get(sessionIndex);
             if (isExcludedFromActivityIndicators(sessionName, disabledSessionNames)) {
                 continue;
             }
@@ -450,7 +587,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private Map<Integer, String> sessionActivityAgeLabelsByIndex() {
         Map<Integer, String> ageLabelsBySessionIndex = new LinkedHashMap<>();
         for (Map.Entry<Integer, SessionNewActivityIndicator> entry
-                : sessionActivityIndicatorsByIndex().entrySet()) {
+                : mSessionActivityIndicatorsByIndex.entrySet()) {
             ageLabelsBySessionIndex.put(entry.getKey(), entry.getValue().getLabel());
         }
         return ageLabelsBySessionIndex;

@@ -761,6 +761,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setTermuxSessionsListView() {
         mTermuxSessionListViewController = new TermuxSessionsListViewController(this, mTermuxService.getTermuxSessions());
+        mTermuxSessionListViewController.setCoalescedRefreshRunnable(this::applySessionListUpdate);
         loadSessionDefinitionEntriesForGrouping();
     }
 
@@ -1361,6 +1362,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
     public void termuxSessionListNotifyUpdated() {
+        if (mTermuxSessionListViewController == null) return;
+        mTermuxSessionListViewController.requestSessionListRefresh();
+    }
+
+    private void applySessionListUpdate() {
         if (mTermuxSessionListViewController == null) return;
         mTermuxSessionListViewController.refreshSessionList();
         renderSessionNavigationActivityTier();
