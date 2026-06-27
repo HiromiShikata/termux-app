@@ -443,16 +443,25 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
-                    android:layout_margin="16dp"
-                    android:gravity="end"
-                    android:orientation="vertical"
+                    android:layout_margin="8dp"
+                    android:gravity="end|center_vertical"
+                    android:orientation="horizontal"
                     android:visibility="gone">
 
                     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
                         android:id="@+id/project_browser_open_all_tasks_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="12dp"
+                        android:layout_marginEnd="8dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:textSize="11sp"
                         android:contentDescription="@string/action_browser_open_all_tasks"
                         android:text="@string/action_browser_open_all_tasks" />
 
@@ -460,6 +469,15 @@
                         android:id="@+id/project_browser_open_first_ten_tasks_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:textSize="11sp"
                         android:contentDescription="@string/action_browser_open_first_ten_tasks"
                         android:text="@string/action_browser_open_first_ten_tasks" />
                 </LinearLayout>
