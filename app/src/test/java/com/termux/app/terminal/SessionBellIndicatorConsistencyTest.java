@@ -33,7 +33,7 @@ public class SessionBellIndicatorConsistencyTest {
     @Test
     public void bothRenderersAgreeWhenAnUnseenSignalIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 4_000L);
 
@@ -54,7 +54,7 @@ public class SessionBellIndicatorConsistencyTest {
     @Test
     public void bothRenderersDeriveTheSameAgeLabelFromTheSharedHelper() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 31_000L);
 
@@ -68,7 +68,7 @@ public class SessionBellIndicatorConsistencyTest {
     @Test
     public void sessionShowsNoIndicatorOnceTheUserHasRepliedToTheExplicitCall() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("active", 1_000L);
+        store.recordExplicitCall("active", 1_000L, "needs approval");
         store.recordUserInput("active", 2_000L);
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "active", 4_000L);

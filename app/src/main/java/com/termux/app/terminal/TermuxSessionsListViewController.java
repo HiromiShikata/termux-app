@@ -407,7 +407,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         return SessionNewActivityIndicator.indicatorFor(
             store.outActivityTimeMillisForDotTier(sessionName),
-            store.getLastExplicitCallTimeMillis(sessionName),
+            store.pendingCallToUserTimeMillis(sessionName),
             store.getLastUserInputTimeMillis(sessionName),
             store.getLastSeenTimeMillis(sessionName), nowMillis);
     }

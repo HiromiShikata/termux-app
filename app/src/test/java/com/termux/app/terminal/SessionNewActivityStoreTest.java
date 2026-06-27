@@ -58,7 +58,7 @@ public class SessionNewActivityStoreTest {
     @Test
     public void explicitCallProducesRedTier() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session-one", 1_000L);
+        store.recordExplicitCall("session-one", 1_000L, "needs approval");
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
     }
@@ -67,7 +67,7 @@ public class SessionNewActivityStoreTest {
     public void explicitCallTakesPriorityOverOutputActivity() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordOutputActivity("session-one", 2_000L);
-        store.recordExplicitCall("session-one", 1_000L);
+        store.recordExplicitCall("session-one", 1_000L, "needs approval");
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
     }
@@ -76,7 +76,7 @@ public class SessionNewActivityStoreTest {
     public void seenAfterBothSignalsLeavesRedBecauseTheUserHasNotReplied() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordOutputActivity("session-one", 1_000L);
-        store.recordExplicitCall("session-one", 2_000L);
+        store.recordExplicitCall("session-one", 2_000L, "needs approval");
         store.recordSeen("session-one", 3_000L);
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
@@ -145,7 +145,7 @@ public class SessionNewActivityStoreTest {
     public void signalAfterLastSeenReappears() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordSeen("session-one", 1_000L);
-        store.recordExplicitCall("session-one", 5_000L);
+        store.recordExplicitCall("session-one", 5_000L, "needs approval");
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
     }
@@ -154,7 +154,7 @@ public class SessionNewActivityStoreTest {
     public void globalActiveTierIsRedWhenAnySessionRed() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordOutputActivity("session-one", 1_000L);
-        store.recordExplicitCall("session-two", 1_000L);
+        store.recordExplicitCall("session-two", 1_000L, "needs approval");
 
         Assert.assertEquals(SessionNewActivityTier.RED,
             store.globalActiveTier(new HashSet<>(java.util.Arrays.asList("session-one", "session-two"))));
@@ -194,8 +194,8 @@ public class SessionNewActivityStoreTest {
     @Test
     public void tracksDistinctNamesIndependently() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session-one", 1_000L);
-        store.recordExplicitCall("session-two", 2_000L);
+        store.recordExplicitCall("session-one", 1_000L, "needs approval");
+        store.recordExplicitCall("session-two", 2_000L, "needs approval");
         store.recordUserInput("session-one", 9_000L);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
@@ -207,7 +207,7 @@ public class SessionNewActivityStoreTest {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
         beforeRestart.recordOutputActivity("my-session", 1_000L);
-        beforeRestart.recordExplicitCall("my-session", 2_000L);
+        beforeRestart.recordExplicitCall("my-session", 2_000L, "needs approval");
 
         SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
 
@@ -237,7 +237,7 @@ public class SessionNewActivityStoreTest {
     public void reconstructedStoreReportsRedForBackgroundSession() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
-        store.recordExplicitCall("background", 5_000L);
+        store.recordExplicitCall("background", 5_000L, "needs approval");
 
         SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
 
@@ -260,7 +260,7 @@ public class SessionNewActivityStoreTest {
     public void reconstructedStoreStillReportsRedForBackgroundSessionThatWasOnlySeen() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
-        store.recordExplicitCall("seen", 5_000L);
+        store.recordExplicitCall("seen", 5_000L, "needs approval");
         store.recordSeen("seen", 9_000L);
 
         SessionNewActivityStore reconstructed = new SessionNewActivityStore(persistence);
@@ -281,11 +281,11 @@ public class SessionNewActivityStoreTest {
     @Test
     public void newCallAfterAPriorReplyMakesRedReappear() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session-one", 1_000L);
+        store.recordExplicitCall("session-one", 1_000L, "first approval");
         store.recordUserInput("session-one", 2_000L);
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("session-one"));
 
-        store.recordExplicitCall("session-one", 5_000L);
+        store.recordExplicitCall("session-one", 5_000L, "second approval");
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
     }
@@ -360,7 +360,7 @@ public class SessionNewActivityStoreTest {
     public void pruneToSessionNamesRetainsRestoredNameThatStillExistsAfterRestart() {
         InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore beforeRestart = new SessionNewActivityStore(persistence);
-        beforeRestart.recordExplicitCall("restored-session", 1_000L);
+        beforeRestart.recordExplicitCall("restored-session", 1_000L, "needs approval");
 
         SessionNewActivityStore afterRestart = new SessionNewActivityStore(persistence);
         afterRestart.pruneToSessionNames(
@@ -446,11 +446,12 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void recordExplicitCallWithoutReasonRaisesRedWithEmptyReason() {
+    public void recordExplicitCallWithoutReasonDoesNotRaiseRedSoTheIndicatorNeverShowsAnEmptyScene() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L);
 
-        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
         Assert.assertEquals("", store.getLastExplicitCallReason("worker"));
     }
 
@@ -738,12 +739,14 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void statuslineCallNewerThanReplyDrivesRedTier() {
+    public void statuslineCallTokenAloneDoesNotDriveRedTierBecauseItCarriesNoScene() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
 
-        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
     }
 
     @Test
@@ -828,5 +831,117 @@ public class SessionNewActivityStoreTest {
         Assert.assertNull(store.getStatuslineCallTimeMillis("worker"));
         Assert.assertNull(store.getStatuslineOutTimeMillis("worker"));
         Assert.assertNull(store.getStatuslineReplyTimeMillis("worker"));
+    }
+
+    private static void assertTierAndSceneAgree(SessionNewActivityStore store, String sessionName) {
+        boolean isRed = store.tierFor(sessionName) == SessionNewActivityTier.RED;
+        boolean hasReasons = !store.getUnacknowledgedCallReasons(sessionName).isEmpty();
+        Assert.assertEquals("the RED call-to-user tier and the unacknowledged-reasons scene must "
+            + "always agree: there must be no RED-with-empty-scene state and no scene-with-no-pending-"
+            + "call state for session " + sessionName, isRed, hasReasons);
+    }
+
+    @Test
+    public void ownerInputAcknowledgesTheCallClearingBothTheIndicatorAndTheSceneAndBumpsReplyTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertFalse(store.getUnacknowledgedCallReasons("worker").isEmpty());
+
+        store.recordUserInput("worker", 5_000L);
+
+        Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("worker"));
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+        Assert.assertEquals(Long.valueOf(5_000L), store.getLastUserInputTimeMillis("worker"));
+    }
+
+    @Test
+    public void ownerInputAcknowledgesImmediatelyEvenForACallRecordedMoreThanADayEarlier() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long callTimeMillis = 1_000L;
+        long replyTimeMillis = callTimeMillis + 2L * 24L * 60L * 60L * 1000L;
+        store.recordExplicitCall("worker", callTimeMillis, "needs approval");
+        Assert.assertTrue(store.hasPendingExplicitCall("worker"));
+
+        store.recordUserInput("worker", replyTimeMillis);
+
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+        assertTierAndSceneAgree(store, "worker");
+    }
+
+    @Test
+    public void aGenuinelyPendingCallShowsTheScene() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+
+        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolveAll(
+            store.tierFor("worker"), store.getUnacknowledgedCallReasons("worker"));
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertTrue(decision.isVisible());
+        Assert.assertEquals("needs approval", decision.getReportText());
+        assertTierAndSceneAgree(store, "worker");
+    }
+
+    @Test
+    public void aStatuslineCallTokenArrivingAfterAReplyDoesNotReArmRedWithAnEmptyScene() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+        store.recordUserInput("worker", 2_000L);
+        assertTierAndSceneAgree(store, "worker");
+
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+
+        Assert.assertFalse(store.hasPendingExplicitCall("worker"));
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+        assertTierAndSceneAgree(store, "worker");
+    }
+
+    @Test
+    public void tierAndSceneStayConsistentAcrossRecordStatuslineInputPurgeAndReload() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+        assertTierAndSceneAgree(store, "worker");
+
+        store.recordStatuslineTimes("worker", 1_000L, 1_000L, 500L);
+        assertTierAndSceneAgree(store, "worker");
+
+        store.recordOutputActivity("worker", 1_200L);
+        assertTierAndSceneAgree(store, "worker");
+
+        store.recordSeen("worker", 1_300L);
+        assertTierAndSceneAgree(store, "worker");
+
+        store.recordUserInput("worker", 2_000L);
+        assertTierAndSceneAgree(store, "worker");
+
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+        assertTierAndSceneAgree(store, "worker");
+
+        SessionNewActivityStore reloaded = new SessionNewActivityStore(persistence);
+        assertTierAndSceneAgree(reloaded, "worker");
+
+        reloaded.recordExplicitCall("worker", 10_000L, "second approval");
+        assertTierAndSceneAgree(reloaded, "worker");
+
+        reloaded.purgeSession("worker");
+        assertTierAndSceneAgree(reloaded, "worker");
+    }
+
+    @Test
+    public void aReasonBearingCallThatSurvivesReloadKeepsTheTierAndSceneInAgreement() {
+        InMemorySessionNewActivityPersistence persistence = new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore beforeReload = new SessionNewActivityStore(persistence);
+        beforeReload.recordExplicitCall("worker", 1_000L, "needs approval");
+
+        SessionNewActivityStore afterReload = new SessionNewActivityStore(persistence);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, afterReload.tierFor("worker"));
+        Assert.assertFalse(afterReload.getUnacknowledgedCallReasons("worker").isEmpty());
+        assertTierAndSceneAgree(afterReload, "worker");
     }
 }

@@ -35,7 +35,7 @@ public class SessionActivityTierDotRenderingTest {
     public void recordedExplicitCallNewerThanLastSeenResolvesToRedAndSelectsRedDot() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordSeen("agent", 1_000L);
-        store.recordExplicitCall("agent", 5_000L);
+        store.recordExplicitCall("agent", 5_000L, "needs approval");
 
         SessionNewActivityTier tier = store.tierFor("agent");
 

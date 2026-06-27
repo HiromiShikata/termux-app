@@ -60,9 +60,9 @@ public class SessionPickerOverlayAgeLabelTest {
     @Test
     public void pickerHidesTheDotForTheRepliedCurrentSessionButShowsItForAnUnansweredBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("current", 1_000L);
+        store.recordExplicitCall("current", 1_000L, "needs approval");
         store.recordUserInput("current", 5_000L);
-        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
 
         long nowMillis = 31_000L;
         List<String> names = Arrays.asList("current", "background");
@@ -93,7 +93,7 @@ public class SessionPickerOverlayAgeLabelTest {
     @Test
     public void bottomSheetAgeLabelAppearsBeforeSessionNameWithTrailingSpaceSeparator() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "background", 1_000L + 45_000L);
 

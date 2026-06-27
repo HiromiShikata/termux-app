@@ -278,7 +278,7 @@ public class SessionNewActivityStore {
     public SessionNewActivityTier tierFor(@NonNull String sessionName) {
         return SessionNewActivityTier.resolve(
             getLastOutputActivityTimeMillis(sessionName),
-            getLastExplicitCallTimeMillis(sessionName),
+            pendingCallToUserTimeMillis(sessionName),
             getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName));
     }
@@ -287,10 +287,34 @@ public class SessionNewActivityStore {
     public SessionNewActivityTier tierFor(@NonNull String sessionName, long nowMillis) {
         return SessionNewActivityTier.resolve(
             outActivityTimeMillisForDotTier(sessionName),
-            getLastExplicitCallTimeMillis(sessionName),
+            pendingCallToUserTimeMillis(sessionName),
             getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName),
             nowMillis);
+    }
+
+    /**
+     * The single source of truth for both the RED call-to-user tier and the call-to-user scene
+     * content. A call-to-user is pending exactly when its detected reason has not yet been
+     * acknowledged, so the pending-call time the tier ages off is the time the still-unacknowledged
+     * reason was recorded ({@link #mUnacknowledgedCallReasonsRecordedTimeMillisByName}) and is
+     * present only while {@link #getUnacknowledgedCallReasons} is non-empty. Keying the tier off this
+     * derived time instead of the raw {@link #getLastExplicitCallTimeMillis} makes {@code tierFor}
+     * and {@code getUnacknowledgedCallReasons} unable to diverge: the tier cannot be RED while the
+     * scene is empty, and the scene cannot show while the tier is not RED. The owner's app-side input
+     * ({@link #recordUserInput}) clears the unacknowledged reasons, which simultaneously dismisses the
+     * scene and drops the tier out of RED. The raw last-explicit-call time and the statusline call
+     * token remain available as display values but no longer arm the tier on their own, so a
+     * reasonless explicit call or a re-rendered statusline call token cannot leave the indicator RED
+     * with no scene content.
+     */
+    @Nullable
+    Long pendingCallToUserTimeMillis(@NonNull String sessionName) {
+        List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
+        if (reasons == null || reasons.isEmpty()) {
+            return null;
+        }
+        return mUnacknowledgedCallReasonsRecordedTimeMillisByName.get(sessionName);
     }
 
     /**
@@ -341,7 +365,7 @@ public class SessionNewActivityStore {
     Long pendingSignalTimeMillis(@NonNull String sessionName) {
         switch (tierFor(sessionName)) {
             case RED:
-                return getLastExplicitCallTimeMillis(sessionName);
+                return pendingCallToUserTimeMillis(sessionName);
             case YELLOW:
                 return getLastOutputActivityTimeMillis(sessionName);
             case NONE:

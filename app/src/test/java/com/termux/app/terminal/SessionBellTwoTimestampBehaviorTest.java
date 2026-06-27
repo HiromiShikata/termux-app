@@ -13,7 +13,7 @@ public class SessionBellTwoTimestampBehaviorTest {
     @Test
     public void explicitCallInANonViewedSessionShowsRed() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
 
         SessionNewActivityIndicator indicator = indicatorFor(store, "background", 2_000L);
         Assert.assertTrue(indicator.isVisible());
@@ -45,7 +45,7 @@ public class SessionBellTwoTimestampBehaviorTest {
     @Test
     public void viewingASessionDoesNotClearTheSignalBeforeSeenTimeAdvances() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("viewed", 5_000L);
+        store.recordExplicitCall("viewed", 5_000L, "needs approval");
 
         long switchMomentMillis = 5_100L;
         Assert.assertTrue(indicatorFor(store, "viewed", switchMomentMillis).isVisible());
@@ -54,7 +54,7 @@ public class SessionBellTwoTimestampBehaviorTest {
     @Test
     public void viewingASessionDoesNotClearTheRedCallEvenAfterTheSeenTimeAdvancesPastIt() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("viewed", 5_000L);
+        store.recordExplicitCall("viewed", 5_000L, "needs approval");
 
         store.recordSeen("viewed", 6_100L);
 
@@ -65,11 +65,11 @@ public class SessionBellTwoTimestampBehaviorTest {
     @Test
     public void aCallArrivingAfterTheUserRepliedReappears() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session", 1_000L);
+        store.recordExplicitCall("session", 1_000L, "first approval");
         store.recordUserInput("session", 2_000L);
         Assert.assertFalse(indicatorFor(store, "session", 2_500L).isVisible());
 
-        store.recordExplicitCall("session", 9_000L);
+        store.recordExplicitCall("session", 9_000L, "second approval");
 
         Assert.assertTrue(indicatorFor(store, "session", 9_500L).isVisible());
         Assert.assertEquals(SessionNewActivityTier.RED, indicatorFor(store, "session", 9_500L).getTier());
@@ -78,7 +78,7 @@ public class SessionBellTwoTimestampBehaviorTest {
     @Test
     public void ageLabelAdvancesOverTimeWhileTheSignalStaysUnseen() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session", 1_000L);
+        store.recordExplicitCall("session", 1_000L, "needs approval");
 
         String labelAtFiveSeconds = indicatorFor(store, "session", 6_000L).getLabel();
         String labelAtFortySeconds = indicatorFor(store, "session", 41_000L).getLabel();
