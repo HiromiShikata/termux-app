@@ -654,12 +654,19 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             String url = SessionHierarchyBuilder.projectActionUrl(allRows,
                 projectActionToken.getNormalizedProjectName(), projectActionToken.getAction());
             if (url != null && !url.isEmpty()) {
-                openProjectUrlInNewTab(url, BrowserViewMode.DESKTOP, projectHeaderRow);
+                openProjectUrlInNewTab(url, projectActionViewMode(projectActionToken.getAction()),
+                    projectHeaderRow);
             }
             int topSessionIndex = SessionHierarchyBuilder.firstSessionIndexForProject(allRows,
                 projectActionToken.getNormalizedProjectName());
             selectSessionAtIndex(topSessionIndex);
         }
+    }
+
+    static BrowserViewMode projectActionViewMode(@NonNull ProjectAction projectAction) {
+        return projectAction == ProjectAction.OVERVIEW_URL
+            ? BrowserViewMode.MOBILE
+            : BrowserViewMode.DESKTOP;
     }
 
     private void selectSessionAtIndex(int sessionIndex) {
@@ -859,7 +866,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         String overviewUrl = row.getOverviewUrl();
         Runnable openAction = (overviewUrl == null || overviewUrl.isEmpty())
             ? null
-            : () -> openProjectUrlInNewTab(overviewUrl, BrowserViewMode.DESKTOP, row);
+            : () -> openProjectUrlInNewTab(overviewUrl, BrowserViewMode.MOBILE, row);
         applyProjectHeaderIconVisibility(overviewBrowserIconView, openAction);
     }
 
