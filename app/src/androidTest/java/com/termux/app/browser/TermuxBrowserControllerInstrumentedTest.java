@@ -10,15 +10,20 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.termux.R;
+import com.termux.app.RetryRule;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.terminal.TerminalSession;
 
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class TermuxBrowserControllerInstrumentedTest {
+
+    @Rule
+    public final RetryRule retryRule = new RetryRule();
 
     private static final String LOOPBACK_TAB_URL = "http://127.0.0.1/";
 
