@@ -868,7 +868,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         String tdpmConsoleUrl = row.getTdpmConsoleUrl();
         Runnable openAction = (tdpmConsoleUrl == null || tdpmConsoleUrl.isEmpty())
             ? null
-            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.MOBILE, row);
+            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.DESKTOP, row);
         applyProjectHeaderIconVisibility(tdpmConsoleIconView, openAction);
     }
 
