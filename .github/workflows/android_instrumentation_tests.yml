@@ -48,4 +48,20 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel
-          script: ./gradlew :app:connectedDebugAndroidTest
+          script: |
+            mkdir -p instrumentation-screenshots
+            status=0
+            ./gradlew :app:connectedDebugAndroidTest || status=$?
+            adb pull /sdcard/termux-instrumentation-screenshots instrumentation-screenshots || true
+            adb pull /sdcard/session-info-area-scan-render.png instrumentation-screenshots/ || true
+            adb pull /sdcard/session-info-area-scene-render.png instrumentation-screenshots/ || true
+            ls -la instrumentation-screenshots || true
+            exit $status
+
+      - name: Upload rendered instrumentation screenshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: instrumentation-screenshots
+          path: instrumentation-screenshots
+          if-no-files-found: warn
