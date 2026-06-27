@@ -164,8 +164,8 @@ public class SessionNewActivityStore {
         }
         if (replyTimeMillis != null) {
             mStatuslineReplyTimeMillisByName.put(sessionName, replyTimeMillis);
-            mLastUserInputTimeMillisByName.put(sessionName, replyTimeMillis);
             if (statuslineReplyAcknowledgesPendingReasons(sessionName, replyTimeMillis)) {
+                mLastUserInputTimeMillisByName.put(sessionName, replyTimeMillis);
                 acknowledgeCallReasons(sessionName);
             }
         }
@@ -179,7 +179,7 @@ public class SessionNewActivityStore {
         if (pendingRecordedTimeMillis == null) {
             return true;
         }
-        return replyTimeMillis >= pendingRecordedTimeMillis;
+        return replyTimeMillis > pendingRecordedTimeMillis;
     }
 
     private void acknowledgeCallReasons(@NonNull String sessionName) {

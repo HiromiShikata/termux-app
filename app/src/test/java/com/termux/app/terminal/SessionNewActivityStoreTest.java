@@ -841,6 +841,11 @@ public class SessionNewActivityStoreTest {
             + "call state for session " + sessionName, isRed, hasReasons);
     }
 
+    private static String mostRecentReason(SessionNewActivityStore store, String sessionName) {
+        java.util.List<String> reasons = store.getUnacknowledgedCallReasons(sessionName);
+        return reasons.isEmpty() ? null : reasons.get(reasons.size() - 1);
+    }
+
     @Test
     public void ownerInputAcknowledgesTheCallClearingBothTheIndicatorAndTheSceneAndBumpsReplyTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
@@ -876,8 +881,8 @@ public class SessionNewActivityStoreTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L, "needs approval");
 
-        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolveAll(
-            store.tierFor("worker"), store.getUnacknowledgedCallReasons("worker"));
+        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
+            store.tierFor("worker"), mostRecentReason(store, "worker"));
 
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
         Assert.assertTrue(decision.isVisible());

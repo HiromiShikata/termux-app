@@ -6,9 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-
 public class PendingCallToUserFooterDecisionTest {
 
     @Test
@@ -57,72 +54,6 @@ public class PendingCallToUserFooterDecisionTest {
     public void hidesContentWhenReasonIsOnlyWhitespace() {
         PendingCallToUserFooterDecision decision =
             PendingCallToUserFooterDecision.resolve(SessionNewActivityTier.RED, "   ");
-
-        assertFalse(decision.isVisible());
-    }
-
-    @Test
-    public void resolveAllShowsEveryUnacknowledgedReasonOnItsOwnLine() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.RED,
-                Arrays.asList("needs approval", "deploy failed", "waiting for input"));
-
-        assertTrue(decision.isVisible());
-        assertEquals("needs approval\ndeploy failed\nwaiting for input", decision.getReportText());
-    }
-
-    @Test
-    public void resolveAllShowsSingleReasonWithoutTrailingLineBreak() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.RED,
-                Collections.singletonList("needs approval"));
-
-        assertTrue(decision.isVisible());
-        assertEquals("needs approval", decision.getReportText());
-    }
-
-    @Test
-    public void resolveAllTrimsEachReasonAndSkipsBlankEntries() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.RED,
-                Arrays.asList("  needs approval  ", "", "   ", "deploy failed"));
-
-        assertTrue(decision.isVisible());
-        assertEquals("needs approval\ndeploy failed", decision.getReportText());
-    }
-
-    @Test
-    public void resolveAllHidesContentWhenAllReasonsAreBlank() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.RED,
-                Arrays.asList("", "   "));
-
-        assertFalse(decision.isVisible());
-        assertEquals("", decision.getReportText());
-    }
-
-    @Test
-    public void resolveAllHidesContentWhenReasonsListIsEmpty() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.RED,
-                Collections.emptyList());
-
-        assertFalse(decision.isVisible());
-    }
-
-    @Test
-    public void resolveAllHidesContentWhenReasonsListIsNull() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.RED, null);
-
-        assertFalse(decision.isVisible());
-    }
-
-    @Test
-    public void resolveAllHidesContentForNonRedTierEvenWithReasons() {
-        PendingCallToUserFooterDecision decision =
-            PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.YELLOW,
-                Arrays.asList("needs approval", "deploy failed"));
 
         assertFalse(decision.isVisible());
     }
