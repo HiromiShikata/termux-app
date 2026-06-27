@@ -22,9 +22,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
 
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -42,6 +44,10 @@ public class SessionListRecyclerViewChangeAnimationCrashInstrumentedTest {
     private static final int TICK_ITERATIONS = 80;
     private static final int LIST_WIDTH_PX = 720;
     private static final int LIST_HEIGHT_PX = 480;
+
+    @Rule
+    public GrantPermissionRule writeExternalStoragePermissionRule =
+        GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
     @Test
     public void rapidRelativeTimePayloadTicksWithTapDuringScrollDoNotCrashAndSingleTapNavigates() {
@@ -135,9 +141,7 @@ public class SessionListRecyclerViewChangeAnimationCrashInstrumentedTest {
     }
 
     private static void writeRenderedRowsScreenshot(View root) {
-        if (root == null) {
-            return;
-        }
+        assertNotNull(root);
         AtomicReference<File> writtenFile = new AtomicReference<>(null);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             Bitmap bitmap = Bitmap.createBitmap(Math.max(1, root.getWidth()),
@@ -145,10 +149,9 @@ public class SessionListRecyclerViewChangeAnimationCrashInstrumentedTest {
             bitmap.eraseColor(0xFF101010);
             Canvas canvas = new Canvas(bitmap);
             root.draw(canvas);
-            File directory = sharedScreenshotDirectory();
-            File file = new File(directory, "session-list-recyclerview-aligned-rows.png");
+            File file = new File(sharedScreenshotDirectory(), "session-list-recyclerview-aligned-rows.png");
             try (FileOutputStream out = new FileOutputStream(file)) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+                assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, out));
             } catch (Exception exception) {
                 throw new RuntimeException(exception);
             }
