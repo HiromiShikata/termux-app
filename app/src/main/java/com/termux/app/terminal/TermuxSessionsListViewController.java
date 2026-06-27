@@ -15,14 +15,14 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -44,12 +44,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, SessionListBottomSheetController.SessionRowRelativeTimeUpdater {
+public class TermuxSessionsListViewController extends RecyclerView.Adapter<TermuxSessionsListViewController.SessionRowViewHolder> {
+
+    static final Object RELATIVE_TIME_PAYLOAD = new Object();
+
+    private static final long HEADER_ITEM_ID_NAMESPACE = 0x1_0000_0000L;
+    private static final long PROJECT_HEADER_ITEM_ID_NAMESPACE = 0x2_0000_0000L;
 
     private static final int VIEW_TYPE_SESSION = 0;
     private static final int VIEW_TYPE_PROJECT_HEADER = 1;
     private static final int VIEW_TYPE_STORY_HEADER = 2;
-    private static final int VIEW_TYPE_COUNT = 3;
 
     private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
@@ -99,6 +103,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
         this.mActivity = activity;
         this.mSessionList = sessionList;
+        setHasStableIds(true);
         restoreCollapsedProjectKeys();
         rebuildRows();
     }
@@ -125,7 +130,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     public void setEntries(@NonNull List<SessionDefinitionEntry> entries) {
         this.mEntries = new ArrayList<>(entries);
-        notifyDataSetChanged();
+        refreshSessionList();
     }
 
     @NonNull
@@ -133,10 +138,62 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         return Collections.unmodifiableList(mEntries);
     }
 
-    @Override
-    public void notifyDataSetChanged() {
+    public void refreshSessionList() {
+        List<SessionHierarchyRow> previousRows = mRows;
         rebuildRows();
-        super.notifyDataSetChanged();
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
+            new SessionRowDiffCallback(previousRows, mRows), true);
+        diffResult.dispatchUpdatesTo(this);
+    }
+
+    public void dispatchRelativeTimeTick() {
+        for (int position = 0; position < mRows.size(); position++) {
+            if (mRows.get(position).getType() == SessionHierarchyRow.Type.SESSION) {
+                notifyItemChanged(position, RELATIVE_TIME_PAYLOAD);
+            }
+        }
+    }
+
+    private static final class SessionRowDiffCallback extends DiffUtil.Callback {
+
+        private final List<SessionHierarchyRow> previousRows;
+        private final List<SessionHierarchyRow> currentRows;
+
+        SessionRowDiffCallback(@NonNull List<SessionHierarchyRow> previousRows,
+                               @NonNull List<SessionHierarchyRow> currentRows) {
+            this.previousRows = previousRows;
+            this.currentRows = currentRows;
+        }
+
+        @Override
+        public int getOldListSize() {
+            return previousRows.size();
+        }
+
+        @Override
+        public int getNewListSize() {
+            return currentRows.size();
+        }
+
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            return sameRowIdentity(previousRows.get(oldItemPosition), currentRows.get(newItemPosition));
+        }
+
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            return false;
+        }
+    }
+
+    static boolean sameRowIdentity(@NonNull SessionHierarchyRow firstRow, @NonNull SessionHierarchyRow secondRow) {
+        if (firstRow.getType() != secondRow.getType()) {
+            return false;
+        }
+        if (firstRow.getType() == SessionHierarchyRow.Type.SESSION) {
+            return firstRow.getSessionIndex() == secondRow.getSessionIndex();
+        }
+        return TextUtils.equals(firstRow.getLabel(), secondRow.getLabel());
     }
 
     private List<SessionHierarchyRow> buildAllRows() {
@@ -262,7 +319,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return;
         }
         preferences.toggleSessionDisabled(sessionName);
-        notifyDataSetChanged();
+        refreshSessionList();
     }
 
     private void hideSession(@Nullable String sessionName) {
@@ -274,7 +331,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             return;
         }
         preferences.setSessionDisabled(sessionName, true);
-        notifyDataSetChanged();
+        refreshSessionList();
     }
 
     @NonNull
@@ -444,7 +501,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             }
         }
         persistCollapsedProjectKeys();
-        notifyDataSetChanged();
+        refreshSessionList();
     }
 
     public void applyProjectActionTokens(@NonNull List<ProjectActionToken> projectActionTokens) {
@@ -501,7 +558,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
             mCollapsedProjectKeys.add(projectKey);
         }
         persistCollapsedProjectKeys();
-        notifyDataSetChanged();
+        refreshSessionList();
     }
 
     private boolean isGrouped() {
@@ -509,23 +566,28 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @Override
-    public int getCount() {
+    public int getItemCount() {
         return mRows.size();
     }
 
     @Override
-    public Object getItem(int position) {
-        return mRows.get(position);
-    }
-
-    @Override
     public long getItemId(int position) {
-        return position;
+        return rowItemId(mRows.get(position));
     }
 
-    @Override
-    public int getViewTypeCount() {
-        return VIEW_TYPE_COUNT;
+    static long rowItemId(@NonNull SessionHierarchyRow row) {
+        switch (row.getType()) {
+            case PROJECT_HEADER:
+                return PROJECT_HEADER_ITEM_ID_NAMESPACE | labelIdentityHash(row.getLabel());
+            case STORY_HEADER:
+                return HEADER_ITEM_ID_NAMESPACE | labelIdentityHash(row.getLabel());
+            default:
+                return row.getSessionIndex();
+        }
+    }
+
+    private static long labelIdentityHash(@Nullable String label) {
+        return (label == null ? 0 : label.hashCode()) & 0xFFFF_FFFFL;
     }
 
     @Override
@@ -540,76 +602,93 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
     }
 
+    @NonNull
     @Override
-    public boolean areAllItemsEnabled() {
-        return false;
+    public SessionRowViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        LayoutInflater inflater = mActivity.getLayoutInflater();
+        switch (viewType) {
+            case VIEW_TYPE_PROJECT_HEADER:
+                SessionRowViewHolder projectHeaderViewHolder = new SessionRowViewHolder(
+                    inflater.inflate(R.layout.item_terminal_sessions_project_header, parent, false));
+                projectHeaderViewHolder.itemView.setOnClickListener(
+                    view -> onProjectHeaderRowClicked(projectHeaderViewHolder.getBindingAdapterPosition()));
+                return projectHeaderViewHolder;
+            case VIEW_TYPE_STORY_HEADER:
+                return new SessionRowViewHolder(
+                    inflater.inflate(R.layout.item_terminal_sessions_story_header, parent, false));
+            default:
+                SessionRowViewHolder sessionRowViewHolder = new SessionRowViewHolder(
+                    inflater.inflate(R.layout.item_terminal_sessions_list, parent, false));
+                bindSessionRowClickHandlers(sessionRowViewHolder);
+                return sessionRowViewHolder;
+        }
     }
 
-    @Override
-    public boolean isEnabled(int position) {
-        return mRows.get(position).getType() != SessionHierarchyRow.Type.STORY_HEADER;
+    private void bindSessionRowClickHandlers(@NonNull SessionRowViewHolder sessionRowViewHolder) {
+        sessionRowViewHolder.itemView.setOnClickListener(
+            view -> onSessionRowClicked(sessionRowViewHolder.getBindingAdapterPosition()));
+        sessionRowViewHolder.itemView.setOnLongClickListener(
+            view -> onSessionRowLongClicked(sessionRowViewHolder.getBindingAdapterPosition()));
     }
 
     @SuppressLint("SetTextI18n")
-    @NonNull
     @Override
-    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-        SessionHierarchyRow row = mRows.get(position);
-        View rowView = buildRowView(row, reusableConvertViewForPosition(convertView, position), parent, position);
-        rowView.setTag(R.id.session_row_view_type_tag, getItemViewType(position));
-        return rowView;
+    public void onBindViewHolder(@NonNull SessionRowViewHolder holder, int position) {
+        bindRowView(mRows.get(position), holder.itemView, position);
     }
 
-    @Nullable
-    private View reusableConvertViewForPosition(@Nullable View convertView, int position) {
-        return isConvertViewTypeCompatible(convertView, getItemViewType(position)) ? convertView : null;
-    }
-
-    static boolean isConvertViewTypeCompatible(@Nullable View convertView, int expectedViewType) {
-        if (convertView == null) {
-            return false;
+    @Override
+    public void onBindViewHolder(@NonNull SessionRowViewHolder holder, int position,
+                                 @NonNull List<Object> payloads) {
+        if (payloads.contains(RELATIVE_TIME_PAYLOAD)) {
+            bindSessionRowTimesOnly(mRows.get(position), holder.itemView);
+            return;
         }
-        Object recordedViewType = convertView.getTag(R.id.session_row_view_type_tag);
-        return recordedViewType instanceof Integer && (Integer) recordedViewType == expectedViewType;
+        super.onBindViewHolder(holder, position, payloads);
     }
 
-    @NonNull
-    private View buildRowView(@NonNull SessionHierarchyRow row, @Nullable View convertView,
-                              @NonNull ViewGroup parent, int position) {
+    private void bindSessionRowTimesOnly(@NonNull SessionHierarchyRow row, @NonNull View sessionRowView) {
+        if (row.getType() != SessionHierarchyRow.Type.SESSION) {
+            return;
+        }
+        int sessionIndex = row.getSessionIndex();
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
+            return;
+        }
+        TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
+        String timestampLine = sessionAtRow == null
+            ? "" : buildTimestampLine(sessionAtRow.mSessionName);
+        bindSessionRowTimes(sessionRowView, timestampLine);
+    }
+
+    static final class SessionRowViewHolder extends RecyclerView.ViewHolder {
+        SessionRowViewHolder(@NonNull View itemView) {
+            super(itemView);
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void bindRowView(@NonNull SessionHierarchyRow row, @NonNull View rowView, int position) {
         switch (row.getType()) {
             case PROJECT_HEADER:
-                View projectHeaderView = getHeaderView(row, convertView, parent,
-                    R.layout.item_terminal_sessions_project_header, R.id.session_project_header_title);
-                bindProjectHeaderTitle(projectHeaderView, row);
-                bindProjectCollapseIndicator(projectHeaderView, row);
-                bindProjectOverviewBrowserIcon(projectHeaderView, row);
-                bindProjectTdpmConsoleIcon(projectHeaderView, row);
-                bindProjectNewIssueIcon(projectHeaderView, row);
-                return projectHeaderView;
+                bindProjectHeaderTitle(rowView, row);
+                bindProjectCollapseIndicator(rowView, row);
+                bindProjectOverviewBrowserIcon(rowView, row);
+                bindProjectTdpmConsoleIcon(rowView, row);
+                bindProjectNewIssueIcon(rowView, row);
+                return;
             case STORY_HEADER:
-                return getHeaderView(row, convertView, parent,
-                    R.layout.item_terminal_sessions_story_header, R.id.session_story_header_title);
+                bindHeaderTitle(rowView, row, R.id.session_story_header_title);
+                return;
             default:
-                return getSessionView(row, convertView, parent, position);
+                bindSessionView(row, rowView, position);
         }
     }
 
-    private View getHeaderView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent,
-                              int layoutResId, int titleViewId) {
-        View headerRowView = inflatedHeaderRowWithTitleView(convertView, parent, layoutResId, titleViewId);
+    private void bindHeaderTitle(@NonNull View headerRowView, @NonNull SessionHierarchyRow row, int titleViewId) {
         TextView headerTitleView = headerRowView.findViewById(titleViewId);
         headerTitleView.setText(row.getLabel());
         headerTitleView.setTextColor(surfacePrimaryTextColor());
-        return headerRowView;
-    }
-
-    @NonNull
-    private View inflatedHeaderRowWithTitleView(@Nullable View convertView, @NonNull ViewGroup parent,
-                                                int layoutResId, int titleViewId) {
-        if (convertView != null && convertView.findViewById(titleViewId) != null) {
-            return convertView;
-        }
-        return mActivity.getLayoutInflater().inflate(layoutResId, parent, false);
     }
 
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
@@ -725,14 +804,7 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     }
 
     @SuppressLint("SetTextI18n")
-    private View getSessionView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent,
-                                int position) {
-        View sessionRowView = convertView;
-        if (sessionRowView == null) {
-            LayoutInflater inflater = mActivity.getLayoutInflater();
-            sessionRowView = inflater.inflate(R.layout.item_terminal_sessions_list, parent, false);
-        }
-
+    private void bindSessionView(@NonNull SessionHierarchyRow row, @NonNull View sessionRowView, int position) {
         applySessionRowGroupDividerVisibility(sessionRowView, position);
 
         TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
@@ -744,12 +816,12 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         int sessionIndex = row.getSessionIndex();
         if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
             sessionTitleView.setText("null session");
-            return sessionRowView;
+            return;
         }
         TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
         if (sessionAtRow == null) {
             sessionTitleView.setText("null session");
-            return sessionRowView;
+            return;
         }
 
         SessionRow sessionRow = SessionRow.rowOrEmpty(mSessionRowsByIndex, sessionIndex);
@@ -826,7 +898,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         sessionTitleView.setTextColor(color);
 
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
-        return sessionRowView;
     }
 
     private void applySessionRowGroupDividerVisibility(@NonNull View sessionRowView, int position) {
@@ -859,26 +930,6 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
         return "";
-    }
-
-    @Override
-    public void updateSessionRowRelativeTimeInPlace(int position, @NonNull View rowView) {
-        if (position < 0 || position >= mRows.size()) {
-            return;
-        }
-        SessionHierarchyRow row = mRows.get(position);
-        if (row.getType() != SessionHierarchyRow.Type.SESSION) {
-            return;
-        }
-        TermuxSession sessionAtRow = sessionAtRowOrNull(row);
-        if (sessionAtRow == null) {
-            return;
-        }
-        TerminalSession terminalSession = sessionAtRow.getTerminalSession();
-        if (terminalSession == null) {
-            return;
-        }
-        bindSessionRowTimes(rowView, buildTimestampLine(terminalSession.mSessionName));
     }
 
     private void bindSessionRowTimes(@NonNull View sessionRowView, @NonNull String timestampLine) {
@@ -983,13 +1034,22 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
     }
 
-    @Override
-    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        SessionHierarchyRow row = mRows.get(position);
-        if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
-            toggleProjectCollapsed(row.getLabel());
+    private void onProjectHeaderRowClicked(int position) {
+        if (!isBoundRowPosition(position)) {
             return;
         }
+        SessionHierarchyRow row = mRows.get(position);
+        if (row.getType() != SessionHierarchyRow.Type.PROJECT_HEADER) {
+            return;
+        }
+        toggleProjectCollapsed(row.getLabel());
+    }
+
+    private void onSessionRowClicked(int position) {
+        if (!isBoundRowPosition(position)) {
+            return;
+        }
+        SessionHierarchyRow row = mRows.get(position);
         if (row.isHeader()) {
             return;
         }
@@ -1003,8 +1063,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
     }
 
-    @Override
-    public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+    private boolean onSessionRowLongClicked(int position) {
+        if (!isBoundRowPosition(position)) {
+            return false;
+        }
         SessionHierarchyRow row = mRows.get(position);
         if (row.isHeader()) {
             return false;
@@ -1015,6 +1077,10 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
         }
         showSessionActionChooser(selectedSession.getTerminalSession());
         return true;
+    }
+
+    private boolean isBoundRowPosition(int position) {
+        return position != RecyclerView.NO_POSITION && position >= 0 && position < mRows.size();
     }
 
     enum SessionAction {
