@@ -5,7 +5,6 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.termux.R;
@@ -16,8 +15,6 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
-import java.util.Arrays;
-
 @RunWith(RobolectricTestRunner.class)
 public class SessionInfoBottomBarsCombinedTest {
 
@@ -25,6 +22,7 @@ public class SessionInfoBottomBarsCombinedTest {
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
     private static final long NOW = 1_000_000_000L;
+    private static final String SESSION_NAME = "claude-main";
     private static final int WIDTH_PIXELS = 300;
 
     @Test
@@ -35,22 +33,23 @@ public class SessionInfoBottomBarsCombinedTest {
         TextView sceneText = root.findViewById(R.id.session_pending_call_to_user_text);
         View bottomContainer = root.findViewById(R.id.session_info_bottom_container);
 
-        bindTimesLine(timesBar, SessionTimesLine.of(
-            NOW - 3L * ONE_HOUR_MILLIS,
-            NOW - 12L * ONE_MINUTE_MILLIS,
-            NOW - 45L * ONE_SECOND_MILLIS,
-            NOW));
-        bindCallToUserScene(root, PendingCallToUserFooterDecision.resolveAll(
-            SessionNewActivityTier.RED,
-            Arrays.asList("needs approval to deploy", "waiting for the secret value")));
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes(SESSION_NAME, NOW - 3L * ONE_HOUR_MILLIS,
+            NOW - 12L * ONE_MINUTE_MILLIS, NOW - 45L * ONE_SECOND_MILLIS);
+        store.recordExplicitCall(SESSION_NAME, NOW, "needs approval to deploy");
+        store.recordExplicitCall(SESSION_NAME, NOW, "waiting for the secret value");
+
+        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, NOW, () -> {
+        });
 
         Assert.assertTrue(isDescendantOf(timesBar, bottomContainer));
         Assert.assertTrue(isDescendantOf(sceneBar, bottomContainer));
         Assert.assertEquals(View.VISIBLE, timesBar.getVisibility());
         Assert.assertEquals(View.VISIBLE, sceneBar.getVisibility());
         Assert.assertEquals("call: 3h  out: 12m  reply: 45s", timesBar.getText().toString());
-        Assert.assertEquals("needs approval to deploy\nwaiting for the secret value",
-            sceneText.getText().toString());
+        Assert.assertEquals("the current-session info area must show only the single most recent "
+                + "call-to-user message, not a pile-up of every unacknowledged reason",
+            "waiting for the secret value", sceneText.getText().toString());
     }
 
     @Test
@@ -61,11 +60,13 @@ public class SessionInfoBottomBarsCombinedTest {
         View sceneBar = root.findViewById(R.id.session_pending_call_to_user_bar);
         View bottomContainer = root.findViewById(R.id.session_info_bottom_container);
 
-        bindTimesLine(timesBar, SessionTimesLine.of(
-            NOW - 5L * ONE_MINUTE_MILLIS, NOW - 5L * ONE_MINUTE_MILLIS, NOW - 5L * ONE_MINUTE_MILLIS,
-            NOW));
-        bindCallToUserScene(root, PendingCallToUserFooterDecision.resolveAll(
-            SessionNewActivityTier.RED, Arrays.asList("approve the pull request merge")));
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes(SESSION_NAME, NOW - 5L * ONE_MINUTE_MILLIS,
+            NOW - 5L * ONE_MINUTE_MILLIS, NOW - 5L * ONE_MINUTE_MILLIS);
+        store.recordExplicitCall(SESSION_NAME, NOW, "approve the pull request merge");
+
+        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, NOW, () -> {
+        });
 
         int timesIndex = childIndexUnder(bottomContainer, timesBar);
         int sceneIndex = childIndexUnder(bottomContainer, sceneBar);
@@ -89,11 +90,15 @@ public class SessionInfoBottomBarsCombinedTest {
             hugeScene.append("call-to-user reason number ").append(entry)
                 .append(" that wraps across several lines of the footer\n");
         }
-        bindTimesLine(timesBar, SessionTimesLine.of(NOW - ONE_MINUTE_MILLIS, NOW, NOW, NOW));
-        bindCallToUserScene(root, PendingCallToUserFooterDecision.resolveAll(
-            SessionNewActivityTier.RED, Arrays.asList(hugeScene.toString())));
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes(SESSION_NAME, NOW - ONE_MINUTE_MILLIS, NOW, null);
+        store.recordExplicitCall(SESSION_NAME, NOW, hugeScene.toString());
+
+        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, NOW, () -> {
+        });
 
         Assert.assertEquals(View.VISIBLE, timesBar.getVisibility());
+        Assert.assertEquals(View.VISIBLE, sceneText.getVisibility());
         Assert.assertTrue(sceneScroll.getMaxScrollHeightPixels() > 0);
 
         sceneScroll.measure(
@@ -105,25 +110,6 @@ public class SessionInfoBottomBarsCombinedTest {
         Assert.assertTrue("the scene content must exceed the capped footer height",
             sceneScroll.getChildAt(0).getMeasuredHeight() > sceneScroll.getMeasuredHeight());
         Assert.assertEquals(Integer.MAX_VALUE, sceneText.getMaxLines());
-    }
-
-    private static void bindTimesLine(TextView timesBar, SessionTimesLine line) {
-        if (line.isVisible()) {
-            timesBar.setText(line.getText());
-            timesBar.setVisibility(View.VISIBLE);
-        } else {
-            timesBar.setText("");
-            timesBar.setVisibility(View.GONE);
-        }
-    }
-
-    private static void bindCallToUserScene(View root, PendingCallToUserFooterDecision decision) {
-        View bar = root.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView text = root.findViewById(R.id.session_pending_call_to_user_text);
-        ImageButton scrollButton =
-            root.findViewById(R.id.session_pending_call_to_user_scroll_button);
-        PendingCallToUserFooterBinder.bind(bar, text, scrollButton, decision, () -> {
-        });
     }
 
     private static int childIndexUnder(View container, View descendant) {

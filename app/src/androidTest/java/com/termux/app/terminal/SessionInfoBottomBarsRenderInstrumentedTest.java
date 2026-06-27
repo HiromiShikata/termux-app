@@ -36,7 +36,7 @@ public class SessionInfoBottomBarsRenderInstrumentedTest {
     private static final String FIRST_REASON = "sample pending message one";
     private static final String SECOND_REASON = "sample pending message two";
     private static final String EXPECTED_TIMES = "call: 3h  out: 12m  reply: 45s";
-    private static final String EXPECTED_SCENE = FIRST_REASON + "\n" + SECOND_REASON;
+    private static final String EXPECTED_SCENE = SECOND_REASON;
 
     @Test
     public void productionBinderRendersSceneAlongsideTimesInTheCurrentSessionInfoArea() throws Exception {
@@ -74,7 +74,9 @@ public class SessionInfoBottomBarsRenderInstrumentedTest {
             assertEquals(View.VISIBLE, timesBar.getVisibility());
             assertEquals(View.VISIBLE, sceneBar.getVisibility());
             assertEquals(EXPECTED_TIMES, timesBar.getText().toString());
-            assertEquals(EXPECTED_SCENE, sceneText.getText().toString());
+            assertEquals("the current-session info area must show only the single most recent "
+                + "call-to-user message, not a pile-up of every unacknowledged reason",
+                EXPECTED_SCENE, sceneText.getText().toString());
 
             Bitmap infoAreaBitmap = drawLaidOutViewToBitmap(bottomContainer);
             assertTrue(infoAreaBitmap.getWidth() > 0 && infoAreaBitmap.getHeight() > 0);

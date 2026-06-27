@@ -49,10 +49,22 @@ public class SessionInfoBottomBarsProductionRenderTest {
         Assert.assertEquals(View.VISIBLE, timesBar.getVisibility());
         Assert.assertEquals(View.VISIBLE, sceneBar.getVisibility());
         Assert.assertEquals("call: 3h  out: 12m  reply: 45s", timesBar.getText().toString());
-        Assert.assertEquals("needs approval to deploy\nwaiting for the secret value",
-            sceneText.getText().toString());
+        Assert.assertEquals("the current-session info area must show only the single most recent "
+                + "call-to-user message, never a pile-up of every unacknowledged reason",
+            "waiting for the secret value", sceneText.getText().toString());
         Assert.assertTrue(isDescendantOf(timesBar, bottomContainer));
         Assert.assertTrue(isDescendantOf(sceneBar, bottomContainer));
+    }
+
+    @Test
+    public void callToUserSceneTextIsRenderedSmallerThanTheTimesLine() {
+        View root = inflateActivityLayout();
+        TextView sceneText = root.findViewById(R.id.session_pending_call_to_user_text);
+        TextView timesBar = root.findViewById(R.id.session_last_reply_bar);
+
+        Assert.assertTrue("the call-to-user scene text in the current-session info area must be "
+                + "smaller than the call/out/reply times line so it no longer dominates the area",
+            sceneText.getTextSize() < timesBar.getTextSize());
     }
 
     @Test

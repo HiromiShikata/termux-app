@@ -46,17 +46,17 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
     public GrantPermissionRule writeExternalStoragePermissionRule =
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-    private static String taggedOutputWithOlderStatuslineReply() {
+    private static String taggedOutputWithSameSecondStatuslineReply() {
         Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
         int secondsSinceMidnight = calendar.get(Calendar.HOUR_OF_DAY) * 3600
             + calendar.get(Calendar.MINUTE) * 60 + calendar.get(Calendar.SECOND);
-        int replySecondsSinceMidnight = Math.max(0, secondsSinceMidnight - 120);
-        String replyClock = String.format(Locale.US, "%02d:%02d:%02d",
-            replySecondsSinceMidnight / 3600, (replySecondsSinceMidnight % 3600) / 60,
-            replySecondsSinceMidnight % 60);
+        String sameSecondClock = String.format(Locale.US, "%02d:%02d:%02d",
+            secondsSinceMidnight / 3600, (secondsSinceMidnight % 3600) / 60,
+            secondsSinceMidnight % 60);
         return "build finished\r\n"
             + "<call-to-user>" + REASON + "</call-to-user>\r\n"
-            + "claude  out:" + replyClock + "  reply:" + replyClock + "\r\n";
+            + "claude  call:" + sameSecondClock + "  out:" + sameSecondClock
+            + "  reply:" + sameSecondClock + "\r\n";
     }
 
     @Test
@@ -91,7 +91,8 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
 
             TerminalEmulator emulator = session.getEmulator();
             assertNotNull(emulator);
-            byte[] bytes = taggedOutputWithOlderStatuslineReply().getBytes(StandardCharsets.UTF_8);
+            byte[] bytes =
+                taggedOutputWithSameSecondStatuslineReply().getBytes(StandardCharsets.UTF_8);
             emulator.append(bytes, bytes.length);
 
             client.onTextChanged(session);

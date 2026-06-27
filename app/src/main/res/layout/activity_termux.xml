@@ -342,7 +342,7 @@
                         android:paddingEnd="2dp"
                         android:paddingVertical="2dp"
                         android:textColor="@color/session_explicit_call_reason_text"
-                        android:textSize="9sp" />
+                        android:textSize="7sp" />
                 </com.termux.app.terminal.MaxHeightScrollView>
 
                 <ImageButton

@@ -48,14 +48,44 @@ public class CallToUserSceneStatuslineInteractionTest {
         replayStatuslineForVisibleScreen(store,
             statuslineWithReplyClock(replyClockMillis, timeZone), nowMillis, timeZone);
 
-        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolveAll(
-            store.tierFor(SESSION), store.getUnacknowledgedCallReasons(SESSION));
+        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
+            store.tierFor(SESSION), mostRecentReason(store));
 
         Assert.assertEquals("the unacknowledged reason recorded by the call-to-user scan must remain "
                 + "pending when only an older statusline reply clock token, not a real user reply newer "
                 + "than the call, is present", 1, store.getUnacknowledgedCallReasons(SESSION).size());
         Assert.assertTrue("the scene must stay visible after an older statusline reply token is parsed "
             + "in the same render that detected a fresh call-to-user tag", decision.isVisible());
+        Assert.assertEquals(REASON, decision.getReportText());
+    }
+
+    @Test
+    public void sceneSurvivesAStatuslineReplyTokenAtTheSameWholeSecondAsTheCallAfterReload() {
+        InMemorySessionNewActivityPersistence persistence =
+            new InMemorySessionNewActivityPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+
+        long callTagMillis = 12L * 60L * 60L * 1000L + 30L * 1000L + 700L;
+        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason) ->
+            store.recordExplicitCall(sessionKey, callTagMillis, reason));
+        controller.onSessionTextChanged(SESSION,
+            "build finished\n<call-to-user>" + REASON + "</call-to-user>");
+
+        long callWholeSecondMillis = 12L * 60L * 60L * 1000L + 30L * 1000L;
+        store.recordStatuslineTimes(SESSION, callWholeSecondMillis, callWholeSecondMillis, null);
+
+        SessionNewActivityStore reloadedStore = new SessionNewActivityStore(persistence);
+        reloadedStore.recordStatuslineTimes(SESSION, null, null, callWholeSecondMillis);
+
+        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
+            reloadedStore.tierFor(SESSION), mostRecentReason(reloadedStore));
+
+        Assert.assertEquals("a coarse statusline reply clock at the same whole second as the call "
+                + "must not dismiss the pending scene, because it cannot prove a real reply happened "
+                + "after the agent called", 1,
+            reloadedStore.getUnacknowledgedCallReasons(SESSION).size());
+        Assert.assertEquals(SessionNewActivityTier.RED, reloadedStore.tierFor(SESSION));
+        Assert.assertTrue(decision.isVisible());
         Assert.assertEquals(REASON, decision.getReportText());
     }
 
@@ -78,5 +108,10 @@ public class CallToUserSceneStatuslineInteractionTest {
 
         Assert.assertTrue("a statusline reply genuinely newer than the call-to-user scan time must "
             + "acknowledge the pending reason", store.getUnacknowledgedCallReasons(SESSION).isEmpty());
+    }
+
+    private static String mostRecentReason(SessionNewActivityStore store) {
+        java.util.List<String> reasons = store.getUnacknowledgedCallReasons(SESSION);
+        return reasons.isEmpty() ? null : reasons.get(reasons.size() - 1);
     }
 }

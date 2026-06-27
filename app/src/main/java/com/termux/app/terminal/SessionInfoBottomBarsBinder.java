@@ -9,6 +9,8 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 
+import java.util.List;
+
 public final class SessionInfoBottomBarsBinder {
 
     private SessionInfoBottomBarsBinder() {
@@ -70,9 +72,19 @@ public final class SessionInfoBottomBarsBinder {
             @Nullable SessionNewActivityStore store,
             @Nullable String sessionName) {
         if (store == null || sessionName == null) {
-            return PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.NONE, null);
+            return PendingCallToUserFooterDecision.resolve(SessionNewActivityTier.NONE, null);
         }
-        return PendingCallToUserFooterDecision.resolveAll(
-            store.tierFor(sessionName), store.getUnacknowledgedCallReasons(sessionName));
+        return PendingCallToUserFooterDecision.resolve(
+            store.tierFor(sessionName), mostRecentUnacknowledgedReason(store, sessionName));
+    }
+
+    @Nullable
+    private static String mostRecentUnacknowledgedReason(@NonNull SessionNewActivityStore store,
+                                                         @NonNull String sessionName) {
+        List<String> reasons = store.getUnacknowledgedCallReasons(sessionName);
+        if (reasons.isEmpty()) {
+            return null;
+        }
+        return reasons.get(reasons.size() - 1);
     }
 }
