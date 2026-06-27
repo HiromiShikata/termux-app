@@ -15,18 +15,29 @@ public class BrowserUserAgentTest {
     }
 
     @Test
-    public void resolvesDefaultUserAgentWhenDesktopModeDisabled() {
-        Assert.assertEquals(DEFAULT_USER_AGENT,
+    public void resolvesCleanMobileUserAgentWhenDesktopModeDisabled() {
+        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
             BrowserUserAgent.resolve(false, DEFAULT_USER_AGENT));
     }
 
     @Test
-    public void resolvesNullDefaultUserAgentWhenDesktopModeDisabled() {
-        Assert.assertNull(BrowserUserAgent.resolve(false, null));
+    public void resolvesCleanMobileUserAgentWhenDesktopModeDisabledAndDefaultIsNull() {
+        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
+            BrowserUserAgent.resolve(false, null));
     }
 
     @Test
-    public void desktopUserAgentDoesNotAdvertiseMobile() {
+    public void mobileUserAgentAdvertisesChromeOnAndroidWithoutWebViewMarker() {
+        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Chrome/"));
+        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Android"));
+        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Mobile"));
+        Assert.assertFalse(BrowserUserAgent.MOBILE_USER_AGENT.contains("wv"));
+        Assert.assertFalse(BrowserUserAgent.MOBILE_USER_AGENT.contains("Version/4.0"));
+    }
+
+    @Test
+    public void desktopUserAgentAdvertisesChromeWithoutWebViewMarker() {
+        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/"));
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Mobile"));
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Android"));
         Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("wv"));
@@ -71,10 +82,11 @@ public class BrowserUserAgentTest {
     }
 
     @Test
-    public void resolveReturnsNormalizedDefaultWhenDesktopModeDisabled() {
-        String mDefaultUserAgent = BrowserUserAgent.normalizeDefault(
-            "Mozilla/5.0 (Linux; Android 13; Pixel; wv) AppleWebKit/537.36 Mobile Safari/537.36");
-        Assert.assertEquals(mDefaultUserAgent, BrowserUserAgent.resolve(false, mDefaultUserAgent));
-        Assert.assertFalse(BrowserUserAgent.resolve(false, mDefaultUserAgent).contains("wv"));
+    public void resolveIgnoresWebViewMarkedDefaultAndReturnsCleanMobileUserAgent() {
+        String webViewDefaultUserAgent =
+            "Mozilla/5.0 (Linux; Android 13; Pixel; wv) AppleWebKit/537.36 Mobile Safari/537.36";
+        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
+            BrowserUserAgent.resolve(false, webViewDefaultUserAgent));
+        Assert.assertFalse(BrowserUserAgent.resolve(false, webViewDefaultUserAgent).contains("wv"));
     }
 }
