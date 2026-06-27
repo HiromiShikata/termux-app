@@ -50,11 +50,12 @@ jobs:
           profile: pixel
           script: |
             mkdir -p instrumentation-screenshots
-            ./gradlew :app:connectedDebugAndroidTest
-            status=$?
+            status=0
+            ./gradlew :app:connectedDebugAndroidTest || status=$?
             adb pull /sdcard/termux-instrumentation-screenshots instrumentation-screenshots || true
             adb pull /sdcard/session-info-area-scan-render.png instrumentation-screenshots/ || true
             adb pull /sdcard/session-info-area-scene-render.png instrumentation-screenshots/ || true
+            ls -la instrumentation-screenshots || true
             exit $status
 
       - name: Upload rendered instrumentation screenshots
