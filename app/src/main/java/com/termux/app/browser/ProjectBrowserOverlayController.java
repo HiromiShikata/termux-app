@@ -23,6 +23,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
@@ -580,11 +581,16 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
     }
 
     private void show() {
+        hideSessionBottomSheetIfShowing();
         mVisible = true;
         mOverlayContainer.setVisibility(View.VISIBLE);
         WebView displayedWebView = mWebViewHost.getDisplayedWebView();
         if (displayedWebView != null) displayedWebView.requestFocus();
         updateOverviewActionsVisibility();
+    }
+
+    private void hideSessionBottomSheetIfShowing() {
+        SessionListBottomSheetController.hideIfPresent(mActivity.getSessionListBottomSheetController());
     }
 
     public void hide() {
