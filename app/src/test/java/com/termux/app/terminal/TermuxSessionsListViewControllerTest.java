@@ -316,6 +316,31 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void sessionRowTimesStartPaddingMatchesTheTitleTextStartByAddingTheBellIconWidthAndPadding() {
+        int titleStartPaddingPx = 18;
+        int bellIconWidthPx = 48;
+        int bellIconPaddingPx = 12;
+
+        int timesStartPaddingPx = TermuxSessionsListViewController.sessionRowTimesStartPaddingPx(
+            titleStartPaddingPx, bellIconWidthPx, bellIconPaddingPx);
+
+        Assert.assertEquals(titleStartPaddingPx + bellIconWidthPx + bellIconPaddingPx, timesStartPaddingPx);
+    }
+
+    @Test
+    public void aligningSessionRowTimesSetsItsStartPaddingWhilePreservingTheEndAndVerticalPadding() {
+        android.widget.TextView timesView = new android.widget.TextView(RuntimeEnvironment.getApplication());
+        timesView.setPaddingRelative(6, 1, 9, 4);
+
+        TermuxSessionsListViewController.alignSessionRowTimesStartWithTitleText(timesView, 30);
+
+        Assert.assertEquals(30, timesView.getPaddingStart());
+        Assert.assertEquals(9, timesView.getPaddingEnd());
+        Assert.assertEquals(1, timesView.getPaddingTop());
+        Assert.assertEquals(4, timesView.getPaddingBottom());
+    }
+
+    @Test
     public void currentSessionRowShowsTheAccentColoredIndicatorBar() {
         View activeIndicatorBar = new View(RuntimeEnvironment.getApplication());
         int accentColor = 0xFF8AB4C8;
