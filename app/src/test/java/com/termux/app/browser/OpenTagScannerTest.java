@@ -94,6 +94,49 @@ public class OpenTagScannerTest {
     }
 
     @Test
+    public void opensABareUrlThatIsTheSoleContentOfItsOwnLine() {
+        OpenTagScanner scanner = new OpenTagScanner();
+        assertEquals(List.of("https://example.com/bare"),
+            scanner.urlsToOpen("running\nhttps://example.com/bare\ndone\n"));
+    }
+
+    @Test
+    public void doesNotOpenABareUrlEmbeddedInASentenceOrLogLine() {
+        OpenTagScanner scanner = new OpenTagScanner();
+        assertTrue(scanner.urlsToOpen("Open https://example.com/page now\n").isEmpty());
+        assertTrue(scanner.urlsToOpen("INFO fetched https://example.com/api ok\n").isEmpty());
+    }
+
+    @Test
+    public void deduplicatesAlreadyOpenedBareUrlOnRedraw() {
+        OpenTagScanner scanner = new OpenTagScanner();
+        String output = "task\nhttps://example.com/bare\n";
+
+        assertEquals(1, scanner.urlsToOpen(output).size());
+        assertTrue(scanner.urlsToOpen(output).isEmpty());
+    }
+
+    @Test
+    public void stillDetectsTaggedUrlsAlongsideBareUrlDetection() {
+        OpenTagScanner scanner = new OpenTagScanner();
+        List<String> opened = scanner.urlsToOpen(
+            "<open>https://example.com/tagged</open>\nhttps://example.com/bare\n");
+
+        assertEquals(2, opened.size());
+        assertEquals("https://example.com/tagged", opened.get(0));
+        assertEquals("https://example.com/bare", opened.get(1));
+    }
+
+    @Test
+    public void doesNotOpenTheSameUrlTwiceWhenItAppearsBothTaggedAndBare() {
+        OpenTagScanner scanner = new OpenTagScanner();
+        List<String> opened = scanner.urlsToOpen(
+            "<open>https://example.com/dup</open>\nhttps://example.com/dup\n");
+
+        assertEquals(List.of("https://example.com/dup"), opened);
+    }
+
+    @Test
     public void doesNotReOpenAnAlreadyOpenedUrlThatRemainsInScrollbackWhenMoreOutputArrives() {
         OpenTagScanner scanner = new OpenTagScanner();
 

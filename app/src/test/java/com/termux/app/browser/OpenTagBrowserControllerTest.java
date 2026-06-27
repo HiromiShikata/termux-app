@@ -174,6 +174,66 @@ public class OpenTagBrowserControllerTest {
     }
 
     @Test
+    public void opensABareUrlAloneOnItsOwnLineIntoTheProducingSession() {
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "running task\n" + URL_A + "\ndone\n");
+
+        Assert.assertEquals(1, opener.opens.size());
+        Assert.assertEquals(SESSION_A_HANDLE, opener.opens.get(0).sessionHandle);
+        Assert.assertEquals(URL_A, opener.opens.get(0).url);
+    }
+
+    @Test
+    public void doesNotOpenABareUrlEmbeddedInASentence() {
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "please open " + URL_A + " to continue\n");
+
+        Assert.assertTrue(opener.opens.isEmpty());
+    }
+
+    @Test
+    public void doesNotReopenTheSameBareUrlForTheSameSessionOnSubsequentScreenUpdates() {
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, URL_A + "\n");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, URL_A + "\nmore output\n");
+
+        Assert.assertEquals(1, opener.opens.size());
+        Assert.assertEquals(URL_A, opener.opens.get(0).url);
+    }
+
+    @Test
+    public void routesEachSessionsBareUrlToItsOwnProducingSession() {
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "log\n" + URL_A + "\n");
+        controller.onSessionTextChanged(SESSION_B_HANDLE, "log\n" + URL_B + "\n");
+
+        Assert.assertEquals(2, opener.opens.size());
+        Assert.assertEquals(SESSION_A_HANDLE, opener.opens.get(0).sessionHandle);
+        Assert.assertEquals(URL_A, opener.opens.get(0).url);
+        Assert.assertEquals(SESSION_B_HANDLE, opener.opens.get(1).sessionHandle);
+        Assert.assertEquals(URL_B, opener.opens.get(1).url);
+    }
+
+    @Test
+    public void doesNotOpenABareUrlWhenAutoOpenDisabled() {
+        preferences.setOpenTagAutoOpenEnabled(false);
+        RecordingUrlOpener opener = new RecordingUrlOpener();
+        OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
+
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "log\n" + URL_A + "\n");
+
+        Assert.assertTrue(opener.opens.isEmpty());
+    }
+
+    @Test
     public void doesNotOpenWhenAutoOpenDisabled() {
         preferences.setOpenTagAutoOpenEnabled(false);
         RecordingUrlOpener opener = new RecordingUrlOpener();
