@@ -739,7 +739,9 @@ public class SessionNewActivityStoreTest {
 
         Assert.assertEquals(Long.valueOf(3_000L), store.getLastExplicitCallTimeMillis("worker"));
         Assert.assertEquals(Long.valueOf(5_000L), store.getLastOutputActivityTimeMillis("worker"));
-        Assert.assertEquals(Long.valueOf(4_000L), store.getLastUserInputTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(4_000L), store.getStatuslineReplyTimeMillis("worker"));
+        Assert.assertNull("the statusline reply must stay in its own map and must never be written "
+            + "into the app-captured input time", store.getLastUserInputTimeMillis("worker"));
     }
 
     @Test
