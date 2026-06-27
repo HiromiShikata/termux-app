@@ -173,7 +173,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
                     mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
                     return;
                 }
-                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(sessionName);
+                mActivity.getTermuxTerminalSessionClient().addNewSessionForBrowserUrl(sessionName);
             }
 
             @Override
@@ -414,7 +414,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
 
             @Override
             public void createSessionForLink(@NonNull String linkUrl) {
-                mActivity.getTermuxTerminalSessionClient().addNewSessionApplyingAutosshConfig(linkUrl);
+                mActivity.getTermuxTerminalSessionClient().addNewSessionForBrowserUrl(linkUrl);
             }
         }).attach();
 
