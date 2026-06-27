@@ -42,6 +42,9 @@ public final class SessionNewActivityState {
     @Nullable
     private final Long mStatuslineReplyTimeMillis;
 
+    @Nullable
+    private final Integer mSubagentCount;
+
     public SessionNewActivityState(@NonNull String sessionName,
                                    @Nullable Long lastOutputActivityTimeMillis,
                                    @Nullable Long lastExplicitCallTimeMillis,
@@ -74,7 +77,7 @@ public final class SessionNewActivityState {
                                    @Nullable List<String> acknowledgedCallReasons) {
         this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
             lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis,
-            unacknowledgedCallReasons, acknowledgedCallReasons, null, null, null);
+            unacknowledgedCallReasons, acknowledgedCallReasons, null, null, null, null);
     }
 
     public SessionNewActivityState(@NonNull String sessionName,
@@ -88,6 +91,24 @@ public final class SessionNewActivityState {
                                    @Nullable Long statuslineCallTimeMillis,
                                    @Nullable Long statuslineOutTimeMillis,
                                    @Nullable Long statuslineReplyTimeMillis) {
+        this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
+            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis,
+            unacknowledgedCallReasons, acknowledgedCallReasons, statuslineCallTimeMillis,
+            statuslineOutTimeMillis, statuslineReplyTimeMillis, null);
+    }
+
+    public SessionNewActivityState(@NonNull String sessionName,
+                                   @Nullable Long lastOutputActivityTimeMillis,
+                                   @Nullable Long lastExplicitCallTimeMillis,
+                                   @Nullable String lastExplicitCallReason,
+                                   @Nullable Long lastSeenTimeMillis,
+                                   @Nullable Long lastUserInputTimeMillis,
+                                   @Nullable List<String> unacknowledgedCallReasons,
+                                   @Nullable List<String> acknowledgedCallReasons,
+                                   @Nullable Long statuslineCallTimeMillis,
+                                   @Nullable Long statuslineOutTimeMillis,
+                                   @Nullable Long statuslineReplyTimeMillis,
+                                   @Nullable Integer subagentCount) {
         mSessionName = sessionName;
         mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
         mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
@@ -101,6 +122,7 @@ public final class SessionNewActivityState {
         mStatuslineCallTimeMillis = statuslineCallTimeMillis;
         mStatuslineOutTimeMillis = statuslineOutTimeMillis;
         mStatuslineReplyTimeMillis = statuslineReplyTimeMillis;
+        mSubagentCount = subagentCount;
     }
 
     @NonNull
@@ -156,5 +178,10 @@ public final class SessionNewActivityState {
     @Nullable
     public Long getStatuslineReplyTimeMillis() {
         return mStatuslineReplyTimeMillis;
+    }
+
+    @Nullable
+    public Integer getSubagentCount() {
+        return mSubagentCount;
     }
 }

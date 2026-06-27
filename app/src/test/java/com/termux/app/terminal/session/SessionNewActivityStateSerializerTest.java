@@ -100,6 +100,26 @@ public class SessionNewActivityStateSerializerTest {
     }
 
     @Test
+    public void roundTripPreservesSubagentCount() throws JSONException {
+        List<SessionNewActivityState> states = Arrays.asList(
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, "deploy failed", 3_000L, 4_000L,
+                null, null, 5_000L, 6_000L, 7_000L, 8));
+
+        List<SessionNewActivityState> result = serializer.deserialize(serializer.serialize(states));
+
+        Assert.assertEquals(Integer.valueOf(8), result.get(0).getSubagentCount());
+    }
+
+    @Test
+    public void legacyEntryWithoutSubagentCountDeserializesToNullSubagentCount() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"lastOutputActivityTimeMillis\":1000}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertNull(result.get(0).getSubagentCount());
+    }
+
+    @Test
     public void legacyEntryWithoutStatuslineTimesDeserializesToNullStatuslineTimes() throws JSONException {
         List<SessionNewActivityState> result = serializer.deserialize(
             "[{\"sessionName\":\"legacy\",\"lastOutputActivityTimeMillis\":1000}]");

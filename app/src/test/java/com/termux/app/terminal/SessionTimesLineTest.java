@@ -16,34 +16,47 @@ public class SessionTimesLineTest {
             NOW - 3L * ONE_HOUR_MILLIS,
             NOW - 12L * ONE_MINUTE_MILLIS,
             NOW - 45L * ONE_SECOND_MILLIS,
+            0,
             NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: 3h  out: 12m  reply: 45s", line.getText());
+        Assert.assertEquals("call: 3h  out: 12m  reply: 45s  sub: 0", line.getText());
     }
 
     @Test
     public void showsMoreThanOneDayForAbsentStatuslineValues() {
         SessionTimesLine line = SessionTimesLine.of(
-            null, NOW - 12L * ONE_MINUTE_MILLIS, null, NOW);
+            null, NOW - 12L * ONE_MINUTE_MILLIS, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1 day  out: 12m  reply: >1 day", line.getText());
+        Assert.assertEquals("call: >1 day  out: 12m  reply: >1 day  sub: 0", line.getText());
     }
 
     @Test
     public void showsMoreThanOneDayForAFutureRolledOverTime() {
         SessionTimesLine line = SessionTimesLine.of(
-            NOW + ONE_HOUR_MILLIS, NOW - ONE_MINUTE_MILLIS, NOW, NOW);
+            NOW + ONE_HOUR_MILLIS, NOW - ONE_MINUTE_MILLIS, NOW, 0, NOW);
 
-        Assert.assertEquals("call: >1 day  out: 1m  reply: 0s", line.getText());
+        Assert.assertEquals("call: >1 day  out: 1m  reply: 0s  sub: 0", line.getText());
     }
 
     @Test
     public void staysVisibleAndShowsMoreThanOneDayForEveryValueWhenNoStatuslineTimesAreKnown() {
-        SessionTimesLine line = SessionTimesLine.of(null, null, null, NOW);
+        SessionTimesLine line = SessionTimesLine.of(null, null, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day", line.getText());
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day  sub: 0", line.getText());
+    }
+
+    @Test
+    public void showsTheSubagentCountNextToTheTimes() {
+        SessionTimesLine line = SessionTimesLine.of(
+            NOW - 3L * ONE_HOUR_MILLIS,
+            NOW - 12L * ONE_MINUTE_MILLIS,
+            NOW - 45L * ONE_SECOND_MILLIS,
+            4,
+            NOW);
+
+        Assert.assertEquals("call: 3h  out: 12m  reply: 45s  sub: 4", line.getText());
     }
 }

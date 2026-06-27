@@ -13,6 +13,7 @@ public final class ClaudeStatuslineTimes {
     private static final Pattern CALL_PATTERN = tokenPattern("call");
     private static final Pattern OUT_PATTERN = tokenPattern("out");
     private static final Pattern REPLY_PATTERN = tokenPattern("reply");
+    private static final Pattern SUBAGENT_COUNT_PATTERN = Pattern.compile("\\bSUB:(\\d+)\\b");
 
     @Nullable
     private final Long mCallTimeMillis;
@@ -23,28 +24,38 @@ public final class ClaudeStatuslineTimes {
     @Nullable
     private final Long mReplyTimeMillis;
 
+    private final int mSubagentCount;
+
     private ClaudeStatuslineTimes(@Nullable Long callTimeMillis,
                                   @Nullable Long outTimeMillis,
-                                  @Nullable Long replyTimeMillis) {
+                                  @Nullable Long replyTimeMillis,
+                                  int subagentCount) {
         mCallTimeMillis = callTimeMillis;
         mOutTimeMillis = outTimeMillis;
         mReplyTimeMillis = replyTimeMillis;
+        mSubagentCount = subagentCount;
     }
 
     @NonNull
     public static ClaudeStatuslineTimes parse(@Nullable String screenText, long nowMillis,
                                               @NonNull TimeZone timeZone) {
         if (screenText == null || screenText.isEmpty()) {
-            return new ClaudeStatuslineTimes(null, null, null);
+            return new ClaudeStatuslineTimes(null, null, null, 0);
         }
         return new ClaudeStatuslineTimes(
             absoluteTimeMillis(CALL_PATTERN, screenText, nowMillis, timeZone),
             absoluteTimeMillis(OUT_PATTERN, screenText, nowMillis, timeZone),
-            absoluteTimeMillis(REPLY_PATTERN, screenText, nowMillis, timeZone));
+            absoluteTimeMillis(REPLY_PATTERN, screenText, nowMillis, timeZone),
+            subagentCount(screenText));
     }
 
     public boolean hasAnyToken() {
-        return mCallTimeMillis != null || mOutTimeMillis != null || mReplyTimeMillis != null;
+        return mCallTimeMillis != null || mOutTimeMillis != null || mReplyTimeMillis != null
+            || mSubagentCount > 0;
+    }
+
+    public int getSubagentCount() {
+        return mSubagentCount;
     }
 
     @Nullable
@@ -60,6 +71,19 @@ public final class ClaudeStatuslineTimes {
     @Nullable
     public Long getReplyTimeMillis() {
         return mReplyTimeMillis;
+    }
+
+    private static int subagentCount(@NonNull String screenText) {
+        Matcher matcher = SUBAGENT_COUNT_PATTERN.matcher(screenText);
+        int lastMatch = 0;
+        while (matcher.find()) {
+            try {
+                lastMatch = Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException overflow) {
+                lastMatch = Integer.MAX_VALUE;
+            }
+        }
+        return lastMatch;
     }
 
     @NonNull

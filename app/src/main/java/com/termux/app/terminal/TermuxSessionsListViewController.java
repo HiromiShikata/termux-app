@@ -996,6 +996,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             store.getStatuslineCallTimeMillis(sessionName),
             store.getStatuslineOutTimeMillis(sessionName),
             store.getStatuslineReplyTimeMillis(sessionName),
+            store.getSubagentCount(sessionName),
             nowMillis).getText();
     }
 

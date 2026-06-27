@@ -117,6 +117,36 @@ public class ClaudeStatuslineTimesTest {
     }
 
     @Test
+    public void parsesTheSubagentCountFromTheSubToken() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "model | call:13:45:30 out:13:59:00 reply:13:30:15 SUB:3 | branch";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(3, times.getSubagentCount());
+    }
+
+    @Test
+    public void subagentCountDefaultsToZeroWhenTheSubTokenIsAbsent() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "model | call:13:45:30 out:13:59:00 reply:13:30:15 | branch";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(0, times.getSubagentCount());
+    }
+
+    @Test
+    public void aLoneSubTokenIsParsedAndCountsAsATokenPresence() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse("worker SUB:7 idle", now, UTC);
+
+        Assert.assertTrue(times.hasAnyToken());
+        Assert.assertEquals(7, times.getSubagentCount());
+    }
+
+    @Test
     public void usesTheLastOccurrenceWhenATokenAppearsMultipleTimes() {
         long now = timeMillis(2026, 6, 26, 14, 0, 0);
         String screen = "out:10:00:00 ... refreshed out:13:00:00";

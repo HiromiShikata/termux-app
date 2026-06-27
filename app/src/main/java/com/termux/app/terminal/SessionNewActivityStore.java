@@ -34,6 +34,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mStatuslineCallTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mStatuslineOutTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mStatuslineReplyTimeMillisByName = new HashMap<>();
+    private final Map<String, Integer> mSubagentCountByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -79,6 +80,8 @@ public class SessionNewActivityStore {
                 mStatuslineOutTimeMillisByName.put(state.getSessionName(), state.getStatuslineOutTimeMillis());
             if (state.getStatuslineReplyTimeMillis() != null)
                 mStatuslineReplyTimeMillisByName.put(state.getSessionName(), state.getStatuslineReplyTimeMillis());
+            if (state.getSubagentCount() != null)
+                mSubagentCountByName.put(state.getSessionName(), state.getSubagentCount());
         }
     }
 
@@ -166,9 +169,19 @@ public class SessionNewActivityStore {
                                       @Nullable Long callTimeMillis,
                                       @Nullable Long outTimeMillis,
                                       @Nullable Long replyTimeMillis) {
-        if (statuslineTimesUnchanged(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis)) {
+        recordStatuslineTimes(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis, 0);
+    }
+
+    public void recordStatuslineTimes(@NonNull String sessionName,
+                                      @Nullable Long callTimeMillis,
+                                      @Nullable Long outTimeMillis,
+                                      @Nullable Long replyTimeMillis,
+                                      int subagentCount) {
+        if (statuslineTimesUnchanged(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis,
+            subagentCount)) {
             return;
         }
+        mSubagentCountByName.put(sessionName, subagentCount);
         if (callTimeMillis != null) {
             mStatuslineCallTimeMillisByName.put(sessionName, callTimeMillis);
             mLastExplicitCallTimeMillisByName.put(sessionName, callTimeMillis);
@@ -190,7 +203,12 @@ public class SessionNewActivityStore {
     private boolean statuslineTimesUnchanged(@NonNull String sessionName,
                                              @Nullable Long callTimeMillis,
                                              @Nullable Long outTimeMillis,
-                                             @Nullable Long replyTimeMillis) {
+                                             @Nullable Long replyTimeMillis,
+                                             int subagentCount) {
+        Integer storedSubagentCount = mSubagentCountByName.get(sessionName);
+        if (storedSubagentCount == null || storedSubagentCount != subagentCount) {
+            return false;
+        }
         if (!sameStoredStatuslineValue(mStatuslineCallTimeMillisByName.get(sessionName), callTimeMillis)) {
             return false;
         }
@@ -270,6 +288,7 @@ public class SessionNewActivityStore {
         mStatuslineCallTimeMillisByName.remove(sessionName);
         mStatuslineOutTimeMillisByName.remove(sessionName);
         mStatuslineReplyTimeMillisByName.remove(sessionName);
+        mSubagentCountByName.remove(sessionName);
         save();
     }
 
@@ -285,6 +304,7 @@ public class SessionNewActivityStore {
         changed |= mStatuslineCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mStatuslineOutTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mStatuslineReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mSubagentCountByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
@@ -351,6 +371,11 @@ public class SessionNewActivityStore {
     @Nullable
     public Long getStatuslineReplyTimeMillis(@NonNull String sessionName) {
         return mStatuslineReplyTimeMillisByName.get(sessionName);
+    }
+
+    public int getSubagentCount(@NonNull String sessionName) {
+        Integer count = mSubagentCountByName.get(sessionName);
+        return count == null ? 0 : count;
     }
 
     @NonNull
@@ -464,6 +489,7 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mStatuslineCallTimeMillisByName.keySet());
         sessionNames.addAll(mStatuslineOutTimeMillisByName.keySet());
         sessionNames.addAll(mStatuslineReplyTimeMillisByName.keySet());
+        sessionNames.addAll(mSubagentCountByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
@@ -478,7 +504,8 @@ public class SessionNewActivityStore {
                 acknowledgedReasons == null ? null : new ArrayList<>(acknowledgedReasons),
                 mStatuslineCallTimeMillisByName.get(sessionName),
                 mStatuslineOutTimeMillisByName.get(sessionName),
-                mStatuslineReplyTimeMillisByName.get(sessionName)));
+                mStatuslineReplyTimeMillisByName.get(sessionName),
+                mSubagentCountByName.get(sessionName)));
         }
         mPersistence.save(states);
         if (mOnChangeListener != null) {
