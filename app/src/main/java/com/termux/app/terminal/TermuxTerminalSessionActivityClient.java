@@ -860,11 +860,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void killHostSession(final TerminalSession sessionToKill) {
         if (sessionToKill == null) return;
 
-        String killCommand = HostTmuxSessionKillCommand.forSessionName(sessionToKill.mSessionName);
-        if (killCommand != null) {
-            sessionToKill.write(killCommand);
-        }
-        deleteSession(sessionToKill);
+        HostTmuxSessionKiller.kill(new HostTmuxSessionKiller.Target() {
+            @Override
+            public void writeKillCommand(String killCommand) {
+                sessionToKill.write(killCommand);
+            }
+
+            @Override
+            public void finishLocalSession() {
+                deleteSession(sessionToKill);
+            }
+        }, sessionToKill.mSessionName, mMainThreadHandler::postDelayed);
     }
 
     private void renameSession(TerminalSession sessionToRename, String text) {
