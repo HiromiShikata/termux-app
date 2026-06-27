@@ -1,5 +1,7 @@
 package com.termux.app.browser;
 
+import android.content.Context;
+import android.webkit.ValueCallback;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
@@ -16,6 +18,31 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 public class BrowserCoreWebViewClientTest {
+
+    private static final String PROJECT_BOARD_URL =
+        "https://github.com/orgs/example/projects/12";
+
+    private static final class RecordingWebView extends WebView {
+
+        final List<String> injectedScripts = new ArrayList<>();
+
+        RecordingWebView(Context context) {
+            super(context);
+        }
+
+        @Override
+        public void evaluateJavascript(String script, @Nullable ValueCallback<String> resultCallback) {
+            injectedScripts.add(script);
+        }
+
+        boolean injectedMobileViewport() {
+            return injectedScripts.contains(BrowserMobileViewport.INJECTION_SCRIPT);
+        }
+
+        boolean injectedDesktopViewport() {
+            return injectedScripts.contains(BrowserDesktopViewport.INJECTION_SCRIPT);
+        }
+    }
 
     private static final class RecordingHost implements BrowserCoreWebViewClient.Host {
 
@@ -66,6 +93,10 @@ public class BrowserCoreWebViewClientTest {
         return new WebView(RuntimeEnvironment.getApplication());
     }
 
+    private RecordingWebView newRecordingWebView() {
+        return new RecordingWebView(RuntimeEnvironment.getApplication());
+    }
+
     @Test
     public void inheritsHttpAuthHandling() {
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new RecordingHost());
@@ -110,5 +141,43 @@ public class BrowserCoreWebViewClientTest {
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
         client.onReceivedError(newWebView(), -2, "net error", "https://example.com/");
         Assert.assertTrue(host.events.contains("error"));
+    }
+
+    @Test
+    public void projectBoardUsesDeviceWidthMobileViewportEvenWhenTabIsDesktop() {
+        RecordingHost host = new RecordingHost();
+        host.viewMode = BrowserViewMode.DESKTOP;
+        host.injectMobileViewport = false;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        RecordingWebView webView = newRecordingWebView();
+        client.onPageStarted(webView, PROJECT_BOARD_URL, null);
+        client.onPageCommitVisible(webView, PROJECT_BOARD_URL);
+        client.onPageFinished(webView, PROJECT_BOARD_URL);
+        Assert.assertTrue(webView.injectedMobileViewport());
+        Assert.assertFalse(webView.injectedDesktopViewport());
+    }
+
+    @Test
+    public void projectBoardUsesDeviceWidthMobileViewportInMobileTab() {
+        RecordingHost host = new RecordingHost();
+        host.viewMode = BrowserViewMode.MOBILE;
+        host.injectMobileViewport = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        RecordingWebView webView = newRecordingWebView();
+        client.onPageFinished(webView, PROJECT_BOARD_URL);
+        Assert.assertTrue(webView.injectedMobileViewport());
+        Assert.assertFalse(webView.injectedDesktopViewport());
+    }
+
+    @Test
+    public void nonBoardDesktopTabStillUsesDesktopViewport() {
+        RecordingHost host = new RecordingHost();
+        host.viewMode = BrowserViewMode.DESKTOP;
+        host.injectMobileViewport = false;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        RecordingWebView webView = newRecordingWebView();
+        client.onPageFinished(webView, "https://example.com/console");
+        Assert.assertTrue(webView.injectedDesktopViewport());
+        Assert.assertFalse(webView.injectedMobileViewport());
     }
 }
