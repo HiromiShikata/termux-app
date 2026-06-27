@@ -26,7 +26,8 @@ import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
-import com.termux.app.terminal.session.PreferencesSessionNewActivityPersistence;
+import com.termux.app.terminal.session.FileSessionNewActivityPersistence;
+import com.termux.app.terminal.session.SessionNewActivityPreferencesToCacheMigration;
 import com.termux.app.terminal.session.SessionNewActivityStateStore;
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
 import com.termux.shared.data.IntentUtils;
@@ -55,6 +56,7 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -1110,7 +1112,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (preferences == null)
             return new SessionNewActivityStore();
 
-        SessionNewActivityStateStore store = new SessionNewActivityStateStore() {
+        SessionNewActivityStateStore preferencesStore = new SessionNewActivityStateStore() {
             @Override
             public String getPersistedSessionNewActivityStates() {
                 return preferences.getPersistedSessionNewActivityStates();
@@ -1121,7 +1123,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 preferences.setPersistedSessionNewActivityStates(value);
             }
         };
-        return new SessionNewActivityStore(new PreferencesSessionNewActivityPersistence(store));
+
+        File cacheFile = new File(getCacheDir(), "session_new_activity_states.json");
+        FileSessionNewActivityPersistence persistence = new FileSessionNewActivityPersistence(cacheFile);
+        new SessionNewActivityPreferencesToCacheMigration(preferencesStore, persistence).migrate();
+        return new SessionNewActivityStore(persistence);
     }
 
     @Nullable
