@@ -57,6 +57,11 @@ public class SessionListBottomSheetController {
     private boolean mRelativeTimeRefreshScheduled;
     private boolean mSessionListTouchInProgress;
     private boolean mRelativeTimeRefreshDeferredByTouch;
+    private SessionRowRelativeTimeUpdater mSessionRowRelativeTimeUpdater;
+
+    public interface SessionRowRelativeTimeUpdater {
+        void updateSessionRowRelativeTimeInPlace(int position, @NonNull View rowView);
+    }
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -261,10 +266,14 @@ public class SessionListBottomSheetController {
     }
 
     private void refreshSessionRowsForRelativeTime() {
-        rebindVisibleSessionRowsInPlace(mSessionListView);
+        updateVisibleSessionRowTimesInPlace(mSessionListView, mSessionRowRelativeTimeUpdater);
     }
 
-    static void rebindVisibleSessionRowsInPlace(@NonNull ListView listView) {
+    static void updateVisibleSessionRowTimesInPlace(@NonNull ListView listView,
+                                                    @Nullable SessionRowRelativeTimeUpdater updater) {
+        if (updater == null) {
+            return;
+        }
         Adapter adapter = listView.getAdapter();
         if (adapter == null) {
             return;
@@ -281,7 +290,7 @@ public class SessionListBottomSheetController {
             if (childView == null) {
                 continue;
             }
-            adapter.getView(position, typeCompatibleConvertView(adapter, position, childView), listView);
+            updater.updateSessionRowRelativeTimeInPlace(position, childView);
         }
     }
 
@@ -454,6 +463,7 @@ public class SessionListBottomSheetController {
             return;
         }
         bindSessionListAdapter(mSessionListView, listController);
+        mSessionRowRelativeTimeUpdater = listController;
         listController.setSessionClickHost(this::dismissAfterSessionSelected);
         mSessionListView.setOnItemClickListener(listController);
         mSessionListView.setOnItemLongClickListener(listController);

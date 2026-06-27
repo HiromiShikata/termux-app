@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class TermuxSessionsListViewController extends BaseAdapter implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, SessionListBottomSheetController.SessionRowRelativeTimeUpdater {
 
     private static final int VIEW_TYPE_SESSION = 0;
     private static final int VIEW_TYPE_PROJECT_HEADER = 1;
@@ -859,6 +859,26 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
         return "";
+    }
+
+    @Override
+    public void updateSessionRowRelativeTimeInPlace(int position, @NonNull View rowView) {
+        if (position < 0 || position >= mRows.size()) {
+            return;
+        }
+        SessionHierarchyRow row = mRows.get(position);
+        if (row.getType() != SessionHierarchyRow.Type.SESSION) {
+            return;
+        }
+        TermuxSession sessionAtRow = sessionAtRowOrNull(row);
+        if (sessionAtRow == null) {
+            return;
+        }
+        TerminalSession terminalSession = sessionAtRow.getTerminalSession();
+        if (terminalSession == null) {
+            return;
+        }
+        bindSessionRowTimes(rowView, buildTimestampLine(terminalSession.mSessionName));
     }
 
     private void bindSessionRowTimes(@NonNull View sessionRowView, @NonNull String timestampLine) {
