@@ -72,14 +72,17 @@ public class SessionActivityDotDeviceScreenshotInstrumentedTest {
         Context context = new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordOutputActivity(SESSION_NAME, NOW_MILLIS - NINE_HOURS_MILLIS);
+        // Displayed "out:" is 9h old (statusline out), but raw PTY output keeps arriving right now.
+        // This is the exact owner-reported divergence that previously kept the dot YELLOW.
+        store.recordStatuslineTimes(SESSION_NAME, null, NOW_MILLIS - NINE_HOURS_MILLIS, null);
+        store.recordOutputActivity(SESSION_NAME, NOW_MILLIS - 1_000L);
         store.recordSeen(SESSION_NAME, NOW_MILLIS - NINE_HOURS_MILLIS + 1L);
         SessionNewActivityTier grayTier = TermuxSessionsListViewController
             .newActivityIndicator(store, SESSION_NAME, NOW_MILLIS).getTier();
         assertEquals(SessionNewActivityTier.GRAY, grayTier);
 
         SessionNewActivityStore recentStore = new SessionNewActivityStore();
-        recentStore.recordOutputActivity("recent-session", NOW_MILLIS - 60_000L);
+        recentStore.recordStatuslineTimes("recent-session", null, NOW_MILLIS - 60_000L, null);
         SessionNewActivityTier yellowTier = TermuxSessionsListViewController
             .newActivityIndicator(recentStore, "recent-session", NOW_MILLIS).getTier();
         assertEquals(SessionNewActivityTier.YELLOW, yellowTier);

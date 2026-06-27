@@ -267,11 +267,32 @@ public class SessionNewActivityStore {
     @NonNull
     public SessionNewActivityTier tierFor(@NonNull String sessionName, long nowMillis) {
         return SessionNewActivityTier.resolve(
-            getLastOutputActivityTimeMillis(sessionName),
+            outActivityTimeMillisForDotTier(sessionName),
             getLastExplicitCallTimeMillis(sessionName),
             getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName),
             nowMillis);
+    }
+
+    /**
+     * The output timestamp that drives the colored activity dot's YELLOW/GRAY age tier. The dot the
+     * owner sees sits next to the session's displayed {@code out:} value, which is sourced from the
+     * statusline {@code out} time ({@link #getStatuslineOutTimeMillis}). The dot tier MUST therefore
+     * age off that same timestamp, not off {@link #getLastOutputActivityTimeMillis}: raw PTY output
+     * (terminal noise, background process output) keeps the last-output-activity time fresh through
+     * {@link #recordOutputActivity} independently of the statusline out, so keying the tier off the
+     * raw output time leaves the dot YELLOW for hours after the displayed out went stale (the
+     * reported "out is 9h but the dot is still yellow" defect). When a session has a statusline out
+     * time it is authoritative; sessions that only ever emitted raw output and never a statusline
+     * out fall back to the raw last-output-activity time so their dot still ages normally.
+     */
+    @Nullable
+    Long outActivityTimeMillisForDotTier(@NonNull String sessionName) {
+        Long statuslineOutTimeMillis = getStatuslineOutTimeMillis(sessionName);
+        if (statuslineOutTimeMillis != null) {
+            return statuslineOutTimeMillis;
+        }
+        return getLastOutputActivityTimeMillis(sessionName);
     }
 
     @NonNull

@@ -20,7 +20,7 @@ public final class SessionInfoBottomBarsBinder {
                             long nowMillis,
                             @NonNull Runnable scrollAction) {
         bindTimesLine(root, resolveSessionTimesLine(store, sessionName, nowMillis));
-        bindCallToUserScene(root, resolvePendingCallToUserFooterDecision(store, sessionName, nowMillis),
+        bindCallToUserScene(root, resolvePendingCallToUserFooterDecision(store, sessionName),
             scrollAction);
     }
 
@@ -68,12 +68,11 @@ public final class SessionInfoBottomBarsBinder {
     @NonNull
     private static PendingCallToUserFooterDecision resolvePendingCallToUserFooterDecision(
             @Nullable SessionNewActivityStore store,
-            @Nullable String sessionName,
-            long nowMillis) {
+            @Nullable String sessionName) {
         if (store == null || sessionName == null) {
             return PendingCallToUserFooterDecision.resolveAll(SessionNewActivityTier.NONE, null);
         }
         return PendingCallToUserFooterDecision.resolveAll(
-            store.tierFor(sessionName, nowMillis), store.getUnacknowledgedCallReasons(sessionName));
+            store.tierFor(sessionName), store.getUnacknowledgedCallReasons(sessionName));
     }
 }
