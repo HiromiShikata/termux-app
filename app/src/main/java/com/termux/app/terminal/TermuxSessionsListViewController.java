@@ -555,6 +555,27 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
     @Override
     public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         SessionHierarchyRow row = mRows.get(position);
+        View rowView = buildRowView(row, reusableConvertViewForPosition(convertView, position), parent, position);
+        rowView.setTag(R.id.session_row_view_type_tag, getItemViewType(position));
+        return rowView;
+    }
+
+    @Nullable
+    private View reusableConvertViewForPosition(@Nullable View convertView, int position) {
+        return isConvertViewTypeCompatible(convertView, getItemViewType(position)) ? convertView : null;
+    }
+
+    static boolean isConvertViewTypeCompatible(@Nullable View convertView, int expectedViewType) {
+        if (convertView == null) {
+            return false;
+        }
+        Object recordedViewType = convertView.getTag(R.id.session_row_view_type_tag);
+        return recordedViewType instanceof Integer && (Integer) recordedViewType == expectedViewType;
+    }
+
+    @NonNull
+    private View buildRowView(@NonNull SessionHierarchyRow row, @Nullable View convertView,
+                              @NonNull ViewGroup parent, int position) {
         switch (row.getType()) {
             case PROJECT_HEADER:
                 View projectHeaderView = getHeaderView(row, convertView, parent,
@@ -575,15 +596,20 @@ public class TermuxSessionsListViewController extends BaseAdapter implements Ada
 
     private View getHeaderView(@NonNull SessionHierarchyRow row, View convertView, @NonNull ViewGroup parent,
                               int layoutResId, int titleViewId) {
-        View headerRowView = convertView;
-        if (headerRowView == null) {
-            LayoutInflater inflater = mActivity.getLayoutInflater();
-            headerRowView = inflater.inflate(layoutResId, parent, false);
-        }
+        View headerRowView = inflatedHeaderRowWithTitleView(convertView, parent, layoutResId, titleViewId);
         TextView headerTitleView = headerRowView.findViewById(titleViewId);
         headerTitleView.setText(row.getLabel());
         headerTitleView.setTextColor(surfacePrimaryTextColor());
         return headerRowView;
+    }
+
+    @NonNull
+    private View inflatedHeaderRowWithTitleView(@Nullable View convertView, @NonNull ViewGroup parent,
+                                                int layoutResId, int titleViewId) {
+        if (convertView != null && convertView.findViewById(titleViewId) != null) {
+            return convertView;
+        }
+        return mActivity.getLayoutInflater().inflate(layoutResId, parent, false);
     }
 
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {

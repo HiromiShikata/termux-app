@@ -281,8 +281,17 @@ public class SessionListBottomSheetController {
             if (childView == null) {
                 continue;
             }
-            adapter.getView(position, childView, listView);
+            adapter.getView(position, typeCompatibleConvertView(adapter, position, childView), listView);
         }
+    }
+
+    @Nullable
+    static View typeCompatibleConvertView(@NonNull Adapter adapter, int position, @NonNull View childView) {
+        Object recordedViewType = childView.getTag(R.id.session_row_view_type_tag);
+        if (!(recordedViewType instanceof Integer)) {
+            return childView;
+        }
+        return (Integer) recordedViewType == adapter.getItemViewType(position) ? childView : null;
     }
 
     static boolean isRebindablePosition(int position, int adapterCount) {
