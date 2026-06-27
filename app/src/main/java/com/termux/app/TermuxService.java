@@ -163,6 +163,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         mShellManager = TermuxShellManager.getShellManager();
 
         mSessionNewActivityStore = buildSessionNewActivityStore();
+        setupPendingCallNotificationChannel();
+        mSessionNewActivityStore.setOnChangeListener(store -> updatePendingCallNotification());
+        updatePendingCallNotification();
 
         TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
         if (openTagPreferences != null)
@@ -231,6 +234,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         TermuxShellManager.onAppExit(this);
 
         SystemEventReceiver.unregisterPackageUpdateEvents(this);
+
+        mSessionNewActivityStore.setOnChangeListener(null);
+        NotificationManager notificationManager =
+            (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager != null)
+            notificationManager.cancel(TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_ID);
 
         runStopForeground();
     }
@@ -958,6 +967,44 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         } else {
             ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, buildNotification());
         }
+    }
+
+    private void setupPendingCallNotificationChannel() {
+        NotificationUtils.setupNotificationChannel(this,
+            TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_ID,
+            TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_LOW);
+    }
+
+    private void updatePendingCallNotification() {
+        NotificationManager notificationManager =
+            (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) return;
+        int pendingCallSessionCount = mSessionNewActivityStore.pendingCallToUserSessionCount();
+        if (pendingCallSessionCount <= 0) {
+            notificationManager.cancel(TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_ID);
+            return;
+        }
+        Notification pendingCallNotification = buildPendingCallNotification(pendingCallSessionCount);
+        if (pendingCallNotification == null) return;
+        notificationManager.notify(TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_ID, pendingCallNotification);
+    }
+
+    @Nullable
+    private Notification buildPendingCallNotification(int pendingCallSessionCount) {
+        Intent notificationIntent = TermuxActivity.newInstance(this);
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+        Notification.Builder builder = NotificationUtils.geNotificationBuilder(this,
+            TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_ID, Notification.PRIORITY_DEFAULT,
+            String.valueOf(pendingCallSessionCount), null, null,
+            contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SILENT);
+        if (builder == null) return null;
+        builder.setShowWhen(false);
+        builder.setSmallIcon(R.drawable.ic_service_notification);
+        builder.setColor(0xFF607D8B);
+        builder.setOngoing(true);
+        builder.setNumber(pendingCallSessionCount);
+        return builder.build();
     }
 
 

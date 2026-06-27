@@ -34,6 +34,13 @@ public class SessionNewActivityStore {
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
 
+    @Nullable
+    private OnChangeListener mOnChangeListener;
+
+    public interface OnChangeListener {
+        void onSessionNewActivityStoreChanged(@NonNull SessionNewActivityStore store);
+    }
+
     public SessionNewActivityStore() {
         this(new InMemorySessionNewActivityPersistence());
     }
@@ -249,6 +256,20 @@ public class SessionNewActivityStore {
         return Collections.unmodifiableList(new ArrayList<>(reasons));
     }
 
+    public int pendingCallToUserSessionCount() {
+        int count = 0;
+        for (List<String> reasons : mUnacknowledgedCallReasonsByName.values()) {
+            if (reasons != null && !reasons.isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public void setOnChangeListener(@Nullable OnChangeListener listener) {
+        mOnChangeListener = listener;
+    }
+
     @Nullable
     public Long getLastSeenTimeMillis(@NonNull String sessionName) {
         return mLastSeenTimeMillisByName.get(sessionName);
@@ -402,6 +423,9 @@ public class SessionNewActivityStore {
                 mStatuslineReplyTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
+        if (mOnChangeListener != null) {
+            mOnChangeListener.onSessionNewActivityStoreChanged(this);
+        }
     }
 
     public static String formatRelativeTime(long elapsedMillis) {
