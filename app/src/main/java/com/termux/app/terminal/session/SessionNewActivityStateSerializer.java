@@ -25,7 +25,7 @@ public final class SessionNewActivityStateSerializer {
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
-        for (SessionNewActivityState state : states) {
+        for (SessionNewActivityState state : SessionNewActivityStateCaps.capStates(states)) {
             JSONObject object = new JSONObject();
             object.put(KEY_SESSION_NAME, state.getSessionName());
             if (state.getLastOutputActivityTimeMillis() != null)
@@ -80,10 +80,11 @@ public final class SessionNewActivityStateSerializer {
             Long statuslineOutTimeMillis = optionalLong(object, KEY_STATUSLINE_OUT_TIME_MILLIS);
             Long statuslineReplyTimeMillis = optionalLong(object, KEY_STATUSLINE_REPLY_TIME_MILLIS);
 
-            states.add(new SessionNewActivityState(sessionName, lastOutputActivityTimeMillis,
-                lastExplicitCallTimeMillis, lastExplicitCallReason, lastSeenTimeMillis,
-                lastUserInputTimeMillis, unacknowledgedCallReasons, acknowledgedCallReasons,
-                statuslineCallTimeMillis, statuslineOutTimeMillis, statuslineReplyTimeMillis));
+            states.add(SessionNewActivityStateCaps.capState(new SessionNewActivityState(sessionName,
+                lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastExplicitCallReason,
+                lastSeenTimeMillis, lastUserInputTimeMillis, unacknowledgedCallReasons,
+                acknowledgedCallReasons, statuslineCallTimeMillis, statuslineOutTimeMillis,
+                statuslineReplyTimeMillis)));
         }
         return states;
     }

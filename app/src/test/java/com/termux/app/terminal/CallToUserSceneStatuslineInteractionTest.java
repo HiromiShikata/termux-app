@@ -60,7 +60,7 @@ public class CallToUserSceneStatuslineInteractionTest {
     }
 
     @Test
-    public void sceneSurvivesAStatuslineReplyTokenAtTheSameWholeSecondAsTheCallAfterReload() {
+    public void statuslineReplyAtTheSameWholeSecondAsTheCallTokenAcknowledgesTheSceneAfterReload() {
         InMemorySessionNewActivityPersistence persistence =
             new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
@@ -80,13 +80,12 @@ public class CallToUserSceneStatuslineInteractionTest {
         PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
             reloadedStore.tierFor(SESSION), mostRecentReason(reloadedStore));
 
-        Assert.assertEquals("a coarse statusline reply clock at the same whole second as the call "
-                + "must not dismiss the pending scene, because it cannot prove a real reply happened "
-                + "after the agent called", 1,
-            reloadedStore.getUnacknowledgedCallReasons(SESSION).size());
-        Assert.assertEquals(SessionNewActivityTier.RED, reloadedStore.tierFor(SESSION));
-        Assert.assertTrue(decision.isVisible());
-        Assert.assertEquals(REASON, decision.getReportText());
+        Assert.assertTrue("a statusline reply at the same whole second as the call: token must "
+                + "acknowledge the pending scene, because the reply is compared against the call "
+                + "token time and reply >= call acknowledges",
+            reloadedStore.getUnacknowledgedCallReasons(SESSION).isEmpty());
+        Assert.assertNotEquals(SessionNewActivityTier.RED, reloadedStore.tierFor(SESSION));
+        Assert.assertFalse(decision.isVisible());
     }
 
     @Test
@@ -108,6 +107,28 @@ public class CallToUserSceneStatuslineInteractionTest {
 
         Assert.assertTrue("a statusline reply genuinely newer than the call-to-user scan time must "
             + "acknowledge the pending reason", store.getUnacknowledgedCallReasons(SESSION).isEmpty());
+    }
+
+    @Test
+    public void replyNewerThanCallTokenAcknowledgesEvenWhenTagScanWallClockIsLaterThanTheReply() {
+        long callTokenMillis = (7L * 60L + 44L) * 60L * 1000L + 14L * 1000L;
+        long replyTokenMillis = (7L * 60L + 54L) * 60L * 1000L + 20L * 1000L;
+        long outTokenMillis = (7L * 60L + 58L) * 60L * 1000L + 30L * 1000L;
+        long tagScanWallClockMillis = outTokenMillis;
+
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason) ->
+            store.recordExplicitCall(sessionKey, tagScanWallClockMillis, reason));
+        controller.onSessionTextChanged(SESSION,
+            "build finished\n<call-to-user>" + REASON + "</call-to-user>");
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+
+        store.recordStatuslineTimes(SESSION, callTokenMillis, outTokenMillis, replyTokenMillis);
+
+        Assert.assertTrue("a reply token newer than the call: token must acknowledge the pending "
+                + "reason even though the tag-scan wall-clock is later than the reply",
+            store.getUnacknowledgedCallReasons(SESSION).isEmpty());
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
     }
 
     private static String mostRecentReason(SessionNewActivityStore store) {

@@ -178,4 +178,69 @@ public class SessionNewActivityStateSerializerTest {
         Assert.assertEquals(1, result.size());
         Assert.assertNull(result.get(0).getAcknowledgedCallReasons());
     }
+
+    @Test
+    public void deserializeShrinksOversizedStoredStateOnLoad() throws JSONException {
+        StringBuilder oversizedReason = new StringBuilder();
+        for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASON_LENGTH + 5_000; index++) {
+            oversizedReason.append('x');
+        }
+        List<String> manyReasons = new ArrayList<>();
+        for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION + 50; index++) {
+            manyReasons.add(oversizedReason.toString());
+        }
+        List<SessionNewActivityState> oversizedState = Arrays.asList(
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, oversizedReason.toString(),
+                3_000L, 4_000L, manyReasons, manyReasons, 5_000L, 6_000L, 7_000L));
+        String serializedWithoutCaps = serializeWithoutCaps(oversizedState);
+
+        List<SessionNewActivityState> result = serializer.deserialize(serializedWithoutCaps);
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH,
+            result.get(0).getLastExplicitCallReason().length());
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
+            result.get(0).getUnacknowledgedCallReasons().size());
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
+            result.get(0).getAcknowledgedCallReasons().size());
+        for (String reason : result.get(0).getUnacknowledgedCallReasons()) {
+            Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH, reason.length());
+        }
+    }
+
+    @Test
+    public void serializeCapsReasonsSoStoredValueCannotBloat() throws JSONException {
+        StringBuilder oversizedReason = new StringBuilder();
+        for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASON_LENGTH + 1_000; index++) {
+            oversizedReason.append('y');
+        }
+        List<SessionNewActivityState> states = Arrays.asList(
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, oversizedReason.toString(),
+                3_000L, 4_000L));
+
+        List<SessionNewActivityState> result = serializer.deserialize(serializer.serialize(states));
+
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH,
+            result.get(0).getLastExplicitCallReason().length());
+    }
+
+    private static String serializeWithoutCaps(List<SessionNewActivityState> states) throws JSONException {
+        org.json.JSONArray array = new org.json.JSONArray();
+        for (SessionNewActivityState state : states) {
+            org.json.JSONObject object = new org.json.JSONObject();
+            object.put("sessionName", state.getSessionName());
+            object.put("lastOutputActivityTimeMillis", state.getLastOutputActivityTimeMillis());
+            object.put("lastExplicitCallTimeMillis", state.getLastExplicitCallTimeMillis());
+            object.put("lastExplicitCallReason", state.getLastExplicitCallReason());
+            object.put("unacknowledgedCallReasons", new org.json.JSONArray(state.getUnacknowledgedCallReasons()));
+            object.put("acknowledgedCallReasons", new org.json.JSONArray(state.getAcknowledgedCallReasons()));
+            object.put("lastSeenTimeMillis", state.getLastSeenTimeMillis());
+            object.put("lastUserInputTimeMillis", state.getLastUserInputTimeMillis());
+            object.put("statuslineCallTimeMillis", state.getStatuslineCallTimeMillis());
+            object.put("statuslineOutTimeMillis", state.getStatuslineOutTimeMillis());
+            object.put("statuslineReplyTimeMillis", state.getStatuslineReplyTimeMillis());
+            array.put(object);
+        }
+        return array.toString();
+    }
 }

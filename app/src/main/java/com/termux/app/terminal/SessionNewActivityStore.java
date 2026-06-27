@@ -3,6 +3,8 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.app.terminal.session.SessionNewActivityStateCaps;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class SessionNewActivityStore {
+
+    static final int MAX_REASONS_PER_SESSION = SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION;
 
     private static final long ONE_SECOND_MILLIS = 1000L;
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
@@ -89,21 +93,29 @@ public class SessionNewActivityStore {
 
     public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
                                    @NonNull String reason) {
-        if (!reason.trim().isEmpty() && isAlreadyKnownCall(sessionName, reason)) {
+        String cappedReason = SessionNewActivityStateCaps.capReason(reason);
+        if (!cappedReason.trim().isEmpty() && isAlreadyKnownCall(sessionName, cappedReason)) {
             return;
         }
         mLastExplicitCallTimeMillisByName.put(sessionName, explicitCallTimeMillis);
-        mLastExplicitCallReasonByName.put(sessionName, reason);
-        if (!reason.trim().isEmpty()) {
+        mLastExplicitCallReasonByName.put(sessionName, cappedReason);
+        if (!cappedReason.trim().isEmpty()) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
             if (reasons == null) {
                 reasons = new ArrayList<>();
                 mUnacknowledgedCallReasonsByName.put(sessionName, reasons);
             }
-            reasons.add(reason);
+            reasons.add(cappedReason);
+            capTrailing(reasons);
             mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         }
         save();
+    }
+
+    private static void capTrailing(@NonNull List<String> reasons) {
+        while (reasons.size() > MAX_REASONS_PER_SESSION) {
+            reasons.remove(0);
+        }
     }
 
     private boolean isAlreadyKnownCall(@NonNull String sessionName, @NonNull String reason) {
@@ -211,12 +223,20 @@ public class SessionNewActivityStore {
 
     private boolean statuslineReplyAcknowledgesPendingReasons(@NonNull String sessionName,
                                                               long replyTimeMillis) {
-        Long pendingRecordedTimeMillis =
-            mUnacknowledgedCallReasonsRecordedTimeMillisByName.get(sessionName);
-        if (pendingRecordedTimeMillis == null) {
+        Long callTimeMillis = callTimeMillisForReplyComparison(sessionName);
+        if (callTimeMillis == null) {
             return true;
         }
-        return replyTimeMillis > pendingRecordedTimeMillis;
+        return replyTimeMillis >= callTimeMillis;
+    }
+
+    @Nullable
+    private Long callTimeMillisForReplyComparison(@NonNull String sessionName) {
+        Long statuslineCallTimeMillis = mStatuslineCallTimeMillisByName.get(sessionName);
+        if (statuslineCallTimeMillis != null) {
+            return statuslineCallTimeMillis;
+        }
+        return mLastExplicitCallTimeMillisByName.get(sessionName);
     }
 
     private void acknowledgeCallReasons(@NonNull String sessionName) {
@@ -235,6 +255,7 @@ public class SessionNewActivityStore {
                 acknowledged.add(reason);
             }
         }
+        capTrailing(acknowledged);
     }
 
     public void purgeSession(@NonNull String sessionName) {
