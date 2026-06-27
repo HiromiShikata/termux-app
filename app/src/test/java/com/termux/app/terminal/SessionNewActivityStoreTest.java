@@ -3,8 +3,12 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
+import androidx.annotation.NonNull;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 
 public class SessionNewActivityStoreTest {
 
@@ -948,5 +952,93 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(SessionNewActivityTier.RED, afterReload.tierFor("worker"));
         Assert.assertFalse(afterReload.getUnacknowledgedCallReasons("worker").isEmpty());
         assertTierAndSceneAgree(afterReload, "worker");
+    }
+
+    @Test
+    public void recordStatuslineTimesWithNewValuesPersists() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        int saveCountBefore = persistence.getSaveCount();
+
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L);
+
+        Assert.assertEquals(saveCountBefore + 1, persistence.getSaveCount());
+        Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineCallTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(2_000L), store.getStatuslineOutTimeMillis("worker"));
+        Assert.assertEquals(Long.valueOf(3_000L), store.getStatuslineReplyTimeMillis("worker"));
+    }
+
+    @Test
+    public void recordStatuslineTimesWithUnchangedValuesDoesNotPersistAgain() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L);
+        int saveCountAfterFirstRecord = persistence.getSaveCount();
+
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L);
+
+        Assert.assertEquals(saveCountAfterFirstRecord, persistence.getSaveCount());
+    }
+
+    @Test
+    public void recordStatuslineTimesPersistsAgainWhenOnlyOutChanges() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L);
+        int saveCountAfterFirstRecord = persistence.getSaveCount();
+
+        store.recordStatuslineTimes("worker", 1_000L, 9_000L, 3_000L);
+
+        Assert.assertEquals(saveCountAfterFirstRecord + 1, persistence.getSaveCount());
+        Assert.assertEquals(Long.valueOf(9_000L), store.getStatuslineOutTimeMillis("worker"));
+    }
+
+    @Test
+    public void recordStatuslineTimesWithAbsentTokensAfterStoredValuesDoesNotPersistAgain() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", 1_000L, 2_000L, 3_000L);
+        int saveCountAfterFirstRecord = persistence.getSaveCount();
+
+        store.recordStatuslineTimes("worker", null, null, null);
+
+        Assert.assertEquals(saveCountAfterFirstRecord, persistence.getSaveCount());
+    }
+
+    @Test
+    public void unchangedReplyStillAcknowledgesAPendingCallReasonRecordedAfterTheReply() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        store.recordStatuslineTimes("worker", null, null, 5_000L);
+        store.recordExplicitCall("worker", 1_000L, "needs approval");
+        Assert.assertFalse(store.getUnacknowledgedCallReasons("worker").isEmpty());
+        int saveCountBeforeReplayedReply = persistence.getSaveCount();
+
+        store.recordStatuslineTimes("worker", null, null, 5_000L);
+
+        Assert.assertEquals(saveCountBeforeReplayedReply + 1, persistence.getSaveCount());
+        Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
+    }
+
+    private static final class SaveCountingPersistence implements SessionNewActivityPersistence {
+
+        private List<SessionNewActivityState> mStates = new ArrayList<>();
+        private int mSaveCount;
+
+        @NonNull
+        @Override
+        public List<SessionNewActivityState> load() {
+            return new ArrayList<>(mStates);
+        }
+
+        @Override
+        public void save(@NonNull List<SessionNewActivityState> states) {
+            mStates = new ArrayList<>(states);
+            mSaveCount++;
+        }
+
+        int getSaveCount() {
+            return mSaveCount;
+        }
     }
 }

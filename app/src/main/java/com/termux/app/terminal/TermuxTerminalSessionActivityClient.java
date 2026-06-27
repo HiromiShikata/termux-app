@@ -86,6 +86,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final SessionOutputProgressTracker mSessionOutputProgressTracker = new SessionOutputProgressTracker();
 
+    private final BackgroundOutputScanGate mBackgroundOutputScanGate = new BackgroundOutputScanGate();
+
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
 
@@ -209,7 +211,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // output, not only the session currently being viewed, so that a non-current or backgrounded
         // session that calls the user records its red dot without the owner having to open it. These
         // run regardless of which session is current and regardless of activity visibility.
-        backgroundOutputTagsForSession(changedSession);
+        if (shouldRunBackgroundOutputScan(changedSession)) {
+            backgroundOutputTagsForSession(changedSession);
+        }
 
         if (!mActivity.isVisible()) return;
 
@@ -236,6 +240,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (screen == null) return;
 
         openTagBrowserController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+    }
+
+    private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {
+        if (session == null) return false;
+        if (session.mHandle == null) return true;
+        return mBackgroundOutputScanGate.shouldScan(
+            session.mHandle, session.getScreenContentVersion(), System.currentTimeMillis());
     }
 
     private void backgroundOutputTagsForSession(TerminalSession session) {
@@ -326,6 +337,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getCallToUserTagController() != null)
             mActivity.getCallToUserTagController().forgetSession(finishedSession.mHandle);
+
+        if (finishedSession.mHandle != null)
+            mBackgroundOutputScanGate.forget(finishedSession.mHandle);
 
         int index = service.getIndexOfSession(finishedSession);
 

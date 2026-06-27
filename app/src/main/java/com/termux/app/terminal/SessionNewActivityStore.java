@@ -154,6 +154,9 @@ public class SessionNewActivityStore {
                                       @Nullable Long callTimeMillis,
                                       @Nullable Long outTimeMillis,
                                       @Nullable Long replyTimeMillis) {
+        if (statuslineTimesUnchanged(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis)) {
+            return;
+        }
         if (callTimeMillis != null) {
             mStatuslineCallTimeMillisByName.put(sessionName, callTimeMillis);
             mLastExplicitCallTimeMillisByName.put(sessionName, callTimeMillis);
@@ -170,6 +173,40 @@ public class SessionNewActivityStore {
             }
         }
         save();
+    }
+
+    private boolean statuslineTimesUnchanged(@NonNull String sessionName,
+                                             @Nullable Long callTimeMillis,
+                                             @Nullable Long outTimeMillis,
+                                             @Nullable Long replyTimeMillis) {
+        if (!sameStoredStatuslineValue(mStatuslineCallTimeMillisByName.get(sessionName), callTimeMillis)) {
+            return false;
+        }
+        if (!sameStoredStatuslineValue(mStatuslineOutTimeMillisByName.get(sessionName), outTimeMillis)) {
+            return false;
+        }
+        if (!sameStoredStatuslineValue(mStatuslineReplyTimeMillisByName.get(sessionName), replyTimeMillis)) {
+            return false;
+        }
+        if (replyTimeMillis != null
+            && statuslineReplyAcknowledgesPendingReasons(sessionName, replyTimeMillis)
+            && hasUnacknowledgedCallReasons(sessionName)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean sameStoredStatuslineValue(@Nullable Long storedValue,
+                                                     @Nullable Long incomingValue) {
+        if (incomingValue == null) {
+            return true;
+        }
+        return incomingValue.equals(storedValue);
+    }
+
+    private boolean hasUnacknowledgedCallReasons(@NonNull String sessionName) {
+        List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
+        return reasons != null && !reasons.isEmpty();
     }
 
     private boolean statuslineReplyAcknowledgesPendingReasons(@NonNull String sessionName,
