@@ -24,10 +24,46 @@ public class SessionListBottomSheetControllerTest {
     private static class StringListAdapter extends BaseAdapter {
 
         private final List<String> items;
-        int notifyDataSetChangedCount;
-        final List<Integer> reboundPositions = new java.util.ArrayList<>();
 
         StringListAdapter(List<String> items) {
+            this.items = items;
+        }
+
+        @Override
+        public int getCount() {
+            return items.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return items.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+            TextView textView = convertView instanceof TextView
+                ? (TextView) convertView
+                : new TextView(parent.getContext());
+            textView.setText(items.get(position));
+            return textView;
+        }
+    }
+
+    private static class TimeOnlyRefreshAdapter extends BaseAdapter
+        implements SessionListBottomSheetController.SessionRowRelativeTimeUpdater {
+
+        private final List<String> items;
+        int notifyDataSetChangedCount;
+        int getViewCallCount;
+        final List<Integer> timeUpdatedPositions = new java.util.ArrayList<>();
+
+        TimeOnlyRefreshAdapter(List<String> items) {
             this.items = items;
         }
 
@@ -55,14 +91,17 @@ public class SessionListBottomSheetControllerTest {
         @NonNull
         @Override
         public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+            getViewCallCount++;
             TextView textView = convertView instanceof TextView
                 ? (TextView) convertView
                 : new TextView(parent.getContext());
-            if (convertView != null) {
-                reboundPositions.add(position);
-            }
             textView.setText(items.get(position));
             return textView;
+        }
+
+        @Override
+        public void updateSessionRowRelativeTimeInPlace(int position, @NonNull View rowView) {
+            timeUpdatedPositions.add(position);
         }
     }
 
@@ -181,33 +220,101 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
-    public void perSecondTickRebindsVisibleRowsInPlaceWithoutAFullDataSetChange() {
+    public void perSecondTickUpdatesOnlyTheTimeTextInPlaceWithoutAFullDataSetChangeOrViewReplacement() {
         ListView listView = new ListView(RuntimeEnvironment.getApplication());
-        StringListAdapter delegate =
-            new StringListAdapter(Arrays.asList("session a", "session b", "session c"));
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a", "session b", "session c"));
         listView.setAdapter(delegate);
         layoutListView(listView);
 
-        Assert.assertTrue("the laid-out ListView must have visible child rows to rebind",
+        Assert.assertTrue("the laid-out ListView must have visible child rows to update",
             listView.getChildCount() > 0);
+        delegate.getViewCallCount = 0;
+        delegate.notifyDataSetChangedCount = 0;
 
-        SessionListBottomSheetController.rebindVisibleSessionRowsInPlace(listView);
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
 
         Assert.assertEquals("the per-second tick must not trigger a full data-set change",
             0, delegate.notifyDataSetChangedCount);
-        Assert.assertFalse("the per-second tick must rebind the existing visible row views in place",
-            delegate.reboundPositions.isEmpty());
-        for (int reboundPosition : delegate.reboundPositions) {
-            Assert.assertTrue("only positions inside the adapter may be rebound",
-                reboundPosition >= 0 && reboundPosition < delegate.getCount());
+        Assert.assertEquals("the per-second tick must not re-run the full row bind via getView",
+            0, delegate.getViewCallCount);
+        Assert.assertFalse("the per-second tick must update the existing visible row time text in place",
+            delegate.timeUpdatedPositions.isEmpty());
+        for (int updatedPosition : delegate.timeUpdatedPositions) {
+            Assert.assertTrue("only positions inside the adapter may be updated",
+                updatedPosition >= 0 && updatedPosition < delegate.getCount());
         }
     }
 
     @Test
-    public void inPlaceRebindDoesNothingWhenTheListViewHasNoAdapter() {
+    public void perSecondTickKeepsTheRowClickHandlingIntactSoTapsStillNavigateAfterTheTick() {
         ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a", "session b"));
+        listView.setAdapter(delegate);
+        layoutListView(listView);
 
-        SessionListBottomSheetController.rebindVisibleSessionRowsInPlace(listView);
+        View firstRow = listView.getChildAt(0);
+        boolean[] rowClicked = {false};
+        firstRow.setOnClickListener(v -> rowClicked[0] = true);
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+
+        Assert.assertTrue("the time-only tick must not tear down the row click listener it does not touch",
+            firstRow.hasOnClickListeners());
+        firstRow.performClick();
+        Assert.assertTrue("a tap on the row must still navigate after the time-only tick",
+            rowClicked[0]);
+    }
+
+    @Test
+    public void perSecondTickDoesNothingWhenNoUpdaterIsBound() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a"));
+        listView.setAdapter(delegate);
+        layoutListView(listView);
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, null);
+
+        Assert.assertTrue("with no updater bound the tick must not update any row time text",
+            delegate.timeUpdatedPositions.isEmpty());
+    }
+
+    @Test
+    public void inPlaceTimeUpdateDoesNothingWhenTheListViewHasNoAdapter() {
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        TimeOnlyRefreshAdapter updater = new TimeOnlyRefreshAdapter(Arrays.asList("session a"));
+
+        SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, updater);
+
+        Assert.assertTrue("an update with no adapter present must touch no row",
+            updater.timeUpdatedPositions.isEmpty());
+    }
+
+    @Test
+    public void aPeriodicTimeTickRequestedDuringATapIsSkippedSoTheTapKeepsItsRowAndClickHandling() {
+        TimeOnlyRefreshAdapter delegate =
+            new TimeOnlyRefreshAdapter(Arrays.asList("session a", "session b"));
+        ListView listView = new ListView(RuntimeEnvironment.getApplication());
+        listView.setAdapter(delegate);
+        layoutListView(listView);
+
+        boolean touchInProgress = true;
+        if (SessionListBottomSheetController.shouldRefreshNow(touchInProgress)) {
+            SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+        }
+
+        Assert.assertTrue("the time tick must be skipped while a session-row tap is in progress",
+            delegate.timeUpdatedPositions.isEmpty());
+
+        touchInProgress = false;
+        if (SessionListBottomSheetController.shouldRefreshNow(touchInProgress)) {
+            SessionListBottomSheetController.updateVisibleSessionRowTimesInPlace(listView, delegate);
+        }
+
+        Assert.assertFalse("once the tap ends the time tick may update the visible row time text",
+            delegate.timeUpdatedPositions.isEmpty());
     }
 
     private static void layoutListView(@NonNull ListView listView) {
