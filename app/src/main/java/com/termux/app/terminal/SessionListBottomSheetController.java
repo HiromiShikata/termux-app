@@ -15,6 +15,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -461,7 +462,15 @@ public class SessionListBottomSheetController {
         if (recyclerView.getLayoutManager() == null) {
             recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
         }
+        disableChangeAnimations(recyclerView);
         recyclerView.setAdapter(adapter);
+    }
+
+    static void disableChangeAnimations(@NonNull RecyclerView recyclerView) {
+        RecyclerView.ItemAnimator itemAnimator = recyclerView.getItemAnimator();
+        if (itemAnimator instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) itemAnimator).setSupportsChangeAnimations(false);
+        }
     }
 
     static int nextSheetVisibility(int currentVisibility) {

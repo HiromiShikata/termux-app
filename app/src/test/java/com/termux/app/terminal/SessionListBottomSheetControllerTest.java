@@ -86,6 +86,22 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
+    public void bindsSessionListAdapterDisablesChangeAnimationsToPreventTmpDetachedRecycleCrash() {
+        RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
+        StringRecyclerAdapter delegate =
+            new StringRecyclerAdapter(Arrays.asList("project header", "session a", "session b"));
+
+        SessionListBottomSheetController.bindSessionListAdapter(recyclerView, delegate);
+
+        RecyclerView.ItemAnimator itemAnimator = recyclerView.getItemAnimator();
+        Assert.assertTrue("the bottom-sheet list must use a SimpleItemAnimator",
+            itemAnimator instanceof androidx.recyclerview.widget.SimpleItemAnimator);
+        Assert.assertFalse("per-second relative-time notifyItemChanged payload updates must not run a change "
+                + "animation that recycles a still-tmp-detached view",
+            ((androidx.recyclerview.widget.SimpleItemAnimator) itemAnimator).getSupportsChangeAnimations());
+    }
+
+    @Test
     public void bindsSessionListAdapterPreservesRowOrderWithoutReversing() {
         RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
         StringRecyclerAdapter delegate =

@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
@@ -851,5 +852,27 @@ public class TermuxSessionsListViewControllerTest {
         Assert.assertNotNull(TermuxSessionsListViewController.RELATIVE_TIME_PAYLOAD);
         Assert.assertSame(TermuxSessionsListViewController.RELATIVE_TIME_PAYLOAD,
             TermuxSessionsListViewController.RELATIVE_TIME_PAYLOAD);
+    }
+
+    @Test
+    public void rowTimesStartPaddingOffsetsTheTitleIndentByTheActivityDotIconWidthAndPadding() {
+        Assert.assertEquals(24 + 16 + 4,
+            TermuxSessionsListViewController.sessionRowTimesStartPaddingPx(24, 16, 4));
+        Assert.assertEquals(6 + 16 + 4,
+            TermuxSessionsListViewController.sessionRowTimesStartPaddingPx(6, 16, 4));
+    }
+
+    @Test
+    public void alignSessionRowTimesStartSetsStartPaddingSoTimesLeftEdgeMatchesTitleText() {
+        TextView times = new TextView(RuntimeEnvironment.getApplication());
+        times.setPaddingRelative(6, 3, 9, 12);
+
+        TermuxSessionsListViewController.alignSessionRowTimesStartWithTitleText(times, 44);
+
+        Assert.assertEquals(44, times.getPaddingStart());
+        Assert.assertEquals("vertical and end padding must be preserved while only the start padding is aligned",
+            3, times.getPaddingTop());
+        Assert.assertEquals(9, times.getPaddingEnd());
+        Assert.assertEquals(12, times.getPaddingBottom());
     }
 }

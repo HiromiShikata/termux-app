@@ -59,6 +59,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
     private static final int SESSION_ROW_BELL_ICON_PADDING_DP = 4;
+    private static final int SESSION_ROW_BELL_ICON_WIDTH_DP = 16;
 
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
@@ -934,6 +935,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void bindSessionRowTimes(@NonNull View sessionRowView, @NonNull String timestampLine) {
         TextView sessionRowTimesView = sessionRowView.findViewById(R.id.session_row_times);
+        alignSessionRowTimesStartWithTitleText(sessionRowTimesView, sessionTitleTextStartPaddingPx());
         if (timestampLine.isEmpty()) {
             sessionRowTimesView.setText("");
             sessionRowTimesView.setVisibility(View.GONE);
@@ -943,6 +945,26 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         sessionRowTimesView.setTextColor(fadedColor);
         sessionRowTimesView.setText(timestampLine);
         sessionRowTimesView.setVisibility(View.VISIBLE);
+    }
+
+    private int sessionTitleTextStartPaddingPx() {
+        int startPadding = dpToPx(isGrouped() ? SESSION_ROW_GROUPED_INDENT_DP : SESSION_ROW_FLAT_INDENT_DP);
+        return sessionRowTimesStartPaddingPx(startPadding,
+            dpToPx(SESSION_ROW_BELL_ICON_WIDTH_DP),
+            dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));
+    }
+
+    static int sessionRowTimesStartPaddingPx(int titleStartPaddingPx, int bellIconWidthPx,
+                                             int bellIconPaddingPx) {
+        return titleStartPaddingPx + bellIconWidthPx + bellIconPaddingPx;
+    }
+
+    static void alignSessionRowTimesStartWithTitleText(@NonNull TextView sessionRowTimesView,
+                                                       int startPaddingPx) {
+        sessionRowTimesView.setPaddingRelative(startPaddingPx,
+            sessionRowTimesView.getPaddingTop(),
+            sessionRowTimesView.getPaddingEnd(),
+            sessionRowTimesView.getPaddingBottom());
     }
 
     @NonNull
