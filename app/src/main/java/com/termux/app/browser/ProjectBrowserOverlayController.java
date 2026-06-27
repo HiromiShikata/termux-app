@@ -459,7 +459,7 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
 
     private void configureFooterActions() {
         mFooterOverviewIconView.setOnClickListener(view ->
-            route(mProjectOverviewUrl, BrowserViewMode.DESKTOP));
+            route(mProjectOverviewUrl, BrowserViewMode.MOBILE));
         mFooterTdpmConsoleIconView.setOnClickListener(view ->
             route(mProjectTdpmConsoleUrl, BrowserViewMode.DESKTOP));
         mFooterNewIssueIconView.setOnClickListener(view ->

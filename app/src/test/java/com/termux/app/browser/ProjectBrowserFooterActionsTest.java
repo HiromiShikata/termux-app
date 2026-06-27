@@ -39,10 +39,10 @@ public class ProjectBrowserFooterActionsTest {
     }
 
     @Test
-    public void wiresOverviewFooterIconToDesktopRoute() throws IOException {
+    public void wiresOverviewFooterIconToMobileRoute() throws IOException {
         String source = readControllerSource();
         Assert.assertTrue(source.contains("R.id.project_browser_footer_overview_icon"));
-        Assert.assertTrue(source.contains("route(mProjectOverviewUrl, BrowserViewMode.DESKTOP)"));
+        Assert.assertTrue(source.contains("route(mProjectOverviewUrl, BrowserViewMode.MOBILE)"));
     }
 
     @Test
