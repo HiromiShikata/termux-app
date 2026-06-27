@@ -8,14 +8,13 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.Adapter;
-import android.widget.BaseAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -39,7 +38,7 @@ public class SessionListBottomSheetController {
     private final View mSessionInfoBottomContainer;
     private final View mDragHandleView;
     private final TextView mTitleView;
-    private final ListView mSessionListView;
+    private final RecyclerView mSessionListView;
     private final View mSettingsButton;
     private final View mNewSessionButton;
     private final View mLoadSessionButton;
@@ -57,11 +56,6 @@ public class SessionListBottomSheetController {
     private boolean mRelativeTimeRefreshScheduled;
     private boolean mSessionListTouchInProgress;
     private boolean mRelativeTimeRefreshDeferredByTouch;
-    private SessionRowRelativeTimeUpdater mSessionRowRelativeTimeUpdater;
-
-    public interface SessionRowRelativeTimeUpdater {
-        void updateSessionRowRelativeTimeInPlace(int position, @NonNull View rowView);
-    }
 
     public SessionListBottomSheetController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
@@ -266,45 +260,11 @@ public class SessionListBottomSheetController {
     }
 
     private void refreshSessionRowsForRelativeTime() {
-        updateVisibleSessionRowTimesInPlace(mSessionListView, mSessionRowRelativeTimeUpdater);
-    }
-
-    static void updateVisibleSessionRowTimesInPlace(@NonNull ListView listView,
-                                                    @Nullable SessionRowRelativeTimeUpdater updater) {
-        if (updater == null) {
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController == null) {
             return;
         }
-        Adapter adapter = listView.getAdapter();
-        if (adapter == null) {
-            return;
-        }
-        int firstVisiblePosition = listView.getFirstVisiblePosition();
-        int childCount = listView.getChildCount();
-        int adapterCount = adapter.getCount();
-        for (int childIndex = 0; childIndex < childCount; childIndex++) {
-            int position = firstVisiblePosition + childIndex;
-            if (!isRebindablePosition(position, adapterCount)) {
-                continue;
-            }
-            View childView = listView.getChildAt(childIndex);
-            if (childView == null) {
-                continue;
-            }
-            updater.updateSessionRowRelativeTimeInPlace(position, childView);
-        }
-    }
-
-    @Nullable
-    static View typeCompatibleConvertView(@NonNull Adapter adapter, int position, @NonNull View childView) {
-        Object recordedViewType = childView.getTag(R.id.session_row_view_type_tag);
-        if (!(recordedViewType instanceof Integer)) {
-            return childView;
-        }
-        return (Integer) recordedViewType == adapter.getItemViewType(position) ? childView : null;
-    }
-
-    static boolean isRebindablePosition(int position, int adapterCount) {
-        return position >= 0 && position < adapterCount;
+        listController.dispatchRelativeTimeTick();
     }
 
     private void onSessionListTouchStarted() {
@@ -388,8 +348,17 @@ public class SessionListBottomSheetController {
             if (rowPosition < 0) {
                 return;
             }
-            mSessionListView.setSelection(rowPosition);
+            scrollSessionRowToTop(rowPosition);
         });
+    }
+
+    private void scrollSessionRowToTop(int rowPosition) {
+        RecyclerView.LayoutManager layoutManager = mSessionListView.getLayoutManager();
+        if (layoutManager instanceof LinearLayoutManager) {
+            ((LinearLayoutManager) layoutManager).scrollToPositionWithOffset(rowPosition, 0);
+            return;
+        }
+        mSessionListView.scrollToPosition(rowPosition);
     }
 
     public void hide() {
@@ -463,10 +432,7 @@ public class SessionListBottomSheetController {
             return;
         }
         bindSessionListAdapter(mSessionListView, listController);
-        mSessionRowRelativeTimeUpdater = listController;
         listController.setSessionClickHost(this::dismissAfterSessionSelected);
-        mSessionListView.setOnItemClickListener(listController);
-        mSessionListView.setOnItemLongClickListener(listController);
         bindSessionListTouchTracking();
         mAdapterBound = true;
     }
@@ -490,8 +456,12 @@ public class SessionListBottomSheetController {
         hide();
     }
 
-    static void bindSessionListAdapter(@NonNull ListView listView, @NonNull BaseAdapter adapter) {
-        listView.setAdapter(adapter);
+    static void bindSessionListAdapter(@NonNull RecyclerView recyclerView,
+                                       @NonNull RecyclerView.Adapter<?> adapter) {
+        if (recyclerView.getLayoutManager() == null) {
+            recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
+        }
+        recyclerView.setAdapter(adapter);
     }
 
     static int nextSheetVisibility(int currentVisibility) {

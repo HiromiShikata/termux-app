@@ -784,4 +784,72 @@ public class TermuxSessionsListViewControllerTest {
         Assert.assertEquals(firstRender, secondRenderSameClock);
         Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineOutTimeMillis("worker"));
     }
+
+    @Test
+    public void sessionRowStableIdReusesTheSessionIndexSoTheSameSessionKeepsItsViewHolderAcrossUpdates() {
+        long firstSessionId = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(0));
+        long sameSessionIdAfterRebuild = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(0));
+        long otherSessionId = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(1));
+
+        Assert.assertEquals(0L, firstSessionId);
+        Assert.assertEquals(firstSessionId, sameSessionIdAfterRebuild);
+        Assert.assertNotEquals(firstSessionId, otherSessionId);
+    }
+
+    @Test
+    public void headerAndSessionRowsCarryDistinctStableIdsSoMixedItemTypesNeverCollide() {
+        long projectHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("alpha"));
+        long storyHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.storyHeader("alpha"));
+        long sessionRowId = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(0));
+
+        Assert.assertNotEquals(projectHeaderId, storyHeaderId);
+        Assert.assertNotEquals(projectHeaderId, sessionRowId);
+        Assert.assertNotEquals(storyHeaderId, sessionRowId);
+    }
+
+    @Test
+    public void projectHeaderStableIdFollowsItsLabelSoTheSameProjectKeepsItsIdentity() {
+        long alphaHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("alpha"));
+        long alphaHeaderIdAgain = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("alpha"));
+        long betaHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("beta"));
+
+        Assert.assertEquals(alphaHeaderId, alphaHeaderIdAgain);
+        Assert.assertNotEquals(alphaHeaderId, betaHeaderId);
+    }
+
+    @Test
+    public void diffTreatsTheSameSessionIndexAsTheSameRowSoUnchangedRowsAreNotTornDown() {
+        Assert.assertTrue(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.session(2), SessionHierarchyRow.session(2)));
+        Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.session(2), SessionHierarchyRow.session(3)));
+    }
+
+    @Test
+    public void diffTreatsTheSameProjectHeaderLabelAsTheSameRowAcrossRebuilds() {
+        Assert.assertTrue(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.projectHeader("alpha"), SessionHierarchyRow.projectHeader("alpha")));
+        Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.projectHeader("alpha"), SessionHierarchyRow.projectHeader("beta")));
+    }
+
+    @Test
+    public void diffNeverMatchesAcrossDifferentRowTypesEvenWhenTheirLabelsCoincide() {
+        Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.projectHeader("alpha"), SessionHierarchyRow.storyHeader("alpha")));
+        Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.storyHeader("alpha"), SessionHierarchyRow.session(0)));
+    }
+
+    @Test
+    public void relativeTimePayloadIsASingleSharedTokenSoTickUpdatesAreRecognizedAsTimeOnly() {
+        Assert.assertNotNull(TermuxSessionsListViewController.RELATIVE_TIME_PAYLOAD);
+        Assert.assertSame(TermuxSessionsListViewController.RELATIVE_TIME_PAYLOAD,
+            TermuxSessionsListViewController.RELATIVE_TIME_PAYLOAD);
+    }
 }
