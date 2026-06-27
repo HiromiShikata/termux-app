@@ -20,10 +20,20 @@ public class BrowserWebViewConfiguratorTest {
     }
 
     @Test
-    public void mobileModeUsesProvidedDefaultUserAgent() {
+    public void mobileModeAppliesCleanMobileUserAgentWithoutWebViewMarker() {
         WebSettings settings = newSettings();
         BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
-        Assert.assertEquals(DEFAULT_USER_AGENT, settings.getUserAgentString());
+        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT, settings.getUserAgentString());
+        Assert.assertTrue(settings.getUserAgentString().contains("Chrome/"));
+        Assert.assertFalse(settings.getUserAgentString().contains("wv"));
+    }
+
+    @Test
+    public void mobileModeEnablesJavaScriptAndDomStorageForLogin() {
+        WebSettings settings = newSettings();
+        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        Assert.assertTrue(settings.getJavaScriptEnabled());
+        Assert.assertTrue(settings.getDomStorageEnabled());
     }
 
     @Test
@@ -95,11 +105,12 @@ public class BrowserWebViewConfiguratorTest {
     }
 
     @Test
-    public void mobileModeWithNullDefaultUserAgentLeavesUserAgentNull() {
+    public void mobileModeWithNullDefaultUserAgentStillAppliesCleanMobileUserAgent() {
         WebSettings settings = newSettings();
         settings.setUserAgentString(null);
         BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, null);
-        Assert.assertNotEquals(BrowserUserAgent.DESKTOP_USER_AGENT, settings.getUserAgentString());
+        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT, settings.getUserAgentString());
+        Assert.assertFalse(settings.getUserAgentString().contains("wv"));
     }
 
     private void assertCommonSettings(WebSettings settings) {
