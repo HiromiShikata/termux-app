@@ -13,6 +13,9 @@ public final class BrowserPinchAwareSwipeRefreshLayout extends SwipeRefreshLayou
     private final BrowserPinchGestureInterceptGate mPinchGestureInterceptGate =
         new BrowserPinchGestureInterceptGate();
 
+    private final BrowserScrollDirectionInterceptGate mScrollDirectionInterceptGate =
+        new BrowserScrollDirectionInterceptGate();
+
     public BrowserPinchAwareSwipeRefreshLayout(@NonNull Context context) {
         super(context);
     }
@@ -23,9 +26,12 @@ public final class BrowserPinchAwareSwipeRefreshLayout extends SwipeRefreshLayou
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent event) {
-        boolean declineInterception = mPinchGestureInterceptGate.shouldDeclineInterception(
-            event.getActionMasked(), event.getPointerCount());
-        if (declineInterception) {
+        int action = event.getActionMasked();
+        boolean declinePinch = mPinchGestureInterceptGate.shouldDeclineInterception(
+            action, event.getPointerCount());
+        boolean declineUpwardScroll = mScrollDirectionInterceptGate.shouldDeclineInterception(
+            action, event.getY());
+        if (declinePinch || declineUpwardScroll) {
             return false;
         }
         return super.onInterceptTouchEvent(event);
