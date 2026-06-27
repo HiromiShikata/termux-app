@@ -606,16 +606,46 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void timestampLineNeverDerivesCallOutOrReplyFromGenuineActivityFallbacks() {
+    public void timestampLineNeverDerivesCallOrOutFromGenuineActivityFallbacks() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 60_000L);
         store.recordOutputActivity("worker", 60_000L);
         store.recordSeen("worker", 60_000L);
-        store.recordUserInput("worker", 60_000L);
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
         Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day  sub: 0", line);
+    }
+
+    @Test
+    public void timestampLineShowsTheAppCapturedOwnerInputTimeAsTheReplyEvenBeforeAnyStatuslineReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordUserInput("worker", 60_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
+
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: 1s  sub: 0", line);
+    }
+
+    @Test
+    public void timestampLineShowsTheAppInputTimeAsTheReplyWhenItIsNewerThanTheStatuslineReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", null, null, 2_000L);
+        store.recordUserInput("worker", 60_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
+
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: 1s  sub: 0", line);
+    }
+
+    @Test
+    public void timestampLineFallsBackToTheStatuslineReplyWhenNoAppInputIsHeld() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", null, null, 2_000L);
+
+        String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
+
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: 1m  sub: 0", line);
     }
 
     @Test
@@ -668,16 +698,17 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void timestampLineMatchesTheCurrentSessionInfoAreaLineFromTheSameStatuslineSource() {
+    public void timestampLineMatchesTheCurrentSessionInfoAreaLineFromTheSameEffectiveReplySource() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("worker", 1_000L, 2_000L, null);
+        store.recordUserInput("worker", 30_000L);
         long nowMillis = 62_000L;
 
         String rowLine = TermuxSessionsListViewController.buildTimestampLine(store, "worker", nowMillis);
         String infoAreaLine = SessionTimesLine.of(
             store.getStatuslineCallTimeMillis("worker"),
             store.getStatuslineOutTimeMillis("worker"),
-            store.getStatuslineReplyTimeMillis("worker"),
+            store.effectiveReplyTimeMillis("worker"),
             store.getSubagentCount("worker"),
             nowMillis).getText();
 

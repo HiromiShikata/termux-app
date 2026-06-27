@@ -1133,7 +1133,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return SessionTimesLine.of(
             store.getStatuslineCallTimeMillis(sessionName),
             store.getStatuslineOutTimeMillis(sessionName),
-            store.getStatuslineReplyTimeMillis(sessionName),
+            store.effectiveReplyTimeMillis(sessionName),
             store.getSubagentCount(sessionName),
             nowMillis).getText();
     }

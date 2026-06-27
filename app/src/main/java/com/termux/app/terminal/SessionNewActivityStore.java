@@ -442,11 +442,36 @@ public class SessionNewActivityStore {
         if (statuslineCallTimeMillis == null) {
             return null;
         }
-        Long statuslineReplyTimeMillis = mStatuslineReplyTimeMillisByName.get(sessionName);
-        if (statuslineReplyTimeMillis == null || statuslineCallTimeMillis > statuslineReplyTimeMillis) {
+        Long effectiveReplyTimeMillis = effectiveReplyTimeMillis(sessionName);
+        if (effectiveReplyTimeMillis == null || statuslineCallTimeMillis > effectiveReplyTimeMillis) {
             return statuslineCallTimeMillis;
         }
         return null;
+    }
+
+    /**
+     * The reply timestamp that both the RED call-to-user pending check and the displayed {@code
+     * reply:} value use. It is the later of the app-captured owner input ({@link
+     * #getLastUserInputTimeMillis}, updated instantly by {@link #recordUserInput}) and the statusline
+     * {@code reply:} token ({@link #getStatuslineReplyTimeMillis}, which lags several minutes behind
+     * the owner's actual reply in practice). Preferring the more recent of the two means that the
+     * instant the owner types input, the effective reply catches up to or passes the call, so the RED
+     * dot clears immediately and the displayed {@code reply:} reflects the input without waiting for
+     * the laggy statusline token. The app-held input time is in-memory only; after a restart that
+     * loses it the statusline reply token is the sole remaining source and is used as the fallback.
+     * Returns null only when neither source has a value.
+     */
+    @Nullable
+    public Long effectiveReplyTimeMillis(@NonNull String sessionName) {
+        Long lastUserInputTimeMillis = mLastUserInputTimeMillisByName.get(sessionName);
+        Long statuslineReplyTimeMillis = mStatuslineReplyTimeMillisByName.get(sessionName);
+        if (lastUserInputTimeMillis == null) {
+            return statuslineReplyTimeMillis;
+        }
+        if (statuslineReplyTimeMillis == null) {
+            return lastUserInputTimeMillis;
+        }
+        return Math.max(lastUserInputTimeMillis, statuslineReplyTimeMillis);
     }
 
     /**
