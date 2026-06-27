@@ -86,10 +86,10 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     @Test
     public void immediateSwitchPickerMarksTheJustSwitchedSessionAsCurrentAndKeepsItsRedDotUntilReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session-1", 1_000L);
+        store.recordExplicitCall("session-1", 1_000L, "needs approval");
         FakeSessionRuntime runtime = new FakeSessionRuntime(
             Arrays.asList("session-0", "session-1"), store, 0, 4_000L);
-        store.recordExplicitCall("session-0", 4_500L);
+        store.recordExplicitCall("session-0", 4_500L, "needs approval");
 
         List<SessionPickerOverlayLine> lines = presentAndCaptureRenderedLines(runtime, 1, true);
 
@@ -108,8 +108,8 @@ public class VolumeKeyPickerPresentationCurrentSessionTest {
     @Test
     public void previewFirstPickerMarksTheStillActiveSessionAsCurrentAndKeepsItsRedDotUntilReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("session-0", 1_000L);
-        store.recordExplicitCall("session-1", 1_000L);
+        store.recordExplicitCall("session-0", 1_000L, "needs approval");
+        store.recordExplicitCall("session-1", 1_000L, "needs approval");
         FakeSessionRuntime runtime = new FakeSessionRuntime(
             Arrays.asList("session-0", "session-1"), store, 0, 4_000L);
 

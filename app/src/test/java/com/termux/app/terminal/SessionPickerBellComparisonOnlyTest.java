@@ -15,7 +15,7 @@ public class SessionPickerBellComparisonOnlyTest {
     @Test
     public void currentSessionWithUnseenSignalStillShowsDotSinceSuppressionIsRemoved() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("current", 5_000L);
+        store.recordExplicitCall("current", 5_000L, "needs approval");
 
         List<SessionPickerOverlayLine> lines = render(store,
             Arrays.asList("current", "background"), 0, 5_500L);
@@ -28,7 +28,7 @@ public class SessionPickerBellComparisonOnlyTest {
     @Test
     public void redIsClearedByUserReplyWhileOutputOnlySessionStaysYellow() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("alpha", 5_000L);
+        store.recordExplicitCall("alpha", 5_000L, "needs approval");
         store.recordUserInput("alpha", 6_000L);
         store.recordOutputActivity("beta", 5_000L);
 
@@ -43,7 +43,7 @@ public class SessionPickerBellComparisonOnlyTest {
     @Test
     public void advancingLastSeenViaSeenTickDoesNotRemoveTheRedDotButReplyingDoes() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("current", 5_000L);
+        store.recordExplicitCall("current", 5_000L, "needs approval");
 
         List<SessionPickerOverlayLine> beforeTick = render(store,
             Collections.singletonList("current"), 0, 5_500L);

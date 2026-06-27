@@ -15,7 +15,7 @@ public class SessionActiveBellSuppressionTest {
     @Test
     public void activeSessionShowsNoDotOnceTheUserHasRepliedPastTheSignal() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("active", 5_000L);
+        store.recordExplicitCall("active", 5_000L, "needs approval");
         store.recordUserInput("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
@@ -28,8 +28,8 @@ public class SessionActiveBellSuppressionTest {
     @Test
     public void backgroundUnansweredSessionStillShowsTheDotWhileTheRepliedSessionIsCleared() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("background", 1_000L);
-        store.recordExplicitCall("active", 5_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
+        store.recordExplicitCall("active", 5_000L, "needs approval");
         store.recordUserInput("active", 31_000L);
 
         SessionNewActivityIndicator background = TermuxSessionsListViewController.newActivityIndicator(
@@ -42,7 +42,7 @@ public class SessionActiveBellSuppressionTest {
     @Test
     public void bothRenderersAgreeThatTheRepliedSessionShowsNoDot() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("active", 5_000L);
+        store.recordExplicitCall("active", 5_000L, "needs approval");
         store.recordUserInput("active", 5_050L);
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
@@ -61,9 +61,9 @@ public class SessionActiveBellSuppressionTest {
     @Test
     public void pickerOmitsTheDotForTheRepliedCurrentSessionAndKeepsItForTheBackgroundSession() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("active", 5_000L);
+        store.recordExplicitCall("active", 5_000L, "needs approval");
         store.recordUserInput("active", 5_050L);
-        store.recordExplicitCall("background", 1_000L);
+        store.recordExplicitCall("background", 1_000L, "needs approval");
 
         long nowMillis = 5_050L;
         Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
@@ -89,7 +89,7 @@ public class SessionActiveBellSuppressionTest {
     @Test
     public void currentSessionWithoutASeenTickStillShowsItsDotThroughTheSharedLogic() {
         SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall("current", 1_000L);
+        store.recordExplicitCall("current", 1_000L, "needs approval");
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "current", 31_000L);
@@ -102,7 +102,7 @@ public class SessionActiveBellSuppressionTest {
     public void aSignalArrivingAfterTheLastSeenTickReappears() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordSeen("session", 6_000L);
-        store.recordExplicitCall("session", 9_000L);
+        store.recordExplicitCall("session", 9_000L, "needs approval");
 
         SessionNewActivityIndicator indicator = TermuxSessionsListViewController.newActivityIndicator(
             store, "session", 9_500L);
