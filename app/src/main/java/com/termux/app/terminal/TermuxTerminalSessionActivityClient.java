@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -95,6 +96,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final AllSessionsStatuslineScanGate mAllSessionsStatuslineScanGate =
         new AllSessionsStatuslineScanGate();
+
+    private final AllSessionsStatuslineParser mAllSessionsStatuslineParser =
+        new AllSessionsStatuslineParser();
+
+    @Nullable
+    private HandlerThread mStatuslineParseThread;
+
+    @Nullable
+    private Handler mStatuslineParseHandler;
 
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
@@ -201,6 +211,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onStop() {
         stopActiveSessionSeenTick();
         stopAllSessionsCallScanTick();
+        stopStatuslineParseThread();
 
         // Store current session in shared preferences so that it can be restored later in
         // {@link #onStart} if needed.
@@ -345,7 +356,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (store == null) return;
 
         long nowMillis = System.currentTimeMillis();
-        boolean recordedAny = false;
+        List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts = new ArrayList<>();
         for (TermuxSession termuxSession : service.getTermuxSessions()) {
             TerminalSession session = termuxSession.getTerminalSession();
             if (session == null || session.mSessionName == null) continue;
@@ -357,13 +368,66 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                     session.mHandle, emulator.getScreenContentVersion())) {
                 continue;
             }
-            mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store,
-                session.mSessionName, statuslineScanText(emulator, screen), nowMillis,
-                TimeZone.getDefault());
-            recordedAny = true;
+            sessionScreenTexts.add(new AllSessionsStatuslineParser.SessionScreenText(
+                session.mSessionName, statuslineScanText(emulator, screen)));
         }
-        if (recordedAny) {
-            termuxSessionListNotifyUpdated();
+        if (sessionScreenTexts.isEmpty()) {
+            return;
+        }
+        parseAndApplyStatuslineUpdatesOffThread(sessionScreenTexts, nowMillis);
+    }
+
+    /**
+     * Runs the expensive per-session statusline regex parse on the background parse thread and
+     * marshals the resulting {@link SessionNewActivityStore} mutations and the session-list UI refresh
+     * back to the main thread. The terminal emulator is not thread-safe, so every emulator read (the
+     * gate's content-version check and the transcript extraction in {@link #statuslineScanText}) has
+     * already happened on the main thread before this is called; only the pure-CPU token parse over the
+     * already-materialized screen-text strings runs off the main thread, and the store mutation is
+     * applied on the main Looper so the store stays single-threaded.
+     */
+    private void parseAndApplyStatuslineUpdatesOffThread(
+            @NonNull List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts,
+            long nowMillis) {
+        TimeZone timeZone = TimeZone.getDefault();
+        statuslineParseHandler().post(() -> {
+            List<ParsedStatuslineUpdate> updates =
+                mAllSessionsStatuslineParser.parse(sessionScreenTexts, nowMillis, timeZone);
+            if (updates.isEmpty()) {
+                return;
+            }
+            mMainThreadHandler.post(() -> applyStatuslineUpdates(updates));
+        });
+    }
+
+    private void applyStatuslineUpdates(@NonNull List<ParsedStatuslineUpdate> updates) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        for (ParsedStatuslineUpdate update : updates) {
+            update.applyTo(store);
+        }
+        termuxSessionListNotifyUpdated();
+    }
+
+    @NonNull
+    private Handler statuslineParseHandler() {
+        if (mStatuslineParseThread == null || mStatuslineParseHandler == null) {
+            HandlerThread parseThread = new HandlerThread("TermuxStatuslineParse");
+            parseThread.start();
+            mStatuslineParseThread = parseThread;
+            mStatuslineParseHandler = new Handler(parseThread.getLooper());
+        }
+        return mStatuslineParseHandler;
+    }
+
+    private void stopStatuslineParseThread() {
+        if (mStatuslineParseHandler != null) {
+            mStatuslineParseHandler.removeCallbacksAndMessages(null);
+            mStatuslineParseHandler = null;
+        }
+        if (mStatuslineParseThread != null) {
+            mStatuslineParseThread.quit();
+            mStatuslineParseThread = null;
         }
     }
 
@@ -371,9 +435,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private static String statuslineScanText(@NonNull TerminalEmulator emulator,
                                              @NonNull TerminalBuffer screen) {
         StringBuilder builder = new StringBuilder(emulator.getMainBufferTranscriptText());
-        if (emulator.isAlternateBufferActive()) {
-            builder.append('\n').append(visibleScreenText(emulator, screen));
-        }
+        builder.append('\n').append(visibleScreenText(emulator, screen));
         return builder.toString();
     }
 
