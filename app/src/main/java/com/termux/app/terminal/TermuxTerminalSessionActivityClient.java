@@ -770,28 +770,33 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         View sessionInfoRoot = mActivity.findViewById(android.R.id.content);
         if (sessionInfoRoot == null) return;
         SessionInfoBottomBarsBinder.bind(sessionInfoRoot, mActivity.getSessionNewActivityStore(),
-            sessionName, System.currentTimeMillis(), this::scrollToMostRecentCallToUserTag);
+            sessionName, System.currentTimeMillis(),
+            () -> navigateToCallToUserSession(sessionName));
     }
 
-    private void scrollToMostRecentCallToUserTag() {
+    private void navigateToCallToUserSession(@Nullable String sessionName) {
+        TerminalSession session = sessionForName(sessionName);
+        if (session == null) return;
+
+        setCurrentSession(session);
+
         TerminalView terminalView = mActivity.getTerminalView();
         if (terminalView == null) return;
-        TerminalSession session = mActivity.getCurrentSession();
-        if (session == null) return;
         TerminalEmulator emulator = session.getEmulator();
         if (emulator == null) return;
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
-        if (!CallToUserScrollDecision.allowsInAppScroll(emulator.isAlternateBufferActive())) {
-            String scrollCommand =
-                HostTmuxCallToUserScrollCommand.forSessionName(session.mSessionName);
-            if (scrollCommand != null) {
-                session.write(scrollCommand);
-            }
-            return;
-        }
+        CallToUserScrollAction action = CallToUserScrollAction.resolve(
+            emulator.isAlternateBufferActive(), locateCallToUserTagTopRow(emulator, screen));
 
+        emulator.setAutoScrollDisabled(action.getKind() == CallToUserScrollAction.Kind.SCROLL_TO_TAG);
+        terminalView.setTopRow(action.getTargetTopRow());
+        terminalView.invalidate();
+    }
+
+    private int locateCallToUserTagTopRow(@NonNull TerminalEmulator emulator,
+                                          @NonNull TerminalBuffer screen) {
         int screenRows = emulator.mRows;
         int activeTranscriptRows = screen.getActiveTranscriptRows();
         int firstRowExternalIndex = -activeTranscriptRows;
@@ -800,16 +805,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             rowTexts.add(screen.getSelectedText(
                 0, externalRow, emulator.mColumns, externalRow, false, false));
         }
-
-        int targetTopRow = CallToUserTagScrollLocator.scrollTargetTopRow(
+        return CallToUserTagScrollLocator.scrollTargetTopRow(
             rowTexts, firstRowExternalIndex, activeTranscriptRows);
-        if (targetTopRow == CallToUserTagScrollLocator.NO_TAG_ROW) {
-            return;
-        }
+    }
 
-        emulator.setAutoScrollDisabled(true);
-        terminalView.setTopRow(targetTopRow);
-        terminalView.invalidate();
+    @Nullable
+    private TerminalSession sessionForName(@Nullable String sessionName) {
+        if (sessionName == null) return null;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession session = termuxSession.getTerminalSession();
+            if (session != null && sessionName.equals(session.mSessionName)) {
+                return session;
+            }
+        }
+        return null;
     }
 
     @NonNull
