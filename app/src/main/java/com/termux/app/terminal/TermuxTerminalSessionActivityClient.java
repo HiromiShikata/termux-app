@@ -93,6 +93,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final SessionStatuslineReloadScanner mSessionStatuslineReloadScanner =
         new SessionStatuslineReloadScanner();
 
+    private final AllSessionsStatuslineScanGate mAllSessionsStatuslineScanGate =
+        new AllSessionsStatuslineScanGate();
+
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
 
@@ -350,6 +353,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (emulator == null) continue;
             TerminalBuffer screen = emulator.getScreen();
             if (screen == null) continue;
+            if (!mAllSessionsStatuslineScanGate.shouldScan(
+                    session.mHandle, emulator.getScreenContentVersion())) {
+                continue;
+            }
             mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store,
                 session.mSessionName, statuslineScanText(emulator, screen), nowMillis,
                 TimeZone.getDefault());
@@ -418,8 +425,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getCallToUserTagController() != null)
             mActivity.getCallToUserTagController().forgetSession(finishedSession.mHandle);
 
-        if (finishedSession.mHandle != null)
+        if (finishedSession.mHandle != null) {
             mBackgroundOutputScanGate.forget(finishedSession.mHandle);
+            mAllSessionsStatuslineScanGate.forget(finishedSession.mHandle);
+        }
 
         int index = service.getIndexOfSession(finishedSession);
 
