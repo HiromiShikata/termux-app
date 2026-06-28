@@ -99,6 +99,11 @@ public class BrowserCoreWebViewClientInstrumentedTest {
         @Override
         public void onMainFrameError(@NonNull WebView view) {
         }
+
+        @Override
+        public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
+            return false;
+        }
     }
 
     @Test
