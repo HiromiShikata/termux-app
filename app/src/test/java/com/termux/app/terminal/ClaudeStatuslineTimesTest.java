@@ -61,15 +61,105 @@ public class ClaudeStatuslineTimesTest {
     }
 
     @Test
-    public void aTimeAfterTheCurrentClockBelongsToTheCurrentDayAndIsInTheFuture() {
+    public void aTimeAfterTheCurrentClockBelongsToThePreviousDayAndIsNeverInTheFuture() {
         long now = timeMillis(2026, 6, 26, 9, 0, 0);
         String screen = "call:23:30:00";
 
         ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
 
-        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 23, 30, 0)),
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 25, 23, 30, 0)),
             times.getCallTimeMillis());
-        Assert.assertTrue(times.getCallTimeMillis() > now);
+        Assert.assertTrue(times.getCallTimeMillis() <= now);
+    }
+
+    @Test
+    public void aReplyTokenJustBeforeMidnightViewedJustAfterMidnightIsAboutFortySecondsAgo() {
+        long now = timeMillis(2026, 6, 28, 0, 0, 10);
+        String screen = "reply:23:59:30";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Long replyTimeMillis = times.getReplyTimeMillis();
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 23, 59, 30)), replyTimeMillis);
+        Assert.assertTrue(replyTimeMillis <= now);
+        Assert.assertEquals("40s",
+            SessionNewActivityStore.formatRelativeAge(replyTimeMillis, now));
+    }
+
+    @Test
+    public void aReplyFiveMinutesBeforeMidnightViewedAfterMidnightRendersAsMinutes() {
+        long now = timeMillis(2026, 6, 28, 0, 2, 0);
+        String screen = "reply:23:57:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Long replyTimeMillis = times.getReplyTimeMillis();
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 23, 57, 0)), replyTimeMillis);
+        Assert.assertEquals("5m",
+            SessionNewActivityStore.formatRelativeAge(replyTimeMillis, now));
+    }
+
+    @Test
+    public void aTimeAtOrBeforeTheCurrentClockBelongsToTheCurrentDay() {
+        long now = timeMillis(2026, 6, 28, 9, 0, 0);
+        String screen = "reply:08:55:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Long replyTimeMillis = times.getReplyTimeMillis();
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 28, 8, 55, 0)), replyTimeMillis);
+        Assert.assertEquals("5m",
+            SessionNewActivityStore.formatRelativeAge(replyTimeMillis, now));
+    }
+
+    @Test
+    public void anOutTokenJustBeforeMidnightViewedJustAfterMidnightIsAboutFiftySecondsAgo() {
+        long now = timeMillis(2026, 6, 28, 0, 0, 10);
+        String screen = "out:23:59:20";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Long outTimeMillis = times.getOutTimeMillis();
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 23, 59, 20)), outTimeMillis);
+        Assert.assertTrue(outTimeMillis <= now);
+        Assert.assertEquals("50s",
+            SessionNewActivityStore.formatRelativeAge(outTimeMillis, now));
+    }
+
+    @Test
+    public void anOutTokenAtElevenPmViewedJustAfterMidnightIsAboutOneHourAgoNotMoreThanOneDay() {
+        long now = timeMillis(2026, 6, 28, 0, 14, 0);
+        String screen = "out:23:00:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Long outTimeMillis = times.getOutTimeMillis();
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 23, 0, 0)), outTimeMillis);
+        Assert.assertTrue(outTimeMillis <= now);
+        Assert.assertEquals("1h",
+            SessionNewActivityStore.formatRelativeAge(outTimeMillis, now));
+    }
+
+    @Test
+    public void anOutTokenEarlierTodayBelongsToTodayAndRendersTheHourValue() {
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        String screen = "out:11:00:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Long outTimeMillis = times.getOutTimeMillis();
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 28, 11, 0, 0)), outTimeMillis);
+        Assert.assertEquals("1h",
+            SessionNewActivityStore.formatRelativeAge(outTimeMillis, now));
+    }
+
+    @Test
+    public void anOutTimestampGenuinelyTwentyFiveHoursOldStillShowsTheDayDisplay() {
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        long outTwentyFiveHoursAgo = timeMillis(2026, 6, 27, 11, 0, 0);
+
+        Assert.assertEquals(">1 day",
+            SessionNewActivityStore.formatRelativeAge(outTwentyFiveHoursAgo, now));
     }
 
     @Test

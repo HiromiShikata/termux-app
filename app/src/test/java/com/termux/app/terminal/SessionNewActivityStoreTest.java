@@ -23,6 +23,32 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
+    public void outDisplayAcrossMidnightRendersTheCorrectShortValueInBothSurfaces() {
+        java.util.TimeZone utc = java.util.TimeZone.getTimeZone("UTC");
+        java.util.Calendar calendar = java.util.Calendar.getInstance(utc);
+        calendar.clear();
+        calendar.set(2026, java.util.Calendar.JUNE, 28, 0, 0, 10);
+        long now = calendar.getTimeInMillis();
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(
+            "call:23:58:00 out:23:59:20 reply:23:59:30", now, utc);
+
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("session-one",
+            times.getCallTimeMillis(),
+            times.getOutTimeMillis(),
+            times.getReplyTimeMillis(),
+            times.getSubagentCount());
+
+        String bottomSheetLine = TermuxSessionsListViewController.buildTimestampLine(
+            store, "session-one", now);
+        Assert.assertEquals("call: 2m  out: 50s  reply: 40s  sub: 0", bottomSheetLine);
+
+        Long storedOutTimeMillis = store.getStatuslineOutTimeMillis("session-one");
+        Assert.assertEquals("50s",
+            SessionNewActivityStore.formatRelativeAge(storedOutTimeMillis, now));
+    }
+
+    @Test
     public void recordsAndExposesLastExplicitCallTimeByName() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         Assert.assertNull(store.getLastExplicitCallTimeMillis("session-one"));
