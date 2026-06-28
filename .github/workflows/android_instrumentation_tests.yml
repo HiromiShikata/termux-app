@@ -245,7 +245,17 @@ jobs:
           arch: ${{ env.EMULATOR_ARCH }}
           profile: ${{ env.EMULATOR_PROFILE }}
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none -verbose -logcat "*:W"
+          # Cold-boot the test emulator (-no-snapshot) instead of restoring the
+          # cached booted snapshot. Restoring a booted snapshot flips
+          # sys.boot_completed to 1 while the `input` system service is still
+          # re-registering, so the runner's internal post-boot
+          # `adb shell input keyevent 82` intermittently fails with
+          # `SecurityException: No service published for: input` and aborts the
+          # shard before any test runs. A normal cold boot reaches
+          # sys.boot_completed=1 only after init has published the input service,
+          # removing that race. The expensive AVD (system image and config) is
+          # still restored from the actions/cache step above, so caching is kept.
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none -verbose -logcat "*:W"
           disable-animations: true
           script: bash .github/scripts/run-instrumentation-tests.sh
 
