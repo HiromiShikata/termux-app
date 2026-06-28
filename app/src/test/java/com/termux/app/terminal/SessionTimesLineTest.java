@@ -40,7 +40,7 @@ public class SessionTimesLineTest {
             null, NOW - 12L * ONE_MINUTE_MILLIS, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1 day  out: 12m  reply: >1 day  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: 12m  reply: >1d  sub: 0", line.getText());
     }
 
     @Test
@@ -48,7 +48,7 @@ public class SessionTimesLineTest {
         SessionTimesLine line = SessionTimesLine.of(
             NOW + ONE_HOUR_MILLIS, NOW - ONE_MINUTE_MILLIS, NOW, 0, NOW);
 
-        Assert.assertEquals("call: >1 day  out: 1m  reply: 0s  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: 1m  reply: 0s  sub: 0", line.getText());
     }
 
     @Test
@@ -56,7 +56,7 @@ public class SessionTimesLineTest {
         SessionTimesLine line = SessionTimesLine.of(null, null, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line.getText());
     }
 
     @Test
@@ -95,6 +95,6 @@ public class SessionTimesLineTest {
         SessionTimesLine line = SessionTimesLine.of(
             null, null, replyTwentyFiveHoursAgo, 0, now);
 
-        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line.getText());
     }
 }

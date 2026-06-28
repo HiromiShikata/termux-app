@@ -21,7 +21,7 @@ public class SessionNewActivityStore {
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
     private static final long ONE_DAY_MILLIS = 24L * ONE_HOUR_MILLIS;
-    static final String MORE_THAN_ONE_DAY_LABEL = ">1 day";
+    static final String MORE_THAN_ONE_DAY_LABEL = ">1d";
 
     private final Map<String, Long> mLastOutputActivityTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastExplicitCallTimeMillisByName = new HashMap<>();

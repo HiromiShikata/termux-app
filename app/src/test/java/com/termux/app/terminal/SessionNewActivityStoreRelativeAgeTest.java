@@ -36,13 +36,13 @@ public class SessionNewActivityStoreRelativeAgeTest {
 
     @Test
     public void rendersMoreThanOneDayWhenTheTimeIsInTheFuture() {
-        Assert.assertEquals(">1 day",
+        Assert.assertEquals(">1d",
             SessionNewActivityStore.formatRelativeAge(NOW + ONE_SECOND_MILLIS, NOW));
     }
 
     @Test
     public void rendersMoreThanOneDayWhenAtLeastADayHasElapsed() {
-        Assert.assertEquals(">1 day",
+        Assert.assertEquals(">1d",
             SessionNewActivityStore.formatRelativeAge(NOW - ONE_DAY_MILLIS, NOW));
     }
 

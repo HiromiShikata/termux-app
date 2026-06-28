@@ -158,7 +158,7 @@ public class ClaudeStatuslineTimesTest {
         long now = timeMillis(2026, 6, 28, 12, 0, 0);
         long outTwentyFiveHoursAgo = timeMillis(2026, 6, 27, 11, 0, 0);
 
-        Assert.assertEquals(">1 day",
+        Assert.assertEquals(">1d",
             SessionNewActivityStore.formatRelativeAge(outTwentyFiveHoursAgo, now));
     }
 
