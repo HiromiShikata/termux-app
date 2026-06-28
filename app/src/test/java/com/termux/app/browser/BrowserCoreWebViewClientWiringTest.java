@@ -45,6 +45,15 @@ public class BrowserCoreWebViewClientWiringTest {
     }
 
     @Test
+    public void coreClientHasNoPerUrlMobileViewportBranch() throws IOException {
+        String source = readModuleSource(CORE_CLIENT_PATH);
+        int injectIndex = source.indexOf("private void injectViewport");
+        Assert.assertTrue(injectIndex >= 0);
+        String body = source.substring(injectIndex);
+        Assert.assertFalse(body.contains("isOverviewUrl"));
+    }
+
+    @Test
     public void coreClientForwardsVisitedHistoryAndErrorLifecycle() throws IOException {
         String source = readModuleSource(CORE_CLIENT_PATH);
         Assert.assertTrue(source.contains("public void doUpdateVisitedHistory"));

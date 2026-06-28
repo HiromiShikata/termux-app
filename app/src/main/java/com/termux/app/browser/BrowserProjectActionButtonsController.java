@@ -30,7 +30,7 @@ public final class BrowserProjectActionButtonsController {
         this.mNewIssueButton = newIssueButton;
         this.mUrlOpener = urlOpener;
         mOverviewButton.setOnClickListener(view -> openAction(mActionUrls.getOverviewUrl(), BrowserViewMode.DESKTOP));
-        mTdpmConsoleButton.setOnClickListener(view -> openAction(mActionUrls.getTdpmConsoleUrl(), BrowserViewMode.MOBILE));
+        mTdpmConsoleButton.setOnClickListener(view -> openAction(mActionUrls.getTdpmConsoleUrl(), BrowserViewMode.DESKTOP));
         mNewIssueButton.setOnClickListener(view -> openAction(mActionUrls.getNewIssueUrl(), BrowserViewMode.DESKTOP));
     }
 
