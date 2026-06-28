@@ -24,22 +24,23 @@ public class ProjectBrowserOverlayForeignFrameResetWiringTest {
     }
 
     @Test
-    public void hideBlanksTheTabsAndClearsLoadedUrlBookkeeping() throws IOException {
+    public void hideClearsDisplayedUrlBookkeepingButKeepsWebViewsAlive() throws IOException {
         String source = readControllerSource();
         int hideIndex = source.indexOf("public void hide()");
         Assert.assertTrue(hideIndex >= 0);
         int hideEnd = source.indexOf("\n    }", hideIndex);
         String hideBody = source.substring(hideIndex, hideEnd);
-        Assert.assertTrue(hideBody.contains("resetTabsToBlank()"));
+        Assert.assertTrue(hideBody.contains("suspendDisplayedTabsKeepingWebViewsAlive()"));
 
-        int resetIndex = source.indexOf("private void resetTabsToBlank()");
+        int resetIndex = source.indexOf("private void suspendDisplayedTabsKeepingWebViewsAlive()");
         Assert.assertTrue(resetIndex >= 0);
         int resetEnd = source.indexOf("\n    }", resetIndex);
         String resetBody = source.substring(resetIndex, resetEnd);
         Assert.assertTrue(resetBody.contains("mCurrentUrl = null"));
         Assert.assertTrue(resetBody.contains("mLoadedUrl = null"));
-        Assert.assertTrue(resetBody.contains("mTabManager.removeSession(PROJECT_BROWSER_SESSION_HANDLE)"));
-        Assert.assertTrue(resetBody.contains("mWebViewHost.removeSession(PROJECT_BROWSER_SESSION_HANDLE)"));
+        Assert.assertFalse(resetBody.contains("mTabManager.removeSession(PROJECT_BROWSER_SESSION_HANDLE)"));
+        Assert.assertFalse(resetBody.contains("mWebViewHost.removeSession(PROJECT_BROWSER_SESSION_HANDLE)"));
+        Assert.assertFalse(resetBody.contains("mWebViewHost.destroyAll()"));
     }
 
     @Test

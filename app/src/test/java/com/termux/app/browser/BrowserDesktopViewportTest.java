@@ -50,6 +50,12 @@ public class BrowserDesktopViewportTest {
     }
 
     @Test
+    public void injectionScriptReturnsEarlyWhenAlreadyInstalledForTheDocument() {
+        Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT
+            .contains("if(window.__termuxDesktopViewportObserver){return;}"));
+    }
+
+    @Test
     public void appliesToDesktopModeTab() {
         BrowserTab tab = new BrowserTab("session", "https://github.com/");
         Assert.assertTrue(tab.isDesktopMode());
