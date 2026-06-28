@@ -22,6 +22,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 import com.termux.R;
 import com.termux.shared.interact.DialogUtils;
@@ -288,6 +289,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (session.mHandle == null) return true;
         return mBackgroundOutputScanGate.shouldScan(
             session.mHandle, session.getScreenContentVersion(), System.currentTimeMillis());
+    }
+
+    @VisibleForTesting
+    public void forgetBackgroundOutputScanThrottle(@Nullable TerminalSession session) {
+        if (session == null || session.mHandle == null) return;
+        mBackgroundOutputScanGate.forget(session.mHandle);
     }
 
     private void backgroundOutputTagsForSession(TerminalSession session) {
