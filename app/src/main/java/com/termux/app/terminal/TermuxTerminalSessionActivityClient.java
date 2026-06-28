@@ -730,6 +730,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (screen == null) return;
 
         if (!CallToUserScrollDecision.allowsInAppScroll(emulator.isAlternateBufferActive())) {
+            String scrollCommand =
+                HostTmuxCallToUserScrollCommand.forSessionName(session.mSessionName);
+            if (scrollCommand != null) {
+                session.write(scrollCommand);
+            }
             return;
         }
 

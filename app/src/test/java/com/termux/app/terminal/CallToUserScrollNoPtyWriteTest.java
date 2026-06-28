@@ -47,7 +47,7 @@ public class CallToUserScrollNoPtyWriteTest {
     }
 
     @Test
-    public void alternateBufferScrollToCallToUserWritesNoTmuxCommandToSession() {
+    public void alternateBufferDisallowsInAppScrollSoTheHostTmuxScrollCommandIsUsedInstead() {
         CapturingTerminalOutput output = new CapturingTerminalOutput();
         TerminalEmulator emulator = new TerminalEmulator(output, 80, 24, 13, 15, 1000, null);
 
@@ -56,26 +56,39 @@ public class CallToUserScrollNoPtyWriteTest {
         Assert.assertTrue("the foreground program is on the alternate screen buffer",
             emulator.isAlternateBufferActive());
 
-        output.written.setLength(0);
-
         boolean allowsInAppScroll =
             CallToUserScrollDecision.allowsInAppScroll(emulator.isAlternateBufferActive());
 
         Assert.assertFalse(
-            "the scroll-to-call-to-user action must not perform an in-app scroll while the alternate"
-                + " buffer is active",
+            "the in-app setTopRow path must not be used while the alternate buffer is active,"
+                + " because the alternate screen buffer has no scrollback",
             allowsInAppScroll);
+    }
+
+    @Test
+    public void hostTmuxScrollCommandIsNotInjectedAsRawShellTextIntoTheForegroundProgram() {
+        String scrollCommand = HostTmuxCallToUserScrollCommand.forSessionName("umino");
+
+        Assert.assertFalse(
+            "the scroll command must not contain a bare 'tmux copy-mode' shell line, because that"
+                + " text was injected into the foreground program instead of being executed",
+            scrollCommand.contains("tmux copy-mode"));
+        Assert.assertFalse(
+            "the scroll command must not contain a bare 'tmux send-keys' shell line",
+            scrollCommand.contains("tmux send-keys"));
+    }
+
+    @Test
+    public void hostTmuxScrollCommandUsesTheTmuxPrefixKeyCommandPromptSoTmuxInterceptsIt() {
+        String scrollCommand = HostTmuxCallToUserScrollCommand.forSessionName("umino");
+
         Assert.assertEquals(
-            "the scroll-to-call-to-user action must write nothing to the session PTY while the"
-                + " alternate buffer is active, so no tmux command text is injected into the"
+            "the command must start with the tmux prefix key so tmux captures it regardless of the"
                 + " foreground program",
-            "",
-            output.written.toString());
-        Assert.assertFalse(
-            "no tmux copy-mode command may reach the session PTY from the scroll-to action",
-            output.written.toString().contains("tmux copy-mode"));
-        Assert.assertFalse(
-            "no tmux send-keys command may reach the session PTY from the scroll-to action",
-            output.written.toString().contains("tmux send-keys"));
+            HostTmuxCallToUserScrollCommand.DEFAULT_TMUX_PREFIX_KEY, scrollCommand.charAt(0));
+        Assert.assertTrue(
+            "the prefix key must be followed by the tmux command-prompt ':' so the command is run"
+                + " by tmux rather than typed into the foreground program",
+            scrollCommand.charAt(1) == ':');
     }
 }
