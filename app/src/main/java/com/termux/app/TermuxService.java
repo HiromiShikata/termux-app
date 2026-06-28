@@ -681,6 +681,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             return null;
         }
 
+        if (mProperties == null) return null;
+
         executionCommand.setShellCommandShellEnvironment = true;
         executionCommand.terminalTranscriptRows = mProperties.getTerminalTranscriptRows();
 
