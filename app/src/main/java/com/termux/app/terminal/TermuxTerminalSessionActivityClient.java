@@ -436,12 +436,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     static boolean shouldRemoveFinishedSession(boolean isAndroidTV, int sessionsSize, boolean isPluginExecutionCommandWithPendingResult) {
+        if (isPluginExecutionCommandWithPendingResult) {
+            return true;
+        }
         if (isAndroidTV) {
             // On Android TV devices we need to use older behaviour because we may
             // not be able to have multiple launcher icons.
-            return sessionsSize > 1 || isPluginExecutionCommandWithPendingResult;
+            return sessionsSize > 1;
         }
-        return true;
+        return false;
     }
 
     @Override

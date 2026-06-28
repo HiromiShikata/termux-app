@@ -1040,14 +1040,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
         applyBellNotificationIcon(sessionTitleView, sessionRow);
 
-        if (sessionRunning) {
-            sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-        } else {
-            sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-        }
-        int defaultColor = surfacePrimaryTextColor();
-        int color = sessionRunning || sessionAtRow.getExitStatus() == 0 ? defaultColor : Color.RED;
-        sessionTitleView.setTextColor(color);
+        sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+        sessionTitleView.setTextColor(surfacePrimaryTextColor());
 
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
     }

@@ -87,18 +87,27 @@ public class TermuxTerminalSessionActivityClientTest {
     }
 
     @Test
-    public void removesFinishedSessionOnNormalDeviceRegardlessOfExitStatus() {
+    public void retainsFinishedSessionOnNormalDeviceSoItStaysVisibleUntilReloadGroupsItUnderNa() {
         boolean isAndroidTV = false;
         boolean isPluginExecutionCommandWithPendingResult = false;
-        Assert.assertTrue(
+        Assert.assertFalse(
             TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
                 isAndroidTV, 1, isPluginExecutionCommandWithPendingResult));
     }
 
     @Test
-    public void removesFinishedSessionOnNormalDeviceWithMultipleSessions() {
+    public void retainsFinishedSessionOnNormalDeviceWithMultipleSessions() {
         boolean isAndroidTV = false;
         boolean isPluginExecutionCommandWithPendingResult = false;
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
+                isAndroidTV, 5, isPluginExecutionCommandWithPendingResult));
+    }
+
+    @Test
+    public void removesFinishedSessionOnNormalDeviceWhenPluginResultPending() {
+        boolean isAndroidTV = false;
+        boolean isPluginExecutionCommandWithPendingResult = true;
         Assert.assertTrue(
             TermuxTerminalSessionActivityClient.shouldRemoveFinishedSession(
                 isAndroidTV, 5, isPluginExecutionCommandWithPendingResult));
