@@ -476,6 +476,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void maybeAutoCheckForApkUpdate() {
+        ApkUpdateUiController updateUiController = new ApkUpdateUiController(this);
+        updateUiController.showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
         if (!ApkUpdateManager.isAutoCheckEnabled(this)) {
             return;
         }
@@ -485,7 +487,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             return;
         }
         throttle.recordCheckedAt(nowMillis);
-        new ApkUpdateUiController(this).checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
+        updateUiController.checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
     }
 
     private final class ApkUpdateFloatingIndicatorView
