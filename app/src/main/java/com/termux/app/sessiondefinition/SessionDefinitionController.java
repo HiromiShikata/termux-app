@@ -50,7 +50,7 @@ public final class SessionDefinitionController {
         repository.loadForRebuild(baseUrl, result -> {
             try {
                 notifyPartialLoad(result);
-                buildSessions(result.getEntries());
+                buildSessions(result);
             } finally {
                 setLoadingProgressVisible(false);
             }
@@ -79,11 +79,13 @@ public final class SessionDefinitionController {
         }
     }
 
-    private void buildSessions(List<SessionDefinitionEntry> entries) {
+    private void buildSessions(SessionDefinitionLoadResult result) {
+        List<SessionDefinitionEntry> entries = result.getEntries();
+        boolean authoritativeLoad = !result.hasFailedGroups();
         String commandTemplate = activity.getPreferences().getAutosshCommand();
         List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, commandTemplate);
 
-        if (plannedSessions.isEmpty()) {
+        if (plannedSessions.isEmpty() && authoritativeLoad) {
             activity.showToast(activity.getString(R.string.msg_session_definition_no_entries), true);
         }
 
@@ -94,7 +96,9 @@ public final class SessionDefinitionController {
 
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 
-        removeSessionsWithDisappearedDefinition(entries);
+        if (authoritativeLoad) {
+            removeSessionsWithDisappearedDefinition(entries);
+        }
 
         int configuredLimit = activity.getPreferences().getSessionDefinitionMaxSessions();
         SessionDefinitionLimitPlan limitPlan =

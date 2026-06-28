@@ -65,6 +65,9 @@ public class SessionDefinitionControllerWashReplaceTest {
         adapter = new TermuxSessionsListViewController(activity, service.getTermuxSessions());
         set(activity, TermuxActivity.class, "mTermuxSessionListViewController", adapter);
         adapter.setEntries(entries);
+
+        set(activity, TermuxActivity.class, "mPreferences",
+            com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences.build(appContext, true));
     }
 
     @Test
@@ -138,6 +141,57 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
+    public void buildSessionsKeepsFailedGroupSessionsWhenLoadIsPartialAboveSixteenSessions() throws Exception {
+        int sessionCount = 22;
+        List<String> allUrls = new ArrayList<>();
+        TermuxSession firstSession = null;
+        for (int index = 0; index < sessionCount; index++) {
+            String url = "https://example.test/session/" + index;
+            allUrls.add(url);
+            TermuxSession liveSession = session(url);
+            if (firstSession == null) {
+                firstSession = liveSession;
+            }
+            shellManager.mTermuxSessions.add(liveSession);
+        }
+        attachCurrentSession(firstSession.getTerminalSession());
+
+        int failedGroupStartIndex = 16;
+        List<SessionDefinitionEntry> survivingEntries = new ArrayList<>();
+        for (int index = 0; index < failedGroupStartIndex; index++) {
+            survivingEntries.add(new SessionDefinitionEntry("loadedGroup", "story" + index,
+                Collections.singletonList(allUrls.get(index))));
+        }
+
+        SessionDefinitionLoadResult partialResult = new SessionDefinitionLoadResult(
+            survivingEntries, 2, Collections.singletonList("failedGroup"));
+
+        invokeBuildSessions(partialResult);
+
+        assertEquals(allUrls, remainingSessionNames());
+    }
+
+    @Test
+    public void buildSessionsRemovesDisappearedSessionsWhenLoadIsAuthoritative() throws Exception {
+        shellManager.mTermuxSessions.add(session("adhoc-local"));
+        TermuxSession stillDefined = session("https://example.test/a");
+        shellManager.mTermuxSessions.add(stillDefined);
+        shellManager.mTermuxSessions.add(session("https://example.test/b"));
+        attachCurrentSession(stillDefined.getTerminalSession());
+
+        List<SessionDefinitionEntry> authoritativeEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+
+        SessionDefinitionLoadResult authoritativeResult = new SessionDefinitionLoadResult(
+            authoritativeEntries, 1, Collections.emptyList());
+
+        invokeBuildSessions(authoritativeResult);
+
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
+    }
+
+    @Test
     public void ensureCurrentSessionValidAfterRebuildKeepsAValidCurrentSession() throws Exception {
         TermuxSession adHoc = session("adhoc-local");
         TermuxSession stillDefined = session("https://example.test/a");
@@ -174,6 +228,14 @@ public class SessionDefinitionControllerWashReplaceTest {
             .getDeclaredMethod("removeSessionsWithDisappearedDefinition", List.class);
         removeMethod.setAccessible(true);
         removeMethod.invoke(controller, currentEntries);
+    }
+
+    private void invokeBuildSessions(SessionDefinitionLoadResult result) throws Exception {
+        SessionDefinitionController controller = new SessionDefinitionController(activity);
+        Method buildMethod = SessionDefinitionController.class
+            .getDeclaredMethod("buildSessions", SessionDefinitionLoadResult.class);
+        buildMethod.setAccessible(true);
+        buildMethod.invoke(controller, result);
     }
 
     private List<String> remainingSessionNames() {
