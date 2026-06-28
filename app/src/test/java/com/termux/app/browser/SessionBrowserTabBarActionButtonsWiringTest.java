@@ -35,6 +35,42 @@ public class SessionBrowserTabBarActionButtonsWiringTest {
     }
 
     @Test
+    public void addTaskButtonUsesADistinctIconFromTheNewTabButton() throws IOException {
+        String layout = readModuleResource(LAYOUT_RELATIVE_PATH);
+        String addTaskSrc = drawableSrcForButton(layout, "@+id/browser_tab_bar_new_issue_button");
+        String newTabSrc = drawableSrcForButton(layout, "@+id/browser_new_tab_button");
+        Assert.assertNotNull("Add Task button must declare android:src", addTaskSrc);
+        Assert.assertNotNull("New-tab button must declare android:src", newTabSrc);
+        Assert.assertNotEquals(
+            "Add Task button must not reuse the new-tab plus icon; it needs a distinct create-new-task glyph",
+            newTabSrc, addTaskSrc);
+        Assert.assertEquals("@drawable/ic_add_task", addTaskSrc);
+    }
+
+    private String drawableSrcForButton(String layout, String buttonId) {
+        int idIndex = layout.indexOf(buttonId);
+        if (idIndex < 0) {
+            return null;
+        }
+        int elementEnd = layout.indexOf("/>", idIndex);
+        if (elementEnd < 0) {
+            return null;
+        }
+        String element = layout.substring(idIndex, elementEnd);
+        String marker = "android:src=\"";
+        int srcIndex = element.indexOf(marker);
+        if (srcIndex < 0) {
+            return null;
+        }
+        int valueStart = srcIndex + marker.length();
+        int valueEnd = element.indexOf('"', valueStart);
+        if (valueEnd < 0) {
+            return null;
+        }
+        return element.substring(valueStart, valueEnd);
+    }
+
+    @Test
     public void fixedActionButtonsArePinnedRightOfTheScrollingTabStrip() throws IOException {
         String layout = readModuleResource(LAYOUT_RELATIVE_PATH);
         int tabBarIndex = layout.indexOf("@+id/browser_tab_bar");
