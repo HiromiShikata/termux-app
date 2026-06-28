@@ -47,6 +47,7 @@ import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.app.TermuxService;
+import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.terminal.io.BellHandler;
 import com.termux.shared.logger.Logger;
@@ -117,7 +118,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS = 1500L;
 
-    private static final long ALL_SESSIONS_CALL_SCAN_INTERVAL_MILLIS = 5L * 60L * 1000L;
+    private static final long MILLIS_PER_MINUTE = 60L * 1000L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
@@ -622,9 +623,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * until the activity is foregrounded ({@link #onStart}) or the session emits more output. This
      * repeating pass closes that gap by feeding every session's current statusline through the same
      * {@link #repopulateStatuslineTimesForAllSessions} path the on-load pass uses. The store's
-     * unchanged-statusline short-circuit keeps each pass cheap, and the long interval keeps the
-     * main-thread cost negligible. The tick runs only while the activity is visible and is removed in
-     * {@link #onStop}, so it does not leak the runnable or run in the background.
+     * unchanged-statusline short-circuit keeps each pass cheap, and the interval is read from the
+     * {@code background-call-scan-interval-minutes} property ({@link
+     * TermuxPropertyConstants#KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES}, defaulting to five minutes)
+     * so the detection window can be tuned without rebuilding while keeping the main-thread cost
+     * negligible. A changed value takes effect the next time the tick is scheduled. The tick runs only
+     * while the activity is visible and is removed in {@link #onStop}, so it does not leak the runnable
+     * or run in the background.
      */
     public void startAllSessionsCallScanTick() {
         if (mActivity.isVisible())
@@ -637,7 +642,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (!mActivity.isVisible()) return;
         mAllSessionsCallScanTickScheduled = true;
         mMainThreadHandler.postDelayed(mAllSessionsCallScanTickRunnable,
-            ALL_SESSIONS_CALL_SCAN_INTERVAL_MILLIS);
+            allSessionsCallScanIntervalMillis());
+    }
+
+    private long allSessionsCallScanIntervalMillis() {
+        TermuxAppSharedProperties properties = mActivity.getProperties();
+        int intervalMinutes = properties != null
+            ? properties.getBackgroundCallScanIntervalMinutes()
+            : TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES;
+        return intervalMinutes * MILLIS_PER_MINUTE;
     }
 
     public void stopAllSessionsCallScanTick() {

@@ -135,4 +135,51 @@ public class SessionBackgroundCallScanTest {
         Assert.assertEquals("the periodic sweep arms RED for a session the owner never opened",
             SessionNewActivityTier.RED, store.tierFor("never-opened-session"));
     }
+
+    @Test
+    public void periodicSweepReArmsRedWhenANewCallTimeArrivesAfterAReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long firstCallMillis = NOW_MILLIS - 10L * 60L * 1000L;
+        long firstReplyMillis = NOW_MILLIS - 9L * 60L * 1000L;
+        Map<String, String> repliedSweep = new LinkedHashMap<>();
+        repliedSweep.put("background-session",
+            statuslineWithCall(firstCallMillis, NOW_MILLIS - 9L * 60L * 1000L, firstReplyMillis));
+
+        scan(store, repliedSweep, NOW_MILLIS);
+
+        Assert.assertNotEquals("a call whose reply already caught up is not RED",
+            SessionNewActivityTier.RED, store.tierFor("background-session"));
+
+        long secondCallMillis = NOW_MILLIS - 1L * 60L * 1000L;
+        Map<String, String> newCallSweep = new LinkedHashMap<>();
+        newCallSweep.put("background-session",
+            statuslineWithCall(secondCallMillis, NOW_MILLIS - 30L * 1000L, firstReplyMillis));
+
+        scan(store, newCallSweep, NOW_MILLIS);
+
+        Assert.assertEquals("a newer call time than the last reply re-arms RED on the next sweep",
+            SessionNewActivityTier.RED, store.tierFor("background-session"));
+    }
+
+    @Test
+    public void periodicSweepDoesNotReArmWhenTheCallTimeIsUnchanged() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long callMillis = NOW_MILLIS - 2L * 60L * 1000L;
+        long staleReplyMillis = NOW_MILLIS - 10L * 60L * 1000L;
+        Map<String, String> sweep = new LinkedHashMap<>();
+        sweep.put("background-session",
+            statuslineWithCall(callMillis, NOW_MILLIS - 90L * 1000L, staleReplyMillis));
+
+        scan(store, sweep, NOW_MILLIS);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("background-session"));
+
+        store.recordUserInput("background-session", NOW_MILLIS);
+        Assert.assertFalse("owner input clears the pending call",
+            store.hasPendingExplicitCall("background-session"));
+
+        scan(store, sweep, NOW_MILLIS + 6L * 60L * 1000L);
+
+        Assert.assertFalse("an unchanged call time must not re-arm RED after the owner replied",
+            store.hasPendingExplicitCall("background-session"));
+    }
 }

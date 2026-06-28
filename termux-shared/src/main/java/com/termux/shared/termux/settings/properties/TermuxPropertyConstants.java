@@ -254,6 +254,14 @@ public final class TermuxPropertyConstants {
     public static final int DEFAULT_IVALUE_TERMINAL_TRANSCRIPT_ROWS = TerminalEmulator.DEFAULT_TERMINAL_TRANSCRIPT_ROWS;
 
 
+    /** Defines the key for how often, in minutes, every session is re-scanned so a background
+     * un-replied call-to-user turns the red indicator on without opening that session */
+    public static final String KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES =  "background-call-scan-interval-minutes"; // Default: "background-call-scan-interval-minutes"
+    public static final int IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MIN = 1;
+    public static final int IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MAX = 60;
+    public static final int DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES = 5;
+
+
 
 
 
@@ -413,6 +421,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_MARGIN_HORIZONTAL,
         KEY_TERMINAL_MARGIN_VERTICAL,
         KEY_TERMINAL_TRANSCRIPT_ROWS,
+        KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
 
         /* float */
         KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR,
