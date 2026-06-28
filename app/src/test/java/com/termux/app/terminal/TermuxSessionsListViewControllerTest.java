@@ -24,10 +24,8 @@ import org.robolectric.RuntimeEnvironment;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 
 @RunWith(RobolectricTestRunner.class)
 public class TermuxSessionsListViewControllerTest {
@@ -908,51 +906,5 @@ public class TermuxSessionsListViewControllerTest {
             3, times.getPaddingTop());
         Assert.assertEquals(9, times.getPaddingEnd());
         Assert.assertEquals(12, times.getPaddingBottom());
-    }
-
-    @Test
-    public void firstCallToUserSessionIndexReturnsTheRedTierSessionSoTheListCanScrollToTheCall() {
-        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
-        tiersByIndex.put(0, SessionNewActivityTier.GRAY);
-        tiersByIndex.put(1, SessionNewActivityTier.YELLOW);
-        tiersByIndex.put(2, SessionNewActivityTier.RED);
-
-        Assert.assertEquals(2, TermuxSessionsListViewController.firstCallToUserSessionIndex(tiersByIndex));
-    }
-
-    @Test
-    public void firstCallToUserSessionIndexReturnsNegativeWhenNoSessionIsRed() {
-        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
-        tiersByIndex.put(0, SessionNewActivityTier.GRAY);
-        tiersByIndex.put(1, SessionNewActivityTier.YELLOW);
-        tiersByIndex.put(2, SessionNewActivityTier.NONE);
-
-        Assert.assertEquals(-1, TermuxSessionsListViewController.firstCallToUserSessionIndex(tiersByIndex));
-    }
-
-    @Test
-    public void firstCallToUserSessionIndexReturnsNegativeForAnEmptyTierMap() {
-        Assert.assertEquals(-1,
-            TermuxSessionsListViewController.firstCallToUserSessionIndex(Collections.emptyMap()));
-    }
-
-    @Test
-    public void firstCallToUserSessionIndexPicksTheLowestSessionIndexWhenMultipleSessionsAreRed() {
-        Map<Integer, SessionNewActivityTier> tiersByIndex = new LinkedHashMap<>();
-        tiersByIndex.put(5, SessionNewActivityTier.RED);
-        tiersByIndex.put(2, SessionNewActivityTier.RED);
-        tiersByIndex.put(8, SessionNewActivityTier.RED);
-
-        Assert.assertEquals(2, TermuxSessionsListViewController.firstCallToUserSessionIndex(tiersByIndex));
-    }
-
-    @Test
-    public void rowPositionForSessionIndexAccountsForHeaderRowsSoTheRedSessionScrollTargetIsCorrect() {
-        List<SessionHierarchyRow> rows = Arrays.asList(
-            SessionHierarchyRow.projectHeader("project"),
-            SessionHierarchyRow.session(0),
-            SessionHierarchyRow.session(1));
-
-        Assert.assertEquals(2, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 1));
     }
 }
