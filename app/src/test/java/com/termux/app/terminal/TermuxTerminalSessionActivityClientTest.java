@@ -146,4 +146,20 @@ public class TermuxTerminalSessionActivityClientTest {
             TermuxTerminalSessionActivityClient.shouldSwitchSessionOnReconnect(
                 hasValidCurrentDisplayedSession));
     }
+
+    @Test
+    public void rebuildKeepsDisplayedSessionWhenItStillExists() {
+        boolean currentSessionStillPresent = true;
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.shouldSwitchSessionAfterRebuild(
+                currentSessionStillPresent));
+    }
+
+    @Test
+    public void rebuildSwitchesOnlyWhenDisplayedSessionWasRemoved() {
+        boolean currentSessionStillPresent = false;
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.shouldSwitchSessionAfterRebuild(
+                currentSessionStillPresent));
+    }
 }
