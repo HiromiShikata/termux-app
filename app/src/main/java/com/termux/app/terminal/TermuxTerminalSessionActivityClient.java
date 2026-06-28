@@ -88,6 +88,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final BackgroundOutputScanGate mBackgroundOutputScanGate = new BackgroundOutputScanGate();
 
+    private final SessionStatuslineReloadScanner mSessionStatuslineReloadScanner =
+        new SessionStatuslineReloadScanner();
+
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
 
@@ -152,6 +155,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mActivity.getTerminalView().onScreenUpdated();
         openTagsForSession(mActivity.getCurrentSession());
         backgroundOutputTagsForSession(mActivity.getCurrentSession());
+
+        // The pass runs once now for sessions already loaded and once more after the staged
+        // eager-load creates the remaining emulators; the store's unchanged-statusline short-circuit
+        // makes the second pass idempotent for sessions already recorded.
+        repopulateStatuslineTimesForAllSessions();
+        mMainThreadHandler.post(this::repopulateStatuslineTimesForAllSessions);
     }
 
     /**
@@ -291,16 +300,46 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         String visibleScreenText = visibleScreenText(emulator, screen);
         long nowMillis = System.currentTimeMillis();
-        ClaudeStatuslineTimes statuslineTimes =
-            ClaudeStatuslineTimes.parse(visibleScreenText, nowMillis, TimeZone.getDefault());
-        if (!statuslineTimes.hasAnyToken()) return;
-
-        store.recordStatuslineTimes(session.mSessionName,
-            statuslineTimes.getCallTimeMillis(),
-            statuslineTimes.getOutTimeMillis(),
-            statuslineTimes.getReplyTimeMillis(),
-            statuslineTimes.getSubagentCount());
+        mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store, session.mSessionName,
+            visibleScreenText, nowMillis, TimeZone.getDefault());
         termuxSessionListNotifyUpdated();
+    }
+
+    /**
+     * Repopulates each already-loaded session's statusline-derived call/out/reply times and
+     * call-to-user pending state from the session's current on-screen statusline, on the app-load /
+     * reconnect path. The persisted activity store lives under the OS cache directory and is cleared
+     * on app update, so after a restart the store loads empty and an idle session (one that has not
+     * produced output since the restart) keeps null times and no unread mark until it is re-scanned.
+     * This one-time pass over current statuslines reads the same {@code call:}/{@code out:}/{@code
+     * reply:} tokens a live scan reads and feeds them through the same {@link
+     * SessionNewActivityStore#recordStatuslineTimes} path, so the times and the unread (call-to-user)
+     * mark are correct immediately after a cold start without waiting for each session to emit output.
+     * It is not on the per-keystroke path, so it does not affect input latency.
+     */
+    private void repopulateStatuslineTimesForAllSessions() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+
+        long nowMillis = System.currentTimeMillis();
+        boolean recordedAny = false;
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession session = termuxSession.getTerminalSession();
+            if (session == null || session.mSessionName == null) continue;
+            TerminalEmulator emulator = session.getEmulator();
+            if (emulator == null) continue;
+            TerminalBuffer screen = emulator.getScreen();
+            if (screen == null) continue;
+            mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store,
+                session.mSessionName, visibleScreenText(emulator, screen), nowMillis,
+                TimeZone.getDefault());
+            recordedAny = true;
+        }
+        if (recordedAny) {
+            termuxSessionListNotifyUpdated();
+        }
     }
 
     @NonNull
