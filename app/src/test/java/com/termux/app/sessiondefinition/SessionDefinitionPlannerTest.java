@@ -22,10 +22,65 @@ public class SessionDefinitionPlannerTest {
 
         List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "");
 
+        Assert.assertEquals(5, plannedSessions.size());
+        Assert.assertEquals("groupOnePM", plannedSessions.get(0).getName());
+        Assert.assertEquals("https://example.test/a1", plannedSessions.get(1).getName());
+        Assert.assertEquals("https://example.test/a2", plannedSessions.get(2).getName());
+        Assert.assertEquals("groupTwoPM", plannedSessions.get(3).getName());
+        Assert.assertEquals("https://example.test/b1", plannedSessions.get(4).getName());
+        Assert.assertFalse(plannedSessions.get(1).hasCommand());
+    }
+
+    @Test
+    public void planAddsDefaultProjectManagerSessionAtTopOfEachProjectWithAutosshCommandAndNoTask() {
+        List<SessionDefinitionEntry> entries = new ArrayList<>();
+        entries.add(new SessionDefinitionEntry("umino", "storyA",
+            Collections.singletonList("https://example.test/u1")));
+        entries.add(new SessionDefinitionEntry("xmile", "storyB",
+            Collections.singletonList("https://example.test/x1")));
+
+        List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "autossh {name}");
+
+        Assert.assertEquals(4, plannedSessions.size());
+
+        Assert.assertEquals("uminoPM", plannedSessions.get(0).getName());
+        Assert.assertTrue(plannedSessions.get(0).hasCommand());
+        Assert.assertEquals("autossh 'uminoPM'", plannedSessions.get(0).getCommand());
+
+        Assert.assertEquals("https://example.test/u1", plannedSessions.get(1).getName());
+
+        Assert.assertEquals("xmilePM", plannedSessions.get(2).getName());
+        Assert.assertTrue(plannedSessions.get(2).hasCommand());
+        Assert.assertEquals("autossh 'xmilePM'", plannedSessions.get(2).getCommand());
+
+        Assert.assertEquals("https://example.test/x1", plannedSessions.get(3).getName());
+    }
+
+    @Test
+    public void planPlacesDefaultProjectManagerSessionOnceAtTopWhenProjectSpansMultipleStories() {
+        List<SessionDefinitionEntry> entries = new ArrayList<>();
+        entries.add(new SessionDefinitionEntry("umino", "storyA",
+            Collections.singletonList("https://example.test/u1")));
+        entries.add(new SessionDefinitionEntry("umino", "storyB",
+            Collections.singletonList("https://example.test/u2")));
+
+        List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "autossh {name}");
+
         Assert.assertEquals(3, plannedSessions.size());
-        Assert.assertEquals("https://example.test/a1", plannedSessions.get(0).getName());
-        Assert.assertEquals("https://example.test/a2", plannedSessions.get(1).getName());
-        Assert.assertEquals("https://example.test/b1", plannedSessions.get(2).getName());
+        Assert.assertEquals("uminoPM", plannedSessions.get(0).getName());
+        Assert.assertEquals("https://example.test/u1", plannedSessions.get(1).getName());
+        Assert.assertEquals("https://example.test/u2", plannedSessions.get(2).getName());
+    }
+
+    @Test
+    public void planDefaultProjectManagerSessionHasNoCommandWhenTemplateBlank() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("umino", "storyA",
+                Collections.singletonList("https://example.test/u1")));
+
+        List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "   ");
+
+        Assert.assertEquals("uminoPM", plannedSessions.get(0).getName());
         Assert.assertFalse(plannedSessions.get(0).hasCommand());
     }
 
@@ -37,10 +92,10 @@ public class SessionDefinitionPlannerTest {
 
         List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, "   ");
 
-        Assert.assertEquals(1, plannedSessions.size());
-        Assert.assertEquals("https://example.test/a1", plannedSessions.get(0).getName());
-        Assert.assertNull(plannedSessions.get(0).getCommand());
-        Assert.assertFalse(plannedSessions.get(0).hasCommand());
+        Assert.assertEquals(2, plannedSessions.size());
+        Assert.assertEquals("https://example.test/a1", plannedSessions.get(1).getName());
+        Assert.assertNull(plannedSessions.get(1).getCommand());
+        Assert.assertFalse(plannedSessions.get(1).hasCommand());
     }
 
     @Test
@@ -52,23 +107,25 @@ public class SessionDefinitionPlannerTest {
         List<SessionDefinitionPlannedSession> plannedSessions =
             planner.plan(entries, "connect {name}");
 
-        Assert.assertEquals(1, plannedSessions.size());
-        Assert.assertEquals("https://example.test/a1", plannedSessions.get(0).getName());
-        Assert.assertTrue(plannedSessions.get(0).hasCommand());
+        Assert.assertEquals(2, plannedSessions.size());
+        Assert.assertEquals("https://example.test/a1", plannedSessions.get(1).getName());
+        Assert.assertTrue(plannedSessions.get(1).hasCommand());
         Assert.assertEquals(
             "connect 'https://example.test/a1'",
-            plannedSessions.get(0).getCommand());
+            plannedSessions.get(1).getCommand());
     }
 
     @Test
-    public void planSkipsEntryWithoutUrls() {
+    public void planForEntryWithoutUrlsStillProducesProjectManagerSession() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "entryA", Collections.emptyList()));
 
         List<SessionDefinitionPlannedSession> plannedSessions =
             planner.plan(entries, "connect {name}");
 
-        Assert.assertTrue(plannedSessions.isEmpty());
+        Assert.assertEquals(1, plannedSessions.size());
+        Assert.assertEquals("groupOnePM", plannedSessions.get(0).getName());
+        Assert.assertEquals("connect 'groupOnePM'", plannedSessions.get(0).getCommand());
     }
 
     @Test

@@ -64,6 +64,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1352,6 +1354,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * reintroducing the previously-cleared persisted records.
      */
     public boolean restoreAlwaysPresentSessions() {
+        return restoreAlwaysPresentSessions(Collections.emptyList());
+    }
+
+    public boolean restoreAlwaysPresentSessions(@NonNull Collection<String> additionalAlwaysPresentSessionNames) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;
 
@@ -1360,8 +1366,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             liveSessionNames.add(termuxSession.getTerminalSession().mSessionName);
         }
 
+        List<String> alwaysPresentSessionNames = new ArrayList<>(additionalAlwaysPresentSessionNames);
+        alwaysPresentSessionNames.addAll(mActivity.getPreferences().getAlwaysNaSessionNames());
+
         List<String> missingSessionNames = mAlwaysPresentSessionPlanner.planMissingSessionNames(
-            mActivity.getPreferences().getAlwaysNaSessionNames(), liveSessionNames);
+            alwaysPresentSessionNames, liveSessionNames);
         if (missingSessionNames.isEmpty()) return false;
 
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();

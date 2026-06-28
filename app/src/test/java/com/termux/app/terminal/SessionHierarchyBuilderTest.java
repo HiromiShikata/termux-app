@@ -882,6 +882,49 @@ public class SessionHierarchyBuilderTest {
         Assert.assertEquals(2, sessionRows);
     }
 
+    @Test
+    public void defaultProjectManagerSessionAppearsAtTopOfItsProjectBeforeStoryRows() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("umino", "storyA",
+                Collections.singletonList("https://example.test/u1")),
+            new SessionDefinitionEntry("xmile", "storyB",
+                Collections.singletonList("https://example.test/x1")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList(
+                "https://example.test/u1",
+                "uminoPM",
+                "https://example.test/x1",
+                "xmilePM"),
+            entries, NA);
+
+        assertProjectHeader(rows.get(0), "umino");
+        assertSession(rows.get(1), 1);
+        assertStoryHeader(rows.get(2), "storyA");
+        assertSession(rows.get(3), 0);
+        assertProjectHeader(rows.get(4), "xmile");
+        assertSession(rows.get(5), 3);
+        assertStoryHeader(rows.get(6), "storyB");
+        assertSession(rows.get(7), 2);
+        Assert.assertEquals(8, rows.size());
+    }
+
+    @Test
+    public void defaultProjectManagerSessionIsNotPlacedUnderNaBucket() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("umino", "storyA",
+                Collections.singletonList("https://example.test/u1")));
+
+        List<SessionHierarchyRow> rows = builder.build(
+            Arrays.asList("uminoPM", "https://example.test/u1"), entries, NA);
+
+        assertProjectHeader(rows.get(0), "umino");
+        assertSession(rows.get(1), 0);
+        assertStoryHeader(rows.get(2), "storyA");
+        assertSession(rows.get(3), 1);
+        Assert.assertEquals(4, rows.size());
+    }
+
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {
         Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
         Assert.assertTrue(row.isHeader());
