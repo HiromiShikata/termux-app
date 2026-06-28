@@ -167,4 +167,49 @@ public class BrowserTabWebViewHostTest {
         Assert.assertEquals(View.GONE, recreated.getVisibility());
         Assert.assertSame(displayedTab, mHost.getDisplayedTab());
     }
+
+    @Test
+    public void recreateWebViewForTabLoadsTheTabUrl() {
+        List<String> loadedUrls = new ArrayList<>();
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new UrlRecordingWebView(mActivity, loadedUrls));
+        BrowserTab tabOne = tab(SESSION_A, "https://a.example/page");
+        host.showTab(tabOne);
+        loadedUrls.clear();
+
+        host.recreateWebViewForTab(tabOne);
+
+        Assert.assertEquals(List.of("https://a.example/page"), loadedUrls);
+    }
+
+    @Test
+    public void recreateWebViewForTabWithBlankPageLoadsAboutBlankInsteadOfTheCrashedUrl() {
+        List<String> loadedUrls = new ArrayList<>();
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new UrlRecordingWebView(mActivity, loadedUrls));
+        BrowserTab tabOne = tab(SESSION_A, "https://a.example/crashing");
+        host.showTab(tabOne);
+        loadedUrls.clear();
+
+        WebView recreated = host.recreateWebViewForTabWithBlankPage(tabOne);
+
+        Assert.assertTrue(host.hasWebViewForTab(tabOne));
+        Assert.assertEquals(List.of("about:blank"), loadedUrls);
+        Assert.assertSame(recreated, host.getDisplayedWebView());
+    }
+
+    private static final class UrlRecordingWebView extends WebView {
+        private final List<String> mLoadedUrls;
+
+        UrlRecordingWebView(Activity activity, List<String> loadedUrls) {
+            super(activity);
+            mLoadedUrls = loadedUrls;
+        }
+
+        @Override
+        public void loadUrl(String url) {
+            mLoadedUrls.add(url);
+            super.loadUrl(url);
+        }
+    }
 }

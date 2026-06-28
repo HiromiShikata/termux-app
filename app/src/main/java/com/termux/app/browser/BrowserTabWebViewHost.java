@@ -83,6 +83,16 @@ public final class BrowserTabWebViewHost {
 
     @NonNull
     public WebView recreateWebViewForTab(@NonNull BrowserTab tab) {
+        return recreateWebViewForTabLoadingUrl(tab, tab.getUrl());
+    }
+
+    @NonNull
+    public WebView recreateWebViewForTabWithBlankPage(@NonNull BrowserTab tab) {
+        return recreateWebViewForTabLoadingUrl(tab, "about:blank");
+    }
+
+    @NonNull
+    private WebView recreateWebViewForTabLoadingUrl(@NonNull BrowserTab tab, @NonNull String urlToLoad) {
         WebView deadWebView = mWebViewByTab.remove(tab);
         if (deadWebView != null) destroyDeadWebView(deadWebView);
         boolean displayed = tab == mDisplayedTab;
@@ -91,7 +101,7 @@ public final class BrowserTabWebViewHost {
         mContainer.addView(webView, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         mWebViewByTab.put(tab, webView);
-        webView.loadUrl(tab.getUrl());
+        webView.loadUrl(urlToLoad);
         return webView;
     }
 

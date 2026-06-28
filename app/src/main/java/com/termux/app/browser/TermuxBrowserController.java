@@ -150,6 +150,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private BrowserRenderedFrame mRenderedFrame = BrowserRenderedFrame.BLANK;
 
+    private final BrowserRenderProcessCrashTracker mRenderProcessCrashTracker = new BrowserRenderProcessCrashTracker();
+
     private boolean mBrowserVisible;
 
     private final BrowserDownloadController mDownloadController = new BrowserDownloadController(
@@ -721,17 +723,30 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private boolean recoverFromRenderProcessGone(@NonNull WebView deadWebView, boolean didCrash) {
         BrowserTab tab = mWebViewHost.findTabForWebView(deadWebView);
+        boolean looping = tab != null
+            && mRenderProcessCrashTracker.recordCrashAndCheckLooping(tab.getId(), System.currentTimeMillis());
         BrowserRenderProcessGoneDecision decision = BrowserRenderProcessGoneDecision.forDiedWebView(
-            tab != null, tab != null && isDisplayedTab(tab), didCrash);
+            tab != null, tab != null && isDisplayedTab(tab), didCrash, looping);
         if (!decision.shouldRecreateWebView()) return false;
-        Logger.logWarn(LOG_TAG, "Browser WebView renderer process gone (didCrash=" + didCrash + "); recreating tab WebView");
-        WebView recreatedWebView = mWebViewHost.recreateWebViewForTab(tab);
+        WebView recreatedWebView;
+        if (decision.shouldLoadBlankPageInsteadOfReloading()) {
+            Logger.logWarn(LOG_TAG, "Browser WebView renderer process gone repeatedly (didCrash=" + didCrash
+                + "); stopping auto-reload loop and loading about:blank");
+            recreatedWebView = mWebViewHost.recreateWebViewForTabWithBlankPage(tab);
+        } else {
+            Logger.logWarn(LOG_TAG, "Browser WebView renderer process gone (didCrash=" + didCrash
+                + "); recreating tab WebView");
+            recreatedWebView = mWebViewHost.recreateWebViewForTab(tab);
+        }
         if (decision.shouldNotifyUser()) {
             revealWebView();
             hidePageLoadProgress();
             mSwipeRefreshLayout.setRefreshing(false);
             recreatedWebView.requestFocus();
-            Logger.showToast(mActivity, mActivity.getString(R.string.msg_browser_render_process_gone), false);
+            int messageResId = decision.shouldLoadBlankPageInsteadOfReloading()
+                ? R.string.msg_browser_render_process_gone_repeatedly
+                : R.string.msg_browser_render_process_gone;
+            Logger.showToast(mActivity, mActivity.getString(messageResId), false);
         }
         return true;
     }

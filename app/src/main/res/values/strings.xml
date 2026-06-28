@@ -90,6 +90,7 @@
     <string name="msg_browser_screenshot_failed">Failed to capture screenshot</string>
     <string name="msg_browser_no_session">No terminal session available</string>
     <string name="msg_browser_render_process_gone">Browser page stopped responding and was reloaded</string>
+    <string name="msg_browser_render_process_gone_repeatedly">Browser page kept crashing and was not reloaded again</string>
     <string name="action_browser_create_session_for_link">Create new session</string>
     <string name="action_browser_close_tab">Close tab</string>
     <string name="action_scroll_to_call_to_user_tag">Scroll to call-to-user message</string>

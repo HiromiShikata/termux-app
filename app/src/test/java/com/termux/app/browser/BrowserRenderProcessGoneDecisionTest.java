@@ -11,8 +11,31 @@ public class BrowserRenderProcessGoneDecisionTest {
             BrowserRenderProcessGoneDecision.forDiedWebView(true, true, true);
 
         Assert.assertTrue(decision.shouldRecreateWebView());
+        Assert.assertTrue(decision.shouldReloadCrashedUrl());
+        Assert.assertFalse(decision.shouldLoadBlankPageInsteadOfReloading());
         Assert.assertTrue(decision.shouldNotifyUser());
         Assert.assertTrue(decision.didCrash());
+    }
+
+    @Test
+    public void stopsReloadingTheCrashedUrlButStillRecreatesWhenRendererIsLooping() {
+        BrowserRenderProcessGoneDecision decision =
+            BrowserRenderProcessGoneDecision.forDiedWebView(true, true, true, true);
+
+        Assert.assertTrue(decision.shouldRecreateWebView());
+        Assert.assertFalse(decision.shouldReloadCrashedUrl());
+        Assert.assertTrue(decision.shouldLoadBlankPageInsteadOfReloading());
+        Assert.assertTrue(decision.shouldNotifyUser());
+    }
+
+    @Test
+    public void doesNotLoadBlankPageWhenLoopingTabIsUnknown() {
+        BrowserRenderProcessGoneDecision decision =
+            BrowserRenderProcessGoneDecision.forDiedWebView(false, false, true, true);
+
+        Assert.assertFalse(decision.shouldRecreateWebView());
+        Assert.assertFalse(decision.shouldLoadBlankPageInsteadOfReloading());
+        Assert.assertFalse(decision.shouldReloadCrashedUrl());
     }
 
     @Test
