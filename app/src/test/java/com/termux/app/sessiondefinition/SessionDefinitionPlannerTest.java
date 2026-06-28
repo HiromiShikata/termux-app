@@ -45,13 +45,13 @@ public class SessionDefinitionPlannerTest {
 
         Assert.assertEquals("uminopm", plannedSessions.get(0).getName());
         Assert.assertTrue(plannedSessions.get(0).hasCommand());
-        Assert.assertEquals("autossh 'uminopm'", plannedSessions.get(0).getCommand());
+        Assert.assertEquals("AUTOSSH_GATETIME=0 autossh 'uminopm'", plannedSessions.get(0).getCommand());
 
         Assert.assertEquals("https://example.test/u1", plannedSessions.get(1).getName());
 
         Assert.assertEquals("xmilepm", plannedSessions.get(2).getName());
         Assert.assertTrue(plannedSessions.get(2).hasCommand());
-        Assert.assertEquals("autossh 'xmilepm'", plannedSessions.get(2).getCommand());
+        Assert.assertEquals("AUTOSSH_GATETIME=0 autossh 'xmilepm'", plannedSessions.get(2).getCommand());
 
         Assert.assertEquals("https://example.test/x1", plannedSessions.get(3).getName());
     }
@@ -201,7 +201,7 @@ public class SessionDefinitionPlannerTest {
             planner.plan(entries, "ssh {name}");
 
         Assert.assertEquals(
-            "ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'https://example.test/a1'",
+            "ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'https://example.test/a1'",
             plannedSessions.get(1).getCommand());
     }
 
@@ -211,7 +211,7 @@ public class SessionDefinitionPlannerTest {
             planner.planNamedSession("https://example.test/a1", "autossh -M 0 ssh {name}");
 
         Assert.assertEquals(
-            "autossh -M 0 ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'https://example.test/a1'",
+            "AUTOSSH_GATETIME=0 autossh -M 0 ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'https://example.test/a1'",
             plannedSession.getCommand());
     }
 
