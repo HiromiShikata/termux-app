@@ -893,9 +893,9 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList(
                 "https://example.test/u1",
-                "uminoPM",
+                "uminopm",
                 "https://example.test/x1",
-                "xmilePM"),
+                "xmilepm"),
             entries, NA);
 
         assertProjectHeader(rows.get(0), "umino");
@@ -916,7 +916,7 @@ public class SessionHierarchyBuilderTest {
                 Collections.singletonList("https://example.test/u1")));
 
         List<SessionHierarchyRow> rows = builder.build(
-            Arrays.asList("uminoPM", "https://example.test/u1"), entries, NA);
+            Arrays.asList("uminopm", "https://example.test/u1"), entries, NA);
 
         assertProjectHeader(rows.get(0), "umino");
         assertSession(rows.get(1), 0);
