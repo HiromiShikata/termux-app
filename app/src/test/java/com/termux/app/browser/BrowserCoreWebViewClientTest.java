@@ -180,4 +180,18 @@ public class BrowserCoreWebViewClientTest {
         Assert.assertTrue(webView.injectedDesktopViewport());
         Assert.assertFalse(webView.injectedMobileViewport());
     }
+
+    @Test
+    public void consoleMobileTabUsesDeviceWidthMobileViewport() {
+        RecordingHost host = new RecordingHost();
+        host.viewMode = BrowserViewMode.MOBILE;
+        host.injectMobileViewport = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        RecordingWebView webView = newRecordingWebView();
+        client.onPageStarted(webView, "https://example.com/console", null);
+        client.onPageCommitVisible(webView, "https://example.com/console");
+        client.onPageFinished(webView, "https://example.com/console");
+        Assert.assertTrue(webView.injectedMobileViewport());
+        Assert.assertFalse(webView.injectedDesktopViewport());
+    }
 }
