@@ -69,7 +69,7 @@ public class BrowserVerticalScrollInstrumentedTest {
         assertTrue("vertical drag must scroll the tall page down (scrollY=" + afterScrollDown + ")",
             afterScrollDown > 200);
 
-        Thread.sleep(2000);
+        waitForWebViewCanScrollUp(ref.get());
 
         for (int i = 0; i < 8; i++) {
             device.swipe(width / 2, (int) (height * 0.25), width / 2, (int) (height * 0.72), 50);
@@ -78,6 +78,16 @@ public class BrowserVerticalScrollInstrumentedTest {
         int afterScrollUp = scrollY(ref.get());
         assertTrue("vertical drag must scroll the tall page back to the top (scrollY=" + afterScrollUp + ")",
             afterScrollUp < 200);
+    }
+
+    private void waitForWebViewCanScrollUp(HostActivity activity) throws Exception {
+        for (int i = 0; i < 20; i++) {
+            AtomicReference<Boolean> canScrollUp = new AtomicReference<>(false);
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+                canScrollUp.set(activity.webView.canScrollVertically(-1)));
+            if (canScrollUp.get()) return;
+            Thread.sleep(500);
+        }
     }
 
     private void loadTallPage(HostActivity activity) throws Exception {
