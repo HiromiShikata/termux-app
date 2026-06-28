@@ -8,8 +8,11 @@
 #     base (origin/main) and maps each changed app source package to the
 #     androidTest classes in the same package, then runs those classes plus the
 #     cross-cutting root tests (TermuxActivityLaunch, TermuxServiceBind,
-#     BrowserTabsDrawer, TerminalToolbarToggle) via gradle --tests filters so
-#     central regressions are always exercised. Coverage is never silently
+#     BrowserTabsDrawer, TerminalToolbarToggle) via the AndroidJUnitRunner
+#     `android.testInstrumentationRunnerArguments.class` filter (the connected
+#     instrumentation task does not accept gradle's `--tests` option, which only
+#     works for JVM `test` tasks) so central regressions are always exercised.
+#     Coverage is never silently
 #     dropped: it falls back to the FULL suite when the change is broad or core
 #     (build files, manifest, resources, shared library modules, the androidTest
 #     harness itself, or shared base test classes), when nothing maps, or when
@@ -130,11 +133,16 @@ jobs:
           test_classes=$(echo "$test_classes" | sed 's/^ *//; /^$/d' | sort -u)
           [ -n "$test_classes" ] || emit_full "No test classes resolved; running the full suite as a safety net." "no matching test classes"
 
-          args=""
+          class_list=""
           while IFS= read -r fqcn; do
-            args="$args --tests $fqcn"
+            [ -n "$fqcn" ] || continue
+            if [ -z "$class_list" ]; then
+              class_list="$fqcn"
+            else
+              class_list="$class_list,$fqcn"
+            fi
           done <<< "$test_classes"
-          args=$(echo "$args" | sed -E 's/^ +//')
+          args="-Pandroid.testInstrumentationRunnerArguments.class=$class_list"
 
           echo "Selected test classes (changed-package tests plus cross-cutting root tests):"
           echo "$test_classes" | sed 's/^/  /'
