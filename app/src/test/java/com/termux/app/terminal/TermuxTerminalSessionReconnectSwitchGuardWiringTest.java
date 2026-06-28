@@ -40,7 +40,7 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
             onStartBody.contains(
                 "shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession())"));
         int guardIndex = onStartBody.indexOf("shouldSwitchSessionOnReconnect(");
-        int switchIndex = onStartBody.indexOf("setCurrentSession(getCurrentStoredSessionOrLast())");
+        int switchIndex = onStartBody.indexOf("setCurrentSession(getInitialSessionOnOpen())");
         Assert.assertTrue(guardIndex >= 0);
         Assert.assertTrue("the reconnect switch must be guarded", switchIndex > guardIndex);
     }
@@ -72,8 +72,8 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
         String body = bodyBetween(source,
             "public void setCurrentSessionOnReconnectIfNoneDisplayed()", "public void setCurrentStoredSession()");
         Assert.assertTrue(
-            "the reconnect helper must guard the stored-or-last switch",
+            "the reconnect helper must guard the initial-open switch",
             body.contains("shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession())"));
-        Assert.assertTrue(body.contains("setCurrentSession(getCurrentStoredSessionOrLast())"));
+        Assert.assertTrue(body.contains("setCurrentSession(getInitialSessionOnOpen())"));
     }
 }
