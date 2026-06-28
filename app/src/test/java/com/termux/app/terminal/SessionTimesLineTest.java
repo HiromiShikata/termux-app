@@ -3,12 +3,23 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Calendar;
+import java.util.TimeZone;
+
 public class SessionTimesLineTest {
 
     private static final long ONE_SECOND_MILLIS = 1000L;
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
     private static final long NOW = 1_000_000_000L;
+    private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+
+    private static long timeMillis(int year, int month, int day, int hour, int minute, int second) {
+        Calendar calendar = Calendar.getInstance(UTC);
+        calendar.clear();
+        calendar.set(year, month - 1, day, hour, minute, second);
+        return calendar.getTimeInMillis();
+    }
 
     @Test
     public void showsCallOutAndReplyRelativeTimes() {
@@ -58,5 +69,32 @@ public class SessionTimesLineTest {
             NOW);
 
         Assert.assertEquals("call: 3h  out: 12m  reply: 45s  sub: 4", line.getText());
+    }
+
+    @Test
+    public void rendersAShortReplyAcrossTheMidnightBoundaryNotMoreThanOneDay() {
+        long now = timeMillis(2026, 6, 28, 0, 0, 10);
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(
+            "call:23:58:00 out:23:59:20 reply:23:59:30", now, UTC);
+
+        SessionTimesLine line = SessionTimesLine.of(
+            times.getCallTimeMillis(),
+            times.getOutTimeMillis(),
+            times.getReplyTimeMillis(),
+            times.getSubagentCount(),
+            now);
+
+        Assert.assertEquals("call: 2m  out: 50s  reply: 40s  sub: 0", line.getText());
+    }
+
+    @Test
+    public void rendersTheDayDisplayForAReplyTwentyFiveHoursAgo() {
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        long replyTwentyFiveHoursAgo = now - 25L * ONE_HOUR_MILLIS;
+
+        SessionTimesLine line = SessionTimesLine.of(
+            null, null, replyTwentyFiveHoursAgo, 0, now);
+
+        Assert.assertEquals("call: >1 day  out: >1 day  reply: >1 day  sub: 0", line.getText());
     }
 }

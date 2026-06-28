@@ -103,19 +103,22 @@ public final class ClaudeStatuslineTimes {
             if (hours > 23 || minutes > 59 || seconds > 59) {
                 continue;
             }
-            lastMatch = todayAt(hours, minutes, seconds, nowMillis, timeZone);
+            lastMatch = mostRecentClockTimeAtOrBefore(hours, minutes, seconds, nowMillis, timeZone);
         }
         return lastMatch;
     }
 
-    private static long todayAt(int hours, int minutes, int seconds, long nowMillis,
-                                @NonNull TimeZone timeZone) {
+    private static long mostRecentClockTimeAtOrBefore(int hours, int minutes, int seconds,
+                                                      long nowMillis, @NonNull TimeZone timeZone) {
         Calendar calendar = Calendar.getInstance(timeZone);
         calendar.setTimeInMillis(nowMillis);
         calendar.set(Calendar.HOUR_OF_DAY, hours);
         calendar.set(Calendar.MINUTE, minutes);
         calendar.set(Calendar.SECOND, seconds);
         calendar.set(Calendar.MILLISECOND, 0);
+        if (calendar.getTimeInMillis() > nowMillis) {
+            calendar.add(Calendar.DAY_OF_MONTH, -1);
+        }
         return calendar.getTimeInMillis();
     }
 }
