@@ -13,6 +13,10 @@ on:
       - android-10
       - main
 
+concurrency:
+  group: unit-tests-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   testing:
     runs-on: ubuntu-latest
@@ -27,6 +31,8 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
     - name: Execute tests with JaCoCo coverage
       run: |
         ./gradlew test jacocoTestReport

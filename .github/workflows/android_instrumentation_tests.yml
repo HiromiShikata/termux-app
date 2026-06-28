@@ -5,6 +5,12 @@
 # emulator harness stabilizes on CI, so emulator infrastructure flakiness does
 # not block pull requests. Once it proves reliable it can be promoted to a
 # required check by removing continue-on-error and adding it to branch protection.
+#
+# Speedups (see the reactivecircus/android-emulator-runner AVD snapshot caching
+# example): the AVD and its booted snapshot are cached with actions/cache keyed on
+# api-level/target/arch/profile, a warming step creates the snapshot only on a
+# cache miss, and the test step restores that snapshot instead of cold-booting.
+# The emulator runs headless with software GPU and boot animation/audio disabled.
 name: Android instrumentation tests
 
 on:
@@ -16,12 +22,21 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: android-instrumentation-tests-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   connected-android-test:
     name: app connectedDebugAndroidTest (emulator)
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 90
+    env:
+      EMULATOR_API_LEVEL: 29
+      EMULATOR_TARGET: google_apis
+      EMULATOR_ARCH: x86_64
+      EMULATOR_PROFILE: pixel
     steps:
       - name: Clone repository
         uses: actions/checkout@v6
@@ -41,13 +56,38 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      - name: Cache AVD and snapshot
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.EMULATOR_API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-${{ env.EMULATOR_PROFILE }}
+
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.EMULATOR_API_LEVEL }}
+          target: ${{ env.EMULATOR_TARGET }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          profile: ${{ env.EMULATOR_PROFILE }}
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
       - name: Run app instrumentation tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
-          target: google_apis
-          arch: x86_64
-          profile: pixel
+          api-level: ${{ env.EMULATOR_API_LEVEL }}
+          target: ${{ env.EMULATOR_TARGET }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          profile: ${{ env.EMULATOR_PROFILE }}
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none
+          disable-animations: true
           script: |
             mkdir -p instrumentation-screenshots
             status=0
