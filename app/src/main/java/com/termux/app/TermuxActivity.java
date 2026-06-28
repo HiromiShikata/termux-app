@@ -480,8 +480,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void maybeAutoCheckForApkUpdate() {
-        ApkUpdateUiController updateUiController = new ApkUpdateUiController(this);
-        updateUiController.showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
         if (!ApkUpdateManager.isAutoCheckEnabled(this)) {
             return;
         }
@@ -491,7 +489,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             return;
         }
         throttle.recordCheckedAt(nowMillis);
-        updateUiController.checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
+        new ApkUpdateUiController(this).checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
     }
 
     private final class ApkUpdateFloatingIndicatorView
@@ -539,6 +537,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             addTermuxActivityRootViewGlobalLayoutListener();
 
         registerTermuxActivityBroadcastReceiver();
+
+        new ApkUpdateUiController(this).showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
         mSessionReconnectScheduler.onForeground(mPreferences.getBackgroundReconnectScanIntervalMinutes());
