@@ -249,6 +249,48 @@ public final class SessionHierarchyBuilder {
         return sessionCountByProjectLabel;
     }
 
+    public static int pendingCallSessionCount(@NonNull List<SessionHierarchyRow> rows,
+                                              @NonNull List<String> sessionNamesByIndex,
+                                              @NonNull Set<String> pendingCallSessionNames) {
+        int pendingCallSessionCount = 0;
+        for (SessionHierarchyRow row : rows) {
+            if (!row.isHeader() && isPendingCallSession(row, sessionNamesByIndex, pendingCallSessionNames)) {
+                pendingCallSessionCount++;
+            }
+        }
+        return pendingCallSessionCount;
+    }
+
+    @NonNull
+    public static Map<String, Integer> pendingCallSessionCountByProjectLabel(
+            @NonNull List<SessionHierarchyRow> rows,
+            @NonNull List<String> sessionNamesByIndex,
+            @NonNull Set<String> pendingCallSessionNames) {
+        Map<String, Integer> pendingCallSessionCountByProjectLabel = new LinkedHashMap<>();
+        String currentProjectLabel = null;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                currentProjectLabel = row.getLabel();
+                pendingCallSessionCountByProjectLabel.putIfAbsent(currentProjectLabel, 0);
+            } else if (!row.isHeader() && currentProjectLabel != null
+                    && isPendingCallSession(row, sessionNamesByIndex, pendingCallSessionNames)) {
+                pendingCallSessionCountByProjectLabel.merge(currentProjectLabel, 1, Integer::sum);
+            }
+        }
+        return pendingCallSessionCountByProjectLabel;
+    }
+
+    private static boolean isPendingCallSession(@NonNull SessionHierarchyRow sessionRow,
+                                                @NonNull List<String> sessionNamesByIndex,
+                                                @NonNull Set<String> pendingCallSessionNames) {
+        int sessionIndex = sessionRow.getSessionIndex();
+        if (sessionIndex < 0 || sessionIndex >= sessionNamesByIndex.size()) {
+            return false;
+        }
+        String sessionName = sessionNamesByIndex.get(sessionIndex);
+        return sessionName != null && pendingCallSessionNames.contains(sessionName);
+    }
+
     @NonNull
     public static List<Integer> visibleSessionIndexes(@NonNull List<SessionHierarchyRow> visibleRows) {
         List<Integer> sessionIndexes = new ArrayList<>();

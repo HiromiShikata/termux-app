@@ -31,195 +31,27 @@ import java.util.List;
 public class TermuxSessionsListViewControllerTest {
 
     @Test
-    public void hidesProjectHeaderIconWhenNoActionIsProvided() {
-        ImageView icon = new ImageView(RuntimeEnvironment.getApplication());
-        icon.setVisibility(View.VISIBLE);
-
-        TermuxSessionsListViewController.applyProjectHeaderIconVisibility(icon, null);
-
-        Assert.assertEquals(View.GONE, icon.getVisibility());
-        Assert.assertFalse(icon.hasOnClickListeners());
-    }
-
-    @Test
-    public void showsProjectHeaderIconAndInvokesActionOnClickWhenActionIsProvided() {
-        ImageView icon = new ImageView(RuntimeEnvironment.getApplication());
-        icon.setVisibility(View.GONE);
-        boolean[] opened = {false};
-
-        TermuxSessionsListViewController.applyProjectHeaderIconVisibility(icon, () -> opened[0] = true);
-
-        Assert.assertEquals(View.VISIBLE, icon.getVisibility());
-        Assert.assertTrue(icon.hasOnClickListeners());
-
-        icon.performClick();
-
-        Assert.assertTrue(opened[0]);
-    }
-
-    @Test
-    public void projectHeaderLayoutHostsADistinctTdpmConsoleIconNextToTheOverviewIcon() {
+    public void projectHeaderLayoutNoLongerHostsAnyActionIconsAndKeepsOnlyTheCollapseIndicatorAndTitle() {
         Context context = themedContext();
-        View projectHeader = LayoutInflater.from(context)
+        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
             .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
 
-        View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
-        View tdpmConsoleIcon = projectHeader.findViewById(R.id.session_project_header_tdpm_console_icon);
-
-        Assert.assertNotNull(overviewIcon);
-        Assert.assertNotNull(tdpmConsoleIcon);
-        Assert.assertNotEquals(overviewIcon.getId(), tdpmConsoleIcon.getId());
-        Assert.assertEquals(View.GONE, tdpmConsoleIcon.getVisibility());
-    }
-
-    @Test
-    public void projectHeaderLayoutHostsADistinctNewIssueIconNextToTheOverviewAndTdpmConsoleIcons() {
-        Context context = themedContext();
-        View projectHeader = LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
-        View tdpmConsoleIcon = projectHeader.findViewById(R.id.session_project_header_tdpm_console_icon);
-        View newIssueIcon = projectHeader.findViewById(R.id.session_project_header_new_issue_icon);
-
-        Assert.assertNotNull(newIssueIcon);
-        Assert.assertNotEquals(overviewIcon.getId(), newIssueIcon.getId());
-        Assert.assertNotEquals(tdpmConsoleIcon.getId(), newIssueIcon.getId());
-        Assert.assertEquals(View.GONE, newIssueIcon.getVisibility());
-    }
-
-    @Test
-    public void projectHeaderActionIconsExposeAtLeastTheAccessibilityMinimumTouchTarget() {
-        Context context = themedContext();
-        View projectHeader = LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        int minimumTouchTargetPx = Math.round(48f
-            * context.getResources().getDisplayMetrics().density);
-
-        int[] actionIconIds = {
-            R.id.session_project_header_overview_browser_icon,
-            R.id.session_project_header_tdpm_console_icon,
-            R.id.session_project_header_new_issue_icon
-        };
-
-        for (int actionIconId : actionIconIds) {
-            View actionIcon = projectHeader.findViewById(actionIconId);
-            ViewGroup.LayoutParams layoutParams = actionIcon.getLayoutParams();
-            Assert.assertTrue("touch target width below the accessibility minimum",
-                layoutParams.width >= minimumTouchTargetPx);
-            Assert.assertTrue("touch target height below the accessibility minimum",
-                layoutParams.height >= minimumTouchTargetPx);
+        for (int childIndex = 0; childIndex < projectHeader.getChildCount(); childIndex++) {
+            Assert.assertFalse("the project header lists sessions only and must host no action ImageView",
+                projectHeader.getChildAt(childIndex) instanceof ImageView);
         }
+        Assert.assertNotNull(projectHeader.findViewById(R.id.session_project_header_collapse_indicator));
+        Assert.assertNotNull(projectHeader.findViewById(R.id.session_project_header_title));
     }
 
     @Test
-    public void projectHeaderActionIconsAreClickableButNotFocusableSoTheRowItemClickDoesNotConsumeTheirTap() {
-        Context context = themedContext();
-        View projectHeader = LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        int[] actionIconIds = {
-            R.id.session_project_header_overview_browser_icon,
-            R.id.session_project_header_tdpm_console_icon,
-            R.id.session_project_header_new_issue_icon
-        };
-
-        for (int actionIconId : actionIconIds) {
-            View actionIcon = projectHeader.findViewById(actionIconId);
-            Assert.assertTrue("action icon must be clickable so it wins the touch over the row click",
-                actionIcon.isClickable());
-            Assert.assertFalse("a focusable action icon makes AbsListView treat the row as a single clickable unit and swallow the tap",
-                actionIcon.isFocusable());
-            Assert.assertFalse(actionIcon.isFocusableInTouchMode());
-        }
-    }
-
-    @Test
-    public void projectHeaderRowDoesNotReportFocusableSoTheListDeliversTheTapToTheClickableActionIcons() {
-        Context context = themedContext();
-        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        Assert.assertFalse("a row reporting focusable descendants makes AbsListView consume the action-icon tap as a row item-click",
-            projectHeader.hasFocusable());
-    }
-
-    @Test
-    public void projectHeaderRowBlocksDescendantsSoTheListDeliversEveryRowTapToOnItemClick() {
-        Context context = themedContext();
-        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        Assert.assertEquals("the row must block descendant focusability so AbsListView passes its hasFocusable() gate and fires onItemClick on the first row tap",
-            ViewGroup.FOCUS_BLOCK_DESCENDANTS, projectHeader.getDescendantFocusability());
-    }
-
-    @Test
-    public void projectHeaderRowIsNotClickableItselfSoItDoesNotStealTheFirstTapFromTheActionIcons() {
-        Context context = themedContext();
-        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        Assert.assertFalse("a self-clickable row routes ACTION_DOWN through AbsListView row pressed-state handling and consumes the first tap that lands on an action icon",
-            projectHeader.isClickable());
-        Assert.assertFalse(projectHeader.hasOnClickListeners());
-    }
-
-    @Test
-    public void tappingAProjectHeaderActionIconRunsItsActionOnTheFirstTapWithoutTheRowConsumingIt() {
-        Context context = themedContext();
-        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-        boolean[] overviewOpened = {false};
-
-        View overviewIcon = projectHeader.findViewById(R.id.session_project_header_overview_browser_icon);
-        TermuxSessionsListViewController.applyProjectHeaderIconVisibility(
-            overviewIcon, () -> overviewOpened[0] = true);
-
-        overviewIcon.performClick();
-
-        Assert.assertTrue("the action icon must perform its own action on a single tap", overviewOpened[0]);
-        Assert.assertFalse("the row must not be clickable, so the action-icon tap cannot also toggle the accordion",
-            projectHeader.isClickable());
-    }
-
-    @Test
-    public void everyProjectHeaderActionIconRunsOnlyItsOwnActionWithoutTogglingTheAccordion() {
-        Context context = themedContext();
-        ViewGroup projectHeader = (ViewGroup) LayoutInflater.from(context)
-            .inflate(R.layout.item_terminal_sessions_project_header, new FrameLayout(context), false);
-
-        int[] actionIconIds = {
-            R.id.session_project_header_overview_browser_icon,
-            R.id.session_project_header_tdpm_console_icon,
-            R.id.session_project_header_new_issue_icon
-        };
-
-        for (int actionIconId : actionIconIds) {
-            boolean[] actionRan = {false};
-            View actionIcon = projectHeader.findViewById(actionIconId);
-            TermuxSessionsListViewController.applyProjectHeaderIconVisibility(
-                actionIcon, () -> actionRan[0] = true);
-
-            boolean handled = actionIcon.performClick();
-
-            Assert.assertTrue("the right-end action icon must consume its own tap", handled);
-            Assert.assertTrue("tapping the right-end action icon must run its action", actionRan[0]);
-        }
-
-        Assert.assertFalse("the project header row must not be clickable, so a right-end action tap cannot also toggle the accordion",
-            projectHeader.isClickable());
-        Assert.assertFalse("the project header row must report no focusable descendants, so AbsListView delivers the tap to the action icon rather than firing onItemClick (accordion toggle)",
-            projectHeader.hasFocusable());
-    }
-
-    @Test
-    public void projectHeaderTitleAppendsSessionCountInParenthesesAfterTheName() {
-        Assert.assertEquals("ProjectName (3)",
-            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 3));
-        Assert.assertEquals("ProjectName (0)",
-            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0));
+    public void projectHeaderTitleAppendsCallOverTotalFractionAfterTheName() {
+        Assert.assertEquals("ProjectName (2/3)",
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 2, 3));
+        Assert.assertEquals("ProjectName (0/3)",
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 3));
+        Assert.assertEquals("ProjectName (0/0)",
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 0));
     }
 
     @Test

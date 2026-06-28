@@ -58,8 +58,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private static final int VIEW_TYPE_PROJECT_HEADER = 1;
     private static final int VIEW_TYPE_STORY_HEADER = 2;
 
-    private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
-    private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
+    private static final int SESSION_ROW_LEFT_PADDING_DP = 6;
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
     private static final int SESSION_ROW_TITLE_TO_TIMES_BOTTOM_PADDING_DP = 0;
     private static final int SESSION_ROW_BELL_ICON_PADDING_DP = 4;
@@ -114,7 +113,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private int mTotalSessionCount;
 
+    private int mPendingCallSessionCount;
+
     private Map<String, Integer> mSessionCountByProjectLabel = Collections.emptyMap();
+
+    private Map<String, Integer> mPendingCallSessionCountByProjectLabel = Collections.emptyMap();
 
     private final Set<String> mCollapsedProjectKeys = new LinkedHashSet<>();
 
@@ -290,6 +293,12 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         mSessionRowsByIndex = getSessionRows();
         mTotalSessionCount = SessionHierarchyBuilder.totalSessionCount(allRows);
         mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(allRows);
+        List<String> sessionNamesByIndex = sessionNamesByIndex();
+        Set<String> pendingCallSessionNames = pendingCallToUserSessionNames(sessionNamesByIndex);
+        mPendingCallSessionCount = SessionHierarchyBuilder.pendingCallSessionCount(
+            allRows, sessionNamesByIndex, pendingCallSessionNames);
+        mPendingCallSessionCountByProjectLabel = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
+            allRows, sessionNamesByIndex, pendingCallSessionNames);
         mRowContentByItemId = buildRowContentByItemId();
     }
 
@@ -310,7 +319,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         switch (row.getType()) {
             case PROJECT_HEADER:
                 return joinContentFields("P",
-                    projectHeaderTitle(row.getLabel(), projectSessionCount(row.getLabel())),
+                    projectHeaderTitle(row.getLabel(), projectPendingCallSessionCount(row.getLabel()),
+                        projectSessionCount(row.getLabel())),
                     String.valueOf(mCollapsedProjectKeys.contains(row.getLabel())));
             case STORY_HEADER:
                 return joinContentFields("S", nullToEmpty(row.getLabel()));
@@ -359,6 +369,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     public int getTotalSessionCount() {
         return mTotalSessionCount;
+    }
+
+    public int getPendingCallSessionCount() {
+        return mPendingCallSessionCount;
     }
 
     public int getFirstVisibleSessionIndexAfterRebuild() {
@@ -547,6 +561,21 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     @NonNull
+    private Set<String> pendingCallToUserSessionNames(@NonNull List<String> sessionNamesByIndex) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) {
+            return Collections.emptySet();
+        }
+        Set<String> pendingCallSessionNames = new LinkedHashSet<>();
+        for (String sessionName : sessionNamesByIndex) {
+            if (sessionName != null && store.hasPendingExplicitCall(sessionName)) {
+                pendingCallSessionNames.add(sessionName);
+            }
+        }
+        return pendingCallSessionNames;
+    }
+
+    @NonNull
     private Map<Integer, SessionNewActivityIndicator> sessionActivityIndicatorsByIndex() {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) {
@@ -708,10 +737,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         refreshSessionList();
     }
 
-    private boolean isGrouped() {
-        return !mEntries.isEmpty();
-    }
-
     @Override
     public int getItemCount() {
         return mRows.size();
@@ -822,9 +847,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             case PROJECT_HEADER:
                 bindProjectHeaderTitle(rowView, row);
                 bindProjectCollapseIndicator(rowView, row);
-                bindProjectOverviewBrowserIcon(rowView, row);
-                bindProjectTdpmConsoleIcon(rowView, row);
-                bindProjectNewIssueIcon(rowView, row);
                 return;
             case STORY_HEADER:
                 bindHeaderTitle(rowView, row, R.id.session_story_header_title);
@@ -842,7 +864,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
         TextView headerTitleView = projectHeaderView.findViewById(R.id.session_project_header_title);
-        headerTitleView.setText(projectHeaderTitle(row.getLabel(), projectSessionCount(row.getLabel())));
+        headerTitleView.setText(projectHeaderTitle(row.getLabel(),
+            projectPendingCallSessionCount(row.getLabel()), projectSessionCount(row.getLabel())));
         headerTitleView.setTextColor(surfacePrimaryTextColor());
     }
 
@@ -851,10 +874,16 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return projectSessionCount == null ? 0 : projectSessionCount;
     }
 
+    private int projectPendingCallSessionCount(@Nullable String projectLabel) {
+        Integer projectPendingCallSessionCount = mPendingCallSessionCountByProjectLabel.get(projectLabel);
+        return projectPendingCallSessionCount == null ? 0 : projectPendingCallSessionCount;
+    }
+
     @NonNull
-    static String projectHeaderTitle(@Nullable String projectLabel, int sessionCount) {
+    static String projectHeaderTitle(@Nullable String projectLabel, int pendingCallSessionCount,
+                                     int sessionCount) {
         String label = projectLabel == null ? "" : projectLabel;
-        return label + " (" + sessionCount + ")";
+        return label + " " + SessionCountFraction.of(pendingCallSessionCount, sessionCount);
     }
 
     private void bindProjectCollapseIndicator(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
@@ -862,44 +891,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         boolean collapsed = mCollapsedProjectKeys.contains(row.getLabel());
         collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
         collapseIndicatorView.setTextColor(surfacePrimaryTextColor());
-    }
-
-    private void bindProjectOverviewBrowserIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
-        View overviewBrowserIconView = projectHeaderView.findViewById(R.id.session_project_header_overview_browser_icon);
-        String overviewUrl = row.getOverviewUrl();
-        Runnable openAction = (overviewUrl == null || overviewUrl.isEmpty())
-            ? null
-            : () -> openProjectUrlInNewTab(overviewUrl, BrowserViewMode.DESKTOP, row);
-        applyProjectHeaderIconVisibility(overviewBrowserIconView, openAction);
-    }
-
-    private void bindProjectTdpmConsoleIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
-        View tdpmConsoleIconView = projectHeaderView.findViewById(R.id.session_project_header_tdpm_console_icon);
-        String tdpmConsoleUrl = row.getTdpmConsoleUrl();
-        Runnable openAction = (tdpmConsoleUrl == null || tdpmConsoleUrl.isEmpty())
-            ? null
-            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.DESKTOP, row);
-        applyProjectHeaderIconVisibility(tdpmConsoleIconView, openAction);
-    }
-
-    private void bindProjectNewIssueIcon(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
-        View newIssueIconView = projectHeaderView.findViewById(R.id.session_project_header_new_issue_icon);
-        String newIssueUrl = row.getNewIssueUrl();
-        Runnable openAction = (newIssueUrl == null || newIssueUrl.isEmpty())
-            ? null
-            : () -> openProjectUrlInNewTab(newIssueUrl, BrowserViewMode.DESKTOP, row);
-        applyProjectHeaderIconVisibility(newIssueIconView, openAction);
-    }
-
-    static void applyProjectHeaderIconVisibility(@NonNull View projectHeaderIconView,
-                                                 @Nullable Runnable openAction) {
-        if (openAction == null) {
-            projectHeaderIconView.setVisibility(View.GONE);
-            projectHeaderIconView.setOnClickListener(null);
-            return;
-        }
-        projectHeaderIconView.setVisibility(View.VISIBLE);
-        projectHeaderIconView.setOnClickListener(v -> openAction.run());
     }
 
     static void applyActiveIndicatorBarVisibility(@NonNull View activeIndicatorBar, boolean showAccentBar,
@@ -960,7 +951,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
 
         int verticalPadding = dpToPx(SESSION_ROW_VERTICAL_PADDING_DP);
-        int startPadding = dpToPx(isGrouped() ? SESSION_ROW_GROUPED_INDENT_DP : SESSION_ROW_FLAT_INDENT_DP);
+        int startPadding = dpToPx(SESSION_ROW_LEFT_PADDING_DP);
         sessionTitleView.setPadding(startPadding, verticalPadding, verticalPadding, verticalPadding);
 
         int sessionIndex = row.getSessionIndex();
@@ -1103,7 +1094,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     private int sessionTitleTextStartPaddingPx() {
-        int startPadding = dpToPx(isGrouped() ? SESSION_ROW_GROUPED_INDENT_DP : SESSION_ROW_FLAT_INDENT_DP);
+        int startPadding = dpToPx(SESSION_ROW_LEFT_PADDING_DP);
         return sessionRowTimesStartPaddingPx(startPadding,
             dpToPx(SESSION_ROW_BELL_ICON_WIDTH_DP),
             dpToPx(SESSION_ROW_BELL_ICON_PADDING_DP));

@@ -400,12 +400,14 @@ public class SessionListBottomSheetController {
 
     private void applySessionCountTitle(@NonNull TermuxSessionsListViewController listController) {
         String baseTitle = mActivity.getString(R.string.title_session_list_bottom_sheet);
-        mTitleView.setText(sessionCountTitle(baseTitle, listController.getTotalSessionCount()));
+        mTitleView.setText(sessionCountTitle(baseTitle, listController.getPendingCallSessionCount(),
+            listController.getTotalSessionCount()));
     }
 
     @NonNull
-    static String sessionCountTitle(@NonNull String baseTitle, int totalSessionCount) {
-        return baseTitle + " (" + totalSessionCount + ")";
+    static String sessionCountTitle(@NonNull String baseTitle, int pendingCallSessionCount,
+                                    int totalSessionCount) {
+        return baseTitle + " " + SessionCountFraction.of(pendingCallSessionCount, totalSessionCount);
     }
 
     private void applySheetDefaultHeight() {
