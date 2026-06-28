@@ -99,6 +99,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
                 taggedOutputWithUnansweredStatuslineCall().getBytes(StandardCharsets.UTF_8);
             emulator.append(bytes, bytes.length);
 
+            client.resetBackgroundScanGateForSession(session);
             client.onTextChanged(session);
 
             SessionNewActivityStore store = activity.getSessionNewActivityStore();

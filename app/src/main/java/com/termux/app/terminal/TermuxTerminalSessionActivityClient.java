@@ -276,6 +276,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             session.mHandle, session.getScreenContentVersion(), System.currentTimeMillis());
     }
 
+    void resetBackgroundScanGateForSession(@NonNull TerminalSession session) {
+        if (session.mHandle != null) {
+            mBackgroundOutputScanGate.forget(session.mHandle);
+        }
+    }
+
     private void backgroundOutputTagsForSession(TerminalSession session) {
         if (session == null) return;
 
