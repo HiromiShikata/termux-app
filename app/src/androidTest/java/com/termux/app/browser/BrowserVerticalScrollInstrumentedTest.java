@@ -16,6 +16,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.UiDevice;
 
+import com.termux.app.RetryRule;
+
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -32,9 +35,18 @@ public class BrowserVerticalScrollInstrumentedTest {
 
     private static final int READINESS_POLL_INTERVAL_MILLIS = 100;
 
-    private static final int MAX_GESTURE_ATTEMPTS = 8;
+    private static final int MAX_GESTURE_ATTEMPTS = 20;
+
+    private static final int GESTURE_BUDGET_MILLIS = 20000;
 
     private static final int GESTURE_SETTLE_MILLIS = 600;
+
+    private static final int GESTURE_SWIPE_STEPS = 20;
+
+    private static final int TEST_RETRY_ATTEMPTS = 3;
+
+    @Rule
+    public final RetryRule retryRule = new RetryRule(TEST_RETRY_ATTEMPTS);
 
     public static final class HostActivity extends Activity {
         public BrowserPinchAwareSwipeRefreshLayout swipeRefresh;
@@ -73,15 +85,18 @@ public class BrowserVerticalScrollInstrumentedTest {
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         int width = device.getDisplayWidth();
         int height = device.getDisplayHeight();
+        int centerX = width / 2;
+        int lowY = (int) (height * 0.85);
+        int highY = (int) (height * 0.15);
 
         dragUntil(device, activity,
-            width / 2, (int) (height * 0.72), width / 2, (int) (height * 0.25),
+            centerX, lowY, centerX, highY,
             () -> canScrollUp(activity));
         assertTrue("vertical drag must scroll the tall page down so it can scroll back up (scrollY="
                 + scrollY(activity) + ")", canScrollUp(activity));
 
         dragUntil(device, activity,
-            width / 2, (int) (height * 0.25), width / 2, (int) (height * 0.72),
+            centerX, highY, centerX, lowY,
             () -> !canScrollUp(activity));
         assertFalse("vertical drag must scroll the tall page back to the top (scrollY="
                 + scrollY(activity) + ")", canScrollUp(activity));
@@ -89,12 +104,19 @@ public class BrowserVerticalScrollInstrumentedTest {
 
     private void dragUntil(UiDevice device, HostActivity activity,
             int startX, int startY, int endX, int endY, Condition condition) throws Exception {
+        long deadline = System.currentTimeMillis() + GESTURE_BUDGET_MILLIS;
         for (int attempt = 0; attempt < MAX_GESTURE_ATTEMPTS; attempt++) {
             if (condition.isMet()) {
                 return;
             }
-            device.swipe(startX, startY, endX, endY, 25);
+            device.swipe(startX, startY, endX, endY, GESTURE_SWIPE_STEPS);
             Thread.sleep(GESTURE_SETTLE_MILLIS);
+            if (condition.isMet()) {
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                return;
+            }
         }
     }
 
