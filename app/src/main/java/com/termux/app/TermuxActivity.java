@@ -1372,6 +1372,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         renderSessionNavigationActivityTier();
         if (mSessionListBottomSheetController != null) {
             mSessionListBottomSheetController.refreshSessionCountTitleIfShowing();
+            mSessionListBottomSheetController.revealCallToUserSessionIfShowing();
         }
     }
 
