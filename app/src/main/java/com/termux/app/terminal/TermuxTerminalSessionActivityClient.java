@@ -141,7 +141,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // session they are working in.
         if (mActivity.getTermuxService() != null) {
             if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
-                setCurrentSession(getInitialSessionOnOpen());
+                setCurrentSession(getCurrentStoredSessionOrLast());
             termuxSessionListNotifyUpdated();
             mActivity.prewarmSessionDefinitionDocument();
             mActivity.eagerLoadAllSessions();
@@ -1076,7 +1076,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     public void setCurrentSessionOnReconnectIfNoneDisplayed() {
         if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
-            setCurrentSession(getInitialSessionOnOpen());
+            setCurrentSession(getCurrentStoredSessionOrLast());
     }
 
     /**
@@ -1100,42 +1100,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.getPreferences().setCurrentSession(currentSession.mHandle);
         else
             mActivity.getPreferences().setCurrentSession(null);
-    }
-
-    /**
-     * The session to display on app open (cold start / initial launch). When any session has a
-     * pending call-to-user (the RED tier shown by the call-to-user indicator and the nav-arrow count
-     * badges), the topmost such session in the existing session list order is opened so the owner
-     * lands directly on a session that needs attention. When no session has a pending call-to-user,
-     * the stored or last session is opened, preserving the previous app-open behavior. This selection
-     * applies only to the initial open paths gated by {@link #shouldSwitchSessionOnReconnect}; an
-     * explicit user selection is never overridden.
-     */
-    public TerminalSession getInitialSessionOnOpen() {
-        TerminalSession pendingCallToUserSession = getTopmostPendingCallToUserSession();
-        if (pendingCallToUserSession != null) {
-            return pendingCallToUserSession;
-        }
-        return getCurrentStoredSessionOrLast();
-    }
-
-    @Nullable
-    private TerminalSession getTopmostPendingCallToUserSession() {
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return null;
-        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
-        if (listViewController == null) return null;
-        int sessionIndex = listViewController.getInitialSessionIndexPreferringPendingCallToUser();
-        if (sessionIndex < 0) return null;
-        TermuxSession termuxSession = service.getTermuxSession(sessionIndex);
-        if (termuxSession == null) return null;
-        TerminalSession terminalSession = termuxSession.getTerminalSession();
-        if (terminalSession == null) return null;
-        SessionNewActivityStore store = service.getSessionNewActivityStore();
-        if (store == null || !store.hasPendingExplicitCall(terminalSession.mSessionName)) {
-            return null;
-        }
-        return terminalSession;
     }
 
     /** The current session as stored or the last one if that does not exist. */

@@ -381,29 +381,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return SessionHierarchyBuilder.visibleSessionIndexes(buildAllRows());
     }
 
-    public int getInitialSessionIndexPreferringPendingCallToUser() {
-        List<Integer> orderedSessionIndexes = getOrderedSessionIndexes();
-        return InitialSessionSelection.selectInitialSessionIndex(
-            orderedSessionIndexes, pendingCallToUserByIndex(orderedSessionIndexes));
-    }
-
-    @NonNull
-    private Map<Integer, Boolean> pendingCallToUserByIndex(@NonNull List<Integer> orderedSessionIndexes) {
-        Map<Integer, Boolean> pendingByIndex = new LinkedHashMap<>();
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) {
-            return pendingByIndex;
-        }
-        List<String> namesByIndex = sessionNamesByIndex();
-        for (int sessionIndex : orderedSessionIndexes) {
-            String sessionName = sessionIndex >= 0 && sessionIndex < namesByIndex.size()
-                ? namesByIndex.get(sessionIndex) : null;
-            pendingByIndex.put(sessionIndex,
-                sessionName != null && store.hasPendingExplicitCall(sessionName));
-        }
-        return pendingByIndex;
-    }
-
     public int getRowPositionForSessionIndex(int sessionIndex) {
         return SessionHierarchyBuilder.rowPositionForSessionIndex(mRows, sessionIndex);
     }
