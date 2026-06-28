@@ -23,6 +23,7 @@ import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.terminal.CallToUserTagController;
+import com.termux.app.terminal.PendingCallNotificationText;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
@@ -166,7 +167,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         mSessionNewActivityStore = buildSessionNewActivityStore();
         setupPendingCallNotificationChannel();
-        mSessionNewActivityStore.setOnChangeListener(store -> updatePendingCallNotification());
+        mSessionNewActivityStore.setOnChangeListener(store -> onSessionNewActivityStoreChanged());
         updatePendingCallNotification();
 
         TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
@@ -908,6 +909,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             notificationText += ", " + taskCount + " task" + (taskCount == 1 ? "" : "s");
         }
 
+        String pendingCallFractionSuffix = PendingCallNotificationText.fractionSuffix(
+            mSessionNewActivityStore.pendingCallToUserSessionCount(), sessionCount);
+        if (!pendingCallFractionSuffix.isEmpty()) {
+            notificationText += ", " + pendingCallFractionSuffix;
+        }
+
         final boolean wakeLockHeld = mWakeLock != null;
         if (wakeLockHeld) notificationText += " (wake lock held)";
 
@@ -976,6 +983,13 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_ID,
             TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_CHANNEL_NAME,
             NotificationManager.IMPORTANCE_LOW);
+    }
+
+    private void onSessionNewActivityStoreChanged() {
+        mHandler.post(() -> {
+            updatePendingCallNotification();
+            updateNotification();
+        });
     }
 
     private void updatePendingCallNotification() {
