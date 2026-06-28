@@ -1,16 +1,41 @@
 # Android instrumentation (androidTest) tests for the app module.
 #
-# This job runs the app module's connected instrumentation tests on an Android
-# emulator. It is intentionally non-blocking (continue-on-error: true) while the
-# emulator harness stabilizes on CI, so emulator infrastructure flakiness does
-# not block pull requests. Once it proves reliable it can be promoted to a
-# required check by removing continue-on-error and adding it to branch protection.
+# These connected instrumentation tests run on an Android emulator and validate
+# the app PRE-MERGE on every pull request, so a buggy app never reaches a
+# reviewer. To keep pull requests fast the suite is made cheap two ways:
+#
+#  1. Selective tests: the select-tests job diffs the pull request against its
+#     base (origin/main) and maps each changed app source package to the
+#     androidTest classes in the same package, then runs those classes plus the
+#     cross-cutting root tests (TermuxActivityLaunch, TermuxServiceBind,
+#     BrowserTabsDrawer, TerminalToolbarToggle) via gradle --tests filters so
+#     central regressions are always exercised. Coverage is never silently
+#     dropped: it falls back to the FULL suite when the change is broad or core
+#     (build files, manifest, resources, shared library modules, the androidTest
+#     harness itself, or shared base test classes), when nothing maps, or when
+#     ANY changed app source package has no same-package androidTest class.
+#
+#  2. Sharding: the emulator job runs as a matrix of shards, each on its own
+#     emulator, using AndroidJUnitRunner numShards/shardIndex so even the full
+#     suite is split across emulators and finishes faster.
+#
+# The job is currently non-blocking (continue-on-error: true) because the
+# connected suite still has pre-existing failures on the API 29 CI emulator
+# (tracked separately). Once those are fixed, remove continue-on-error to promote
+# this to a blocking pre-merge gate.
 #
 # Speedups (see the reactivecircus/android-emulator-runner AVD snapshot caching
 # example): the AVD and its booted snapshot are cached with actions/cache keyed on
-# api-level/target/arch/profile, a warming step creates the snapshot only on a
-# cache miss, and the test step restores that snapshot instead of cold-booting.
+# api-level/target/arch/profile/shard, a warming step creates the snapshot only on
+# a cache miss, and the test step restores that snapshot instead of cold-booting.
 # The emulator runs headless with software GPU and boot animation/audio disabled.
+#
+# Hang prevention: the test step has a tight step-level timeout, the device wait
+# and the gradle run are wrapped with `timeout` so a stuck emulator or gradle is
+# killed fast instead of consuming the full job timeout, a missing or corrupt
+# cached AVD snapshot is removed so the run cold-boots instead of hanging, and the
+# emulator runs with verbose boot output plus warning-level logcat so boot/hang
+# and crash causes appear in logs without burying the gradle test output.
 name: Android instrumentation tests
 
 on:
@@ -27,19 +52,123 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  select-tests:
+    name: Select affected instrumentation tests
+    runs-on: ubuntu-latest
+    outputs:
+      gradle-test-args: ${{ steps.select.outputs.gradle-test-args }}
+      mode: ${{ steps.select.outputs.mode }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine affected test classes
+        id: select
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: |
+          set -euo pipefail
+          app_test_root="app/src/androidTest/java"
+          root_test_dir="$app_test_root/com/termux/app"
+
+          emit_full() {
+            echo "$1"
+            echo "gradle-test-args=" >> "$GITHUB_OUTPUT"
+            echo "mode=full ($2)" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          base="$BASE_REF"
+          if ! git rev-parse --verify --quiet "$base" >/dev/null; then
+            git fetch origin main --depth=1 || true
+            base="origin/main"
+          fi
+          merge_base=$(git merge-base "$base" HEAD 2>/dev/null || echo "")
+          [ -n "$merge_base" ] || emit_full "Could not determine a merge base; running the full suite." "no merge base"
+
+          changed=$(git diff --name-only "$merge_base" HEAD)
+          echo "Changed files:"
+          echo "$changed" | sed 's/^/  /'
+          [ -n "$changed" ] || emit_full "No changed files detected; running the full suite as a safety net." "empty diff"
+
+          broad_pattern='^(app/build.gradle|app/src/main/AndroidManifest.xml|app/src/main/res/|app/src/androidTest/java/com/termux/app/[A-Za-z]*\.java$|settings.gradle|build.gradle|gradle.properties|gradle/|terminal-emulator/|terminal-view/|termux-shared/)'
+          if echo "$changed" | grep -qE "$broad_pattern"; then
+            emit_full "Broad or core change detected; running the full suite." "broad or core change"
+          fi
+
+          packages=$(echo "$changed" \
+            | grep -E '^app/src/main/java/com/termux/app/' \
+            | sed -E 's#^app/src/main/java/(.*)/[^/]+$#\1#' \
+            | sort -u || true)
+          [ -n "$packages" ] || emit_full "No app source package changes mapped; running the full suite as a safety net." "no mapped app source change"
+
+          collect_tests() {
+            local dir="$1"
+            [ -d "$dir" ] || return 0
+            for f in "$dir"/*InstrumentedTest.java; do
+              [ -e "$f" ] || continue
+              echo "$f" | sed -E "s#^$app_test_root/##; s#/#.#g; s#\.java\$##"
+            done
+          }
+
+          test_classes=""
+          for pkg_path in $packages; do
+            pkg_tests=$(collect_tests "$app_test_root/$pkg_path")
+            if [ -z "$pkg_tests" ]; then
+              emit_full "Changed package '$pkg_path' has no same-package androidTest class; running the full suite so coverage is never skipped." "package without matching test ($pkg_path)"
+            fi
+            test_classes="$test_classes
+          $pkg_tests"
+          done
+
+          root_tests=$(collect_tests "$root_test_dir")
+          test_classes="$test_classes
+          $root_tests"
+
+          test_classes=$(echo "$test_classes" | sed 's/^ *//; /^$/d' | sort -u)
+          [ -n "$test_classes" ] || emit_full "No test classes resolved; running the full suite as a safety net." "no matching test classes"
+
+          args=""
+          while IFS= read -r fqcn; do
+            args="$args --tests $fqcn"
+          done <<< "$test_classes"
+          args=$(echo "$args" | sed -E 's/^ +//')
+
+          echo "Selected test classes (changed-package tests plus cross-cutting root tests):"
+          echo "$test_classes" | sed 's/^/  /'
+          echo "gradle-test-args=$args" >> "$GITHUB_OUTPUT"
+          echo "mode=selective ($(echo "$test_classes" | wc -l | tr -d ' ') classes)" >> "$GITHUB_OUTPUT"
+
   connected-android-test:
     name: app connectedDebugAndroidTest (emulator)
+    needs: select-tests
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard-index: [0, 1]
     env:
       EMULATOR_API_LEVEL: 29
       EMULATOR_TARGET: google_apis
       EMULATOR_ARCH: x86_64
       EMULATOR_PROFILE: pixel
+      SHARD_COUNT: 2
+      SHARD_INDEX: ${{ matrix.shard-index }}
+      GRADLE_TEST_ARGS: ${{ needs.select-tests.outputs.gradle-test-args }}
+      SELECTION_MODE: ${{ needs.select-tests.outputs.mode }}
     steps:
       - name: Clone repository
         uses: actions/checkout@v6
+
+      - name: Report test selection
+        run: |
+          echo "Selection mode: $SELECTION_MODE"
+          echo "Shard: $SHARD_INDEX of $SHARD_COUNT"
+          echo "Gradle test args: ${GRADLE_TEST_ARGS:-(full suite)}"
 
       - name: Setup java 17
         uses: actions/setup-java@v5
@@ -63,10 +192,31 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ env.EMULATOR_API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-${{ env.EMULATOR_PROFILE }}
+          key: avd-${{ env.EMULATOR_API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-${{ env.EMULATOR_PROFILE }}-shard${{ matrix.shard-index }}
+
+      - name: Validate cached AVD snapshot
+        id: avd-validate
+        run: |
+          avd_root="$HOME/.android/avd"
+          cache_hit='${{ steps.avd-cache.outputs.cache-hit }}'
+          fallback=false
+          if [ "$cache_hit" = "true" ]; then
+            ini_count=$(find "$avd_root" -maxdepth 1 -name '*.ini' 2>/dev/null | wc -l)
+            snapshot_count=$(find "$avd_root" -path '*/snapshots/*' -name 'snapshot.pb' 2>/dev/null | wc -l)
+            if [ "$ini_count" -eq 0 ] || [ "$snapshot_count" -eq 0 ]; then
+              echo "Cached AVD snapshot is missing or corrupt (ini=$ini_count, snapshot=$snapshot_count); removing it so the run cold-boots instead of hanging."
+              rm -rf "$avd_root"
+              fallback=true
+            else
+              echo "Cached AVD snapshot looks valid (ini=$ini_count, snapshot=$snapshot_count)."
+            fi
+          else
+            echo "No AVD cache hit; the AVD will be created and snapshotted."
+          fi
+          echo "fallback=$fallback" >> "$GITHUB_OUTPUT"
 
       - name: Create AVD and generate snapshot for caching
-        if: steps.avd-cache.outputs.cache-hit != 'true'
+        if: steps.avd-cache.outputs.cache-hit != 'true' || steps.avd-validate.outputs.fallback == 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ env.EMULATOR_API_LEVEL }}
@@ -74,11 +224,12 @@ jobs:
           arch: ${{ env.EMULATOR_ARCH }}
           profile: ${{ env.EMULATOR_PROFILE }}
           force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none -verbose -logcat "*:W"
           disable-animations: false
           script: echo "Generated AVD snapshot for caching."
 
       - name: Run app instrumentation tests on emulator
+        timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ env.EMULATOR_API_LEVEL }}
@@ -86,22 +237,14 @@ jobs:
           arch: ${{ env.EMULATOR_ARCH }}
           profile: ${{ env.EMULATOR_PROFILE }}
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none -verbose -logcat "*:W"
           disable-animations: true
-          script: |
-            mkdir -p instrumentation-screenshots
-            status=0
-            ./gradlew :app:connectedDebugAndroidTest || status=$?
-            adb pull /sdcard/termux-instrumentation-screenshots instrumentation-screenshots || true
-            adb pull /sdcard/session-info-area-scan-render.png instrumentation-screenshots/ || true
-            adb pull /sdcard/session-info-area-scene-render.png instrumentation-screenshots/ || true
-            ls -la instrumentation-screenshots || true
-            exit $status
+          script: bash .github/scripts/run-instrumentation-tests.sh
 
       - name: Upload rendered instrumentation screenshots
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: instrumentation-screenshots
+          name: instrumentation-screenshots-shard${{ matrix.shard-index }}
           path: instrumentation-screenshots
           if-no-files-found: warn
