@@ -168,6 +168,52 @@ public class TermuxSharedPropertiesValueTest {
     }
 
     @Test
+    public void getBackgroundCallScanIntervalMinutesReturnsDefaultForNullValue() {
+        Assert.assertEquals(TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
+            TermuxSharedProperties.getBackgroundCallScanIntervalMinutesInternalPropertyValueFromValue(null));
+    }
+
+    @Test
+    public void getBackgroundCallScanIntervalMinutesKeepsInRangeValue() {
+        int inRange = TermuxPropertyConstants.IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MIN + 1;
+
+        Assert.assertEquals(inRange,
+            TermuxSharedProperties.getBackgroundCallScanIntervalMinutesInternalPropertyValueFromValue(String.valueOf(inRange)));
+    }
+
+    @Test
+    public void getBackgroundCallScanIntervalMinutesReturnsDefaultForValueBelowMinimum() {
+        int belowMin = TermuxPropertyConstants.IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MIN - 1;
+
+        Assert.assertEquals(TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
+            TermuxSharedProperties.getBackgroundCallScanIntervalMinutesInternalPropertyValueFromValue(String.valueOf(belowMin)));
+    }
+
+    @Test
+    public void getBackgroundCallScanIntervalMinutesReturnsDefaultForValueAboveMaximum() {
+        int aboveMax = TermuxPropertyConstants.IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MAX + 1;
+
+        Assert.assertEquals(TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
+            TermuxSharedProperties.getBackgroundCallScanIntervalMinutesInternalPropertyValueFromValue(String.valueOf(aboveMax)));
+    }
+
+    @Test
+    public void getBackgroundCallScanIntervalMinutesReturnsDefaultForNonNumericValue() {
+        Assert.assertEquals(TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
+            TermuxSharedProperties.getBackgroundCallScanIntervalMinutesInternalPropertyValueFromValue("not-a-number"));
+    }
+
+    @Test
+    public void getInternalTermuxPropertyValueFromValueDispatchesBackgroundCallScanIntervalMinutes() {
+        int inRange = TermuxPropertyConstants.IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MIN + 2;
+
+        Object result = TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null,
+            TermuxPropertyConstants.KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES, String.valueOf(inRange));
+
+        Assert.assertEquals(inRange, result);
+    }
+
+    @Test
     public void getNightModeMapsKnownValue() {
         Assert.assertEquals(TermuxPropertyConstants.IVALUE_NIGHT_MODE_TRUE,
             TermuxSharedProperties.getNightModeInternalPropertyValueFromValue(
