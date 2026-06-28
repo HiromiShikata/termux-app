@@ -97,4 +97,35 @@ public class SessionTimesLineTest {
 
         Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line.getText());
     }
+
+    @Test
+    public void columnAlignedLinePadsEachValueToAFixedWidthSoLabelsLineUp() {
+        SessionTimesLine line = SessionTimesLine.ofColumnAligned(
+            NOW - 3L * ONE_HOUR_MILLIS,
+            NOW - 12L * ONE_MINUTE_MILLIS,
+            NOW - 45L * ONE_SECOND_MILLIS,
+            0,
+            NOW);
+
+        Assert.assertTrue(line.isVisible());
+        Assert.assertEquals("call: 3h  out: 12m reply: 45s sub: 0  ", line.getText());
+    }
+
+    @Test
+    public void columnAlignedLineKeepsTheWidestExpectedValueIntact() {
+        SessionTimesLine line = SessionTimesLine.ofColumnAligned(null, null, null, 0, NOW);
+
+        Assert.assertEquals("call: >1d out: >1d reply: >1d sub: 0  ", line.getText());
+    }
+
+    @Test
+    public void columnAlignedLinePlacesEveryLabelAtTheSameColumnRegardlessOfValueLength() {
+        SessionTimesLine shortValues = SessionTimesLine.ofColumnAligned(
+            NOW - 5L * ONE_MINUTE_MILLIS, NOW - 5L * ONE_MINUTE_MILLIS, NOW - 5L * ONE_MINUTE_MILLIS, 0, NOW);
+        SessionTimesLine longValues = SessionTimesLine.ofColumnAligned(null, null, null, 0, NOW);
+
+        Assert.assertEquals(longValues.getText().indexOf("out:"), shortValues.getText().indexOf("out:"));
+        Assert.assertEquals(longValues.getText().indexOf("reply:"), shortValues.getText().indexOf("reply:"));
+        Assert.assertEquals(longValues.getText().indexOf("sub:"), shortValues.getText().indexOf("sub:"));
+    }
 }

@@ -66,6 +66,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private static final float DEFINITION_TITLE_RELATIVE_SIZE = 0.7f;
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
+    static final int SUBDUED_TEXT_ALPHA = 0x99;
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
     private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
 
@@ -860,7 +861,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private void bindHeaderTitle(@NonNull View headerRowView, @NonNull SessionHierarchyRow row, int titleViewId) {
         TextView headerTitleView = headerRowView.findViewById(titleViewId);
         headerTitleView.setText(row.getLabel());
-        headerTitleView.setTextColor(surfacePrimaryTextColor());
+        headerTitleView.setTextColor(fadedSurfacePrimaryTextColor());
     }
 
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
@@ -1125,8 +1126,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             sessionRowTimesView.setVisibility(View.GONE);
             return;
         }
-        int fadedColor = (0x99 << 24) | (surfacePrimaryTextColor() & 0x00FFFFFF);
-        sessionRowTimesView.setTextColor(fadedColor);
+        sessionRowTimesView.setTextColor(fadedSurfacePrimaryTextColor());
         sessionRowTimesView.setText(timestampLine);
         sessionRowTimesView.setVisibility(View.VISIBLE);
     }
@@ -1176,7 +1176,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                                      @Nullable String sessionName,
                                      long nowMillis) {
         if (sessionName == null || sessionName.isEmpty()) return "";
-        return SessionTimesLine.of(
+        return SessionTimesLine.ofColumnAligned(
             store.getStatuslineCallTimeMillis(sessionName),
             store.getStatuslineOutTimeMillis(sessionName),
             store.effectiveReplyTimeMillis(sessionName),
@@ -1221,6 +1221,14 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private int surfacePrimaryTextColor() {
         return ContextCompat.getColor(mActivity, com.termux.shared.R.color.schema_text_primary);
+    }
+
+    private int fadedSurfacePrimaryTextColor() {
+        return fadedColor(surfacePrimaryTextColor());
+    }
+
+    static int fadedColor(int color) {
+        return (SUBDUED_TEXT_ALPHA << 24) | (color & 0x00FFFFFF);
     }
 
     static SessionRowActiveIndicator computeActiveIndicator(boolean isCurrentSession, boolean sessionRunning) {
