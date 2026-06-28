@@ -1,12 +1,10 @@
 package com.termux.app.apkupdate;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 
 import com.termux.R;
-import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 
 import java.io.File;
@@ -19,12 +17,14 @@ public final class ApkUpdateUiController {
     private final ApkUpdateManager updateManager;
     private final ApkInstaller apkInstaller;
     private final ApkUpdateNotificationPolicy notificationPolicy;
+    private final ApkUpdatePendingState pendingState;
 
     public ApkUpdateUiController(Activity activity) {
         this.activity = activity;
         this.updateManager = new ApkUpdateManager(activity);
         this.apkInstaller = new ApkInstaller(activity);
         this.notificationPolicy = new ApkUpdateNotificationPolicy();
+        this.pendingState = new ApkUpdatePendingState(new SharedPreferencesApkUpdatePendingStore(activity));
     }
 
     public void checkAndPrompt(boolean userInitiated) {
@@ -34,12 +34,16 @@ public final class ApkUpdateUiController {
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
+                pendingState.save(availability);
                 if (activity.isFinishing()) return;
-                promptInstall(availability);
+                Logger.showToast(activity,
+                    activity.getString(R.string.apk_update_available_indicator_hint,
+                        availability.getLatestVersionName()), false);
             }
 
             @Override
             public void onUpToDate(String latestVersionName) {
+                pendingState.clear();
                 if (notificationPolicy.shouldNotifyUpToDate(userInitiated)) {
                     Logger.showToast(activity,
                         activity.getString(R.string.apk_update_up_to_date, latestVersionName), false);
@@ -58,17 +62,18 @@ public final class ApkUpdateUiController {
     }
 
     public void checkAndShowFloatingIndicator(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
-        ApkUpdateFloatingIndicatorController indicatorController =
-            new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall);
+        ApkUpdateFloatingIndicatorController indicatorController = newIndicatorController(indicatorView);
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
+                pendingState.save(availability);
                 if (activity.isFinishing()) return;
                 indicatorController.onUpdateAvailable(availability);
             }
 
             @Override
             public void onUpToDate(String latestVersionName) {
+                pendingState.clear();
                 indicatorController.onUpToDate();
             }
 
@@ -79,13 +84,20 @@ public final class ApkUpdateUiController {
         });
     }
 
-    private void promptInstall(ApkUpdateAvailability availability) {
-        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
-            .setTitle(R.string.apk_update_dialog_title)
-            .setMessage(activity.getString(R.string.apk_update_dialog_message, availability.getLatestVersionName()))
-            .setPositiveButton(R.string.apk_update_dialog_install,
-                (dialog, which) -> startDownloadAndInstall(availability))
-            .setNegativeButton(R.string.apk_update_dialog_cancel, null));
+    public void showPendingIndicatorIfAny(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
+        ApkUpdateAvailability availability = pendingState.load();
+        if (availability == null) {
+            return;
+        }
+        newIndicatorController(indicatorView).onUpdateAvailable(availability);
+    }
+
+    private ApkUpdateFloatingIndicatorController newIndicatorController(
+        ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
+        return new ApkUpdateFloatingIndicatorController(indicatorView, availability -> {
+            pendingState.clear();
+            startDownloadAndInstall(availability);
+        });
     }
 
     private void startDownloadAndInstall(ApkUpdateAvailability availability) {

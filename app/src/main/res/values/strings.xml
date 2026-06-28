@@ -396,8 +396,6 @@
     <string name="apk_update_up_to_date">You are already on the latest version (%1$s)</string>
     <string name="apk_update_check_failed">Update check failed: %1$s</string>
     <string name="apk_update_no_matching_asset">No matching APK found in the latest release</string>
-    <string name="apk_update_dialog_title">Update available</string>
-    <string name="apk_update_dialog_message">Version %1$s is available. Download and install it now?</string>
     <string name="apk_update_dialog_install">Update</string>
     <string name="apk_update_dialog_cancel">Later</string>
     <string name="apk_update_downloading">Downloading update…</string>
@@ -405,6 +403,7 @@
     <string name="apk_update_install_permission_required">Allow installing unknown apps, then tap update again</string>
     <string name="apk_update_floating_indicator_label">Update available - tap to update</string>
     <string name="apk_update_floating_indicator_content_description">Update available, version %1$s. Tap to download and install the update.</string>
+    <string name="apk_update_available_indicator_hint">Update available (%1$s). Tap the indicator on the terminal screen to update.</string>
     <string name="update_tag_install_dialog_title">Install update</string>
     <string name="update_tag_install_dialog_message">Version %1$s has been downloaded.\n\nReason: %2$s\n\nInstall it now?</string>
 
