@@ -1,0 +1,94 @@
+package com.termux.app.browser;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+public class SessionBrowserTabBarActionButtonsWiringTest {
+
+    private static final String LAYOUT_RELATIVE_PATH =
+        "src/main/res/layout/activity_termux.xml";
+
+    private static final String SESSION_CONTROLLER_RELATIVE_PATH =
+        "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
+
+    private String readModuleResource(String relativePath) throws IOException {
+        Path moduleRelative = Paths.get(relativePath);
+        if (Files.exists(moduleRelative)) {
+            return new String(Files.readAllBytes(moduleRelative), StandardCharsets.UTF_8);
+        }
+        Path repoRelative = Paths.get("app").resolve(relativePath);
+        return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
+    }
+
+    @Test
+    public void tabBarContainsTheThreeFixedActionButtons() throws IOException {
+        String layout = readModuleResource(LAYOUT_RELATIVE_PATH);
+        Assert.assertTrue(layout.contains("@+id/browser_tab_bar_overview_button"));
+        Assert.assertTrue(layout.contains("@+id/browser_tab_bar_tdpm_console_button"));
+        Assert.assertTrue(layout.contains("@+id/browser_tab_bar_new_issue_button"));
+    }
+
+    @Test
+    public void fixedActionButtonsArePinnedRightOfTheScrollingTabStrip() throws IOException {
+        String layout = readModuleResource(LAYOUT_RELATIVE_PATH);
+        int tabBarIndex = layout.indexOf("@+id/browser_tab_bar");
+        int scrollIndex = layout.indexOf("@+id/browser_tab_strip_scroll");
+        int actionsIndex = layout.indexOf("@+id/browser_tab_bar_project_actions");
+        Assert.assertTrue(tabBarIndex >= 0);
+        Assert.assertTrue(scrollIndex > tabBarIndex);
+        Assert.assertTrue("Fixed action buttons must appear after the scrolling tab strip",
+            actionsIndex > scrollIndex);
+    }
+
+    @Test
+    public void scrollingTabStripTakesRemainingWidthSoFixedButtonsStayPinnedAtTheEnd() throws IOException {
+        String layout = readModuleResource(LAYOUT_RELATIVE_PATH);
+        int scrollIndex = layout.indexOf("@+id/browser_tab_strip_scroll");
+        int actionsIndex = layout.indexOf("@+id/browser_tab_bar_project_actions");
+        String scrollBlock = layout.substring(scrollIndex, actionsIndex);
+        Assert.assertTrue("Scroll view must weight-fill so the action buttons stay at the right edge",
+            scrollBlock.contains("android:layout_weight=\"1\""));
+    }
+
+    @Test
+    public void sessionControllerBindsTheTabBarActionButtonsController() throws IOException {
+        String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
+        Assert.assertTrue(source.contains("new BrowserProjectActionButtonsController("));
+        Assert.assertTrue(source.contains("R.id.browser_tab_bar_overview_button"));
+        Assert.assertTrue(source.contains("R.id.browser_tab_bar_tdpm_console_button"));
+        Assert.assertTrue(source.contains("R.id.browser_tab_bar_new_issue_button"));
+        Assert.assertTrue(source.contains("this::openProjectActionUrl"));
+    }
+
+    @Test
+    public void sessionControllerRefreshesActionButtonsOnSessionChangeAndShow() throws IOException {
+        String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
+        int onSessionChangedIndex = source.indexOf("public void onSessionChanged(");
+        Assert.assertTrue(onSessionChangedIndex >= 0);
+        int onSessionChangedEnd = source.indexOf("private void restoreSessionVisibility", onSessionChangedIndex);
+        Assert.assertTrue(onSessionChangedEnd > onSessionChangedIndex);
+        Assert.assertTrue(source.substring(onSessionChangedIndex, onSessionChangedEnd)
+            .contains("updateProjectActionButtons()"));
+
+        int showBrowserIndex = source.indexOf("public void showBrowser()");
+        Assert.assertTrue(showBrowserIndex >= 0);
+        int showBrowserEnd = source.indexOf("private void dismissSoftKeyboardForBrowser", showBrowserIndex);
+        Assert.assertTrue(showBrowserEnd > showBrowserIndex);
+        Assert.assertTrue(source.substring(showBrowserIndex, showBrowserEnd)
+            .contains("updateProjectActionButtons()"));
+    }
+
+    @Test
+    public void sessionControllerResolvesActionUrlsFromCurrentSessionProjectDefinition() throws IOException {
+        String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
+        Assert.assertTrue(source.contains("new BrowserProjectActionUrlResolver("));
+        Assert.assertTrue(source.contains(
+            "mProjectActionUrlResolver.resolveForSessionName(mCurrentSessionName)"));
+    }
+}

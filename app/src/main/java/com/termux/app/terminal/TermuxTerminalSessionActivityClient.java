@@ -29,7 +29,6 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.OpenTagBrowserController;
-import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
@@ -904,22 +903,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void onSessionNameBarTapped() {
-        ProjectBrowserOverlayController projectBrowser = mActivity.getProjectBrowserOverlayController();
-        boolean projectBrowserVisible = projectBrowser != null && projectBrowser.isVisible();
-        String projectBrowserUrl = (projectBrowser == null) ? null : projectBrowser.getCurrentUrl();
         TerminalSession session = mActivity.getCurrentSession();
         String sessionNameForCopy = (session == null) ? null
             : resolveSessionNameForCopy(session.mSessionName, session.getTitle());
+        if (sessionNameForCopy == null || sessionNameForCopy.isEmpty()) return;
 
-        HeaderTapCopyTarget target = HeaderTapCopyTarget.resolve(
-            projectBrowserVisible, projectBrowserUrl, sessionNameForCopy);
-        if (target.isEmpty()) return;
-
-        int confirmationMessageResId = target.isProjectBrowserUrl()
-            ? R.string.msg_browser_url_copied
-            : R.string.msg_session_name_copied_to_clipboard;
-        ShareUtils.copyTextToClipboard(mActivity, target.getText(),
-            mActivity.getString(confirmationMessageResId));
+        ShareUtils.copyTextToClipboard(mActivity, sessionNameForCopy,
+            mActivity.getString(R.string.msg_session_name_copied_to_clipboard));
     }
 
     public void copySessionNameToClipboard(TerminalSession session) {

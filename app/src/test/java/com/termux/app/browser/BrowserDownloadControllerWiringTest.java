@@ -17,9 +17,6 @@ public class BrowserDownloadControllerWiringTest {
     private static final String SESSION_CONTROLLER_PATH =
         "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
 
-    private static final String PROJECT_CONTROLLER_PATH =
-        "src/main/java/com/termux/app/browser/ProjectBrowserOverlayController.java";
-
     private String readModuleSource(String relativePath) throws IOException {
         Path moduleRelative = Paths.get(relativePath);
         if (Files.exists(moduleRelative)) {
@@ -44,16 +41,6 @@ public class BrowserDownloadControllerWiringTest {
     public void sessionControllerEnqueuesThroughDownloadController() throws IOException {
         String source = readModuleSource(SESSION_CONTROLLER_PATH);
         Assert.assertTrue(source.contains("new BrowserDownloadController("));
-        Assert.assertTrue(source.contains(
-            "mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype)"));
-        Assert.assertTrue(source.contains("mDownloadController.unregisterDownloadCompleteReceiver()"));
-    }
-
-    @Test
-    public void projectControllerGainsDownloadSupport() throws IOException {
-        String source = readModuleSource(PROJECT_CONTROLLER_PATH);
-        Assert.assertTrue(source.contains("new BrowserDownloadController("));
-        Assert.assertTrue(source.contains("webView.setDownloadListener("));
         Assert.assertTrue(source.contains(
             "mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype)"));
         Assert.assertTrue(source.contains("mDownloadController.unregisterDownloadCompleteReceiver()"));

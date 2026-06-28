@@ -134,7 +134,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private BrowserTabFaviconStripController mTabFaviconStripController;
 
+    private BrowserProjectActionButtonsController mProjectActionButtonsController;
+
     private final BrowserProjectNameResolver mProjectNameResolver;
+
+    private final BrowserProjectActionUrlResolver mProjectActionUrlResolver;
 
     private final View mProjectOverviewActionsView;
 
@@ -191,10 +195,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mWebViewCover = activity.findViewById(R.id.browser_web_view_cover);
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectNameResolver = new BrowserProjectNameResolver(activity::getSessionDefinitionEntries);
+        this.mProjectActionUrlResolver = new BrowserProjectActionUrlResolver(activity::getSessionDefinitionEntries);
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         HorizontalScrollView tabStripScroll = activity.findViewById(R.id.browser_tab_strip_scroll);
         LinearLayout tabStripContainer = activity.findViewById(R.id.browser_tab_strip_container);
         mTabFaviconStripController = new BrowserTabFaviconStripController(tabStripScroll, tabStripContainer, this);
+        mProjectActionButtonsController = new BrowserProjectActionButtonsController(
+            activity.findViewById(R.id.browser_tab_bar_overview_button),
+            activity.findViewById(R.id.browser_tab_bar_tdpm_console_button),
+            activity.findViewById(R.id.browser_tab_bar_new_issue_button),
+            this::openProjectActionUrl);
         this.mUrlActions = new BrowserUrlActions(mActivity, new BrowserUrlActions.Host() {
             @Override
             public String currentPageUrl() {
@@ -973,6 +983,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
         rebindTabsList();
         updateDesktopModeToggleState();
+        updateProjectActionButtons();
         if (switchingSession) {
             restoreSessionVisibility();
             return;
@@ -1041,6 +1052,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, true);
         loadActiveTab();
         updatePageHeader();
+        updateProjectActionButtons();
         mBrowserContentContainer.setVisibility(View.VISIBLE);
         showBrowserSplitDivider();
         dismissSoftKeyboardForBrowser();
@@ -1150,6 +1162,28 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         openTab(tab);
+    }
+
+    public void openUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
+        String sessionHandle = mCurrentSessionHandle;
+        if (sessionHandle == null) {
+            TerminalSession currentSession = mActivity.getCurrentSession();
+            if (currentSession == null) return;
+            sessionHandle = currentSession.mHandle;
+        }
+        BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
+        tab.setViewMode(viewMode);
+        openTab(tab);
+    }
+
+    private void openProjectActionUrl(@NonNull String url, @NonNull BrowserViewMode viewMode) {
+        openUrlInNewTab(url, viewMode);
+    }
+
+    private void updateProjectActionButtons() {
+        if (mProjectActionButtonsController == null) return;
+        mProjectActionButtonsController.setActionUrls(
+            mProjectActionUrlResolver.resolveForSessionName(mCurrentSessionName));
     }
 
     public void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url) {

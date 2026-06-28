@@ -28,8 +28,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
-import com.termux.app.browser.ProjectBrowserOverlayController;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;
@@ -917,15 +918,16 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void openProjectUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode,
                                         @Nullable SessionHierarchyRow projectHeaderRow) {
-        ProjectBrowserOverlayController projectBrowserController = mActivity.getProjectBrowserOverlayController();
-        if (projectBrowserController == null) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) {
             return;
         }
-        if (projectHeaderRow != null) {
-            projectBrowserController.setProjectContext(projectHeaderRow.getOverviewUrl(),
-                projectHeaderRow.getTdpmConsoleUrl(), projectHeaderRow.getNewIssueUrl());
+        if (projectHeaderRow != null && projectHeaderRow.getLabel() != null) {
+            int topSessionIndex = SessionHierarchyBuilder.firstSessionIndexForProject(
+                buildAllRows(), projectHeaderRow.getLabel());
+            selectSessionAtIndex(topSessionIndex);
         }
-        projectBrowserController.route(url, viewMode);
+        browserController.openUrlInNewTab(BrowserUrlInput.normalize(url), viewMode);
     }
 
     static void applySessionNameStyling(@NonNull SpannableString styled, int start, int end, @NonNull StyleSpan boldSpan) {
