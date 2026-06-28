@@ -84,58 +84,44 @@ public class SettingsActivity extends AppCompatActivity {
             registerLastCheckSummaryUpdater(context);
             checkForApkUpdateOnSettingsOpen(context);
 
+            configureStylePreference(context);
+            configureAutosshConfigPreference(context);
+            configureSessionDefinitionConfigPreference(context);
+            configureAlwaysNaSessionNamesPreference(context);
+            configureCrashLogViewerPreference(context);
+            configureClearSavedSessionsPreference(context);
+            configureUpdateApkPreference(context);
+            configureAboutPreference(context);
+
+            configurePluginPreferenceVisibility(context);
+        }
+
+        private void configurePluginPreferenceVisibility(@NonNull Context context) {
             new Thread() {
                 @Override
                 public void run() {
-                    configureTermuxAPIPreference(context);
-                    configureTermuxFloatPreference(context);
-                    configureTermuxTaskerPreference(context);
-                    configureTermuxWidgetPreference(context);
-                    configureStylePreference(context);
-                    configureAutosshConfigPreference(context);
-                    configureSessionDefinitionConfigPreference(context);
-                    configureAlwaysNaSessionNamesPreference(context);
-                    configureCrashLogViewerPreference(context);
-                    configureClearSavedSessionsPreference(context);
-                    configureUpdateApkPreference(context);
-                    configureAboutPreference(context);
+                    boolean termuxAPIInstalled = TermuxAPIAppSharedPreferences.build(context, false) != null;
+                    boolean termuxFloatInstalled = TermuxFloatAppSharedPreferences.build(context, false) != null;
+                    boolean termuxTaskerInstalled = TermuxTaskerAppSharedPreferences.build(context, false) != null;
+                    boolean termuxWidgetInstalled = TermuxWidgetAppSharedPreferences.build(context, false) != null;
+                    postWhenLayoutIdle(() -> applyPluginPreferenceVisibility(
+                        termuxAPIInstalled, termuxFloatInstalled, termuxTaskerInstalled, termuxWidgetInstalled));
                 }
             }.start();
         }
 
-        private void configureTermuxAPIPreference(@NonNull Context context) {
-            Preference termuxAPIPreference = findPreference("termux_api");
-            if (termuxAPIPreference != null) {
-                TermuxAPIAppSharedPreferences preferences = TermuxAPIAppSharedPreferences.build(context, false);
-                // If failed to get app preferences, then likely app is not installed, so do not show its preference
-                termuxAPIPreference.setVisible(preferences != null);
-            }
+        private void applyPluginPreferenceVisibility(boolean termuxAPIInstalled, boolean termuxFloatInstalled,
+                                                     boolean termuxTaskerInstalled, boolean termuxWidgetInstalled) {
+            setPreferenceVisible("termux_api", termuxAPIInstalled);
+            setPreferenceVisible("termux_float", termuxFloatInstalled);
+            setPreferenceVisible("termux_tasker", termuxTaskerInstalled);
+            setPreferenceVisible("termux_widget", termuxWidgetInstalled);
         }
 
-        private void configureTermuxFloatPreference(@NonNull Context context) {
-            Preference termuxFloatPreference = findPreference("termux_float");
-            if (termuxFloatPreference != null) {
-                TermuxFloatAppSharedPreferences preferences = TermuxFloatAppSharedPreferences.build(context, false);
-                // If failed to get app preferences, then likely app is not installed, so do not show its preference
-                termuxFloatPreference.setVisible(preferences != null);
-            }
-        }
-
-        private void configureTermuxTaskerPreference(@NonNull Context context) {
-            Preference termuxTaskerPreference = findPreference("termux_tasker");
-            if (termuxTaskerPreference != null) {
-                TermuxTaskerAppSharedPreferences preferences = TermuxTaskerAppSharedPreferences.build(context, false);
-                // If failed to get app preferences, then likely app is not installed, so do not show its preference
-                termuxTaskerPreference.setVisible(preferences != null);
-            }
-        }
-
-        private void configureTermuxWidgetPreference(@NonNull Context context) {
-            Preference termuxWidgetPreference = findPreference("termux_widget");
-            if (termuxWidgetPreference != null) {
-                TermuxWidgetAppSharedPreferences preferences = TermuxWidgetAppSharedPreferences.build(context, false);
-                // If failed to get app preferences, then likely app is not installed, so do not show its preference
-                termuxWidgetPreference.setVisible(preferences != null);
+        private void setPreferenceVisible(@NonNull String key, boolean visible) {
+            Preference preference = findPreference(key);
+            if (preference != null) {
+                preference.setVisible(visible);
             }
         }
 
@@ -259,6 +245,10 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         private void postWhenLayoutIdle(@NonNull Runnable action) {
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                new Handler(Looper.getMainLooper()).post(() -> postWhenLayoutIdle(action));
+                return;
+            }
             RecyclerView listView = getListView();
             if (listView == null) {
                 new Handler(Looper.getMainLooper()).post(action);
