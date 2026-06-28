@@ -69,6 +69,9 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         set(activity, TermuxActivity.class, "mPreferences",
             com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences.build(appContext, true));
+
+        set(activity, TermuxActivity.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.getProperties());
     }
 
     @Test
