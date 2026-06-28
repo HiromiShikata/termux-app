@@ -23,6 +23,7 @@ import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.terminal.CallToUserTagController;
+import com.termux.app.terminal.PendingCallNotificationDecision;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
@@ -100,6 +101,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     private SessionNewActivityStore mSessionNewActivityStore = new SessionNewActivityStore();
 
+    /** The session names a real-time call-to-user heads-up alert was already fired for, so the alert
+     * fires exactly once on the transition into the pending state and is not repeated on every
+     * subsequent store change for the same un-replied call. A session that caught up (replied) drops
+     * out of the pending set and is removed here, so its next new call alerts again. */
+    private Set<String> mNotifiedPendingCallSessionNames = new HashSet<>();
+
     /** Detects the explicit-call output tag for every session regardless of which session is currently
      * viewed or whether the activity is foregrounded, recording the explicit call into the shared
      * {@link SessionNewActivityStore}. Owned by the service so a single per-session scanner survives
@@ -166,7 +173,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         mSessionNewActivityStore = buildSessionNewActivityStore();
         setupPendingCallNotificationChannel();
-        mSessionNewActivityStore.setOnChangeListener(store -> updatePendingCallNotification());
+        setupCallToUserAlertNotificationChannel();
+        mSessionNewActivityStore.setOnChangeListener(store -> {
+            updatePendingCallNotification();
+            fireRealtimeCallToUserAlerts();
+        });
         updatePendingCallNotification();
 
         TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
@@ -1009,8 +1020,78 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return builder.build();
     }
 
+    private void setupCallToUserAlertNotificationChannel() {
+        NotificationUtils.setupNotificationChannel(this,
+            TermuxConstants.TERMUX_APP_CALL_TO_USER_ALERT_NOTIFICATION_CHANNEL_ID,
+            TermuxConstants.TERMUX_APP_CALL_TO_USER_ALERT_NOTIFICATION_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_HIGH);
+    }
 
+    /**
+     * Fires the real-time per-session call-to-user heads-up alert the instant a session enters the
+     * pending (un-replied call) state, so the owner is alerted immediately even while the app is
+     * backgrounded. This runs from the {@link SessionNewActivityStore} change listener, which fires on
+     * every output that updates a session's call/reply state through the per-session output path for
+     * all sessions, so detection is real-time rather than waiting for the periodic statusline re-scan
+     * fallback. A heads-up fires exactly once on the transition into the pending set ({@link
+     * PendingCallNotificationDecision}); a session already alerted for the same un-replied call is not
+     * re-alerted, and a session that caught up (replied) has its alert cancelled and is dropped from
+     * the tracked set so its next new call alerts again.
+     */
+    private void fireRealtimeCallToUserAlerts() {
+        NotificationManager notificationManager =
+            (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) return;
 
+        Set<String> pendingSessionNames = mSessionNewActivityStore.pendingCallToUserSessionNames();
+        PendingCallNotificationDecision decision =
+            PendingCallNotificationDecision.decide(pendingSessionNames, mNotifiedPendingCallSessionNames);
+
+        for (String caughtUpSessionName : mNotifiedPendingCallSessionNames) {
+            if (!pendingSessionNames.contains(caughtUpSessionName)) {
+                notificationManager.cancel(callToUserAlertNotificationId(caughtUpSessionName));
+            }
+        }
+
+        for (String newlyPendingSessionName : decision.getNewlyPendingSessionNames()) {
+            Notification alert = buildCallToUserAlertNotification(newlyPendingSessionName);
+            if (alert == null) continue;
+            notificationManager.notify(callToUserAlertNotificationId(newlyPendingSessionName), alert);
+        }
+
+        mNotifiedPendingCallSessionNames = decision.getNextNotifiedSessionNames();
+    }
+
+    @Nullable
+    private Notification buildCallToUserAlertNotification(@NonNull String sessionName) {
+        Intent notificationIntent = TermuxActivity.newInstance(this);
+        PendingIntent contentIntent = PendingIntent.getActivity(this,
+            callToUserAlertNotificationId(sessionName), notificationIntent,
+            pendingIntentImmutableFlag());
+        Notification.Builder builder = NotificationUtils.geNotificationBuilder(this,
+            TermuxConstants.TERMUX_APP_CALL_TO_USER_ALERT_NOTIFICATION_CHANNEL_ID,
+            Notification.PRIORITY_HIGH,
+            getString(R.string.application_name) + " call to user",
+            sessionName, null,
+            contentIntent, null, NotificationUtils.NOTIFICATION_MODE_SOUND_AND_VIBRATE);
+        if (builder == null) return null;
+        builder.setSmallIcon(R.drawable.ic_service_notification);
+        builder.setColor(0xFFF44336);
+        builder.setAutoCancel(true);
+        return builder.build();
+    }
+
+    private static int callToUserAlertNotificationId(@NonNull String sessionName) {
+        return TermuxConstants.TERMUX_APP_CALL_TO_USER_ALERT_NOTIFICATION_ID_BASE
+            + (sessionName.hashCode() & 0x0000FFFF);
+    }
+
+    private static int pendingIntentImmutableFlag() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
+        }
+        return PendingIntent.FLAG_UPDATE_CURRENT;
+    }
 
 
     private void setCurrentStoredTerminalSession(TerminalSession terminalSession) {
