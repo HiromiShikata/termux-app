@@ -12,7 +12,7 @@ public class FinishedSessionEnterActionTest {
         Assert.assertTrue(action.isReconnect());
         Assert.assertEquals(FinishedSessionEnterAction.Kind.RECONNECT, action.getKind());
         Assert.assertEquals("myhost", action.getSessionName());
-        Assert.assertEquals("ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'myhost'", action.getCommand());
+        Assert.assertEquals("ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'myhost'", action.getCommand());
     }
 
     @Test
@@ -53,7 +53,7 @@ public class FinishedSessionEnterActionTest {
         FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("a'b", "ssh {name}");
 
         Assert.assertTrue(action.isReconnect());
-        Assert.assertEquals("ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'a'\\''b'", action.getCommand());
+        Assert.assertEquals("ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'a'\\''b'", action.getCommand());
     }
 
     @Test
@@ -61,6 +61,6 @@ public class FinishedSessionEnterActionTest {
         FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("myhost", "  ssh {name}  ");
 
         Assert.assertTrue(action.isReconnect());
-        Assert.assertEquals("ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'myhost'", action.getCommand());
+        Assert.assertEquals("ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'myhost'", action.getCommand());
     }
 }
