@@ -51,6 +51,7 @@ public class BrowserCoreWebViewClientTest {
         boolean pageFinishedHandled;
         boolean renderProcessGoneHandled = true;
         final List<String> events = new ArrayList<>();
+        final List<String> externalBrowserUrls = new ArrayList<>();
 
         @NonNull
         @Override
@@ -93,6 +94,11 @@ public class BrowserCoreWebViewClientTest {
         public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
             events.add("renderProcessGone:" + didCrash);
             return renderProcessGoneHandled;
+        }
+
+        @Override
+        public void openInExternalBrowser(@NonNull String url) {
+            externalBrowserUrls.add(url);
         }
     }
 
@@ -148,6 +154,40 @@ public class BrowserCoreWebViewClientTest {
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
         client.onReceivedError(newWebView(), -2, "net error", "https://example.com/");
         Assert.assertTrue(host.events.contains("error"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void googleSignInHostIsRoutedToExternalBrowserAndLoadIsOverridden() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            "https://accounts.google.com/signin");
+        Assert.assertTrue(overridden);
+        Assert.assertTrue(host.externalBrowserUrls.contains("https://accounts.google.com/signin"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void googleSheetsHostIsRoutedToExternalBrowser() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            "https://docs.google.com/spreadsheets/d/abc/edit");
+        Assert.assertTrue(overridden);
+        Assert.assertTrue(host.externalBrowserUrls.contains(
+            "https://docs.google.com/spreadsheets/d/abc/edit"));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void nonGoogleHostStaysInWebView() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            "https://example.com/page");
+        Assert.assertFalse(overridden);
+        Assert.assertTrue(host.externalBrowserUrls.isEmpty());
     }
 
     @Test

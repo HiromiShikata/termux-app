@@ -607,6 +607,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
                 return recoverFromRenderProcessGone(view, didCrash);
             }
+
+            @Override
+            public void openInExternalBrowser(@NonNull String url) {
+                ShareUtils.openUrlInChrome(mActivity, url);
+            }
         }));
 
         webView.setWebChromeClient(new WebChromeClient() {
