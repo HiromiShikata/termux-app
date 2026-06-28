@@ -57,6 +57,28 @@ public final class ApkUpdateUiController {
         });
     }
 
+    public void checkAndShowFloatingIndicator(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
+        ApkUpdateFloatingIndicatorController indicatorController =
+            new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall);
+        updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
+            @Override
+            public void onUpdateAvailable(ApkUpdateAvailability availability) {
+                if (activity.isFinishing()) return;
+                indicatorController.onUpdateAvailable(availability);
+            }
+
+            @Override
+            public void onUpToDate(String latestVersionName) {
+                indicatorController.onUpToDate();
+            }
+
+            @Override
+            public void onCheckFailed(String message) {
+                Logger.logError(LOG_TAG, "APK update check failed: " + message);
+            }
+        });
+    }
+
     private void promptInstall(ApkUpdateAvailability availability) {
         DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
             .setTitle(R.string.apk_update_dialog_title)

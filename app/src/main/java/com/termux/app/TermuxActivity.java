@@ -28,9 +28,12 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.apkupdate.ApkUpdateAutoCheckThrottle;
+import com.termux.app.apkupdate.ApkUpdateFloatingIndicatorController;
 import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
@@ -482,7 +485,29 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             return;
         }
         throttle.recordCheckedAt(nowMillis);
-        new ApkUpdateUiController(this).checkAndPrompt(false);
+        new ApkUpdateUiController(this).checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
+    }
+
+    private final class ApkUpdateFloatingIndicatorView
+        implements ApkUpdateFloatingIndicatorController.IndicatorView {
+
+        @Override
+        public void showUpdateAvailable(String latestVersionName, Runnable onTapped) {
+            ExtendedFloatingActionButton indicator = findViewById(R.id.apk_update_floating_indicator);
+            if (indicator == null) return;
+            indicator.setContentDescription(getString(
+                R.string.apk_update_floating_indicator_content_description, latestVersionName));
+            indicator.setOnClickListener(view -> onTapped.run());
+            indicator.setVisibility(View.VISIBLE);
+        }
+
+        @Override
+        public void hide() {
+            ExtendedFloatingActionButton indicator = findViewById(R.id.apk_update_floating_indicator);
+            if (indicator == null) return;
+            indicator.setOnClickListener(null);
+            indicator.setVisibility(View.GONE);
+        }
     }
 
     @Override
