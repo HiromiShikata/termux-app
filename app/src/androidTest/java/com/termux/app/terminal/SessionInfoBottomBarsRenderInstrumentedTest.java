@@ -35,7 +35,7 @@ public class SessionInfoBottomBarsRenderInstrumentedTest {
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final String FIRST_REASON = "sample pending message one";
     private static final String SECOND_REASON = "sample pending message two";
-    private static final String EXPECTED_TIMES = "call: 3h  out: 12m  reply: 45s";
+    private static final String EXPECTED_TIMES = "call: 3h  out: 12m  reply: 45s  sub: 0";
     private static final String EXPECTED_SCENE = SECOND_REASON;
 
     @Test
