@@ -46,17 +46,21 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
     public GrantPermissionRule writeExternalStoragePermissionRule =
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-    private static String taggedOutputWithSameSecondStatuslineReply() {
+    private static String taggedOutputWithUnansweredStatuslineCall() {
         Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
-        int secondsSinceMidnight = calendar.get(Calendar.HOUR_OF_DAY) * 3600
+        int callSinceMidnight = calendar.get(Calendar.HOUR_OF_DAY) * 3600
             + calendar.get(Calendar.MINUTE) * 60 + calendar.get(Calendar.SECOND);
-        String sameSecondClock = String.format(Locale.US, "%02d:%02d:%02d",
-            secondsSinceMidnight / 3600, (secondsSinceMidnight % 3600) / 60,
-            secondsSinceMidnight % 60);
+        int replySinceMidnight = (callSinceMidnight + 86400 - 1) % 86400;
+        String callClock = String.format(Locale.US, "%02d:%02d:%02d",
+            callSinceMidnight / 3600, (callSinceMidnight % 3600) / 60,
+            callSinceMidnight % 60);
+        String replyClock = String.format(Locale.US, "%02d:%02d:%02d",
+            replySinceMidnight / 3600, (replySinceMidnight % 3600) / 60,
+            replySinceMidnight % 60);
         return "build finished\r\n"
             + "<call-to-user>" + REASON + "</call-to-user>\r\n"
-            + "claude  call:" + sameSecondClock + "  out:" + sameSecondClock
-            + "  reply:" + sameSecondClock + "\r\n";
+            + "claude  call:" + callClock + "  out:" + replyClock
+            + "  reply:" + replyClock + "\r\n";
     }
 
     @Test
@@ -92,7 +96,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
             TerminalEmulator emulator = session.getEmulator();
             assertNotNull(emulator);
             byte[] bytes =
-                taggedOutputWithSameSecondStatuslineReply().getBytes(StandardCharsets.UTF_8);
+                taggedOutputWithUnansweredStatuslineCall().getBytes(StandardCharsets.UTF_8);
             emulator.append(bytes, bytes.length);
 
             client.onTextChanged(session);

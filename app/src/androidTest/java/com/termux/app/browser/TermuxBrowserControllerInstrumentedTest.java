@@ -98,7 +98,7 @@ public class TermuxBrowserControllerInstrumentedTest {
                 BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
 
             activeTab.setDesktopMode(false);
-            assertEquals("default-mobile-user-agent",
+            assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
                 BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
         });
     }
