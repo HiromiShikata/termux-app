@@ -352,6 +352,15 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
 
             @Override
             public void onVisitedHistoryUpdated(@NonNull WebView view, @Nullable String url, boolean isReload) {
+                tab.setUrl(url);
+                if (!isDisplayedTab(tab)) {
+                    notifyTabsUpdated();
+                    return;
+                }
+                mHeaderUrlView.setText(url);
+                mCurrentUrl = url;
+                updateOverviewActionsVisibility();
+                notifyTabsUpdated();
             }
 
             @Override
