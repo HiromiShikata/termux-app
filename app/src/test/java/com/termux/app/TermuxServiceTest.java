@@ -7,9 +7,11 @@ import com.termux.terminal.TerminalSession;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +27,18 @@ public class TermuxServiceTest {
             TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class, boolean.class);
         constructor.setAccessible(true);
         return constructor.newInstance(terminalSession, null, null, false);
+    }
+
+    @Test
+    public void createTermuxSessionReturnsNullWhenPropertiesIsNull() throws Exception {
+        TermuxService service = Robolectric.buildService(TermuxService.class).get();
+        Field mPropertiesField = TermuxService.class.getDeclaredField("mProperties");
+        mPropertiesField.setAccessible(true);
+        mPropertiesField.set(service, null);
+
+        TermuxSession result = service.createTermuxSession("/bin/sh", null, null, "/", false, "test-session");
+
+        Assert.assertNull(result);
     }
 
     @Test
