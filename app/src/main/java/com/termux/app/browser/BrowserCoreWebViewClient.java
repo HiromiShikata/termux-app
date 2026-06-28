@@ -31,12 +31,32 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         void onMainFrameError(@NonNull WebView view);
 
         boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash);
+
+        void openInExternalBrowser(@NonNull String url);
     }
 
     private final Host mHost;
 
     public BrowserCoreWebViewClient(@NonNull Host host) {
         this.mHost = host;
+    }
+
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        String url = request == null || request.getUrl() == null ? null : request.getUrl().toString();
+        return routeToExternalBrowserIfRequired(url);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+        return routeToExternalBrowserIfRequired(url);
+    }
+
+    private boolean routeToExternalBrowserIfRequired(@Nullable String url) {
+        if (url == null || !BrowserGoogleSignInRedirect.requiresExternalBrowser(url)) return false;
+        mHost.openInExternalBrowser(url);
+        return true;
     }
 
     @Override

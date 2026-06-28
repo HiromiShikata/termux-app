@@ -104,6 +104,10 @@ public class BrowserCoreWebViewClientInstrumentedTest {
         public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
             return false;
         }
+
+        @Override
+        public void openInExternalBrowser(@NonNull String url) {
+        }
     }
 
     @Test

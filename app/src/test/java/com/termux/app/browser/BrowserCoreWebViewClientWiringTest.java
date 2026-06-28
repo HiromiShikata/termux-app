@@ -88,4 +88,24 @@ public class BrowserCoreWebViewClientWiringTest {
         Assert.assertTrue(source.contains("public void onVisitedHistoryUpdated"));
         Assert.assertTrue(source.contains("if (isDisplayedTab(tab)) updatePageHeader();"));
     }
+
+    @Test
+    public void coreClientRoutesGoogleSignInUrlsToExternalBrowser() throws IOException {
+        String source = readModuleSource(CORE_CLIENT_PATH);
+        Assert.assertTrue(source.contains("public boolean shouldOverrideUrlLoading"));
+        Assert.assertTrue(source.contains("BrowserGoogleSignInRedirect.requiresExternalBrowser(url)"));
+        Assert.assertTrue(source.contains("mHost.openInExternalBrowser(url)"));
+    }
+
+    @Test
+    public void sessionControllerOpensRoutedUrlInExternalBrowser() throws IOException {
+        String source = readModuleSource(SESSION_CONTROLLER_PATH);
+        int hostStart = source.indexOf("new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host()");
+        Assert.assertTrue(hostStart >= 0);
+        int openIndex = source.indexOf("public void openInExternalBrowser(@NonNull String url)", hostStart);
+        Assert.assertTrue(openIndex > hostStart);
+        int shareIndex = source.indexOf("ShareUtils.openUrlInChrome(mActivity, url)", openIndex);
+        int nextMethodIndex = source.indexOf("webView.setWebChromeClient", openIndex);
+        Assert.assertTrue(shareIndex > openIndex && shareIndex < nextMethodIndex);
+    }
 }
