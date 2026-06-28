@@ -744,7 +744,9 @@
             android:focusable="false"
             android:focusableInTouchMode="false"
             android:text="@string/apk_update_floating_indicator_label"
-            android:textSize="11sp"
+            android:textSize="12sp"
+            app:icon="@drawable/ic_apk_update_available"
+            app:iconGravity="textStart"
             android:visibility="gone" />
 
     </RelativeLayout>

@@ -1,10 +1,12 @@
 package com.termux.app.apkupdate;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 
 import com.termux.R;
+import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 
 import java.io.File;
@@ -36,9 +38,9 @@ public final class ApkUpdateUiController {
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
                 pendingState.save(availability);
                 if (activity.isFinishing()) return;
-                Logger.showToast(activity,
-                    activity.getString(R.string.apk_update_available_indicator_hint,
-                        availability.getLatestVersionName()), false);
+                if (userInitiated) {
+                    promptInstall(availability);
+                }
             }
 
             @Override
@@ -94,10 +96,16 @@ public final class ApkUpdateUiController {
 
     private ApkUpdateFloatingIndicatorController newIndicatorController(
         ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
-        return new ApkUpdateFloatingIndicatorController(indicatorView, availability -> {
-            pendingState.clear();
-            startDownloadAndInstall(availability);
-        });
+        return new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall);
+    }
+
+    private void promptInstall(ApkUpdateAvailability availability) {
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
+            .setTitle(R.string.apk_update_dialog_title)
+            .setMessage(activity.getString(R.string.apk_update_dialog_message, availability.getLatestVersionName()))
+            .setPositiveButton(R.string.apk_update_dialog_install,
+                (dialog, which) -> startDownloadAndInstall(availability))
+            .setNegativeButton(R.string.apk_update_dialog_cancel, null));
     }
 
     private void startDownloadAndInstall(ApkUpdateAvailability availability) {
@@ -117,6 +125,7 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
+                    pendingState.clear();
                     applicationContext.startActivity(apkInstaller.buildInstallIntent(apkFile));
                 }
 
