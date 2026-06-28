@@ -69,6 +69,8 @@ public class BrowserVerticalScrollInstrumentedTest {
         assertTrue("vertical drag must scroll the tall page down (scrollY=" + afterScrollDown + ")",
             afterScrollDown > 200);
 
+        Thread.sleep(2000);
+
         for (int i = 0; i < 8; i++) {
             device.swipe(width / 2, (int) (height * 0.25), width / 2, (int) (height * 0.72), 50);
             Thread.sleep(1000);
