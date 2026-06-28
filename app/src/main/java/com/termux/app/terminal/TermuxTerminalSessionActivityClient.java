@@ -47,6 +47,7 @@ import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.app.TermuxService;
+import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.terminal.io.BellHandler;
 import com.termux.shared.logger.Logger;
@@ -1409,9 +1410,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             alwaysPresentSessionNames, liveSessionNames);
         if (missingSessionNames.isEmpty()) return false;
 
+        TermuxAppSharedProperties properties = mActivity.getProperties();
+        if (properties == null) return false;
+
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();
         String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
-        String workingDirectory = mActivity.getProperties().getDefaultWorkingDirectory();
+        String workingDirectory = properties.getDefaultWorkingDirectory();
 
         int configuredLimit = maxSessions();
         int droppedSessionCount = 0;
