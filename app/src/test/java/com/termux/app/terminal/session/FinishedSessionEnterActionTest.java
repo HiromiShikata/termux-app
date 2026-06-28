@@ -1,0 +1,66 @@
+package com.termux.app.terminal.session;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+public class FinishedSessionEnterActionTest {
+
+    @Test
+    public void decideReconnectsDefinitionBackedSessionWhenAutosshTemplateConfigured() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("myhost", "ssh {name}");
+
+        Assert.assertTrue(action.isReconnect());
+        Assert.assertEquals(FinishedSessionEnterAction.Kind.RECONNECT, action.getKind());
+        Assert.assertEquals("myhost", action.getSessionName());
+        Assert.assertEquals("ssh 'myhost'", action.getCommand());
+    }
+
+    @Test
+    public void decideRemovesPlainSessionWhenAutosshTemplateBlank() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("myhost", "   ");
+
+        Assert.assertFalse(action.isReconnect());
+        Assert.assertEquals(FinishedSessionEnterAction.Kind.REMOVE, action.getKind());
+        Assert.assertNull(action.getCommand());
+    }
+
+    @Test
+    public void decideRemovesPlainSessionWhenAutosshTemplateNull() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("myhost", null);
+
+        Assert.assertFalse(action.isReconnect());
+        Assert.assertNull(action.getCommand());
+    }
+
+    @Test
+    public void decideRemovesSessionWhenSessionNameNull() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide(null, "ssh {name}");
+
+        Assert.assertFalse(action.isReconnect());
+        Assert.assertNull(action.getCommand());
+    }
+
+    @Test
+    public void decideRemovesSessionWhenSessionNameBlank() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("   ", "ssh {name}");
+
+        Assert.assertFalse(action.isReconnect());
+        Assert.assertNull(action.getCommand());
+    }
+
+    @Test
+    public void decideShellQuotesSessionNameWithSingleQuoteInReconnectCommand() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("a'b", "ssh {name}");
+
+        Assert.assertTrue(action.isReconnect());
+        Assert.assertEquals("ssh 'a'\\''b'", action.getCommand());
+    }
+
+    @Test
+    public void decideTrimsAutosshTemplateBeforeBuildingReconnectCommand() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide("myhost", "  ssh {name}  ");
+
+        Assert.assertTrue(action.isReconnect());
+        Assert.assertEquals("ssh 'myhost'", action.getCommand());
+    }
+}

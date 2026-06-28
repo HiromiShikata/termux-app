@@ -128,6 +128,8 @@ public class TerminalToolbarViewPager {
                         session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
                         recordUserInputForSession(session);
                     }
+                } else if (mActivity.getTermuxTerminalSessionClient().decideFinishedSessionEnterAction(session).isReconnect()) {
+                    mActivity.getTermuxTerminalSessionClient().reconnectFinishedSessionInPlace(session, submittedTextInput);
                 } else {
                     mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
                 }
