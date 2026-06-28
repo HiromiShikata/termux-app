@@ -1,67 +1,64 @@
 package com.termux.app.browser;
 
-import org.junit.Assert;
-import org.junit.Test;
+import android.app.Activity;
+import android.content.Context;
+import android.webkit.WebView;
 
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+
+@RunWith(RobolectricTestRunner.class)
 public class BrowserPullToRefreshGateTest {
 
-    @Test
-    public void reportsCannotScrollUpWhenWebViewIsExactlyAtTheTop() {
-        Assert.assertFalse(BrowserPullToRefreshGate.canWebViewScrollUp(0));
-    }
+    private static final class ScrollableWebView extends WebView {
+        private boolean canScrollUp;
 
-    @Test
-    public void reportsCannotScrollUpWithinTheTopTolerance() {
-        Assert.assertFalse(
-            BrowserPullToRefreshGate.canWebViewScrollUp(BrowserPullToRefreshGate.TOP_SCROLL_TOLERANCE_PIXELS));
-    }
+        ScrollableWebView(Context context) {
+            super(context);
+        }
 
-    @Test
-    public void reportsCannotScrollUpForSubPixelZoomRoundingBelowTolerance() {
-        Assert.assertFalse(BrowserPullToRefreshGate.canWebViewScrollUp(1));
-        Assert.assertFalse(BrowserPullToRefreshGate.canWebViewScrollUp(2));
-    }
+        void setCanScrollUp(boolean value) {
+            this.canScrollUp = value;
+        }
 
-    @Test
-    public void reportsCanScrollUpJustAboveTheTopTolerance() {
-        Assert.assertTrue(
-            BrowserPullToRefreshGate.canWebViewScrollUp(BrowserPullToRefreshGate.TOP_SCROLL_TOLERANCE_PIXELS + 1));
-    }
-
-    @Test
-    public void reportsCanScrollUpWhenScrolledWellIntoThePage() {
-        Assert.assertTrue(BrowserPullToRefreshGate.canWebViewScrollUp(500));
-    }
-
-    @Test
-    public void reportsCanScrollUpWhenZoomedAndScrolledToALargeOffset() {
-        Assert.assertTrue(BrowserPullToRefreshGate.canWebViewScrollUp(12000));
-    }
-
-    @Test
-    public void treatsNegativeOverscrollPositionsAsTheTopSoRefreshStaysEnabled() {
-        Assert.assertFalse(BrowserPullToRefreshGate.canWebViewScrollUp(-10));
-    }
-
-    @Test
-    public void keepsTheTopScrollToleranceAtThreePixels() {
-        Assert.assertEquals(3, BrowserPullToRefreshGate.TOP_SCROLL_TOLERANCE_PIXELS);
-    }
-
-    @Test
-    public void disablesRefreshArmingForEveryScrollOffsetAboveTheTop() {
-        for (int scrollY = BrowserPullToRefreshGate.TOP_SCROLL_TOLERANCE_PIXELS + 1; scrollY <= 5000;
-                scrollY += 250) {
-            Assert.assertTrue(
-                "refresh must stay disabled while content remains above the viewport at scrollY=" + scrollY,
-                BrowserPullToRefreshGate.canWebViewScrollUp(scrollY));
+        @Override
+        public boolean canScrollVertically(int direction) {
+            if (direction == BrowserPullToRefreshGate.SCROLL_UP_DIRECTION) {
+                return canScrollUp;
+            }
+            return super.canScrollVertically(direction);
         }
     }
 
+    private ScrollableWebView mWebView;
+
+    @Before
+    public void setUp() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        mWebView = new ScrollableWebView(activity);
+    }
+
     @Test
-    public void armsRefreshOnlyWhenTheWebViewIsAtTheTop() {
-        Assert.assertFalse(BrowserPullToRefreshGate.canWebViewScrollUp(0));
-        Assert.assertTrue(BrowserPullToRefreshGate.canWebViewScrollUp(4));
+    public void reportsCannotScrollUpWhenTheWebViewHasNoContentAboveTheViewport() {
+        mWebView.setCanScrollUp(false);
+
+        Assert.assertFalse(BrowserPullToRefreshGate.canWebViewScrollUp(mWebView));
+    }
+
+    @Test
+    public void reportsCanScrollUpWhenTheWebViewHasContentAboveTheViewport() {
+        mWebView.setCanScrollUp(true);
+
+        Assert.assertTrue(BrowserPullToRefreshGate.canWebViewScrollUp(mWebView));
+    }
+
+    @Test
+    public void gatesArmingByQueryingTheUpwardScrollDirection() {
+        Assert.assertEquals(-1, BrowserPullToRefreshGate.SCROLL_UP_DIRECTION);
     }
 
     @Test
