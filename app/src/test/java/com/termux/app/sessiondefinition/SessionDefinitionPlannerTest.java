@@ -119,4 +119,18 @@ public class SessionDefinitionPlannerTest {
         Assert.assertNull(plannedSession.getName());
         Assert.assertFalse(plannedSession.hasCommand());
     }
+
+    @Test
+    public void planNamedSessionAppliesConfiguredCommandToArbitraryBrowserLinkUrlNotInAnyDefinition() {
+        String clickedLinkUrl = "https://example.test/deep/link/not-a-configured-definition-url";
+
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession(clickedLinkUrl, "connect {name}");
+
+        Assert.assertEquals(clickedLinkUrl, plannedSession.getName());
+        Assert.assertTrue(plannedSession.hasCommand());
+        Assert.assertEquals(
+            "connect '" + clickedLinkUrl + "'",
+            plannedSession.getCommand());
+    }
 }

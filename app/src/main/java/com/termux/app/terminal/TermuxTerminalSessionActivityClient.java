@@ -32,7 +32,6 @@ import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
-import com.termux.app.sessiondefinition.BrowserSessionDefinitionStartupPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -1018,25 +1017,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
     }
 
-    /**
-     * Create a session for a URL opened from the in-app browser (address bar or link). The session is
-     * named after the URL and run through the same session-definition matching that configured sessions
-     * use: when the URL matches a loaded session definition, the configured startup command is applied;
-     * when no definition matches, the session launches as a plain shell (no command is invented).
-     */
     public void addNewSessionForBrowserUrl(String sessionName) {
         addNewSessionForBrowserUrl(sessionName, true);
     }
 
     public void addNewSessionForBrowserUrl(String sessionName, boolean closeDrawerAfter) {
-        String commandTemplate = mActivity.getPreferences().getAutosshCommand();
-        SessionDefinitionPlannedSession plannedSession = new BrowserSessionDefinitionStartupPlanner()
-            .plan(mActivity.getSessionDefinitionEntries(), sessionName, commandTemplate);
-        if (plannedSession.hasCommand()) {
-            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), closeDrawerAfter);
-        } else {
-            addNewSession(false, plannedSession.getName(), closeDrawerAfter);
-        }
+        addNewSessionApplyingAutosshConfig(sessionName, closeDrawerAfter);
     }
 
     public void addNewAutosshSession(String sessionName, String command) {
