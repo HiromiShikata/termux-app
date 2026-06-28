@@ -334,31 +334,6 @@ public class SessionListBottomSheetController {
         return sheetVisibility == View.VISIBLE;
     }
 
-    public void revealCallToUserSessionIfShowing() {
-        if (!shouldRevealForVisibility(mSheetView.getVisibility())) {
-            return;
-        }
-        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
-        if (listController == null) {
-            return;
-        }
-        revealCallToUserSessionRow(listController);
-    }
-
-    private void revealCallToUserSessionRow(@NonNull TermuxSessionsListViewController listController) {
-        mSessionListView.post(() -> {
-            int callToUserSessionIndex = listController.getCallToUserSessionIndex();
-            if (callToUserSessionIndex < 0) {
-                return;
-            }
-            int rowPosition = listController.getRowPositionForSessionIndex(callToUserSessionIndex);
-            if (rowPosition < 0) {
-                return;
-            }
-            scrollSessionRowToTop(rowPosition);
-        });
-    }
-
     private void revealCurrentSessionRow(@NonNull TermuxSessionsListViewController listController) {
         mSessionListView.post(() -> {
             TermuxService service = mActivity.getTermuxService();
