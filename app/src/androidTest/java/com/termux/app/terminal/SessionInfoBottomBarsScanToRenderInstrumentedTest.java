@@ -39,6 +39,8 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
 
     private static final String SESSION_NAME = "scan-render-session-0001";
     private static final String REASON = "NEEDS APPROVAL TO DEPLOY";
+    private static final int REPLY_BEHIND_CALL_SECONDS = 120;
+    private static final int SECONDS_PER_DAY = 24 * 3600;
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 15_000L;
 
@@ -46,17 +48,26 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
     public GrantPermissionRule writeExternalStoragePermissionRule =
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
-    private static String taggedOutputWithSameSecondStatuslineReply() {
-        Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
-        int secondsSinceMidnight = calendar.get(Calendar.HOUR_OF_DAY) * 3600
-            + calendar.get(Calendar.MINUTE) * 60 + calendar.get(Calendar.SECOND);
-        String sameSecondClock = String.format(Locale.US, "%02d:%02d:%02d",
-            secondsSinceMidnight / 3600, (secondsSinceMidnight % 3600) / 60,
-            secondsSinceMidnight % 60);
+    private static String taggedOutputWithUnrepliedStatuslineCall() {
+        int secondsSinceMidnight = secondsSinceMidnightNow();
+        String callClock = clock(secondsSinceMidnight);
+        String replyClock = clock(secondsSinceMidnight - REPLY_BEHIND_CALL_SECONDS);
         return "build finished\r\n"
             + "<call-to-user>" + REASON + "</call-to-user>\r\n"
-            + "claude  call:" + sameSecondClock + "  out:" + sameSecondClock
-            + "  reply:" + sameSecondClock + "\r\n";
+            + "claude  call:" + callClock + "  out:" + callClock
+            + "  reply:" + replyClock + "\r\n";
+    }
+
+    private static int secondsSinceMidnightNow() {
+        Calendar calendar = Calendar.getInstance(TimeZone.getDefault());
+        return calendar.get(Calendar.HOUR_OF_DAY) * 3600
+            + calendar.get(Calendar.MINUTE) * 60 + calendar.get(Calendar.SECOND);
+    }
+
+    private static String clock(int secondsSinceMidnight) {
+        int wrapped = ((secondsSinceMidnight % SECONDS_PER_DAY) + SECONDS_PER_DAY) % SECONDS_PER_DAY;
+        return String.format(Locale.US, "%02d:%02d:%02d",
+            wrapped / 3600, (wrapped % 3600) / 60, wrapped % 60);
     }
 
     @Test
@@ -92,7 +103,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
             TerminalEmulator emulator = session.getEmulator();
             assertNotNull(emulator);
             byte[] bytes =
-                taggedOutputWithSameSecondStatuslineReply().getBytes(StandardCharsets.UTF_8);
+                taggedOutputWithUnrepliedStatuslineCall().getBytes(StandardCharsets.UTF_8);
             emulator.append(bytes, bytes.length);
 
             client.onTextChanged(session);
