@@ -370,6 +370,10 @@ public final class TerminalEmulator {
         return mScreen;
     }
 
+    public String getMainBufferTranscriptText() {
+        return mMainBuffer.getTranscriptText();
+    }
+
     public boolean isAlternateBufferActive() {
         return mScreen == mAltBuffer;
     }
