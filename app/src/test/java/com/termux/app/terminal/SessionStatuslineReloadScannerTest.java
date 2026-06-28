@@ -117,4 +117,40 @@ public class SessionStatuslineReloadScannerTest {
         Assert.assertNull(store.getStatuslineReplyTimeMillis("plain-shell-session"));
         Assert.assertEquals(SessionNewActivityTier.NONE, store.tierFor("plain-shell-session"));
     }
+
+    @Test
+    public void statuslineNotOnBottomLineButPresentInBufferIsRepopulated() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long replyMillis = NOW_MILLIS - 2L * 60L * 1000L;
+        String bufferText = "earlier scrollback output\n"
+            + statusline(NOW_MILLIS - 3L * 60L * 1000L, replyMillis) + "\n"
+            + "later output after the statusline\n"
+            + "$ ";
+        Map<String, String> screens = new LinkedHashMap<>();
+        screens.put("scrolled-session", bufferText);
+
+        new SessionStatuslineReloadScanner()
+            .repopulateFromCurrentStatuslines(store, screens, NOW_MILLIS, UTC);
+
+        Assert.assertEquals("a statusline above the bottom line must still be repopulated from the "
+            + "buffer", Long.valueOf(replyMillis), store.getStatuslineReplyTimeMillis("scrolled-session"));
+    }
+
+    @Test
+    public void statuslineAboveBottomLineWithCallNewerThanReplyArmsUnreadMark() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long replyMillis = NOW_MILLIS - 10L * 60L * 1000L;
+        long callMillis = NOW_MILLIS - 1L * 60L * 1000L;
+        String bufferText = statuslineWithCall(callMillis, NOW_MILLIS - 30L * 1000L, replyMillis)
+            + "\nbottom prompt line after the statusline\n$ ";
+        Map<String, String> screens = new LinkedHashMap<>();
+        screens.put("buried-calling-session", bufferText);
+
+        new SessionStatuslineReloadScanner()
+            .repopulateFromCurrentStatuslines(store, screens, NOW_MILLIS, UTC);
+
+        Assert.assertTrue("a call newer than reply must arm the unread mark even when the statusline "
+            + "is not the bottom line", store.hasPendingExplicitCall("buried-calling-session"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("buried-calling-session"));
+    }
 }

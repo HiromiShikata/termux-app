@@ -115,6 +115,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long ACTIVE_SESSION_SEEN_TICK_INTERVAL_MILLIS = 1000L;
 
+    private static final long ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS = 1500L;
+
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
@@ -156,11 +158,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         openTagsForSession(mActivity.getCurrentSession());
         backgroundOutputTagsForSession(mActivity.getCurrentSession());
 
-        // The pass runs once now for sessions already loaded and once more after the staged
-        // eager-load creates the remaining emulators; the store's unchanged-statusline short-circuit
-        // makes the second pass idempotent for sessions already recorded.
+        // The pass runs once now for sessions already loaded, once more after the staged
+        // eager-load creates the remaining emulators, and once again after a short delay so that
+        // statuslines that render late (alternate-screen restoration, scrolled output, or a screen
+        // not yet drawn at onStart) are captured. The store's unchanged-statusline short-circuit
+        // makes the repeated passes idempotent for sessions already recorded.
         repopulateStatuslineTimesForAllSessions();
         mMainThreadHandler.post(this::repopulateStatuslineTimesForAllSessions);
+        mMainThreadHandler.postDelayed(this::repopulateStatuslineTimesForAllSessions,
+            ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS);
     }
 
     /**
@@ -298,10 +304,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
 
-        String visibleScreenText = visibleScreenText(emulator, screen);
+        String statuslineScanText = statuslineScanText(emulator, screen);
         long nowMillis = System.currentTimeMillis();
         mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store, session.mSessionName,
-            visibleScreenText, nowMillis, TimeZone.getDefault());
+            statuslineScanText, nowMillis, TimeZone.getDefault());
         termuxSessionListNotifyUpdated();
     }
 
@@ -333,13 +339,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalBuffer screen = emulator.getScreen();
             if (screen == null) continue;
             mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store,
-                session.mSessionName, visibleScreenText(emulator, screen), nowMillis,
+                session.mSessionName, statuslineScanText(emulator, screen), nowMillis,
                 TimeZone.getDefault());
             recordedAny = true;
         }
         if (recordedAny) {
             termuxSessionListNotifyUpdated();
         }
+    }
+
+    @NonNull
+    private static String statuslineScanText(@NonNull TerminalEmulator emulator,
+                                             @NonNull TerminalBuffer screen) {
+        StringBuilder builder = new StringBuilder(emulator.getMainBufferTranscriptText());
+        if (emulator.isAlternateBufferActive()) {
+            builder.append('\n').append(visibleScreenText(emulator, screen));
+        }
+        return builder.toString();
     }
 
     @NonNull
