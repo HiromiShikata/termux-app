@@ -496,9 +496,16 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
 
     @Override
     public void openProjectUrl(@NonNull String url, @NonNull BrowserViewMode viewMode) {
-        BrowserTab tab = mTabManager.attachOrActivateTab(PROJECT_BROWSER_SESSION_HANDLE, url);
-        tab.setViewMode(viewMode);
-        displayTab(tab, url);
+        String normalizedUrl = BrowserUrlInput.normalize(url);
+        BrowserTab existingTab = ProjectFooterActionTabSelection.resolveReusableTab(
+            mTabManager, PROJECT_BROWSER_SESSION_HANDLE, normalizedUrl);
+        if (existingTab == null) {
+            openProjectUrlInNewTab(normalizedUrl, viewMode);
+            return;
+        }
+        mTabManager.setActiveTab(existingTab);
+        existingTab.setViewMode(viewMode);
+        displayTab(existingTab, normalizedUrl);
         show();
     }
 
