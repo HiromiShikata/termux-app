@@ -118,11 +118,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS = 1500L;
 
+    private static final long ALL_SESSIONS_CALL_SCAN_INTERVAL_MILLIS = 5L * 60L * 1000L;
+
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
     private boolean mActiveSessionSeenTickScheduled;
+
+    private final Runnable mAllSessionsCallScanTickRunnable = this::onAllSessionsCallScanTick;
+
+    private boolean mAllSessionsCallScanTickScheduled;
 
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
@@ -180,6 +186,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         loadBellSoundPool();
 
         startActiveSessionSeenTick();
+        startAllSessionsCallScanTick();
     }
 
     /**
@@ -187,6 +194,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     public void onStop() {
         stopActiveSessionSeenTick();
+        stopAllSessionsCallScanTick();
 
         // Store current session in shared preferences so that it can be restored later in
         // {@link #onStart} if needed.
@@ -604,6 +612,45 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void stopActiveSessionSeenTick() {
         mActiveSessionSeenTickScheduled = false;
         mMainThreadHandler.removeCallbacks(mActiveSessionSeenTickRunnable);
+    }
+
+    /**
+     * Periodically re-scans every session's current output buffer so that a background session
+     * which already emitted its call-to-user marker and then went idle turns its red un-replied-call
+     * indicator on without the owner having to open it. The per-session scan is otherwise driven only
+     * by {@link #onTextChanged}, which fires only for a session producing fresh output, so an idle
+     * background session whose last output landed before the indicator was armed is never re-scanned
+     * until the activity is foregrounded ({@link #onStart}) or the session emits more output. This
+     * repeating pass closes that gap by feeding every session's current statusline through the same
+     * {@link #repopulateStatuslineTimesForAllSessions} path the on-load pass uses. The store's
+     * unchanged-statusline short-circuit keeps each pass cheap, and the long interval keeps the
+     * main-thread cost negligible. The tick runs only while the activity is visible and is removed in
+     * {@link #onStop}, so it does not leak the runnable or run in the background.
+     */
+    public void startAllSessionsCallScanTick() {
+        if (mActivity.isVisible())
+            repopulateStatuslineTimesForAllSessions();
+        scheduleAllSessionsCallScanTick();
+    }
+
+    private void scheduleAllSessionsCallScanTick() {
+        if (mAllSessionsCallScanTickScheduled) return;
+        if (!mActivity.isVisible()) return;
+        mAllSessionsCallScanTickScheduled = true;
+        mMainThreadHandler.postDelayed(mAllSessionsCallScanTickRunnable,
+            ALL_SESSIONS_CALL_SCAN_INTERVAL_MILLIS);
+    }
+
+    public void stopAllSessionsCallScanTick() {
+        mAllSessionsCallScanTickScheduled = false;
+        mMainThreadHandler.removeCallbacks(mAllSessionsCallScanTickRunnable);
+    }
+
+    private void onAllSessionsCallScanTick() {
+        mAllSessionsCallScanTickScheduled = false;
+        if (!mActivity.isVisible()) return;
+        repopulateStatuslineTimesForAllSessions();
+        scheduleAllSessionsCallScanTick();
     }
 
     @Override
