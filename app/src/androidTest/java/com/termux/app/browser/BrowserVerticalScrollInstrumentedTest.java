@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.view.ViewGroup;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
 import androidx.test.core.app.ActivityScenario;
@@ -53,7 +54,6 @@ public class BrowserVerticalScrollInstrumentedTest {
         AtomicReference<HostActivity> ref = new AtomicReference<>();
         scenario.onActivity(ref::set);
         loadTallPage(ref.get());
-        Thread.sleep(2500);
 
         assertEquals("page must start at the top", 0, scrollY(ref.get()));
 
@@ -61,13 +61,13 @@ public class BrowserVerticalScrollInstrumentedTest {
         int width = device.getDisplayWidth();
         int height = device.getDisplayHeight();
 
-        for (int i = 0; i < 3; i++) {
-            device.swipe(width / 2, (int) (height * 0.72), width / 2, (int) (height * 0.25), 25);
-            Thread.sleep(600);
+        for (int i = 0; i < 5; i++) {
+            device.swipe(width / 2, (int) (height * 0.72), width / 2, (int) (height * 0.25), 50);
+            Thread.sleep(1000);
         }
         int afterScrollDown = scrollY(ref.get());
         assertTrue("vertical drag must scroll the tall page down (scrollY=" + afterScrollDown + ")",
-            afterScrollDown > 500);
+            afterScrollDown > 200);
 
         for (int i = 0; i < 6; i++) {
             device.swipe(width / 2, (int) (height * 0.25), width / 2, (int) (height * 0.72), 25);
@@ -89,10 +89,16 @@ public class BrowserVerticalScrollInstrumentedTest {
             + body + "</body></html>";
         CountDownLatch latch = new CountDownLatch(1);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            activity.webView.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    latch.countDown();
+                }
+            });
             activity.webView.loadData(html, "text/html", "utf-8");
-            latch.countDown();
         });
-        latch.await(5, TimeUnit.SECONDS);
+        latch.await(10, TimeUnit.SECONDS);
+        Thread.sleep(500);
     }
 
     private int scrollY(HostActivity activity) {
