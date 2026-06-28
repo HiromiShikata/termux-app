@@ -31,6 +31,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -121,6 +122,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private static final long MILLIS_PER_MINUTE = 60L * 1000L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
+
+    private final DeadSessionReconnectPlanner mDeadSessionReconnectPlanner = new DeadSessionReconnectPlanner();
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
@@ -1342,6 +1345,80 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                                                  @Nullable String pendingInput) {
         String textToSend = (pendingInput == null ? "" : pendingInput) + "\n";
         mMainThreadHandler.post(new ReconnectedSessionInputReplay(mMainThreadHandler, reconnectedSession, textToSend));
+    }
+
+    public void reconnectDeadDefinitionBackedSessionsInBackground() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
+
+        Map<String, TerminalSession> sessionByName = new HashMap<>();
+        List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null) continue;
+            String sessionName = terminalSession.mSessionName;
+            sessionByName.put(sessionName, terminalSession);
+            candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
+                sessionName, terminalSession.isRunning()));
+        }
+
+        List<String> sessionNamesToReconnect =
+            mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate);
+        for (String sessionName : sessionNamesToReconnect) {
+            TerminalSession deadSession = sessionByName.get(sessionName);
+            if (deadSession != null) {
+                reconnectDeadSessionPreservingDisplayedSession(deadSession);
+            }
+        }
+    }
+
+    private void reconnectDeadSessionPreservingDisplayedSession(@NonNull TerminalSession deadSession) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        FinishedSessionEnterAction action = decideFinishedSessionEnterAction(deadSession);
+        if (!action.isReconnect()) return;
+
+        String sessionName = action.getSessionName();
+        String command = action.getCommand();
+        TerminalSession displayedSession = mActivity.getCurrentSession();
+        String deadSessionCwd = deadSession.getCwd();
+        String workingDirectory = deadSessionCwd == null || deadSessionCwd.isEmpty()
+            ? mActivity.getProperties().getDefaultWorkingDirectory()
+            : deadSessionCwd;
+        String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+        String[] arguments = new String[]{"-c", command};
+
+        purgeNewActivityForRemovedSession(deadSession.mSessionName);
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(deadSession);
+
+        if (mPersistedSessionBySession.remove(deadSession) != null)
+            savePersistedSessions();
+
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter != null)
+            toolbarAdapter.removeTextInputForSession(deadSession);
+
+        service.removeTermuxSession(deadSession);
+
+        TermuxSession newTermuxSession =
+            service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
+        if (newTermuxSession == null) return;
+
+        TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+        recordPersistedSession(newTerminalSession,
+            new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
+        attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
+
+        if (displayedSession == deadSession) {
+            setCurrentSession(newTerminalSession);
+        } else {
+            termuxSessionListNotifyUpdated();
+        }
     }
 
     private static final class ReconnectedSessionInputReplay implements Runnable {

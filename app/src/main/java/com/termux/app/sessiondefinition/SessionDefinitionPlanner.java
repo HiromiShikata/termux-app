@@ -10,6 +10,9 @@ public final class SessionDefinitionPlanner {
     private final DefaultProjectManagerSessionPlanner defaultProjectManagerSessionPlanner =
         new DefaultProjectManagerSessionPlanner();
 
+    private final SshKeepaliveCommandAugmenter sshKeepaliveCommandAugmenter =
+        new SshKeepaliveCommandAugmenter();
+
     public List<SessionDefinitionPlannedSession> plan(List<SessionDefinitionEntry> entries, String commandTemplate) {
         List<SessionDefinitionPlannedSession> plannedSessions = new ArrayList<>();
         String template = commandTemplate == null ? "" : commandTemplate.trim();
@@ -41,7 +44,8 @@ public final class SessionDefinitionPlanner {
         if (template.isEmpty()) {
             return null;
         }
-        return template.replace("{name}", shellQuote(name));
+        String command = template.replace("{name}", shellQuote(name));
+        return sshKeepaliveCommandAugmenter.augment(command);
     }
 
     public static String shellQuote(String value) {

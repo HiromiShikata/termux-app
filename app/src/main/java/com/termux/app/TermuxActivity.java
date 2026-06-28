@@ -52,6 +52,7 @@ import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.sessiondefinition.SessionDefinitionAutoReloadScheduler;
+import com.termux.app.sessiondefinition.SessionReconnectScheduler;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
@@ -217,6 +218,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final SessionDefinitionAutoReloadScheduler mSessionDefinitionAutoReloadScheduler =
         new SessionDefinitionAutoReloadScheduler(this::loadSessionsFromDefinition);
+
+    private final SessionReconnectScheduler mSessionReconnectScheduler =
+        new SessionReconnectScheduler(this::reconnectDeadDefinitionBackedSessions);
 
     private final SessionEagerLoader mSessionEagerLoader = new SessionEagerLoader(
         this::collectSessionsToEagerLoad,
@@ -535,6 +539,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         registerTermuxActivityBroadcastReceiver();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
+        mSessionReconnectScheduler.onForeground(mPreferences.getBackgroundReconnectScanIntervalMinutes());
     }
 
     @Override
@@ -569,6 +574,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mIsVisible = false;
 
         mSessionDefinitionAutoReloadScheduler.onBackground();
+        mSessionReconnectScheduler.onBackground();
 
         if (mTermuxService != null)
             mTermuxService.onActivityBackgrounded();
@@ -897,6 +903,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void loadSessionsFromDefinition() {
         new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions();
+    }
+
+    public void reconnectDeadDefinitionBackedSessions() {
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.reconnectDeadDefinitionBackedSessionsInBackground();
     }
 
     public void prewarmSessionDefinitionDocument() {

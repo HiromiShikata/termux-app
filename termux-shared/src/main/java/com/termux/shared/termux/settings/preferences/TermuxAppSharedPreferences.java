@@ -322,6 +322,16 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public int getBackgroundReconnectScanIntervalMinutes() {
+        int value = SharedPreferenceUtils.getInt(mSharedPreferences, TERMUX_APP.KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES, TERMUX_APP.DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES);
+        return value < 0 ? 0 : value;
+    }
+
+    public void setBackgroundReconnectScanIntervalMinutes(int value) {
+        SharedPreferenceUtils.setInt(mSharedPreferences, TERMUX_APP.KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES, value < 0 ? 0 : value, false);
+    }
+
+
     public int getSessionDefinitionMaxSessions() {
         int value = SharedPreferenceUtils.getInt(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_MAX_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
         return value < TERMUX_APP.MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS
