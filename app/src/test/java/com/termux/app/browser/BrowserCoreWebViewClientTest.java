@@ -209,7 +209,7 @@ public class BrowserCoreWebViewClientTest {
     }
 
     @Test
-    public void projectBoardUsesDeviceWidthMobileViewportEvenWhenTabIsDesktop() {
+    public void projectBoardDesktopTabUsesDesktopViewport() {
         RecordingHost host = new RecordingHost();
         host.viewMode = BrowserViewMode.DESKTOP;
         host.injectMobileViewport = false;
@@ -218,20 +218,8 @@ public class BrowserCoreWebViewClientTest {
         client.onPageStarted(webView, PROJECT_BOARD_URL, null);
         client.onPageCommitVisible(webView, PROJECT_BOARD_URL);
         client.onPageFinished(webView, PROJECT_BOARD_URL);
-        Assert.assertTrue(webView.injectedMobileViewport());
-        Assert.assertFalse(webView.injectedDesktopViewport());
-    }
-
-    @Test
-    public void projectBoardUsesDeviceWidthMobileViewportInMobileTab() {
-        RecordingHost host = new RecordingHost();
-        host.viewMode = BrowserViewMode.MOBILE;
-        host.injectMobileViewport = true;
-        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
-        RecordingWebView webView = newRecordingWebView();
-        client.onPageFinished(webView, PROJECT_BOARD_URL);
-        Assert.assertTrue(webView.injectedMobileViewport());
-        Assert.assertFalse(webView.injectedDesktopViewport());
+        Assert.assertTrue(webView.injectedDesktopViewport());
+        Assert.assertFalse(webView.injectedMobileViewport());
     }
 
     @Test

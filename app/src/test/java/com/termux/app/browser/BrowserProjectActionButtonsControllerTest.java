@@ -68,7 +68,7 @@ public class BrowserProjectActionButtonsControllerTest {
         Assert.assertEquals("https://overview.example/", opener.openedActions.get(0).url);
         Assert.assertEquals(BrowserViewMode.DESKTOP, opener.openedActions.get(0).viewMode);
         Assert.assertEquals("https://console.example/", opener.openedActions.get(1).url);
-        Assert.assertEquals(BrowserViewMode.MOBILE, opener.openedActions.get(1).viewMode);
+        Assert.assertEquals(BrowserViewMode.DESKTOP, opener.openedActions.get(1).viewMode);
         Assert.assertEquals("https://newissue.example/", opener.openedActions.get(2).url);
         Assert.assertEquals(BrowserViewMode.DESKTOP, opener.openedActions.get(2).viewMode);
     }

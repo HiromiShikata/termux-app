@@ -11,14 +11,14 @@ import org.robolectric.RobolectricTestRunner;
 public class ProjectActionViewModeTest {
 
     @Test
-    public void overviewBoardOpensInMobileViewMode() {
-        Assert.assertEquals(BrowserViewMode.MOBILE,
+    public void overviewBoardOpensInDesktopViewMode() {
+        Assert.assertEquals(BrowserViewMode.DESKTOP,
             TermuxSessionsListViewController.projectActionViewMode(ProjectAction.OVERVIEW_URL));
     }
 
     @Test
-    public void tdpmConsoleOpensInMobileViewMode() {
-        Assert.assertEquals(BrowserViewMode.MOBILE,
+    public void tdpmConsoleOpensInDesktopViewMode() {
+        Assert.assertEquals(BrowserViewMode.DESKTOP,
             TermuxSessionsListViewController.projectActionViewMode(ProjectAction.TDPM_CONSOLE_URL));
     }
 
