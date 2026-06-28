@@ -193,7 +193,7 @@
                                     android:focusable="true"
                                     android:padding="9dip"
                                     android:scaleType="fitCenter"
-                                    android:src="@drawable/ic_new_issue"
+                                    android:src="@drawable/ic_add_task"
                                     android:tint="?attr/termuxActivityDrawerImageTint"
                                     android:visibility="gone" />
                             </LinearLayout>
