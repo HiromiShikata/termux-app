@@ -109,20 +109,26 @@
                                 android:orientation="vertical"
                                 android:visibility="gone">
 
-                                <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                                <com.google.android.material.floatingactionbutton.FloatingActionButton
                                     android:id="@+id/browser_open_all_tasks_button"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:layout_marginBottom="12dp"
                                     android:contentDescription="@string/action_browser_open_all_tasks"
-                                    android:text="@string/action_browser_open_all_tasks" />
+                                    app:fabSize="mini"
+                                    app:maxImageSize="20dp"
+                                    app:srcCompat="@drawable/ic_browser_open_all_tasks"
+                                    app:tint="@android:color/white" />
 
-                                <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+                                <com.google.android.material.floatingactionbutton.FloatingActionButton
                                     android:id="@+id/browser_open_first_ten_tasks_button"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:contentDescription="@string/action_browser_open_first_ten_tasks"
-                                    android:text="@string/action_browser_open_first_ten_tasks" />
+                                    app:fabSize="mini"
+                                    app:maxImageSize="20dp"
+                                    app:srcCompat="@drawable/ic_browser_open_first_ten_tasks"
+                                    app:tint="@android:color/white" />
                             </LinearLayout>
                         </FrameLayout>
 
