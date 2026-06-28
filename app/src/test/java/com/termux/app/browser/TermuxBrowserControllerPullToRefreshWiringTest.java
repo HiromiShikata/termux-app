@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class TermuxBrowserControllerPullToRefreshDisabledWiringTest {
+public class TermuxBrowserControllerPullToRefreshWiringTest {
 
     private static final String CONTROLLER_RELATIVE_PATH =
         "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
@@ -32,19 +32,36 @@ public class TermuxBrowserControllerPullToRefreshDisabledWiringTest {
     }
 
     @Test
-    public void configureWebViewDisablesTheSwipeRefreshLayoutSoUpwardScrollIsNeverIntercepted()
-            throws IOException {
+    public void configureWebViewReEnablesTheSwipeRefreshLayout() throws IOException {
         String configureBody = methodBody(readControllerSource(), "private void configureWebView()");
 
-        Assert.assertTrue(configureBody.contains("mSwipeRefreshLayout.setEnabled(false)"));
+        Assert.assertTrue(configureBody.contains("mSwipeRefreshLayout.setEnabled(true)"));
+        Assert.assertFalse(configureBody.contains("mSwipeRefreshLayout.setEnabled(false)"));
     }
 
     @Test
-    public void configureWebViewDoesNotArmPullToRefreshGestureHandling() throws IOException {
+    public void configureWebViewWiresTheRefreshListenerToReloadTheDisplayedWebView()
+            throws IOException {
         String configureBody = methodBody(readControllerSource(), "private void configureWebView()");
 
-        Assert.assertFalse(configureBody.contains("setOnRefreshListener"));
-        Assert.assertFalse(configureBody.contains("setOnChildScrollUpCallback"));
-        Assert.assertFalse(configureBody.contains("setDistanceToTriggerSync"));
+        Assert.assertTrue(configureBody.contains(
+            "mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView)"));
+    }
+
+    @Test
+    public void configureWebViewGatesArmingByScrollPositionUsingTheReliableCanScrollVerticallyCheck()
+            throws IOException {
+        String configureBody = methodBody(readControllerSource(), "private void configureWebView()");
+
+        Assert.assertTrue(configureBody.contains("setOnChildScrollUpCallback"));
+        Assert.assertTrue(configureBody.contains(
+            "BrowserPullToRefreshGate.canWebViewScrollUp(displayedWebView)"));
+    }
+
+    @Test
+    public void configureWebViewDoesNotGateOnTheUnreliableScrollYPosition() throws IOException {
+        String configureBody = methodBody(readControllerSource(), "private void configureWebView()");
+
+        Assert.assertFalse(configureBody.contains("getScrollY"));
     }
 }
