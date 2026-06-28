@@ -385,13 +385,36 @@ public class SessionNewActivityStore {
     }
 
     public int pendingCallToUserSessionCount() {
-        int count = 0;
-        for (List<String> reasons : mUnacknowledgedCallReasonsByName.values()) {
-            if (reasons != null && !reasons.isEmpty()) {
-                count++;
+        return pendingCallToUserSessionNames().size();
+    }
+
+    /**
+     * The authoritative set of session names whose latest output left an un-replied call to the user,
+     * i.e. every session currently in the {@link SessionNewActivityTier#RED} tier. A session is RED
+     * either because it has an unacknowledged recorded {@code <call-to-user>} reason ({@link
+     * #pendingCallToUserTimeMillis}) or because its statusline shows a call newer than the reply
+     * ({@link #statuslineCallPendingTimeMillis}); both signals are covered so a session whose reason
+     * scan was throttled or missed is still reported as pending the instant its statusline call token
+     * passes its reply token. This is the single source the real-time call notification fires from, so
+     * the system heads-up cannot diverge from the in-app red indicator.
+     */
+    @NonNull
+    public Set<String> pendingCallToUserSessionNames() {
+        Set<String> pendingSessionNames = new HashSet<>();
+        for (String sessionName : allKnownSessionNames()) {
+            if (tierFor(sessionName) == SessionNewActivityTier.RED) {
+                pendingSessionNames.add(sessionName);
             }
         }
-        return count;
+        return pendingSessionNames;
+    }
+
+    @NonNull
+    private Set<String> allKnownSessionNames() {
+        Set<String> sessionNames = new HashSet<>(mUnacknowledgedCallReasonsByName.keySet());
+        sessionNames.addAll(mStatuslineCallTimeMillisByName.keySet());
+        sessionNames.addAll(mLastExplicitCallTimeMillisByName.keySet());
+        return sessionNames;
     }
 
     public void setOnChangeListener(@Nullable OnChangeListener listener) {
