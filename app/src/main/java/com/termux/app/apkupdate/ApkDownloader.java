@@ -19,6 +19,8 @@ public final class ApkDownloader {
 
     private final Context context;
 
+    private final ApkUpdateCachePruner cachePruner = new ApkUpdateCachePruner();
+
     public ApkDownloader(Context context) {
         this.context = context.getApplicationContext();
     }
@@ -28,6 +30,7 @@ public final class ApkDownloader {
         if (!targetDirectory.isDirectory() && !targetDirectory.mkdirs()) {
             throw new IOException("Failed to create APK cache directory: " + targetDirectory.getAbsolutePath());
         }
+        cachePruner.pruneExcept(targetDirectory, fileName);
         File targetFile = new File(targetDirectory, fileName);
 
         URLConnection urlConnection = new URL(downloadUrl).openConnection();
