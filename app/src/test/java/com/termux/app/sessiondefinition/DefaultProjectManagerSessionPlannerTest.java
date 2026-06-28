@@ -14,15 +14,15 @@ public class DefaultProjectManagerSessionPlannerTest {
 
     @Test
     public void sessionNameForProjectLabelAppendsPmSuffix() {
-        Assert.assertEquals("uminoPM", planner.sessionNameForProjectLabel("umino"));
-        Assert.assertEquals("xmilePM", planner.sessionNameForProjectLabel("xmile"));
-        Assert.assertEquals("xcarePM", planner.sessionNameForProjectLabel("xcare"));
-        Assert.assertEquals("utagePM", planner.sessionNameForProjectLabel("utage"));
+        Assert.assertEquals("uminopm", planner.sessionNameForProjectLabel("umino"));
+        Assert.assertEquals("xmilepm", planner.sessionNameForProjectLabel("xmile"));
+        Assert.assertEquals("xcarepm", planner.sessionNameForProjectLabel("xcare"));
+        Assert.assertEquals("utagepm", planner.sessionNameForProjectLabel("utage"));
     }
 
     @Test
     public void sessionNameForProjectLabelTrimsSurroundingWhitespace() {
-        Assert.assertEquals("uminoPM", planner.sessionNameForProjectLabel("  umino  "));
+        Assert.assertEquals("uminopm", planner.sessionNameForProjectLabel("  umino  "));
     }
 
     @Test
@@ -42,7 +42,7 @@ public class DefaultProjectManagerSessionPlannerTest {
 
         List<String> sessionNames = planner.planSessionNames(entries);
 
-        Assert.assertEquals(Arrays.asList("uminoPM", "xmilePM"), sessionNames);
+        Assert.assertEquals(Arrays.asList("uminopm", "xmilepm"), sessionNames);
     }
 
     @Test
@@ -57,7 +57,7 @@ public class DefaultProjectManagerSessionPlannerTest {
 
         List<String> sessionNames = planner.planSessionNames(entries);
 
-        Assert.assertEquals(Arrays.asList("uminoPM", "xmilePM"), sessionNames);
+        Assert.assertEquals(Arrays.asList("uminopm", "xmilepm"), sessionNames);
     }
 
     @Test

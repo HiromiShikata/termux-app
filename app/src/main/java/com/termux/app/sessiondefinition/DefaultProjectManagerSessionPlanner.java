@@ -10,7 +10,7 @@ import java.util.Set;
 
 public final class DefaultProjectManagerSessionPlanner {
 
-    public static final String PROJECT_MANAGER_SESSION_NAME_SUFFIX = "PM";
+    public static final String PROJECT_MANAGER_SESSION_NAME_SUFFIX = "pm";
 
     @NonNull
     public List<String> planSessionNames(@NonNull List<SessionDefinitionEntry> entries) {
