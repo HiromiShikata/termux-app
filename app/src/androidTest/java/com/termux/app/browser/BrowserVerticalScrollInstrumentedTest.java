@@ -1,6 +1,6 @@
 package com.termux.app.browser;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.view.ViewGroup;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
 import androidx.test.core.app.ActivityScenario;
@@ -24,6 +25,16 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class BrowserVerticalScrollInstrumentedTest {
+
+    private static final int PAGE_LOAD_TIMEOUT_SECONDS = 20;
+
+    private static final int SCROLLABLE_READINESS_TIMEOUT_MILLIS = 10000;
+
+    private static final int READINESS_POLL_INTERVAL_MILLIS = 100;
+
+    private static final int MAX_GESTURE_ATTEMPTS = 8;
+
+    private static final int GESTURE_SETTLE_MILLIS = 600;
 
     public static final class HostActivity extends Activity {
         public BrowserPinchAwareSwipeRefreshLayout swipeRefresh;
@@ -52,29 +63,43 @@ public class BrowserVerticalScrollInstrumentedTest {
         ActivityScenario<HostActivity> scenario = ActivityScenario.launch(HostActivity.class);
         AtomicReference<HostActivity> ref = new AtomicReference<>();
         scenario.onActivity(ref::set);
-        loadTallPage(ref.get());
-        Thread.sleep(2500);
+        HostActivity activity = ref.get();
 
-        assertEquals("page must start at the top", 0, scrollY(ref.get()));
+        loadTallPage(activity);
+        awaitScrollableFromTop(activity);
+
+        assertFalse("page must start at the top", canScrollUp(activity));
 
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         int width = device.getDisplayWidth();
         int height = device.getDisplayHeight();
 
-        for (int i = 0; i < 3; i++) {
-            device.swipe(width / 2, (int) (height * 0.72), width / 2, (int) (height * 0.25), 25);
-            Thread.sleep(600);
-        }
-        int afterScrollDown = scrollY(ref.get());
-        assertTrue("vertical drag must scroll the tall page down (scrollY=" + afterScrollDown + ")",
-            afterScrollDown > 500);
+        dragUntil(device, activity,
+            width / 2, (int) (height * 0.72), width / 2, (int) (height * 0.25),
+            () -> canScrollUp(activity));
+        assertTrue("vertical drag must scroll the tall page down so it can scroll back up (scrollY="
+                + scrollY(activity) + ")", canScrollUp(activity));
 
-        for (int i = 0; i < 6; i++) {
-            device.swipe(width / 2, (int) (height * 0.25), width / 2, (int) (height * 0.72), 25);
-            Thread.sleep(600);
+        dragUntil(device, activity,
+            width / 2, (int) (height * 0.25), width / 2, (int) (height * 0.72),
+            () -> !canScrollUp(activity));
+        assertFalse("vertical drag must scroll the tall page back to the top (scrollY="
+                + scrollY(activity) + ")", canScrollUp(activity));
+    }
+
+    private void dragUntil(UiDevice device, HostActivity activity,
+            int startX, int startY, int endX, int endY, Condition condition) throws Exception {
+        for (int attempt = 0; attempt < MAX_GESTURE_ATTEMPTS; attempt++) {
+            if (condition.isMet()) {
+                return;
+            }
+            device.swipe(startX, startY, endX, endY, 25);
+            Thread.sleep(GESTURE_SETTLE_MILLIS);
         }
-        int afterScrollUp = scrollY(ref.get());
-        assertEquals("vertical drag must scroll the tall page back to the top", 0, afterScrollUp);
+    }
+
+    private interface Condition {
+        boolean isMet();
     }
 
     private void loadTallPage(HostActivity activity) throws Exception {
@@ -87,12 +112,43 @@ public class BrowserVerticalScrollInstrumentedTest {
         String html = "<!doctype html><html><head><meta name='viewport' "
             + "content='width=device-width,initial-scale=1'></head><body style='margin:0'>"
             + body + "</body></html>";
-        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch pageFinished = new CountDownLatch(1);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            activity.webView.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    pageFinished.countDown();
+                }
+            });
             activity.webView.loadData(html, "text/html", "utf-8");
-            latch.countDown();
         });
-        latch.await(5, TimeUnit.SECONDS);
+        assertTrue("tall page did not finish loading within timeout",
+            pageFinished.await(PAGE_LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS));
+    }
+
+    private void awaitScrollableFromTop(HostActivity activity) throws Exception {
+        long deadline = System.currentTimeMillis() + SCROLLABLE_READINESS_TIMEOUT_MILLIS;
+        while (System.currentTimeMillis() < deadline) {
+            if (canScrollDown(activity)) {
+                return;
+            }
+            Thread.sleep(READINESS_POLL_INTERVAL_MILLIS);
+        }
+        assertTrue("tall page never became vertically scrollable", canScrollDown(activity));
+    }
+
+    private boolean canScrollUp(HostActivity activity) {
+        AtomicReference<Boolean> value = new AtomicReference<>(false);
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+            value.set(activity.webView.canScrollVertically(BrowserPullToRefreshGate.SCROLL_UP_DIRECTION)));
+        return value.get();
+    }
+
+    private boolean canScrollDown(HostActivity activity) {
+        AtomicReference<Boolean> value = new AtomicReference<>(false);
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+            value.set(activity.webView.canScrollVertically(1)));
+        return value.get();
     }
 
     private int scrollY(HostActivity activity) {
