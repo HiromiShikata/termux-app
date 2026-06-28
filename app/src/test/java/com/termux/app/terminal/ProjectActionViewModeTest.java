@@ -17,8 +17,8 @@ public class ProjectActionViewModeTest {
     }
 
     @Test
-    public void tdpmConsoleOpensInDesktopViewMode() {
-        Assert.assertEquals(BrowserViewMode.DESKTOP,
+    public void tdpmConsoleOpensInMobileViewMode() {
+        Assert.assertEquals(BrowserViewMode.MOBILE,
             TermuxSessionsListViewController.projectActionViewMode(ProjectAction.TDPM_CONSOLE_URL));
     }
 

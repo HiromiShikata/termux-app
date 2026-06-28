@@ -667,6 +667,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     static BrowserViewMode projectActionViewMode(@NonNull ProjectAction projectAction) {
         return projectAction == ProjectAction.OVERVIEW_URL
+                || projectAction == ProjectAction.TDPM_CONSOLE_URL
             ? BrowserViewMode.MOBILE
             : BrowserViewMode.DESKTOP;
     }
@@ -879,7 +880,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         String tdpmConsoleUrl = row.getTdpmConsoleUrl();
         Runnable openAction = (tdpmConsoleUrl == null || tdpmConsoleUrl.isEmpty())
             ? null
-            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.DESKTOP, row);
+            : () -> openProjectUrlInNewTab(tdpmConsoleUrl, BrowserViewMode.MOBILE, row);
         applyProjectHeaderIconVisibility(tdpmConsoleIconView, openAction);
     }
 
