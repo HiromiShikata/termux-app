@@ -56,6 +56,8 @@ public class SessionDefinitionControllerWashReplaceTest {
         service = Robolectric.buildService(TermuxService.class).get();
         shellManager = new TermuxShellManager(appContext);
         set(service, TermuxService.class, "mShellManager", shellManager);
+        set(service, TermuxService.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
 
         set(activity, TermuxActivity.class, "mTermuxService", service);
         set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
@@ -168,7 +170,9 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeBuildSessions(partialResult);
 
-        assertEquals(allUrls, remainingSessionNames());
+        List<String> expectedSessionNames = new ArrayList<>(allUrls);
+        expectedSessionNames.add("loadedGroup" + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX);
+        assertEquals(expectedSessionNames, remainingSessionNames());
     }
 
     @Test
@@ -188,7 +192,9 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeBuildSessions(authoritativeResult);
 
-        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a",
+            "projectOne" + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX),
+            remainingSessionNames());
     }
 
     @Test
