@@ -30,7 +30,6 @@ import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.ProjectBrowserOverlayController;
-import com.termux.app.browser.ProjectBrowserSessionDismissal;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.BrowserSessionDefinitionStartupPlanner;
@@ -700,11 +699,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionListBottomSheetController sessionListBottomSheetController = mActivity.getSessionListBottomSheetController();
         if (sessionListBottomSheetController != null)
             sessionListBottomSheetController.revealCurrentSessionRowIfShowing();
-
-        ProjectBrowserOverlayController projectBrowser = mActivity.getProjectBrowserOverlayController();
-        if (projectBrowser != null
-            && ProjectBrowserSessionDismissal.shouldDismissOnSessionAccess(projectBrowser.isVisible()))
-            projectBrowser.hide();
 
         openTagsForSession(session);
         backgroundOutputTagsForSession(session);
