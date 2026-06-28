@@ -8,6 +8,7 @@ public final class BrowserDesktopViewport {
 
     public static final String INJECTION_SCRIPT =
         "(function(){"
+            + "if(window.__termuxDesktopViewportObserver){return;}"
             + "var desktopContent='width=" + LAYOUT_WIDTH_CSS_PX + "';"
             + "function forceDesktopViewport(){"
             + "var metas=document.querySelectorAll('meta[name=\"viewport\"]');"

@@ -599,21 +599,17 @@ public final class ProjectBrowserOverlayController implements ProjectUrlOpener, 
         mWebViewCover.setVisibility(View.GONE);
         mSwipeRefreshLayout.setRefreshing(false);
         mOverlayContainer.setVisibility(View.GONE);
-        resetTabsToBlank();
+        suspendDisplayedTabsKeepingWebViewsAlive();
         updateOverviewActionsVisibility();
     }
 
-    private void resetTabsToBlank() {
+    private void suspendDisplayedTabsKeepingWebViewsAlive() {
         mCurrentUrl = null;
         mLoadedUrl = null;
         mHeaderUrlView.setText("");
         for (BrowserCoreWebChromeClient chromeClient : mWebChromeClientByTab.values()) {
             chromeClient.cancelPendingFileChooser();
         }
-        mWebChromeClientByTab.clear();
-        mTabManager.removeSession(PROJECT_BROWSER_SESSION_HANDLE);
-        mWebViewHost.removeSession(PROJECT_BROWSER_SESSION_HANDLE);
-        notifyTabsUpdated();
     }
 
     private void updateOverviewActionsVisibility() {

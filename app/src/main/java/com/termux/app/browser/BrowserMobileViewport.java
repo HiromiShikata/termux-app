@@ -7,6 +7,7 @@ public final class BrowserMobileViewport {
 
     public static final String INJECTION_SCRIPT =
         "(function(){"
+            + "if(window.__termuxMobileViewportObserver){return;}"
             + "var mobileContent='" + LAYOUT_CONTENT + "';"
             + "function forceMobileViewport(){"
             + "var metas=document.querySelectorAll('meta[name=\"viewport\"]');"
