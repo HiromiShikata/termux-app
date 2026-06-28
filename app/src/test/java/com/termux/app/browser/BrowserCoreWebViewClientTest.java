@@ -49,6 +49,7 @@ public class BrowserCoreWebViewClientTest {
         BrowserViewMode viewMode = BrowserViewMode.MOBILE;
         boolean injectMobileViewport = true;
         boolean pageFinishedHandled;
+        boolean renderProcessGoneHandled = true;
         final List<String> events = new ArrayList<>();
 
         @NonNull
@@ -86,6 +87,12 @@ public class BrowserCoreWebViewClientTest {
         @Override
         public void onMainFrameError(@NonNull WebView view) {
             events.add("error");
+        }
+
+        @Override
+        public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
+            events.add("renderProcessGone:" + didCrash);
+            return renderProcessGoneHandled;
         }
     }
 
@@ -141,6 +148,24 @@ public class BrowserCoreWebViewClientTest {
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
         client.onReceivedError(newWebView(), -2, "net error", "https://example.com/");
         Assert.assertTrue(host.events.contains("error"));
+    }
+
+    @Test
+    public void renderProcessGoneDelegatesToHostAndReturnsHostHandledTrue() {
+        RecordingHost host = new RecordingHost();
+        host.renderProcessGoneHandled = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean handled = client.onRenderProcessGone(newWebView(), null);
+        Assert.assertTrue(handled);
+        Assert.assertTrue(host.events.contains("renderProcessGone:false"));
+    }
+
+    @Test
+    public void renderProcessGoneReturnsTrueWhenHostRecoversEvenWithoutDetail() {
+        RecordingHost host = new RecordingHost();
+        host.renderProcessGoneHandled = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        Assert.assertTrue(client.onRenderProcessGone(newWebView(), null));
     }
 
     @Test

@@ -116,4 +116,55 @@ public class BrowserTabWebViewHostTest {
 
         Assert.assertNotSame(webViewA, webViewB);
     }
+
+    @Test
+    public void findTabForWebViewReturnsTheOwningTab() {
+        BrowserTab tabOne = tab(SESSION_A, "https://a.example/1");
+        BrowserTab tabTwo = tab(SESSION_A, "https://a.example/2");
+        WebView webViewOne = mHost.showTab(tabOne);
+        WebView webViewTwo = mHost.showTab(tabTwo);
+
+        Assert.assertSame(tabOne, mHost.findTabForWebView(webViewOne));
+        Assert.assertSame(tabTwo, mHost.findTabForWebView(webViewTwo));
+    }
+
+    @Test
+    public void recreateWebViewForTabReplacesOnlyThatTabsWebViewInstance() {
+        BrowserTab tabOne = tab(SESSION_A, "https://a.example/1");
+        WebView original = mHost.showTab(tabOne);
+
+        WebView recreated = mHost.recreateWebViewForTab(tabOne);
+
+        Assert.assertNotSame(original, recreated);
+        Assert.assertSame(recreated, mHost.getDisplayedWebView());
+        Assert.assertTrue(mHost.hasWebViewForTab(tabOne));
+        Assert.assertEquals(2, mCreatedWebViews.size());
+    }
+
+    @Test
+    public void recreateWebViewForTabDoesNotTouchOtherTabsWebViews() {
+        BrowserTab tabToRecover = tab(SESSION_A, "https://a.example/recover");
+        BrowserTab otherTab = tab(SESSION_B, "https://b.example/keep");
+        WebView recoverWebView = mHost.showTab(tabToRecover);
+        WebView otherWebView = mHost.showTab(otherTab);
+
+        WebView recreated = mHost.recreateWebViewForTab(tabToRecover);
+
+        Assert.assertNotSame(recoverWebView, recreated);
+        Assert.assertSame(otherTab, mHost.findTabForWebView(otherWebView));
+        Assert.assertTrue(mHost.hasWebViewForTab(otherTab));
+    }
+
+    @Test
+    public void recreateWebViewForTabKeepsHiddenVisibilityForNonDisplayedTab() {
+        BrowserTab backgroundTab = tab(SESSION_A, "https://a.example/bg");
+        BrowserTab displayedTab = tab(SESSION_A, "https://a.example/fg");
+        mHost.showTab(backgroundTab);
+        mHost.showTab(displayedTab);
+
+        WebView recreated = mHost.recreateWebViewForTab(backgroundTab);
+
+        Assert.assertEquals(View.GONE, recreated.getVisibility());
+        Assert.assertSame(displayedTab, mHost.getDisplayedTab());
+    }
 }

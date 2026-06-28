@@ -592,6 +592,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             public void onMainFrameError(@NonNull WebView view) {
                 if (isDisplayedTab(tab)) handleMainFrameError();
             }
+
+            @Override
+            public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
+                return recoverFromRenderProcessGone(view, didCrash);
+            }
         }));
 
         webView.setWebChromeClient(new WebChromeClient() {
@@ -712,6 +717,23 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
+    }
+
+    private boolean recoverFromRenderProcessGone(@NonNull WebView deadWebView, boolean didCrash) {
+        BrowserTab tab = mWebViewHost.findTabForWebView(deadWebView);
+        BrowserRenderProcessGoneDecision decision = BrowserRenderProcessGoneDecision.forDiedWebView(
+            tab != null, tab != null && isDisplayedTab(tab), didCrash);
+        if (!decision.shouldRecreateWebView()) return false;
+        Logger.logWarn(LOG_TAG, "Browser WebView renderer process gone (didCrash=" + didCrash + "); recreating tab WebView");
+        WebView recreatedWebView = mWebViewHost.recreateWebViewForTab(tab);
+        if (decision.shouldNotifyUser()) {
+            revealWebView();
+            hidePageLoadProgress();
+            mSwipeRefreshLayout.setRefreshing(false);
+            recreatedWebView.requestFocus();
+            Logger.showToast(mActivity, mActivity.getString(R.string.msg_browser_render_process_gone), false);
+        }
+        return true;
     }
 
     private void showWebViewCover() {

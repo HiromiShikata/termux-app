@@ -1,12 +1,15 @@
 package com.termux.app.browser;
 
 import android.graphics.Bitmap;
+import android.os.Build;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient {
 
@@ -26,6 +29,8 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         void onVisitedHistoryUpdated(@NonNull WebView view, @Nullable String url, boolean isReload);
 
         void onMainFrameError(@NonNull WebView view);
+
+        boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash);
     }
 
     private final Host mHost;
@@ -74,6 +79,14 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
         super.onReceivedError(view, errorCode, description, failingUrl);
         mHost.onMainFrameError(view);
+    }
+
+    @Override
+    @RequiresApi(Build.VERSION_CODES.O)
+    public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+        boolean didCrash = detail != null && detail.didCrash();
+        boolean handled = mHost.onRenderProcessGone(view, didCrash);
+        return handled || super.onRenderProcessGone(view, detail);
     }
 
     private void injectViewport(@NonNull WebView view, @Nullable String url) {

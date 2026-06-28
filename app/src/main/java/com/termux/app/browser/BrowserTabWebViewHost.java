@@ -73,6 +73,28 @@ public final class BrowserTabWebViewHost {
         return mDisplayedTab;
     }
 
+    @Nullable
+    public BrowserTab findTabForWebView(@NonNull WebView webView) {
+        for (Map.Entry<BrowserTab, WebView> entry : mWebViewByTab.entrySet()) {
+            if (entry.getValue() == webView) return entry.getKey();
+        }
+        return null;
+    }
+
+    @NonNull
+    public WebView recreateWebViewForTab(@NonNull BrowserTab tab) {
+        WebView deadWebView = mWebViewByTab.remove(tab);
+        if (deadWebView != null) destroyDeadWebView(deadWebView);
+        boolean displayed = tab == mDisplayedTab;
+        WebView webView = mWebViewFactory.createWebViewForTab(tab);
+        webView.setVisibility(displayed ? View.VISIBLE : View.GONE);
+        mContainer.addView(webView, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        mWebViewByTab.put(tab, webView);
+        webView.loadUrl(tab.getUrl());
+        return webView;
+    }
+
     public void removeTab(@NonNull BrowserTab tab) {
         WebView webView = mWebViewByTab.remove(tab);
         if (tab == mDisplayedTab) mDisplayedTab = null;
@@ -97,6 +119,12 @@ public final class BrowserTabWebViewHost {
     private void destroyWebView(@NonNull WebView webView) {
         webView.stopLoading();
         webView.loadUrl("about:blank");
+        mContainer.removeView(webView);
+        webView.removeAllViews();
+        webView.destroy();
+    }
+
+    private void destroyDeadWebView(@NonNull WebView webView) {
         mContainer.removeView(webView);
         webView.removeAllViews();
         webView.destroy();
