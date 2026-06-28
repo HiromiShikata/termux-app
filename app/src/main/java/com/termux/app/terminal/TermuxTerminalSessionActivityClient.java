@@ -39,6 +39,7 @@ import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartup;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
 import com.termux.app.terminal.session.DuplicateSessionNameResolution;
+import com.termux.app.terminal.session.FinishedSessionEnterAction;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
@@ -1217,6 +1218,106 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
         if (toolbarAdapter != null)
             toolbarAdapter.removeTextInputForSession(finishedSession);
+    }
+
+    @NonNull
+    public FinishedSessionEnterAction decideFinishedSessionEnterAction(@Nullable TerminalSession finishedSession) {
+        if (finishedSession == null) {
+            return FinishedSessionEnterAction.decide(null, null);
+        }
+        return FinishedSessionEnterAction.decide(finishedSession.mSessionName,
+            mActivity.getPreferences().getAutosshCommand());
+    }
+
+    public boolean reconnectFinishedSessionInPlace(@Nullable TerminalSession finishedSession,
+                                                   @Nullable String pendingInput) {
+        if (finishedSession == null) return false;
+
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+
+        FinishedSessionEnterAction action = decideFinishedSessionEnterAction(finishedSession);
+        if (!action.isReconnect()) return false;
+
+        String sessionName = action.getSessionName();
+        String command = action.getCommand();
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionCwd = currentSession == null ? null : currentSession.getCwd();
+        String workingDirectory = currentSessionCwd == null || currentSessionCwd.isEmpty()
+            ? mActivity.getProperties().getDefaultWorkingDirectory()
+            : currentSessionCwd;
+        String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+        String[] arguments = new String[]{"-c", command};
+
+        purgeNewActivityForRemovedSession(finishedSession.mSessionName);
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
+
+        if (mPersistedSessionBySession.remove(finishedSession) != null)
+            savePersistedSessions();
+
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter != null)
+            toolbarAdapter.removeTextInputForSession(finishedSession);
+
+        service.removeTermuxSession(finishedSession);
+
+        TermuxSession newTermuxSession =
+            service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
+        if (newTermuxSession == null) return false;
+
+        TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+        recordPersistedSession(newTerminalSession,
+            new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
+        attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
+        setCurrentSession(newTerminalSession);
+
+        replayPendingInputWhenConnected(newTerminalSession, pendingInput);
+        return true;
+    }
+
+    private void replayPendingInputWhenConnected(@NonNull TerminalSession reconnectedSession,
+                                                 @Nullable String pendingInput) {
+        String textToSend = (pendingInput == null ? "" : pendingInput) + "\n";
+        mMainThreadHandler.post(new ReconnectedSessionInputReplay(mMainThreadHandler, reconnectedSession, textToSend));
+    }
+
+    private static final class ReconnectedSessionInputReplay implements Runnable {
+
+        private static final int MAX_RETRY_ATTEMPTS = 50;
+
+        private static final long RETRY_DELAY_MILLIS = 50L;
+
+        @NonNull
+        private final Handler mainThreadHandler;
+
+        @NonNull
+        private final TerminalSession reconnectedSession;
+
+        @NonNull
+        private final String textToSend;
+
+        private int remainingAttempts = MAX_RETRY_ATTEMPTS;
+
+        private ReconnectedSessionInputReplay(@NonNull Handler mainThreadHandler,
+                                              @NonNull TerminalSession reconnectedSession,
+                                              @NonNull String textToSend) {
+            this.mainThreadHandler = mainThreadHandler;
+            this.reconnectedSession = reconnectedSession;
+            this.textToSend = textToSend;
+        }
+
+        @Override
+        public void run() {
+            if (reconnectedSession.isRunning()) {
+                reconnectedSession.write(textToSend);
+                return;
+            }
+            remainingAttempts--;
+            if (remainingAttempts <= 0) return;
+            mainThreadHandler.postDelayed(this, RETRY_DELAY_MILLIS);
+        }
     }
 
     public void removeSessionForRebuild(TerminalSession sessionToRemove) {

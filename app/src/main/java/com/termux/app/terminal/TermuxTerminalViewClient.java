@@ -27,6 +27,8 @@ import com.termux.shared.shell.ShellUtils;
 import com.termux.shared.termux.terminal.TermuxTerminalViewClientBase;
 import com.termux.shared.termux.extrakeys.SpecialButton;
 import com.termux.app.terminal.io.KeyboardShortcut;
+import com.termux.app.terminal.session.FinishedSessionEnterAction;
+import com.termux.app.terminal.session.FinishedSessionPendingInput;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
@@ -65,6 +67,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     private List<KeyboardShortcut> mSessionShortcuts;
 
     private String mLongPressedUrl;
+
+    private final FinishedSessionPendingInput mFinishedSessionPendingInput = new FinishedSessionPendingInput();
 
     private static final String LOG_TAG = "TermuxTerminalViewClient";
 
@@ -251,7 +255,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         if (handleVirtualKeys(keyCode, e, true)) return true;
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {
-            mTermuxTerminalSessionActivityClient.removeFinishedSession(currentSession);
+            handleFinishedSessionEnter(currentSession);
             return true;
         } else if (!mActivity.getProperties().areHardwareKeyboardShortcutsDisabled() &&
             e.isCtrlPressed() && e.isAltPressed()) {
@@ -511,7 +515,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             return true;
         } else if (ctrlDown) {
             if (codePoint == 106 /* Ctrl+j or \n */ && !session.isRunning()) {
-                mTermuxTerminalSessionActivityClient.removeFinishedSession(session);
+                handleFinishedSessionEnter(session);
                 return true;
             }
 
@@ -538,6 +542,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                     }
                 }
             }
+        } else if (!session.isRunning() && isPrintableInputCodePoint(codePoint)) {
+            mFinishedSessionPendingInput.recordCodePoint(session.mHandle, codePoint);
         }
 
         return false;
@@ -551,6 +557,22 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         if (mTermuxTerminalSessionActivityClient != null
             && session == mActivity.getCurrentSession()) {
             mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();
+        }
+    }
+
+    private static boolean isPrintableInputCodePoint(int codePoint) {
+        return codePoint >= 0x20 && codePoint != 0x7F;
+    }
+
+    private void handleFinishedSessionEnter(TerminalSession finishedSession) {
+        FinishedSessionEnterAction action =
+            mTermuxTerminalSessionActivityClient.decideFinishedSessionEnterAction(finishedSession);
+        if (action.isReconnect()) {
+            String pendingInput = mFinishedSessionPendingInput.consume(finishedSession.mHandle);
+            mTermuxTerminalSessionActivityClient.reconnectFinishedSessionInPlace(finishedSession, pendingInput);
+        } else {
+            mFinishedSessionPendingInput.discard(finishedSession.mHandle);
+            mTermuxTerminalSessionActivityClient.removeFinishedSession(finishedSession);
         }
     }
 
