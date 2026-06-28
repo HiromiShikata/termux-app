@@ -22,16 +22,22 @@
 #     emulator, using AndroidJUnitRunner numShards/shardIndex so even the full
 #     suite is split across emulators and finishes faster.
 #
-# The job is currently non-blocking (continue-on-error: true) because the
-# connected suite still has pre-existing failures on the API 29 CI emulator
-# (tracked separately). Once those are fixed, remove continue-on-error to promote
-# this to a blocking pre-merge gate.
+# The job is a blocking pre-merge gate: it has no continue-on-error, so a real
+# instrumentation test failure fails the check and prevents auto-merge. The
+# pre-existing API 29 CI emulator failures it was previously allowed to tolerate
+# have been fixed, and the emulator boot-readiness flake (the runner's internal
+# post-boot `adb shell input keyevent 82` racing the input service) is addressed
+# by cold-booting the test emulator (see the test step below).
 #
 # Speedups (see the reactivecircus/android-emulator-runner AVD snapshot caching
-# example): the AVD and its booted snapshot are cached with actions/cache keyed on
-# api-level/target/arch/profile/shard, a warming step creates the snapshot only on
-# a cache miss, and the test step restores that snapshot instead of cold-booting.
-# The emulator runs headless with software GPU and boot animation/audio disabled.
+# example): the AVD is cached with actions/cache keyed on
+# api-level/target/arch/profile/shard, and a warming step creates the AVD and its
+# snapshot only on a cache miss. The test step cold-boots from the cached AVD
+# (emulator-options: -no-snapshot) rather than restoring the booted snapshot, so
+# sys.boot_completed flips to 1 only after init has published the input system
+# service; this removes the snapshot-restore race that intermittently aborted a
+# shard before any test ran. The emulator runs headless with software GPU and
+# boot animation/audio disabled.
 #
 # Hang prevention: the test step has a tight step-level timeout, the device wait
 # and the gradle run are wrapped with `timeout` so a stuck emulator or gradle is
@@ -153,7 +159,6 @@ jobs:
     name: app connectedDebugAndroidTest (emulator)
     needs: select-tests
     runs-on: ubuntu-latest
-    continue-on-error: true
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -245,7 +250,17 @@ jobs:
           arch: ${{ env.EMULATOR_ARCH }}
           profile: ${{ env.EMULATOR_PROFILE }}
           force-avd-creation: false
-          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none -verbose -logcat "*:W"
+          # Cold-boot the test emulator (-no-snapshot) instead of restoring the
+          # cached booted snapshot. Restoring a booted snapshot flips
+          # sys.boot_completed to 1 while the `input` system service is still
+          # re-registering, so the runner's internal post-boot
+          # `adb shell input keyevent 82` intermittently fails with
+          # `SecurityException: No service published for: input` and aborts the
+          # shard before any test runs. A normal cold boot reaches
+          # sys.boot_completed=1 only after init has published the input service,
+          # removing that race. The expensive AVD (system image and config) is
+          # still restored from the actions/cache step above, so caching is kept.
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -no-boot-anim -noaudio -camera-back none -verbose -logcat "*:W"
           disable-animations: true
           script: bash .github/scripts/run-instrumentation-tests.sh
 
