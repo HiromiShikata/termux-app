@@ -190,4 +190,38 @@ public class SessionDefinitionPlannerTest {
             "connect '" + clickedLinkUrl + "'",
             plannedSession.getCommand());
     }
+
+    @Test
+    public void planInjectsSshKeepaliveOptionsIntoSshCommandTemplate() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("groupOne", "entryA",
+                Collections.singletonList("https://example.test/a1")));
+
+        List<SessionDefinitionPlannedSession> plannedSessions =
+            planner.plan(entries, "ssh {name}");
+
+        Assert.assertEquals(
+            "ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'https://example.test/a1'",
+            plannedSessions.get(1).getCommand());
+    }
+
+    @Test
+    public void planNamedSessionInjectsSshKeepaliveOptionsIntoAutosshSshCommandTemplate() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession("https://example.test/a1", "autossh -M 0 ssh {name}");
+
+        Assert.assertEquals(
+            "autossh -M 0 ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 'https://example.test/a1'",
+            plannedSession.getCommand());
+    }
+
+    @Test
+    public void planDoesNotInjectKeepaliveIntoNonSshCommandTemplate() {
+        SessionDefinitionPlannedSession plannedSession =
+            planner.planNamedSession("https://example.test/a1", "connect {name}");
+
+        Assert.assertEquals(
+            "connect 'https://example.test/a1'",
+            plannedSession.getCommand());
+    }
 }
