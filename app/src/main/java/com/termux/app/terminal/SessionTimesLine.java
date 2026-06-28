@@ -22,6 +22,7 @@ public final class SessionTimesLine {
 
     static final int TIME_VALUE_COLUMN_WIDTH = 3;
     static final int SUBAGENT_COUNT_COLUMN_WIDTH = 3;
+    static final String REPLY_UNKNOWN_LABEL = "-";
 
     @NonNull
     public static SessionTimesLine of(@Nullable Long callTimeMillis,
@@ -31,7 +32,7 @@ public final class SessionTimesLine {
                                       long nowMillis) {
         String text = "call: " + relativeAgeOrMoreThanOneDay(callTimeMillis, nowMillis)
             + "  out: " + relativeAgeOrMoreThanOneDay(outTimeMillis, nowMillis)
-            + "  reply: " + relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis)
+            + "  reply: " + replyAgeOrUnknown(replyTimeMillis, nowMillis)
             + "  sub: " + subagentCount;
         return new SessionTimesLine(true, text);
     }
@@ -44,7 +45,7 @@ public final class SessionTimesLine {
                                                    long nowMillis) {
         String text = "call: " + padColumn(relativeAgeOrMoreThanOneDay(callTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
             + " out: " + padColumn(relativeAgeOrMoreThanOneDay(outTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
-            + " reply: " + padColumn(relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
+            + " reply: " + padColumn(replyAgeOrUnknown(replyTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
             + " sub: " + padColumn(Integer.toString(subagentCount), SUBAGENT_COUNT_COLUMN_WIDTH);
         return new SessionTimesLine(true, text);
     }
@@ -75,5 +76,11 @@ public final class SessionTimesLine {
     private static String relativeAgeOrMoreThanOneDay(@Nullable Long timeMillis, long nowMillis) {
         return timeMillis == null ? SessionNewActivityStore.MORE_THAN_ONE_DAY_LABEL
             : SessionNewActivityStore.formatRelativeAge(timeMillis, nowMillis);
+    }
+
+    @NonNull
+    private static String replyAgeOrUnknown(@Nullable Long replyTimeMillis, long nowMillis) {
+        return replyTimeMillis == null ? REPLY_UNKNOWN_LABEL
+            : SessionNewActivityStore.formatRelativeAge(replyTimeMillis, nowMillis);
     }
 }

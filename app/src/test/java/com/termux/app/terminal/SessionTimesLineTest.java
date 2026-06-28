@@ -35,12 +35,12 @@ public class SessionTimesLineTest {
     }
 
     @Test
-    public void showsMoreThanOneDayForAbsentStatuslineValues() {
+    public void showsMoreThanOneDayForAbsentCallButUnknownDashForAbsentReply() {
         SessionTimesLine line = SessionTimesLine.of(
             null, NOW - 12L * ONE_MINUTE_MILLIS, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1d  out: 12m  reply: >1d  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: 12m  reply: -  sub: 0", line.getText());
     }
 
     @Test
@@ -52,11 +52,11 @@ public class SessionTimesLineTest {
     }
 
     @Test
-    public void staysVisibleAndShowsMoreThanOneDayForEveryValueWhenNoStatuslineTimesAreKnown() {
+    public void staysVisibleAndShowsUnknownReplyDashWhenNoStatuslineTimesAreKnown() {
         SessionTimesLine line = SessionTimesLine.of(null, null, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: >1d  reply: -  sub: 0", line.getText());
     }
 
     @Test
@@ -99,6 +99,22 @@ public class SessionTimesLineTest {
     }
 
     @Test
+    public void rendersUnknownDashForReplyWithNoDataInsteadOfTheMisleadingDayDisplay() {
+        SessionTimesLine line = SessionTimesLine.of(
+            NOW - 3L * ONE_HOUR_MILLIS, NOW - 12L * ONE_MINUTE_MILLIS, null, 0, NOW);
+
+        Assert.assertEquals("call: 3h  out: 12m  reply: -  sub: 0", line.getText());
+    }
+
+    @Test
+    public void rendersTheRecentReplyTimeWhenAStatuslineReplyIsKnownAfterARestart() {
+        SessionTimesLine line = SessionTimesLine.of(
+            null, null, NOW - 2L * ONE_MINUTE_MILLIS, 0, NOW);
+
+        Assert.assertEquals("call: >1d  out: >1d  reply: 2m  sub: 0", line.getText());
+    }
+
+    @Test
     public void columnAlignedLinePadsEachValueToAFixedWidthSoLabelsLineUp() {
         SessionTimesLine line = SessionTimesLine.ofColumnAligned(
             NOW - 3L * ONE_HOUR_MILLIS,
@@ -112,10 +128,10 @@ public class SessionTimesLineTest {
     }
 
     @Test
-    public void columnAlignedLineKeepsTheWidestExpectedValueIntact() {
+    public void columnAlignedLineRendersUnknownReplyDashPaddedToTheColumnWidth() {
         SessionTimesLine line = SessionTimesLine.ofColumnAligned(null, null, null, 0, NOW);
 
-        Assert.assertEquals("call: >1d out: >1d reply: >1d sub: 0  ", line.getText());
+        Assert.assertEquals("call: >1d out: >1d reply: -   sub: 0  ", line.getText());
     }
 
     @Test
