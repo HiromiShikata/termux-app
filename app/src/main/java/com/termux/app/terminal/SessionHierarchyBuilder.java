@@ -3,6 +3,7 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 
@@ -22,6 +23,8 @@ public final class SessionHierarchyBuilder {
     private static final String HTTPS_SCHEME_PREFIX = "https://";
 
     private final SessionDefinitionEntryMatcher mMatcher = new SessionDefinitionEntryMatcher();
+    private final DefaultProjectManagerSessionPlanner mDefaultProjectManagerSessionPlanner =
+        new DefaultProjectManagerSessionPlanner();
 
     @NonNull
     public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
@@ -39,10 +42,21 @@ public final class SessionHierarchyBuilder {
             return flatten(sessionNames);
         }
 
+        Map<String, String> projectLabelByManagerSessionName = projectLabelByManagerSessionName(entries);
+
         Map<String, Integer> sessionIndexByName = new LinkedHashMap<>();
+        Map<String, Integer> managerSessionIndexByProjectLabel = new LinkedHashMap<>();
         List<Integer> unmatchedSessionIndexes = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
             String sessionName = sessionNames.get(sessionIndex);
+            if (!isAlwaysNaSessionName(sessionName, alwaysNaSessionNames)
+                    && projectLabelByManagerSessionName.containsKey(sessionName)) {
+                String projectLabel = projectLabelByManagerSessionName.get(sessionName);
+                if (!managerSessionIndexByProjectLabel.containsKey(projectLabel)) {
+                    managerSessionIndexByProjectLabel.put(projectLabel, sessionIndex);
+                    continue;
+                }
+            }
             if (isAlwaysNaSessionName(sessionName, alwaysNaSessionNames)
                     || (mMatcher.findEntryForSessionName(entries, sessionName) == null
                         && !isOrphanedProjectSessionName(sessionName))) {
@@ -116,6 +130,10 @@ public final class SessionHierarchyBuilder {
             rows.add(SessionHierarchyRow.projectHeader(projectLabel,
                 overviewUrlByProject.get(projectLabel), tdpmConsoleUrlByProject.get(projectLabel),
                 newIssueUrlByProject.get(projectLabel)));
+            Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
+            if (managerSessionIndex != null) {
+                rows.add(SessionHierarchyRow.session(managerSessionIndex));
+            }
             Map<String, List<Integer>> storiesInProject = sessionIndexesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
                 continue;
@@ -259,6 +277,20 @@ public final class SessionHierarchyBuilder {
             }
         }
         return visibleRows;
+    }
+
+    @NonNull
+    private Map<String, String> projectLabelByManagerSessionName(@NonNull List<SessionDefinitionEntry> entries) {
+        Map<String, String> projectLabelByManagerSessionName = new LinkedHashMap<>();
+        for (SessionDefinitionEntry entry : entries) {
+            String managerSessionName =
+                mDefaultProjectManagerSessionPlanner.sessionNameForProjectLabel(entry.getGroupLabel());
+            if (managerSessionName == null) {
+                continue;
+            }
+            projectLabelByManagerSessionName.putIfAbsent(managerSessionName, entry.getGroupLabel());
+        }
+        return projectLabelByManagerSessionName;
     }
 
     private static boolean isAlwaysNaSessionName(@Nullable String sessionName,

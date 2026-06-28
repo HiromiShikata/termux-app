@@ -27,6 +27,8 @@ public final class SessionDefinitionController {
     private final SessionDefinitionPlanner planner;
     private final SessionDefinitionDisappearedSessionPlanner disappearedSessionPlanner =
         new SessionDefinitionDisappearedSessionPlanner();
+    private final DefaultProjectManagerSessionPlanner defaultProjectManagerSessionPlanner =
+        new DefaultProjectManagerSessionPlanner();
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
@@ -122,7 +124,8 @@ public final class SessionDefinitionController {
                 configuredLimit, limitPlan.getDroppedSessionCount()), true);
         }
 
-        activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions();
+        activity.getTermuxTerminalSessionClient()
+            .restoreAlwaysPresentSessions(defaultProjectManagerSessionPlanner.planSessionNames(entries));
 
         activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
 
@@ -163,8 +166,10 @@ public final class SessionDefinitionController {
             liveSessions.add(new SessionDefinitionDisappearedSessionPlanner.LiveSession(
                 sessionName, terminalSession.isRunning()));
         }
+        Set<String> protectedSessionNames = new HashSet<>(alwaysPresentSessionNames());
+        protectedSessionNames.addAll(defaultProjectManagerSessionPlanner.planSessionNames(currentEntries));
         List<String> sessionNamesToRemove = disappearedSessionPlanner.planSessionNamesToRemove(
-            currentEntries, alwaysPresentSessionNames(), liveSessions);
+            currentEntries, protectedSessionNames, liveSessions);
         for (String sessionName : sessionNamesToRemove) {
             TerminalSession terminalSession = sessionByName.get(sessionName);
             if (terminalSession != null) {
