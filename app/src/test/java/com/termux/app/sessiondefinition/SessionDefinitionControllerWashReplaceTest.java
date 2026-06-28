@@ -2,7 +2,6 @@ package com.termux.app.sessiondefinition;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -56,6 +55,8 @@ public class SessionDefinitionControllerWashReplaceTest {
         service = Robolectric.buildService(TermuxService.class).get();
         shellManager = new TermuxShellManager(appContext);
         set(service, TermuxService.class, "mShellManager", shellManager);
+        set(service, TermuxService.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
 
         set(activity, TermuxActivity.class, "mTermuxService", service);
         set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
@@ -85,7 +86,8 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
-    public void removeSessionsWithDisappearedDefinitionRemovesOnlySessionsNoLongerDefined() throws Exception {
+    public void removeSessionsWithDisappearedDefinitionRetainsSessionsNoLongerDefinedSoTheySurfaceUnderNa()
+        throws Exception {
         TermuxSession adHoc = session("adhoc-local");
         TermuxSession stillDefined = session("https://example.test/a");
         TermuxSession disappearedDefinition = session("https://example.test/b");
@@ -99,14 +101,14 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeRemoveSessionsWithDisappearedDefinition(currentEntries);
 
-        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a", "https://example.test/b"),
+            remainingSessionNames());
         assertTrue(service.getIndexOfSession(stillDefined.getTerminalSession()) >= 0);
-        assertTrue(service.getIndexOfSession(disappearedDefinition.getTerminalSession()) < 0);
+        assertTrue(service.getIndexOfSession(disappearedDefinition.getTerminalSession()) >= 0);
     }
 
     @Test
-    public void removeSessionsWithDisappearedDefinitionPurgesActivityStoreAndDoesNotReviveWithoutPreviousEntries()
-        throws Exception {
+    public void removeSessionsWithDisappearedDefinitionRetainsSessionAndKeepsActivityStore() throws Exception {
         TermuxSession stillDefined = session("https://example.test/a");
         TermuxSession disappearedDefinition = session("https://example.test/b");
         shellManager.mTermuxSessions.add(stillDefined);
@@ -124,20 +126,21 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeRemoveSessionsWithDisappearedDefinition(reloadedEntries);
 
-        assertEquals(Collections.singletonList("https://example.test/a"), remainingSessionNames());
-        assertNull(store.getLastOutputActivityTimeMillis("https://example.test/b"));
+        assertEquals(Arrays.asList("https://example.test/a", "https://example.test/b"), remainingSessionNames());
+        assertEquals(Long.valueOf(2_000L), store.getLastOutputActivityTimeMillis("https://example.test/b"));
         assertEquals(Long.valueOf(1_000L), store.getLastOutputActivityTimeMillis("https://example.test/a"));
     }
 
     @Test
-    public void removeSessionsWithDisappearedDefinitionRemovesAllWhenDefinitionBecomesEmpty() throws Exception {
+    public void removeSessionsWithDisappearedDefinitionRetainsAllWhenDefinitionBecomesEmpty() throws Exception {
         shellManager.mTermuxSessions.add(session("adhoc-local"));
         shellManager.mTermuxSessions.add(session("https://example.test/a"));
         shellManager.mTermuxSessions.add(session("https://example.test/c"));
 
         invokeRemoveSessionsWithDisappearedDefinition(Collections.emptyList());
 
-        assertEquals(Collections.singletonList("adhoc-local"), remainingSessionNames());
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a", "https://example.test/c"),
+            remainingSessionNames());
     }
 
     @Test
@@ -168,11 +171,13 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeBuildSessions(partialResult);
 
-        assertEquals(allUrls, remainingSessionNames());
+        List<String> expected = new ArrayList<>(allUrls);
+        expected.add("loadedGroup" + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX);
+        assertEquals(expected, remainingSessionNames());
     }
 
     @Test
-    public void buildSessionsRemovesDisappearedSessionsWhenLoadIsAuthoritative() throws Exception {
+    public void buildSessionsRetainsDisappearedSessionsWhenLoadIsAuthoritative() throws Exception {
         shellManager.mTermuxSessions.add(session("adhoc-local"));
         TermuxSession stillDefined = session("https://example.test/a");
         shellManager.mTermuxSessions.add(stillDefined);
@@ -188,7 +193,9 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeBuildSessions(authoritativeResult);
 
-        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a", "https://example.test/b",
+            "projectOne" + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX),
+            remainingSessionNames());
     }
 
     @Test

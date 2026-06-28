@@ -3,16 +3,14 @@ package com.termux.app.sessiondefinition;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(RobolectricTestRunner.class)
 public class SessionDefinitionDisappearedSessionPlannerTest {
 
     private final SessionDefinitionDisappearedSessionPlanner planner =
@@ -25,7 +23,7 @@ public class SessionDefinitionDisappearedSessionPlannerTest {
             Collections.singletonList("https://example.test/c")));
 
     @Test
-    public void removesProjectSessionDroppedFromConfigEvenWithoutPreviousEntries() {
+    public void retainsFinishedProjectSessionDroppedFromConfig() {
         List<SessionDefinitionEntry> reloadedConfig = Arrays.asList(
             new SessionDefinitionEntry("projectOne", "storyA",
                 Collections.singletonList("https://example.test/a")),
@@ -36,11 +34,11 @@ public class SessionDefinitionDisappearedSessionPlannerTest {
             Collections.emptySet(), notRunning(
                 "https://example.test/a", "https://example.test/b", "https://example.test/c"));
 
-        assertEquals(Collections.singletonList("https://example.test/b"), namesToRemove);
+        assertEquals(Collections.emptyList(), namesToRemove);
     }
 
     @Test
-    public void keepsAdHocLocalSessionsThatAreNotUrlNamed() {
+    public void retainsAdHocLocalSessionsThatAreNotUrlNamed() {
         List<String> namesToRemove = planner.planSessionNamesToRemove(configWithThreeSessions,
             Collections.emptySet(), notRunning("adhoc-local", "another-local"));
 
@@ -48,7 +46,7 @@ public class SessionDefinitionDisappearedSessionPlannerTest {
     }
 
     @Test
-    public void keepsLiveConnectedSessionAbsentFromConfig() {
+    public void retainsLiveConnectedSessionAbsentFromConfig() {
         List<SessionDefinitionDisappearedSessionPlanner.LiveSession> liveSessions = Arrays.asList(
             new SessionDefinitionDisappearedSessionPlanner.LiveSession("https://example.test/a", false),
             new SessionDefinitionDisappearedSessionPlanner.LiveSession("https://example.test/gone", true));
@@ -60,7 +58,7 @@ public class SessionDefinitionDisappearedSessionPlannerTest {
     }
 
     @Test
-    public void keepsAlwaysPresentSessionAbsentFromConfig() {
+    public void retainsAlwaysPresentSessionAbsentFromConfig() {
         Set<String> alwaysPresentSessionNames = new LinkedHashSet<>(
             Collections.singletonList("https://example.test/leftover"));
 
@@ -71,17 +69,17 @@ public class SessionDefinitionDisappearedSessionPlannerTest {
     }
 
     @Test
-    public void removesAllProjectSessionsWhenConfigBecomesEmpty() {
+    public void retainsAllProjectSessionsWhenConfigBecomesEmpty() {
         List<String> namesToRemove = planner.planSessionNamesToRemove(Collections.emptyList(),
             Collections.emptySet(), notRunning(
                 "adhoc-local", "https://example.test/a", "https://example.test/c"));
 
-        assertEquals(Arrays.asList("https://example.test/a", "https://example.test/c"), namesToRemove);
+        assertEquals(Collections.emptyList(), namesToRemove);
     }
 
     private List<SessionDefinitionDisappearedSessionPlanner.LiveSession> notRunning(String... names) {
         List<SessionDefinitionDisappearedSessionPlanner.LiveSession> liveSessions =
-            new java.util.ArrayList<>(names.length);
+            new ArrayList<>(names.length);
         for (String name : names) {
             liveSessions.add(new SessionDefinitionDisappearedSessionPlanner.LiveSession(name, false));
         }
