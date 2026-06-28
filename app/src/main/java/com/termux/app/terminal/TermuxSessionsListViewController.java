@@ -499,6 +499,24 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return tiersByIndex;
     }
 
+    public int getCallToUserSessionIndex() {
+        return firstCallToUserSessionIndex(getSessionTiersByIndex());
+    }
+
+    static int firstCallToUserSessionIndex(@NonNull Map<Integer, SessionNewActivityTier> tiersByIndex) {
+        int firstCallToUserSessionIndex = -1;
+        for (Map.Entry<Integer, SessionNewActivityTier> entry : tiersByIndex.entrySet()) {
+            if (entry.getValue() != SessionNewActivityTier.RED) {
+                continue;
+            }
+            int sessionIndex = entry.getKey();
+            if (firstCallToUserSessionIndex < 0 || sessionIndex < firstCallToUserSessionIndex) {
+                firstCallToUserSessionIndex = sessionIndex;
+            }
+        }
+        return firstCallToUserSessionIndex;
+    }
+
     @NonNull
     public SessionRow getCurrentSessionRow() {
         int currentSessionIndex = indexOfSession(mActivity.getCurrentSession());
