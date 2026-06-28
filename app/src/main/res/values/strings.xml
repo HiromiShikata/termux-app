@@ -91,7 +91,6 @@
     <string name="msg_browser_no_session">No terminal session available</string>
     <string name="action_browser_create_session_for_link">Create new session</string>
     <string name="action_browser_close_tab">Close tab</string>
-    <string name="action_project_browser_close">Close project browser</string>
     <string name="action_scroll_to_call_to_user_tag">Scroll to call-to-user message</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_open_url">Open URL</string>

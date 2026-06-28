@@ -20,7 +20,6 @@ import androidx.recyclerview.widget.SimpleItemAnimator;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
-import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
@@ -109,10 +108,6 @@ public class SessionListBottomSheetController {
         }
         if (shouldHideBrowserOnOpen(browserController.isBrowserVisible())) {
             browserController.hideBrowserForSessionOverlay();
-        }
-        ProjectBrowserOverlayController projectBrowserOverlayController = mActivity.getProjectBrowserOverlayController();
-        if (projectBrowserOverlayController != null && projectBrowserOverlayController.isVisible()) {
-            projectBrowserOverlayController.hide();
         }
     }
 

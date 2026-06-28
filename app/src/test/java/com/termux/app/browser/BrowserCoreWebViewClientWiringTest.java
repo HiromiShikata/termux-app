@@ -17,9 +17,6 @@ public class BrowserCoreWebViewClientWiringTest {
     private static final String SESSION_CONTROLLER_PATH =
         "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
 
-    private static final String PROJECT_CONTROLLER_PATH =
-        "src/main/java/com/termux/app/browser/ProjectBrowserOverlayController.java";
-
     private String readModuleSource(String relativePath) throws IOException {
         Path moduleRelative = Paths.get(relativePath);
         if (Files.exists(moduleRelative)) {
@@ -90,27 +87,5 @@ public class BrowserCoreWebViewClientWiringTest {
         String source = readModuleSource(SESSION_CONTROLLER_PATH);
         Assert.assertTrue(source.contains("public void onVisitedHistoryUpdated"));
         Assert.assertTrue(source.contains("if (isDisplayedTab(tab)) updatePageHeader();"));
-    }
-
-    @Test
-    public void projectControllerRoutesThroughSharedCoreClient() throws IOException {
-        String source = readModuleSource(PROJECT_CONTROLLER_PATH);
-        Assert.assertTrue(source.contains("new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host()"));
-        Assert.assertFalse(source.contains("new BrowserMobileViewportWebViewClient()"));
-    }
-
-    @Test
-    public void projectControllerUpdatesHeaderAndCurrentUrlOnVisitedHistoryUpdate() throws IOException {
-        String source = readModuleSource(PROJECT_CONTROLLER_PATH);
-        int callbackIndex = source.indexOf("public void onVisitedHistoryUpdated");
-        Assert.assertTrue(callbackIndex >= 0);
-        int nextMethodIndex = source.indexOf("public void onMainFrameError", callbackIndex);
-        Assert.assertTrue(nextMethodIndex > callbackIndex);
-        String body = source.substring(callbackIndex, nextMethodIndex);
-        Assert.assertTrue(body.contains("tab.setUrl(url)"));
-        Assert.assertTrue(body.contains("if (!isDisplayedTab(tab))"));
-        Assert.assertTrue(body.contains("mHeaderUrlView.setText(url)"));
-        Assert.assertTrue(body.contains("mCurrentUrl = url"));
-        Assert.assertTrue(body.contains("updateOverviewActionsVisibility()"));
     }
 }

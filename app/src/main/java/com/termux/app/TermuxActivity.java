@@ -39,7 +39,6 @@ import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.browser.OpenTagBrowserController;
-import com.termux.app.browser.ProjectBrowserOverlayController;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.shared.activities.ReportActivity;
@@ -227,11 +226,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     TermuxBrowserController mTermuxBrowserController;
 
     /**
-     * The full-screen, project-scoped browser surface for project-level URLs, kept separate from per-session tabs.
-     */
-    ProjectBrowserOverlayController mProjectBrowserOverlayController;
-
-    /**
      * The foreground URL opener for `<open>...</open>` tags. Opening a tab is a foreground action, so
      * this opener is registered with the service-owned {@link OpenTagBrowserController} only while the
      * activity is bound; the controller itself (and its per-session deduplication state) lives in
@@ -406,18 +400,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void buildActivityComponents() {
-        ActivityComponent projectBrowserComponent = new ActivityComponent() {
-            @Override
-            public boolean onBackPressed() {
-                return mProjectBrowserOverlayController.onBackPressed();
-            }
-
-            @Override
-            public void onActivityDestroy() {
-                mProjectBrowserOverlayController.onActivityDestroy();
-            }
-        };
-
         ActivityComponent sessionListBottomSheetComponent = new ActivityComponent() {
             @Override
             public boolean onBackPressed() {
@@ -482,7 +464,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         };
 
         mActivityComponents = Arrays.asList(
-            projectBrowserComponent,
             sessionListBottomSheetComponent,
             rightDrawerComponent,
             browserComponent,
@@ -954,7 +935,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
-        mProjectBrowserOverlayController = new ProjectBrowserOverlayController(this);
         mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession;
         // The update-flow trigger only needs the activity for its UI; it is registered with the
         // service-owned controller in onServiceConnected once the service is bound.
@@ -1234,12 +1214,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
             return;
         }
-        if (requestCode == ProjectBrowserOverlayController.REQUEST_PROJECT_BROWSER_FILE_CHOOSER) {
-            if (mProjectBrowserOverlayController != null) {
-                mProjectBrowserOverlayController.deliverFileChooserResult(resultCode, data);
-            }
-            return;
-        }
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         }
@@ -1311,10 +1285,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxBrowserController getTermuxBrowserController() {
         return mTermuxBrowserController;
-    }
-
-    public ProjectBrowserOverlayController getProjectBrowserOverlayController() {
-        return mProjectBrowserOverlayController;
     }
 
     @Nullable

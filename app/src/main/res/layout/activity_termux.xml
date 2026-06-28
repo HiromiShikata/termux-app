@@ -126,18 +126,78 @@
                             </LinearLayout>
                         </FrameLayout>
 
-                        <HorizontalScrollView
-                            android:id="@+id/browser_tab_strip_scroll"
+                        <LinearLayout
+                            android:id="@+id/browser_tab_bar"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:scrollbars="none"
-                            android:visibility="gone">
+                            android:background="?attr/termuxActivityDrawerBackground"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <HorizontalScrollView
+                                android:id="@+id/browser_tab_strip_scroll"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:scrollbars="none"
+                                android:visibility="gone">
+                                <LinearLayout
+                                    android:id="@+id/browser_tab_strip_container"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal" />
+                            </HorizontalScrollView>
+
                             <LinearLayout
-                                android:id="@+id/browser_tab_strip_container"
+                                android:id="@+id/browser_tab_bar_project_actions"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal" />
-                        </HorizontalScrollView>
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
+
+                                <ImageView
+                                    android:id="@+id/browser_tab_bar_overview_button"
+                                    android:layout_width="40dip"
+                                    android:layout_height="40dip"
+                                    android:background="?attr/selectableItemBackgroundBorderless"
+                                    android:clickable="true"
+                                    android:contentDescription="@string/action_open_project_overview"
+                                    android:focusable="true"
+                                    android:padding="9dip"
+                                    android:scaleType="fitCenter"
+                                    android:src="@drawable/ic_browser_toggle"
+                                    android:tint="?attr/termuxActivityDrawerImageTint"
+                                    android:visibility="gone" />
+
+                                <ImageView
+                                    android:id="@+id/browser_tab_bar_tdpm_console_button"
+                                    android:layout_width="40dip"
+                                    android:layout_height="40dip"
+                                    android:background="?attr/selectableItemBackgroundBorderless"
+                                    android:clickable="true"
+                                    android:contentDescription="@string/action_open_project_tdpm_console"
+                                    android:focusable="true"
+                                    android:padding="9dip"
+                                    android:scaleType="fitCenter"
+                                    android:src="@drawable/ic_tdpm_console"
+                                    android:tint="?attr/termuxActivityDrawerImageTint"
+                                    android:visibility="gone" />
+
+                                <ImageView
+                                    android:id="@+id/browser_tab_bar_new_issue_button"
+                                    android:layout_width="40dip"
+                                    android:layout_height="40dip"
+                                    android:background="?attr/selectableItemBackgroundBorderless"
+                                    android:clickable="true"
+                                    android:contentDescription="@string/action_open_project_new_issue"
+                                    android:focusable="true"
+                                    android:padding="9dip"
+                                    android:scaleType="fitCenter"
+                                    android:src="@drawable/ic_new_issue"
+                                    android:tint="?attr/termuxActivityDrawerImageTint"
+                                    android:visibility="gone" />
+                            </LinearLayout>
+                        </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
@@ -354,197 +414,6 @@
                     android:padding="6dp"
                     android:src="@drawable/ic_scroll_to_call_to_user"
                     android:tint="@color/session_explicit_call_reason_text" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/project_browser_overlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_alignParentTop="true"
-            android:layout_above="@+id/session_info_bottom_container"
-            android:background="?attr/termuxActivityDrawerBackground"
-            android:elevation="10dp"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="?attr/termuxActivityDrawerBackground"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/project_browser_close_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_project_browser_close"
-                    android:padding="10dp"
-                    android:src="@drawable/ic_browser_close_tab"
-                    android:tint="?attr/termuxActivityDrawerImageTint" />
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:id="@+id/project_browser_header_url"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:maxLines="2"
-                    android:paddingHorizontal="4dp"
-                    android:paddingVertical="3dp"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
-
-                <com.termux.app.browser.BrowserPinchAwareSwipeRefreshLayout
-                    android:id="@+id/project_browser_swipe_refresh"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="?attr/termuxActivityDrawerBackground">
-
-                    <FrameLayout
-                        android:id="@+id/project_browser_web_view_container"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:focusable="true"
-                        android:focusableInTouchMode="true"
-                        android:importantForAutofill="yes"
-                        android:background="?attr/termuxActivityDrawerBackground" />
-                </com.termux.app.browser.BrowserPinchAwareSwipeRefreshLayout>
-
-                <View
-                    android:id="@+id/project_browser_web_view_cover"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="?attr/termuxActivityDrawerBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:visibility="gone" />
-
-                <ProgressBar
-                    android:id="@+id/project_browser_progress_bar"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="top"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:max="100"
-                    android:visibility="gone" />
-
-                <LinearLayout
-                    android:id="@+id/project_browser_overview_actions"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|end"
-                    android:layout_margin="8dp"
-                    android:gravity="end|center_vertical"
-                    android:orientation="horizontal"
-                    android:visibility="gone">
-
-                    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-                        android:id="@+id/project_browser_open_all_tasks_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="8dp"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:minWidth="48dp"
-                        android:minHeight="36dp"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:textSize="11sp"
-                        android:contentDescription="@string/action_browser_open_all_tasks"
-                        android:text="@string/action_browser_open_all_tasks" />
-
-                    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-                        android:id="@+id/project_browser_open_first_ten_tasks_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:minWidth="48dp"
-                        android:minHeight="36dp"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:textSize="11sp"
-                        android:contentDescription="@string/action_browser_open_first_ten_tasks"
-                        android:text="@string/action_browser_open_first_ten_tasks" />
-                </LinearLayout>
-            </FrameLayout>
-
-            <HorizontalScrollView
-                android:id="@+id/project_browser_tab_strip_scroll"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:visibility="gone">
-                <LinearLayout
-                    android:id="@+id/project_browser_tab_strip_container"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
-
-            <LinearLayout
-                android:id="@+id/project_browser_footer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="?attr/termuxActivityDrawerBackground"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:id="@+id/project_browser_footer_overview_icon"
-                    android:layout_width="48dip"
-                    android:layout_height="48dip"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:contentDescription="@string/action_open_project_overview"
-                    android:focusable="true"
-                    android:padding="12dip"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_browser_toggle"
-                    android:tint="?attr/termuxActivityDrawerImageTint"
-                    android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/project_browser_footer_tdpm_console_icon"
-                    android:layout_width="48dip"
-                    android:layout_height="48dip"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:contentDescription="@string/action_open_project_tdpm_console"
-                    android:focusable="true"
-                    android:padding="12dip"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_tdpm_console"
-                    android:tint="?attr/termuxActivityDrawerImageTint"
-                    android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/project_browser_footer_new_issue_icon"
-                    android:layout_width="48dip"
-                    android:layout_height="48dip"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:clickable="true"
-                    android:contentDescription="@string/action_open_project_new_issue"
-                    android:focusable="true"
-                    android:padding="12dip"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_new_issue"
-                    android:tint="?attr/termuxActivityDrawerImageTint"
-                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
 
