@@ -60,6 +60,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private static final int SESSION_ROW_FLAT_INDENT_DP = 6;
     private static final int SESSION_ROW_GROUPED_INDENT_DP = 24;
     private static final int SESSION_ROW_VERTICAL_PADDING_DP = 6;
+    private static final int SESSION_ROW_TITLE_TO_TIMES_BOTTOM_PADDING_DP = 0;
     private static final int SESSION_ROW_BELL_ICON_PADDING_DP = 4;
     private static final int SESSION_ROW_BELL_ICON_WIDTH_DP = 16;
 
@@ -828,6 +829,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         String timestampLine = sessionAtRow == null
             ? "" : buildTimestampLine(sessionAtRow.mSessionName);
         bindSessionRowTimes(sessionRowView, timestampLine);
+        TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
+        applySessionTitleBottomPadding(sessionTitleView, !timestampLine.isEmpty());
     }
 
     static final class SessionRowViewHolder extends RecyclerView.ViewHolder {
@@ -1019,6 +1022,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             "", definitionTitle, sessionTitle, explicitCallReasonPart);
 
         bindSessionRowTimes(sessionRowView, timestampLine);
+        applySessionTitleBottomPadding(sessionTitleView, !timestampLine.isEmpty());
 
         int bellNotificationLabelStart = sessionInfoBlock.startOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
         int bellNotificationLabelEnd = sessionInfoBlock.endOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
@@ -1099,6 +1103,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private String buildBellNotificationLabel(@NonNull SessionRow sessionRow) {
         return "";
+    }
+
+    static int sessionTitleBottomPaddingDp(boolean timesVisible) {
+        return timesVisible
+            ? SESSION_ROW_TITLE_TO_TIMES_BOTTOM_PADDING_DP
+            : SESSION_ROW_VERTICAL_PADDING_DP;
+    }
+
+    private void applySessionTitleBottomPadding(@NonNull TextView sessionTitleView, boolean timesVisible) {
+        int bottomPadding = dpToPx(sessionTitleBottomPaddingDp(timesVisible));
+        sessionTitleView.setPadding(sessionTitleView.getPaddingLeft(), sessionTitleView.getPaddingTop(),
+            sessionTitleView.getPaddingRight(), bottomPadding);
     }
 
     private void bindSessionRowTimes(@NonNull View sessionRowView, @NonNull String timestampLine) {
