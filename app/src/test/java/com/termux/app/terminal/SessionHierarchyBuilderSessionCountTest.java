@@ -7,8 +7,10 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class SessionHierarchyBuilderSessionCountTest {
 
@@ -133,5 +135,73 @@ public class SessionHierarchyBuilderSessionCountTest {
         Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(after));
         Assert.assertEquals(Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(after).get("projectOne"));
+    }
+
+    @Test
+    public void pendingCallSessionCountCountsOnlySessionsWhoseNameIsPendingACall() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Arrays.asList("https://example.test/a1", "https://example.test/a2")),
+            new SessionDefinitionEntry("projectTwo", "storyB",
+                Collections.singletonList("https://example.test/b1")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/a2", "https://example.test/b1");
+        List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
+        Set<String> pendingCallSessionNames = new HashSet<>(Arrays.asList(
+            "https://example.test/a1", "https://example.test/b1"));
+
+        Assert.assertEquals(2, SessionHierarchyBuilder.pendingCallSessionCount(
+            rows, sessionNames, pendingCallSessionNames));
+    }
+
+    @Test
+    public void pendingCallSessionCountIsZeroWhenNoSessionIsPendingACall() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Arrays.asList("https://example.test/a1", "https://example.test/a2")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/a2");
+        List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
+
+        Assert.assertEquals(0, SessionHierarchyBuilder.pendingCallSessionCount(
+            rows, sessionNames, Collections.emptySet()));
+    }
+
+    @Test
+    public void pendingCallSessionCountByProjectLabelCountsCallsPerProject() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Arrays.asList("https://example.test/a1", "https://example.test/a2")),
+            new SessionDefinitionEntry("projectTwo", "storyB",
+                Collections.singletonList("https://example.test/b1")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/a2", "https://example.test/b1");
+        List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
+        Set<String> pendingCallSessionNames = new HashSet<>(Arrays.asList(
+            "https://example.test/a1", "https://example.test/b1"));
+
+        Map<String, Integer> pendingByProject = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
+            rows, sessionNames, pendingCallSessionNames);
+        Assert.assertEquals(Integer.valueOf(1), pendingByProject.get("projectOne"));
+        Assert.assertEquals(Integer.valueOf(1), pendingByProject.get("projectTwo"));
+    }
+
+    @Test
+    public void pendingCallSessionCountByProjectLabelReportsZeroForProjectsWithoutACall() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a1")),
+            new SessionDefinitionEntry("projectTwo", "storyB",
+                Collections.singletonList("https://example.test/b1")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/b1");
+        List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
+        Set<String> pendingCallSessionNames = new HashSet<>(
+            Collections.singletonList("https://example.test/a1"));
+
+        Map<String, Integer> pendingByProject = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
+            rows, sessionNames, pendingCallSessionNames);
+        Assert.assertEquals(Integer.valueOf(1), pendingByProject.get("projectOne"));
+        Assert.assertEquals(Integer.valueOf(0), pendingByProject.get("projectTwo"));
     }
 }
