@@ -602,7 +602,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line);
+        Assert.assertEquals("call: >1d out: >1d reply: >1d sub: 0  ", line);
     }
 
     @Test
@@ -614,7 +614,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line);
+        Assert.assertEquals("call: >1d out: >1d reply: >1d sub: 0  ", line);
     }
 
     @Test
@@ -624,7 +624,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1d  out: >1d  reply: 1s  sub: 0", line);
+        Assert.assertEquals("call: >1d out: >1d reply: 1s  sub: 0  ", line);
     }
 
     @Test
@@ -635,7 +635,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1d  out: >1d  reply: 1s  sub: 0", line);
+        Assert.assertEquals("call: >1d out: >1d reply: 1s  sub: 0  ", line);
     }
 
     @Test
@@ -645,7 +645,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
 
-        Assert.assertEquals("call: >1d  out: >1d  reply: 1m  sub: 0", line);
+        Assert.assertEquals("call: >1d out: >1d reply: 1m  sub: 0  ", line);
     }
 
     @Test
@@ -664,7 +664,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: >1d  out: 1m  reply: >1d  sub: 0", line);
+        Assert.assertEquals("call: >1d out: 1m  reply: >1d sub: 0  ", line);
     }
 
     @Test
@@ -674,7 +674,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
 
-        Assert.assertEquals("call: 1m  out: 1m  reply: >1d  sub: 0", line);
+        Assert.assertEquals("call: 1m  out: 1m  reply: >1d sub: 0  ", line);
     }
 
     @Test
@@ -684,7 +684,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 62_000L);
 
-        Assert.assertEquals("call: >1d  out: >1d  reply: 1m  sub: 0", line);
+        Assert.assertEquals("call: >1d out: >1d reply: 1m  sub: 0  ", line);
     }
 
     @Test
@@ -694,7 +694,7 @@ public class TermuxSessionsListViewControllerTest {
 
         String line = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 61_000L);
 
-        Assert.assertEquals("call: 1m  out: 1m  reply: 1m  sub: 0", line);
+        Assert.assertEquals("call: 1m  out: 1m  reply: 1m  sub: 0  ", line);
     }
 
     @Test
@@ -705,14 +705,14 @@ public class TermuxSessionsListViewControllerTest {
         long nowMillis = 62_000L;
 
         String rowLine = TermuxSessionsListViewController.buildTimestampLine(store, "worker", nowMillis);
-        String infoAreaLine = SessionTimesLine.of(
+        String columnAlignedLine = SessionTimesLine.ofColumnAligned(
             store.getStatuslineCallTimeMillis("worker"),
             store.getStatuslineOutTimeMillis("worker"),
             store.effectiveReplyTimeMillis("worker"),
             store.getSubagentCount("worker"),
             nowMillis).getText();
 
-        Assert.assertEquals(infoAreaLine, rowLine);
+        Assert.assertEquals(columnAlignedLine, rowLine);
     }
 
     @Test
@@ -784,8 +784,8 @@ public class TermuxSessionsListViewControllerTest {
         String alphaLine = TermuxSessionsListViewController.buildTimestampLine(store, "alpha", nowMillis);
         String betaLine = TermuxSessionsListViewController.buildTimestampLine(store, "beta", nowMillis);
 
-        Assert.assertEquals("call: >1d  out: 3m  reply: >1d  sub: 0", alphaLine);
-        Assert.assertEquals("call: >1d  out: 1m  reply: >1d  sub: 0", betaLine);
+        Assert.assertEquals("call: >1d out: 3m  reply: >1d sub: 0  ", alphaLine);
+        Assert.assertEquals("call: >1d out: 1m  reply: >1d sub: 0  ", betaLine);
         Assert.assertNotEquals(alphaLine, betaLine);
     }
 
@@ -799,10 +799,10 @@ public class TermuxSessionsListViewControllerTest {
         String at150Seconds = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 151_000L);
         String at10Minutes = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 601_000L);
 
-        Assert.assertEquals("call: >1d  out: 30s  reply: >1d  sub: 0", at30Seconds);
-        Assert.assertEquals("call: >1d  out: 1m  reply: >1d  sub: 0", at90Seconds);
-        Assert.assertEquals("call: >1d  out: 2m  reply: >1d  sub: 0", at150Seconds);
-        Assert.assertEquals("call: >1d  out: 10m  reply: >1d  sub: 0", at10Minutes);
+        Assert.assertEquals("call: >1d out: 30s reply: >1d sub: 0  ", at30Seconds);
+        Assert.assertEquals("call: >1d out: 1m  reply: >1d sub: 0  ", at90Seconds);
+        Assert.assertEquals("call: >1d out: 2m  reply: >1d sub: 0  ", at150Seconds);
+        Assert.assertEquals("call: >1d out: 10m reply: >1d sub: 0  ", at10Minutes);
     }
 
     @Test
@@ -813,7 +813,7 @@ public class TermuxSessionsListViewControllerTest {
         String firstRender = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 121_000L);
         String secondRenderSameClock = TermuxSessionsListViewController.buildTimestampLine(store, "worker", 121_000L);
 
-        Assert.assertEquals("call: >1d  out: 2m  reply: >1d  sub: 0", firstRender);
+        Assert.assertEquals("call: >1d out: 2m  reply: >1d sub: 0  ", firstRender);
         Assert.assertEquals(firstRender, secondRenderSameClock);
         Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineOutTimeMillis("worker"));
     }

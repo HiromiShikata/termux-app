@@ -41,7 +41,7 @@ public class SessionNewActivityStoreTest {
 
         String bottomSheetLine = TermuxSessionsListViewController.buildTimestampLine(
             store, "session-one", now);
-        Assert.assertEquals("call: 2m  out: 50s  reply: 40s  sub: 0", bottomSheetLine);
+        Assert.assertEquals("call: 2m  out: 50s reply: 40s sub: 0  ", bottomSheetLine);
 
         Long storedOutTimeMillis = store.getStatuslineOutTimeMillis("session-one");
         Assert.assertEquals("50s",
