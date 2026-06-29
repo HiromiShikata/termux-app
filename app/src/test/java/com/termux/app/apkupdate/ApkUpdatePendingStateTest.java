@@ -45,6 +45,63 @@ public class ApkUpdatePendingStateTest {
     }
 
     @Test
+    public void savesAndLoadsDownloadedFilePath() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+
+        pendingState.save(ApkUpdateAvailability.available(
+                "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk")
+            .withDownloadedFilePath("/data/cache/apkupdate/termux-app_arm64-v8a.apk"));
+
+        ApkUpdateAvailability loaded = pendingState.load();
+        Assert.assertNotNull(loaded);
+        Assert.assertTrue(loaded.hasDownloadedFilePath());
+        Assert.assertEquals("/data/cache/apkupdate/termux-app_arm64-v8a.apk",
+            loaded.getDownloadedFilePath());
+    }
+
+    @Test
+    public void loadHasNoDownloadedFilePathWhenNotPersisted() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.save(ApkUpdateAvailability.available(
+            "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk"));
+
+        ApkUpdateAvailability loaded = pendingState.load();
+        Assert.assertNotNull(loaded);
+        Assert.assertFalse(loaded.hasDownloadedFilePath());
+        Assert.assertNull(loaded.getDownloadedFilePath());
+    }
+
+    @Test
+    public void savingWithoutDownloadedFilePathRemovesStaleDownloadedFilePath() {
+        InMemoryStore store = new InMemoryStore();
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+        pendingState.save(ApkUpdateAvailability.available(
+                "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk")
+            .withDownloadedFilePath("/data/cache/apkupdate/termux-app_arm64-v8a.apk"));
+
+        pendingState.save(ApkUpdateAvailability.available(
+            "0.122.0", "https://example.com/arm64-next", "termux-app_arm64-v8a.apk"));
+
+        ApkUpdateAvailability loaded = pendingState.load();
+        Assert.assertNotNull(loaded);
+        Assert.assertFalse(loaded.hasDownloadedFilePath());
+        Assert.assertNull(store.getString(ApkUpdatePendingState.KEY_DOWNLOADED_FILE_PATH));
+    }
+
+    @Test
+    public void clearRemovesDownloadedFilePath() {
+        InMemoryStore store = new InMemoryStore();
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+        pendingState.save(ApkUpdateAvailability.available(
+                "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk")
+            .withDownloadedFilePath("/data/cache/apkupdate/termux-app_arm64-v8a.apk"));
+
+        pendingState.clear();
+
+        Assert.assertNull(store.getString(ApkUpdatePendingState.KEY_DOWNLOADED_FILE_PATH));
+    }
+
+    @Test
     public void loadReturnsNullWhenNothingSaved() {
         ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
 

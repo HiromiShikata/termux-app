@@ -21,6 +21,7 @@ public final class ApkUpdateUiController {
     private final ApkInstaller apkInstaller;
     private final ApkUpdateNotificationPolicy notificationPolicy;
     private final ApkUpdatePendingState pendingState;
+    private final ApkUpdateCachedFileResolver cachedFileResolver;
 
     public ApkUpdateUiController(Activity activity) {
         this.activity = activity;
@@ -28,6 +29,7 @@ public final class ApkUpdateUiController {
         this.apkInstaller = new ApkInstaller(activity);
         this.notificationPolicy = new ApkUpdateNotificationPolicy();
         this.pendingState = new ApkUpdatePendingState(new SharedPreferencesApkUpdatePendingStore(activity));
+        this.cachedFileResolver = new ApkUpdateCachedFileResolver();
     }
 
     public void checkAndPrompt(boolean userInitiated) {
@@ -70,8 +72,7 @@ public final class ApkUpdateUiController {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
                 pendingState.save(availability);
-                if (activity.isFinishing()) return;
-                indicatorController.onUpdateAvailable(availability);
+                preDownloadThenShowIndicator(availability, indicatorController);
             }
 
             @Override
@@ -94,6 +95,29 @@ public final class ApkUpdateUiController {
             return;
         }
         newIndicatorController(indicatorView).onUpdateAvailable(availability);
+    }
+
+    private void preDownloadThenShowIndicator(ApkUpdateAvailability availability,
+                                              ApkUpdateFloatingIndicatorController indicatorController) {
+        Logger.logInfo(LOG_TAG, "Pre-downloading APK update before showing indicator");
+        updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
+            new ApkUpdateManager.DownloadListener() {
+                @Override
+                public void onDownloaded(File apkFile) {
+                    ApkUpdateAvailability downloadedAvailability =
+                        availability.withDownloadedFilePath(apkFile.getAbsolutePath());
+                    pendingState.save(downloadedAvailability);
+                    if (activity.isFinishing()) return;
+                    indicatorController.onUpdateAvailable(downloadedAvailability);
+                }
+
+                @Override
+                public void onDownloadFailed(String message) {
+                    Logger.logError(LOG_TAG, "APK update pre-download failed: " + message);
+                    if (activity.isFinishing()) return;
+                    indicatorController.onUpdateAvailable(availability);
+                }
+            });
     }
 
     private ApkUpdateFloatingIndicatorController newIndicatorController(
@@ -121,6 +145,13 @@ public final class ApkUpdateUiController {
             return;
         }
 
+        File cachedApkFile = cachedFileResolver.resolveExistingFile(availability);
+        if (cachedApkFile != null) {
+            pendingState.clear();
+            launchInstall(cachedApkFile);
+            return;
+        }
+
         Context applicationContext = activity.getApplicationContext();
         Logger.showToast(activity, activity.getString(R.string.apk_update_downloading), false);
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
@@ -128,7 +159,7 @@ public final class ApkUpdateUiController {
                 @Override
                 public void onDownloaded(File apkFile) {
                     pendingState.clear();
-                    applicationContext.startActivity(apkInstaller.buildInstallIntent(apkFile));
+                    launchInstall(apkFile);
                 }
 
                 @Override
@@ -138,6 +169,9 @@ public final class ApkUpdateUiController {
                         applicationContext.getString(R.string.apk_update_download_failed, message), true);
                 }
             });
-        activity.finish();
+    }
+
+    private void launchInstall(File apkFile) {
+        activity.getApplicationContext().startActivity(apkInstaller.buildInstallIntent(apkFile));
     }
 }

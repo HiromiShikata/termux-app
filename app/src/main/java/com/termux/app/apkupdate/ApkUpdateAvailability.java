@@ -8,21 +8,28 @@ public final class ApkUpdateAvailability {
     private final String latestVersionName;
     private final String downloadUrl;
     private final String assetName;
+    private final String downloadedFilePath;
 
     private ApkUpdateAvailability(boolean updateAvailable, String latestVersionName,
-                                  @Nullable String downloadUrl, @Nullable String assetName) {
+                                  @Nullable String downloadUrl, @Nullable String assetName,
+                                  @Nullable String downloadedFilePath) {
         this.updateAvailable = updateAvailable;
         this.latestVersionName = latestVersionName;
         this.downloadUrl = downloadUrl;
         this.assetName = assetName;
+        this.downloadedFilePath = downloadedFilePath;
     }
 
     public static ApkUpdateAvailability available(String latestVersionName, String downloadUrl, String assetName) {
-        return new ApkUpdateAvailability(true, latestVersionName, downloadUrl, assetName);
+        return new ApkUpdateAvailability(true, latestVersionName, downloadUrl, assetName, null);
     }
 
     public static ApkUpdateAvailability upToDate(String latestVersionName) {
-        return new ApkUpdateAvailability(false, latestVersionName, null, null);
+        return new ApkUpdateAvailability(false, latestVersionName, null, null, null);
+    }
+
+    public ApkUpdateAvailability withDownloadedFilePath(@Nullable String filePath) {
+        return new ApkUpdateAvailability(updateAvailable, latestVersionName, downloadUrl, assetName, filePath);
     }
 
     public boolean isUpdateAvailable() {
@@ -41,5 +48,14 @@ public final class ApkUpdateAvailability {
     @Nullable
     public String getAssetName() {
         return assetName;
+    }
+
+    @Nullable
+    public String getDownloadedFilePath() {
+        return downloadedFilePath;
+    }
+
+    public boolean hasDownloadedFilePath() {
+        return downloadedFilePath != null;
     }
 }
