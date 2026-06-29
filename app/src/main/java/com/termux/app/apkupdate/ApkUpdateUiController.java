@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 
+import com.termux.BuildConfig;
 import com.termux.R;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
@@ -87,8 +88,9 @@ public final class ApkUpdateUiController {
     }
 
     public void showPendingIndicatorIfAny(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
-        ApkUpdateAvailability availability = pendingState.load();
+        ApkUpdateAvailability availability = pendingState.loadIfNewerThanInstalled(BuildConfig.VERSION_NAME);
         if (availability == null) {
+            indicatorView.hide();
             return;
         }
         newIndicatorController(indicatorView).onUpdateAvailable(availability);

@@ -85,4 +85,56 @@ public class ApkUpdatePendingStateTest {
         Assert.assertNull(pendingState.load());
         Assert.assertFalse(pendingState.hasPending());
     }
+
+    @Test
+    public void loadIfNewerThanInstalledReturnsAvailableWhenInstalledIsOlder() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.save(ApkUpdateAvailability.available(
+            "0.118.2536", "https://example.com/arm64", "termux-app_arm64-v8a.apk"));
+
+        ApkUpdateAvailability loaded = pendingState.loadIfNewerThanInstalled("0.118.2535");
+
+        Assert.assertNotNull(loaded);
+        Assert.assertTrue(loaded.isUpdateAvailable());
+        Assert.assertEquals("0.118.2536", loaded.getLatestVersionName());
+    }
+
+    @Test
+    public void loadIfNewerThanInstalledReturnsNullAndClearsWhenInstalledEqualsLatest() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.save(ApkUpdateAvailability.available(
+            "0.118.2535", "https://example.com/arm64", "termux-app_arm64-v8a.apk"));
+
+        Assert.assertNull(pendingState.loadIfNewerThanInstalled("0.118.2535"));
+        Assert.assertFalse(pendingState.hasPending());
+    }
+
+    @Test
+    public void loadIfNewerThanInstalledReturnsNullAndClearsWhenInstalledIsNewer() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.save(ApkUpdateAvailability.available(
+            "0.118.2534", "https://example.com/arm64", "termux-app_arm64-v8a.apk"));
+
+        Assert.assertNull(pendingState.loadIfNewerThanInstalled("0.118.2535"));
+        Assert.assertFalse(pendingState.hasPending());
+    }
+
+    @Test
+    public void loadIfNewerThanInstalledTreatsLeadingVTagAsEqualToInstalledVersionName() {
+        InMemoryStore store = new InMemoryStore();
+        store.putString(ApkUpdatePendingState.KEY_LATEST_VERSION_NAME, "v0.118.2535");
+        store.putString(ApkUpdatePendingState.KEY_DOWNLOAD_URL, "https://example.com/arm64");
+        store.putString(ApkUpdatePendingState.KEY_ASSET_NAME, "termux-app_arm64-v8a.apk");
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+
+        Assert.assertNull(pendingState.loadIfNewerThanInstalled("0.118.2535"));
+        Assert.assertFalse(pendingState.hasPending());
+    }
+
+    @Test
+    public void loadIfNewerThanInstalledReturnsNullWhenNothingSaved() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+
+        Assert.assertNull(pendingState.loadIfNewerThanInstalled("0.118.2535"));
+    }
 }
