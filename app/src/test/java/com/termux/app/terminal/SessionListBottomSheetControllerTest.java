@@ -15,6 +15,8 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import com.termux.R;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -122,6 +124,36 @@ public class SessionListBottomSheetControllerTest {
     @Test
     public void togglingFromVisibleClosesSheet() {
         Assert.assertEquals(View.GONE, SessionListBottomSheetController.nextSheetVisibility(View.VISIBLE));
+    }
+
+    @Test
+    public void filterAppliedShowsTheFilledFunnelWithoutACross() {
+        Assert.assertEquals(R.drawable.ic_filter_alt,
+            SessionListBottomSheetController.hiddenToggleIconResource(true));
+    }
+
+    @Test
+    public void filterNotAppliedShowsTheFunnelWithACrossSoTheUserKnowsAllSessionsAreShown() {
+        Assert.assertEquals(R.drawable.ic_filter_alt_off,
+            SessionListBottomSheetController.hiddenToggleIconResource(false));
+    }
+
+    @Test
+    public void filterToggleIconResourceDiffersBetweenTheTwoStates() {
+        Assert.assertNotEquals(SessionListBottomSheetController.hiddenToggleIconResource(true),
+            SessionListBottomSheetController.hiddenToggleIconResource(false));
+    }
+
+    @Test
+    public void filterAppliedAnnouncesHidingHiddenSessions() {
+        Assert.assertEquals(R.string.action_session_filter_on,
+            SessionListBottomSheetController.hiddenToggleContentDescriptionResource(true));
+    }
+
+    @Test
+    public void filterNotAppliedAnnouncesShowingAllSessions() {
+        Assert.assertEquals(R.string.action_session_filter_off,
+            SessionListBottomSheetController.hiddenToggleContentDescriptionResource(false));
     }
 
     @Test
