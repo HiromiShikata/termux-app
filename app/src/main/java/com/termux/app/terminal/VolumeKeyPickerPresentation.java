@@ -33,6 +33,21 @@ public final class VolumeKeyPickerPresentation {
                                @NonNull OverlayPresenter overlayPresenter,
                                @NonNull HideScheduler hideScheduler,
                                @NonNull CommitScheduler commitScheduler) {
+        present(true, decision, sessionSwitcher, overlayRenderer, overlayPresenter, hideScheduler,
+            commitScheduler);
+    }
+
+    public static void present(boolean overlayEnabled,
+                               @NonNull VolumeKeyPickerMoveDecision decision,
+                               @NonNull SessionSwitcher sessionSwitcher,
+                               @NonNull OverlayRenderer overlayRenderer,
+                               @NonNull OverlayPresenter overlayPresenter,
+                               @NonNull HideScheduler hideScheduler,
+                               @NonNull CommitScheduler commitScheduler) {
+        if (!overlayEnabled) {
+            sessionSwitcher.switchToHighlightedSession();
+            return;
+        }
         if (decision.shouldSwitchImmediately()) {
             sessionSwitcher.switchToHighlightedSession();
             overlayRenderer.renderStructure();

@@ -97,6 +97,7 @@ public class SessionSwitchPickerController {
             orderedSessionIndexes, navigableSessionIndexes, forward);
         mHighlightedSessionIndex = decision.getHighlightedSessionIndex();
         VolumeKeyPickerPresentation.present(
+            isOverlayEnabled(),
             decision,
             this::switchToHighlightedSession,
             () -> renderStructure(listController),
@@ -128,6 +129,11 @@ public class SessionSwitchPickerController {
         return preferences != null && preferences.isSessionSwitchPreviewFirstEnabled();
     }
 
+    private boolean isOverlayEnabled() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        return preferences != null && preferences.isSessionSwitchOverlayEnabled();
+    }
+
     private void hide() {
         mHighlightedSessionIndex = -1;
         mHighlightedTextOffset = -1;
@@ -137,8 +143,9 @@ public class SessionSwitchPickerController {
     }
 
     private void setShowing(boolean showing) {
-        mShowing = showing;
-        mOverlayView.setVisibility(SessionSwitchPickerVisibility.overlayVisibilityForShowing(showing));
+        boolean effectiveShowing = showing && isOverlayEnabled();
+        mShowing = effectiveShowing;
+        mOverlayView.setVisibility(SessionSwitchPickerVisibility.overlayVisibilityForShowing(effectiveShowing));
     }
 
     private void scheduleCommit() {

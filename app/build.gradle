@@ -47,8 +47,8 @@ android {
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        versionCode project.hasProperty("buildVersionCode") ? project.property("buildVersionCode").toString().toInteger() : 118
-        versionName "0.118.0"
+        versionCode project.hasProperty("buildVersionCode") ? project.property("buildVersionCode").toString().toInteger() : 119
+        versionName "0.119.0"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
