@@ -127,4 +127,39 @@ public class SessionBrowserTabBarActionButtonsWiringTest {
         Assert.assertTrue(source.contains(
             "mProjectActionUrlResolver.resolveForSessionName(mCurrentSessionName)"));
     }
+
+    @Test
+    public void newTabPromptShowsUrlDialogForEverySessionWithoutManagerSessionSpecialBranch() throws IOException {
+        String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
+        int promptNewTabIndex = source.indexOf("public void promptNewTab()");
+        Assert.assertTrue(promptNewTabIndex >= 0);
+        int promptNewTabEnd = source.indexOf("private static String normalizeUrl", promptNewTabIndex);
+        Assert.assertTrue(promptNewTabEnd > promptNewTabIndex);
+        String promptNewTabBody = source.substring(promptNewTabIndex, promptNewTabEnd);
+        Assert.assertTrue("New-tab action must open the URL-input dialog for every session",
+            promptNewTabBody.contains("TextInputDialogUtils.textInput("));
+        Assert.assertFalse("New-tab action must not branch on manager-session overview URLs",
+            promptNewTabBody.contains("ProjectManagerOverviewUrlResolver"));
+        Assert.assertFalse("New-tab action must not branch on manager-session overview URLs",
+            promptNewTabBody.contains("resolveOverviewUrlForManagerSessionName"));
+        Assert.assertFalse("Controller must not retain a manager-session overview resolver",
+            source.contains("BrowserProjectManagerOverviewUrlResolver"));
+    }
+
+    @Test
+    public void projectActionButtonVisibilityDependsOnOverviewUrlNotSessionType() throws IOException {
+        String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
+        int visibilityIndex = source.indexOf("private void updateProjectOverviewActionsVisibility()");
+        Assert.assertTrue(visibilityIndex >= 0);
+        int visibilityEnd = source.indexOf("private void", visibilityIndex
+            + "private void updateProjectOverviewActionsVisibility()".length());
+        Assert.assertTrue(visibilityEnd > visibilityIndex);
+        String visibilityBody = source.substring(visibilityIndex, visibilityEnd);
+        Assert.assertTrue("Action-icon visibility must be gated on the overview URL",
+            visibilityBody.contains("BrowserProjectOverviewPage.isOverviewUrl"));
+        Assert.assertFalse("Action-icon visibility must not branch on manager-session names",
+            visibilityBody.contains("ManagerSession"));
+        Assert.assertFalse("Action-icon visibility must not branch on PM session type",
+            visibilityBody.contains("isManagerSession"));
+    }
 }
