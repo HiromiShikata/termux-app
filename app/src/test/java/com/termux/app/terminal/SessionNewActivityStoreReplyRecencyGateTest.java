@@ -3,7 +3,7 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class SessionNewActivityStoreReplyGrayGateTest {
+public class SessionNewActivityStoreReplyRecencyGateTest {
 
     private static final String SESSION = "long-idle-session";
     private static final long ONE_MINUTE_MILLIS = 60L * 1000L;
@@ -11,7 +11,7 @@ public class SessionNewActivityStoreReplyGrayGateTest {
     private static final long NINE_HOURS_MILLIS = 9L * 60L * ONE_MINUTE_MILLIS;
 
     @Test
-    public void longIdleSessionThatWasRedDoesNotGoGrayTheInstantTheOwnerRepliesOnce() {
+    public void longIdleSessionThatWasRedGoesYellowOnceTheOwnerRepliesBecauseTheReplyIsRecent() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long staleOut = NOW_MILLIS - NINE_HOURS_MILLIS;
         long oldReply = staleOut - ONE_MINUTE_MILLIS;
@@ -23,12 +23,11 @@ public class SessionNewActivityStoreReplyGrayGateTest {
         store.recordUserInput(SESSION, NOW_MILLIS);
 
         SessionNewActivityTier tierAfterReply = store.tierFor(SESSION, NOW_MILLIS);
-        Assert.assertNotEquals(SessionNewActivityTier.GRAY, tierAfterReply);
         Assert.assertEquals(SessionNewActivityTier.YELLOW, tierAfterReply);
     }
 
     @Test
-    public void sessionGoesGrayOnceTheReplyItselfAgesPastTenMinutes() {
+    public void sessionStaysGrayWhileBothOutAndReplyAreOlderThanTenMinutes() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long staleOut = NOW_MILLIS - NINE_HOURS_MILLIS;
         long replyEleven = NOW_MILLIS - (11L * ONE_MINUTE_MILLIS);
@@ -39,7 +38,7 @@ public class SessionNewActivityStoreReplyGrayGateTest {
     }
 
     @Test
-    public void freshReplyKeepsTheBottomSheetIndicatorOutOfGray() {
+    public void freshReplyKeepsTheBottomSheetIndicatorYellowEvenWhenOutIsStale() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long staleOut = NOW_MILLIS - NINE_HOURS_MILLIS;
         long oldReply = staleOut - ONE_MINUTE_MILLIS;
@@ -50,7 +49,18 @@ public class SessionNewActivityStoreReplyGrayGateTest {
         SessionNewActivityIndicator indicator =
             TermuxSessionsListViewController.newActivityIndicator(store, SESSION, NOW_MILLIS);
 
-        Assert.assertNotEquals(SessionNewActivityTier.GRAY, indicator.getTier());
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
+    }
+
+    @Test
+    public void recentOutKeepsTheBottomSheetIndicatorYellow() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long recentOut = NOW_MILLIS - ONE_MINUTE_MILLIS;
+        store.recordStatuslineTimes(SESSION, null, recentOut, null);
+
+        SessionNewActivityIndicator indicator =
+            TermuxSessionsListViewController.newActivityIndicator(store, SESSION, NOW_MILLIS);
+
         Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
     }
 }
