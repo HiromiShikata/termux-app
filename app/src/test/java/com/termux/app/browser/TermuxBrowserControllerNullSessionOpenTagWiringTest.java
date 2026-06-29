@@ -26,7 +26,7 @@ public class TermuxBrowserControllerNullSessionOpenTagWiringTest {
     @Test
     public void openUrlInNewTabFallsBackToCurrentActivitySessionWhenNoSessionHandleSet() throws IOException {
         String source = readControllerSource();
-        int methodIndex = source.indexOf("public void openUrlInNewTab(@NonNull String url)");
+        int methodIndex = source.indexOf("public boolean openUrlInNewTab(@NonNull String url)");
         Assert.assertTrue(methodIndex >= 0);
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
@@ -38,7 +38,7 @@ public class TermuxBrowserControllerNullSessionOpenTagWiringTest {
     @Test
     public void openUrlInNewTabDoesNotEarlyReturnOnNullSessionHandleWithoutCheckingActivity() throws IOException {
         String source = readControllerSource();
-        int methodIndex = source.indexOf("public void openUrlInNewTab(@NonNull String url)");
+        int methodIndex = source.indexOf("public boolean openUrlInNewTab(@NonNull String url)");
         Assert.assertTrue(methodIndex >= 0);
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
@@ -49,7 +49,7 @@ public class TermuxBrowserControllerNullSessionOpenTagWiringTest {
     @Test
     public void openUrlInNewTabUsesResolvedSessionHandleForTabCreation() throws IOException {
         String source = readControllerSource();
-        int methodIndex = source.indexOf("public void openUrlInNewTab(@NonNull String url)");
+        int methodIndex = source.indexOf("public boolean openUrlInNewTab(@NonNull String url)");
         Assert.assertTrue(methodIndex >= 0);
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);

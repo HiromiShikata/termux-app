@@ -17,6 +17,8 @@ public final class BrowserWebViewConfigurator {
             @NonNull BrowserViewMode viewMode,
             @Nullable String defaultUserAgent) {
         settings.setJavaScriptEnabled(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(true);
         settings.setDomStorageEnabled(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
