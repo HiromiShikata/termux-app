@@ -93,13 +93,13 @@ public class AllSessionsStatuslineParserTest {
         String callingText = statuslineWithCall(callMillis, NOW_MILLIS - 30L * 1000L, replyMillis);
 
         List<AllSessionsStatuslineParser.SessionScreenText> firstPassInputs = new ArrayList<>();
-        if (gate.shouldScan("calling-session", 100L)) {
+        if (gate.shouldScan("calling-session", 100L, true)) {
             firstPassInputs.add(screenText("calling-session", callingText));
         }
         Assert.assertEquals(1, firstPassInputs.size());
 
         List<AllSessionsStatuslineParser.SessionScreenText> secondPassInputs = new ArrayList<>();
-        if (gate.shouldScan("calling-session", 100L)) {
+        if (gate.shouldScan("calling-session", 100L, true)) {
             secondPassInputs.add(screenText("calling-session", callingText));
         }
         Assert.assertTrue("an unchanged session must be skipped before the parser",
