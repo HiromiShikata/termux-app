@@ -20,9 +20,15 @@ public final class ApkUpdatePendingState {
     static final String KEY_ASSET_NAME = "apk_update_pending_asset_name";
 
     private final Store store;
+    private final AppVersionComparator versionComparator;
 
     public ApkUpdatePendingState(Store store) {
+        this(store, new AppVersionComparator());
+    }
+
+    public ApkUpdatePendingState(Store store, AppVersionComparator versionComparator) {
         this.store = store;
+        this.versionComparator = versionComparator;
     }
 
     public void save(ApkUpdateAvailability availability) {
@@ -44,6 +50,19 @@ public final class ApkUpdatePendingState {
             return null;
         }
         return ApkUpdateAvailability.available(latestVersionName, downloadUrl, assetName);
+    }
+
+    @Nullable
+    public ApkUpdateAvailability loadIfNewerThanInstalled(String installedVersionName) {
+        ApkUpdateAvailability availability = load();
+        if (availability == null) {
+            return null;
+        }
+        if (!versionComparator.isNewer(availability.getLatestVersionName(), installedVersionName)) {
+            clear();
+            return null;
+        }
+        return availability;
     }
 
     public boolean hasPending() {

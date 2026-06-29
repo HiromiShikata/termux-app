@@ -22,6 +22,9 @@ public final class AppVersionComparator {
 
     private int[] numericComponents(String versionName) {
         String core = versionName.trim();
+        if (core.startsWith("v") || core.startsWith("V")) {
+            core = core.substring(1);
+        }
         int prereleaseIndex = core.indexOf('-');
         if (prereleaseIndex >= 0) {
             core = core.substring(0, prereleaseIndex);
