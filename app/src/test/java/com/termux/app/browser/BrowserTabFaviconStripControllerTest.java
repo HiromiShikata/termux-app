@@ -211,6 +211,43 @@ public class BrowserTabFaviconStripControllerTest {
     }
 
     @Test
+    public void tabChipStaysSingleFaviconSizedWithCloseButtonOverlaidAtTheCorner() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab firstTab = new BrowserTab(SESSION, "https://first.example/");
+        BrowserTab secondTab = new BrowserTab(SESSION, "https://second.example/");
+
+        controllerFor(listener, scrollView, container)
+            .update(Arrays.asList(firstTab, secondTab), firstTab);
+
+        View item = container.getChildAt(0);
+        int unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        item.measure(unspecified, unspecified);
+
+        View faviconColumn = item.findViewById(R.id.browser_tab_strip_favicon);
+        View faviconColumnParent = (View) faviconColumn.getParent();
+        int faviconColumnWidth = faviconColumnParent.getMeasuredWidth();
+
+        Assert.assertEquals(
+            "Tab chip must stay the size of a single favicon column, not a widened chip",
+            faviconColumnWidth, item.getMeasuredWidth());
+
+        float density = context.getResources().getDisplayMetrics().density;
+        int seventySixDpInPx = Math.round(76f * density);
+        Assert.assertTrue(
+            "Tab chip width must stay well below the previously widened 76dp footprint",
+            item.getMeasuredWidth() < seventySixDpInPx);
+
+        FrameLayout.LayoutParams faviconColumnParams =
+            (FrameLayout.LayoutParams) faviconColumnParent.getLayoutParams();
+        Assert.assertEquals(
+            "Favicon column must not be pushed to the start edge with a gap",
+            0, faviconColumnParams.getMarginStart());
+    }
+
+    @Test
     public void tappingAddButtonPromptsForNewTabWithoutOpeningOrClosingTabs() {
         Context context = themedContext();
         HorizontalScrollView scrollView = new HorizontalScrollView(context);
@@ -274,13 +311,12 @@ public class BrowserTabFaviconStripControllerTest {
     }
 
     @Test
-    public void closeButtonCornerTargetReachesMaterialMinimumAnchoredTopRightClearOfFavicon() {
-        Rect closeButtonBounds = new Rect(170, 0, 185, 15);
-        Rect faviconBounds = new Rect(9, 9, 41, 41);
+    public void closeButtonCornerTargetReachesMaterialMinimumAnchoredTopRightOverFavicon() {
+        Rect closeButtonBounds = new Rect(17, 0, 32, 15);
         int targetSizePx = 48;
 
         Rect cornerTarget = BrowserTabFaviconStripController
-            .computeCloseButtonCornerTarget(closeButtonBounds, faviconBounds, targetSizePx);
+            .computeCloseButtonCornerTarget(closeButtonBounds, targetSizePx);
 
         Assert.assertTrue(
             "Corner touch target width must reach the Material minimum",
@@ -294,26 +330,25 @@ public class BrowserTabFaviconStripControllerTest {
         Assert.assertEquals(
             "Corner touch target must stay pinned to the close button top edge",
             closeButtonBounds.top, cornerTarget.top);
-        Assert.assertTrue(
-            "Corner touch target must not cover the favicon glyph select area",
-            cornerTarget.left >= faviconBounds.right);
+        Assert.assertEquals(
+            "Corner touch target must extend left from the corner by the Material minimum",
+            closeButtonBounds.right - targetSizePx, cornerTarget.left);
     }
 
     @Test
-    public void closeButtonCornerTargetExtendsToFaviconEdgeWhenGapWiderThanMinimum() {
-        Rect closeButtonBounds = new Rect(300, 0, 315, 15);
-        Rect faviconBounds = new Rect(9, 9, 41, 41);
+    public void closeButtonCornerTargetExtendsLeftByMaterialMinimumIndependentOfChipWidth() {
+        Rect closeButtonBounds = new Rect(20, 0, 35, 15);
         int targetSizePx = 48;
 
         Rect cornerTarget = BrowserTabFaviconStripController
-            .computeCloseButtonCornerTarget(closeButtonBounds, faviconBounds, targetSizePx);
+            .computeCloseButtonCornerTarget(closeButtonBounds, targetSizePx);
 
         Assert.assertEquals(
-            "Corner touch target left edge must clear the favicon and fill the empty gap",
-            faviconBounds.right, cornerTarget.left);
-        Assert.assertTrue(
-            "Widened corner touch target still meets the Material minimum",
-            cornerTarget.width() >= targetSizePx);
+            "Corner touch target left edge must extend a full Material minimum from the corner",
+            closeButtonBounds.right - targetSizePx, cornerTarget.left);
+        Assert.assertEquals(
+            "Corner touch target width must equal the Material minimum",
+            targetSizePx, cornerTarget.width());
     }
 
     @Test

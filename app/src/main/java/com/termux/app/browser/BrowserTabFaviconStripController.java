@@ -52,7 +52,7 @@ public final class BrowserTabFaviconStripController {
             indicator.setVisibility(tab == activeTab ? View.VISIBLE : View.INVISIBLE);
             item.setOnClickListener(v -> mListener.openTab(tab));
             closeButton.setOnClickListener(v -> mListener.closeTab(tab));
-            expandCloseButtonCornerTouchTarget(item, closeButton, faviconView);
+            expandCloseButtonCornerTouchTarget(item, closeButton);
             mContainer.addView(item);
         }
         View addItem = inflater.inflate(R.layout.item_browser_tab_favicon_strip_add, mContainer, false);
@@ -62,7 +62,7 @@ public final class BrowserTabFaviconStripController {
     }
 
     private static void expandCloseButtonCornerTouchTarget(
-            @NonNull View item, @NonNull View closeButton, @NonNull View favicon) {
+            @NonNull View item, @NonNull View closeButton) {
         int targetSizePx = Math.round(TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
             CLOSE_BUTTON_TOUCH_TARGET_DP,
@@ -70,9 +70,7 @@ public final class BrowserTabFaviconStripController {
         Runnable applyDelegate = () -> {
             Rect buttonBounds = new Rect();
             closeButton.getHitRect(buttonBounds);
-            Rect faviconBounds = new Rect();
-            favicon.getHitRect(faviconBounds);
-            Rect cornerTarget = computeCloseButtonCornerTarget(buttonBounds, faviconBounds, targetSizePx);
+            Rect cornerTarget = computeCloseButtonCornerTarget(buttonBounds, targetSizePx);
             item.setTouchDelegate(new TouchDelegate(cornerTarget, closeButton));
         };
         item.addOnLayoutChangeListener(
@@ -84,11 +82,11 @@ public final class BrowserTabFaviconStripController {
 
     @NonNull
     static Rect computeCloseButtonCornerTarget(
-            @NonNull Rect closeButtonBounds, @NonNull Rect faviconBounds, int targetSizePx) {
+            @NonNull Rect closeButtonBounds, int targetSizePx) {
         int right = closeButtonBounds.right;
         int top = closeButtonBounds.top;
         int bottom = Math.max(closeButtonBounds.bottom, top + targetSizePx);
-        int left = Math.min(right - targetSizePx, faviconBounds.right);
+        int left = Math.min(closeButtonBounds.left, right - targetSizePx);
         return new Rect(left, top, right, bottom);
     }
 }
