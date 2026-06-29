@@ -45,4 +45,26 @@ public class AllSessionsStatuslineScanGateTest {
         gate.forget("session-a");
         Assert.assertTrue(gate.shouldScan("session-a", 5L));
     }
+
+    @Test
+    public void markScannedRecordsTheVersionSoTheNextGatedTickSkipsTheUnchangedScreen() {
+        AllSessionsStatuslineScanGate gate = new AllSessionsStatuslineScanGate();
+        gate.markScanned("session-a", 7L);
+        Assert.assertFalse(gate.shouldScan("session-a", 7L));
+    }
+
+    @Test
+    public void markScannedDoesNotSkipWhenTheVersionChangesAfterAForcedPass() {
+        AllSessionsStatuslineScanGate gate = new AllSessionsStatuslineScanGate();
+        gate.markScanned("session-a", 7L);
+        Assert.assertTrue(gate.shouldScan("session-a", 8L));
+    }
+
+    @Test
+    public void markScannedOnAFirstSeenSessionStillLetsAForcedPassRecordItsVersion() {
+        AllSessionsStatuslineScanGate gate = new AllSessionsStatuslineScanGate();
+        Assert.assertTrue(gate.shouldScan("session-a", 3L));
+        gate.markScanned("session-a", 3L);
+        Assert.assertFalse(gate.shouldScan("session-a", 3L));
+    }
 }

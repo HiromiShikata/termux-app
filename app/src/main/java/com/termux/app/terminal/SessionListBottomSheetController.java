@@ -96,7 +96,7 @@ public class SessionListBottomSheetController {
         mLoadSessionButton.setOnClickListener(v -> {
             hideSoftKeyboard();
             hide();
-            mActivity.loadSessionsFromDefinition();
+            mActivity.reloadSessionsAndRefreshAllState();
         });
         mGoogleButton.setOnClickListener(v -> {
             hideSoftKeyboard();
