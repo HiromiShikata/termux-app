@@ -92,12 +92,14 @@ public class SessionSwitchPickerController {
         int currentSessionIndex = service.getIndexOfSession(mActivity.getCurrentSession());
         List<Integer> orderedSessionIndexes = listController.getOrderedSessionIndexes();
         List<Integer> navigableSessionIndexes = listController.getNavigationCandidateSessionIndexes();
+        boolean overlayEnabled = isOverlayEnabled();
+        boolean previewFirstEnabled = overlayEnabled && isPreviewFirstEnabled();
         VolumeKeyPickerMoveDecision decision = VolumeKeyPickerMoveDecision.decide(
-            isPreviewFirstEnabled(), mShowing, mHighlightedSessionIndex, currentSessionIndex,
+            previewFirstEnabled, mShowing, mHighlightedSessionIndex, currentSessionIndex,
             orderedSessionIndexes, navigableSessionIndexes, forward);
         mHighlightedSessionIndex = decision.getHighlightedSessionIndex();
         VolumeKeyPickerPresentation.present(
-            isOverlayEnabled(),
+            overlayEnabled,
             decision,
             this::switchToHighlightedSession,
             () -> renderStructure(listController),

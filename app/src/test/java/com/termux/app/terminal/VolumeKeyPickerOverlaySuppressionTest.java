@@ -16,6 +16,20 @@ public class VolumeKeyPickerOverlaySuppressionTest {
     private static final boolean PREVIEW_FIRST = true;
     private static final boolean OVERLAY_HIDDEN = false;
     private static final boolean FORWARD = true;
+    private static final int CURRENT_SESSION_INDEX = 1;
+    private static final List<Integer> NAVIGABLE_SESSION_INDEXES = Arrays.asList(0, 1, 2);
+
+    private static boolean effectivePreviewFirstEnabled(boolean overlayEnabled, boolean previewFirstSetting) {
+        return overlayEnabled && previewFirstSetting;
+    }
+
+    private static VolumeKeyPickerMoveDecision controllerDecision(boolean overlayEnabled,
+                                                                  boolean previewFirstSetting) {
+        return VolumeKeyPickerMoveDecision.decide(
+            effectivePreviewFirstEnabled(overlayEnabled, previewFirstSetting),
+            OVERLAY_HIDDEN, -1, CURRENT_SESSION_INDEX,
+            NAVIGABLE_SESSION_INDEXES, NAVIGABLE_SESSION_INDEXES, FORWARD);
+    }
 
     private static final class PresentationProbe {
         final AtomicBoolean switched = new AtomicBoolean(false);
@@ -60,12 +74,26 @@ public class VolumeKeyPickerOverlaySuppressionTest {
     @Test
     public void disabledOverlayStillSwitchesEvenInPreviewFirstModeWithoutShowingOverlay() {
         PresentationProbe probe = new PresentationProbe();
-        probe.run(OVERLAY_DISABLED, previewFirstDecision());
+        probe.run(OVERLAY_DISABLED, controllerDecision(OVERLAY_DISABLED, PREVIEW_FIRST));
         Assert.assertTrue(probe.switched.get());
         Assert.assertEquals(0, probe.rendered.get());
         Assert.assertEquals(0, probe.shown.get());
         Assert.assertEquals(0, probe.hideScheduled.get());
         Assert.assertEquals(0, probe.commitScheduled.get());
+    }
+
+    @Test
+    public void disabledOverlayInPreviewFirstModeTargetsADifferentSessionThanCurrent() {
+        VolumeKeyPickerMoveDecision decision = controllerDecision(OVERLAY_DISABLED, PREVIEW_FIRST);
+        Assert.assertNotEquals(CURRENT_SESSION_INDEX, decision.getHighlightedSessionIndex());
+        Assert.assertTrue(NAVIGABLE_SESSION_INDEXES.contains(decision.getHighlightedSessionIndex()));
+    }
+
+    @Test
+    public void disabledOverlayInInstantModeTargetsADifferentSessionThanCurrent() {
+        VolumeKeyPickerMoveDecision decision = controllerDecision(OVERLAY_DISABLED, INSTANT);
+        Assert.assertNotEquals(CURRENT_SESSION_INDEX, decision.getHighlightedSessionIndex());
+        Assert.assertTrue(NAVIGABLE_SESSION_INDEXES.contains(decision.getHighlightedSessionIndex()));
     }
 
     @Test
