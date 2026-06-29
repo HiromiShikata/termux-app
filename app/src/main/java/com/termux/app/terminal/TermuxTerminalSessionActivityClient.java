@@ -133,6 +133,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS = 1500L;
 
+    private static final long[] POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS = {
+        ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS, 3000L, 5000L, 8000L, 12000L};
+
+    private final PostReconnectStatuslineRescanRetryPlanner mPostReconnectStatuslineRescanRetryPlanner =
+        new PostReconnectStatuslineRescanRetryPlanner(POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS);
+
     private static final long MILLIS_PER_MINUTE = 60L * 1000L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
@@ -1443,9 +1449,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mMainThreadHandler.post(new ReconnectedSessionInputReplay(mMainThreadHandler, reconnectedSession, textToSend));
     }
 
-    public void reconnectDeadDefinitionBackedSessionsInBackground() {
+    @NonNull
+    public List<String> reconnectDeadDefinitionBackedSessionsInBackground() {
         TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
+        if (service == null) return Collections.emptyList();
 
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
 
@@ -1462,12 +1469,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         List<String> sessionNamesToReconnect =
             mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate);
+        List<String> reconnectedSessionNames = new ArrayList<>();
         for (String sessionName : sessionNamesToReconnect) {
             TerminalSession deadSession = sessionByName.get(sessionName);
             if (deadSession != null) {
                 reconnectDeadSessionPreservingDisplayedSession(deadSession);
+                reconnectedSessionNames.add(sessionName);
             }
         }
+        return reconnectedSessionNames;
     }
 
     /**
@@ -1477,18 +1487,66 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * DeadSessionReconnectPlanner}), then force-refreshes the latest call/out/reply statusline state for
      * every session so each one lands on its correct tier instead of the uncolored tier. A
      * freshly-reconnected session has no rendered emulator at the instant it is created, so its
-     * statusline cannot be read yet; the rescan is therefore both run immediately for the sessions that
-     * are already live and posted again after {@link #ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS} so the
-     * reconnected sessions are picked up once their emulators have rendered, reusing the same
-     * delayed-post sequencing the on-load path uses rather than blocking the main thread waiting for the
-     * reconnected sessions to come up. The forced rescan bypasses the content-version skip-gate while
-     * keeping the heavy transcript read and parse off the main thread.
+     * statusline cannot be read yet; the rescan is therefore run immediately for the sessions that are
+     * already live and then re-posted on a bounded backoff schedule ({@link
+     * #POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS}, beginning at {@link
+     * #ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS}) so a session whose ssh/tmux statusline renders later than
+     * the first delay is still picked up. The retry stops early once every just-reconnected session has a
+     * parsed statusline recorded, and is capped at the end of the backoff schedule so it can never run
+     * unbounded. The reschedule is lightweight main-thread {@link Handler#postDelayed} only; each rescan
+     * goes through the forced {@link #repopulateStatuslineTimesForAllSessions(boolean)} path, which
+     * bypasses the content-version skip-gate while keeping the heavy transcript read and parse off the
+     * main thread via {@link #parseAndApplyStatuslineUpdatesOffThread}.
      */
     public void reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline() {
-        reconnectDeadDefinitionBackedSessionsInBackground();
+        List<String> reconnectedSessionNames = reconnectDeadDefinitionBackedSessionsInBackground();
         repopulateStatuslineTimesForAllSessions(true);
-        mMainThreadHandler.postDelayed(() -> repopulateStatuslineTimesForAllSessions(true),
-            ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS);
+        if (reconnectedSessionNames.isEmpty()) return;
+        mMainThreadHandler.postDelayed(
+            new PostReconnectStatuslineRescanRetry(reconnectedSessionNames),
+            mPostReconnectStatuslineRescanRetryPlanner.firstAttemptDelayMillis());
+    }
+
+    private boolean allReconnectedSessionsHaveParsedStatusline(@NonNull List<String> reconnectedSessionNames) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return false;
+        for (String sessionName : reconnectedSessionNames) {
+            if (!hasParsedStatusline(store, sessionName)) return false;
+        }
+        return true;
+    }
+
+    private static boolean hasParsedStatusline(@NonNull SessionNewActivityStore store,
+                                               @NonNull String sessionName) {
+        return store.getStatuslineCallTimeMillis(sessionName) != null
+            || store.getStatuslineOutTimeMillis(sessionName) != null
+            || store.getStatuslineReplyTimeMillis(sessionName) != null
+            || store.getSubagentCount(sessionName) > 0;
+    }
+
+    private final class PostReconnectStatuslineRescanRetry implements Runnable {
+
+        @NonNull
+        private final List<String> mReconnectedSessionNames;
+
+        private int mNextBackoffIndex = 1;
+
+        private PostReconnectStatuslineRescanRetry(@NonNull List<String> reconnectedSessionNames) {
+            mReconnectedSessionNames = reconnectedSessionNames;
+        }
+
+        @Override
+        public void run() {
+            repopulateStatuslineTimesForAllSessions(true);
+            boolean allParsed = allReconnectedSessionsHaveParsedStatusline(mReconnectedSessionNames);
+            if (!mPostReconnectStatuslineRescanRetryPlanner.shouldScheduleNextAttempt(mNextBackoffIndex, allParsed)) {
+                return;
+            }
+            long delayMillis =
+                mPostReconnectStatuslineRescanRetryPlanner.delayUntilNextAttemptMillis(mNextBackoffIndex);
+            mNextBackoffIndex++;
+            mMainThreadHandler.postDelayed(this, delayMillis);
+        }
     }
 
     private void reconnectDeadSessionPreservingDisplayedSession(@NonNull TerminalSession deadSession) {
