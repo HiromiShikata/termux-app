@@ -603,8 +603,17 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (store == null) {
             return Collections.emptyMap();
         }
-        return sessionActivityIndicatorsByIndex(store, getVisibleSessionIndexes(),
+        return sessionActivityIndicatorsByIndex(store, allSessionIndexes(),
             sessionNamesByIndex(), disabledSessionNames(), System.currentTimeMillis());
+    }
+
+    @NonNull
+    private List<Integer> allSessionIndexes() {
+        List<Integer> sessionIndexes = new ArrayList<>(mSessionList.size());
+        for (int sessionIndex = 0; sessionIndex < mSessionList.size(); sessionIndex++) {
+            sessionIndexes.add(sessionIndex);
+        }
+        return sessionIndexes;
     }
 
     @NonNull

@@ -396,7 +396,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             long screenContentVersion = emulator.getScreenContentVersion();
             if (forceRescan) {
                 mAllSessionsStatuslineScanGate.markScanned(session.mHandle, screenContentVersion);
-            } else if (!mAllSessionsStatuslineScanGate.shouldScan(session.mHandle, screenContentVersion)) {
+            } else if (!mAllSessionsStatuslineScanGate.shouldScan(session.mHandle, screenContentVersion,
+                store.hasStoredStatuslineData(session.mSessionName))) {
                 continue;
             }
             sessionScreenTexts.add(new AllSessionsStatuslineParser.SessionScreenText(
@@ -675,6 +676,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.purgeSession(sessionName);
+        termuxSessionListNotifyUpdated();
+    }
+
+    /**
+     * The reconnect-in-place counterpart of {@link #purgeNewActivityForRemovedSession}. A reconnect
+     * tears down the dead session and immediately re-creates one reusing the same session name, so the
+     * displayed statusline {@code call:}/{@code out:}/{@code reply:} times are kept (via {@link
+     * SessionNewActivityStore#purgeSessionPreservingStatuslineTimes}) instead of cleared. Keeping them
+     * stops the row from jumping to {@code >1d} until the reconnected session re-renders; the next
+     * parsed statusline replaces the kept times with fresher values.
+     */
+    private void purgeNewActivityForReconnectedSession(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        mSessionOutputProgressTracker.forget(sessionName);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        store.purgeSessionPreservingStatuslineTimes(sessionName);
         termuxSessionListNotifyUpdated();
     }
 
@@ -1415,7 +1433,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
         String[] arguments = new String[]{"-c", command};
 
-        purgeNewActivityForRemovedSession(finishedSession.mSessionName);
+        purgeNewActivityForReconnectedSession(finishedSession.mSessionName);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
@@ -1566,7 +1584,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
         String[] arguments = new String[]{"-c", command};
 
-        purgeNewActivityForRemovedSession(deadSession.mSessionName);
+        purgeNewActivityForReconnectedSession(deadSession.mSessionName);
 
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionRemoved(deadSession);
@@ -1598,10 +1616,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final class ReconnectedSessionInputReplay implements Runnable {
 
-        private static final int MAX_RETRY_ATTEMPTS = 50;
-
-        private static final long RETRY_DELAY_MILLIS = 50L;
-
         @NonNull
         private final Handler mainThreadHandler;
 
@@ -1611,7 +1625,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         @NonNull
         private final String textToSend;
 
-        private int remainingAttempts = MAX_RETRY_ATTEMPTS;
+        private int remainingAttempts = ReconnectedSessionInputReplayPlanner.MAX_RETRY_ATTEMPTS;
 
         private ReconnectedSessionInputReplay(@NonNull Handler mainThreadHandler,
                                               @NonNull TerminalSession reconnectedSession,
@@ -1628,8 +1642,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 return;
             }
             remainingAttempts--;
-            if (remainingAttempts <= 0) return;
-            mainThreadHandler.postDelayed(this, RETRY_DELAY_MILLIS);
+            if (!ReconnectedSessionInputReplayPlanner.shouldScheduleAnotherAttempt(remainingAttempts)) {
+                return;
+            }
+            mainThreadHandler.postDelayed(this, ReconnectedSessionInputReplayPlanner.RETRY_DELAY_MILLIS);
         }
     }
 
