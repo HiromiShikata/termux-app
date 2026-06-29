@@ -15,32 +15,50 @@ public class BrowserGoogleSignInRedirectTest {
     }
 
     @Test
-    public void docsGoogleHostRoutesExternal() {
+    public void accountsGoogleLandingPageRoutesExternal() {
         Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://accounts.google.com/"));
+    }
+
+    @Test
+    public void docsSpreadsheetContentStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
             "https://docs.google.com/spreadsheets/d/abc123/edit"));
     }
 
     @Test
-    public void sheetsGoogleHostRoutesExternal() {
-        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+    public void docsDocumentContentStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://docs.google.com/document/d/abc123/edit"));
+    }
+
+    @Test
+    public void docsPresentationContentStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://docs.google.com/presentation/d/abc123/edit"));
+    }
+
+    @Test
+    public void sheetsHostStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
             "https://sheets.google.com/"));
     }
 
     @Test
-    public void driveGoogleHostRoutesExternal() {
-        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+    public void driveContentStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
             "https://drive.google.com/drive/my-drive"));
     }
 
     @Test
-    public void slidesGoogleHostRoutesExternal() {
-        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+    public void slidesHostStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
             "https://slides.google.com/"));
     }
 
     @Test
-    public void formsGoogleHostRoutesExternal() {
-        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+    public void formsHostStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
             "https://forms.google.com/"));
     }
 
@@ -94,7 +112,15 @@ public class BrowserGoogleSignInRedirectTest {
     public void externalBrowserHostsListIsExposed() {
         Assert.assertTrue(BrowserGoogleSignInRedirect.externalBrowserHosts()
             .contains("accounts.google.com"));
-        Assert.assertEquals(6, BrowserGoogleSignInRedirect.externalBrowserHosts().size());
+        Assert.assertEquals(1, BrowserGoogleSignInRedirect.externalBrowserHosts().size());
+    }
+
+    @Test
+    public void externalBrowserHostsListExcludesDocumentHosts() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.externalBrowserHosts()
+            .contains("docs.google.com"));
+        Assert.assertFalse(BrowserGoogleSignInRedirect.externalBrowserHosts()
+            .contains("drive.google.com"));
     }
 
     @Test

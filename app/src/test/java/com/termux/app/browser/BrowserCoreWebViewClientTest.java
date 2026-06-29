@@ -169,14 +169,13 @@ public class BrowserCoreWebViewClientTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void googleSheetsHostIsRoutedToExternalBrowser() {
+    public void googleSheetsContentStaysInWebView() {
         RecordingHost host = new RecordingHost();
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
         boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
             "https://docs.google.com/spreadsheets/d/abc/edit");
-        Assert.assertTrue(overridden);
-        Assert.assertTrue(host.externalBrowserUrls.contains(
-            "https://docs.google.com/spreadsheets/d/abc/edit"));
+        Assert.assertFalse(overridden);
+        Assert.assertTrue(host.externalBrowserUrls.isEmpty());
     }
 
     @Test

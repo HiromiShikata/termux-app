@@ -12,12 +12,7 @@ import java.util.Locale;
 public final class BrowserGoogleSignInRedirect {
 
     private static final List<String> EXTERNAL_BROWSER_HOSTS = Arrays.asList(
-        "accounts.google.com",
-        "docs.google.com",
-        "sheets.google.com",
-        "drive.google.com",
-        "slides.google.com",
-        "forms.google.com");
+        "accounts.google.com");
 
     private static final List<String> AUTH_HOSTS = Arrays.asList(
         "oauth2.googleapis.com",
