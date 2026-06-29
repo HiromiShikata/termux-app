@@ -83,8 +83,54 @@ public class SessionRefreshAllStateWiringTest {
         Assert.assertTrue("the rescan must be re-posted after a delay so reconnected sessions are picked up "
                 + "once their emulators have rendered",
             methodBody.contains("postDelayed"));
-        Assert.assertTrue("the delayed rescan must reuse the on-load rescan delay sequencing",
-            methodBody.contains("ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS"));
+        Assert.assertTrue("the delayed rescan must be scheduled as the bounded adaptive retry rather than a "
+                + "single fixed-delay post",
+            methodBody.contains("PostReconnectStatuslineRescanRetry"));
+        Assert.assertTrue("the first retry must fire at the delay decided by the backoff schedule planner",
+            methodBody.contains("mPostReconnectStatuslineRescanRetryPlanner.firstAttemptDelayMillis()"));
+    }
+
+    @Test
+    public void postReconnectRescanRetryIsBoundedAndStopsEarlyWhenStatuslinesAreParsed() throws IOException {
+        String source = readSource(CLIENT_RELATIVE_PATH);
+
+        int backoffIndex = source.indexOf("POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS = {");
+        Assert.assertTrue("the post-reconnect retry must use a named backoff schedule constant", backoffIndex >= 0);
+        int backoffEnd = source.indexOf("};", backoffIndex);
+        Assert.assertTrue(backoffEnd > backoffIndex);
+        String backoffLiteral = source.substring(backoffIndex, backoffEnd);
+        Assert.assertTrue("the first backoff entry must reuse the on-load rescan delay",
+            backoffLiteral.contains("ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS"));
+
+        int retryIndex = source.indexOf("private final class PostReconnectStatuslineRescanRetry");
+        Assert.assertTrue("the bounded retry must be implemented as a dedicated runnable", retryIndex >= 0);
+        int retryEnd = source.indexOf("\n    }", retryIndex);
+        Assert.assertTrue(retryEnd > retryIndex);
+        String retryBody = source.substring(retryIndex, retryEnd);
+
+        Assert.assertTrue("each retry attempt must force a rescan that bypasses the skip-gate",
+            retryBody.contains("repopulateStatuslineTimesForAllSessions(true)"));
+        Assert.assertTrue("the retry must stop early once every reconnected session has a parsed statusline",
+            retryBody.contains("allReconnectedSessionsHaveParsedStatusline("));
+        Assert.assertTrue("the retry must be bounded by the backoff schedule planner so it cannot run unbounded",
+            retryBody.contains("shouldScheduleNextAttempt("));
+        Assert.assertTrue("each retry attempt must reschedule itself with a lightweight main-thread postDelayed",
+            retryBody.contains("postDelayed(this"));
+    }
+
+    @Test
+    public void reconnectInBackgroundReturnsTheReconnectedSessionNamesForTheRetryToTrack() throws IOException {
+        String source = readSource(CLIENT_RELATIVE_PATH);
+        int methodIndex =
+            source.indexOf("public List<String> reconnectDeadDefinitionBackedSessionsInBackground() {");
+        Assert.assertTrue("reconnect-in-background must return the reconnected session names", methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue("only sessions that were actually reconnected must be returned",
+            methodBody.contains("reconnectedSessionNames.add(sessionName)"));
+        Assert.assertTrue("the returned list must be the value the method produces",
+            methodBody.contains("return reconnectedSessionNames"));
     }
 
     @Test
