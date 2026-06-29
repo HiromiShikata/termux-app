@@ -292,16 +292,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         Set<String> hiddenSessionNames = shouldHideHiddenSessions() ? disabledSessionNames() : Collections.emptySet();
         List<SessionHierarchyRow> renderedRows =
             SessionHierarchyBuilder.filterHiddenSessions(allRows, sessionNamesByIndex, hiddenSessionNames);
+        List<SessionHierarchyRow> countedRows =
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, mCollapsedProjectKeys);
         mRows = mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys);
         mSessionActivityIndicatorsByIndex = sessionActivityIndicatorsByIndex();
         mSessionRowsByIndex = getSessionRows();
-        mVisibleSessionCount = SessionHierarchyBuilder.totalSessionCount(renderedRows);
-        mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(renderedRows);
+        mVisibleSessionCount = SessionHierarchyBuilder.totalSessionCount(countedRows);
+        mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(countedRows);
         Set<String> pendingCallSessionNames = pendingCallToUserSessionNames(sessionNamesByIndex);
         mPendingCallSessionCount = SessionHierarchyBuilder.pendingCallSessionCount(
-            renderedRows, sessionNamesByIndex, pendingCallSessionNames);
+            countedRows, sessionNamesByIndex, pendingCallSessionNames);
         mPendingCallSessionCountByProjectLabel = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
-            renderedRows, sessionNamesByIndex, pendingCallSessionNames);
+            countedRows, sessionNamesByIndex, pendingCallSessionNames);
         mRowContentByItemId = buildRowContentByItemId();
     }
 
@@ -321,10 +323,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                                   @Nullable SessionHierarchyRow.Type previousRowType) {
         switch (row.getType()) {
             case PROJECT_HEADER:
+                boolean projectCollapsed = mCollapsedProjectKeys.contains(row.getLabel());
                 return joinContentFields("P",
                     projectHeaderTitle(row.getLabel(), projectPendingCallSessionCount(row.getLabel()),
-                        projectSessionCount(row.getLabel())),
-                    String.valueOf(mCollapsedProjectKeys.contains(row.getLabel())));
+                        projectSessionCount(row.getLabel()), projectCollapsed),
+                    String.valueOf(projectCollapsed));
             case STORY_HEADER:
                 return joinContentFields("S", nullToEmpty(row.getLabel()));
             default:
@@ -897,7 +900,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
         TextView headerTitleView = projectHeaderView.findViewById(R.id.session_project_header_title);
         headerTitleView.setText(projectHeaderTitle(row.getLabel(),
-            projectPendingCallSessionCount(row.getLabel()), projectSessionCount(row.getLabel())));
+            projectPendingCallSessionCount(row.getLabel()), projectSessionCount(row.getLabel()),
+            mCollapsedProjectKeys.contains(row.getLabel())));
         headerTitleView.setTextColor(surfacePrimaryTextColor());
     }
 
@@ -913,8 +917,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     static String projectHeaderTitle(@Nullable String projectLabel, int pendingCallSessionCount,
-                                     int sessionCount) {
+                                     int sessionCount, boolean collapsed) {
         String label = projectLabel == null ? "" : projectLabel;
+        if (collapsed) {
+            return label;
+        }
         return label + " " + SessionCountFraction.of(pendingCallSessionCount, sessionCount);
     }
 

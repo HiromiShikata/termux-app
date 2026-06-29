@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -203,5 +204,89 @@ public class SessionHierarchyBuilderSessionCountTest {
             rows, sessionNames, pendingCallSessionNames);
         Assert.assertEquals(Integer.valueOf(1), pendingByProject.get("projectOne"));
         Assert.assertEquals(Integer.valueOf(0), pendingByProject.get("projectTwo"));
+    }
+
+    @Test
+    public void filterCollapsedProjectSessionsExcludesCollapsedSessionsFromTheTotalAndNotificationCount() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("collapsedProject", "storyA",
+                Arrays.asList("https://example.test/a1", "https://example.test/a2")),
+            new SessionDefinitionEntry("expandedProject", "storyB",
+                Collections.singletonList("https://example.test/b1")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/a2", "https://example.test/b1");
+        List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
+        Set<String> collapsed = new LinkedHashSet<>(Collections.singletonList("collapsedProject"));
+        Set<String> pendingCallSessionNames = new HashSet<>(Arrays.asList(
+            "https://example.test/a1", "https://example.test/b1"));
+
+        List<SessionHierarchyRow> countedRows =
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(rows, collapsed);
+
+        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(countedRows));
+        Assert.assertEquals(1, SessionHierarchyBuilder.pendingCallSessionCount(
+            countedRows, sessionNames, pendingCallSessionNames));
+    }
+
+    @Test
+    public void filterCollapsedProjectSessionsIncludesExpandedProjectSessionsInTheCounts() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("collapsedProject", "storyA",
+                Collections.singletonList("https://example.test/a1")),
+            new SessionDefinitionEntry("expandedProject", "storyB",
+                Arrays.asList("https://example.test/b1", "https://example.test/b2")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/b1", "https://example.test/b2");
+        List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
+        Set<String> collapsed = new LinkedHashSet<>(Collections.singletonList("collapsedProject"));
+
+        List<SessionHierarchyRow> countedRows =
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(rows, collapsed);
+
+        Map<String, Integer> countByProject =
+            SessionHierarchyBuilder.sessionCountByProjectLabel(countedRows);
+        Assert.assertEquals(Integer.valueOf(0), countByProject.get("collapsedProject"));
+        Assert.assertEquals(Integer.valueOf(2), countByProject.get("expandedProject"));
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(countedRows));
+    }
+
+    @Test
+    public void filterCollapsedProjectSessionsReturnsAllRowsWhenNoProjectIsCollapsed() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a1")));
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList("https://example.test/a1"), entries, NA);
+
+        List<SessionHierarchyRow> countedRows =
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(rows, Collections.emptySet());
+
+        Assert.assertEquals(rows, countedRows);
+    }
+
+    @Test
+    public void hiddenSessionExclusionStillAppliesAlongsideCollapsedProjectExclusion() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("collapsedProject", "storyA",
+                Collections.singletonList("https://example.test/a1")),
+            new SessionDefinitionEntry("expandedProject", "storyB",
+                Arrays.asList("https://example.test/b1", "https://example.test/b2")));
+        List<String> sessionNames = Arrays.asList(
+            "https://example.test/a1", "https://example.test/b1", "https://example.test/b2");
+        List<SessionHierarchyRow> allRows = builder.build(sessionNames, entries, NA);
+        Set<String> hiddenSessionNames = new HashSet<>(
+            Collections.singletonList("https://example.test/b2"));
+        Set<String> collapsed = new LinkedHashSet<>(Collections.singletonList("collapsedProject"));
+
+        List<SessionHierarchyRow> renderedRows =
+            SessionHierarchyBuilder.filterHiddenSessions(allRows, sessionNames, hiddenSessionNames);
+        List<SessionHierarchyRow> countedRows =
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, collapsed);
+
+        Map<String, Integer> countByProject =
+            SessionHierarchyBuilder.sessionCountByProjectLabel(countedRows);
+        Assert.assertEquals(Integer.valueOf(0), countByProject.get("collapsedProject"));
+        Assert.assertEquals(Integer.valueOf(1), countByProject.get("expandedProject"));
+        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(countedRows));
     }
 }
