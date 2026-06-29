@@ -303,6 +303,74 @@ public final class SessionHierarchyBuilder {
     }
 
     @NonNull
+    public static List<SessionHierarchyRow> filterHiddenSessions(@NonNull List<SessionHierarchyRow> rows,
+                                                                 @NonNull List<String> sessionNamesByIndex,
+                                                                 @NonNull Set<String> hiddenSessionNames) {
+        if (hiddenSessionNames.isEmpty()) {
+            return rows;
+        }
+        List<SessionHierarchyRow> retainedSessionRows = new ArrayList<>(rows.size());
+        for (SessionHierarchyRow row : rows) {
+            if (row.isHeader() || !isHiddenSession(row, sessionNamesByIndex, hiddenSessionNames)) {
+                retainedSessionRows.add(row);
+            }
+        }
+        return dropHeadersWithoutSessions(retainedSessionRows);
+    }
+
+    @NonNull
+    private static List<SessionHierarchyRow> dropHeadersWithoutSessions(@NonNull List<SessionHierarchyRow> rows) {
+        List<SessionHierarchyRow> visibleRows = new ArrayList<>(rows.size());
+        for (int position = 0; position < rows.size(); position++) {
+            SessionHierarchyRow row = rows.get(position);
+            if (row.isHeader() && !headerPrecedesSession(rows, position)) {
+                continue;
+            }
+            visibleRows.add(row);
+        }
+        return visibleRows;
+    }
+
+    private static boolean headerPrecedesSession(@NonNull List<SessionHierarchyRow> rows, int headerPosition) {
+        SessionHierarchyRow.Type headerType = rows.get(headerPosition).getType();
+        for (int position = headerPosition + 1; position < rows.size(); position++) {
+            SessionHierarchyRow row = rows.get(position);
+            if (!row.isHeader()) {
+                return true;
+            }
+            if (headerType == SessionHierarchyRow.Type.PROJECT_HEADER
+                    && row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                return false;
+            }
+            if (headerType == SessionHierarchyRow.Type.STORY_HEADER) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    public static int shownSessionCount(@NonNull List<SessionHierarchyRow> rows,
+                                        @NonNull List<String> sessionNamesByIndex,
+                                        @NonNull Set<String> hiddenSessionNames) {
+        int shownSessionCount = 0;
+        for (SessionHierarchyRow row : rows) {
+            if (!row.isHeader() && !isHiddenSession(row, sessionNamesByIndex, hiddenSessionNames)) {
+                shownSessionCount++;
+            }
+        }
+        return shownSessionCount;
+    }
+
+    private static boolean isHiddenSession(@NonNull SessionHierarchyRow sessionRow,
+                                           @NonNull List<String> sessionNamesByIndex,
+                                           @NonNull Set<String> hiddenSessionNames) {
+        int sessionIndex = sessionRow.getSessionIndex();
+        String sessionName = sessionIndex >= 0 && sessionIndex < sessionNamesByIndex.size()
+            ? sessionNamesByIndex.get(sessionIndex) : null;
+        return sessionName != null && hiddenSessionNames.contains(sessionName);
+    }
+
+    @NonNull
     public List<SessionHierarchyRow> filterCollapsedProjects(@NonNull List<SessionHierarchyRow> rows,
                                                              @NonNull Set<String> collapsedProjectKeys) {
         if (collapsedProjectKeys.isEmpty()) {

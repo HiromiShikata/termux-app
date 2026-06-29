@@ -245,6 +245,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_DISABLED_SESSION_NAMES = "disabled_session_names";
         public static final String DEFAULT_VALUE_KEY_DISABLED_SESSION_NAMES = "";
 
+        public static final String KEY_HIDE_HIDDEN_SESSIONS = "hide_hidden_sessions";
+        public static final boolean DEFAULT_VALUE_KEY_HIDE_HIDDEN_SESSIONS = false;
+
         public static final String KEY_PERSISTED_SESSIONS = "persisted_sessions";
         public static final String DEFAULT_VALUE_KEY_PERSISTED_SESSIONS = "";
 

@@ -8,6 +8,7 @@ import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -43,6 +44,7 @@ public class SessionListBottomSheetController {
     private final View mNewSessionButton;
     private final View mLoadSessionButton;
     private final View mGoogleButton;
+    private final ImageButton mHiddenToggleButton;
 
     private boolean mAdapterBound;
     private float mDragStartRawY;
@@ -69,7 +71,9 @@ public class SessionListBottomSheetController {
         this.mNewSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_new_session_button);
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         this.mGoogleButton = activity.findViewById(R.id.session_list_bottom_sheet_google_button);
+        this.mHiddenToggleButton = activity.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button);
         bindActionButtons();
+        bindHiddenToggleButton();
         bindDragToDismiss();
         bindScrimTapToDismiss();
     }
@@ -99,6 +103,26 @@ public class SessionListBottomSheetController {
             hide();
             openGoogle();
         });
+    }
+
+    private void bindHiddenToggleButton() {
+        mHiddenToggleButton.setOnClickListener(v -> {
+            TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+            if (listController == null) {
+                return;
+            }
+            listController.toggleHideHiddenSessions();
+            applyHiddenToggleButtonState(listController);
+            applySessionCountTitle(listController);
+        });
+    }
+
+    private void applyHiddenToggleButtonState(@NonNull TermuxSessionsListViewController listController) {
+        mHiddenToggleButton.setImageResource(hiddenToggleIconResource(listController.isHidingHiddenSessions()));
+    }
+
+    static int hiddenToggleIconResource(boolean hidingHiddenSessions) {
+        return hidingHiddenSessions ? R.drawable.ic_visibility_off : R.drawable.ic_visibility;
     }
 
     private void hideBrowserIfShowing() {
@@ -227,6 +251,7 @@ public class SessionListBottomSheetController {
         applyTitleColor();
         applySheetDefaultHeight();
         bindSessionList(listController);
+        applyHiddenToggleButtonState(listController);
         applySessionCountTitle(listController);
         mSheetView.animate().cancel();
         mScrimView.setVisibility(scrimVisibilityForSheet(View.VISIBLE));
@@ -401,13 +426,19 @@ public class SessionListBottomSheetController {
     private void applySessionCountTitle(@NonNull TermuxSessionsListViewController listController) {
         String baseTitle = mActivity.getString(R.string.title_session_list_bottom_sheet);
         mTitleView.setText(sessionCountTitle(baseTitle, listController.getPendingCallSessionCount(),
-            listController.getTotalSessionCount()));
+            listController.getShownSessionCount(), listController.getTotalSessionCount(),
+            listController.isHidingHiddenSessions()));
     }
 
     @NonNull
     static String sessionCountTitle(@NonNull String baseTitle, int pendingCallSessionCount,
-                                    int totalSessionCount) {
-        return baseTitle + " " + SessionCountFraction.of(pendingCallSessionCount, totalSessionCount);
+                                    int shownSessionCount, int totalSessionCount,
+                                    boolean hidingHiddenSessions) {
+        String fraction = SessionCountFraction.of(pendingCallSessionCount, totalSessionCount);
+        if (!hidingHiddenSessions) {
+            return baseTitle + " " + fraction;
+        }
+        return baseTitle + " " + fraction + " " + shownSessionCount + "/" + totalSessionCount;
     }
 
     private void applySheetDefaultHeight() {
