@@ -478,8 +478,7 @@
                     android:background="?android:attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/action_session_filter_off"
                     android:padding="12dp"
-                    android:src="@drawable/ic_filter_alt_off"
-                    android:tint="?attr/termuxActivityDrawerImageTint" />
+                    android:src="@drawable/ic_filter_alt_off" />
 
             </LinearLayout>
 
