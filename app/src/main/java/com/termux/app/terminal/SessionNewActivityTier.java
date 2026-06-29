@@ -11,8 +11,6 @@ public enum SessionNewActivityTier {
 
     static final long YELLOW_MAX_AGE_MILLIS = 10L * 60L * 1000L;
 
-    static final long REPLY_FRESH_MAX_AGE_MILLIS = 10L * 60L * 1000L;
-
     public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
                                                  @Nullable Long pendingCallToUserTimeMillis,
                                                  @Nullable Long statuslineCallPendingTimeMillis,
@@ -28,45 +26,29 @@ public enum SessionNewActivityTier {
         return NONE;
     }
 
-    public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
+    public static SessionNewActivityTier resolve(@Nullable Long displayedOutTimeMillis,
+                                                 @Nullable Long displayedReplyTimeMillis,
                                                  @Nullable Long pendingCallToUserTimeMillis,
                                                  @Nullable Long statuslineCallPendingTimeMillis,
                                                  @Nullable Long lastUserInputTimeMillis,
                                                  @Nullable Long lastSeenTimeMillis,
-                                                 long nowMillis) {
-        return resolve(lastOutputActivityTimeMillis, pendingCallToUserTimeMillis,
-            statuslineCallPendingTimeMillis, lastUserInputTimeMillis, lastSeenTimeMillis, null,
-            nowMillis);
-    }
-
-    public static SessionNewActivityTier resolve(@Nullable Long lastOutputActivityTimeMillis,
-                                                 @Nullable Long pendingCallToUserTimeMillis,
-                                                 @Nullable Long statuslineCallPendingTimeMillis,
-                                                 @Nullable Long lastUserInputTimeMillis,
-                                                 @Nullable Long lastSeenTimeMillis,
-                                                 @Nullable Long effectiveReplyTimeMillis,
                                                  long nowMillis) {
         if (isCallToUserPending(pendingCallToUserTimeMillis, statuslineCallPendingTimeMillis,
             lastUserInputTimeMillis)) {
             return RED;
         }
-        if (lastOutputActivityTimeMillis == null) {
+        if (displayedOutTimeMillis == null && displayedReplyTimeMillis == null) {
             return NONE;
         }
-        if (nowMillis - lastOutputActivityTimeMillis <= YELLOW_MAX_AGE_MILLIS) {
-            return YELLOW;
-        }
-        if (isReplyFresh(effectiveReplyTimeMillis, nowMillis)) {
+        if (isWithinYellowAge(displayedOutTimeMillis, nowMillis)
+            || isWithinYellowAge(displayedReplyTimeMillis, nowMillis)) {
             return YELLOW;
         }
         return GRAY;
     }
 
-    private static boolean isReplyFresh(@Nullable Long effectiveReplyTimeMillis, long nowMillis) {
-        if (effectiveReplyTimeMillis == null) {
-            return false;
-        }
-        return nowMillis - effectiveReplyTimeMillis <= REPLY_FRESH_MAX_AGE_MILLIS;
+    private static boolean isWithinYellowAge(@Nullable Long timeMillis, long nowMillis) {
+        return timeMillis != null && nowMillis - timeMillis <= YELLOW_MAX_AGE_MILLIS;
     }
 
     private static boolean isCallToUserPending(@Nullable Long pendingCallToUserTimeMillis,

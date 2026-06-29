@@ -15,7 +15,7 @@ public class SessionNewActivityTierRecencyTest {
         long nowOneMinuteAfterOutput = lastOutputActivity + ONE_MINUTE_MILLIS;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, null, null, null, lastSeenAfterOutput, nowOneMinuteAfterOutput);
+            lastOutputActivity, null, null, null, null, lastSeenAfterOutput, nowOneMinuteAfterOutput);
 
         Assert.assertEquals(SessionNewActivityTier.YELLOW, tier);
     }
@@ -27,7 +27,7 @@ public class SessionNewActivityTierRecencyTest {
         long nowElevenMinutesAfterOutput = lastOutputActivity + elevenMinutes;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, null, null, null, SEEN, nowElevenMinutesAfterOutput);
+            lastOutputActivity, null, null, null, null, SEEN, nowElevenMinutesAfterOutput);
 
         Assert.assertEquals(SessionNewActivityTier.GRAY, tier);
     }
@@ -37,7 +37,7 @@ public class SessionNewActivityTierRecencyTest {
         long now = SEEN + 1L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            null, null, null, null, SEEN, now);
+            null, null, null, null, null, SEEN, now);
 
         Assert.assertEquals(SessionNewActivityTier.NONE, tier);
     }
@@ -48,7 +48,7 @@ public class SessionNewActivityTierRecencyTest {
         long now = SEEN + 5L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            null, lastExplicitCall, null, null, SEEN, now);
+            null, null, lastExplicitCall, null, null, SEEN, now);
 
         Assert.assertEquals(SessionNewActivityTier.RED, tier);
     }
@@ -60,7 +60,7 @@ public class SessionNewActivityTierRecencyTest {
         long now = SEEN + 30L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, lastExplicitCall, null, null, SEEN, now);
+            lastOutputActivity, null, lastExplicitCall, null, null, SEEN, now);
 
         Assert.assertEquals(SessionNewActivityTier.RED, tier);
     }
@@ -72,7 +72,7 @@ public class SessionNewActivityTierRecencyTest {
         long now = lastOutputActivity + 2L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, null, null, null, lastSeenAfterViewing, now);
+            lastOutputActivity, null, null, null, null, lastSeenAfterViewing, now);
 
         Assert.assertEquals(SessionNewActivityTier.YELLOW, tier);
     }
@@ -83,7 +83,7 @@ public class SessionNewActivityTierRecencyTest {
         long nowAtRecencyBoundary = lastOutputActivity + SessionNewActivityTier.YELLOW_MAX_AGE_MILLIS;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, null, null, null, SEEN, nowAtRecencyBoundary);
+            lastOutputActivity, null, null, null, null, SEEN, nowAtRecencyBoundary);
 
         Assert.assertEquals(SessionNewActivityTier.YELLOW, tier);
     }
@@ -94,7 +94,7 @@ public class SessionNewActivityTierRecencyTest {
         long nowJustPastRecencyBoundary = lastOutputActivity + SessionNewActivityTier.YELLOW_MAX_AGE_MILLIS + 1L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, null, null, null, SEEN, nowJustPastRecencyBoundary);
+            lastOutputActivity, null, null, null, null, SEEN, nowJustPastRecencyBoundary);
 
         Assert.assertEquals(SessionNewActivityTier.GRAY, tier);
     }
@@ -105,7 +105,7 @@ public class SessionNewActivityTierRecencyTest {
         long now = lastOutputActivity + 100L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            lastOutputActivity, null, null, null, null, now);
+            lastOutputActivity, null, null, null, null, null, now);
 
         Assert.assertEquals(SessionNewActivityTier.YELLOW, tier);
     }
@@ -117,7 +117,7 @@ public class SessionNewActivityTierRecencyTest {
         long now = SEEN + 5L;
 
         SessionNewActivityTier tier = SessionNewActivityTier.resolve(
-            staleOutput, lastExplicitCall, null, null, SEEN, now);
+            staleOutput, null, lastExplicitCall, null, null, SEEN, now);
 
         Assert.assertEquals(SessionNewActivityTier.RED, tier);
     }
@@ -129,7 +129,7 @@ public class SessionNewActivityTierRecencyTest {
         long nowOneMinuteAfterOutput = lastOutputActivity + ONE_MINUTE_MILLIS;
 
         SessionNewActivityIndicator indicator = SessionNewActivityIndicator.indicatorFor(
-            lastOutputActivity, null, null, null, lastSeenAfterOutput, nowOneMinuteAfterOutput);
+            lastOutputActivity, null, null, null, null, lastSeenAfterOutput, nowOneMinuteAfterOutput);
 
         Assert.assertTrue(indicator.isVisible());
         Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
@@ -141,7 +141,7 @@ public class SessionNewActivityTierRecencyTest {
         long nowElevenMinutesAfterOutput = lastOutputActivity + (11L * ONE_MINUTE_MILLIS);
 
         SessionNewActivityIndicator indicator = SessionNewActivityIndicator.indicatorFor(
-            lastOutputActivity, null, null, null, SEEN, nowElevenMinutesAfterOutput);
+            lastOutputActivity, null, null, null, null, SEEN, nowElevenMinutesAfterOutput);
 
         Assert.assertTrue(indicator.isVisible());
         Assert.assertEquals(SessionNewActivityTier.GRAY, indicator.getTier());

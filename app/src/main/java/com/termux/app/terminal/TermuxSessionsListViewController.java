@@ -652,15 +652,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                                                             @Nullable String sessionName,
                                                             long nowMillis) {
         if (sessionName == null) {
-            return SessionNewActivityIndicator.indicatorFor(null, null, null, null, null, nowMillis);
+            return SessionNewActivityIndicator.indicatorFor(null, null, null, null, null, null, nowMillis);
         }
         return SessionNewActivityIndicator.indicatorFor(
             store.outActivityTimeMillisForDotTier(sessionName),
+            store.replyActivityTimeMillisForDotTier(sessionName),
             store.pendingCallToUserTimeMillis(sessionName),
             store.statuslineCallPendingTimeMillis(sessionName),
             store.getLastUserInputTimeMillis(sessionName),
-            store.getLastSeenTimeMillis(sessionName),
-            store.effectiveReplyTimeMillis(sessionName), nowMillis);
+            store.getLastSeenTimeMillis(sessionName), nowMillis);
     }
 
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {
