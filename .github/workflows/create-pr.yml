@@ -73,9 +73,24 @@ jobs:
           PR_ID=$(echo "$PR_DATA" | jq -r '.node_id')
           echo "node_id=$PR_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Enable Auto Merge for PR
+      - name: Check auto-merge capability
         if: steps.resolve_pr.outputs.pr_number
-        continue-on-error: true
+        id: check_auto_merge
+        run: |
+          REPO_DATA=$(curl -s \
+            -H "Authorization: token ${{ steps.app-token.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}")
+          ALLOW_AUTO_MERGE=$(echo "$REPO_DATA" | jq -r '.allow_auto_merge')
+          echo "allowed=$ALLOW_AUTO_MERGE" >> "$GITHUB_OUTPUT"
+          if [ "$ALLOW_AUTO_MERGE" != "true" ]; then
+            echo "Repository has allow_auto_merge disabled. Skipping auto-merge enablement."
+          fi
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Enable Auto Merge for PR
+        if: steps.resolve_pr.outputs.pr_number && steps.check_auto_merge.outputs.allowed == 'true'
         run: |
           RESPONSE=$(curl -s -X POST \
             -H "Authorization: bearer ${{ steps.app-token.outputs.token }}" \

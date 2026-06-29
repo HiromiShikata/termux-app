@@ -51,6 +51,8 @@ jobs:
   umino-job:
     if: >-
       github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]' &&
+      github.actor != 'app/dependabot' &&
       ((github.event_name != 'issue_comment') ||
        (github.event.comment.user.login == 'HiromiShikata' &&
         (contains(github.event.comment.body, '/createissue') ||
@@ -277,7 +279,9 @@ jobs:
     name: Check linked issues in pull requests
     if: >-
       (github.event_name == 'pull_request') &&
-      github.actor != 'dependabot[bot]'
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'renovate[bot]' &&
+      github.actor != 'app/dependabot'
     steps:
       - uses: step-security/harden-runner@v2
         with:
@@ -291,9 +295,11 @@ jobs:
           owner: HiromiShikata
       - uses: nearform-actions/github-action-check-linked-issues@7140e2e01aa0c18b8ac61bddf5e89abde1ca760e
         id: check-linked-issues
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        if: >-
+          github.event.pull_request.user.login != 'dependabot[bot]' &&
+          github.event.pull_request.user.login != 'app/dependabot'
         with:
-          exclude-branches: 'release/**, dependabot/**, project-common/**, renovate/**'
+          exclude-branches: 'release/**, dependabot/**, dependabot-**, project-common/**, renovate/**'
           github-token: ${{ steps.app-token.outputs.token }}
           loose-matching: true
           skip-linked-issues-check-label: ''

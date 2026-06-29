@@ -10,10 +10,14 @@ on:
     types:
       - opened
       - reopened
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
 
 jobs:
   close-manual-pr:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.user.type != 'Bot'
     steps:
       - uses: step-security/harden-runner@v2
         with:
@@ -24,23 +28,53 @@ jobs:
         with:
           client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
           private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
-      - name: Close manually created pull request
+      - name: Close manually created pull requests
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR_ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
-          PR_ACTOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_ACTOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          PR_ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
         run: |
-          if [ "$PR_ACTOR_TYPE" = "Bot" ]; then
-            echo "PR created by bot ($PR_ACTOR_LOGIN), skipping."
-            exit 0
+          ALLOWED_LOGINS="hs-bot-gh-app[bot] dependabot[bot] renovate[bot] github-actions[bot]"
+
+          is_manual_pr() {
+            local login="$1" type="$2"
+            [ "$type" = "Bot" ] && return 1
+            for allowed in $ALLOWED_LOGINS; do
+              [ "$login" = "$allowed" ] && return 1
+            done
+            return 0
+          }
+
+          close_with_comment() {
+            local pr_num="$1"
+            gh pr comment "$pr_num" --repo "$REPO" \
+              --body $'From: :robot: close-manual-prs\n\nThis repository is managed through an automated task-based workflow. Pull requests must originate from task issues and are created automatically by the CI system when a branch is pushed. Manually created pull requests are outside the scope of this workflow and will be closed automatically.\n\nIf you need to make changes, please create or use an existing task issue and push your branch — the CI system will create the pull request automatically.\n\nThank you for your understanding.'
+            gh pr close "$pr_num" --repo "$REPO"
+          }
+
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "Checking PR $PR_NUMBER by $PR_ACTOR_LOGIN (type: $PR_ACTOR_TYPE)."
+            if is_manual_pr "$PR_ACTOR_LOGIN" "$PR_ACTOR_TYPE"; then
+              echo "Closing PR $PR_NUMBER as manually created."
+              close_with_comment "$PR_NUMBER"
+            else
+              echo "PR $PR_NUMBER is from an allowed actor, skipping."
+            fi
+          else
+            echo "Running sweep for manually created open PRs in $REPO."
+            gh api "repos/$REPO/pulls" --paginate \
+              --jq '.[] | [(.number | tostring), .user.login, .user.type] | @tsv' \
+              > /tmp/open_prs.tsv
+            while IFS=$'\t' read -r pr_num login type; do
+              echo "Checking PR $pr_num by $login (type: $type)."
+              if is_manual_pr "$login" "$type"; then
+                echo "Closing PR $pr_num as manually created."
+                close_with_comment "$pr_num"
+              else
+                echo "PR $pr_num is from an allowed actor, skipping."
+              fi
+            done < /tmp/open_prs.tsv
           fi
-          case "$PR_ACTOR_LOGIN" in
-            "hs-bot-gh-app[bot]"|"dependabot[bot]"|"renovate[bot]"|"github-actions[bot]")
-              echo "PR created by allowed bot ($PR_ACTOR_LOGIN), skipping."
-              exit 0
-              ;;
-          esac
-          echo "PR created by human user ($PR_ACTOR_LOGIN), closing."
-          gh pr comment "$PR_NUMBER" --body "Thank you for your contribution. In this repository, pull requests must be created through the automated process by pushing a feature branch. Manually created pull requests are not accepted. Please push your branch and let the CI workflow create the pull request automatically."
-          gh pr close "$PR_NUMBER"
