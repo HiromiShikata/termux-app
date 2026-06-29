@@ -87,6 +87,36 @@ public class TermuxBrowserControllerPerTabWebViewWiringTest {
     }
 
     @Test
+    public void perTabChromeClientRoutesNewWindowLinksIntoANewTab() throws IOException {
+        String factoryBody = methodBody(
+            readControllerSource(), "private WebView createWebViewForTab(@NonNull BrowserTab tab)");
+
+        Assert.assertTrue(factoryBody.contains(
+            "public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,"));
+        Assert.assertTrue(factoryBody.contains("return openNewWindowAsTab(view, resultMsg);"));
+        Assert.assertTrue(factoryBody.contains("public void onCloseWindow(WebView window)"));
+        Assert.assertTrue(factoryBody.contains("closeTabForWebView(window);"));
+    }
+
+    @Test
+    public void newWindowHandlerCapturesTargetUrlAndOpensItInANewTabWithCurrentTabFallback()
+            throws IOException {
+        String openHelper = methodBody(
+            readControllerSource(),
+            "private boolean openNewWindowAsTab(@Nullable WebView requestingWebView, @Nullable Message resultMsg)");
+
+        Assert.assertTrue(openHelper.contains("new BrowserNewWindowUrlProbeWebViewClient("));
+        Assert.assertTrue(openHelper.contains("transport.setWebView(newWindowUrlProbeWebView)"));
+        Assert.assertTrue(openHelper.contains("resultMsg.sendToTarget()"));
+
+        String fallbackHelper = methodBody(
+            readControllerSource(),
+            "private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url)");
+        Assert.assertTrue(fallbackHelper.contains("if (openUrlInNewTab(url)) return true;"));
+        Assert.assertTrue(fallbackHelper.contains("requestingWebView.loadUrl(normalizeUrl(url))"));
+    }
+
+    @Test
     public void noSharedSingleWebViewFieldRemains() throws IOException {
         String source = readControllerSource();
 

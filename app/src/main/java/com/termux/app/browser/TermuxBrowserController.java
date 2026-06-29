@@ -10,6 +10,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Message;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -647,6 +648,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                                              FileChooserParams fileChooserParams) {
                 return showFileChooser(filePathCallback, fileChooserParams);
             }
+
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,
+                                          Message resultMsg) {
+                return openNewWindowAsTab(view, resultMsg);
+            }
+
+            @Override
+            public void onCloseWindow(WebView window) {
+                closeTabForWebView(window);
+            }
         });
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
@@ -669,6 +681,30 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private boolean isDisplayedTab(@NonNull BrowserTab tab) {
         return mWebViewHost.getDisplayedTab() == tab;
+    }
+
+    private boolean openNewWindowAsTab(@Nullable WebView requestingWebView, @Nullable Message resultMsg) {
+        if (resultMsg == null || requestingWebView == null) return false;
+        WebView newWindowUrlProbeWebView = new WebView(requestingWebView.getContext());
+        newWindowUrlProbeWebView.setWebViewClient(new BrowserNewWindowUrlProbeWebViewClient(
+            url -> openNewWindowUrlInNewTab(requestingWebView, url)));
+        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+        transport.setWebView(newWindowUrlProbeWebView);
+        resultMsg.sendToTarget();
+        return true;
+    }
+
+    private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url) {
+        if (openUrlInNewTab(url)) return true;
+        requestingWebView.loadUrl(normalizeUrl(url));
+        return true;
+    }
+
+    private void closeTabForWebView(@Nullable WebView webView) {
+        if (webView == null) return;
+        BrowserTab tab = mWebViewHost.findTabForWebView(webView);
+        if (tab == null) return;
+        closeTab(tab);
     }
 
     private boolean showFileChooser(@Nullable ValueCallback<Uri[]> filePathCallback,
@@ -1203,15 +1239,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         persistSessionTabs();
     }
 
-    public void openUrlInNewTab(@NonNull String url) {
+    public boolean openUrlInNewTab(@NonNull String url) {
         String sessionHandle = mCurrentSessionHandle;
         if (sessionHandle == null) {
             TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return;
+            if (currentSession == null) return false;
             sessionHandle = currentSession.mHandle;
         }
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         openTab(tab);
+        return true;
     }
 
     public void openUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {

@@ -105,6 +105,14 @@ public class BrowserWebViewConfiguratorTest {
     }
 
     @Test
+    public void multipleWindowsSupportIsEnabledSoNewTabLinksReachOnCreateWindow() {
+        WebSettings settings = newSettings();
+        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        Assert.assertTrue(settings.supportMultipleWindows());
+        Assert.assertTrue(settings.getJavaScriptCanOpenWindowsAutomatically());
+    }
+
+    @Test
     public void mobileModeWithNullDefaultUserAgentStillAppliesCleanMobileUserAgent() {
         WebSettings settings = newSettings();
         settings.setUserAgentString(null);
