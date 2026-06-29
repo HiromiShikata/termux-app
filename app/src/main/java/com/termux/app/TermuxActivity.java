@@ -905,9 +905,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions();
     }
 
+    public void reloadSessionsAndRefreshAllState() {
+        loadSessionsFromDefinition();
+        reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline();
+    }
+
     public void reconnectDeadDefinitionBackedSessions() {
+        reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline();
+    }
+
+    private void reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline() {
         if (mTermuxTerminalSessionActivityClient != null)
-            mTermuxTerminalSessionActivityClient.reconnectDeadDefinitionBackedSessionsInBackground();
+            mTermuxTerminalSessionActivityClient.reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline();
     }
 
     public void prewarmSessionDefinitionDocument() {

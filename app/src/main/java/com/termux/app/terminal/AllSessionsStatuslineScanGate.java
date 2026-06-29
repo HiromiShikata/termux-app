@@ -18,6 +18,10 @@ public final class AllSessionsStatuslineScanGate {
         return true;
     }
 
+    public void markScanned(@NonNull String sessionHandle, long contentVersion) {
+        mLastScannedContentVersionBySession.put(sessionHandle, contentVersion);
+    }
+
     public void forget(@NonNull String sessionHandle) {
         mLastScannedContentVersionBySession.remove(sessionHandle);
     }

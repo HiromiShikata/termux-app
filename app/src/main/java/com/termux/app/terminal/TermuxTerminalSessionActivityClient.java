@@ -357,6 +357,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * It is not on the per-keystroke path, so it does not affect input latency.
      */
     private void repopulateStatuslineTimesForAllSessions() {
+        repopulateStatuslineTimesForAllSessions(false);
+    }
+
+    /**
+     * The {@code forceRescan} variant bypasses the {@link AllSessionsStatuslineScanGate}
+     * content-version skip so every session's statusline is read and reparsed even when its screen has
+     * not changed since the previous pass. The ordinary tick keeps the gate so an idle session whose
+     * screen is unchanged is skipped, but the on-demand reload press and the periodic reconnect tick
+     * must repopulate every session's call/out/reply tier regardless of the gate, because a session
+     * whose store entry was never populated keeps an unchanged screen content version and would
+     * otherwise be skipped forever and stay on the uncolored tier. The gate's recorded version is still
+     * updated on a forced pass so a later gated tick is not redundantly forced to rescan the same
+     * unchanged screen. The transcript materialization and the regex parse stay off the main thread via
+     * {@link #parseAndApplyStatuslineUpdatesOffThread}.
+     */
+    private void repopulateStatuslineTimesForAllSessions(boolean forceRescan) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
@@ -371,8 +387,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (emulator == null) continue;
             TerminalBuffer screen = emulator.getScreen();
             if (screen == null) continue;
-            if (!mAllSessionsStatuslineScanGate.shouldScan(
-                    session.mHandle, emulator.getScreenContentVersion())) {
+            long screenContentVersion = emulator.getScreenContentVersion();
+            if (forceRescan) {
+                mAllSessionsStatuslineScanGate.markScanned(session.mHandle, screenContentVersion);
+            } else if (!mAllSessionsStatuslineScanGate.shouldScan(session.mHandle, screenContentVersion)) {
                 continue;
             }
             sessionScreenTexts.add(new AllSessionsStatuslineParser.SessionScreenText(
@@ -1450,6 +1468,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 reconnectDeadSessionPreservingDisplayedSession(deadSession);
             }
         }
+    }
+
+    /**
+     * The on-demand "refresh everything to the current state" action shared by the reload / Load
+     * Sessions button press and the periodic foreground reconnect tick. It reconnects every dead /
+     * finished definition-backed session (healthy live sessions are left untouched by {@link
+     * DeadSessionReconnectPlanner}), then force-refreshes the latest call/out/reply statusline state for
+     * every session so each one lands on its correct tier instead of the uncolored tier. A
+     * freshly-reconnected session has no rendered emulator at the instant it is created, so its
+     * statusline cannot be read yet; the rescan is therefore both run immediately for the sessions that
+     * are already live and posted again after {@link #ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS} so the
+     * reconnected sessions are picked up once their emulators have rendered, reusing the same
+     * delayed-post sequencing the on-load path uses rather than blocking the main thread waiting for the
+     * reconnected sessions to come up. The forced rescan bypasses the content-version skip-gate while
+     * keeping the heavy transcript read and parse off the main thread.
+     */
+    public void reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline() {
+        reconnectDeadDefinitionBackedSessionsInBackground();
+        repopulateStatuslineTimesForAllSessions(true);
+        mMainThreadHandler.postDelayed(() -> repopulateStatuslineTimesForAllSessions(true),
+            ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS);
     }
 
     private void reconnectDeadSessionPreservingDisplayedSession(@NonNull TerminalSession deadSession) {
