@@ -187,4 +187,53 @@ public class SessionNameStylingTest {
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
     }
+
+    @Test
+    public void sessionTitleReceivesARelativeSizeSmallerThanOneSoItFitsAsSecondaryInformation() {
+        String sessionName = "mySession";
+        String sessionTitle = "\nterminal title";
+        String fullTitle = sessionName + sessionTitle;
+        SpannableString styled = new SpannableString(fullTitle);
+        int titleStart = sessionName.length();
+        int titleEnd = fullTitle.length();
+
+        TermuxSessionsListViewController.applySessionTitleStyling(
+            styled, titleStart, titleEnd, new StyleSpan(Typeface.ITALIC));
+
+        RelativeSizeSpan[] sizeSpans = styled.getSpans(titleStart, titleEnd, RelativeSizeSpan.class);
+        Assert.assertEquals(1, sizeSpans.length);
+        Assert.assertEquals(0.75f, sizeSpans[0].getSizeChange(), 0.0001f);
+        Assert.assertTrue(sizeSpans[0].getSizeChange() < 1.0f);
+        Assert.assertEquals(titleStart, styled.getSpanStart(sizeSpans[0]));
+        Assert.assertEquals(titleEnd, styled.getSpanEnd(sizeSpans[0]));
+    }
+
+    @Test
+    public void sessionTitleStylingAppliesToItalicSpanOnTheTitleRange() {
+        String sessionName = "mySession";
+        String sessionTitle = "\nterminal title";
+        String fullTitle = sessionName + sessionTitle;
+        SpannableString styled = new SpannableString(fullTitle);
+        StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
+        int titleStart = sessionName.length();
+        int titleEnd = fullTitle.length();
+
+        TermuxSessionsListViewController.applySessionTitleStyling(
+            styled, titleStart, titleEnd, italicSpan);
+
+        StyleSpan[] styleSpans = styled.getSpans(titleStart, titleEnd, StyleSpan.class);
+        Assert.assertEquals(1, styleSpans.length);
+        Assert.assertEquals(Typeface.ITALIC, styleSpans[0].getStyle());
+    }
+
+    @Test
+    public void sessionTitleStylingDoesNothingWhenStartIsNegative() {
+        SpannableString styled = new SpannableString("mySession\nterminal title");
+
+        TermuxSessionsListViewController.applySessionTitleStyling(
+            styled, -1, styled.length(), new StyleSpan(Typeface.ITALIC));
+
+        Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
+        Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
+    }
 }

@@ -977,6 +977,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         styled.setSpan(boldSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
+    static void applySessionTitleStyling(@NonNull SpannableString styled, int start, int end,
+                                          @NonNull StyleSpan italicSpan) {
+        if (start < 0 || end <= start) {
+            return;
+        }
+        styled.setSpan(italicSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        styled.setSpan(new RelativeSizeSpan(SESSION_TITLE_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
     @SuppressLint("SetTextI18n")
     private void bindSessionView(@NonNull SessionHierarchyRow row, @NonNull View sessionRowView, int position) {
         applySessionRowGroupDividerVisibility(sessionRowView, position);
@@ -1051,10 +1060,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             fullSessionTitleStyled.setSpan(new RelativeSizeSpan(DEFINITION_TITLE_RELATIVE_SIZE), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(definitionTitleColor), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        if (sessionTitleStart >= 0) {
-            fullSessionTitleStyled.setSpan(italicSpan, sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            fullSessionTitleStyled.setSpan(new RelativeSizeSpan(SESSION_TITLE_RELATIVE_SIZE), sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
+        applySessionTitleStyling(fullSessionTitleStyled, sessionTitleStart, sessionTitleEnd, italicSpan);
         if (explicitCallReasonStart >= 0) {
             int reasonColor = ContextCompat.getColor(mActivity, R.color.session_explicit_call_reason_text);
             applyExplicitCallReasonStyling(fullSessionTitleStyled, explicitCallReasonStart, explicitCallReasonEnd, boldSpan);
