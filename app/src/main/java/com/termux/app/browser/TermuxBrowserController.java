@@ -140,6 +140,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserProjectActionUrlResolver mProjectActionUrlResolver;
 
+    private final BrowserProjectManagerOverviewUrlResolver mProjectManagerOverviewUrlResolver;
+
     private final View mProjectOverviewActionsView;
 
     private BrowserBulkOpenController mBulkOpenController;
@@ -198,6 +200,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mTabsListView = activity.findViewById(R.id.browser_tabs_list);
         this.mProjectNameResolver = new BrowserProjectNameResolver(activity::getSessionDefinitionEntries);
         this.mProjectActionUrlResolver = new BrowserProjectActionUrlResolver(activity::getSessionDefinitionEntries);
+        this.mProjectManagerOverviewUrlResolver =
+            new BrowserProjectManagerOverviewUrlResolver(activity::getSessionDefinitionEntries);
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         HorizontalScrollView tabStripScroll = activity.findViewById(R.id.browser_tab_strip_scroll);
         LinearLayout tabStripContainer = activity.findViewById(R.id.browser_tab_strip_container);
@@ -1256,6 +1260,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
+        String managerOverviewUrl =
+            mProjectManagerOverviewUrlResolver.resolveOverviewUrlForManagerSessionName(mCurrentSessionName);
+        if (managerOverviewUrl != null) {
+            openUrlInNewTab(managerOverviewUrl, BrowserViewMode.DESKTOP);
+            return;
+        }
         TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
             R.string.action_browser_open_url_confirm, text -> {
                 if (mCurrentSessionHandle == null) return;
