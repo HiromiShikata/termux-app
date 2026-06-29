@@ -4,7 +4,7 @@ import android.content.Context;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -21,14 +21,15 @@ public class ApkUpdateFloatingIndicatorViewTest {
     private static final class ButtonBackedIndicatorView
         implements ApkUpdateFloatingIndicatorController.IndicatorView {
 
-        private final ExtendedFloatingActionButton indicator;
+        private final FloatingActionButton indicator;
 
-        ButtonBackedIndicatorView(ExtendedFloatingActionButton indicator) {
+        ButtonBackedIndicatorView(FloatingActionButton indicator) {
             this.indicator = indicator;
         }
 
         @Override
         public void showUpdateAvailable(String latestVersionName, Runnable onTapped) {
+            indicator.setContentDescription("Update available, version " + latestVersionName);
             indicator.setOnClickListener(view -> onTapped.run());
             indicator.setVisibility(View.VISIBLE);
         }
@@ -40,17 +41,17 @@ public class ApkUpdateFloatingIndicatorViewTest {
         }
     }
 
-    private ExtendedFloatingActionButton newIndicatorButton() {
+    private FloatingActionButton newIndicatorButton() {
         Context themedContext = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             com.google.android.material.R.style.Theme_MaterialComponents_DayNight);
-        ExtendedFloatingActionButton indicator = new ExtendedFloatingActionButton(themedContext);
+        FloatingActionButton indicator = new FloatingActionButton(themedContext);
         indicator.setVisibility(View.GONE);
         return indicator;
     }
 
     @Test
-    public void showsButtonWhenUpdateAvailableAndTapStartsUpdate() {
-        ExtendedFloatingActionButton indicator = newIndicatorButton();
+    public void showsButtonWithContentDescriptionWhenUpdateAvailableAndTapStartsUpdate() {
+        FloatingActionButton indicator = newIndicatorButton();
         List<ApkUpdateAvailability> startedUpdates = new ArrayList<>();
         ApkUpdateFloatingIndicatorController controller = new ApkUpdateFloatingIndicatorController(
             new ButtonBackedIndicatorView(indicator), startedUpdates::add);
@@ -61,17 +62,34 @@ public class ApkUpdateFloatingIndicatorViewTest {
 
         Assert.assertEquals(View.VISIBLE, indicator.getVisibility());
         Assert.assertTrue(indicator.hasOnClickListeners());
+        Assert.assertEquals("Update available, version 0.121.0", indicator.getContentDescription());
 
         indicator.performClick();
 
         Assert.assertEquals(1, startedUpdates.size());
         Assert.assertSame(availability, startedUpdates.get(0));
-        Assert.assertEquals(View.GONE, indicator.getVisibility());
+        Assert.assertEquals(View.VISIBLE, indicator.getVisibility());
+        Assert.assertTrue(indicator.hasOnClickListeners());
+    }
+
+    @Test
+    public void buttonStaysVisibleWhileUpdateRemainsAvailable() {
+        FloatingActionButton indicator = newIndicatorButton();
+        ApkUpdateFloatingIndicatorController controller = new ApkUpdateFloatingIndicatorController(
+            new ButtonBackedIndicatorView(indicator), availability -> { });
+        ApkUpdateAvailability availability =
+            ApkUpdateAvailability.available("0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk");
+
+        controller.onUpdateAvailable(availability);
+        controller.onUpdateAvailable(availability);
+
+        Assert.assertEquals(View.VISIBLE, indicator.getVisibility());
+        Assert.assertTrue(indicator.hasOnClickListeners());
     }
 
     @Test
     public void hidesButtonWhenUpToDate() {
-        ExtendedFloatingActionButton indicator = newIndicatorButton();
+        FloatingActionButton indicator = newIndicatorButton();
         indicator.setVisibility(View.VISIBLE);
         ApkUpdateFloatingIndicatorController controller = new ApkUpdateFloatingIndicatorController(
             new ButtonBackedIndicatorView(indicator), availability -> { });

@@ -44,9 +44,6 @@ public final class ApkUpdateFloatingIndicatorController {
         if (pendingUpdate == null) {
             return;
         }
-        ApkUpdateAvailability availability = pendingUpdate;
-        pendingUpdate = null;
-        indicatorView.hide();
-        updateTrigger.startUpdate(availability);
+        updateTrigger.startUpdate(pendingUpdate);
     }
 }

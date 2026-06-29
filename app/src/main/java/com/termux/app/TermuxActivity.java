@@ -28,7 +28,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
@@ -497,7 +497,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         @Override
         public void showUpdateAvailable(String latestVersionName, Runnable onTapped) {
-            ExtendedFloatingActionButton indicator = findViewById(R.id.apk_update_floating_indicator);
+            FloatingActionButton indicator = findViewById(R.id.apk_update_floating_indicator);
             if (indicator == null) return;
             indicator.setContentDescription(getString(
                 R.string.apk_update_floating_indicator_content_description, latestVersionName));
@@ -507,7 +507,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         @Override
         public void hide() {
-            ExtendedFloatingActionButton indicator = findViewById(R.id.apk_update_floating_indicator);
+            FloatingActionButton indicator = findViewById(R.id.apk_update_floating_indicator);
             if (indicator == null) return;
             indicator.setOnClickListener(null);
             indicator.setVisibility(View.GONE);
