@@ -1,8 +1,10 @@
 package com.termux.app.browser;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
+import android.view.TouchDelegate;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -269,5 +271,76 @@ public class BrowserTabFaviconStripControllerTest {
 
         Assert.assertNotNull(firstFavicon.getDrawable());
         Assert.assertNotNull(secondFavicon.getDrawable());
+    }
+
+    @Test
+    public void closeButtonCornerTargetReachesMaterialMinimumAnchoredTopRightClearOfFavicon() {
+        Rect closeButtonBounds = new Rect(170, 0, 185, 15);
+        Rect faviconBounds = new Rect(9, 9, 41, 41);
+        int targetSizePx = 48;
+
+        Rect cornerTarget = BrowserTabFaviconStripController
+            .computeCloseButtonCornerTarget(closeButtonBounds, faviconBounds, targetSizePx);
+
+        Assert.assertTrue(
+            "Corner touch target width must reach the Material minimum",
+            cornerTarget.width() >= targetSizePx);
+        Assert.assertTrue(
+            "Corner touch target height must reach the Material minimum",
+            cornerTarget.height() >= targetSizePx);
+        Assert.assertEquals(
+            "Corner touch target must stay pinned to the close button right edge",
+            closeButtonBounds.right, cornerTarget.right);
+        Assert.assertEquals(
+            "Corner touch target must stay pinned to the close button top edge",
+            closeButtonBounds.top, cornerTarget.top);
+        Assert.assertTrue(
+            "Corner touch target must not cover the favicon glyph select area",
+            cornerTarget.left >= faviconBounds.right);
+    }
+
+    @Test
+    public void closeButtonCornerTargetExtendsToFaviconEdgeWhenGapWiderThanMinimum() {
+        Rect closeButtonBounds = new Rect(300, 0, 315, 15);
+        Rect faviconBounds = new Rect(9, 9, 41, 41);
+        int targetSizePx = 48;
+
+        Rect cornerTarget = BrowserTabFaviconStripController
+            .computeCloseButtonCornerTarget(closeButtonBounds, faviconBounds, targetSizePx);
+
+        Assert.assertEquals(
+            "Corner touch target left edge must clear the favicon and fill the empty gap",
+            faviconBounds.right, cornerTarget.left);
+        Assert.assertTrue(
+            "Widened corner touch target still meets the Material minimum",
+            cornerTarget.width() >= targetSizePx);
+    }
+
+    @Test
+    public void eachTabItemReceivesACornerCloseTouchDelegateAfterLayout() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab firstTab = new BrowserTab(SESSION, "https://first.example/");
+        BrowserTab secondTab = new BrowserTab(SESSION, "https://second.example/");
+
+        controllerFor(listener, scrollView, container)
+            .update(Arrays.asList(firstTab, secondTab), firstTab);
+
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.AT_MOST);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.AT_MOST);
+        container.measure(widthSpec, heightSpec);
+        container.layout(0, 0, container.getMeasuredWidth(), container.getMeasuredHeight());
+
+        View firstItem = container.getChildAt(0);
+        TouchDelegate firstDelegate = firstItem.getTouchDelegate();
+        Assert.assertNotNull(
+            "Each tab chip must expose a corner close touch delegate", firstDelegate);
+
+        View secondItem = container.getChildAt(1);
+        Assert.assertNotNull(
+            "Each tab chip must expose a corner close touch delegate",
+            secondItem.getTouchDelegate());
     }
 }

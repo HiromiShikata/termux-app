@@ -2,11 +2,15 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:padding="4dp">
+    android:minWidth="76dp"
+    android:minHeight="48dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
         android:orientation="vertical">
 
         <ImageView
