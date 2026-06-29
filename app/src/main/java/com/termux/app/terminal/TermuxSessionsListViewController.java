@@ -637,7 +637,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             store.pendingCallToUserTimeMillis(sessionName),
             store.statuslineCallPendingTimeMillis(sessionName),
             store.getLastUserInputTimeMillis(sessionName),
-            store.getLastSeenTimeMillis(sessionName), nowMillis);
+            store.getLastSeenTimeMillis(sessionName),
+            store.effectiveReplyTimeMillis(sessionName), nowMillis);
     }
 
     static boolean isSessionIndexInRange(int sessionIndex, int sessionCount) {

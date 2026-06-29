@@ -446,6 +446,7 @@ public class SessionNewActivityStore {
             statuslineCallPendingTimeMillis(sessionName),
             getLastUserInputTimeMillis(sessionName),
             getLastSeenTimeMillis(sessionName),
+            effectiveReplyTimeMillis(sessionName),
             nowMillis);
     }
 
