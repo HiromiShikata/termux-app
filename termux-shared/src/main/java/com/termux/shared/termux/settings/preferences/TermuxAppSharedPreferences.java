@@ -430,6 +430,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_PREVIEW_FIRST, value, false);
     }
 
+    public boolean isSessionSwitchOverlayEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_OVERLAY_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_SWITCH_OVERLAY_ENABLED);
+    }
+
+    public void setSessionSwitchOverlayEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_OVERLAY_ENABLED, value, false);
+    }
+
 
     public String getDisabledSessionNamesText() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_DISABLED_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_DISABLED_SESSION_NAMES, false);

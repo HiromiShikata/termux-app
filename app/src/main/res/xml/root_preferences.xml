@@ -61,6 +61,12 @@
         app:summary="@string/session_switch_preview_first_summary"
         app:defaultValue="false"/>
 
+    <SwitchPreferenceCompat
+        app:key="session_switch_overlay_enabled"
+        app:title="@string/session_switch_overlay_enabled_title"
+        app:summary="@string/session_switch_overlay_enabled_summary"
+        app:defaultValue="false"/>
+
     <Preference
         app:key="crash_log_viewer"
         app:title="@string/action_open_crash_log_viewer"
