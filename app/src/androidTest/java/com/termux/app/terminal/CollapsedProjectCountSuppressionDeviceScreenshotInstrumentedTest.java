@@ -7,15 +7,18 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.os.Environment;
 import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.TextView;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
 
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -37,6 +40,10 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
     private static final int ROW_WIDTH = 720;
     private static final int ROW_HEIGHT = 64;
     private static final int ROW_GAP = 6;
+
+    @Rule
+    public GrantPermissionRule writeExternalStoragePermissionRule =
+        GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
     private static View inflateProjectHeaderRow(Context context, String titleText, boolean collapsed) {
         View row = View.inflate(context, R.layout.item_terminal_sessions_project_header, null);
@@ -119,12 +126,22 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
         drawAtRow(canvas, collapsedRow, ROW_HEIGHT + ROW_GAP);
         drawAtRow(canvas, expandedRow, (ROW_HEIGHT + ROW_GAP) * 2);
 
-        File outDir = appContext.getExternalFilesDir(null);
+        File outDir = sharedScreenshotDirectory();
         File out = new File(outDir, "collapsed-project-count-suppression.png");
         try (FileOutputStream stream = new FileOutputStream(out)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
         }
         assertTrue(out.exists() && out.length() > 0);
+    }
+
+    private static File sharedScreenshotDirectory() {
+        File directory = new File(Environment.getExternalStorageDirectory(),
+            "termux-instrumentation-screenshots");
+        if (!directory.exists()) {
+            assertTrue("shared screenshot directory must be creatable so the rendered PNG survives "
+                + "the post-test APK uninstall and can be pulled as a CI artifact", directory.mkdirs());
+        }
+        return directory;
     }
 
     private static void drawAtRow(Canvas canvas, View view, int offsetY) {
