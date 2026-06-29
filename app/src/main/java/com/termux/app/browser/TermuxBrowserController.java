@@ -2,7 +2,6 @@ package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -14,7 +13,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.Message;
 import android.text.Editable;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -30,7 +28,6 @@ import android.webkit.CookieManager;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
-import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.ArrayAdapter;
@@ -75,6 +72,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -249,7 +247,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         });
 
-    private ValueCallback<Uri[]> mPendingFileChooserCallback;
+    private final Map<BrowserTab, BrowserCoreWebChromeClient> mChromeClientByTab = new IdentityHashMap<>();
 
     private final BrowserMediaCapturePermissionController mMediaCapturePermissionController;
 
@@ -908,72 +906,67 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         }));
 
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                mWebChromeCallbackGuard.run("onProgressChanged", () -> {
+        BrowserCoreWebChromeClient chromeClient = new BrowserCoreWebChromeClient(
+            new BrowserCoreWebChromeClient.Host() {
+                @NonNull
+                @Override
+                public Context getDialogContext() {
+                    return mActivity;
+                }
+
+                @Override
+                public void launchFileChooser(@NonNull Intent intent) {
+                    mActivity.startActivityForResult(intent, REQUEST_BROWSER_FILE_CHOOSER);
+                }
+
+                @Override
+                public void onProgressChanged(@NonNull BrowserPageLoadProgressState progressState) {
                     if (!isDisplayedTab(tab)) return;
-                    BrowserPageLoadProgressState progressState =
-                        BrowserPageLoadProgressState.forProgress(newProgress);
                     if (progressState.isVisible()) {
                         showPageLoadProgress(progressState.getProgress());
                     } else {
                         hidePageLoadProgress();
                     }
-                });
-            }
+                }
 
-            @Override
-            public void onReceivedTitle(WebView view, String title) {
-                mWebChromeCallbackGuard.run("onReceivedTitle", () -> {
+                @Override
+                public void onReceivedTitle(@Nullable String title) {
                     tab.setTitle(title);
                     recordTabInHistory(tab);
                     if (isDisplayedTab(tab)) updatePageHeader();
                     notifyTabsUpdated();
                     persistSessionTabs();
-                });
-            }
+                }
 
-            @Override
-            public void onReceivedIcon(WebView view, Bitmap icon) {
-                mWebChromeCallbackGuard.run("onReceivedIcon", () -> {
-                    if (icon == null) return;
+                @Override
+                public void onReceivedIcon(@NonNull Bitmap icon) {
                     tab.setFavicon(icon);
                     notifyTabsUpdated();
-                });
-            }
+                }
 
-            @Override
-            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePathCallback,
-                                             FileChooserParams fileChooserParams) {
-                return mWebChromeCallbackGuard.runReturning("onShowFileChooser", false,
-                    () -> showFileChooser(filePathCallback, fileChooserParams));
-            }
+                @Override
+                public boolean openNewTabForUrl(@NonNull String url) {
+                    openUrlInNewTab(url);
+                    return true;
+                }
 
-            @Override
-            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,
-                                          Message resultMsg) {
-                return mWebChromeCallbackGuard.runReturning("onCreateWindow", false,
-                    () -> openNewWindowAsTab(view, resultMsg));
-            }
+                @Override
+                public void onCloseWindow(@Nullable WebView window) {
+                    closeTabForWebView(window);
+                }
 
-            @Override
-            public void onCloseWindow(WebView window) {
-                mWebChromeCallbackGuard.run("onCloseWindow", () -> closeTabForWebView(window));
-            }
+                @Override
+                public void onPermissionRequest(@NonNull PermissionRequest request) {
+                    mMediaCapturePermissionController.onPermissionRequest(request);
+                }
 
-            @Override
-            public void onPermissionRequest(PermissionRequest request) {
-                mWebChromeCallbackGuard.run("onPermissionRequest",
-                    () -> mMediaCapturePermissionController.onPermissionRequest(request));
-            }
-
-            @Override
-            public void onPermissionRequestCanceled(PermissionRequest request) {
-                mWebChromeCallbackGuard.run("onPermissionRequestCanceled",
-                    () -> mMediaCapturePermissionController.onPermissionRequestCanceled(request));
-            }
-        });
+                @Override
+                public void onPermissionRequestCanceled(@NonNull PermissionRequest request) {
+                    mMediaCapturePermissionController.onPermissionRequestCanceled(request);
+                }
+            });
+        mChromeClientByTab.put(tab, chromeClient);
+        webView.setWebChromeClient(chromeClient);
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
             mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype));
@@ -1019,23 +1012,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             requestCode, permissions, grantResults);
     }
 
-    private boolean openNewWindowAsTab(@Nullable WebView requestingWebView, @Nullable Message resultMsg) {
-        if (resultMsg == null || requestingWebView == null) return false;
-        WebView newWindowUrlProbeWebView = new WebView(requestingWebView.getContext());
-        newWindowUrlProbeWebView.setWebViewClient(new BrowserNewWindowUrlProbeWebViewClient(
-            url -> openNewWindowUrlInNewTab(requestingWebView, url)));
-        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-        transport.setWebView(newWindowUrlProbeWebView);
-        resultMsg.sendToTarget();
-        return true;
-    }
-
-    private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url) {
-        if (openUrlInNewTab(url)) return true;
-        requestingWebView.loadUrl(normalizeUrl(url));
-        return true;
-    }
-
     private void closeTabForWebView(@Nullable WebView webView) {
         if (webView == null) return;
         BrowserTab tab = mWebViewHost.findTabForWebView(webView);
@@ -1043,50 +1019,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         closeTab(tab);
     }
 
-    private boolean showFileChooser(@Nullable ValueCallback<Uri[]> filePathCallback,
-                                    @Nullable WebChromeClient.FileChooserParams fileChooserParams) {
-        if (filePathCallback == null) {
-            return false;
-        }
-        cancelPendingFileChooser();
-        Intent intent = buildFileChooserIntent(fileChooserParams);
-        try {
-            mPendingFileChooserCallback = filePathCallback;
-            mActivity.startActivityForResult(intent, REQUEST_BROWSER_FILE_CHOOSER);
-            return true;
-        } catch (ActivityNotFoundException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open file chooser", e);
-            mPendingFileChooserCallback = null;
-            filePathCallback.onReceiveValue(null);
-            return false;
-        }
-    }
-
-    @NonNull
-    private Intent buildFileChooserIntent(@Nullable WebChromeClient.FileChooserParams fileChooserParams) {
-        if (fileChooserParams != null) {
-            boolean allowMultiple = fileChooserParams.getMode()
-                == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE;
-            return BrowserFileChooserResult.buildIntent(allowMultiple, fileChooserParams.getAcceptTypes());
-        }
-        return BrowserFileChooserResult.buildIntent(false, null);
-    }
 
     public void deliverFileChooserResult(int resultCode, @Nullable Intent data) {
-        ValueCallback<Uri[]> callback = mPendingFileChooserCallback;
-        mPendingFileChooserCallback = null;
-        if (callback == null) {
-            return;
-        }
-        callback.onReceiveValue(BrowserFileChooserResult.parse(resultCode, data));
-    }
-
-    private void cancelPendingFileChooser() {
-        ValueCallback<Uri[]> callback = mPendingFileChooserCallback;
-        mPendingFileChooserCallback = null;
-        if (callback != null) {
-            callback.onReceiveValue(null);
-        }
+        BrowserTab displayedTab = mWebViewHost.getDisplayedTab();
+        if (displayedTab == null) return;
+        BrowserCoreWebChromeClient chromeClient = mChromeClientByTab.get(displayedTab);
+        if (chromeClient == null) return;
+        chromeClient.deliverFileChooserResult(resultCode, data);
     }
 
     private void applyDarkModeRendering(@NonNull WebSettings settings) {
@@ -1566,6 +1505,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                                  @NonNull BrowserSessionRemovalReason reason) {
         if (session.mHandle.equals(mRenderedFrame.getOwnerSessionHandle()))
             blankFrame();
+        for (BrowserTab tab : mTabManager.getTabs(session.mHandle)) {
+            BrowserCoreWebChromeClient chromeClient = mChromeClientByTab.remove(tab);
+            if (chromeClient != null) chromeClient.cancelPendingFileChooser();
+        }
         mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
         mRecentlyClosedTabs.removeSession(session.mHandle);
@@ -1722,6 +1665,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void closeTab(@NonNull BrowserTab tab) {
         rememberClosedTab(tab);
         recordTabClosedInHistory(tab);
+        BrowserCoreWebChromeClient chromeClient = mChromeClientByTab.remove(tab);
+        if (chromeClient != null) chromeClient.cancelPendingFileChooser();
         mTabManager.removeTab(tab);
         mWebViewHost.removeTab(tab);
         if (mRenderedFrame.isDisplaying(tab)) blankFrame();
@@ -2096,7 +2041,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void onActivityDestroy() {
         flushTabHistory();
         mTabHistoryPersistThread.quitSafely();
-        cancelPendingFileChooser();
+        for (BrowserCoreWebChromeClient chromeClient : mChromeClientByTab.values()) {
+            chromeClient.cancelPendingFileChooser();
+        }
+        mChromeClientByTab.clear();
         mDownloadController.unregisterDownloadCompleteReceiver();
         mWebViewHost.destroyAll();
     }

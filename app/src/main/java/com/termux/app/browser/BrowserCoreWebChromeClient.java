@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Message;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -37,6 +38,12 @@ public final class BrowserCoreWebChromeClient extends WebChromeClient {
         default boolean openNewTabForUrl(@NonNull String url) {
             return false;
         }
+
+        default void onCloseWindow(@Nullable WebView window) {}
+
+        default void onPermissionRequest(@NonNull PermissionRequest request) {}
+
+        default void onPermissionRequestCanceled(@NonNull PermissionRequest request) {}
     }
 
     private final Host mHost;
@@ -92,6 +99,21 @@ public final class BrowserCoreWebChromeClient extends WebChromeClient {
         transport.setWebView(hrefProbeWebView);
         resultMsg.sendToTarget();
         return true;
+    }
+
+    @Override
+    public void onCloseWindow(WebView window) {
+        mHost.onCloseWindow(window);
+    }
+
+    @Override
+    public void onPermissionRequest(PermissionRequest request) {
+        if (request != null) mHost.onPermissionRequest(request);
+    }
+
+    @Override
+    public void onPermissionRequestCanceled(PermissionRequest request) {
+        if (request != null) mHost.onPermissionRequestCanceled(request);
     }
 
     @Override
