@@ -1060,7 +1060,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             fullSessionTitleStyled.setSpan(new RelativeSizeSpan(DEFINITION_TITLE_RELATIVE_SIZE), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             fullSessionTitleStyled.setSpan(new ForegroundColorSpan(definitionTitleColor), definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
-        applySessionTitleStyling(fullSessionTitleStyled, sessionTitleStart, sessionTitleEnd, italicSpan);
+        applySessionTitleStyling(fullSessionTitleStyled, sessionTitleStart, sessionTitleEnd, new StyleSpan(Typeface.ITALIC));
         if (explicitCallReasonStart >= 0) {
             int reasonColor = ContextCompat.getColor(mActivity, R.color.session_explicit_call_reason_text);
             applyExplicitCallReasonStyling(fullSessionTitleStyled, explicitCallReasonStart, explicitCallReasonEnd, boldSpan);

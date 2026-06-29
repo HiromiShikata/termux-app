@@ -236,4 +236,29 @@ public class SessionNameStylingTest {
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
     }
+
+    @Test
+    public void bellNotificationLabelKeepsItalicWhenSessionTitleIsAlsoPresent() {
+        String sessionName = "mySession";
+        String bellLabel = " 🔔 5秒前";
+        String sessionTitle = "\nterminal title";
+        String fullText = sessionName + bellLabel + sessionTitle;
+        SpannableString styled = new SpannableString(fullText);
+        int bellStart = sessionName.length();
+        int bellEnd = bellStart + bellLabel.length();
+        int titleStart = bellEnd;
+        int titleEnd = fullText.length();
+
+        TermuxSessionsListViewController.applyBellNotificationLabelStyling(
+            styled, bellStart, bellEnd, new StyleSpan(Typeface.ITALIC));
+        TermuxSessionsListViewController.applySessionTitleStyling(
+            styled, titleStart, titleEnd, new StyleSpan(Typeface.ITALIC));
+
+        StyleSpan[] bellSpans = styled.getSpans(bellStart, bellEnd, StyleSpan.class);
+        Assert.assertEquals(1, bellSpans.length);
+        Assert.assertEquals(Typeface.ITALIC, bellSpans[0].getStyle());
+        StyleSpan[] titleSpans = styled.getSpans(titleStart, titleEnd, StyleSpan.class);
+        Assert.assertEquals(1, titleSpans.length);
+        Assert.assertEquals(Typeface.ITALIC, titleSpans[0].getStyle());
+    }
 }
