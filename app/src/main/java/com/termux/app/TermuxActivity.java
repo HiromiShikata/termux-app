@@ -32,9 +32,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
-import com.termux.app.apkupdate.ApkUpdateAutoCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateFloatingIndicatorController;
-import com.termux.app.apkupdate.ApkUpdateManager;
+import com.termux.app.apkupdate.ApkUpdateForegroundCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.apkupdate.UpdateTagUpdateRunner;
@@ -403,7 +402,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // app has been opened.
         TermuxUtils.sendTermuxOpenedBroadcast(this);
 
-        maybeAutoCheckForApkUpdate();
+        checkForApkUpdateAndShowIndicator();
     }
 
     private void buildActivityComponents() {
@@ -479,11 +478,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             sessionSwitchPickerControllerComponent);
     }
 
-    private void maybeAutoCheckForApkUpdate() {
-        if (!ApkUpdateManager.isAutoCheckEnabled(this)) {
-            return;
-        }
-        ApkUpdateAutoCheckThrottle throttle = new ApkUpdateAutoCheckThrottle(this);
+    private void checkForApkUpdateAndShowIndicator() {
+        ApkUpdateForegroundCheckThrottle throttle = new ApkUpdateForegroundCheckThrottle(this);
         long nowMillis = System.currentTimeMillis();
         if (!throttle.shouldCheckNow(nowMillis)) {
             return;
@@ -539,6 +535,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         registerTermuxActivityBroadcastReceiver();
 
         new ApkUpdateUiController(this).showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
+
+        checkForApkUpdateAndShowIndicator();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
         mSessionReconnectScheduler.onForeground(mPreferences.getBackgroundReconnectScanIntervalMinutes());
