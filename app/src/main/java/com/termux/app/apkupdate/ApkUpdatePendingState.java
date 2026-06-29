@@ -19,6 +19,8 @@ public final class ApkUpdatePendingState {
 
     static final String KEY_ASSET_NAME = "apk_update_pending_asset_name";
 
+    static final String KEY_DOWNLOADED_FILE_PATH = "apk_update_pending_downloaded_file_path";
+
     private final Store store;
     private final AppVersionComparator versionComparator;
 
@@ -39,6 +41,11 @@ public final class ApkUpdatePendingState {
         store.putString(KEY_LATEST_VERSION_NAME, availability.getLatestVersionName());
         store.putString(KEY_DOWNLOAD_URL, availability.getDownloadUrl());
         store.putString(KEY_ASSET_NAME, availability.getAssetName());
+        if (availability.hasDownloadedFilePath()) {
+            store.putString(KEY_DOWNLOADED_FILE_PATH, availability.getDownloadedFilePath());
+        } else {
+            store.remove(KEY_DOWNLOADED_FILE_PATH);
+        }
     }
 
     @Nullable
@@ -49,7 +56,9 @@ public final class ApkUpdatePendingState {
         if (latestVersionName == null || downloadUrl == null || assetName == null) {
             return null;
         }
-        return ApkUpdateAvailability.available(latestVersionName, downloadUrl, assetName);
+        String downloadedFilePath = store.getString(KEY_DOWNLOADED_FILE_PATH);
+        return ApkUpdateAvailability.available(latestVersionName, downloadUrl, assetName)
+            .withDownloadedFilePath(downloadedFilePath);
     }
 
     @Nullable
@@ -73,5 +82,6 @@ public final class ApkUpdatePendingState {
         store.remove(KEY_LATEST_VERSION_NAME);
         store.remove(KEY_DOWNLOAD_URL);
         store.remove(KEY_ASSET_NAME);
+        store.remove(KEY_DOWNLOADED_FILE_PATH);
     }
 }
