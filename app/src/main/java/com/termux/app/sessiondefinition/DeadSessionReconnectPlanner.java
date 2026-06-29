@@ -14,10 +14,18 @@ public final class DeadSessionReconnectPlanner {
 
         private final String name;
         private final boolean running;
+        private final boolean current;
+        private final boolean hungConnection;
 
         public CandidateSession(String name, boolean running) {
+            this(name, running, false, false);
+        }
+
+        public CandidateSession(String name, boolean running, boolean current, boolean hungConnection) {
             this.name = name;
             this.running = running;
+            this.current = current;
+            this.hungConnection = hungConnection;
         }
 
         public String getName() {
@@ -27,6 +35,21 @@ public final class DeadSessionReconnectPlanner {
         public boolean isRunning() {
             return running;
         }
+
+        public boolean isCurrent() {
+            return current;
+        }
+
+        public boolean isHungConnection() {
+            return hungConnection;
+        }
+
+        boolean needsReconnect() {
+            if (current) {
+                return false;
+            }
+            return !running || hungConnection;
+        }
     }
 
     @NonNull
@@ -34,7 +57,7 @@ public final class DeadSessionReconnectPlanner {
                                                     @Nullable String autosshCommandTemplate) {
         List<String> sessionNamesToReconnect = new ArrayList<>();
         for (CandidateSession candidateSession : candidateSessions) {
-            if (candidateSession == null || candidateSession.isRunning()) {
+            if (candidateSession == null || !candidateSession.needsReconnect()) {
                 continue;
             }
             FinishedSessionEnterAction action =
