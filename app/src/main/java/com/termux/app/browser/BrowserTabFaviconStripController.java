@@ -19,7 +19,7 @@ import java.util.List;
 
 public final class BrowserTabFaviconStripController {
 
-    static final int CLOSE_BUTTON_TOUCH_TARGET_DP = 48;
+    static final int CLOSE_BUTTON_TOUCH_PADDING_DP = 4;
 
     private final HorizontalScrollView mScrollView;
     private final LinearLayout mContainer;
@@ -52,7 +52,7 @@ public final class BrowserTabFaviconStripController {
             indicator.setVisibility(tab == activeTab ? View.VISIBLE : View.INVISIBLE);
             item.setOnClickListener(v -> mListener.openTab(tab));
             closeButton.setOnClickListener(v -> mListener.closeTab(tab));
-            expandCloseButtonCornerTouchTarget(item, closeButton);
+            applyCloseButtonCornerTouchTarget(item, closeButton);
             mContainer.addView(item);
         }
         View addItem = inflater.inflate(R.layout.item_browser_tab_favicon_strip_add, mContainer, false);
@@ -61,32 +61,35 @@ public final class BrowserTabFaviconStripController {
         mContainer.addView(addItem);
     }
 
-    private static void expandCloseButtonCornerTouchTarget(
+    private static void applyCloseButtonCornerTouchTarget(
             @NonNull View item, @NonNull View closeButton) {
-        int targetSizePx = Math.round(TypedValue.applyDimension(
+        int paddingPx = Math.round(TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP,
-            CLOSE_BUTTON_TOUCH_TARGET_DP,
+            CLOSE_BUTTON_TOUCH_PADDING_DP,
             item.getResources().getDisplayMetrics()));
         Runnable applyDelegate = () -> {
             Rect buttonBounds = new Rect();
             closeButton.getHitRect(buttonBounds);
-            Rect cornerTarget = computeCloseButtonCornerTarget(buttonBounds, targetSizePx);
+            Rect cornerTarget = computeCloseButtonCornerTarget(
+                buttonBounds, item.getWidth(), item.getHeight(), paddingPx);
             item.setTouchDelegate(new TouchDelegate(cornerTarget, closeButton));
         };
         item.addOnLayoutChangeListener(
             (v, l, t, r, b, ol, ot, or, ob) -> applyDelegate.run());
-        if (closeButton.getWidth() > 0) {
+        if (item.getWidth() > 0) {
             applyDelegate.run();
         }
     }
 
     @NonNull
     static Rect computeCloseButtonCornerTarget(
-            @NonNull Rect closeButtonBounds, int targetSizePx) {
+            @NonNull Rect closeButtonBounds, int itemWidth, int itemHeight, int paddingPx) {
         int right = closeButtonBounds.right;
         int top = closeButtonBounds.top;
-        int bottom = Math.max(closeButtonBounds.bottom, top + targetSizePx);
-        int left = Math.min(closeButtonBounds.left, right - targetSizePx);
+        int horizontalLimit = itemWidth > 0 ? itemWidth / 2 : closeButtonBounds.left;
+        int verticalLimit = itemHeight > 0 ? itemHeight / 2 : closeButtonBounds.bottom;
+        int left = Math.max(horizontalLimit, closeButtonBounds.left - paddingPx);
+        int bottom = Math.min(verticalLimit, closeButtonBounds.bottom + paddingPx);
         return new Rect(left, top, right, bottom);
     }
 }
