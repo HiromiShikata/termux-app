@@ -96,4 +96,88 @@ public class BrowserGoogleSignInRedirectTest {
             .contains("accounts.google.com"));
         Assert.assertEquals(6, BrowserGoogleSignInRedirect.externalBrowserHosts().size());
     }
+
+    @Test
+    public void oauthTokenEndpointRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://oauth2.googleapis.com/token"));
+    }
+
+    @Test
+    public void oauthAuthorizeEndpointRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://www.google.com/o/oauth2/v2/auth?client_id=app"));
+    }
+
+    @Test
+    public void youtubeAccountsHostRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://accounts.youtube.com/signin"));
+    }
+
+    @Test
+    public void regionalGoogleAccountsHostRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://accounts.google.co.jp/signin/v2/identifier"));
+    }
+
+    @Test
+    public void regionalGoogleAccountsSingleLabelTopLevelRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://accounts.google.de/signin"));
+    }
+
+    @Test
+    public void passkeyCeremonyHostRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://gds.google.com/web/passkeyenrollment"));
+    }
+
+    @Test
+    public void webauthnChallengePathRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://content.google.com/v3/signin/webauthn/get"));
+    }
+
+    @Test
+    public void googleSecurityChallengePathRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://content.google.com/signin/challenge/az"));
+    }
+
+    @Test
+    public void googleSignInSubPathRoutesExternal() {
+        Assert.assertTrue(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://content.google.com/signin/oauth/consent"));
+    }
+
+    @Test
+    public void googleHomePageStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://www.google.com/"));
+    }
+
+    @Test
+    public void googleMapsStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://www.google.com/maps/place/somewhere"));
+    }
+
+    @Test
+    public void nonGoogleWebauthnPathStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://example.com/account/webauthn/register"));
+    }
+
+    @Test
+    public void regionalLookalikeAccountsHostStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://accounts.google.co.jp.evil.example/signin"));
+    }
+
+    @Test
+    public void longRegionalLookalikeAccountsHostStaysInWebView() {
+        Assert.assertFalse(BrowserGoogleSignInRedirect.requiresExternalBrowser(
+            "https://accounts.google.example.com/signin"));
+    }
 }
