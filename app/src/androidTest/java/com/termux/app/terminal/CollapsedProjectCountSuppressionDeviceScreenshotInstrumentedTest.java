@@ -34,7 +34,9 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
 
     private static final int SURFACE_COLOR = 0xFF121212;
     private static final int TEXT_COLOR = 0xFFE0E0E0;
-    private static final int ROW_WIDTH = 900;
+    private static final int ROW_WIDTH = 720;
+    private static final int ROW_HEIGHT = 64;
+    private static final int ROW_GAP = 6;
 
     private static View inflateProjectHeaderRow(Context context, String titleText, boolean collapsed) {
         View row = View.inflate(context, R.layout.item_terminal_sessions_project_header, null);
@@ -44,10 +46,7 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
         indicator.setTextColor(TEXT_COLOR);
         title.setText(titleText);
         title.setTextColor(TEXT_COLOR);
-        int widthSpec = View.MeasureSpec.makeMeasureSpec(ROW_WIDTH, View.MeasureSpec.EXACTLY);
-        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        row.measure(widthSpec, heightSpec);
-        row.layout(0, 0, row.getMeasuredWidth(), row.getMeasuredHeight());
+        measureAndLayout(row);
         return row;
     }
 
@@ -55,13 +54,16 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
         TextView title = new TextView(context);
         title.setText(text);
         title.setTextColor(TEXT_COLOR);
-        title.setTextSize(16f);
         title.setPadding(12, 12, 12, 12);
-        int widthSpec = View.MeasureSpec.makeMeasureSpec(ROW_WIDTH, View.MeasureSpec.EXACTLY);
-        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        title.measure(widthSpec, heightSpec);
-        title.layout(0, 0, title.getMeasuredWidth(), title.getMeasuredHeight());
+        measureAndLayout(title);
         return title;
+    }
+
+    private static void measureAndLayout(View view) {
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(ROW_WIDTH, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(ROW_HEIGHT, View.MeasureSpec.EXACTLY);
+        view.measure(widthSpec, heightSpec);
+        view.layout(0, 0, ROW_WIDTH, ROW_HEIGHT);
     }
 
     @Test
@@ -109,26 +111,13 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
         View collapsedRow = inflateProjectHeaderRow(context, collapsedHeaderText, true);
         View expandedRow = inflateProjectHeaderRow(context, expandedHeaderText, false);
 
-        int width = ROW_WIDTH;
-        int gap = 8;
-        int totalHeight = headerTitle.getMeasuredHeight() + gap
-            + collapsedRow.getMeasuredHeight() + gap
-            + expandedRow.getMeasuredHeight();
-        Bitmap bitmap = Bitmap.createBitmap(width, totalHeight, Bitmap.Config.ARGB_8888);
+        int totalHeight = ROW_HEIGHT * 3 + ROW_GAP * 2;
+        Bitmap bitmap = Bitmap.createBitmap(ROW_WIDTH, totalHeight, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(SURFACE_COLOR);
-        int offsetY = 0;
-        headerTitle.draw(canvas);
-        offsetY += headerTitle.getMeasuredHeight() + gap;
-        canvas.save();
-        canvas.translate(0, offsetY);
-        collapsedRow.draw(canvas);
-        canvas.restore();
-        offsetY += collapsedRow.getMeasuredHeight() + gap;
-        canvas.save();
-        canvas.translate(0, offsetY);
-        expandedRow.draw(canvas);
-        canvas.restore();
+        drawAtRow(canvas, headerTitle, 0);
+        drawAtRow(canvas, collapsedRow, ROW_HEIGHT + ROW_GAP);
+        drawAtRow(canvas, expandedRow, (ROW_HEIGHT + ROW_GAP) * 2);
 
         File outDir = appContext.getExternalFilesDir(null);
         File out = new File(outDir, "collapsed-project-count-suppression.png");
@@ -136,5 +125,12 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
         }
         assertTrue(out.exists() && out.length() > 0);
+    }
+
+    private static void drawAtRow(Canvas canvas, View view, int offsetY) {
+        canvas.save();
+        canvas.translate(0, offsetY);
+        view.draw(canvas);
+        canvas.restore();
     }
 }
