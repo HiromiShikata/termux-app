@@ -113,6 +113,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private int mTotalSessionCount;
 
+    private int mShownSessionCount;
+
     private int mPendingCallSessionCount;
 
     private Map<String, Integer> mSessionCountByProjectLabel = Collections.emptyMap();
@@ -288,12 +290,16 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void rebuildRows() {
         List<SessionHierarchyRow> allRows = buildAllRows();
-        mRows = mHierarchyBuilder.filterCollapsedProjects(allRows, mCollapsedProjectKeys);
+        List<String> sessionNamesByIndex = sessionNamesByIndex();
+        Set<String> hiddenSessionNames = shouldHideHiddenSessions() ? disabledSessionNames() : Collections.emptySet();
+        List<SessionHierarchyRow> renderedRows =
+            SessionHierarchyBuilder.filterHiddenSessions(allRows, sessionNamesByIndex, hiddenSessionNames);
+        mRows = mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys);
         mSessionActivityIndicatorsByIndex = sessionActivityIndicatorsByIndex();
         mSessionRowsByIndex = getSessionRows();
         mTotalSessionCount = SessionHierarchyBuilder.totalSessionCount(allRows);
+        mShownSessionCount = SessionHierarchyBuilder.shownSessionCount(allRows, sessionNamesByIndex, hiddenSessionNames);
         mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(allRows);
-        List<String> sessionNamesByIndex = sessionNamesByIndex();
         Set<String> pendingCallSessionNames = pendingCallToUserSessionNames(sessionNamesByIndex);
         mPendingCallSessionCount = SessionHierarchyBuilder.pendingCallSessionCount(
             allRows, sessionNamesByIndex, pendingCallSessionNames);
@@ -369,6 +375,29 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     public int getTotalSessionCount() {
         return mTotalSessionCount;
+    }
+
+    public int getShownSessionCount() {
+        return mShownSessionCount;
+    }
+
+    public boolean isHidingHiddenSessions() {
+        return shouldHideHiddenSessions();
+    }
+
+    private boolean shouldHideHiddenSessions() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        return preferences != null && preferences.shouldHideHiddenSessions();
+    }
+
+    public boolean toggleHideHiddenSessions() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return false;
+        }
+        boolean hideHiddenSessions = preferences.toggleHideHiddenSessions();
+        refreshSessionList();
+        return hideHiddenSessions;
     }
 
     public int getPendingCallSessionCount() {

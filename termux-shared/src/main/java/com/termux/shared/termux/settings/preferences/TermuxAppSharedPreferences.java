@@ -500,6 +500,21 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public boolean shouldHideHiddenSessions() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_HIDE_HIDDEN_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_HIDE_HIDDEN_SESSIONS);
+    }
+
+    public void setHideHiddenSessions(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_HIDE_HIDDEN_SESSIONS, value, false);
+    }
+
+    public boolean toggleHideHiddenSessions() {
+        boolean newValue = !shouldHideHiddenSessions();
+        setHideHiddenSessions(newValue);
+        return newValue;
+    }
+
+
     public String getPersistedSessions() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_PERSISTED_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_PERSISTED_SESSIONS, false);
     }
