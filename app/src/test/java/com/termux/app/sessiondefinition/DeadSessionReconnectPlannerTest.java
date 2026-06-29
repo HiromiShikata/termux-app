@@ -71,4 +71,64 @@ public class DeadSessionReconnectPlannerTest {
             Arrays.asList("https://example.test/dead1", "https://example.test/dead2"),
             namesToReconnect);
     }
+
+    @Test
+    public void reconnectsRunningHungSession() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/hung", true, false, true));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/hung"), namesToReconnect);
+    }
+
+    @Test
+    public void doesNotReconnectRunningHealthySession() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/healthy", true, false, false));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertTrue(namesToReconnect.isEmpty());
+    }
+
+    @Test
+    public void neverReconnectsCurrentSessionEvenWhenHung() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/current", true, true, true));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertTrue(namesToReconnect.isEmpty());
+    }
+
+    @Test
+    public void neverReconnectsCurrentSessionEvenWhenFinished() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/current", false, true, false));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertTrue(namesToReconnect.isEmpty());
+    }
+
+    @Test
+    public void reconnectsHungAndFinishedNonCurrentSessions() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/current", true, true, true),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/hung", true, false, true),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/healthy", true, false, false),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead", false, false, false));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(
+            Arrays.asList("https://example.test/hung", "https://example.test/dead"),
+            namesToReconnect);
+    }
 }

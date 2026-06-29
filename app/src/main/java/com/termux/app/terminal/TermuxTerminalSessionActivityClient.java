@@ -145,6 +145,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final DeadSessionReconnectPlanner mDeadSessionReconnectPlanner = new DeadSessionReconnectPlanner();
 
+    private final HungSessionDetector mHungSessionDetector = new HungSessionDetector();
+
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
     private boolean mActiveSessionSeenTickScheduled;
@@ -1455,6 +1457,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return Collections.emptyList();
 
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        String currentSessionName = activeSessionName();
+        long nowMillis = System.currentTimeMillis();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
         List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions = new ArrayList<>();
@@ -1462,9 +1467,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == null) continue;
             String sessionName = terminalSession.mSessionName;
+            if (sessionName == null) continue;
             sessionByName.put(sessionName, terminalSession);
+            boolean current = sessionName.equals(currentSessionName);
+            boolean hungConnection = store != null && mHungSessionDetector.isHungConnection(
+                store.getStatuslineOutTimeMillis(sessionName),
+                nowMillis);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
-                sessionName, terminalSession.isRunning()));
+                sessionName, terminalSession.isRunning(), current, hungConnection));
         }
 
         List<String> sessionNamesToReconnect =
