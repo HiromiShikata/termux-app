@@ -111,9 +111,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private Map<Long, SessionRowContent> mRowContentByItemId = Collections.emptyMap();
 
-    private int mTotalSessionCount;
-
-    private int mShownSessionCount;
+    private int mVisibleSessionCount;
 
     private int mPendingCallSessionCount;
 
@@ -297,14 +295,13 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         mRows = mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys);
         mSessionActivityIndicatorsByIndex = sessionActivityIndicatorsByIndex();
         mSessionRowsByIndex = getSessionRows();
-        mTotalSessionCount = SessionHierarchyBuilder.totalSessionCount(allRows);
-        mShownSessionCount = SessionHierarchyBuilder.shownSessionCount(allRows, sessionNamesByIndex, hiddenSessionNames);
-        mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(allRows);
+        mVisibleSessionCount = SessionHierarchyBuilder.totalSessionCount(renderedRows);
+        mSessionCountByProjectLabel = SessionHierarchyBuilder.sessionCountByProjectLabel(renderedRows);
         Set<String> pendingCallSessionNames = pendingCallToUserSessionNames(sessionNamesByIndex);
         mPendingCallSessionCount = SessionHierarchyBuilder.pendingCallSessionCount(
-            allRows, sessionNamesByIndex, pendingCallSessionNames);
+            renderedRows, sessionNamesByIndex, pendingCallSessionNames);
         mPendingCallSessionCountByProjectLabel = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
-            allRows, sessionNamesByIndex, pendingCallSessionNames);
+            renderedRows, sessionNamesByIndex, pendingCallSessionNames);
         mRowContentByItemId = buildRowContentByItemId();
     }
 
@@ -373,12 +370,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return value == null ? "" : value;
     }
 
-    public int getTotalSessionCount() {
-        return mTotalSessionCount;
-    }
-
-    public int getShownSessionCount() {
-        return mShownSessionCount;
+    public int getVisibleSessionCount() {
+        return mVisibleSessionCount;
     }
 
     public boolean isHidingHiddenSessions() {

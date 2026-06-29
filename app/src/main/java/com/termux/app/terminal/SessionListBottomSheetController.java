@@ -118,11 +118,18 @@ public class SessionListBottomSheetController {
     }
 
     private void applyHiddenToggleButtonState(@NonNull TermuxSessionsListViewController listController) {
-        mHiddenToggleButton.setImageResource(hiddenToggleIconResource(listController.isHidingHiddenSessions()));
+        boolean hidingHiddenSessions = listController.isHidingHiddenSessions();
+        mHiddenToggleButton.setImageResource(hiddenToggleIconResource(hidingHiddenSessions));
+        mHiddenToggleButton.setContentDescription(
+            mActivity.getString(hiddenToggleContentDescriptionResource(hidingHiddenSessions)));
     }
 
     static int hiddenToggleIconResource(boolean hidingHiddenSessions) {
-        return hidingHiddenSessions ? R.drawable.ic_visibility_off : R.drawable.ic_visibility;
+        return hidingHiddenSessions ? R.drawable.ic_filter_alt : R.drawable.ic_filter_alt_off;
+    }
+
+    static int hiddenToggleContentDescriptionResource(boolean hidingHiddenSessions) {
+        return hidingHiddenSessions ? R.string.action_session_filter_on : R.string.action_session_filter_off;
     }
 
     private void hideBrowserIfShowing() {
@@ -426,19 +433,13 @@ public class SessionListBottomSheetController {
     private void applySessionCountTitle(@NonNull TermuxSessionsListViewController listController) {
         String baseTitle = mActivity.getString(R.string.title_session_list_bottom_sheet);
         mTitleView.setText(sessionCountTitle(baseTitle, listController.getPendingCallSessionCount(),
-            listController.getShownSessionCount(), listController.getTotalSessionCount(),
-            listController.isHidingHiddenSessions()));
+            listController.getVisibleSessionCount()));
     }
 
     @NonNull
     static String sessionCountTitle(@NonNull String baseTitle, int pendingCallSessionCount,
-                                    int shownSessionCount, int totalSessionCount,
-                                    boolean hidingHiddenSessions) {
-        String fraction = SessionCountFraction.of(pendingCallSessionCount, totalSessionCount);
-        if (!hidingHiddenSessions) {
-            return baseTitle + " " + fraction;
-        }
-        return baseTitle + " " + fraction + " " + shownSessionCount + "/" + totalSessionCount;
+                                    int visibleSessionCount) {
+        return baseTitle + " " + SessionCountFraction.of(pendingCallSessionCount, visibleSessionCount);
     }
 
     private void applySheetDefaultHeight() {
