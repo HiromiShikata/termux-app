@@ -390,6 +390,26 @@ public final class SessionHierarchyBuilder {
     }
 
     @NonNull
+    public static List<SessionHierarchyRow> filterCollapsedProjectSessions(
+            @NonNull List<SessionHierarchyRow> rows,
+            @NonNull Set<String> collapsedProjectKeys) {
+        if (collapsedProjectKeys.isEmpty()) {
+            return rows;
+        }
+        List<SessionHierarchyRow> countedRows = new ArrayList<>(rows.size());
+        boolean currentProjectCollapsed = false;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                currentProjectCollapsed = collapsedProjectKeys.contains(row.getLabel());
+                countedRows.add(row);
+            } else if (!currentProjectCollapsed) {
+                countedRows.add(row);
+            }
+        }
+        return countedRows;
+    }
+
+    @NonNull
     private Map<String, String> projectLabelByManagerSessionName(@NonNull List<SessionDefinitionEntry> entries) {
         Map<String, String> projectLabelByManagerSessionName = new LinkedHashMap<>();
         for (SessionDefinitionEntry entry : entries) {

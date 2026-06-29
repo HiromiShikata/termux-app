@@ -47,11 +47,19 @@ public class TermuxSessionsListViewControllerTest {
     @Test
     public void projectHeaderTitleAppendsCallOverTotalFractionAfterTheName() {
         Assert.assertEquals("ProjectName (2/3)",
-            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 2, 3));
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 2, 3, false));
         Assert.assertEquals("ProjectName (0/3)",
-            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 3));
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 3, false));
         Assert.assertEquals("ProjectName (0/0)",
-            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 0));
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 0, false));
+    }
+
+    @Test
+    public void projectHeaderTitleOmitsTheFractionWhenTheProjectIsCollapsed() {
+        Assert.assertEquals("ProjectName",
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 2, 3, true));
+        Assert.assertEquals("ProjectName",
+            TermuxSessionsListViewController.projectHeaderTitle("ProjectName", 0, 0, true));
     }
 
     @Test
