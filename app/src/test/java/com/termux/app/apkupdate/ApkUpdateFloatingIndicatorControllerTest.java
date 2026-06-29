@@ -54,7 +54,7 @@ public class ApkUpdateFloatingIndicatorControllerTest {
     }
 
     @Test
-    public void tappingTriggersUpdateExactlyOnceThenHides() {
+    public void tappingTriggersUpdateAndKeepsIndicatorVisible() {
         RecordingIndicatorView indicatorView = new RecordingIndicatorView();
         RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
         ApkUpdateFloatingIndicatorController controller =
@@ -64,12 +64,10 @@ public class ApkUpdateFloatingIndicatorControllerTest {
         controller.onUpdateAvailable(availability);
 
         indicatorView.lastTapAction.run();
-        indicatorView.lastTapAction.run();
 
-        Assert.assertEquals(1, updateTrigger.startedUpdates.size());
         Assert.assertSame(availability, updateTrigger.startedUpdates.get(0));
-        Assert.assertEquals(1, indicatorView.hideCount);
-        Assert.assertFalse(controller.hasPendingUpdate());
+        Assert.assertEquals(0, indicatorView.hideCount);
+        Assert.assertTrue(controller.hasPendingUpdate());
     }
 
     @Test
@@ -87,7 +85,7 @@ public class ApkUpdateFloatingIndicatorControllerTest {
     }
 
     @Test
-    public void hidesIndicatorAfterUpdateActionTriggered() {
+    public void indicatorStaysVisibleAfterTapUntilNextCheckReportsUpToDate() {
         RecordingIndicatorView indicatorView = new RecordingIndicatorView();
         RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
         ApkUpdateFloatingIndicatorController controller =
@@ -97,8 +95,13 @@ public class ApkUpdateFloatingIndicatorControllerTest {
 
         indicatorView.lastTapAction.run();
 
-        Assert.assertEquals(1, indicatorView.hideCount);
+        Assert.assertEquals(0, indicatorView.hideCount);
         Assert.assertEquals(1, updateTrigger.startedUpdates.size());
+
+        controller.onUpdateAvailable(ApkUpdateAvailability.upToDate("0.120.0"));
+
+        Assert.assertEquals(1, indicatorView.hideCount);
+        Assert.assertFalse(controller.hasPendingUpdate());
     }
 
     @Test

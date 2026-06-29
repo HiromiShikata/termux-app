@@ -752,7 +752,7 @@
                 android:textSize="10sp" />
         </FrameLayout>
 
-        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/apk_update_floating_indicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -761,12 +761,10 @@
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="8dp"
             android:elevation="14dp"
-            android:focusable="false"
+            android:focusable="true"
             android:focusableInTouchMode="false"
-            android:text="@string/apk_update_floating_indicator_label"
-            android:textSize="12sp"
-            app:icon="@drawable/ic_apk_update_available"
-            app:iconGravity="textStart"
+            android:contentDescription="@string/apk_update_floating_indicator_content_description_generic"
+            app:srcCompat="@drawable/ic_apk_update_available"
             android:visibility="gone" />
 
     </RelativeLayout>
