@@ -2,8 +2,10 @@ package com.termux.app.browser;
 
 import android.content.Context;
 import android.graphics.Rect;
+import android.os.SystemClock;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.TouchDelegate;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -311,44 +313,50 @@ public class BrowserTabFaviconStripControllerTest {
     }
 
     @Test
-    public void closeButtonCornerTargetReachesMaterialMinimumAnchoredTopRightOverFavicon() {
+    public void closeButtonCornerTargetStaysConfinedToTopRightQuadrantOfChip() {
+        int chipWidth = 32;
+        int chipHeight = 32;
         Rect closeButtonBounds = new Rect(17, 0, 32, 15);
-        int targetSizePx = 48;
+        int paddingPx = 4;
 
         Rect cornerTarget = BrowserTabFaviconStripController
-            .computeCloseButtonCornerTarget(closeButtonBounds, targetSizePx);
+            .computeCloseButtonCornerTarget(
+                closeButtonBounds, chipWidth, chipHeight, paddingPx);
 
-        Assert.assertTrue(
-            "Corner touch target width must reach the Material minimum",
-            cornerTarget.width() >= targetSizePx);
-        Assert.assertTrue(
-            "Corner touch target height must reach the Material minimum",
-            cornerTarget.height() >= targetSizePx);
         Assert.assertEquals(
             "Corner touch target must stay pinned to the close button right edge",
             closeButtonBounds.right, cornerTarget.right);
         Assert.assertEquals(
             "Corner touch target must stay pinned to the close button top edge",
             closeButtonBounds.top, cornerTarget.top);
-        Assert.assertEquals(
-            "Corner touch target must extend left from the corner by the Material minimum",
-            closeButtonBounds.right - targetSizePx, cornerTarget.left);
+        Assert.assertTrue(
+            "Corner touch target left edge must not cross the chip horizontal midpoint",
+            cornerTarget.left >= chipWidth / 2);
+        Assert.assertTrue(
+            "Corner touch target bottom edge must not cross the chip vertical midpoint",
+            cornerTarget.bottom <= chipHeight / 2);
     }
 
     @Test
-    public void closeButtonCornerTargetExtendsLeftByMaterialMinimumIndependentOfChipWidth() {
-        Rect closeButtonBounds = new Rect(20, 0, 35, 15);
-        int targetSizePx = 48;
+    public void closeButtonCornerTargetDoesNotCoverTheFaviconCenter() {
+        int chipWidth = 32;
+        int chipHeight = 32;
+        Rect closeButtonBounds = new Rect(17, 0, 32, 15);
+        int paddingPx = 4;
 
         Rect cornerTarget = BrowserTabFaviconStripController
-            .computeCloseButtonCornerTarget(closeButtonBounds, targetSizePx);
+            .computeCloseButtonCornerTarget(
+                closeButtonBounds, chipWidth, chipHeight, paddingPx);
 
-        Assert.assertEquals(
-            "Corner touch target left edge must extend a full Material minimum from the corner",
-            closeButtonBounds.right - targetSizePx, cornerTarget.left);
-        Assert.assertEquals(
-            "Corner touch target width must equal the Material minimum",
-            targetSizePx, cornerTarget.width());
+        int centerX = chipWidth / 2;
+        int centerY = chipHeight / 2;
+        Assert.assertFalse(
+            "Favicon center must not fall inside the close touch target",
+            cornerTarget.contains(centerX, centerY));
+        Assert.assertTrue(
+            "Close touch target must be far smaller than the whole chip area",
+            cornerTarget.width() * cornerTarget.height()
+                < (chipWidth * chipHeight) / 2);
     }
 
     @Test
@@ -377,5 +385,75 @@ public class BrowserTabFaviconStripControllerTest {
         Assert.assertNotNull(
             "Each tab chip must expose a corner close touch delegate",
             secondItem.getTouchDelegate());
+    }
+
+    @Test
+    public void tappingFaviconCenterSelectsTabWhileTappingTopRightCornerCloses() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab firstTab = new BrowserTab(SESSION, "https://first.example/");
+        BrowserTab secondTab = new BrowserTab(SESSION, "https://second.example/");
+
+        controllerFor(listener, scrollView, container)
+            .update(Arrays.asList(firstTab, secondTab), firstTab);
+
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.AT_MOST);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(300, View.MeasureSpec.AT_MOST);
+        container.measure(widthSpec, heightSpec);
+        container.layout(0, 0, container.getMeasuredWidth(), container.getMeasuredHeight());
+
+        View item = container.getChildAt(0);
+        int centerX = item.getWidth() / 2;
+        int centerY = item.getHeight() / 2;
+        boolean centerConsumedByCloseDelegate = dispatchTap(item, centerX, centerY);
+
+        Assert.assertFalse(
+            "Tapping the favicon center must not be routed to the close handler",
+            centerConsumedByCloseDelegate);
+        Assert.assertTrue(
+            "Tapping the favicon center must not close the tab",
+            listener.closedTabs.isEmpty());
+
+        item.performClick();
+        Assert.assertEquals(
+            "A tap on the favicon body must select the tab",
+            1, listener.openedTabs.size());
+        Assert.assertSame(firstTab, listener.openedTabs.get(0));
+
+        int cornerX = item.getWidth() - 1;
+        int cornerY = 1;
+        boolean cornerConsumedByCloseDelegate = dispatchTap(item, cornerX, cornerY);
+
+        Assert.assertTrue(
+            "Tapping the top-right corner must be routed to the close handler",
+            cornerConsumedByCloseDelegate);
+
+        View closeButton = item.findViewById(R.id.browser_tab_strip_close_button);
+        closeButton.performClick();
+        Assert.assertEquals(
+            "The corner close target must close the tab",
+            1, listener.closedTabs.size());
+        Assert.assertSame(firstTab, listener.closedTabs.get(0));
+        Assert.assertEquals(
+            "Closing the tab from the corner must not open another tab",
+            1, listener.openedTabs.size());
+    }
+
+    private static boolean dispatchTap(@NonNull View target, int x, int y) {
+        long downTime = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(
+            downTime, downTime, MotionEvent.ACTION_DOWN, x, y, 0);
+        MotionEvent up = MotionEvent.obtain(
+            downTime, downTime + 1, MotionEvent.ACTION_UP, x, y, 0);
+        TouchDelegate delegate = target.getTouchDelegate();
+        boolean consumedByDelegate = delegate != null && delegate.onTouchEvent(down);
+        if (delegate != null) {
+            delegate.onTouchEvent(up);
+        }
+        down.recycle();
+        up.recycle();
+        return consumedByDelegate;
     }
 }
