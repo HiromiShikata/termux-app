@@ -57,4 +57,22 @@ public class TermuxTerminalViewClientSingleTapUrlOpensInAppTest {
         Assert.assertTrue("openUrlInApp must delegate to the in-app browser controller",
             methodBody.contains("browserController.openUrlInNewTab(url)"));
     }
+
+    @Test
+    public void longPressOpenInChromeStillLaunchesTheExternalBrowser() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void openLongPressedUrlInChrome(");
+
+        Assert.assertTrue("long-press Open in Chrome must still launch the external browser",
+            methodBody.contains("ShareUtils.openUrlInChrome(mActivity, mLongPressedUrl)"));
+    }
+
+    @Test
+    public void selectUrlDialogOpenInChromeStillLaunchesTheExternalBrowser() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "private void showUrlOpenChoice(");
+
+        Assert.assertTrue("Select-URL dialog Open in Chrome must still launch the external browser",
+            methodBody.contains("ShareUtils.openUrlInChrome(mActivity, url)"));
+    }
 }
