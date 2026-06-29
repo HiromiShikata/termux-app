@@ -396,7 +396,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return false;
         }
         boolean hideHiddenSessions = preferences.toggleHideHiddenSessions();
-        notifyDataSetChanged();
+        refreshSessionList();
         return hideHiddenSessions;
     }
 
