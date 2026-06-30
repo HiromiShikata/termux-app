@@ -35,6 +35,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mStatuslineOutTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mStatuslineReplyTimeMillisByName = new HashMap<>();
     private final Map<String, Integer> mSubagentCountByName = new HashMap<>();
+    private final Map<String, Long> mReconnectingStartTimeMillisByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -304,6 +305,7 @@ public class SessionNewActivityStore {
         mStatuslineOutTimeMillisByName.remove(sessionName);
         mStatuslineReplyTimeMillisByName.remove(sessionName);
         mSubagentCountByName.remove(sessionName);
+        mReconnectingStartTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -324,6 +326,7 @@ public class SessionNewActivityStore {
         mAcknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
+        mReconnectingStartTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -344,6 +347,7 @@ public class SessionNewActivityStore {
         changed |= mStatuslineOutTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mStatuslineReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mSubagentCountByName.keySet().retainAll(knownSessionNames);
+        changed |= mReconnectingStartTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
@@ -450,6 +454,41 @@ public class SessionNewActivityStore {
     public int getSubagentCount(@NonNull String sessionName) {
         Integer count = mSubagentCountByName.get(sessionName);
         return count == null ? 0 : count;
+    }
+
+    /**
+     * The reconnecting/fetching flag for {@code sessionName}, an in-memory-only signal that the row
+     * is currently reconnecting or fetching its latest output. It is deliberately not persisted: a
+     * reconnect or a fetch is bound to the live session lifecycle, so a restart that loses it is
+     * correct (the row is no longer mid-fetch after the process is gone). The stored value is the
+     * start time the fetch began, which {@link SessionReconnectingIndicatorState} ages off against a
+     * fixed safety cap so a fetch that never delivers data cannot leave the spinner showing forever.
+     * Setting and clearing notify the change listener but do not call {@link #save()}, so the
+     * transient flag never enters persistence.
+     */
+    public void setReconnecting(@NonNull String sessionName, long startTimeMillis) {
+        Long stored = mReconnectingStartTimeMillisByName.get(sessionName);
+        if (stored != null && stored == startTimeMillis) {
+            return;
+        }
+        mReconnectingStartTimeMillisByName.put(sessionName, startTimeMillis);
+        notifyChanged();
+    }
+
+    public void clearReconnecting(@NonNull String sessionName) {
+        if (mReconnectingStartTimeMillisByName.remove(sessionName) == null) {
+            return;
+        }
+        notifyChanged();
+    }
+
+    public boolean isReconnecting(@NonNull String sessionName) {
+        return mReconnectingStartTimeMillisByName.containsKey(sessionName);
+    }
+
+    public long getReconnectingStartTimeMillis(@NonNull String sessionName) {
+        Long startTimeMillis = mReconnectingStartTimeMillisByName.get(sessionName);
+        return startTimeMillis == null ? 0L : startTimeMillis;
     }
 
     @NonNull
@@ -672,6 +711,10 @@ public class SessionNewActivityStore {
                 mSubagentCountByName.get(sessionName)));
         }
         mPersistence.save(states);
+        notifyChanged();
+    }
+
+    private void notifyChanged() {
         if (mOnChangeListener != null) {
             mOnChangeListener.onSessionNewActivityStoreChanged(this);
         }

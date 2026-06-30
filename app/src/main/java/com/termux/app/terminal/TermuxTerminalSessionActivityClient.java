@@ -439,6 +439,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (store == null) return;
         for (ParsedStatuslineUpdate update : updates) {
             update.applyTo(store);
+            store.clearReconnecting(update.getSessionName());
         }
         termuxSessionListNotifyUpdated();
     }
@@ -695,6 +696,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.purgeSessionPreservingStatuslineTimes(sessionName);
+        termuxSessionListNotifyUpdated();
+    }
+
+    /**
+     * Marks {@code sessionName} as reconnecting so its bottom-sheet row shows the spinner until its
+     * next parsed statusline arrives (cleared in {@link #applyStatuslineUpdates}) or the safety cap in
+     * {@link SessionReconnectingIndicatorState} elapses. It is set after {@link
+     * #reconnectDeadSessionPreservingDisplayedSession} returns, because that call clears the flag via
+     * {@link SessionNewActivityStore#purgeSessionPreservingStatuslineTimes} while tearing the dead
+     * session down; setting after the teardown leaves the fresh flag in place for the just-recreated
+     * session.
+     */
+    private void markSessionReconnecting(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        store.setReconnecting(sessionName, System.currentTimeMillis());
         termuxSessionListNotifyUpdated();
     }
 
@@ -1501,6 +1519,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession deadSession = sessionByName.get(sessionName);
             if (deadSession != null) {
                 reconnectDeadSessionPreservingDisplayedSession(deadSession);
+                markSessionReconnecting(sessionName);
                 reconnectedSessionNames.add(sessionName);
             }
         }
