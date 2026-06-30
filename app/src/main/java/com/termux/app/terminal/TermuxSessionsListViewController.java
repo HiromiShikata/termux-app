@@ -286,6 +286,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return preferences.getAlwaysNaSessionNames();
     }
 
+    @NonNull
+    private List<SessionHierarchyRow> buildCountedRows() {
+        List<String> sessionNamesByIndex = sessionNamesByIndex();
+        Set<String> hiddenSessionNames = shouldHideHiddenSessions() ? disabledSessionNames() : Collections.emptySet();
+        List<SessionHierarchyRow> renderedRows =
+            SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex, hiddenSessionNames);
+        return SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, mCollapsedProjectKeys);
+    }
+
     private void rebuildRows() {
         List<SessionHierarchyRow> allRows = buildAllRows();
         List<String> sessionNamesByIndex = sessionNamesByIndex();
@@ -401,7 +410,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     public int getFirstVisibleSessionIndexAfterRebuild() {
-        return SessionHierarchyBuilder.firstSessionIndex(buildAllRows());
+        return SessionHierarchyBuilder.firstSessionIndex(buildCountedRows());
     }
 
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
@@ -418,7 +427,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     public List<Integer> getOrderedSessionIndexes() {
-        return SessionHierarchyBuilder.visibleSessionIndexes(buildAllRows());
+        return SessionHierarchyBuilder.visibleSessionIndexes(buildCountedRows());
     }
 
     public int getRowPositionForSessionIndex(int sessionIndex) {
