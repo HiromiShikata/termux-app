@@ -2,6 +2,7 @@ package com.termux.app.browser;
 
 import android.webkit.WebView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public final class BrowserLinkLongPress {
@@ -28,5 +29,16 @@ public final class BrowserLinkLongPress {
         return isLinkHit(hitTestType)
             && !requiresHrefLookup(hitTestType)
             && isOpenableLinkUrl(extra);
+    }
+
+    public static boolean hasAnchorText(@Nullable String anchorText) {
+        return anchorText != null && !anchorText.trim().isEmpty();
+    }
+
+    public static String linkTextClipboardValue(@NonNull String linkUrl, @Nullable String anchorText) {
+        if (hasAnchorText(anchorText)) {
+            return anchorText.trim();
+        }
+        return linkUrl;
     }
 }

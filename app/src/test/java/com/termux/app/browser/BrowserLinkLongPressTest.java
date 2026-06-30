@@ -106,4 +106,42 @@ public class BrowserLinkLongPressTest {
         Assert.assertFalse(BrowserLinkLongPress.isCopyableLink(
             WebView.HitTestResult.EDIT_TEXT_TYPE, "https://example.com/page"));
     }
+
+    @Test
+    public void nonBlankAnchorTextHasAnchorText() {
+        Assert.assertTrue(BrowserLinkLongPress.hasAnchorText("Example Page"));
+    }
+
+    @Test
+    public void nullAnchorTextHasNoAnchorText() {
+        Assert.assertFalse(BrowserLinkLongPress.hasAnchorText(null));
+    }
+
+    @Test
+    public void emptyAnchorTextHasNoAnchorText() {
+        Assert.assertFalse(BrowserLinkLongPress.hasAnchorText(""));
+    }
+
+    @Test
+    public void whitespaceOnlyAnchorTextHasNoAnchorText() {
+        Assert.assertFalse(BrowserLinkLongPress.hasAnchorText("   "));
+    }
+
+    @Test
+    public void linkTextClipboardValueIsTrimmedAnchorTextWhenPresent() {
+        Assert.assertEquals("Example Page",
+            BrowserLinkLongPress.linkTextClipboardValue("https://example.com/page", "  Example Page  "));
+    }
+
+    @Test
+    public void linkTextClipboardValueFallsBackToUrlWhenAnchorTextIsNull() {
+        Assert.assertEquals("https://example.com/page",
+            BrowserLinkLongPress.linkTextClipboardValue("https://example.com/page", null));
+    }
+
+    @Test
+    public void linkTextClipboardValueFallsBackToUrlWhenAnchorTextIsBlank() {
+        Assert.assertEquals("https://example.com/page",
+            BrowserLinkLongPress.linkTextClipboardValue("https://example.com/page", "   "));
+    }
 }
