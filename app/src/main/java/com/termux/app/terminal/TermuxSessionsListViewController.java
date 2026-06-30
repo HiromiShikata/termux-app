@@ -197,6 +197,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     public void refreshSessionList() {
+        if (postToMainThreadIfOffThread(this::refreshSessionList)) {
+            return;
+        }
         List<SessionHierarchyRow> previousRows = mRows;
         Map<Long, SessionRowContent> previousRowContentByItemId = mRowContentByItemId;
         rebuildRows();
@@ -207,11 +210,22 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     public void dispatchRelativeTimeTick() {
+        if (postToMainThreadIfOffThread(this::dispatchRelativeTimeTick)) {
+            return;
+        }
         for (int position = 0; position < mRows.size(); position++) {
             if (mRows.get(position).getType() == SessionHierarchyRow.Type.SESSION) {
                 notifyItemChanged(position, RELATIVE_TIME_PAYLOAD);
             }
         }
+    }
+
+    private boolean postToMainThreadIfOffThread(@NonNull Runnable action) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return false;
+        }
+        mRefreshDebounceHandler.post(action);
+        return true;
     }
 
     static final class SessionRowDiffCallback extends DiffUtil.Callback {
@@ -303,7 +317,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             SessionHierarchyBuilder.filterHiddenSessions(allRows, sessionNamesByIndex, hiddenSessionNames);
         List<SessionHierarchyRow> countedRows =
             SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, mCollapsedProjectKeys);
-        mRows = mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys);
+        mRows = Collections.unmodifiableList(
+            mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys));
         mSessionActivityIndicatorsByIndex = sessionActivityIndicatorsByIndex();
         mSessionRowsByIndex = getSessionRows();
         mVisibleSessionCount = SessionHierarchyBuilder.totalSessionCount(countedRows);

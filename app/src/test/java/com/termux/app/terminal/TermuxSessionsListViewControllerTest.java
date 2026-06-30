@@ -24,8 +24,10 @@ import org.robolectric.RuntimeEnvironment;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 @RunWith(RobolectricTestRunner.class)
 public class TermuxSessionsListViewControllerTest {
@@ -709,6 +711,39 @@ public class TermuxSessionsListViewControllerTest {
             SessionHierarchyRow.projectHeader("alpha"), SessionHierarchyRow.projectHeader("alpha")));
         Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(
             SessionHierarchyRow.projectHeader("alpha"), SessionHierarchyRow.projectHeader("beta")));
+    }
+
+    @Test
+    public void diffCallbackSizesMatchTheRowSnapshotsItIndexesSoTheDispatchedUpdateLeavesAConsistentCount() {
+        List<SessionHierarchyRow> previousRows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("alpha"),
+            SessionHierarchyRow.session(0));
+        List<SessionHierarchyRow> currentRows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("alpha"),
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.session(1));
+        Map<Long, SessionRowContent> previousContent = new LinkedHashMap<>();
+        Map<Long, SessionRowContent> currentContent = new LinkedHashMap<>();
+        for (SessionHierarchyRow row : previousRows) {
+            previousContent.put(TermuxSessionsListViewController.rowItemId(row),
+                new SessionRowContent("stable"));
+        }
+        for (SessionHierarchyRow row : currentRows) {
+            currentContent.put(TermuxSessionsListViewController.rowItemId(row),
+                new SessionRowContent("stable"));
+        }
+
+        TermuxSessionsListViewController.SessionRowDiffCallback callback =
+            new TermuxSessionsListViewController.SessionRowDiffCallback(
+                previousRows, currentRows, previousContent, currentContent);
+
+        Assert.assertEquals(previousRows.size(), callback.getOldListSize());
+        Assert.assertEquals(currentRows.size(), callback.getNewListSize());
+        for (int newPosition = 0; newPosition < callback.getNewListSize(); newPosition++) {
+            for (int oldPosition = 0; oldPosition < callback.getOldListSize(); oldPosition++) {
+                callback.areItemsTheSame(oldPosition, newPosition);
+            }
+        }
     }
 
     @Test
