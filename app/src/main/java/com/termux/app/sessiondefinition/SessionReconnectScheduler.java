@@ -14,7 +14,7 @@ public final class SessionReconnectScheduler {
     private final Runnable mTickRunnable = this::onTick;
 
     private int mIntervalMinutes;
-    private boolean mForeground;
+    private boolean mRunning;
     private boolean mScheduled;
 
     public SessionReconnectScheduler(@NonNull Runnable reconnectAction) {
@@ -26,15 +26,15 @@ public final class SessionReconnectScheduler {
         this.mReconnectAction = reconnectAction;
     }
 
-    public void onForeground(int intervalMinutes) {
-        mForeground = true;
+    public void start(int intervalMinutes) {
+        mRunning = true;
         mIntervalMinutes = intervalMinutes;
         schedule();
     }
 
-    public void onBackground() {
-        mForeground = false;
-        stop();
+    public void stop() {
+        mRunning = false;
+        cancelPendingTick();
     }
 
     boolean isScheduled() {
@@ -43,7 +43,7 @@ public final class SessionReconnectScheduler {
 
     private void onTick() {
         mScheduled = false;
-        if (!shouldSchedule(mForeground, mIntervalMinutes)) {
+        if (!shouldSchedule(mRunning, mIntervalMinutes)) {
             return;
         }
         mReconnectAction.run();
@@ -54,20 +54,20 @@ public final class SessionReconnectScheduler {
         if (mScheduled) {
             return;
         }
-        if (!shouldSchedule(mForeground, mIntervalMinutes)) {
+        if (!shouldSchedule(mRunning, mIntervalMinutes)) {
             return;
         }
         mScheduled = true;
         mMainThreadHandler.postDelayed(mTickRunnable, intervalMillis(mIntervalMinutes));
     }
 
-    private void stop() {
+    private void cancelPendingTick() {
         mScheduled = false;
         mMainThreadHandler.removeCallbacks(mTickRunnable);
     }
 
-    static boolean shouldSchedule(boolean foreground, int intervalMinutes) {
-        return foreground && intervalMinutes > 0;
+    static boolean shouldSchedule(boolean running, int intervalMinutes) {
+        return running && intervalMinutes > 0;
     }
 
     static long intervalMillis(int intervalMinutes) {

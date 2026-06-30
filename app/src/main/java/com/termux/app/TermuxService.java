@@ -30,6 +30,7 @@ import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
 import com.termux.app.terminal.session.FileSessionNewActivityPersistence;
 import com.termux.app.terminal.session.SessionNewActivityPreferencesToCacheMigration;
 import com.termux.app.terminal.session.SessionNewActivityStateStore;
+import com.termux.app.sessiondefinition.DefinitionBackedSessionCounter;
 import com.termux.shared.termux.plugins.TermuxPluginUtils;
 import com.termux.shared.data.IntentUtils;
 import com.termux.shared.net.uri.UriUtils;
@@ -150,6 +151,15 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * the background and re-acquired when it returns to the foreground, preserving the user's intent. */
     private final BackgroundIdleWakeLockPolicy mBackgroundIdleWakeLockPolicy = new BackgroundIdleWakeLockPolicy();
 
+    /** Keeps the wake lock and Wi-Fi lock held, foreground or background, while at least one running
+     * definition-backed (autossh/ssh) session exists, so Android Doze does not freeze the CPU or
+     * Wi-Fi radio and the SSH keepalive keeps those connections alive. Released automatically when no
+     * such session remains. A manual release from the notification action suppresses re-acquisition
+     * until the active-session count returns to zero and rises again. */
+    private final AlwaysConnectedWakeLockPolicy mAlwaysConnectedWakeLockPolicy = new AlwaysConnectedWakeLockPolicy();
+
+    private final DefinitionBackedSessionCounter mDefinitionBackedSessionCounter = new DefinitionBackedSessionCounter();
+
     /** If the user has executed the {@link TERMUX_SERVICE#ACTION_STOP_SERVICE} intent. */
     boolean mWantsToStop = false;
 
@@ -202,11 +212,13 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                     break;
                 case TERMUX_SERVICE.ACTION_WAKE_LOCK:
                     Logger.logDebug(LOG_TAG, "ACTION_WAKE_LOCK intent received");
+                    mAlwaysConnectedWakeLockPolicy.onWakeLockManuallyAcquired();
                     actionAcquireWakeLock();
                     break;
                 case TERMUX_SERVICE.ACTION_WAKE_UNLOCK:
                     Logger.logDebug(LOG_TAG, "ACTION_WAKE_UNLOCK intent received");
                     mBackgroundIdleWakeLockPolicy.onWakeLockManuallyReleased();
+                    mAlwaysConnectedWakeLockPolicy.onWakeLockManuallyReleased(countActiveDefinitionBackedSessions());
                     actionReleaseWakeLock(true);
                     break;
                 case TERMUX_SERVICE.ACTION_SERVICE_EXECUTE:
@@ -419,13 +431,62 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         Logger.logDebug(LOG_TAG, "WakeLocks released successfully");
     }
 
+    /** Acquire or release the wake and Wi-Fi locks so they are held exactly while at least one running
+     * definition-backed session exists, keeping those connections alive in the background. Idempotent:
+     * acquiring is skipped when already held and releasing when already released. A manual notification
+     * release suppresses re-acquisition until the active definition-backed session count drops to zero
+     * and rises again. */
+    synchronized void reconcileAlwaysConnectedWakeLock() {
+        int activeDefinitionBackedSessionCount = countActiveDefinitionBackedSessions();
+        boolean wakeLockCurrentlyHeld = mWakeLock != null;
+        switch (mAlwaysConnectedWakeLockPolicy.decide(activeDefinitionBackedSessionCount, wakeLockCurrentlyHeld)) {
+            case ACQUIRE:
+                Logger.logDebug(LOG_TAG, "Acquiring WakeLocks to keep " + activeDefinitionBackedSessionCount + " definition-backed session(s) connected");
+                actionAcquireWakeLock();
+                break;
+            case RELEASE:
+                Logger.logDebug(LOG_TAG, "Releasing WakeLocks since no definition-backed session is active");
+                actionReleaseWakeLock(true);
+                break;
+            case NONE:
+                break;
+        }
+    }
+
+    private int countActiveDefinitionBackedSessions() {
+        String autosshCommandTemplate = getAutosshCommandTemplate();
+        List<String> activeSessionNames = new ArrayList<>();
+        for (TermuxSession termuxSession : mShellManager.mTermuxSessions) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null || !terminalSession.isRunning()) continue;
+            if (terminalSession.mSessionName != null)
+                activeSessionNames.add(terminalSession.mSessionName);
+        }
+        return mDefinitionBackedSessionCounter.countDefinitionBackedSessions(activeSessionNames, autosshCommandTemplate);
+    }
+
+    @Nullable
+    private String getAutosshCommandTemplate() {
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this);
+        if (preferences == null) return null;
+        return preferences.getAutosshCommand();
+    }
+
     /** Enter background-idle mode when {@link TermuxActivity} stops. Releases the held wake and Wi-Fi
      * locks so the CPU and Wi-Fi radio may return to power-save while the app is in the background,
      * while remembering that they were held so they can be re-acquired on return to the foreground.
      * Running shell sessions and background tasks are never killed and the foreground service stays
-     * alive; only the optional app-layer power locks are released. */
+     * alive; only the optional app-layer power locks are released. The always-connected hold takes
+     * precedence: while at least one running definition-backed session exists, the lock is kept so the
+     * background reconnect and SSH keepalive continue to work, and the background-idle release is
+     * skipped. */
     synchronized void onActivityBackgrounded() {
         Logger.logDebug(LOG_TAG, "onActivityBackgrounded");
+
+        if (countActiveDefinitionBackedSessions() > 0) {
+            Logger.logDebug(LOG_TAG, "Keeping WakeLocks held for active definition-backed sessions while backgrounded");
+            return;
+        }
 
         boolean wakeLockCurrentlyHeld = mWakeLock != null;
         if (!mBackgroundIdleWakeLockPolicy.shouldReleaseWakeLockOnBackground(wakeLockCurrentlyHeld))
@@ -717,6 +778,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
 
+        reconcileAlwaysConnectedWakeLock();
         updateNotification();
 
         // No need to recreate the activity since it likely just started and theme should already have applied
@@ -769,6 +831,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
         }
 
+        reconcileAlwaysConnectedWakeLock();
         updateNotification();
     }
 
@@ -1216,6 +1279,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     public boolean wantsToStop() {
         return mWantsToStop;
+    }
+
+    synchronized boolean isWakeLockHeld() {
+        return mWakeLock != null;
     }
 
 }

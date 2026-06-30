@@ -539,7 +539,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         checkForApkUpdateAndShowIndicator();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
-        mSessionReconnectScheduler.onForeground(mPreferences.getBackgroundReconnectScanIntervalMinutes());
+        mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
     }
 
     @Override
@@ -574,7 +574,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mIsVisible = false;
 
         mSessionDefinitionAutoReloadScheduler.onBackground();
-        mSessionReconnectScheduler.onBackground();
 
         if (mTermuxService != null)
             mTermuxService.onActivityBackgrounded();
@@ -598,6 +597,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTtsManager.shutdown();
 
         if (mIsInvalidState) return;
+
+        mSessionReconnectScheduler.stop();
 
         for (ActivityComponent component : mActivityComponents)
             component.onActivityDestroy();
