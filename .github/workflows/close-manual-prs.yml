@@ -51,8 +51,8 @@ jobs:
           close_with_comment() {
             local pr_num="$1"
             gh pr comment "$pr_num" --repo "$REPO" \
-              --body $'From: :robot: close-manual-prs\n\nThis repository is managed through an automated task-based workflow. Pull requests must originate from task issues and are created automatically by the CI system when a branch is pushed. Manually created pull requests are outside the scope of this workflow and will be closed automatically.\n\nIf you need to make changes, please create or use an existing task issue and push your branch — the CI system will create the pull request automatically.\n\nThank you for your understanding.'
-            gh pr close "$pr_num" --repo "$REPO"
+              --body $'From: :robot: close-manual-prs\n\nThis repository is managed through an automated task-based workflow. Pull requests must originate from task issues and are created automatically by the CI system when a branch is pushed. Manually created pull requests are outside the scope of this workflow and will be closed automatically.\n\nIf you need to make changes, please create or use an existing task issue and push your branch — the CI system will create the pull request automatically.\n\nThank you for your understanding.' || true
+            gh pr close "$pr_num" --repo "$REPO" || true
           }
 
           if [ "$EVENT_NAME" = "pull_request" ]; then
