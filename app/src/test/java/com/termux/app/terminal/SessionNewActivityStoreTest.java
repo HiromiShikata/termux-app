@@ -1183,6 +1183,61 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(6, reloadedStore.getSubagentCount("worker"));
     }
 
+    @Test
+    public void setReconnectingThenIsReconnectingAndExposesStartTime() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        Assert.assertFalse(store.isReconnecting("worker"));
+
+        store.setReconnecting("worker", 5_000L);
+
+        Assert.assertTrue(store.isReconnecting("worker"));
+        Assert.assertEquals(5_000L, store.getReconnectingStartTimeMillis("worker"));
+    }
+
+    @Test
+    public void clearReconnectingRemovesTheFlag() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("worker", 5_000L);
+
+        store.clearReconnecting("worker");
+
+        Assert.assertFalse(store.isReconnecting("worker"));
+        Assert.assertEquals(0L, store.getReconnectingStartTimeMillis("worker"));
+    }
+
+    @Test
+    public void reconnectingFlagIsNotPersisted() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        int saveCountBeforeReconnecting = persistence.getSaveCount();
+
+        store.setReconnecting("worker", 5_000L);
+
+        Assert.assertEquals(saveCountBeforeReconnecting, persistence.getSaveCount());
+        SessionNewActivityStore reloadedStore = new SessionNewActivityStore(persistence);
+        Assert.assertFalse(reloadedStore.isReconnecting("worker"));
+    }
+
+    @Test
+    public void purgeSessionClearsReconnectingFlag() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("worker", 5_000L);
+
+        store.purgeSession("worker");
+
+        Assert.assertFalse(store.isReconnecting("worker"));
+    }
+
+    @Test
+    public void purgeSessionPreservingStatuslineTimesClearsReconnectingFlag() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("worker", 5_000L);
+
+        store.purgeSessionPreservingStatuslineTimes("worker");
+
+        Assert.assertFalse(store.isReconnecting("worker"));
+    }
+
     private static final class SaveCountingPersistence implements SessionNewActivityPersistence {
 
         private List<SessionNewActivityState> mStates = new ArrayList<>();

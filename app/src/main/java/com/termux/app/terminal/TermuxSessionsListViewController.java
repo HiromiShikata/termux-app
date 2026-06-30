@@ -384,7 +384,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             nullToEmpty(sessionAtRow.getTitle()),
             buildTimestampLine(sessionAtRow.mSessionName),
             explicitCallReasonLabel(sessionRow),
-            String.valueOf(showDivider));
+            String.valueOf(showDivider),
+            String.valueOf(reconnectingIndicatorVisible(sessionAtRow.mSessionName)));
     }
 
     @NonNull
@@ -514,8 +515,23 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (preferences == null) {
             return;
         }
+        boolean wasDisabled = isSessionDisabled(sessionName);
         preferences.toggleSessionDisabled(sessionName);
+        if (wasDisabled) {
+            markReconnectingIfNoStoredStatuslineData(sessionName);
+        }
         refreshSessionList();
+    }
+
+    private void markReconnectingIfNoStoredStatuslineData(@NonNull String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) {
+            return;
+        }
+        if (store.hasStoredStatuslineData(sessionName)) {
+            return;
+        }
+        store.setReconnecting(sessionName, System.currentTimeMillis());
     }
 
     private void hideSession(@Nullable String sessionName) {
@@ -527,6 +543,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         preferences.setSessionDisabled(sessionName, true);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store != null) {
+            store.clearReconnecting(sessionName);
+        }
         refreshSessionList();
     }
 
@@ -890,6 +910,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         String timestampLine = sessionAtRow == null
             ? "" : buildTimestampLine(sessionAtRow.mSessionName);
         bindSessionRowTimes(sessionRowView, timestampLine);
+        bindSessionRowReconnectingIndicator(sessionRowView,
+            sessionAtRow == null ? null : sessionAtRow.mSessionName);
         TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
         applySessionTitleBottomPadding(sessionTitleView, !timestampLine.isEmpty());
     }
@@ -1054,6 +1076,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             "", definitionTitle, sessionTitle, explicitCallReasonPart);
 
         bindSessionRowTimes(sessionRowView, timestampLine);
+        bindSessionRowReconnectingIndicator(sessionRowView, sessionAtRow.mSessionName);
         applySessionTitleBottomPadding(sessionTitleView, !timestampLine.isEmpty());
 
         int bellNotificationLabelStart = sessionInfoBlock.startOf(SessionInfoLine.BELL_NOTIFICATION_LABEL);
@@ -1156,6 +1179,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         sessionRowTimesView.setVisibility(View.VISIBLE);
     }
 
+    private void bindSessionRowReconnectingIndicator(@NonNull View sessionRowView,
+                                                     @Nullable String sessionName) {
+        View reconnectingIndicatorView = sessionRowView.findViewById(R.id.session_reconnecting_indicator);
+        boolean showIndicator = sessionName != null
+            && SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+                sessionName, mActivity.getSessionNewActivityStore(), System.currentTimeMillis());
+        reconnectingIndicatorView.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
+    }
+
     private int sessionTitleTextStartPaddingPx() {
         int startPadding = dpToPx(SESSION_ROW_LEFT_PADDING_DP);
         return sessionRowTimesStartPaddingPx(startPadding,
@@ -1207,6 +1239,12 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             store.effectiveReplyTimeMillis(sessionName),
             store.getSubagentCount(sessionName),
             nowMillis).getText();
+    }
+
+    private boolean reconnectingIndicatorVisible(@Nullable String sessionName) {
+        return sessionName != null
+            && SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+                sessionName, mActivity.getSessionNewActivityStore(), System.currentTimeMillis());
     }
 
     @NonNull
