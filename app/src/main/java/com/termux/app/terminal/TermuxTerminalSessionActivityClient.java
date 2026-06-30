@@ -133,6 +133,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS = 1500L;
 
+    static final long STAGGERED_RECONNECT_INTERVAL_MILLIS = 400L;
+
+    static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 1;
+
     private static final long[] POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS = {
         ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS, 3000L, 5000L, 8000L, 12000L};
 
@@ -144,6 +148,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
     private final DeadSessionReconnectPlanner mDeadSessionReconnectPlanner = new DeadSessionReconnectPlanner();
+
+    private final StaggeredReconnectSchedule mStaggeredReconnectSchedule =
+        new StaggeredReconnectSchedule(STAGGERED_RECONNECT_INTERVAL_MILLIS,
+            STAGGERED_RECONNECT_CONCURRENT_WINDOW);
 
     private final HungSessionDetector mHungSessionDetector = new HungSessionDetector();
 
@@ -700,13 +708,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     /**
-     * Marks {@code sessionName} as reconnecting so its bottom-sheet row shows the spinner until its
-     * next parsed statusline arrives (cleared in {@link #applyStatuslineUpdates}) or the safety cap in
-     * {@link SessionReconnectingIndicatorState} elapses. It is set after {@link
-     * #reconnectDeadSessionPreservingDisplayedSession} returns, because that call clears the flag via
-     * {@link SessionNewActivityStore#purgeSessionPreservingStatuslineTimes} while tearing the dead
-     * session down; setting after the teardown leaves the fresh flag in place for the just-recreated
-     * session.
+     * Marks {@code sessionName} as reconnecting so its bottom-sheet row shows the spinner for exactly
+     * as long as the real reconnect/fetch is in flight: the flag is cleared when the next parsed
+     * statusline for the session arrives ({@link #applyStatuslineUpdates}), with no timer. It is set
+     * after {@link #reconnectDeadSessionPreservingDisplayedSession} returns, because that call clears
+     * the flag via {@link SessionNewActivityStore#purgeSessionPreservingStatuslineTimes} while tearing
+     * the dead session down; setting after the teardown leaves the fresh flag in place for the
+     * just-recreated session.
      */
     private void markSessionReconnecting(@Nullable String sessionName) {
         if (sessionName == null) return;
@@ -1515,15 +1523,31 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         List<String> sessionNamesToReconnect =
             mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate);
         List<String> reconnectedSessionNames = new ArrayList<>();
+        int reconnectIndex = 0;
         for (String sessionName : sessionNamesToReconnect) {
             TerminalSession deadSession = sessionByName.get(sessionName);
-            if (deadSession != null) {
-                reconnectDeadSessionPreservingDisplayedSession(deadSession);
-                markSessionReconnecting(sessionName);
-                reconnectedSessionNames.add(sessionName);
+            if (deadSession == null) {
+                continue;
             }
+            long startDelayMillis = mStaggeredReconnectSchedule.startDelayMillisForIndex(reconnectIndex);
+            scheduleStaggeredReconnect(deadSession, sessionName, startDelayMillis);
+            reconnectedSessionNames.add(sessionName);
+            reconnectIndex++;
         }
         return reconnectedSessionNames;
+    }
+
+    private void scheduleStaggeredReconnect(@NonNull TerminalSession deadSession,
+                                            @NonNull String sessionName, long startDelayMillis) {
+        Runnable reconnectRunnable = () -> {
+            reconnectDeadSessionPreservingDisplayedSession(deadSession);
+            markSessionReconnecting(sessionName);
+        };
+        if (startDelayMillis <= 0L) {
+            reconnectRunnable.run();
+        } else {
+            mMainThreadHandler.postDelayed(reconnectRunnable, startDelayMillis);
+        }
     }
 
     /**

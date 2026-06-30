@@ -6,11 +6,10 @@ import androidx.annotation.Nullable;
 import com.termux.app.terminal.session.FinishedSessionEnterAction;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public final class DeadSessionReconnectPlanner {
-
-    public static final int MAX_HUNG_RECONNECTS_PER_TICK = 1;
 
     public static final class CandidateSession {
 
@@ -67,7 +66,7 @@ public final class DeadSessionReconnectPlanner {
     public List<String> planSessionNamesToReconnect(@NonNull List<CandidateSession> candidateSessions,
                                                     @Nullable String autosshCommandTemplate) {
         List<String> sessionNamesToReconnect = new ArrayList<>();
-        CandidateSession oldestHungAliveCandidate = null;
+        List<CandidateSession> hungAliveCandidates = new ArrayList<>();
         for (CandidateSession candidateSession : candidateSessions) {
             if (candidateSession == null) {
                 continue;
@@ -75,11 +74,12 @@ public final class DeadSessionReconnectPlanner {
             if (candidateSession.isDeadProcessReconnectCandidate()) {
                 addIfReconnectable(candidateSession, autosshCommandTemplate, sessionNamesToReconnect);
             } else if (candidateSession.isHungAliveReconnectCandidate()) {
-                oldestHungAliveCandidate = olderOut(oldestHungAliveCandidate, candidateSession);
+                hungAliveCandidates.add(candidateSession);
             }
         }
-        if (MAX_HUNG_RECONNECTS_PER_TICK > 0 && oldestHungAliveCandidate != null) {
-            addIfReconnectable(oldestHungAliveCandidate, autosshCommandTemplate, sessionNamesToReconnect);
+        hungAliveCandidates.sort(OLDEST_OUT_FIRST);
+        for (CandidateSession hungAliveCandidate : hungAliveCandidates) {
+            addIfReconnectable(hungAliveCandidate, autosshCommandTemplate, sessionNamesToReconnect);
         }
         return sessionNamesToReconnect;
     }
@@ -94,20 +94,7 @@ public final class DeadSessionReconnectPlanner {
         }
     }
 
-    @NonNull
-    private static CandidateSession olderOut(@Nullable CandidateSession current,
-                                             @NonNull CandidateSession candidate) {
-        if (current == null) {
-            return candidate;
-        }
-        Long currentOut = current.getLastOutTimeMillis();
-        Long candidateOut = candidate.getLastOutTimeMillis();
-        if (candidateOut == null) {
-            return current;
-        }
-        if (currentOut == null) {
-            return candidate;
-        }
-        return candidateOut < currentOut ? candidate : current;
-    }
+    private static final Comparator<CandidateSession> OLDEST_OUT_FIRST =
+        Comparator.comparing(CandidateSession::getLastOutTimeMillis,
+            Comparator.nullsFirst(Comparator.naturalOrder()));
 }

@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 
 public class SessionNewActivityStore {
 
@@ -182,6 +183,30 @@ public class SessionNewActivityStore {
         mStatuslineReplyTimeMillisByName.put(sessionName, replyTimeMillis);
     }
 
+    /**
+     * The genuine remote time to store for a statusline {@code call:}/{@code out:}/{@code reply:}
+     * token, given the value already stored for that session. The tokens are bare wall-clock {@code
+     * HH:MM:SS} values with no date, resolved to the most recent occurrence at or before now, so a
+     * session whose last genuine activity is several days old re-resolves the same clock token to a
+     * within-the-last-day instant every time it is reparsed. Advancing the stored time to that
+     * re-resolved instant fabricates a fresh time the owner never produced and is the source of the
+     * "the activity dot is yellow even though out is more than a day old" defect. When the incoming
+     * value is the same wall-clock time of day as the stored value but lands on a later calendar day,
+     * it is that clock-aliased re-resolution and the genuine older stored time is kept; otherwise the
+     * incoming value is a real advance and is used.
+     */
+    private static long genuineStatuslineTimeMillis(@Nullable Long storedTimeMillis,
+                                                    long incomingTimeMillis) {
+        if (storedTimeMillis == null) {
+            return incomingTimeMillis;
+        }
+        if (ClockAliasedStatuslineTimeGuard.isOlderDayWithSameClockTime(
+            storedTimeMillis, incomingTimeMillis, TimeZone.getDefault())) {
+            return storedTimeMillis;
+        }
+        return incomingTimeMillis;
+    }
+
     public void recordStatuslineTimes(@NonNull String sessionName,
                                       @Nullable Long callTimeMillis,
                                       @Nullable Long outTimeMillis,
@@ -200,16 +225,22 @@ public class SessionNewActivityStore {
         }
         mSubagentCountByName.put(sessionName, subagentCount);
         if (callTimeMillis != null) {
-            mStatuslineCallTimeMillisByName.put(sessionName, callTimeMillis);
-            mLastExplicitCallTimeMillisByName.put(sessionName, callTimeMillis);
+            long genuineCallTimeMillis = genuineStatuslineTimeMillis(
+                mStatuslineCallTimeMillisByName.get(sessionName), callTimeMillis);
+            mStatuslineCallTimeMillisByName.put(sessionName, genuineCallTimeMillis);
+            mLastExplicitCallTimeMillisByName.put(sessionName, genuineCallTimeMillis);
         }
         if (outTimeMillis != null) {
-            mStatuslineOutTimeMillisByName.put(sessionName, outTimeMillis);
-            mLastOutputActivityTimeMillisByName.put(sessionName, outTimeMillis);
+            long genuineOutTimeMillis = genuineStatuslineTimeMillis(
+                mStatuslineOutTimeMillisByName.get(sessionName), outTimeMillis);
+            mStatuslineOutTimeMillisByName.put(sessionName, genuineOutTimeMillis);
+            mLastOutputActivityTimeMillisByName.put(sessionName, genuineOutTimeMillis);
         }
         if (replyTimeMillis != null) {
-            advanceStatuslineReplyTime(sessionName, replyTimeMillis);
-            if (statuslineReplyAcknowledgesPendingReasons(sessionName, replyTimeMillis)) {
+            long genuineReplyTimeMillis = genuineStatuslineTimeMillis(
+                mStatuslineReplyTimeMillisByName.get(sessionName), replyTimeMillis);
+            advanceStatuslineReplyTime(sessionName, genuineReplyTimeMillis);
+            if (statuslineReplyAcknowledgesPendingReasons(sessionName, genuineReplyTimeMillis)) {
                 acknowledgeCallReasons(sessionName);
             }
         }
@@ -457,14 +488,15 @@ public class SessionNewActivityStore {
     }
 
     /**
-     * The reconnecting/fetching flag for {@code sessionName}, an in-memory-only signal that the row
-     * is currently reconnecting or fetching its latest output. It is deliberately not persisted: a
-     * reconnect or a fetch is bound to the live session lifecycle, so a restart that loses it is
-     * correct (the row is no longer mid-fetch after the process is gone). The stored value is the
-     * start time the fetch began, which {@link SessionReconnectingIndicatorState} ages off against a
-     * fixed safety cap so a fetch that never delivers data cannot leave the spinner showing forever.
-     * Setting and clearing notify the change listener but do not call {@link #save()}, so the
-     * transient flag never enters persistence.
+     * The reconnecting/fetching flag for {@code sessionName}, an in-memory-only signal that a real
+     * reconnect/fetch for the row is currently in flight. It is set at the actual start of a reconnect
+     * operation and cleared when fresh statusline data for the session arrives (in {@link
+     * SessionReconnectingIndicatorState#shouldShowReconnectingIndicator} the spinner is shown exactly
+     * while this flag is set, with no timer). It is deliberately not persisted: a reconnect or a fetch
+     * is bound to the live session lifecycle, so a restart that loses it is correct (the row is no
+     * longer mid-fetch after the process is gone). The stored value is the start time the fetch began,
+     * kept for diagnostics. Setting and clearing notify the change listener but do not call {@link
+     * #save()}, so the transient flag never enters persistence.
      */
     public void setReconnecting(@NonNull String sessionName, long startTimeMillis) {
         Long stored = mReconnectingStartTimeMillisByName.get(sessionName);

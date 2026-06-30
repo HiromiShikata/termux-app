@@ -518,20 +518,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         boolean wasDisabled = isSessionDisabled(sessionName);
         preferences.toggleSessionDisabled(sessionName);
         if (wasDisabled) {
-            markReconnectingIfNoStoredStatuslineData(sessionName);
+            mActivity.reconnectDeadDefinitionBackedSessions();
         }
         refreshSessionList();
-    }
-
-    private void markReconnectingIfNoStoredStatuslineData(@NonNull String sessionName) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) {
-            return;
-        }
-        if (store.hasStoredStatuslineData(sessionName)) {
-            return;
-        }
-        store.setReconnecting(sessionName, System.currentTimeMillis());
     }
 
     private void hideSession(@Nullable String sessionName) {
@@ -1182,10 +1171,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private void bindSessionRowReconnectingIndicator(@NonNull View sessionRowView,
                                                      @Nullable String sessionName) {
         View reconnectingIndicatorView = sessionRowView.findViewById(R.id.session_reconnecting_indicator);
-        boolean showIndicator = sessionName != null
-            && SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
-                sessionName, mActivity.getSessionNewActivityStore(), System.currentTimeMillis());
-        reconnectingIndicatorView.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
+        boolean showIndicator = reconnectingIndicatorVisible(sessionName);
+        reconnectingIndicatorView.setVisibility(showIndicator ? View.VISIBLE : View.INVISIBLE);
     }
 
     private int sessionTitleTextStartPaddingPx() {
@@ -1244,7 +1231,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private boolean reconnectingIndicatorVisible(@Nullable String sessionName) {
         return sessionName != null
             && SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
-                sessionName, mActivity.getSessionNewActivityStore(), System.currentTimeMillis());
+                sessionName, mActivity.getSessionNewActivityStore());
     }
 
     @NonNull
