@@ -36,6 +36,6 @@ public final class ApkUpdateForegroundCheckThrottle {
     }
 
     public void recordCheckedAt(long nowMillis) {
-        preferences.edit().putLong(PREFERENCE_KEY_LAST_FOREGROUND_CHECK_AT, nowMillis).apply();
+        preferences.edit().putLong(PREFERENCE_KEY_LAST_FOREGROUND_CHECK_AT, nowMillis).commit();
     }
 }
