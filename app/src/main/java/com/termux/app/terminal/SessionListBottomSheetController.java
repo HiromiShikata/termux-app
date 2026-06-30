@@ -489,7 +489,7 @@ public class SessionListBottomSheetController {
     static void bindSessionListAdapter(@NonNull RecyclerView recyclerView,
                                        @NonNull RecyclerView.Adapter<?> adapter) {
         if (recyclerView.getLayoutManager() == null) {
-            recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
+            recyclerView.setLayoutManager(new SafeLinearLayoutManager(recyclerView.getContext()));
         }
         disableChangeAnimations(recyclerView);
         recyclerView.setAdapter(adapter);
