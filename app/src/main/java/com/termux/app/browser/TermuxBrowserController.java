@@ -99,6 +99,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserPersistedTabsSerializer mPersistedTabsSerializer = new BrowserPersistedTabsSerializer();
 
+    private final BrowserSessionSplitRatios mSessionSplitRatios = new BrowserSessionSplitRatios();
+
+    private final BrowserSessionSplitRatiosSerializer mSessionSplitRatiosSerializer = new BrowserSessionSplitRatiosSerializer();
+
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
     private final FrameLayout mWebViewContainer;
@@ -114,8 +118,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private int mSplitDragStartBrowserHeight;
 
     private int mSplitDragTotalHeight;
-
-    private Float mLastAppliedBrowserSplitRatio;
 
     private final TextView mPageTitleUrlHeaderView;
 
@@ -247,6 +249,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureHeaderInteractions();
         configureBrowserOpenStatePersistence();
         loadPersistedSessionTabs();
+        loadPersistedSessionSplitRatios();
+    }
+
+    private void loadPersistedSessionSplitRatios() {
+        mSessionSplitRatios.replaceAll(
+            mSessionSplitRatiosSerializer.deserialize(
+                mActivity.getPreferences().getBrowserSessionSplitRatios()));
     }
 
     private void loadPersistedSessionTabs() {
@@ -494,11 +503,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         terminalParams.height = 0;
         terminalParams.weight = 1f - clampedRatio;
         terminalView.setLayoutParams(terminalParams);
-        mLastAppliedBrowserSplitRatio = clampedRatio;
+        storeSessionSplitRatio(clampedRatio);
+    }
+
+    private void storeSessionSplitRatio(float ratio) {
+        if (mCurrentSessionName == null || mCurrentSessionName.isEmpty()) return;
+        mSessionSplitRatios.setRatio(mCurrentSessionName, ratio);
+        mActivity.getPreferences().setBrowserSessionSplitRatios(
+            mSessionSplitRatiosSerializer.serialize(mSessionSplitRatios.asMap()));
     }
 
     private void showBrowserSplitDivider() {
-        applyBrowserSplitRatio(BrowserSplitRatio.resolveRatioToApply(mLastAppliedBrowserSplitRatio));
+        applyBrowserSplitRatio(mSessionSplitRatios.resolveRatioToApply(mCurrentSessionName));
         mBrowserTerminalDivider.setVisibility(View.VISIBLE);
     }
 
@@ -1116,6 +1132,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (session.mSessionName != null && !session.mSessionName.isEmpty()) {
             mPersistedTabsBySessionName.remove(session.mSessionName);
             writePersistedSessionTabs();
+            mSessionSplitRatios.removeSession(session.mSessionName);
+            mActivity.getPreferences().setBrowserSessionSplitRatios(
+                mSessionSplitRatiosSerializer.serialize(mSessionSplitRatios.asMap()));
         }
     }
 

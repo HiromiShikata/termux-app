@@ -105,6 +105,12 @@ package com.termux.shared.termux.settings.preferences;
  *          `KEY_BROWSER_OPEN_SESSION_NAMES` and `DEFAULT_VALUE_KEY_BROWSER_OPEN_SESSION_NAMES`, which
  *          persist the set of session names whose in-app browser area was left open so the open state
  *          is restored when returning to a session and after an app restart.
+ *
+ * - 0.25.0 (2026-06-30)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_BROWSER_SESSION_SPLIT_RATIOS` and `DEFAULT_VALUE_KEY_BROWSER_SESSION_SPLIT_RATIOS`,
+ *          which persist the in-app browser split height keyed by session name so each session
+ *          restores its own browser height when returning to it and after an app restart.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -265,6 +271,9 @@ public final class TermuxPreferenceConstants {
 
         public static final String KEY_BROWSER_SESSION_TABS = "browser_session_tabs";
         public static final String DEFAULT_VALUE_KEY_BROWSER_SESSION_TABS = "";
+
+        public static final String KEY_BROWSER_SESSION_SPLIT_RATIOS = "browser_session_split_ratios";
+        public static final String DEFAULT_VALUE_KEY_BROWSER_SESSION_SPLIT_RATIOS = "";
 
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
