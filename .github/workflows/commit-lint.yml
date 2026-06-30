@@ -62,4 +62,4 @@ jobs:
         env:
           NODE_PATH: /tmp/commitlint-run/node_modules
         run: |
-          /tmp/commitlint-run/node_modules/.bin/commitlint --from=origin/main --to=HEAD --config $GITHUB_WORKSPACE/.github/workflows/configs/commitlint.config.js
+          /tmp/commitlint-run/node_modules/.bin/commitlint --from=origin/main --to=HEAD --config $GITHUB_WORKSPACE/.github/workflows/configs/commitlint.config.cjs
