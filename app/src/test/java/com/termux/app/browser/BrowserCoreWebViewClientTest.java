@@ -158,13 +158,13 @@ public class BrowserCoreWebViewClientTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void googleSignInHostIsRoutedToExternalBrowserAndLoadIsOverridden() {
+    public void googleSignInHostStaysInWebView() {
         RecordingHost host = new RecordingHost();
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
         boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
             "https://accounts.google.com/signin");
-        Assert.assertTrue(overridden);
-        Assert.assertTrue(host.externalBrowserUrls.contains("https://accounts.google.com/signin"));
+        Assert.assertFalse(overridden);
+        Assert.assertTrue(host.externalBrowserUrls.isEmpty());
     }
 
     @Test
