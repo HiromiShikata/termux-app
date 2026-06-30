@@ -73,6 +73,7 @@
     <string name="action_toggle_browser">Toggle browser</string>
     <string name="action_resize_browser_terminal_split">Drag to resize the browser and terminal areas</string>
     <string name="action_browser_new_tab">New tab</string>
+    <string name="action_browser_copy_link_text">Copy link text</string>
     <string name="action_browser_copy_link_url">Copy link URL</string>
     <string name="action_browser_open_link">Open in Browser</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
@@ -104,6 +105,7 @@
     <string name="action_browser_edit_url_create_session">Create session</string>
     <string name="msg_browser_no_current_url">No page to open.</string>
     <string name="msg_browser_url_copied">URL copied</string>
+    <string name="msg_browser_link_text_copied">Link text copied</string>
     <string name="action_browser_edit_url_add_bookmark">Bookmark</string>
     <string name="action_browser_edit_url_bookmarks">Bookmarks</string>
     <string name="msg_browser_bookmarked">Bookmarked</string>

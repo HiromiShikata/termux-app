@@ -9,6 +9,7 @@ import android.os.Message;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.shared.interact.DialogUtils;
@@ -46,30 +47,35 @@ public final class BrowserLinkContextMenuController {
         int hitTestType = hitTestResult.getType();
         if (!BrowserLinkLongPress.isLinkHit(hitTestType)) return false;
         if (BrowserLinkLongPress.requiresHrefLookup(hitTestType)) {
-            requestLinkHrefThenShowMenu();
+            requestLinkHrefThenShowMenu(null);
             return true;
         }
         String linkUrl = hitTestResult.getExtra();
         if (!BrowserLinkLongPress.isCopyableLink(hitTestType, linkUrl)) return false;
-        showLinkContextMenu(linkUrl);
+        requestLinkHrefThenShowMenu(linkUrl);
         return true;
     }
 
-    private void requestLinkHrefThenShowMenu() {
+    private void requestLinkHrefThenShowMenu(@Nullable String fallbackLinkUrl) {
         Handler hrefHandler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(@NonNull Message message) {
                 String linkUrl = message.getData().getString("url");
+                String anchorText = message.getData().getString("title");
+                if (!BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
+                    linkUrl = fallbackLinkUrl;
+                }
                 if (BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
-                    showLinkContextMenu(linkUrl);
+                    showLinkContextMenu(linkUrl, anchorText);
                 }
             }
         };
         mWebView.requestFocusNodeHref(hrefHandler.obtainMessage());
     }
 
-    void showLinkContextMenu(@NonNull String linkUrl) {
+    void showLinkContextMenu(@NonNull String linkUrl, @Nullable String anchorText) {
         CharSequence[] actions = {
+            mContext.getString(R.string.action_browser_copy_link_text),
             mContext.getString(R.string.action_browser_copy_link_url),
             mContext.getString(R.string.action_browser_open_link),
             mContext.getString(R.string.action_browser_open_in_chrome),
@@ -79,16 +85,24 @@ public final class BrowserLinkContextMenuController {
             .setTitle(linkUrl)
             .setItems(actions, (dialog, which) -> {
                 if (which == 0) {
-                    copyLinkUrl(linkUrl);
+                    copyLinkText(linkUrl, anchorText);
                 } else if (which == 1) {
-                    mActions.openLinkInBrowser(linkUrl);
+                    copyLinkUrl(linkUrl);
                 } else if (which == 2) {
+                    mActions.openLinkInBrowser(linkUrl);
+                } else if (which == 3) {
                     ShareUtils.openUrlInChrome(mContext, linkUrl);
                 } else {
                     copyLinkUrl(linkUrl);
                     mActions.createSessionForLink(linkUrl);
                 }
             }));
+    }
+
+    private void copyLinkText(@NonNull String linkUrl, @Nullable String anchorText) {
+        ShareUtils.copyTextToClipboard(mContext,
+            BrowserLinkLongPress.linkTextClipboardValue(linkUrl, anchorText),
+            mContext.getString(R.string.msg_browser_link_text_copied));
     }
 
     private void copyLinkUrl(@NonNull String linkUrl) {

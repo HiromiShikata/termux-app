@@ -42,9 +42,15 @@ public class BrowserLinkContextMenuControllerTest {
 
     private AlertDialog showMenuFor(@NonNull WebView webView, @NonNull String linkUrl,
                                     @NonNull BrowserLinkContextMenuController.Actions actions) {
+        return showMenuFor(webView, linkUrl, null, actions);
+    }
+
+    private AlertDialog showMenuFor(@NonNull WebView webView, @NonNull String linkUrl,
+                                    String anchorText,
+                                    @NonNull BrowserLinkContextMenuController.Actions actions) {
         BrowserLinkContextMenuController controller =
             new BrowserLinkContextMenuController(context(), webView, actions);
-        controller.showLinkContextMenu(linkUrl);
+        controller.showLinkContextMenu(linkUrl, anchorText);
         return ShadowAlertDialog.getLatestAlertDialog();
     }
 
@@ -64,22 +70,39 @@ public class BrowserLinkContextMenuControllerTest {
     }
 
     @Test
-    public void menuListsFourActionsInOrder() {
+    public void menuListsFiveActionsInOrder() {
         WebView webView = new WebView(context());
         AlertDialog dialog = showMenuFor(webView, "https://example.com/page", new RecordingActions());
         ListAdapter adapter = dialog.getListView().getAdapter();
-        Assert.assertEquals(4, adapter.getCount());
-        Assert.assertEquals(context().getString(R.string.action_browser_copy_link_url), adapter.getItem(0));
-        Assert.assertEquals(context().getString(R.string.action_browser_open_link), adapter.getItem(1));
-        Assert.assertEquals(context().getString(R.string.action_browser_open_in_chrome), adapter.getItem(2));
-        Assert.assertEquals(context().getString(R.string.action_browser_create_session_for_link), adapter.getItem(3));
+        Assert.assertEquals(5, adapter.getCount());
+        Assert.assertEquals(context().getString(R.string.action_browser_copy_link_text), adapter.getItem(0));
+        Assert.assertEquals(context().getString(R.string.action_browser_copy_link_url), adapter.getItem(1));
+        Assert.assertEquals(context().getString(R.string.action_browser_open_link), adapter.getItem(2));
+        Assert.assertEquals(context().getString(R.string.action_browser_open_in_chrome), adapter.getItem(3));
+        Assert.assertEquals(context().getString(R.string.action_browser_create_session_for_link), adapter.getItem(4));
     }
 
     @Test
-    public void copyActionCopiesLinkUrlToClipboard() {
+    public void copyLinkTextActionCopiesAnchorTextToClipboard() {
         WebView webView = new WebView(context());
-        AlertDialog dialog = showMenuFor(webView, "https://example.com/page", new RecordingActions());
+        AlertDialog dialog = showMenuFor(webView, "https://example.com/page", "Example Page", new RecordingActions());
         dialog.getListView().performItemClick(null, 0, 0);
+        Assert.assertEquals("Example Page", clipboardText());
+    }
+
+    @Test
+    public void copyLinkTextActionFallsBackToUrlWhenAnchorTextIsEmpty() {
+        WebView webView = new WebView(context());
+        AlertDialog dialog = showMenuFor(webView, "https://example.com/page", "", new RecordingActions());
+        dialog.getListView().performItemClick(null, 0, 0);
+        Assert.assertEquals("https://example.com/page", clipboardText());
+    }
+
+    @Test
+    public void copyLinkUrlActionCopiesLinkUrlToClipboard() {
+        WebView webView = new WebView(context());
+        AlertDialog dialog = showMenuFor(webView, "https://example.com/page", "Example Page", new RecordingActions());
+        dialog.getListView().performItemClick(null, 1, 0);
         Assert.assertEquals("https://example.com/page", clipboardText());
     }
 
@@ -88,7 +111,7 @@ public class BrowserLinkContextMenuControllerTest {
         WebView webView = new WebView(context());
         RecordingActions actions = new RecordingActions();
         AlertDialog dialog = showMenuFor(webView, "https://example.com/page", actions);
-        dialog.getListView().performItemClick(null, 1, 0);
+        dialog.getListView().performItemClick(null, 2, 0);
         Assert.assertEquals("https://example.com/page", actions.openedInBrowserUrl);
     }
 
@@ -97,7 +120,7 @@ public class BrowserLinkContextMenuControllerTest {
         WebView webView = new WebView(context());
         RecordingActions actions = new RecordingActions();
         AlertDialog dialog = showMenuFor(webView, "https://example.com/page", actions);
-        dialog.getListView().performItemClick(null, 3, 0);
+        dialog.getListView().performItemClick(null, 4, 0);
         Assert.assertEquals("https://example.com/page", actions.createdSessionUrl);
         Assert.assertEquals("https://example.com/page", clipboardText());
     }
