@@ -35,6 +35,6 @@ public final class ApkUpdateAutoCheckThrottle {
     }
 
     public void recordCheckedAt(long nowMillis) {
-        preferences.edit().putLong(PREFERENCE_KEY_LAST_AUTO_CHECK_AT, nowMillis).apply();
+        preferences.edit().putLong(PREFERENCE_KEY_LAST_AUTO_CHECK_AT, nowMillis).commit();
     }
 }
