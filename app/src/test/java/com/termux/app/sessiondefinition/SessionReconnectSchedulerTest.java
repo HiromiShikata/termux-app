@@ -23,7 +23,7 @@ public class SessionReconnectSchedulerTest {
     }
 
     @Test
-    public void shouldScheduleOnlyWhenForegroundAndIntervalPositive() {
+    public void shouldScheduleOnlyWhenRunningAndIntervalPositive() {
         Assert.assertTrue(SessionReconnectScheduler.shouldSchedule(true, 1));
         Assert.assertFalse(SessionReconnectScheduler.shouldSchedule(true, 0));
         Assert.assertFalse(SessionReconnectScheduler.shouldSchedule(false, 1));
@@ -36,7 +36,7 @@ public class SessionReconnectSchedulerTest {
         SessionReconnectScheduler scheduler =
             new SessionReconnectScheduler(handler(), reconnectCount::incrementAndGet);
 
-        scheduler.onForeground(0);
+        scheduler.start(0);
 
         Assert.assertFalse(scheduler.isScheduled());
         shadowOf(Looper.getMainLooper()).idle();
@@ -44,22 +44,22 @@ public class SessionReconnectSchedulerTest {
     }
 
     @Test
-    public void foregroundWithPositiveIntervalSchedules() {
+    public void startWithPositiveIntervalSchedules() {
         SessionReconnectScheduler scheduler =
             new SessionReconnectScheduler(handler(), () -> { });
 
-        scheduler.onForeground(5);
+        scheduler.start(5);
 
         Assert.assertTrue(scheduler.isScheduled());
     }
 
     @Test
-    public void tickRunsReconnectAndReschedulesWhileForeground() {
+    public void tickRunsReconnectAndReschedulesWhileRunning() {
         AtomicInteger reconnectCount = new AtomicInteger();
         SessionReconnectScheduler scheduler =
             new SessionReconnectScheduler(handler(), reconnectCount::incrementAndGet);
 
-        scheduler.onForeground(1);
+        scheduler.start(1);
         shadowOf(Looper.getMainLooper()).idleFor(60_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
 
         Assert.assertEquals(1, reconnectCount.get());
@@ -70,13 +70,26 @@ public class SessionReconnectSchedulerTest {
     }
 
     @Test
-    public void backgroundStopsScheduledReconnect() {
+    public void keepsReconnectingAcrossManyIntervalsWhileRunning() {
         AtomicInteger reconnectCount = new AtomicInteger();
         SessionReconnectScheduler scheduler =
             new SessionReconnectScheduler(handler(), reconnectCount::incrementAndGet);
 
-        scheduler.onForeground(1);
-        scheduler.onBackground();
+        scheduler.start(1);
+        shadowOf(Looper.getMainLooper()).idleFor(300_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+        Assert.assertEquals(5, reconnectCount.get());
+        Assert.assertTrue(scheduler.isScheduled());
+    }
+
+    @Test
+    public void stopCancelsScheduledReconnect() {
+        AtomicInteger reconnectCount = new AtomicInteger();
+        SessionReconnectScheduler scheduler =
+            new SessionReconnectScheduler(handler(), reconnectCount::incrementAndGet);
+
+        scheduler.start(1);
+        scheduler.stop();
 
         Assert.assertFalse(scheduler.isScheduled());
         shadowOf(Looper.getMainLooper()).idleFor(120_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
@@ -84,17 +97,30 @@ public class SessionReconnectSchedulerTest {
     }
 
     @Test
-    public void backgroundBeforeTickPreventsReconnect() {
+    public void stopBeforeTickPreventsReconnect() {
         AtomicInteger reconnectCount = new AtomicInteger();
         SessionReconnectScheduler scheduler =
             new SessionReconnectScheduler(handler(), reconnectCount::incrementAndGet);
 
-        scheduler.onForeground(1);
+        scheduler.start(1);
         shadowOf(Looper.getMainLooper()).idleFor(30_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
-        scheduler.onBackground();
+        scheduler.stop();
         shadowOf(Looper.getMainLooper()).idleFor(120_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
 
         Assert.assertEquals(0, reconnectCount.get());
+    }
+
+    @Test
+    public void startIsIdempotentAndDoesNotDoubleSchedule() {
+        AtomicInteger reconnectCount = new AtomicInteger();
+        SessionReconnectScheduler scheduler =
+            new SessionReconnectScheduler(handler(), reconnectCount::incrementAndGet);
+
+        scheduler.start(1);
+        scheduler.start(1);
+        shadowOf(Looper.getMainLooper()).idleFor(60_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+        Assert.assertEquals(1, reconnectCount.get());
     }
 
     private static Handler handler() {
