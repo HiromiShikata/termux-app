@@ -52,17 +52,17 @@
                 android:paddingBottom="4dip"
                 android:textSize="9sp"
                 android:visibility="gone" />
-
-            <ProgressBar
-                android:id="@+id/session_reconnecting_indicator"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="16dip"
-                android:layout_height="16dip"
-                android:layout_marginStart="6dip"
-                android:layout_marginBottom="4dip"
-                android:indeterminate="true"
-                android:visibility="gone" />
         </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/session_reconnecting_indicator"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="14dip"
+            android:layout_height="14dip"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="2dip"
+            android:indeterminate="true"
+            android:visibility="invisible" />
 
         <ImageView
             android:id="@+id/session_disable_toggle"

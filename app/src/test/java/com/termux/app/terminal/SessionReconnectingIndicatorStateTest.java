@@ -10,32 +10,61 @@ public class SessionReconnectingIndicatorStateTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
-            "session-one", store, 10_000L));
+            "session-one", store));
     }
 
     @Test
-    public void reconnectingWithinCapShowsIndicator() {
+    public void reconnectingShowsIndicator() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.setReconnecting("session-one", 10_000L);
 
         Assert.assertTrue(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
-            "session-one", store, 10_000L
-                + SessionReconnectingIndicatorState.RECONNECTING_INDICATOR_MAX_DURATION_MILLIS));
+            "session-one", store));
     }
 
     @Test
-    public void reconnectingPastCapTimesOutAndHidesIndicator() {
+    public void reconnectingNeverTimesOutOnAClock() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.setReconnecting("session-one", 10_000L);
 
+        Assert.assertTrue(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+            "session-one", store));
+    }
+
+    @Test
+    public void clearingReconnectingHidesIndicator() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("session-one", 10_000L);
+        store.clearReconnecting("session-one");
+
         Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
-            "session-one", store, 10_000L
-                + SessionReconnectingIndicatorState.RECONNECTING_INDICATOR_MAX_DURATION_MILLIS + 1L));
+            "session-one", store));
+    }
+
+    @Test
+    public void arrivingStatuslineDataClearsTheReconnectingIndicator() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("session-one", 10_000L);
+
+        store.clearReconnecting("session-one");
+        store.recordStatuslineTimes("session-one", null, 20_000L, null);
+
+        Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+            "session-one", store));
+    }
+
+    @Test
+    public void staleSessionWithNoActiveLoadShowsNoIndicator() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("session-one", null, 1_000L, null);
+
+        Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+            "session-one", store));
     }
 
     @Test
     public void nullStoreDoesNotShowIndicator() {
         Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
-            "session-one", null, 10_000L));
+            "session-one", null));
     }
 }

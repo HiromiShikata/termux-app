@@ -133,7 +133,7 @@ public class DeadSessionReconnectPlannerTest {
     }
 
     @Test
-    public void reconnectsAtMostOneHungSessionPerTickChoosingOldestOut() {
+    public void reconnectsAllHungSessionsOldestOutFirst() {
         List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
             new DeadSessionReconnectPlanner.CandidateSession(
                 "https://example.test/hung-newer", true, false, true, 5_000L),
@@ -146,12 +146,15 @@ public class DeadSessionReconnectPlannerTest {
             planner.planSessionNamesToReconnect(candidates, "ssh {name}");
 
         Assert.assertEquals(
-            Collections.singletonList("https://example.test/hung-oldest"),
+            Arrays.asList(
+                "https://example.test/hung-oldest",
+                "https://example.test/hung-middle",
+                "https://example.test/hung-newer"),
             namesToReconnect);
     }
 
     @Test
-    public void reconnectsAllDeadButOnlyOneHungInSameTick() {
+    public void reconnectsAllDeadAndAllHungInSameTickExcludingCurrentAndHealthy() {
         List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
             new DeadSessionReconnectPlanner.CandidateSession(
                 "https://example.test/current", true, true, true, 1L),
@@ -173,7 +176,8 @@ public class DeadSessionReconnectPlannerTest {
             Arrays.asList(
                 "https://example.test/dead1",
                 "https://example.test/dead2",
-                "https://example.test/hung-oldest"),
+                "https://example.test/hung-oldest",
+                "https://example.test/hung-newer"),
             namesToReconnect);
     }
 }
