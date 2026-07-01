@@ -1572,6 +1572,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         List<String> reconnectedSessionNames = reconnectDeadDefinitionBackedSessionsInBackground();
         repopulateStatuslineTimesForAllSessions(true);
         if (reconnectedSessionNames.isEmpty()) return;
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController != null) {
+            listViewController.beginPostReconnectRescanWindow();
+        }
         mMainThreadHandler.postDelayed(
             new PostReconnectStatuslineRescanRetry(reconnectedSessionNames),
             mPostReconnectStatuslineRescanRetryPlanner.firstAttemptDelayMillis());
