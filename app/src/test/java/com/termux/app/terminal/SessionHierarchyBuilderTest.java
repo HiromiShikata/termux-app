@@ -925,6 +925,50 @@ public class SessionHierarchyBuilderTest {
         Assert.assertEquals(4, rows.size());
     }
 
+    @Test
+    public void killPathVisibleOrderMatchesTheRenderedBottomSheetVisibleOrderAcrossCollapse() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("umino", "storyA",
+                Collections.singletonList("https://example.test/u1")),
+            new SessionDefinitionEntry("xmile", "storyB",
+                Collections.singletonList("https://example.test/x1")));
+
+        List<SessionHierarchyRow> allRows = builder.build(
+            Arrays.asList("uminopm", "https://example.test/u1", "xmilepm", "https://example.test/x1"),
+            entries, NA);
+
+        Set<String> collapsedProjectKeys = new LinkedHashSet<>(Collections.singletonList("umino"));
+
+        List<Integer> killPathVisibleOrder = SessionHierarchyBuilder.visibleSessionIndexes(
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(allRows, collapsedProjectKeys));
+        List<Integer> renderedVisibleOrder = SessionHierarchyBuilder.visibleSessionIndexes(
+            builder.filterCollapsedProjects(allRows, collapsedProjectKeys));
+
+        Assert.assertEquals(renderedVisibleOrder, killPathVisibleOrder);
+    }
+
+    @Test
+    public void killPathVisibleOrderMatchesTheRenderedBottomSheetVisibleOrderWithoutCollapse() {
+        List<SessionDefinitionEntry> entries = Arrays.asList(
+            new SessionDefinitionEntry("umino", "storyA",
+                Collections.singletonList("https://example.test/u1")),
+            new SessionDefinitionEntry("xmile", "storyB",
+                Collections.singletonList("https://example.test/x1")));
+
+        List<SessionHierarchyRow> allRows = builder.build(
+            Arrays.asList("uminopm", "https://example.test/u1", "xmilepm", "https://example.test/x1"),
+            entries, NA);
+
+        Set<String> noCollapsedProjectKeys = Collections.emptySet();
+
+        List<Integer> killPathVisibleOrder = SessionHierarchyBuilder.visibleSessionIndexes(
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(allRows, noCollapsedProjectKeys));
+        List<Integer> renderedVisibleOrder = SessionHierarchyBuilder.visibleSessionIndexes(
+            builder.filterCollapsedProjects(allRows, noCollapsedProjectKeys));
+
+        Assert.assertEquals(renderedVisibleOrder, killPathVisibleOrder);
+    }
+
     private void assertProjectHeader(SessionHierarchyRow row, String expectedLabel) {
         Assert.assertEquals(SessionHierarchyRow.Type.PROJECT_HEADER, row.getType());
         Assert.assertTrue(row.isHeader());
