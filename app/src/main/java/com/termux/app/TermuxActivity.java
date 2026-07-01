@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -508,6 +509,19 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             indicator.setOnClickListener(null);
             indicator.setVisibility(View.GONE);
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        boolean isLandscape = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE;
+
+        if (mTermuxBrowserController != null)
+            mTermuxBrowserController.reconfigureBrowserSplitForOrientation(isLandscape);
+
+        if (mSessionListBottomSheetController != null)
+            mSessionListBottomSheetController.applyOrientationBounds();
     }
 
     @Override
