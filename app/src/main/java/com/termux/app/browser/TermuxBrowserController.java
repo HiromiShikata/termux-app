@@ -280,6 +280,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             sessionHandle, persistedSessionTabs.getTabs(), persistedSessionTabs.getActiveTabIndex());
     }
 
+    private void preloadProjectOverviewTabForSession(@Nullable String sessionHandle, @Nullable String sessionName) {
+        if (sessionHandle == null || sessionName == null || sessionName.isEmpty()) return;
+        if (mTabManager.hasTabs(sessionHandle)) return;
+        String overviewUrl = BrowserSessionOverviewPreload.resolvePreloadUrl(
+            sessionName, mProjectActionUrlResolver.resolveForSessionName(sessionName));
+        if (overviewUrl == null) return;
+        mTabManager.addTab(sessionHandle, normalizeUrl(overviewUrl)).setViewMode(BrowserViewMode.DESKTOP);
+    }
+
     private void persistSessionTabs() {
         for (String sessionHandle : liveSessionHandlesWithName().keySet()) {
             String sessionName = liveSessionHandlesWithName().get(sessionHandle);
@@ -1083,6 +1092,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
+        preloadProjectOverviewTabForSession(mCurrentSessionHandle, mCurrentSessionName);
         rebindTabsList();
         updateDesktopModeToggleState();
         updateProjectActionButtons();
