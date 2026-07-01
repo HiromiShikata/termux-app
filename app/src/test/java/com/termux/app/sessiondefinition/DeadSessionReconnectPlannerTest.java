@@ -154,6 +154,56 @@ public class DeadSessionReconnectPlannerTest {
     }
 
     @Test
+    public void capOfOneReconnectsOnlyASingleDeadSessionSoTheBackgroundTickNeverFiresABatch() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead1", false),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead2", false),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead3", false));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}", 1);
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/dead1"), namesToReconnect);
+    }
+
+    @Test
+    public void capPrefersDeadSessionsOverHungSessionsWhenOnlyOneSlotIsAvailable() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/hung", true, false, true, 1_000L),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead", false));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}", 1);
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/dead"), namesToReconnect);
+    }
+
+    @Test
+    public void capOfOneReconnectsTheOldestHungSessionWhenNoDeadSessionsExist() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/hung-newer", true, false, true, 5_000L),
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/hung-oldest", true, false, true, 1_000L));
+
+        List<String> namesToReconnect =
+            planner.planSessionNamesToReconnect(candidates, "ssh {name}", 1);
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/hung-oldest"), namesToReconnect);
+    }
+
+    @Test
+    public void aNonPositiveCapReconnectsNothing() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead1", false),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead2", false));
+
+        Assert.assertTrue(planner.planSessionNamesToReconnect(candidates, "ssh {name}", 0).isEmpty());
+        Assert.assertTrue(planner.planSessionNamesToReconnect(candidates, "ssh {name}", -1).isEmpty());
+    }
+
+    @Test
     public void reconnectsAllDeadAndAllHungInSameTickExcludingCurrentAndHealthy() {
         List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
             new DeadSessionReconnectPlanner.CandidateSession(

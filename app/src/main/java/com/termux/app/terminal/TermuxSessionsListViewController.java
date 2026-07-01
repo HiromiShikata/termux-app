@@ -53,6 +53,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private static final long HEADER_ITEM_ID_NAMESPACE = 0x1_0000_0000L;
     private static final long PROJECT_HEADER_ITEM_ID_NAMESPACE = 0x2_0000_0000L;
+    private static final long SESSION_ITEM_ID_NAMESPACE = 0x3_0000_0000L;
 
     private static final int VIEW_TYPE_SESSION = 0;
     private static final int VIEW_TYPE_PROJECT_HEADER = 1;
@@ -304,6 +305,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return false;
         }
         if (firstRow.getType() == SessionHierarchyRow.Type.SESSION) {
+            String firstName = firstRow.getSessionName();
+            String secondName = secondRow.getSessionName();
+            if (firstName != null || secondName != null) {
+                return TextUtils.equals(firstName, secondName);
+            }
             return firstRow.getSessionIndex() == secondRow.getSessionIndex();
         }
         return TextUtils.equals(firstRow.getLabel(), secondRow.getLabel());
@@ -756,11 +762,30 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @Nullable
     private TermuxSession sessionAtRowOrNull(@NonNull SessionHierarchyRow row) {
-        int sessionIndex = row.getSessionIndex();
+        int sessionIndex = resolveClickedSessionIndex(row, sessionNamesByIndex());
         if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
             return null;
         }
         return mSessionList.get(sessionIndex);
+    }
+
+    /**
+     * Resolves a tapped row to the index of its session in the live session list, keyed on the row's
+     * stable session name rather than on the position the row was rendered at. Resolving by name means
+     * a tap always reaches the intended session even when a concurrent reconnect has shifted every
+     * later index under the row. When the row carries no name (legacy rows) or the name is no longer
+     * present in the live list, it falls back to the captured index so a tap is never silently lost.
+     */
+    static int resolveClickedSessionIndex(@NonNull SessionHierarchyRow row,
+                                          @NonNull List<String> sessionNamesByIndex) {
+        String sessionName = row.getSessionName();
+        if (sessionName != null) {
+            int indexByName = sessionNamesByIndex.indexOf(sessionName);
+            if (indexByName >= 0) {
+                return indexByName;
+            }
+        }
+        return row.getSessionIndex();
     }
 
     public void applyExpandedProjectsAllowlist(@NonNull Collection<String> expandedProjectTokens) {
@@ -864,6 +889,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             case STORY_HEADER:
                 return HEADER_ITEM_ID_NAMESPACE | labelIdentityHash(row.getLabel());
             default:
+                String sessionName = row.getSessionName();
+                if (sessionName != null) {
+                    return SESSION_ITEM_ID_NAMESPACE | labelIdentityHash(sessionName);
+                }
                 return row.getSessionIndex();
         }
     }
@@ -1364,7 +1393,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (clickedSession == null) {
             return;
         }
-        mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
+        mActivity.getTermuxTerminalSessionClient()
+            .switchToSessionReconnectingIfDead(clickedSession.getTerminalSession());
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }

@@ -138,6 +138,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 1;
 
+    /**
+     * The proactive background reconnect reconnects at most this many stale non-current sessions per
+     * tick. A gentle one-at-a-time cap replaces the former all-at-once burst: with many stale sessions
+     * the burst removed and re-added every session in a roughly 30-second window, churning the
+     * session list and exhausting resources. Dead non-current sessions the user actually switches to
+     * are reconnected on demand in {@link #switchToSessionReconnectingIfDead}, so the background tick
+     * only needs to gently drain the backlog without ever firing a large simultaneous batch.
+     */
+    static final int MAX_BACKGROUND_RECONNECTS_PER_TICK = 1;
+
     private static final long[] POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS = {
         ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS, 3000L, 5000L, 8000L, 12000L};
 
@@ -924,6 +934,32 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         updateSessionNameOverlay();
     }
 
+    /**
+     * Switches to {@code session}, first reconnecting it in place when it is a dead definition-backed
+     * session so the user always lands on a live session. This is the primary reconnect path for a
+     * non-current stale session: instead of eagerly reconnecting every stale session in the background
+     * (which churned the list and exhausted resources), a dead session is reconnected on demand only
+     * when the user actually switches to it, taking roughly the ssh/tmux reattach time. When the
+     * session is already live, or the reconnect cannot produce a replacement, the switch falls back to
+     * the live session object so a tap is never lost.
+     */
+    public void switchToSessionReconnectingIfDead(@Nullable TerminalSession session) {
+        if (session == null) return;
+        if (shouldReconnectOnSwitch(session)) {
+            TerminalSession reconnectedSession = reconnectDeadSessionPreservingDisplayedSession(session);
+            if (reconnectedSession != null) {
+                setCurrentSession(reconnectedSession);
+                return;
+            }
+        }
+        setCurrentSession(session);
+    }
+
+    private boolean shouldReconnectOnSwitch(@NonNull TerminalSession session) {
+        if (session.isRunning()) return false;
+        return decideFinishedSessionEnterAction(session).isReconnect();
+    }
+
     private void enforceActiveSessionViewBinding(@NonNull TerminalSession session) {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
 
@@ -1485,7 +1521,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TermuxSession newTermuxSession =
             service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
-        if (newTermuxSession == null) return false;
+        if (newTermuxSession == null) {
+            Logger.logError(LOG_TAG, "Failed to reconnect session \"" + sessionName
+                + "\" in place; live session count delta "
+                + netLiveSessionCountDeltaForReconnect(false));
+            termuxSessionListNotifyUpdated();
+            return false;
+        }
 
         TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
         recordPersistedSession(newTerminalSession,
@@ -1496,6 +1538,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         replayPendingInputWhenConnected(newTerminalSession, pendingInput);
         return true;
+    }
+
+    /**
+     * The net change to the live session count produced by a single reconnect, which removes the dead
+     * session and then creates its replacement. When the replacement is created the delta is zero (one
+     * removed, one added); when the replacement fails the delta is negative one (one removed, none
+     * added). A reconnect therefore never increases the live session count, so a failed reconnect can
+     * never accumulate live sessions toward the maximum-sessions cap and can never leave a duplicate.
+     */
+    static int netLiveSessionCountDeltaForReconnect(boolean replacementCreated) {
+        return replacementCreated ? 0 : -1;
     }
 
     private void replayPendingInputWhenConnected(@NonNull TerminalSession reconnectedSession,
@@ -1530,7 +1583,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
 
         List<String> sessionNamesToReconnect =
-            mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate);
+            mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate,
+                MAX_BACKGROUND_RECONNECTS_PER_TICK);
         List<String> reconnectedSessionNames = new ArrayList<>();
         int reconnectIndex = 0;
         for (String sessionName : sessionNamesToReconnect) {
@@ -1632,12 +1686,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
     }
 
-    private void reconnectDeadSessionPreservingDisplayedSession(@NonNull TerminalSession deadSession) {
+    @Nullable
+    private TerminalSession reconnectDeadSessionPreservingDisplayedSession(@NonNull TerminalSession deadSession) {
         TermuxService service = mActivity.getTermuxService();
-        if (service == null) return;
+        if (service == null) return null;
 
         FinishedSessionEnterAction action = decideFinishedSessionEnterAction(deadSession);
-        if (!action.isReconnect()) return;
+        if (!action.isReconnect()) return null;
 
         String sessionName = action.getSessionName();
         String command = action.getCommand();
@@ -1666,7 +1721,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TermuxSession newTermuxSession =
             service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
-        if (newTermuxSession == null) return;
+        if (newTermuxSession == null) {
+            Logger.logError(LOG_TAG, "Failed to reconnect dead session \"" + sessionName
+                + "\"; the replacement session could not be created; live session count delta "
+                + netLiveSessionCountDeltaForReconnect(false));
+            termuxSessionListNotifyUpdated();
+            return null;
+        }
 
         TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
         recordPersistedSession(newTerminalSession,
@@ -1679,6 +1740,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         } else {
             termuxSessionListNotifyUpdated();
         }
+        return newTerminalSession;
     }
 
     private static final class ReconnectedSessionInputReplay implements Runnable {
