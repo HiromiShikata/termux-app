@@ -53,6 +53,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private static final long HEADER_ITEM_ID_NAMESPACE = 0x1_0000_0000L;
     private static final long PROJECT_HEADER_ITEM_ID_NAMESPACE = 0x2_0000_0000L;
+    private static final long SESSION_ITEM_ID_NAMESPACE = 0x3_0000_0000L;
 
     private static final int VIEW_TYPE_SESSION = 0;
     private static final int VIEW_TYPE_PROJECT_HEADER = 1;
@@ -304,6 +305,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return false;
         }
         if (firstRow.getType() == SessionHierarchyRow.Type.SESSION) {
+            String firstName = firstRow.getSessionName();
+            String secondName = secondRow.getSessionName();
+            if (firstName != null || secondName != null) {
+                return TextUtils.equals(firstName, secondName);
+            }
             return firstRow.getSessionIndex() == secondRow.getSessionIndex();
         }
         return TextUtils.equals(firstRow.getLabel(), secondRow.getLabel());
@@ -756,11 +762,29 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @Nullable
     private TermuxSession sessionAtRowOrNull(@NonNull SessionHierarchyRow row) {
+        String sessionName = row.getSessionName();
+        if (sessionName != null) {
+            TermuxSession sessionByName = sessionByNameOrNull(sessionName);
+            if (sessionByName != null) {
+                return sessionByName;
+            }
+        }
         int sessionIndex = row.getSessionIndex();
         if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
             return null;
         }
         return mSessionList.get(sessionIndex);
+    }
+
+    @Nullable
+    private TermuxSession sessionByNameOrNull(@NonNull String sessionName) {
+        for (TermuxSession session : mSessionList) {
+            TerminalSession terminalSession = session.getTerminalSession();
+            if (terminalSession != null && sessionName.equals(terminalSession.mSessionName)) {
+                return session;
+            }
+        }
+        return null;
     }
 
     public void applyExpandedProjectsAllowlist(@NonNull Collection<String> expandedProjectTokens) {
@@ -864,6 +888,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             case STORY_HEADER:
                 return HEADER_ITEM_ID_NAMESPACE | labelIdentityHash(row.getLabel());
             default:
+                String sessionName = row.getSessionName();
+                if (sessionName != null) {
+                    return SESSION_ITEM_ID_NAMESPACE | labelIdentityHash(sessionName);
+                }
                 return row.getSessionIndex();
         }
     }

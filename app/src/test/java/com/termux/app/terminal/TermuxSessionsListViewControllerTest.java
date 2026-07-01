@@ -661,13 +661,15 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void sessionRowStableIdReusesTheSessionIndexSoTheSameSessionKeepsItsViewHolderAcrossUpdates() {
-        long firstSessionId = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(0));
-        long sameSessionIdAfterRebuild = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(0));
-        long otherSessionId = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(1));
+    public void sessionRowStableIdFollowsTheSessionNameSoTheSameSessionKeepsItsViewHolderAcrossReorders() {
+        long firstSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(0, "worker"));
+        long sameSessionIdAfterReorder = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(5, "worker"));
+        long otherSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(1, "builder"));
 
-        Assert.assertEquals(0L, firstSessionId);
-        Assert.assertEquals(firstSessionId, sameSessionIdAfterRebuild);
+        Assert.assertEquals(firstSessionId, sameSessionIdAfterReorder);
         Assert.assertNotEquals(firstSessionId, otherSessionId);
     }
 
@@ -677,7 +679,8 @@ public class TermuxSessionsListViewControllerTest {
             SessionHierarchyRow.projectHeader("alpha"));
         long storyHeaderId = TermuxSessionsListViewController.rowItemId(
             SessionHierarchyRow.storyHeader("alpha"));
-        long sessionRowId = TermuxSessionsListViewController.rowItemId(SessionHierarchyRow.session(0));
+        long sessionRowId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(0, "alpha"));
 
         Assert.assertNotEquals(projectHeaderId, storyHeaderId);
         Assert.assertNotEquals(projectHeaderId, sessionRowId);
@@ -698,7 +701,15 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
-    public void diffTreatsTheSameSessionIndexAsTheSameRowSoUnchangedRowsAreNotTornDown() {
+    public void diffTreatsTheSameSessionNameAsTheSameRowRegardlessOfPositionSoReorderedRowsAreNotTornDown() {
+        Assert.assertTrue(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.session(2, "worker"), SessionHierarchyRow.session(7, "worker")));
+        Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(
+            SessionHierarchyRow.session(2, "worker"), SessionHierarchyRow.session(2, "builder")));
+    }
+
+    @Test
+    public void diffFallsBackToTheSessionIndexWhenNeitherRowCarriesAName() {
         Assert.assertTrue(TermuxSessionsListViewController.sameRowIdentity(
             SessionHierarchyRow.session(2), SessionHierarchyRow.session(2)));
         Assert.assertFalse(TermuxSessionsListViewController.sameRowIdentity(

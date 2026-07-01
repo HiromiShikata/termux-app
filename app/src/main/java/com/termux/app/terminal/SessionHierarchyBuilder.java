@@ -119,7 +119,7 @@ public final class SessionHierarchyBuilder {
         if (!unmatchedSessionIndexes.isEmpty()) {
             rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
             for (int sessionIndex : unmatchedSessionIndexes) {
-                rows.add(SessionHierarchyRow.session(sessionIndex));
+                rows.add(sessionRow(sessionNames, sessionIndex));
             }
         }
         Set<String> definedProjectLabels = new LinkedHashSet<>();
@@ -132,7 +132,7 @@ public final class SessionHierarchyBuilder {
                 newIssueUrlByProject.get(projectLabel)));
             Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
             if (managerSessionIndex != null) {
-                rows.add(SessionHierarchyRow.session(managerSessionIndex));
+                rows.add(sessionRow(sessionNames, managerSessionIndex));
             }
             Map<String, List<Integer>> storiesInProject = sessionIndexesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
@@ -141,7 +141,7 @@ public final class SessionHierarchyBuilder {
             for (Map.Entry<String, List<Integer>> story : storiesInProject.entrySet()) {
                 rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
                 for (int sessionIndex : story.getValue()) {
-                    rows.add(SessionHierarchyRow.session(sessionIndex));
+                    rows.add(sessionRow(sessionNames, sessionIndex));
                 }
             }
         }
@@ -441,8 +441,15 @@ public final class SessionHierarchyBuilder {
     private List<SessionHierarchyRow> flatten(@NonNull List<String> sessionNames) {
         List<SessionHierarchyRow> rows = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
-            rows.add(SessionHierarchyRow.session(sessionIndex));
+            rows.add(sessionRow(sessionNames, sessionIndex));
         }
         return rows;
+    }
+
+    @NonNull
+    private static SessionHierarchyRow sessionRow(@NonNull List<String> sessionNames, int sessionIndex) {
+        String sessionName = sessionIndex >= 0 && sessionIndex < sessionNames.size()
+            ? sessionNames.get(sessionIndex) : null;
+        return SessionHierarchyRow.session(sessionIndex, sessionName);
     }
 }
