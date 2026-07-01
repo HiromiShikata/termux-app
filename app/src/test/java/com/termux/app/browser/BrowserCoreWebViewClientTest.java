@@ -102,6 +102,55 @@ public class BrowserCoreWebViewClientTest {
         }
     }
 
+    private static final class ThrowingHost implements BrowserCoreWebViewClient.Host {
+
+        @NonNull
+        @Override
+        public BrowserViewMode getViewMode() {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public boolean shouldInjectMobileViewport() {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public void onPageStarted(@NonNull WebView view, @Nullable String url) {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public void onPageCommitVisible(@NonNull WebView view, @Nullable String url) {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public boolean onPageFinished(@NonNull WebView view, @Nullable String url) {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public void onVisitedHistoryUpdated(@NonNull WebView view, @Nullable String url, boolean isReload) {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public void onMainFrameError(@NonNull WebView view) {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash) {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public void openInExternalBrowser(@NonNull String url) {
+            throw new IllegalStateException("boom");
+        }
+    }
+
     private WebView newWebView() {
         return new WebView(RuntimeEnvironment.getApplication());
     }
@@ -245,5 +294,42 @@ public class BrowserCoreWebViewClientTest {
         client.onPageFinished(webView, "https://example.com/console");
         Assert.assertTrue(webView.injectedMobileViewport());
         Assert.assertFalse(webView.injectedDesktopViewport());
+    }
+
+    @Test
+    public void pageStartedDoesNotPropagateHostException() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        client.onPageStarted(newWebView(), "https://example.com/", null);
+    }
+
+    @Test
+    public void pageCommitVisibleDoesNotPropagateHostException() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        client.onPageCommitVisible(newWebView(), "https://example.com/");
+    }
+
+    @Test
+    public void pageFinishedDoesNotPropagateHostException() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        client.onPageFinished(newWebView(), "https://example.com/");
+    }
+
+    @Test
+    public void visitedHistoryUpdateDoesNotPropagateHostException() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        client.doUpdateVisitedHistory(newWebView(), "https://example.com/page", true);
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void mainFrameErrorDoesNotPropagateHostException() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        client.onReceivedError(newWebView(), -2, "net error", "https://example.com/");
+    }
+
+    @Test
+    public void renderProcessGoneReturnsHandledTrueWhenHostThrows() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        Assert.assertTrue(client.onRenderProcessGone(newWebView(), null));
     }
 }

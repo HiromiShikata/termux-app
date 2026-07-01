@@ -37,20 +37,30 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
 
     private final Host mHost;
 
+    private final BrowserWebViewCallbackGuard mCallbackGuard;
+
     public BrowserCoreWebViewClient(@NonNull Host host) {
+        this(host, new BrowserWebViewCallbackGuard("BrowserCoreWebViewClient"));
+    }
+
+    BrowserCoreWebViewClient(@NonNull Host host, @NonNull BrowserWebViewCallbackGuard callbackGuard) {
         this.mHost = host;
+        this.mCallbackGuard = callbackGuard;
     }
 
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-        String url = request == null || request.getUrl() == null ? null : request.getUrl().toString();
-        return routeToExternalBrowserIfRequired(url);
+        return mCallbackGuard.runReturning("shouldOverrideUrlLoading", false, () -> {
+            String url = request == null || request.getUrl() == null ? null : request.getUrl().toString();
+            return routeToExternalBrowserIfRequired(url);
+        });
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public boolean shouldOverrideUrlLoading(WebView view, String url) {
-        return routeToExternalBrowserIfRequired(url);
+        return mCallbackGuard.runReturning("shouldOverrideUrlLoading", false,
+            () -> routeToExternalBrowserIfRequired(url));
     }
 
     private boolean routeToExternalBrowserIfRequired(@Nullable String url) {
@@ -62,51 +72,62 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     @Override
     public void onPageStarted(WebView view, String url, Bitmap favicon) {
         super.onPageStarted(view, url, favicon);
-        mHost.onPageStarted(view, url);
-        injectViewport(view, url);
+        mCallbackGuard.run("onPageStarted", () -> {
+            mHost.onPageStarted(view, url);
+            injectViewport(view, url);
+        });
     }
 
     @Override
     public void onPageCommitVisible(WebView view, String url) {
         super.onPageCommitVisible(view, url);
-        mHost.onPageCommitVisible(view, url);
-        injectViewport(view, url);
+        mCallbackGuard.run("onPageCommitVisible", () -> {
+            mHost.onPageCommitVisible(view, url);
+            injectViewport(view, url);
+        });
     }
 
     @Override
     public void onPageFinished(WebView view, String url) {
         super.onPageFinished(view, url);
-        boolean dismissed = mHost.onPageFinished(view, url);
-        if (dismissed) return;
-        injectViewport(view, url);
+        mCallbackGuard.run("onPageFinished", () -> {
+            boolean dismissed = mHost.onPageFinished(view, url);
+            if (dismissed) return;
+            injectViewport(view, url);
+        });
     }
 
     @Override
     public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
         super.doUpdateVisitedHistory(view, url, isReload);
-        mHost.onVisitedHistoryUpdated(view, url, isReload);
+        mCallbackGuard.run("doUpdateVisitedHistory",
+            () -> mHost.onVisitedHistoryUpdated(view, url, isReload));
     }
 
     @Override
     public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
         super.onReceivedError(view, request, error);
-        if (!request.isForMainFrame()) return;
-        mHost.onMainFrameError(view);
+        mCallbackGuard.run("onReceivedError", () -> {
+            if (!request.isForMainFrame()) return;
+            mHost.onMainFrameError(view);
+        });
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
         super.onReceivedError(view, errorCode, description, failingUrl);
-        mHost.onMainFrameError(view);
+        mCallbackGuard.run("onReceivedError", () -> mHost.onMainFrameError(view));
     }
 
     @Override
     @RequiresApi(Build.VERSION_CODES.O)
     public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-        boolean didCrash = detail != null && detail.didCrash();
-        boolean handled = mHost.onRenderProcessGone(view, didCrash);
-        return handled || super.onRenderProcessGone(view, detail);
+        return mCallbackGuard.runReturning("onRenderProcessGone", true, () -> {
+            boolean didCrash = detail != null && detail.didCrash();
+            boolean handled = mHost.onRenderProcessGone(view, didCrash);
+            return handled || super.onRenderProcessGone(view, detail);
+        });
     }
 
     private void injectViewport(@NonNull WebView view, @Nullable String url) {
