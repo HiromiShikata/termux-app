@@ -36,5 +36,6 @@ public final class SessionStatuslineReloadScanner {
             statuslineTimes.getOutTimeMillis(),
             statuslineTimes.getReplyTimeMillis(),
             statuslineTimes.getSubagentCount());
+        store.clearReconnecting(sessionName);
     }
 }

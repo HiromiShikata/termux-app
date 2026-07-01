@@ -77,6 +77,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     static final long REFRESH_DEBOUNCE_WINDOW_MILLIS = 200L;
 
+    static final long POST_RECONNECT_REFRESH_DEBOUNCE_WINDOW_MILLIS = 800L;
+
+    static final long POST_RECONNECT_RESCAN_WINDOW_DURATION_MILLIS = 5_000L;
+
     private static final String CONTENT_FIELD_DELIMITER = "\u0001";
 
     final TermuxActivity mActivity;
@@ -91,6 +95,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private boolean mRefreshCooldownActive;
 
     private boolean mRefreshPendingDuringCooldown;
+
+    private boolean mPostReconnectRescanWindowActive;
+
+    private final Runnable mPostReconnectRescanWindowEndRunnable = this::onPostReconnectRescanWindowElapsed;
 
     final StyleSpan boldSpan = new StyleSpan(Typeface.BOLD);
     final StyleSpan italicSpan = new StyleSpan(Typeface.ITALIC);
@@ -177,7 +185,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         mRefreshCooldownActive = true;
         runCoalescedRefresh();
-        mRefreshDebounceHandler.postDelayed(mRefreshDebounceRunnable, REFRESH_DEBOUNCE_WINDOW_MILLIS);
+        mRefreshDebounceHandler.postDelayed(mRefreshDebounceRunnable,
+            refreshDebounceWindowMillis(mPostReconnectRescanWindowActive));
     }
 
     private void onRefreshCooldownElapsed() {
@@ -186,6 +195,26 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             mRefreshPendingDuringCooldown = false;
             requestSessionListRefresh();
         }
+    }
+
+    public void beginPostReconnectRescanWindow() {
+        if (postToMainThreadIfOffThread(this::beginPostReconnectRescanWindow)) {
+            return;
+        }
+        mPostReconnectRescanWindowActive = true;
+        mRefreshDebounceHandler.removeCallbacks(mPostReconnectRescanWindowEndRunnable);
+        mRefreshDebounceHandler.postDelayed(mPostReconnectRescanWindowEndRunnable,
+            POST_RECONNECT_RESCAN_WINDOW_DURATION_MILLIS);
+    }
+
+    private void onPostReconnectRescanWindowElapsed() {
+        mPostReconnectRescanWindowActive = false;
+    }
+
+    static long refreshDebounceWindowMillis(boolean postReconnectRescanWindowActive) {
+        return postReconnectRescanWindowActive
+            ? POST_RECONNECT_REFRESH_DEBOUNCE_WINDOW_MILLIS
+            : REFRESH_DEBOUNCE_WINDOW_MILLIS;
     }
 
     private void runCoalescedRefresh() {

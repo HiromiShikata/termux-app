@@ -137,6 +137,35 @@ public class SessionStatuslineReloadScannerTest {
     }
 
     @Test
+    public void parsingAStatuslineTokenClearsTheReconnectingFlag() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("reconnected-session", NOW_MILLIS - 2L * 1000L);
+        Assert.assertTrue("precondition: the session starts marked as reconnecting",
+            store.isReconnecting("reconnected-session"));
+
+        new SessionStatuslineReloadScanner().repopulateFromCurrentStatusline(store,
+            "reconnected-session",
+            statusline(NOW_MILLIS - 3L * 60L * 1000L, NOW_MILLIS - 2L * 60L * 1000L),
+            NOW_MILLIS, UTC);
+
+        Assert.assertFalse("real statusline data arriving on the per-session output path must clear "
+            + "the reconnecting spinner the moment it is parsed",
+            store.isReconnecting("reconnected-session"));
+    }
+
+    @Test
+    public void screenWithoutStatuslineTokenLeavesTheReconnectingFlagSet() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("still-fetching-session", NOW_MILLIS - 2L * 1000L);
+
+        new SessionStatuslineReloadScanner().repopulateFromCurrentStatusline(store,
+            "still-fetching-session", "user@device:~$ ls -la", NOW_MILLIS, UTC);
+
+        Assert.assertTrue("a session that reconnected but produced no statusline yet must keep "
+            + "spinning honestly", store.isReconnecting("still-fetching-session"));
+    }
+
+    @Test
     public void statuslineAboveBottomLineWithCallNewerThanReplyArmsUnreadMark() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long replyMillis = NOW_MILLIS - 10L * 60L * 1000L;
