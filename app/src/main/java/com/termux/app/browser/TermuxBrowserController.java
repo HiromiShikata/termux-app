@@ -19,6 +19,7 @@ import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
@@ -45,6 +46,7 @@ import androidx.webkit.WebViewFeature;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.SessionInfoHorizontalBounds;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
@@ -560,6 +562,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         terminalParams.weight = 1f - clampedRatio;
         terminalView.setLayoutParams(terminalParams);
         storeSessionSplitRatio(clampedRatio);
+        syncSessionInfoWidthToBrowserColumn(mSplitOrientation.isLandscape());
     }
 
     private void storeSessionSplitRatio(float ratio) {
@@ -597,6 +600,34 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 landscape ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
         }
         applyDividerOrientation(landscape);
+        syncSessionInfoWidthToBrowserColumn(landscape);
+    }
+
+    private void syncSessionInfoWidthToBrowserColumn(boolean landscape) {
+        View sessionInfoContainer = mActivity.findViewById(R.id.session_info_bottom_container);
+        if (!(sessionInfoContainer instanceof LinearLayout)) {
+            return;
+        }
+        LinearLayout sessionInfo = (LinearLayout) sessionInfoContainer;
+        sessionInfo.post(() -> applySessionInfoWidth(sessionInfo, landscape));
+    }
+
+    private void applySessionInfoWidth(@NonNull LinearLayout sessionInfo, boolean landscape) {
+        int browserColumnWidthPixels = mBrowserContentContainer == null
+            ? 0 : mBrowserContentContainer.getWidth();
+        int widthPixels = SessionInfoHorizontalBounds.resolveWidthPixels(
+            landscape, browserColumnWidthPixels);
+        ViewGroup.LayoutParams rawParams = sessionInfo.getLayoutParams();
+        if (!(rawParams instanceof LinearLayout.LayoutParams)) {
+            return;
+        }
+        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) rawParams;
+        int targetWidth = widthPixels == SessionInfoHorizontalBounds.MATCH_PARENT_WIDTH
+            ? LinearLayout.LayoutParams.MATCH_PARENT : widthPixels;
+        if (params.width != targetWidth) {
+            params.width = targetWidth;
+            sessionInfo.setLayoutParams(params);
+        }
     }
 
     private void applyDividerOrientation(boolean landscape) {

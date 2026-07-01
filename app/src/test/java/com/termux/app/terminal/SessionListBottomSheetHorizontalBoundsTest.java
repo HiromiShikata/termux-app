@@ -13,19 +13,21 @@ public class SessionListBottomSheetHorizontalBoundsTest {
     }
 
     @Test
-    public void landscapeUsesHalfContainerWidth() {
-        Assert.assertEquals(960, SessionListBottomSheetHorizontalBounds.resolveWidthPixels(true, 1920));
+    public void landscapeUsesFullContainerWidth() {
+        Assert.assertEquals(
+            SessionListBottomSheetHorizontalBounds.MATCH_PARENT_WIDTH,
+            SessionListBottomSheetHorizontalBounds.resolveWidthPixels(true, 1920));
     }
 
     @Test
-    public void landscapeFallsBackToFullWidthWhenContainerWidthUnknown() {
+    public void landscapeUsesFullWidthWhenContainerWidthUnknown() {
         Assert.assertEquals(
             SessionListBottomSheetHorizontalBounds.MATCH_PARENT_WIDTH,
             SessionListBottomSheetHorizontalBounds.resolveWidthPixels(true, 0));
     }
 
     @Test
-    public void landscapeFallsBackToFullWidthWhenContainerWidthNegative() {
+    public void landscapeUsesFullWidthWhenContainerWidthNegative() {
         Assert.assertEquals(
             SessionListBottomSheetHorizontalBounds.MATCH_PARENT_WIDTH,
             SessionListBottomSheetHorizontalBounds.resolveWidthPixels(true, -5));
@@ -37,7 +39,7 @@ public class SessionListBottomSheetHorizontalBoundsTest {
     }
 
     @Test
-    public void landscapeAlignsToEnd() {
-        Assert.assertTrue(SessionListBottomSheetHorizontalBounds.alignToEnd(true));
+    public void landscapeDoesNotAlignToEnd() {
+        Assert.assertFalse(SessionListBottomSheetHorizontalBounds.alignToEnd(true));
     }
 }
