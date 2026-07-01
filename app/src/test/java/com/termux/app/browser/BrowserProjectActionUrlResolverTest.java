@@ -88,4 +88,44 @@ public class BrowserProjectActionUrlResolverTest {
         Assert.assertNull(actionUrls.getTdpmConsoleUrl());
         Assert.assertNull(actionUrls.getNewIssueUrl());
     }
+
+    @Test
+    public void resolvesProjectActionUrlsForProjectManagerStyleSessionNameNotInAnyUrlList() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            entry("project-a", "story-1", "session-a",
+                "https://overview.a/", "https://console.a/", "https://newissue.a/"));
+
+        BrowserProjectActionUrls actionUrls = resolverFor(entries).resolveForSessionName("project-apm");
+
+        Assert.assertEquals("https://overview.a/", actionUrls.getOverviewUrl());
+        Assert.assertEquals("https://console.a/", actionUrls.getTdpmConsoleUrl());
+        Assert.assertEquals("https://newissue.a/", actionUrls.getNewIssueUrl());
+    }
+
+    @Test
+    public void returnsEmptyForUrlSessionNameThatMatchesNoEntry() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            entry("project-a", "story-1", "session-a",
+                "https://overview.a/", "https://console.a/", "https://newissue.a/"));
+
+        BrowserProjectActionUrls actionUrls =
+            resolverFor(entries).resolveForSessionName("https://unmatched.example.com/");
+
+        Assert.assertNull(actionUrls.getOverviewUrl());
+        Assert.assertNull(actionUrls.getTdpmConsoleUrl());
+        Assert.assertNull(actionUrls.getNewIssueUrl());
+    }
+
+    @Test
+    public void returnsEmptyForNonUrlSessionNameThatMatchesNoProject() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            entry("project-a", "story-1", "session-a",
+                "https://overview.a/", "https://console.a/", "https://newissue.a/"));
+
+        BrowserProjectActionUrls actionUrls = resolverFor(entries).resolveForSessionName("unrelatedpm");
+
+        Assert.assertNull(actionUrls.getOverviewUrl());
+        Assert.assertNull(actionUrls.getTdpmConsoleUrl());
+        Assert.assertNull(actionUrls.getNewIssueUrl());
+    }
 }

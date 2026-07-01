@@ -147,6 +147,31 @@ public class SessionBrowserTabBarActionButtonsWiringTest {
     }
 
     @Test
+    public void sessionChangePreloadsProjectOverviewTabWithoutManagerSessionSpecialBranch() throws IOException {
+        String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
+        int onSessionChangedIndex = source.indexOf("public void onSessionChanged(");
+        Assert.assertTrue(onSessionChangedIndex >= 0);
+        int onSessionChangedEnd = source.indexOf("private void restoreSessionVisibility", onSessionChangedIndex);
+        Assert.assertTrue(onSessionChangedEnd > onSessionChangedIndex);
+        String onSessionChangedBody = source.substring(onSessionChangedIndex, onSessionChangedEnd);
+        Assert.assertTrue("Session change must preload the project overview tab for non-URL session names",
+            onSessionChangedBody.contains("preloadProjectOverviewTabForSession("));
+
+        int preloadIndex = source.indexOf("private void preloadProjectOverviewTabForSession(");
+        Assert.assertTrue(preloadIndex >= 0);
+        int preloadEnd = source.indexOf("private void", preloadIndex
+            + "private void preloadProjectOverviewTabForSession(".length());
+        Assert.assertTrue(preloadEnd > preloadIndex);
+        String preloadBody = source.substring(preloadIndex, preloadEnd);
+        Assert.assertTrue("Preload decision must go through the shared overview-preload resolver",
+            preloadBody.contains("BrowserSessionOverviewPreload.resolvePreloadUrl"));
+        Assert.assertFalse("Preload must not branch on manager-session names",
+            preloadBody.contains("ManagerSession"));
+        Assert.assertFalse("Preload must not branch on PM session type",
+            preloadBody.contains("isManagerSession"));
+    }
+
+    @Test
     public void projectActionButtonVisibilityDependsOnOverviewUrlNotSessionType() throws IOException {
         String source = readModuleResource(SESSION_CONTROLLER_RELATIVE_PATH);
         int visibilityIndex = source.indexOf("private void updateProjectOverviewActionsVisibility()");
