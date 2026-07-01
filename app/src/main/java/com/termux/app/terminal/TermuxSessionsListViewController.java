@@ -762,29 +762,30 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @Nullable
     private TermuxSession sessionAtRowOrNull(@NonNull SessionHierarchyRow row) {
-        String sessionName = row.getSessionName();
-        if (sessionName != null) {
-            TermuxSession sessionByName = sessionByNameOrNull(sessionName);
-            if (sessionByName != null) {
-                return sessionByName;
-            }
-        }
-        int sessionIndex = row.getSessionIndex();
+        int sessionIndex = resolveClickedSessionIndex(row, sessionNamesByIndex());
         if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
             return null;
         }
         return mSessionList.get(sessionIndex);
     }
 
-    @Nullable
-    private TermuxSession sessionByNameOrNull(@NonNull String sessionName) {
-        for (TermuxSession session : mSessionList) {
-            TerminalSession terminalSession = session.getTerminalSession();
-            if (terminalSession != null && sessionName.equals(terminalSession.mSessionName)) {
-                return session;
+    /**
+     * Resolves a tapped row to the index of its session in the live session list, keyed on the row's
+     * stable session name rather than on the position the row was rendered at. Resolving by name means
+     * a tap always reaches the intended session even when a concurrent reconnect has shifted every
+     * later index under the row. When the row carries no name (legacy rows) or the name is no longer
+     * present in the live list, it falls back to the captured index so a tap is never silently lost.
+     */
+    static int resolveClickedSessionIndex(@NonNull SessionHierarchyRow row,
+                                          @NonNull List<String> sessionNamesByIndex) {
+        String sessionName = row.getSessionName();
+        if (sessionName != null) {
+            int indexByName = sessionNamesByIndex.indexOf(sessionName);
+            if (indexByName >= 0) {
+                return indexByName;
             }
         }
-        return null;
+        return row.getSessionIndex();
     }
 
     public void applyExpandedProjectsAllowlist(@NonNull Collection<String> expandedProjectTokens) {
@@ -1392,7 +1393,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (clickedSession == null) {
             return;
         }
-        mActivity.getTermuxTerminalSessionClient().setCurrentSession(clickedSession.getTerminalSession());
+        mActivity.getTermuxTerminalSessionClient()
+            .switchToSessionReconnectingIfDead(clickedSession.getTerminalSession());
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }

@@ -62,9 +62,29 @@ public final class DeadSessionReconnectPlanner {
         }
     }
 
+    public static final int UNLIMITED = Integer.MAX_VALUE;
+
     @NonNull
     public List<String> planSessionNamesToReconnect(@NonNull List<CandidateSession> candidateSessions,
                                                     @Nullable String autosshCommandTemplate) {
+        return planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate, UNLIMITED);
+    }
+
+    /**
+     * Plans which stale non-current definition-backed sessions to reconnect, capped at {@code
+     * maxSessionsToReconnect}. The cap keeps the proactive background reconnect gentle: a foreground
+     * tick reconnects at most this many sessions per invocation rather than firing every stale session
+     * at once, which prevents the session-list churn and resource exhaustion that a large simultaneous
+     * batch causes. Dead processes are preferred over merely hung ones, and hung sessions are ordered
+     * oldest-output-first so the most stale session is reconnected first when the cap is reached.
+     */
+    @NonNull
+    public List<String> planSessionNamesToReconnect(@NonNull List<CandidateSession> candidateSessions,
+                                                    @Nullable String autosshCommandTemplate,
+                                                    int maxSessionsToReconnect) {
+        if (maxSessionsToReconnect <= 0) {
+            return new ArrayList<>();
+        }
         List<String> sessionNamesToReconnect = new ArrayList<>();
         List<CandidateSession> hungAliveCandidates = new ArrayList<>();
         for (CandidateSession candidateSession : candidateSessions) {
@@ -73,6 +93,9 @@ public final class DeadSessionReconnectPlanner {
             }
             if (candidateSession.isDeadProcessReconnectCandidate()) {
                 addIfReconnectable(candidateSession, autosshCommandTemplate, sessionNamesToReconnect);
+                if (sessionNamesToReconnect.size() >= maxSessionsToReconnect) {
+                    return sessionNamesToReconnect;
+                }
             } else if (candidateSession.isHungAliveReconnectCandidate()) {
                 hungAliveCandidates.add(candidateSession);
             }
@@ -80,6 +103,9 @@ public final class DeadSessionReconnectPlanner {
         hungAliveCandidates.sort(OLDEST_OUT_FIRST);
         for (CandidateSession hungAliveCandidate : hungAliveCandidates) {
             addIfReconnectable(hungAliveCandidate, autosshCommandTemplate, sessionNamesToReconnect);
+            if (sessionNamesToReconnect.size() >= maxSessionsToReconnect) {
+                return sessionNamesToReconnect;
+            }
         }
         return sessionNamesToReconnect;
     }

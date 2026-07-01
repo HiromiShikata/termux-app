@@ -701,6 +701,37 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void clickResolvesTheRowToItsSessionByNameEvenAfterAConcurrentReconnectShiftedTheIndex() {
+        SessionHierarchyRow row = SessionHierarchyRow.session(0, "worker");
+        List<String> sessionNamesAfterReconnectShiftedIndexes = Arrays.asList("builder", "manager", "worker");
+
+        int resolvedIndex = TermuxSessionsListViewController.resolveClickedSessionIndex(
+            row, sessionNamesAfterReconnectShiftedIndexes);
+
+        Assert.assertEquals(2, resolvedIndex);
+    }
+
+    @Test
+    public void clickFallsBackToTheCapturedIndexWhenTheRowCarriesNoName() {
+        SessionHierarchyRow row = SessionHierarchyRow.session(1);
+        List<String> sessionNames = Arrays.asList("builder", "worker");
+
+        int resolvedIndex = TermuxSessionsListViewController.resolveClickedSessionIndex(row, sessionNames);
+
+        Assert.assertEquals(1, resolvedIndex);
+    }
+
+    @Test
+    public void clickFallsBackToTheCapturedIndexWhenTheNamedSessionIsNoLongerPresent() {
+        SessionHierarchyRow row = SessionHierarchyRow.session(3, "removed");
+        List<String> sessionNames = Arrays.asList("builder", "worker");
+
+        int resolvedIndex = TermuxSessionsListViewController.resolveClickedSessionIndex(row, sessionNames);
+
+        Assert.assertEquals(3, resolvedIndex);
+    }
+
+    @Test
     public void diffTreatsTheSameSessionNameAsTheSameRowRegardlessOfPositionSoReorderedRowsAreNotTornDown() {
         Assert.assertTrue(TermuxSessionsListViewController.sameRowIdentity(
             SessionHierarchyRow.session(2, "worker"), SessionHierarchyRow.session(7, "worker")));

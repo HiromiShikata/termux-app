@@ -36,6 +36,22 @@ public class TermuxTerminalSessionActivityClientTest {
     }
 
     @Test
+    public void aSuccessfulReconnectLeavesTheLiveSessionCountUnchanged() {
+        Assert.assertEquals(0,
+            TermuxTerminalSessionActivityClient.netLiveSessionCountDeltaForReconnect(true));
+    }
+
+    @Test
+    public void aFailedReconnectDropsTheDeadSessionAndNeverAccumulatesLiveSessionsTowardTheCap() {
+        int failedReconnectDelta =
+            TermuxTerminalSessionActivityClient.netLiveSessionCountDeltaForReconnect(false);
+
+        Assert.assertEquals(-1, failedReconnectDelta);
+        Assert.assertTrue("a reconnect must never increase the live session count",
+            failedReconnectDelta <= 0);
+    }
+
+    @Test
     public void wrapAroundSessionIndexAdvancesForwardWithinRange() {
         Assert.assertEquals(2,
             TermuxTerminalSessionActivityClient.wrapAroundSessionIndex(1, 3, true));
