@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -81,6 +82,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final int BROWSER_SCREENSHOT_PNG_QUALITY = 100;
 
+    private static final float BROWSER_TERMINAL_DIVIDER_THICKNESS_DP = 18f;
+
+    private static final float BROWSER_TERMINAL_DIVIDER_HANDLE_LONG_SIDE_DP = 40f;
+
+    private static final float BROWSER_TERMINAL_DIVIDER_HANDLE_SHORT_SIDE_DP = 4f;
+
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
     private static final int HEADER_SECONDARY_TEXT_ALPHA = 0xB3;
@@ -118,6 +125,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private int mSplitDragStartBrowserHeight;
 
     private int mSplitDragTotalHeight;
+
+    private float mSplitDragStartRawX;
+
+    private int mSplitDragStartBrowserWidth;
+
+    private int mSplitDragTotalWidth;
+
+    private BrowserSplitOrientation mSplitOrientation = BrowserSplitOrientation.PORTRAIT;
 
     private final TextView mPageTitleUrlHeaderView;
 
@@ -478,24 +493,51 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     @SuppressLint("ClickableViewAccessibility")
     private void configureBrowserSplitDivider() {
         mBrowserTerminalDivider.setOnTouchListener((view, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    mSplitDragStartRawY = event.getRawY();
-                    mSplitDragStartBrowserHeight = mBrowserContentContainer.getHeight();
-                    mSplitDragTotalHeight = mSplitDragStartBrowserHeight + mActivity.getTerminalView().getHeight();
-                    return true;
-                case MotionEvent.ACTION_MOVE:
-                    if (mSplitDragTotalHeight <= 0) return true;
-                    float draggedBrowserHeight = mSplitDragStartBrowserHeight + (event.getRawY() - mSplitDragStartRawY);
-                    applyBrowserSplitRatio(draggedBrowserHeight / mSplitDragTotalHeight);
-                    return true;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    return true;
-                default:
-                    return false;
+            if (mSplitOrientation.dividerTracksHorizontalAxis()) {
+                return handleHorizontalSplitDrag(event);
             }
+            return handleVerticalSplitDrag(event);
         });
+    }
+
+    private boolean handleVerticalSplitDrag(@NonNull MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                mSplitDragStartRawY = event.getRawY();
+                mSplitDragStartBrowserHeight = mBrowserContentContainer.getHeight();
+                mSplitDragTotalHeight = mSplitDragStartBrowserHeight + mActivity.getTerminalView().getHeight();
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (mSplitDragTotalHeight <= 0) return true;
+                float draggedBrowserHeight = mSplitDragStartBrowserHeight + (event.getRawY() - mSplitDragStartRawY);
+                applyBrowserSplitRatio(draggedBrowserHeight / mSplitDragTotalHeight);
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean handleHorizontalSplitDrag(@NonNull MotionEvent event) {
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                mSplitDragStartRawX = event.getRawX();
+                mSplitDragStartBrowserWidth = mBrowserContentContainer.getWidth();
+                mSplitDragTotalWidth = mSplitDragStartBrowserWidth + mActivity.getTerminalView().getWidth();
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (mSplitDragTotalWidth <= 0) return true;
+                float draggedBrowserWidth = mSplitDragStartBrowserWidth + (event.getRawX() - mSplitDragStartRawX);
+                applyBrowserSplitRatio(draggedBrowserWidth / mSplitDragTotalWidth);
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void applyBrowserSplitRatio(float ratio) {
@@ -504,15 +546,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             showTerminal();
             return;
         }
+        boolean applyToWidth = mSplitOrientation.ratioAppliesToWidth();
         LinearLayout.LayoutParams browserParams =
             (LinearLayout.LayoutParams) mBrowserContentContainer.getLayoutParams();
-        browserParams.height = 0;
+        browserParams.width = applyToWidth ? 0 : LinearLayout.LayoutParams.MATCH_PARENT;
+        browserParams.height = applyToWidth ? LinearLayout.LayoutParams.MATCH_PARENT : 0;
         browserParams.weight = clampedRatio;
         mBrowserContentContainer.setLayoutParams(browserParams);
         View terminalView = mActivity.getTerminalView();
         LinearLayout.LayoutParams terminalParams =
             (LinearLayout.LayoutParams) terminalView.getLayoutParams();
-        terminalParams.height = 0;
+        terminalParams.width = applyToWidth ? 0 : LinearLayout.LayoutParams.MATCH_PARENT;
+        terminalParams.height = applyToWidth ? LinearLayout.LayoutParams.MATCH_PARENT : 0;
         terminalParams.weight = 1f - clampedRatio;
         terminalView.setLayoutParams(terminalParams);
         storeSessionSplitRatio(clampedRatio);
@@ -526,8 +571,57 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void showBrowserSplitDivider() {
+        applyOrientationLayout(resolveCurrentSplitOrientation());
         applyBrowserSplitRatio(mSessionSplitRatios.resolveRatioToApply(mCurrentSessionName));
         mBrowserTerminalDivider.setVisibility(View.VISIBLE);
+    }
+
+    public void reconfigureBrowserSplitForOrientation(boolean isLandscape) {
+        applyOrientationLayout(isLandscape ? BrowserSplitOrientation.LANDSCAPE : BrowserSplitOrientation.PORTRAIT);
+        if (mBrowserVisible) {
+            applyBrowserSplitRatio(mSessionSplitRatios.resolveRatioToApply(mCurrentSessionName));
+        }
+    }
+
+    private BrowserSplitOrientation resolveCurrentSplitOrientation() {
+        return BrowserSplitOrientation.resolve(
+            mActivity.getResources().getConfiguration().orientation,
+            Configuration.ORIENTATION_LANDSCAPE);
+    }
+
+    private void applyOrientationLayout(@NonNull BrowserSplitOrientation orientation) {
+        mSplitOrientation = orientation;
+        boolean landscape = orientation.isLandscape();
+        View mainContentContainer = mActivity.findViewById(R.id.main_content_container);
+        if (mainContentContainer instanceof LinearLayout) {
+            ((LinearLayout) mainContentContainer).setOrientation(
+                landscape ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        }
+        applyDividerOrientation(landscape);
+    }
+
+    private void applyDividerOrientation(boolean landscape) {
+        if (!(mBrowserTerminalDivider instanceof LinearLayout)) return;
+        int dividerThicknessPixels = dpToPixels(BROWSER_TERMINAL_DIVIDER_THICKNESS_DP);
+        LinearLayout.LayoutParams dividerParams =
+            (LinearLayout.LayoutParams) mBrowserTerminalDivider.getLayoutParams();
+        dividerParams.width = landscape ? dividerThicknessPixels : LinearLayout.LayoutParams.MATCH_PARENT;
+        dividerParams.height = landscape ? LinearLayout.LayoutParams.MATCH_PARENT : dividerThicknessPixels;
+        mBrowserTerminalDivider.setLayoutParams(dividerParams);
+        View dividerHandle = ((LinearLayout) mBrowserTerminalDivider).getChildAt(0);
+        if (dividerHandle != null) {
+            int longSidePixels = dpToPixels(BROWSER_TERMINAL_DIVIDER_HANDLE_LONG_SIDE_DP);
+            int shortSidePixels = dpToPixels(BROWSER_TERMINAL_DIVIDER_HANDLE_SHORT_SIDE_DP);
+            LinearLayout.LayoutParams handleParams =
+                (LinearLayout.LayoutParams) dividerHandle.getLayoutParams();
+            handleParams.width = landscape ? shortSidePixels : longSidePixels;
+            handleParams.height = landscape ? longSidePixels : shortSidePixels;
+            dividerHandle.setLayoutParams(handleParams);
+        }
+    }
+
+    private int dpToPixels(float dp) {
+        return Math.round(dp * mActivity.getResources().getDisplayMetrics().density);
     }
 
     private void configureWebView() {

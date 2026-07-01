@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import android.annotation.SuppressLint;
+import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
@@ -9,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageButton;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -256,6 +258,7 @@ public class SessionListBottomSheetController {
         hideBrowserIfShowing();
         hideSoftKeyboard();
         applyTitleColor();
+        applyHorizontalBounds();
         applySheetDefaultHeight();
         bindSessionList(listController);
         applyHiddenToggleButtonState(listController);
@@ -455,6 +458,48 @@ public class SessionListBottomSheetController {
             params.height = heightPixels;
             mSheetView.setLayoutParams(params);
         }
+    }
+
+    public void applyOrientationBounds() {
+        applyHorizontalBounds();
+    }
+
+    private void applyHorizontalBounds() {
+        boolean landscape = isLandscape();
+        int containerWidthPixels = resolveContainerWidthPixels();
+        int widthPixels = SessionListBottomSheetHorizontalBounds.resolveWidthPixels(landscape, containerWidthPixels);
+        boolean alignEnd = SessionListBottomSheetHorizontalBounds.alignToEnd(landscape);
+        applyHorizontalBoundsToView(mSheetView, widthPixels, alignEnd);
+        applyHorizontalBoundsToView(mScrimView, widthPixels, alignEnd);
+    }
+
+    private void applyHorizontalBoundsToView(@NonNull View view, int widthPixels, boolean alignEnd) {
+        ViewGroup.LayoutParams rawParams = view.getLayoutParams();
+        if (!(rawParams instanceof RelativeLayout.LayoutParams)) {
+            return;
+        }
+        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) rawParams;
+        params.width = widthPixels;
+        if (alignEnd) {
+            params.addRule(RelativeLayout.ALIGN_PARENT_END);
+            params.removeRule(RelativeLayout.ALIGN_PARENT_START);
+        } else {
+            params.addRule(RelativeLayout.ALIGN_PARENT_START);
+            params.removeRule(RelativeLayout.ALIGN_PARENT_END);
+        }
+        view.setLayoutParams(params);
+    }
+
+    private int resolveContainerWidthPixels() {
+        View parent = (View) mSheetView.getParent();
+        if (parent != null && parent.getWidth() > 0) {
+            return parent.getWidth();
+        }
+        return mActivity.getResources().getDisplayMetrics().widthPixels;
+    }
+
+    private boolean isLandscape() {
+        return mActivity.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
     }
 
     private void bindSessionList(@NonNull TermuxSessionsListViewController listController) {
