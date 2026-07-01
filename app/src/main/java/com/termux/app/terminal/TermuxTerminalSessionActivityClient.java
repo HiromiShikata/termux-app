@@ -30,6 +30,7 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.BrowserSessionRemovalReason;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
@@ -1314,6 +1315,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return true;
     }
 
+    private void restoreBrowserTabsForReconnectedSession(@NonNull TerminalSession session, @Nullable String sessionName) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) return;
+        browserController.restoreTabsForReconnectedSession(session.mHandle, sessionName);
+    }
+
     private void attachBrowserTabForUrlSessionName(@NonNull TerminalSession session, @Nullable String sessionName) {
         String browserTabUrl = mSessionNameBrowserTabUrlResolver.resolve(sessionName);
         if (browserTabUrl == null) return;
@@ -1464,7 +1471,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         purgeNewActivityForReconnectedSession(finishedSession.mSessionName);
 
         if (mActivity.getTermuxBrowserController() != null)
-            mActivity.getTermuxBrowserController().onSessionRemoved(finishedSession);
+            mActivity.getTermuxBrowserController().onSessionRemoved(
+                finishedSession, BrowserSessionRemovalReason.RECONNECT);
 
         if (mPersistedSessionBySession.remove(finishedSession) != null)
             savePersistedSessions();
@@ -1482,6 +1490,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
         recordPersistedSession(newTerminalSession,
             new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
+        restoreBrowserTabsForReconnectedSession(newTerminalSession, sessionName);
         attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
         setCurrentSession(newTerminalSession);
 
@@ -1643,7 +1652,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         purgeNewActivityForReconnectedSession(deadSession.mSessionName);
 
         if (mActivity.getTermuxBrowserController() != null)
-            mActivity.getTermuxBrowserController().onSessionRemoved(deadSession);
+            mActivity.getTermuxBrowserController().onSessionRemoved(
+                deadSession, BrowserSessionRemovalReason.RECONNECT);
 
         if (mPersistedSessionBySession.remove(deadSession) != null)
             savePersistedSessions();
@@ -1661,6 +1671,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
         recordPersistedSession(newTerminalSession,
             new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
+        restoreBrowserTabsForReconnectedSession(newTerminalSession, sessionName);
         attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
 
         if (displayedSession == deadSession) {

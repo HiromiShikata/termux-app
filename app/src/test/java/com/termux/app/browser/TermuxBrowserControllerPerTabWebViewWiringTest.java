@@ -74,9 +74,22 @@ public class TermuxBrowserControllerPerTabWebViewWiringTest {
     @Test
     public void removingASessionDestroysAllItsTabWebViews() throws IOException {
         String onRemovedBody = methodBody(
-            readControllerSource(), "public void onSessionRemoved(@NonNull TerminalSession session)");
+            readControllerSource(),
+            "public void onSessionRemoved(@NonNull TerminalSession session,");
 
         Assert.assertTrue(onRemovedBody.contains("mWebViewHost.removeSession(session.mHandle)"));
+    }
+
+    @Test
+    public void reconnectDrivenRemovalStillDestroysWebViewsButPreservesPersistedTabs() throws IOException {
+        String onRemovedBody = methodBody(
+            readControllerSource(),
+            "public void onSessionRemoved(@NonNull TerminalSession session,");
+
+        Assert.assertTrue(onRemovedBody.contains("mWebViewHost.removeSession(session.mHandle)"));
+        Assert.assertTrue(onRemovedBody.contains("mTabManager.removeSession(session.mHandle)"));
+        Assert.assertTrue(onRemovedBody.contains(
+            "BrowserSessionRemovalTabRetention.shouldDeletePersistedTabs(reason)"));
     }
 
     @Test
