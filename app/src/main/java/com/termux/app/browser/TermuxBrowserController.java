@@ -1145,18 +1145,28 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void onSessionRemoved(@NonNull TerminalSession session) {
+        onSessionRemoved(session, BrowserSessionRemovalReason.USER_CLOSE);
+    }
+
+    public void onSessionRemoved(@NonNull TerminalSession session,
+                                 @NonNull BrowserSessionRemovalReason reason) {
         if (session.mHandle.equals(mRenderedFrame.getOwnerSessionHandle()))
             blankFrame();
         mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
         mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
-        if (session.mSessionName != null && !session.mSessionName.isEmpty()) {
+        if (session.mSessionName != null && !session.mSessionName.isEmpty()
+            && BrowserSessionRemovalTabRetention.shouldDeletePersistedTabs(reason)) {
             mPersistedTabsBySessionName.remove(session.mSessionName);
             writePersistedSessionTabs();
             mSessionSplitRatios.removeSession(session.mSessionName);
             mActivity.getPreferences().setBrowserSessionSplitRatios(
                 mSessionSplitRatiosSerializer.serialize(mSessionSplitRatios.asMap()));
         }
+    }
+
+    public void restoreTabsForReconnectedSession(@Nullable String sessionHandle, @Nullable String sessionName) {
+        restorePersistedTabsForSession(sessionHandle, sessionName);
     }
 
     public void toggleBrowser() {
