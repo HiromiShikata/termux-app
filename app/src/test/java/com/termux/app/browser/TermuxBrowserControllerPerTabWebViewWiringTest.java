@@ -93,9 +93,9 @@ public class TermuxBrowserControllerPerTabWebViewWiringTest {
 
         Assert.assertTrue(factoryBody.contains(
             "public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,"));
-        Assert.assertTrue(factoryBody.contains("return openNewWindowAsTab(view, resultMsg);"));
+        Assert.assertTrue(factoryBody.contains("openNewWindowAsTab(view, resultMsg)"));
         Assert.assertTrue(factoryBody.contains("public void onCloseWindow(WebView window)"));
-        Assert.assertTrue(factoryBody.contains("closeTabForWebView(window);"));
+        Assert.assertTrue(factoryBody.contains("closeTabForWebView(window)"));
     }
 
     @Test

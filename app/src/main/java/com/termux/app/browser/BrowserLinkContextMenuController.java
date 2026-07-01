@@ -29,6 +29,9 @@ public final class BrowserLinkContextMenuController {
 
     private final Actions mActions;
 
+    private final BrowserWebViewCallbackGuard mCallbackGuard =
+        new BrowserWebViewCallbackGuard("BrowserLinkContextMenuController");
+
     public BrowserLinkContextMenuController(@NonNull Context context, @NonNull WebView webView,
                                             @NonNull Actions actions) {
         this.mContext = context;
@@ -60,14 +63,16 @@ public final class BrowserLinkContextMenuController {
         Handler hrefHandler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(@NonNull Message message) {
-                String linkUrl = message.getData().getString("url");
-                String anchorText = message.getData().getString("title");
-                if (!BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
-                    linkUrl = fallbackLinkUrl;
-                }
-                if (BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
-                    showLinkContextMenu(linkUrl, anchorText);
-                }
+                mCallbackGuard.run("requestFocusNodeHref", () -> {
+                    String linkUrl = message.getData().getString("url");
+                    String anchorText = message.getData().getString("title");
+                    if (!BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
+                        linkUrl = fallbackLinkUrl;
+                    }
+                    if (BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
+                        showLinkContextMenu(linkUrl, anchorText);
+                    }
+                });
             }
         };
         mWebView.requestFocusNodeHref(hrefHandler.obtainMessage());

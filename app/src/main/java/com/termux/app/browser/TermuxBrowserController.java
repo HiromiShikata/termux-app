@@ -155,6 +155,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserRenderProcessCrashTracker mRenderProcessCrashTracker = new BrowserRenderProcessCrashTracker();
 
+    private final BrowserWebViewCallbackGuard mWebChromeCallbackGuard =
+        new BrowserWebViewCallbackGuard("TermuxBrowserControllerWebChromeClient");
+
     private boolean mBrowserVisible;
 
     private final BrowserDownloadController mDownloadController = new BrowserDownloadController(
@@ -643,46 +646,54 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
-                if (!isDisplayedTab(tab)) return;
-                BrowserPageLoadProgressState progressState =
-                    BrowserPageLoadProgressState.forProgress(newProgress);
-                if (progressState.isVisible()) {
-                    showPageLoadProgress(progressState.getProgress());
-                } else {
-                    hidePageLoadProgress();
-                }
+                mWebChromeCallbackGuard.run("onProgressChanged", () -> {
+                    if (!isDisplayedTab(tab)) return;
+                    BrowserPageLoadProgressState progressState =
+                        BrowserPageLoadProgressState.forProgress(newProgress);
+                    if (progressState.isVisible()) {
+                        showPageLoadProgress(progressState.getProgress());
+                    } else {
+                        hidePageLoadProgress();
+                    }
+                });
             }
 
             @Override
             public void onReceivedTitle(WebView view, String title) {
-                tab.setTitle(title);
-                if (isDisplayedTab(tab)) updatePageHeader();
-                notifyTabsUpdated();
-                persistSessionTabs();
+                mWebChromeCallbackGuard.run("onReceivedTitle", () -> {
+                    tab.setTitle(title);
+                    if (isDisplayedTab(tab)) updatePageHeader();
+                    notifyTabsUpdated();
+                    persistSessionTabs();
+                });
             }
 
             @Override
             public void onReceivedIcon(WebView view, Bitmap icon) {
-                if (icon == null) return;
-                tab.setFavicon(icon);
-                notifyTabsUpdated();
+                mWebChromeCallbackGuard.run("onReceivedIcon", () -> {
+                    if (icon == null) return;
+                    tab.setFavicon(icon);
+                    notifyTabsUpdated();
+                });
             }
 
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> filePathCallback,
                                              FileChooserParams fileChooserParams) {
-                return showFileChooser(filePathCallback, fileChooserParams);
+                return mWebChromeCallbackGuard.runReturning("onShowFileChooser", false,
+                    () -> showFileChooser(filePathCallback, fileChooserParams));
             }
 
             @Override
             public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,
                                           Message resultMsg) {
-                return openNewWindowAsTab(view, resultMsg);
+                return mWebChromeCallbackGuard.runReturning("onCreateWindow", false,
+                    () -> openNewWindowAsTab(view, resultMsg));
             }
 
             @Override
             public void onCloseWindow(WebView window) {
-                closeTabForWebView(window);
+                mWebChromeCallbackGuard.run("onCloseWindow", () -> closeTabForWebView(window));
             }
         });
 
