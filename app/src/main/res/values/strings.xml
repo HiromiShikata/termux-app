@@ -79,6 +79,7 @@
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_desktop_mode_toggle">Toggle desktop mode</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
+    <string name="action_browser_open_in_google_app">Open in %1$s</string>
     <string name="action_browser_copy_url">Copy URL</string>
     <string name="action_browser_new_session">New session</string>
     <string name="action_browser_send_page_text">Send page text to terminal</string>
