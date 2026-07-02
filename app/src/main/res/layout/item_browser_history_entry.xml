@@ -1,0 +1,24 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="6dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/browser_history_entry_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="13sp" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/browser_history_entry_url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="11sp"
+        android:textColor="?android:attr/textColorSecondary" />
+</LinearLayout>
