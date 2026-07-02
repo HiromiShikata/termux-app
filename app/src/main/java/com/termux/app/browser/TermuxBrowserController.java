@@ -67,6 +67,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +113,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserSessionSplitRatiosSerializer mSessionSplitRatiosSerializer = new BrowserSessionSplitRatiosSerializer();
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
+
+    private final Map<String, BrowserSessionTabHistory> mTabHistoryBySessionHandle = new HashMap<>();
 
     private final FrameLayout mWebViewContainer;
 
@@ -731,6 +734,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 }
                 tab.setUrl(url);
                 tab.setTitle(view.getTitle());
+                recordTabInHistory(tab);
                 CookieManager.getInstance().flush();
                 if (isDisplayedTab(tab)) {
                     commitRenderedFrameUrl(url);
@@ -786,6 +790,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             public void onReceivedTitle(WebView view, String title) {
                 mWebChromeCallbackGuard.run("onReceivedTitle", () -> {
                     tab.setTitle(title);
+                    recordTabInHistory(tab);
                     if (isDisplayedTab(tab)) updatePageHeader();
                     notifyTabsUpdated();
                     persistSessionTabs();
@@ -1381,6 +1386,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void openTab(@NonNull BrowserTab tab) {
         boolean browserWasHidden = !mBrowserVisible;
+        recordTabInHistory(tab);
         mTabManager.setActiveTab(tab);
         mBrowserVisible = true;
         mSessionVisibilityState.setBrowserVisible(mCurrentSessionHandle, mCurrentSessionName, true);
@@ -1466,6 +1472,36 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
+        List<BrowserTabHistoryEntry> historyEntries = currentSessionTabHistory().getEntries();
+        if (historyEntries.isEmpty()) {
+            promptNewTabUrl();
+            return;
+        }
+        List<String> labels = new ArrayList<>();
+        labels.add(mActivity.getString(R.string.action_browser_new_tab_enter_url));
+        for (BrowserTabHistoryEntry entry : historyEntries) {
+            labels.add(entry.getTitle() + "\n" + entry.getUrl());
+        }
+        ListView listView = new ListView(mActivity);
+        listView.setAdapter(new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, labels));
+        AlertDialog dialog = new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_browser_new_tab)
+            .setView(listView)
+            .create();
+        dialog.setCanceledOnTouchOutside(true);
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            dialog.dismiss();
+            if (position == 0) {
+                promptNewTabUrl();
+            } else {
+                openUrlInNewTab(historyEntries.get(position - 1).getUrl());
+            }
+        });
+        dialog.show();
+    }
+
+    private void promptNewTabUrl() {
+        if (mCurrentSessionHandle == null) return;
         TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
             R.string.action_browser_open_url_confirm, text -> {
                 if (mCurrentSessionHandle == null) return;
@@ -1530,6 +1566,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 getActiveTab()
             );
         }
+    }
+
+    private void recordTabInHistory(@NonNull BrowserTab tab) {
+        String sessionHandle = tab.getSessionHandle();
+        BrowserSessionTabHistory history = mTabHistoryBySessionHandle.get(sessionHandle);
+        if (history == null) history = new BrowserSessionTabHistory();
+        mTabHistoryBySessionHandle.put(sessionHandle, history.recorded(tab.getUrl(), tab.getTitle()));
+    }
+
+    @NonNull
+    private BrowserSessionTabHistory currentSessionTabHistory() {
+        if (mCurrentSessionHandle == null) return new BrowserSessionTabHistory();
+        BrowserSessionTabHistory history = mTabHistoryBySessionHandle.get(mCurrentSessionHandle);
+        return history != null ? history : new BrowserSessionTabHistory();
     }
 
     public boolean onBackPressed() {
