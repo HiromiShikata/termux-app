@@ -27,6 +27,9 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
 
+import java.util.Collections;
+import java.util.List;
+
 public class SessionListBottomSheetController {
 
     static final long SLIDE_ANIMATION_DURATION_MILLISECONDS = 220;
@@ -42,6 +45,7 @@ public class SessionListBottomSheetController {
     private final View mDragHandleView;
     private final TextView mTitleView;
     private final RecyclerView mSessionListView;
+    private final OnScreenSessionRowSelector mOnScreenSessionRowSelector = new OnScreenSessionRowSelector();
     private final View mSettingsButton;
     private final View mNewSessionButton;
     private final View mLoadSessionButton;
@@ -240,6 +244,25 @@ public class SessionListBottomSheetController {
 
     public boolean isOpen() {
         return mSheetView.getVisibility() == View.VISIBLE;
+    }
+
+    @NonNull
+    public List<String> getOnScreenSessionNames() {
+        if (!isOpen()) {
+            return Collections.emptyList();
+        }
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController == null) {
+            return Collections.emptyList();
+        }
+        RecyclerView.LayoutManager layoutManager = mSessionListView.getLayoutManager();
+        if (!(layoutManager instanceof LinearLayoutManager)) {
+            return Collections.emptyList();
+        }
+        LinearLayoutManager linearLayoutManager = (LinearLayoutManager) layoutManager;
+        return mOnScreenSessionRowSelector.selectOnScreenSessionNames(listController.getVisibleRows(),
+            linearLayoutManager.findFirstVisibleItemPosition(),
+            linearLayoutManager.findLastVisibleItemPosition());
     }
 
     public void toggle() {
