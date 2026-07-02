@@ -7,3 +7,16 @@ title = "gitleaks config"
 
 [extend]
 useDefault = true
+
+# Intentional credential-vault skill files.
+# Some private repositories intentionally store login credentials as plaintext
+# inside dedicated credential-vault skill files (the *-login-accounts/SKILL.md
+# files under .claude/skills/). Those files are an intentional secret store, so
+# credentials committed there are expected and must not fail the scan. Secret
+# scanning stays active for every other file so accidental secret commits
+# elsewhere are still caught.
+[[allowlists]]
+description = "Allow intentional credentials in login-accounts credential-vault skill files"
+paths = [
+  '''(^|/)\.claude/skills/[^/]*login-accounts/SKILL\.md$''',
+]
