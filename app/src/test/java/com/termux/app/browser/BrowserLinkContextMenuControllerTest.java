@@ -3,6 +3,7 @@ package com.termux.app.browser;
 import android.app.AlertDialog;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.webkit.WebView;
 import android.widget.ListAdapter;
 
@@ -17,6 +18,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowAlertDialog;
+import org.robolectric.shadows.ShadowApplication;
 
 @RunWith(RobolectricTestRunner.class)
 public class BrowserLinkContextMenuControllerTest {
@@ -123,6 +125,78 @@ public class BrowserLinkContextMenuControllerTest {
         dialog.getListView().performItemClick(null, 4, 0);
         Assert.assertEquals("https://example.com/page", actions.createdSessionUrl);
         Assert.assertEquals("https://example.com/page", clipboardText());
+    }
+
+    @Test
+    public void nonGoogleUrlDoesNotAddOpenInGoogleAppItem() {
+        WebView webView = new WebView(context());
+        AlertDialog dialog = showMenuFor(webView, "https://example.com/page", new RecordingActions());
+        ListAdapter adapter = dialog.getListView().getAdapter();
+        for (int index = 0; index < adapter.getCount(); index++) {
+            Assert.assertNotEquals(
+                context().getString(R.string.action_browser_open_in_google_app, "Google Sheets"),
+                adapter.getItem(index));
+        }
+    }
+
+    @Test
+    public void googleSpreadsheetUrlAddsOpenInSheetsItem() {
+        WebView webView = new WebView(context());
+        AlertDialog dialog = showMenuFor(webView,
+            "https://docs.google.com/spreadsheets/d/abc123/edit", new RecordingActions());
+        ListAdapter adapter = dialog.getListView().getAdapter();
+        Assert.assertEquals(6, adapter.getCount());
+        Assert.assertEquals(
+            context().getString(R.string.action_browser_open_in_google_app, "Google Sheets"),
+            adapter.getItem(3));
+    }
+
+    @Test
+    public void selectingOpenInGoogleAppLaunchesIntentWithMappedPackage() {
+        Context context = context();
+        WebView webView = new WebView(context);
+        RecordingActions actions = new RecordingActions();
+        BrowserLinkContextMenuController controller =
+            new BrowserLinkContextMenuController(context, webView, actions);
+        String url = "https://mail.google.com/mail/u/0/#inbox";
+        controller.showLinkContextMenu(url, null);
+        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+        int index = indexOfItem(dialog,
+            context.getString(R.string.action_browser_open_in_google_app, "Gmail"));
+        dialog.getListView().performItemClick(null, index, 0);
+        Intent started = Shadows.shadowOf((android.app.Application) context).getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.google.android.gm", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
+        Assert.assertNull(actions.openedInBrowserUrl);
+    }
+
+    @Test
+    public void selectingOpenInGoogleAppFallsBackToBrowserWhenAppNotInstalled() {
+        Context context = context();
+        ShadowApplication shadowApplication = Shadows.shadowOf((android.app.Application) context);
+        shadowApplication.checkActivities(true);
+        WebView webView = new WebView(context);
+        RecordingActions actions = new RecordingActions();
+        BrowserLinkContextMenuController controller =
+            new BrowserLinkContextMenuController(context, webView, actions);
+        String url = "https://drive.google.com/file/d/abc123/view";
+        controller.showLinkContextMenu(url, null);
+        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
+        int index = indexOfItem(dialog,
+            context.getString(R.string.action_browser_open_in_google_app, "Google Drive"));
+        dialog.getListView().performItemClick(null, index, 0);
+        Assert.assertNull(Shadows.shadowOf((android.app.Application) context).getNextStartedActivity());
+        Assert.assertEquals(url, actions.openedInBrowserUrl);
+    }
+
+    private int indexOfItem(@NonNull AlertDialog dialog, @NonNull String label) {
+        ListAdapter adapter = dialog.getListView().getAdapter();
+        for (int index = 0; index < adapter.getCount(); index++) {
+            if (label.equals(adapter.getItem(index))) return index;
+        }
+        throw new AssertionError("menu item not found: " + label);
     }
 
     private String clipboardText() {

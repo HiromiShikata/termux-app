@@ -2,7 +2,10 @@ package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -14,6 +17,9 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class BrowserLinkContextMenuController {
 
@@ -79,29 +85,54 @@ public final class BrowserLinkContextMenuController {
     }
 
     void showLinkContextMenu(@NonNull String linkUrl, @Nullable String anchorText) {
-        CharSequence[] actions = {
-            mContext.getString(R.string.action_browser_copy_link_text),
-            mContext.getString(R.string.action_browser_copy_link_url),
-            mContext.getString(R.string.action_browser_open_link),
-            mContext.getString(R.string.action_browser_open_in_chrome),
-            mContext.getString(R.string.action_browser_create_session_for_link)
-        };
+        BrowserGoogleAppLink.GoogleAppTarget googleAppTarget =
+            BrowserGoogleAppLink.resolveTarget(linkUrl);
+
+        List<CharSequence> actions = new ArrayList<>();
+        actions.add(mContext.getString(R.string.action_browser_copy_link_text));
+        actions.add(mContext.getString(R.string.action_browser_copy_link_url));
+        actions.add(mContext.getString(R.string.action_browser_open_link));
+        if (googleAppTarget != null) {
+            actions.add(mContext.getString(R.string.action_browser_open_in_google_app,
+                googleAppTarget.getAppDisplayName()));
+        }
+        actions.add(mContext.getString(R.string.action_browser_open_in_chrome));
+        actions.add(mContext.getString(R.string.action_browser_create_session_for_link));
+
+        CharSequence[] actionItems = actions.toArray(new CharSequence[0]);
         DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mContext)
             .setTitle(linkUrl)
-            .setItems(actions, (dialog, which) -> {
-                if (which == 0) {
+            .setItems(actionItems, (dialog, which) -> {
+                CharSequence selected = actionItems[which];
+                if (selected.equals(mContext.getString(R.string.action_browser_copy_link_text))) {
                     copyLinkText(linkUrl, anchorText);
-                } else if (which == 1) {
+                } else if (selected.equals(mContext.getString(R.string.action_browser_copy_link_url))) {
                     copyLinkUrl(linkUrl);
-                } else if (which == 2) {
+                } else if (selected.equals(mContext.getString(R.string.action_browser_open_link))) {
                     mActions.openLinkInBrowser(linkUrl);
-                } else if (which == 3) {
+                } else if (googleAppTarget != null && selected.equals(
+                    mContext.getString(R.string.action_browser_open_in_google_app,
+                        googleAppTarget.getAppDisplayName()))) {
+                    openLinkInGoogleApp(linkUrl, googleAppTarget);
+                } else if (selected.equals(mContext.getString(R.string.action_browser_open_in_chrome))) {
                     ShareUtils.openUrlInChrome(mContext, linkUrl);
                 } else {
                     copyLinkUrl(linkUrl);
                     mActions.createSessionForLink(linkUrl);
                 }
             }));
+    }
+
+    private void openLinkInGoogleApp(@NonNull String linkUrl,
+                                     @NonNull BrowserGoogleAppLink.GoogleAppTarget googleAppTarget) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(linkUrl));
+        intent.setPackage(googleAppTarget.getPackageName());
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            mContext.startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            mActions.openLinkInBrowser(linkUrl);
+        }
     }
 
     private void copyLinkText(@NonNull String linkUrl, @Nullable String anchorText) {
