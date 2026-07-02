@@ -72,11 +72,12 @@ public final class DeadSessionReconnectPlanner {
 
     /**
      * Plans which stale non-current definition-backed sessions to reconnect, capped at {@code
-     * maxSessionsToReconnect}. The cap keeps the proactive background reconnect gentle: a foreground
-     * tick reconnects at most this many sessions per invocation rather than firing every stale session
-     * at once, which prevents the session-list churn and resource exhaustion that a large simultaneous
-     * batch causes. Dead processes are preferred over merely hung ones, and hung sessions are ordered
-     * oldest-output-first so the most stale session is reconnected first when the cap is reached.
+     * maxSessionsToReconnect}. The proactive background reconnect passes {@link #UNLIMITED} so every
+     * currently-stale non-current session is planned and none is left to go 30+ minutes stale; the
+     * caller then spaces the resulting reconnects out in time so a large batch never fires
+     * simultaneously. A finite cap is still honored for callers that want to bound a single pass. Dead
+     * processes are preferred over merely hung ones, and hung sessions are ordered oldest-output-first
+     * so the most stale session is reconnected first when a finite cap is reached.
      */
     @NonNull
     public List<String> planSessionNamesToReconnect(@NonNull List<CandidateSession> candidateSessions,

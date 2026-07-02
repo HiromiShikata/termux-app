@@ -134,19 +134,33 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final long ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS = 1500L;
 
-    static final long STAGGERED_RECONNECT_INTERVAL_MILLIS = 400L;
-
-    static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 1;
+    /**
+     * Spacing between successive proactive background reconnects. Each background tick reconnects every
+     * currently-stale non-current session, but spaced roughly one second apart so a large backlog never
+     * opens all its file descriptors and ssh/tmux reattaches at the same instant. Combined with {@link
+     * #STAGGERED_RECONNECT_CONCURRENT_WINDOW}, at most a few reconnects are ever in flight together.
+     */
+    static final long STAGGERED_RECONNECT_INTERVAL_MILLIS = 1000L;
 
     /**
-     * The proactive background reconnect reconnects at most this many stale non-current sessions per
-     * tick. A gentle one-at-a-time cap replaces the former all-at-once burst: with many stale sessions
-     * the burst removed and re-added every session in a roughly 30-second window, churning the
-     * session list and exhausting resources. Dead non-current sessions the user actually switches to
-     * are reconnected on demand in {@link #switchToSessionReconnectingIfDead}, so the background tick
-     * only needs to gently drain the backlog without ever firing a large simultaneous batch.
+     * How many staggered background reconnects start immediately before the one-second spacing begins,
+     * and how many additional reconnects each subsequent spacing slot releases. A small window of a few
+     * keeps the whole stale backlog draining quickly without a simultaneous resource spike.
      */
-    static final int MAX_BACKGROUND_RECONNECTS_PER_TICK = 1;
+    static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
+
+    /**
+     * The staleness threshold used to decide which non-current sessions the background tick reconnects.
+     * A session whose last {@code out:} statusline time is older than this is treated as stale and is
+     * reconnected on the next tick so its shown info is refreshed; a session receiving fresh output
+     * stays under this age and is left untouched. It is deliberately shorter than {@link
+     * HungSessionDetector#STALE_OUT_MAX_AGE_MILLIS} and tied to the background reconnect tick interval
+     * (default five minutes, {@link
+     * com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_APP#DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES})
+     * so that a stale session is refreshed within roughly one tick — a few minutes — instead of only
+     * after the former ten-minute hung threshold plus a full tick, which let info reach 30+ minutes old.
+     */
+    static final long BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS = 4L * 60L * 1000L;
 
     private static final long[] POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS = {
         ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS, 3000L, 5000L, 8000L, 12000L};
@@ -164,7 +178,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         new StaggeredReconnectSchedule(STAGGERED_RECONNECT_INTERVAL_MILLIS,
             STAGGERED_RECONNECT_CONCURRENT_WINDOW);
 
-    private final HungSessionDetector mHungSessionDetector = new HungSessionDetector();
+    private final HungSessionDetector mHungSessionDetector =
+        new HungSessionDetector(BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS);
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
@@ -1584,7 +1599,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         List<String> sessionNamesToReconnect =
             mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate,
-                MAX_BACKGROUND_RECONNECTS_PER_TICK);
+                DeadSessionReconnectPlanner.UNLIMITED);
         List<String> reconnectedSessionNames = new ArrayList<>();
         int reconnectIndex = 0;
         for (String sessionName : sessionNamesToReconnect) {

@@ -154,7 +154,7 @@ public class DeadSessionReconnectPlannerTest {
     }
 
     @Test
-    public void capOfOneReconnectsOnlyASingleDeadSessionSoTheBackgroundTickNeverFiresABatch() {
+    public void capOfOneReconnectsOnlyASingleDeadSession() {
         List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
             new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead1", false),
             new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead2", false),
