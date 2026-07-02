@@ -28,5 +28,6 @@ public final class BrowserWebViewConfigurator {
         settings.setAllowContentAccess(false);
         settings.setUserAgentString(BrowserUserAgent.resolve(viewMode.isDesktop(), defaultUserAgent));
         BrowserWebAuthentication.apply(settings);
+        BrowserRequestedWithHeader.apply(settings);
     }
 }

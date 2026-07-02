@@ -113,6 +113,14 @@ public class BrowserWebViewConfiguratorTest {
     }
 
     @Test
+    public void requestedWithHeaderSuppressionIsWiredWithoutBreakingOtherSettings() {
+        WebSettings settings = newSettings();
+        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT, settings.getUserAgentString());
+        assertCommonSettings(settings);
+    }
+
+    @Test
     public void mobileModeWithNullDefaultUserAgentStillAppliesCleanMobileUserAgent() {
         WebSettings settings = newSettings();
         settings.setUserAgentString(null);
