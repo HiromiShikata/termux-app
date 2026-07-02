@@ -481,19 +481,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return SessionHierarchyBuilder.visibleSessionIndexes(buildCountedRows());
     }
 
-    @NonNull
-    public List<String> getOrderedVisibleSessionNames() {
-        List<String> sessionNamesByIndex = sessionNamesByIndex();
-        List<Integer> orderedSessionIndexes = getOrderedSessionIndexes();
-        List<String> orderedVisibleSessionNames = new ArrayList<>(orderedSessionIndexes.size());
-        for (int sessionIndex : orderedSessionIndexes) {
-            String sessionName = sessionIndex >= 0 && sessionIndex < sessionNamesByIndex.size()
-                ? sessionNamesByIndex.get(sessionIndex) : null;
-            orderedVisibleSessionNames.add(sessionName);
-        }
-        return orderedVisibleSessionNames;
-    }
-
     public int getRowPositionForSessionIndex(int sessionIndex) {
         return SessionHierarchyBuilder.rowPositionForSessionIndex(mRows, sessionIndex);
     }

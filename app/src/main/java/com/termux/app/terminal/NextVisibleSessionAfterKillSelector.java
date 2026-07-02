@@ -1,43 +1,26 @@
 package com.termux.app.terminal;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import java.util.List;
-
 public final class NextVisibleSessionAfterKillSelector {
+
+    public static final int NO_SELECTION = -1;
 
     private NextVisibleSessionAfterKillSelector() {
     }
 
-    @Nullable
-    public static String selectNextVisibleSessionName(
-            @NonNull List<String> orderedVisibleSessionNamesBeforeKill,
-            @NonNull String killedSessionName) {
-        int killedPosition = orderedVisibleSessionNamesBeforeKill.indexOf(killedSessionName);
-        if (killedPosition < 0) {
-            return firstOtherSessionName(orderedVisibleSessionNamesBeforeKill, killedSessionName);
+    public static int selectNextVisibleSessionPosition(
+            int visibleSessionCount,
+            int killedVisiblePosition) {
+        if (killedVisiblePosition < 0 || killedVisiblePosition >= visibleSessionCount) {
+            return visibleSessionCount > 0 ? 0 : NO_SELECTION;
         }
 
-        int lastPosition = orderedVisibleSessionNamesBeforeKill.size() - 1;
-        if (killedPosition < lastPosition) {
-            return orderedVisibleSessionNamesBeforeKill.get(killedPosition + 1);
+        int lastPosition = visibleSessionCount - 1;
+        if (killedVisiblePosition < lastPosition) {
+            return killedVisiblePosition + 1;
         }
-        if (killedPosition > 0) {
-            return orderedVisibleSessionNamesBeforeKill.get(killedPosition - 1);
+        if (killedVisiblePosition > 0) {
+            return killedVisiblePosition - 1;
         }
-        return null;
-    }
-
-    @Nullable
-    private static String firstOtherSessionName(
-            @NonNull List<String> orderedVisibleSessionNamesBeforeKill,
-            @NonNull String killedSessionName) {
-        for (String sessionName : orderedVisibleSessionNamesBeforeKill) {
-            if (!killedSessionName.equals(sessionName)) {
-                return sessionName;
-            }
-        }
-        return null;
+        return NO_SELECTION;
     }
 }
