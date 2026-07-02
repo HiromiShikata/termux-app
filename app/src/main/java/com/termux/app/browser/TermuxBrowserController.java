@@ -89,6 +89,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final float NEW_TAB_DIALOG_PADDING_DP = 16f;
 
+    private static final float NEW_TAB_DIALOG_HISTORY_LIST_MAX_HEIGHT_DP = 240f;
+
     private static final float BROWSER_TERMINAL_DIVIDER_THICKNESS_DP = 18f;
 
     private static final float BROWSER_TERMINAL_DIVIDER_HANDLE_LONG_SIDE_DP = 40f;
@@ -1516,18 +1518,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         List<BrowserTabHistoryEntry> visibleEntries = new ArrayList<>(mTabHistory.filtered(""));
         ListView listView = new ListView(mActivity);
         LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            dpToPixels(NEW_TAB_DIALOG_HISTORY_LIST_MAX_HEIGHT_DP));
+        listParams.setMargins(padding, 0, padding, padding);
         listView.setLayoutParams(listParams);
         ArrayAdapter<BrowserTabHistoryEntry> adapter = new ArrayAdapter<BrowserTabHistoryEntry>(
-            mActivity, android.R.layout.simple_list_item_2, android.R.id.text1, visibleEntries) {
+            mActivity, R.layout.item_browser_history_entry, R.id.browser_history_entry_title, visibleEntries) {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 BrowserTabHistoryEntry entry = getItem(position);
                 if (entry != null) {
-                    ((TextView) view.findViewById(android.R.id.text1)).setText(entry.getTitle());
-                    ((TextView) view.findViewById(android.R.id.text2)).setText(entry.getUrl());
+                    ((TextView) view.findViewById(R.id.browser_history_entry_title)).setText(entry.getTitle());
+                    ((TextView) view.findViewById(R.id.browser_history_entry_url)).setText(entry.getUrl());
                 }
                 return view;
             }
