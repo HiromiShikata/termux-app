@@ -33,7 +33,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
     }
 
     @Test
-    public void preservingPurgeClearsTheSeenAndUserInputBookkeeping() {
+    public void preservingPurgeClearsTheSeenBookkeepingButKeepsTheOwnerInputOverwrite() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("session-one", 1_000L, 2_000L, 3_000L, 0);
         store.recordSeen("session-one", 2_500L);
@@ -42,7 +42,24 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         store.purgeSessionPreservingStatuslineTimes("session-one");
 
         Assert.assertNull(store.getLastSeenTimeMillis("session-one"));
-        Assert.assertNull(store.getLastUserInputTimeMillis("session-one"));
+        Assert.assertEquals(Long.valueOf(2_600L), store.getLastUserInputTimeMillis("session-one"));
+    }
+
+    @Test
+    public void preservingPurgeKeepsTheOnSendReplyOverwriteSoItDoesNotRevertToTheStaleStatuslineReply() {
+        long staleStatuslineReply = 1_000L;
+        long ownerSendTime = 500_000L;
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("session-one", null, null, staleStatuslineReply, 0);
+        store.recordUserInput("session-one", ownerSendTime);
+        Assert.assertEquals("the on-send input must overwrite the displayed reply before reconnect",
+            Long.valueOf(ownerSendTime), store.effectiveReplyTimeMillis("session-one"));
+
+        store.purgeSessionPreservingStatuslineTimes("session-one");
+
+        Assert.assertEquals("an in-place reconnect must keep the on-send reply overwrite rather than "
+                + "reverting to the minutes-old statusline reply",
+            Long.valueOf(ownerSendTime), store.effectiveReplyTimeMillis("session-one"));
     }
 
     @Test
