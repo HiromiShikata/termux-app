@@ -1278,7 +1278,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             blankFrame();
         mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
-        mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
+        if (BrowserSessionRemovalVisibilityRetention.shouldClearBrowserOpenSessionName(reason)) {
+            mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
+        } else {
+            mSessionVisibilityState.clearSession(session.mHandle);
+        }
         if (session.mSessionName != null && !session.mSessionName.isEmpty()
             && BrowserSessionRemovalTabRetention.shouldDeletePersistedTabs(reason)) {
             mPersistedTabsBySessionName.remove(session.mSessionName);
