@@ -43,4 +43,22 @@ public final class BrowserTabHistoryEntry {
         if (collapsed.length() <= MAX_BODY_SNIPPET_LENGTH) return collapsed;
         return collapsed.substring(0, MAX_BODY_SNIPPET_LENGTH);
     }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        if (!(other instanceof BrowserTabHistoryEntry)) return false;
+        BrowserTabHistoryEntry that = (BrowserTabHistoryEntry) other;
+        return mUrl.equals(that.mUrl)
+            && mTitle.equals(that.mTitle)
+            && mBodySnippet.equals(that.mBodySnippet);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = mUrl.hashCode();
+        result = 31 * result + mTitle.hashCode();
+        result = 31 * result + mBodySnippet.hashCode();
+        return result;
+    }
 }

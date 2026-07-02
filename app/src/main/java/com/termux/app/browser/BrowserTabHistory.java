@@ -35,6 +35,10 @@ public final class BrowserTabHistory {
         return mEntries.isEmpty();
     }
 
+    public boolean hasSameEntriesAs(@NonNull BrowserTabHistory other) {
+        return mEntries.equals(other.mEntries);
+    }
+
     @NonNull
     public BrowserTabHistory recorded(@NonNull String url, @NonNull String title) {
         return recorded(url, title, "");

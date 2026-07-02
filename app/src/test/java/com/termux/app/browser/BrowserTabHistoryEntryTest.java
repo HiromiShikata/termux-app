@@ -34,4 +34,26 @@ public class BrowserTabHistoryEntryTest {
             "https://example.com/page", "Title", longBody.toString());
         Assert.assertEquals(BrowserTabHistoryEntry.MAX_BODY_SNIPPET_LENGTH, entry.getBodySnippet().length());
     }
+
+    @Test
+    public void equalEntriesShareUrlTitleAndBody() {
+        BrowserTabHistoryEntry first = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body");
+        BrowserTabHistoryEntry second = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body");
+        Assert.assertEquals(first, second);
+        Assert.assertEquals(first.hashCode(), second.hashCode());
+    }
+
+    @Test
+    public void entriesDifferingInAnyFieldAreNotEqual() {
+        BrowserTabHistoryEntry base = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body");
+        Assert.assertNotEquals(base,
+            new BrowserTabHistoryEntry("https://example.com/other", "Title", "body"));
+        Assert.assertNotEquals(base,
+            new BrowserTabHistoryEntry("https://example.com/page", "Other", "body"));
+        Assert.assertNotEquals(base,
+            new BrowserTabHistoryEntry("https://example.com/page", "Title", "other"));
+    }
 }
