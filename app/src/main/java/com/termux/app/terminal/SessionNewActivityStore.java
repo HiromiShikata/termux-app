@@ -347,8 +347,13 @@ public class SessionNewActivityStore {
      * out:}/{@code reply:} times here would make that row jump to {@code >1d} until the reconnected
      * session re-renders and its statusline is reparsed. The displayed times are therefore kept and
      * left to be replaced by the next parsed statusline ({@link #recordStatuslineTimes} already
-     * replaces them on a newer value). Only the per-session bookkeeping that genuinely belongs to the
-     * torn-down session (seen, user input, and the call-to-user reason cycle) is cleared.
+     * replaces them on a newer value). The app-captured owner input time ({@link
+     * #getLastUserInputTimeMillis}) is kept for the same reason: it is the optimistic half of the
+     * displayed {@code reply:} value ({@link #effectiveReplyTimeMillis} takes the later of it and the
+     * laggy statusline {@code reply:} token), so clearing it on reconnect would revert a reply the
+     * owner just sent back to the minutes-old statusline value until the next statusline scan lands.
+     * Only the per-session bookkeeping that genuinely belongs to the torn-down session (seen and the
+     * call-to-user reason cycle) is cleared.
      */
     public void purgeSessionPreservingStatuslineTimes(@NonNull String sessionName) {
         mLastExplicitCallReasonByName.remove(sessionName);
@@ -356,7 +361,6 @@ public class SessionNewActivityStore {
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
         mAcknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
-        mLastUserInputTimeMillisByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
         save();
     }
