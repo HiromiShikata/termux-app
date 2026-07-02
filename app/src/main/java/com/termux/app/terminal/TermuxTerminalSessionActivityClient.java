@@ -1864,39 +1864,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         int removedSessionIndex = service.getIndexOfSession(sessionBeingRemoved);
         if (removedSessionIndex < 0) return null;
 
-        String killedSessionName = sessionBeingRemoved.mSessionName;
-        if (killedSessionName == null) return null;
-
         List<Integer> orderedSessionIndexes = listViewController.getOrderedSessionIndexes();
-        List<String> orderedVisibleSessionNames = listViewController.getOrderedVisibleSessionNames();
-        String neighborSessionName = NextVisibleSessionAfterKillSelector.selectNextVisibleSessionName(
-            orderedVisibleSessionNames, killedSessionName);
-        if (neighborSessionName == null) return null;
+        int killedVisiblePosition = orderedSessionIndexes.indexOf(removedSessionIndex);
 
-        int neighborPosition = neighborPositionForSelectedName(
-            orderedVisibleSessionNames, neighborSessionName, killedSessionName);
+        int neighborPosition = NextVisibleSessionAfterKillSelector.selectNextVisibleSessionPosition(
+            orderedSessionIndexes.size(), killedVisiblePosition);
         if (neighborPosition < 0 || neighborPosition >= orderedSessionIndexes.size()) return null;
 
         return service.getTermuxSession(orderedSessionIndexes.get(neighborPosition));
-    }
-
-    private static int neighborPositionForSelectedName(@NonNull List<String> orderedVisibleSessionNames,
-                                                       @NonNull String neighborSessionName,
-                                                       @NonNull String killedSessionName) {
-        int killedPosition = orderedVisibleSessionNames.indexOf(killedSessionName);
-        if (killedPosition >= 0) {
-            int followingPosition = killedPosition + 1;
-            if (followingPosition < orderedVisibleSessionNames.size()
-                    && neighborSessionName.equals(orderedVisibleSessionNames.get(followingPosition))) {
-                return followingPosition;
-            }
-            int precedingPosition = killedPosition - 1;
-            if (precedingPosition >= 0
-                    && neighborSessionName.equals(orderedVisibleSessionNames.get(precedingPosition))) {
-                return precedingPosition;
-            }
-        }
-        return orderedVisibleSessionNames.indexOf(neighborSessionName);
     }
 
     private static boolean neighborStillPresent(@NonNull TermuxService service, @Nullable TermuxSession neighborSession) {
