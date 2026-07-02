@@ -275,6 +275,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_BROWSER_SESSION_SPLIT_RATIOS = "browser_session_split_ratios";
         public static final String DEFAULT_VALUE_KEY_BROWSER_SESSION_SPLIT_RATIOS = "";
 
+        public static final String KEY_BROWSER_TAB_HISTORY = "browser_tab_history";
+        public static final String DEFAULT_VALUE_KEY_BROWSER_TAB_HISTORY = "";
+
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
          */

@@ -5,20 +5,21 @@ import androidx.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
-public final class BrowserSessionTabHistory {
+public final class BrowserTabHistory {
 
-    public static final int DEFAULT_MAX_ENTRIES = 30;
+    public static final int DEFAULT_MAX_ENTRIES = 1000;
 
     private final List<BrowserTabHistoryEntry> mEntries;
 
     private final int mMaxEntries;
 
-    public BrowserSessionTabHistory() {
+    public BrowserTabHistory() {
         this(new ArrayList<>(), DEFAULT_MAX_ENTRIES);
     }
 
-    public BrowserSessionTabHistory(@NonNull List<BrowserTabHistoryEntry> entries, int maxEntries) {
+    public BrowserTabHistory(@NonNull List<BrowserTabHistoryEntry> entries, int maxEntries) {
         mMaxEntries = maxEntries < 1 ? 1 : maxEntries;
         List<BrowserTabHistoryEntry> bounded = new ArrayList<>(entries);
         while (bounded.size() > mMaxEntries) bounded.remove(bounded.size() - 1);
@@ -35,17 +36,57 @@ public final class BrowserSessionTabHistory {
     }
 
     @NonNull
-    public BrowserSessionTabHistory recorded(@NonNull String url, @NonNull String title) {
+    public BrowserTabHistory recorded(@NonNull String url, @NonNull String title) {
+        return recorded(url, title, "");
+    }
+
+    @NonNull
+    public BrowserTabHistory recorded(@NonNull String url, @NonNull String title, @NonNull String bodySnippet) {
         if (url.isEmpty()) return this;
         String canonicalUrl = canonicalizeUrl(url);
         String key = deduplicationKey(canonicalUrl);
         String preferredTitle = preferredTitle(canonicalUrl, title, key);
+        String preferredBodySnippet = preferredBodySnippet(bodySnippet, key);
         List<BrowserTabHistoryEntry> updated = new ArrayList<>();
-        updated.add(new BrowserTabHistoryEntry(canonicalUrl, preferredTitle));
+        updated.add(new BrowserTabHistoryEntry(canonicalUrl, preferredTitle, preferredBodySnippet));
         for (BrowserTabHistoryEntry entry : mEntries) {
             if (!deduplicationKey(entry.getUrl()).equals(key)) updated.add(entry);
         }
-        return new BrowserSessionTabHistory(updated, mMaxEntries);
+        return new BrowserTabHistory(updated, mMaxEntries);
+    }
+
+    @NonNull
+    public List<BrowserTabHistoryEntry> filtered(@NonNull String query) {
+        List<String> tokens = tokenize(query);
+        List<BrowserTabHistoryEntry> matches = new ArrayList<>();
+        for (BrowserTabHistoryEntry entry : mEntries) {
+            if (matchesAllTokens(entry, tokens)) matches.add(entry);
+        }
+        return Collections.unmodifiableList(matches);
+    }
+
+    private static boolean matchesAllTokens(@NonNull BrowserTabHistoryEntry entry, @NonNull List<String> tokens) {
+        if (tokens.isEmpty()) return true;
+        String haystack = searchableText(entry);
+        for (String token : tokens) {
+            if (!haystack.contains(token)) return false;
+        }
+        return true;
+    }
+
+    @NonNull
+    private static String searchableText(@NonNull BrowserTabHistoryEntry entry) {
+        return (entry.getTitle() + " " + entry.getUrl() + " " + entry.getBodySnippet())
+            .toLowerCase(Locale.ROOT);
+    }
+
+    @NonNull
+    private static List<String> tokenize(@NonNull String query) {
+        List<String> tokens = new ArrayList<>();
+        for (String token : query.toLowerCase(Locale.ROOT).trim().split("\\s+")) {
+            if (!token.isEmpty()) tokens.add(token);
+        }
+        return tokens;
     }
 
     @NonNull
@@ -58,6 +99,17 @@ public final class BrowserSessionTabHistory {
             }
         }
         return incomingTitle;
+    }
+
+    @NonNull
+    private String preferredBodySnippet(@NonNull String bodySnippet, @NonNull String key) {
+        if (!bodySnippet.isEmpty()) return bodySnippet;
+        for (BrowserTabHistoryEntry entry : mEntries) {
+            if (deduplicationKey(entry.getUrl()).equals(key) && !entry.getBodySnippet().isEmpty()) {
+                return entry.getBodySnippet();
+            }
+        }
+        return bodySnippet;
     }
 
     @NonNull

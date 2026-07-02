@@ -12,14 +12,18 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Message;
+import android.text.Editable;
+import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
@@ -67,7 +71,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +86,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private static final String BROWSER_SCREENSHOT_PNG_FILE_NAME = "browser-screenshot.png";
 
     private static final int BROWSER_SCREENSHOT_PNG_QUALITY = 100;
+
+    private static final float NEW_TAB_DIALOG_PADDING_DP = 16f;
 
     private static final float BROWSER_TERMINAL_DIVIDER_THICKNESS_DP = 18f;
 
@@ -114,7 +119,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
-    private final Map<String, BrowserSessionTabHistory> mTabHistoryBySessionHandle = new HashMap<>();
+    private final BrowserTabHistorySerializer mTabHistorySerializer = new BrowserTabHistorySerializer();
+
+    private BrowserTabHistory mTabHistory = new BrowserTabHistory();
 
     private final FrameLayout mWebViewContainer;
 
@@ -272,6 +279,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureBrowserOpenStatePersistence();
         loadPersistedSessionTabs();
         loadPersistedSessionSplitRatios();
+        loadPersistedTabHistory();
+    }
+
+    private void loadPersistedTabHistory() {
+        try {
+            mTabHistory = mTabHistorySerializer.deserialize(
+                mActivity.getPreferences().getBrowserTabHistory(), BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load persisted browser tab history", e);
+        }
+    }
+
+    private void persistTabHistory() {
+        try {
+            mActivity.getPreferences().setBrowserTabHistory(mTabHistorySerializer.serialize(mTabHistory));
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to persist browser tab history", e);
+        }
     }
 
     private void loadPersistedSessionSplitRatios() {
@@ -735,6 +760,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 tab.setUrl(url);
                 tab.setTitle(view.getTitle());
                 recordTabInHistory(tab);
+                captureTabBodySnippet(view, tab);
                 CookieManager.getInstance().flush();
                 if (isDisplayedTab(tab)) {
                     commitRenderedFrameUrl(url);
@@ -1472,44 +1498,90 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
-        List<BrowserTabHistoryEntry> historyEntries = currentSessionTabHistory().getEntries();
-        if (historyEntries.isEmpty()) {
-            promptNewTabUrl();
-            return;
-        }
-        List<String> labels = new ArrayList<>();
-        labels.add(mActivity.getString(R.string.action_browser_new_tab_enter_url));
-        for (BrowserTabHistoryEntry entry : historyEntries) {
-            labels.add(entry.getTitle() + "\n" + entry.getUrl());
-        }
+
+        int padding = dpToPixels(NEW_TAB_DIALOG_PADDING_DP);
+        LinearLayout container = new LinearLayout(mActivity);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        EditText omniboxInput = new EditText(mActivity);
+        omniboxInput.setHint(R.string.hint_browser_omnibox);
+        omniboxInput.setSingleLine(true);
+        omniboxInput.setImeOptions(EditorInfo.IME_ACTION_GO);
+        omniboxInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        inputParams.setMargins(padding, padding, padding, 0);
+        omniboxInput.setLayoutParams(inputParams);
+
+        List<BrowserTabHistoryEntry> visibleEntries = new ArrayList<>(mTabHistory.filtered(""));
         ListView listView = new ListView(mActivity);
-        listView.setAdapter(new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, labels));
+        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        listView.setLayoutParams(listParams);
+        ArrayAdapter<BrowserTabHistoryEntry> adapter = new ArrayAdapter<BrowserTabHistoryEntry>(
+            mActivity, android.R.layout.simple_list_item_2, android.R.id.text1, visibleEntries) {
+            @NonNull
+            @Override
+            public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                BrowserTabHistoryEntry entry = getItem(position);
+                if (entry != null) {
+                    ((TextView) view.findViewById(android.R.id.text1)).setText(entry.getTitle());
+                    ((TextView) view.findViewById(android.R.id.text2)).setText(entry.getUrl());
+                }
+                return view;
+            }
+        };
+        listView.setAdapter(adapter);
+
         AlertDialog dialog = new AlertDialog.Builder(mActivity)
             .setTitle(R.string.title_browser_new_tab)
-            .setView(listView)
+            .setView(container)
             .create();
         dialog.setCanceledOnTouchOutside(true);
-        listView.setOnItemClickListener((parent, view, position, id) -> {
-            dialog.dismiss();
-            if (position == 0) {
-                promptNewTabUrl();
-            } else {
-                openUrlInNewTab(historyEntries.get(position - 1).getUrl());
+
+        omniboxInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                visibleEntries.clear();
+                visibleEntries.addAll(mTabHistory.filtered(s.toString()));
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
             }
         });
+
+        omniboxInput.setOnEditorActionListener((view, actionId, event) -> {
+            String typed = omniboxInput.getText().toString().trim();
+            if (typed.isEmpty()) return false;
+            dialog.dismiss();
+            openTypedUrlInNewTab(typed);
+            return true;
+        });
+
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            BrowserTabHistoryEntry entry = adapter.getItem(position);
+            if (entry == null) return;
+            dialog.dismiss();
+            openUrlInNewTab(entry.getUrl());
+        });
+
+        container.addView(omniboxInput);
+        container.addView(listView);
         dialog.show();
     }
 
-    private void promptNewTabUrl() {
+    private void openTypedUrlInNewTab(@NonNull String typedText) {
         if (mCurrentSessionHandle == null) return;
-        TextInputDialogUtils.textInput(mActivity, R.string.title_browser_open_url, null,
-            R.string.action_browser_open_url_confirm, text -> {
-                if (mCurrentSessionHandle == null) return;
-                String url = normalizeUrl(text);
-                BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, url);
-                openTab(tab);
-            },
-            -1, null, android.R.string.cancel, null, null);
+        String url = normalizeUrl(typedText);
+        BrowserTab tab = mTabManager.addTab(mCurrentSessionHandle, url);
+        openTab(tab);
     }
 
     private static String normalizeUrl(@Nullable String input) {
@@ -1569,17 +1641,31 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void recordTabInHistory(@NonNull BrowserTab tab) {
-        String sessionHandle = tab.getSessionHandle();
-        BrowserSessionTabHistory history = mTabHistoryBySessionHandle.get(sessionHandle);
-        if (history == null) history = new BrowserSessionTabHistory();
-        mTabHistoryBySessionHandle.put(sessionHandle, history.recorded(tab.getUrl(), tab.getTitle()));
+        mTabHistory = mTabHistory.recorded(tab.getUrl(), tab.getTitle());
+        persistTabHistory();
     }
 
-    @NonNull
-    private BrowserSessionTabHistory currentSessionTabHistory() {
-        if (mCurrentSessionHandle == null) return new BrowserSessionTabHistory();
-        BrowserSessionTabHistory history = mTabHistoryBySessionHandle.get(mCurrentSessionHandle);
-        return history != null ? history : new BrowserSessionTabHistory();
+    private void recordTabBodySnippetInHistory(@NonNull BrowserTab tab, @NonNull String bodySnippet) {
+        if (tab.getUrl().isEmpty()) return;
+        mTabHistory = mTabHistory.recorded(tab.getUrl(), tab.getTitle(), bodySnippet);
+        persistTabHistory();
+    }
+
+    private void captureTabBodySnippet(@NonNull WebView view, @NonNull BrowserTab tab) {
+        view.evaluateJavascript(BrowserPageTextCapture.CAPTURE_SCRIPT, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String capturedTextJson) {
+                String bodyText;
+                try {
+                    bodyText = BrowserPageTextCapture.parseCapturedText(capturedTextJson);
+                } catch (JSONException e) {
+                    Logger.logStackTraceWithMessage(LOG_TAG, "Failed to parse captured page body snippet", e);
+                    return;
+                }
+                if (bodyText.isEmpty()) return;
+                recordTabBodySnippetInHistory(tab, bodyText);
+            }
+        });
     }
 
     public boolean onBackPressed() {

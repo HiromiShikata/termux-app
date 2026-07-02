@@ -98,10 +98,8 @@
     <string name="action_scroll_to_call_to_user_tag">Scroll to call-to-user message</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_new_tab">New tab</string>
-    <string name="action_browser_new_tab_enter_url">New tab (enter URL)</string>
-    <string name="title_browser_open_url">Open URL</string>
+    <string name="hint_browser_omnibox">Search history or enter URL</string>
     <string name="hint_browser_url">https://example.com</string>
-    <string name="action_browser_open_url_confirm">Open</string>
     <string name="title_browser_edit_url">Edit URL</string>
     <string name="action_browser_edit_url_confirm">Go</string>
     <string name="action_browser_edit_url_copy">Copy</string>
