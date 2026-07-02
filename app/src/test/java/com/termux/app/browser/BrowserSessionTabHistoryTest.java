@@ -11,11 +11,11 @@ public class BrowserSessionTabHistoryTest {
     @Test
     public void recordedAddsEntry() {
         BrowserSessionTabHistory history = new BrowserSessionTabHistory()
-            .recorded("https://example.com/", "Example");
+            .recorded("https://example.com/page", "Example");
 
         List<BrowserTabHistoryEntry> entries = history.getEntries();
         Assert.assertEquals(1, entries.size());
-        Assert.assertEquals("https://example.com/", entries.get(0).getUrl());
+        Assert.assertEquals("https://example.com/page", entries.get(0).getUrl());
         Assert.assertEquals("Example", entries.get(0).getTitle());
     }
 
@@ -45,6 +45,59 @@ public class BrowserSessionTabHistoryTest {
         Assert.assertEquals("https://example.com/a", entries.get(0).getUrl());
         Assert.assertEquals("A again", entries.get(0).getTitle());
         Assert.assertEquals("https://example.com/b", entries.get(1).getUrl());
+    }
+
+    @Test
+    public void recordedCollapsesTrailingSlashOnlyDifferenceIntoOneEntry() {
+        BrowserSessionTabHistory history = new BrowserSessionTabHistory()
+            .recorded("https://example.net", "Example Net")
+            .recorded("https://example.net/", "Example Net");
+
+        List<BrowserTabHistoryEntry> entries = history.getEntries();
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("Example Net", entries.get(0).getTitle());
+    }
+
+    @Test
+    public void recordedCollapsesTrailingSlashOnLongerPathIntoOneEntry() {
+        BrowserSessionTabHistory history = new BrowserSessionTabHistory()
+            .recorded("https://example.net/docs", "Docs")
+            .recorded("https://example.net/docs/", "Docs");
+
+        List<BrowserTabHistoryEntry> entries = history.getEntries();
+        Assert.assertEquals(1, entries.size());
+    }
+
+    @Test
+    public void recordedUpgradesUrlPlaceholderTitleToRealTitle() {
+        BrowserSessionTabHistory history = new BrowserSessionTabHistory()
+            .recorded("https://example.net/", "https://example.net/")
+            .recorded("https://example.net/", "Real Title");
+
+        List<BrowserTabHistoryEntry> entries = history.getEntries();
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("Real Title", entries.get(0).getTitle());
+    }
+
+    @Test
+    public void recordedDoesNotDowngradeRealTitleToUrlPlaceholder() {
+        BrowserSessionTabHistory history = new BrowserSessionTabHistory()
+            .recorded("https://example.net/", "Real Title")
+            .recorded("https://example.net/", "");
+
+        List<BrowserTabHistoryEntry> entries = history.getEntries();
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("Real Title", entries.get(0).getTitle());
+    }
+
+    @Test
+    public void recordedKeepsQueryStringDistinctFromBaseUrl() {
+        BrowserSessionTabHistory history = new BrowserSessionTabHistory()
+            .recorded("https://example.net/search", "Base")
+            .recorded("https://example.net/search?q=1", "Query");
+
+        List<BrowserTabHistoryEntry> entries = history.getEntries();
+        Assert.assertEquals(2, entries.size());
     }
 
     @Test
@@ -86,9 +139,9 @@ public class BrowserSessionTabHistoryTest {
     @Test
     public void recordedFallsBackToUrlWhenTitleEmpty() {
         BrowserSessionTabHistory history = new BrowserSessionTabHistory()
-            .recorded("https://example.com/", "");
+            .recorded("https://example.com/page", "");
 
-        Assert.assertEquals("https://example.com/", history.getEntries().get(0).getTitle());
+        Assert.assertEquals("https://example.com/page", history.getEntries().get(0).getTitle());
     }
 
     @Test
@@ -104,7 +157,7 @@ public class BrowserSessionTabHistoryTest {
     @Test
     public void getEntriesReturnsUnmodifiableCopy() {
         BrowserSessionTabHistory history = new BrowserSessionTabHistory()
-            .recorded("https://example.com/", "Example");
+            .recorded("https://example.com/page", "Example");
 
         try {
             history.getEntries().add(new BrowserTabHistoryEntry("https://example.com/x", "X"));
