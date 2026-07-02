@@ -44,6 +44,14 @@ public class BrowserUserAgentTest {
     }
 
     @Test
+    public void bothUserAgentsAdvertiseCurrentChromeVersionAndNotTheStaleOne() {
+        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Chrome/150.0.0.0"));
+        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/150.0.0.0"));
+        Assert.assertFalse(BrowserUserAgent.MOBILE_USER_AGENT.contains("Chrome/120.0.0.0"));
+        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/120.0.0.0"));
+    }
+
+    @Test
     public void normalizeDefaultRemovesSemicolonWebViewMarker() {
         String webViewUserAgent =
             "Mozilla/5.0 (Linux; Android 13; Pixel; wv) AppleWebKit/537.36 (KHTML, like Gecko) "
