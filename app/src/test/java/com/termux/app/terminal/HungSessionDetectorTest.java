@@ -37,4 +37,29 @@ public class HungSessionDetectorTest {
         long wellStale = NOW_MILLIS - (60L * 60L * 1000L);
         Assert.assertTrue(detector.isHung(wellStale, NOW_MILLIS));
     }
+
+    @Test
+    public void defaultConstructorUsesTheTenMinuteHungThreshold() {
+        Assert.assertEquals(HungSessionDetector.STALE_OUT_MAX_AGE_MILLIS, detector.getStaleOutMaxAgeMillis());
+    }
+
+    @Test
+    public void aCustomThresholdIsHonoredSoTheBackgroundReconnectCanUseAFresherStalenessWindow() {
+        long fourMinutes = 4L * 60L * 1000L;
+        HungSessionDetector fresherDetector = new HungSessionDetector(fourMinutes);
+
+        long justUnderFourMinutes = NOW_MILLIS - (fourMinutes - 1L);
+        long justOverFourMinutes = NOW_MILLIS - (fourMinutes + 1L);
+
+        Assert.assertEquals(fourMinutes, fresherDetector.getStaleOutMaxAgeMillis());
+        Assert.assertFalse(fresherDetector.isHung(justUnderFourMinutes, NOW_MILLIS));
+        Assert.assertTrue(fresherDetector.isHung(justOverFourMinutes, NOW_MILLIS));
+    }
+
+    @Test
+    public void aFreshOutputSessionIsNeverStaleUnderTheCustomThreshold() {
+        HungSessionDetector fresherDetector = new HungSessionDetector(4L * 60L * 1000L);
+        long tenSecondsAgo = NOW_MILLIS - (10L * 1000L);
+        Assert.assertFalse(fresherDetector.isHung(tenSecondsAgo, NOW_MILLIS));
+    }
 }
