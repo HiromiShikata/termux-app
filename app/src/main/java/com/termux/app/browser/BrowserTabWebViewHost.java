@@ -68,6 +68,11 @@ public final class BrowserTabWebViewHost {
         return mWebViewByTab.get(mDisplayedTab);
     }
 
+    @NonNull
+    public List<WebView> getAllWebViews() {
+        return new ArrayList<>(mWebViewByTab.values());
+    }
+
     @Nullable
     public BrowserTab getDisplayedTab() {
         return mDisplayedTab;

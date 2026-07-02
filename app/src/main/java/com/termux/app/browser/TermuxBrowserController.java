@@ -11,6 +11,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.text.Editable;
 import android.text.InputType;
@@ -97,6 +100,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final float BROWSER_TERMINAL_DIVIDER_HANDLE_SHORT_SIDE_DP = 4f;
 
+    private static final long TAB_HISTORY_PERSIST_DEBOUNCE_MS = 750L;
+
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
     private static final int HEADER_SECONDARY_TEXT_ALPHA = 0xB3;
@@ -124,6 +129,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserTabHistorySerializer mTabHistorySerializer = new BrowserTabHistorySerializer();
 
     private BrowserTabHistory mTabHistory = new BrowserTabHistory();
+
+    private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+
+    private final HandlerThread mTabHistoryPersistThread;
+
+    private final Handler mTabHistoryPersistHandler;
+
+    private final BrowserTabHistoryPersistScheduler mTabHistoryPersistScheduler;
+
+    private boolean mAppForegrounded = true;
 
     private final FrameLayout mWebViewContainer;
 
@@ -221,6 +236,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
+        this.mTabHistoryPersistThread = new HandlerThread("BrowserTabHistoryPersist");
+        this.mTabHistoryPersistThread.start();
+        this.mTabHistoryPersistHandler = new Handler(mTabHistoryPersistThread.getLooper());
+        this.mTabHistoryPersistScheduler = new BrowserTabHistoryPersistScheduler(
+            new MainThreadDebouncer(mMainHandler, TAB_HISTORY_PERSIST_DEBOUNCE_MS),
+            mTabHistoryPersistHandler::post,
+            this::serializeTabHistoryForPersist,
+            value -> {
+                if (value.isEmpty()) return;
+                mActivity.getPreferences().setBrowserTabHistory(value);
+            });
         this.mWebViewContainer = activity.findViewById(R.id.browser_web_view_container);
         this.mWebViewHost = new BrowserTabWebViewHost(mWebViewContainer, this::createWebViewForTab);
         this.mBrowserContentContainer = activity.findViewById(R.id.browser_content_container);
@@ -294,10 +320,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void persistTabHistory() {
+        mTabHistoryPersistScheduler.markDirty(mTabHistory);
+    }
+
+    private void flushTabHistory() {
+        mTabHistoryPersistScheduler.flushNow();
+    }
+
+    @NonNull
+    private String serializeTabHistoryForPersist(@NonNull BrowserTabHistory history) {
         try {
-            mActivity.getPreferences().setBrowserTabHistory(mTabHistorySerializer.serialize(mTabHistory));
+            return mTabHistorySerializer.serialize(history);
         } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to persist browser tab history", e);
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize browser tab history", e);
+            return "";
         }
     }
 
@@ -1383,10 +1419,46 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mBrowserTerminalDivider.setVisibility(View.GONE);
         updateProjectOverviewActionsVisibility();
         updateSessionNameOverlay();
+        applyWebViewPauseState();
     }
 
     public boolean isBrowserVisible() {
         return mBrowserVisible;
+    }
+
+    private void applyWebViewPauseState() {
+        BrowserWebViewPausePlan<WebView> plan = BrowserWebViewPausePlan.resolve(
+            mWebViewHost.getAllWebViews(),
+            mWebViewHost.getDisplayedWebView(),
+            mBrowserVisible,
+            mAppForegrounded);
+        for (WebView webView : plan.getWebViewsToResume()) {
+            webView.onResume();
+        }
+        for (WebView webView : plan.getWebViewsToPause()) {
+            webView.onPause();
+        }
+        if (plan.shouldTimersBeActive()) {
+            resumeWebViewTimers();
+        } else {
+            pauseWebViewTimers();
+        }
+    }
+
+    private void resumeWebViewTimers() {
+        WebView displayedWebView = mWebViewHost.getDisplayedWebView();
+        if (displayedWebView != null) displayedWebView.resumeTimers();
+    }
+
+    private void pauseWebViewTimers() {
+        WebView anyWebView = firstWebView();
+        if (anyWebView != null) anyWebView.pauseTimers();
+    }
+
+    @Nullable
+    private WebView firstWebView() {
+        List<WebView> webViews = mWebViewHost.getAllWebViews();
+        return webViews.isEmpty() ? null : webViews.get(0);
     }
 
     @Nullable
@@ -1611,6 +1683,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (firstDisplay) showWebViewCover();
         renderFrame(tab);
         WebView webView = mWebViewHost.showTab(tab);
+        applyWebViewPauseState();
         if (forceReload && !firstDisplay) webView.reload();
         else if (!firstDisplay) revealWebView();
     }
@@ -1645,13 +1718,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void recordTabInHistory(@NonNull BrowserTab tab) {
-        mTabHistory = mTabHistory.recorded(tab.getUrl(), tab.getTitle());
+        BrowserTabHistory updated = mTabHistory.recorded(tab.getUrl(), tab.getTitle());
+        if (updated.hasSameEntriesAs(mTabHistory)) return;
+        mTabHistory = updated;
         persistTabHistory();
     }
 
     private void recordTabBodySnippetInHistory(@NonNull BrowserTab tab, @NonNull String bodySnippet) {
         if (tab.getUrl().isEmpty()) return;
-        mTabHistory = mTabHistory.recorded(tab.getUrl(), tab.getTitle(), bodySnippet);
+        BrowserTabHistory updated = mTabHistory.recorded(tab.getUrl(), tab.getTitle(), bodySnippet);
+        if (updated.hasSameEntriesAs(mTabHistory)) return;
+        mTabHistory = updated;
         persistTabHistory();
     }
 
@@ -1699,7 +1776,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             drawer.openDrawer(Gravity.END);
     }
 
+    public void onActivityResume() {
+        mAppForegrounded = true;
+        applyWebViewPauseState();
+    }
+
     public void onActivityStop() {
+        mAppForegrounded = false;
+        applyWebViewPauseState();
+        flushTabHistory();
         try {
             CookieManager.getInstance().flush();
         } catch (Exception e) {
@@ -1708,6 +1793,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void onActivityDestroy() {
+        flushTabHistory();
+        mTabHistoryPersistThread.quitSafely();
         cancelPendingFileChooser();
         mDownloadController.unregisterDownloadCompleteReceiver();
         mWebViewHost.destroyAll();

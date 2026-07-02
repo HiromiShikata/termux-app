@@ -436,6 +436,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             }
 
             @Override
+            public void onActivityResume() {
+                mTermuxBrowserController.onActivityResume();
+            }
+
+            @Override
             public void onActivityStop() {
                 mTermuxBrowserController.onActivityStop();
             }
@@ -573,6 +578,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // Check if a crash happened on last run of the app or if a plugin crashed and show a
         // notification with the crash details if it did
         TermuxCrashUtils.notifyAppCrashFromCrashLogFile(this, LOG_TAG);
+
+        for (ActivityComponent component : mActivityComponents)
+            component.onActivityResume();
 
         mIsOnResumeAfterOnCreate = false;
     }

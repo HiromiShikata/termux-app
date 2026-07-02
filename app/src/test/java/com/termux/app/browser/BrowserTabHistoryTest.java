@@ -334,4 +334,34 @@ public class BrowserTabHistoryTest {
             // expected
         }
     }
+
+    @Test
+    public void redundantRecordOfSameHeadEntryProducesSameEntries() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha");
+
+        BrowserTabHistory rerecorded = history.recorded("https://example.com/a", "Alpha");
+
+        Assert.assertTrue(rerecorded.hasSameEntriesAs(history));
+    }
+
+    @Test
+    public void recordingChangedTitleProducesDifferentEntries() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha");
+
+        BrowserTabHistory rerecorded = history.recorded("https://example.com/a", "Alpha Updated");
+
+        Assert.assertFalse(rerecorded.hasSameEntriesAs(history));
+    }
+
+    @Test
+    public void recordingNewUrlProducesDifferentEntries() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha");
+
+        BrowserTabHistory rerecorded = history.recorded("https://example.com/b", "Beta");
+
+        Assert.assertFalse(rerecorded.hasSameEntriesAs(history));
+    }
 }
