@@ -36,6 +36,7 @@ import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
+import com.termux.app.sessiondefinition.VisibleSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
@@ -173,6 +174,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
     private final DeadSessionReconnectPlanner mDeadSessionReconnectPlanner = new DeadSessionReconnectPlanner();
+
+    private final VisibleSessionSelector mVisibleSessionSelector = new VisibleSessionSelector();
 
     private final StaggeredReconnectSchedule mStaggeredReconnectSchedule =
         new StaggeredReconnectSchedule(STAGGERED_RECONNECT_INTERVAL_MILLIS,
@@ -421,10 +424,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (store == null) return;
 
         long nowMillis = System.currentTimeMillis();
+        Set<String> visibleSessionNames = visibleSessionNames();
         List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts = new ArrayList<>();
         for (TermuxSession termuxSession : service.getTermuxSessions()) {
             TerminalSession session = termuxSession.getTerminalSession();
             if (session == null || session.mSessionName == null) continue;
+            if (!visibleSessionNames.contains(session.mSessionName)) continue;
             TerminalEmulator emulator = session.getEmulator();
             if (emulator == null) continue;
             TerminalBuffer screen = emulator.getScreen();
@@ -705,6 +710,19 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private String activeSessionName() {
         TerminalSession currentSession = mActivity.getCurrentSession();
         return currentSession == null ? null : currentSession.mSessionName;
+    }
+
+    @NonNull
+    private Set<String> visibleSessionNames() {
+        SessionListBottomSheetController sessionListBottomSheetController =
+            mActivity.getSessionListBottomSheetController();
+        boolean sessionListOpen =
+            sessionListBottomSheetController != null && sessionListBottomSheetController.isOpen();
+        List<String> onScreenListSessionNames = sessionListOpen
+            ? sessionListBottomSheetController.getOnScreenSessionNames()
+            : Collections.emptyList();
+        return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
+            activeSessionName(), sessionListOpen, onScreenListSessionNames);
     }
 
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
@@ -1580,6 +1598,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         String currentSessionName = activeSessionName();
+        Set<String> visibleSessionNames = visibleSessionNames();
         long nowMillis = System.currentTimeMillis();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
@@ -1589,6 +1608,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (terminalSession == null) continue;
             String sessionName = terminalSession.mSessionName;
             if (sessionName == null) continue;
+            if (!visibleSessionNames.contains(sessionName)) continue;
             sessionByName.put(sessionName, terminalSession);
             boolean current = sessionName.equals(currentSessionName);
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
