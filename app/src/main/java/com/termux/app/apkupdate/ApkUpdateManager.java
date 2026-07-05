@@ -26,12 +26,6 @@ public final class ApkUpdateManager {
 
         void onUpToDate(String latestVersionName);
 
-        /**
-         * Called when the check could not complete (network error, HTTP error, or an exhausted
-         * GitHub rate limit even after the Atom-feed fallback). {@code rateLimited} is {@code true}
-         * when the failure was a GitHub rate limit, so the caller can show a distinct
-         * "rate limited, try later" message instead of conflating it with "no newer version".
-         */
         void onCheckFailed(String message, boolean rateLimited);
     }
 
@@ -110,14 +104,6 @@ public final class ApkUpdateManager {
         }).start();
     }
 
-    /**
-     * Resolves the latest-release JSON, preferring the REST {@code releases/latest} endpoint. When
-     * that endpoint answers with an exhausted rate limit, it falls back to the github.com Atom feed,
-     * which is not subject to the 60-requests-per-hour unauthenticated REST limit, and synthesizes an
-     * equivalent JSON document so the rest of the pipeline is unchanged. If the fallback cannot find a
-     * release, the original rate-limit failure is propagated so the user still sees a rate-limit
-     * message rather than a false "up to date".
-     */
     private String resolveLatestReleaseJson() throws Exception {
         try {
             return releaseClient.fetchLatestReleaseJson(updateGuide.getReleasesLatestApiUrl());

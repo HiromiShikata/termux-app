@@ -19,11 +19,6 @@ public final class GithubReleaseClient {
         return fetch(url, "application/vnd.github+json");
     }
 
-    /**
-     * Fetches the GitHub Releases Atom feed. The Atom feed is served from the github.com web host,
-     * not {@code api.github.com}, so it is not subject to the unauthenticated REST rate limit and is
-     * usable as a fallback when {@link #fetchLatestReleaseJson(String)} answers with a rate limit.
-     */
     public String fetchReleasesAtomFeed(String url) throws IOException {
         return fetch(url, "application/atom+xml");
     }
@@ -61,13 +56,6 @@ public final class GithubReleaseClient {
         }
     }
 
-    /**
-     * A response is a rate-limit response when GitHub answers 403 or 429 with the remaining
-     * rate-limit budget exhausted. GitHub returns 403 for the unauthenticated primary limit and 429
-     * for secondary limits; both carry {@code X-RateLimit-Remaining: 0}. Some 403 responses are not
-     * rate limits (for example a private resource), so the header is required for the 403 case; a 429
-     * is always a rate limit even if the header is absent.
-     */
     private boolean isRateLimited(HttpURLConnection connection, int responseCode) {
         if (responseCode == HTTP_TOO_MANY_REQUESTS) {
             return true;
