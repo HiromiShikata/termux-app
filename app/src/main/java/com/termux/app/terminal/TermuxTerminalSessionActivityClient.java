@@ -37,6 +37,7 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
+import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.VisibleSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
@@ -116,8 +117,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
+    private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
+
     private int maxSessions() {
         return mActivity.getPreferences().getSessionDefinitionMaxSessions();
+    }
+
+    private int cappedSessionCount(@NonNull TermuxService service) {
+        String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
+        List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            countedSessions.add(new SessionDefinitionCapCountPlanner.CountedSession(
+                terminalSession == null ? null : terminalSession.mSessionName,
+                terminalSession != null && terminalSession.isRunning()));
+        }
+        return mCapCountPlanner.countSessionsTowardCap(countedSessions, autosshCommandTemplate);
     }
 
     private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
@@ -1267,7 +1282,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
-        if (service.getTermuxSessionsSize() >= maxSessions()) {
+        if (cappedSessionCount(service) >= maxSessions()) {
             DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
                 "cap=" + maxSessions());
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
@@ -1329,7 +1344,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
-        if (service.getTermuxSessionsSize() >= maxSessions()) {
+        if (cappedSessionCount(service) >= maxSessions()) {
             DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
                 "cap=" + maxSessions());
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
