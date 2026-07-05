@@ -58,4 +58,32 @@ public class SessionDefinitionLimitPlanTest {
         Assert.assertEquals(0, plan.getDroppedSessionCount());
         Assert.assertFalse(plan.exceedsLimit());
     }
+
+    @Test
+    public void countSafeReloadOfEveryShownSessionNeverExceedsTheCapWhenPlanningAgainstTheCountedTotal() {
+        int configuredLimit = 32;
+        int shownSessionCount = 23;
+        int countedButNotShownSessionCount = 9;
+        int countedLiveTotal = shownSessionCount + countedButNotShownSessionCount;
+
+        SessionDefinitionLimitPlan plan =
+            SessionDefinitionLimitPlan.forCapacity(shownSessionCount, countedLiveTotal, configuredLimit);
+
+        int totalAfterCreation = countedLiveTotal + plan.getSessionsToCreateCount();
+        Assert.assertTrue(totalAfterCreation <= configuredLimit);
+    }
+
+    @Test
+    public void countSafeReloadCreatesEveryShownSessionWhenTheCountedTotalLeavesRoom() {
+        int configuredLimit = 32;
+        int shownSessionCount = 23;
+        int countedLiveTotal = 0;
+
+        SessionDefinitionLimitPlan plan =
+            SessionDefinitionLimitPlan.forCapacity(shownSessionCount, countedLiveTotal, configuredLimit);
+
+        Assert.assertEquals(shownSessionCount, plan.getSessionsToCreateCount());
+        Assert.assertFalse(plan.exceedsLimit());
+        Assert.assertTrue(countedLiveTotal + plan.getSessionsToCreateCount() <= configuredLimit);
+    }
 }
