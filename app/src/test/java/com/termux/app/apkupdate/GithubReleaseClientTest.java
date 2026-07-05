@@ -39,6 +39,10 @@ public class GithubReleaseClientTest {
     }
 
     private void serveOnce(int statusCode, String reasonPhrase, String body) {
+        serveOnce(statusCode, reasonPhrase, body, null);
+    }
+
+    private void serveOnce(int statusCode, String reasonPhrase, String body, String extraHeaderLine) {
         serverThread = new Thread(() -> {
             try (Socket socket = serverSocket.accept()) {
                 BufferedReader reader =
@@ -51,6 +55,9 @@ public class GithubReleaseClientTest {
                 StringBuilder header = new StringBuilder();
                 header.append("HTTP/1.1 ").append(statusCode).append(' ').append(reasonPhrase).append("\r\n");
                 header.append("Content-Type: application/json; charset=utf-8\r\n");
+                if (extraHeaderLine != null) {
+                    header.append(extraHeaderLine).append("\r\n");
+                }
                 header.append("Content-Length: ").append(bodyBytes.length).append("\r\n");
                 header.append("Connection: close\r\n\r\n");
                 OutputStream out = socket.getOutputStream();
@@ -114,5 +121,43 @@ public class GithubReleaseClientTest {
         IOException thrown = Assert.assertThrows(IOException.class,
             () -> client.fetchLatestReleaseJson("file:///tmp/does-not-matter.json"));
         Assert.assertTrue(thrown.getMessage().contains("Unsupported protocol"));
+    }
+
+    @Test
+    public void throwsRateLimitedWhenForbiddenWithExhaustedRateLimitRemaining() {
+        serveOnce(403, "Forbidden", "{\"message\":\"API rate limit exceeded\"}",
+            "X-RateLimit-Remaining: 0");
+
+        Assert.assertThrows(GithubRateLimitedException.class,
+            () -> client.fetchLatestReleaseJson(baseUrl()));
+    }
+
+    @Test
+    public void throwsRateLimitedOnTooManyRequests() {
+        serveOnce(429, "Too Many Requests", "{\"message\":\"You have exceeded a secondary rate limit\"}");
+
+        Assert.assertThrows(GithubRateLimitedException.class,
+            () -> client.fetchLatestReleaseJson(baseUrl()));
+    }
+
+    @Test
+    public void throwsGenericWhenForbiddenWithoutExhaustedRateLimit() {
+        serveOnce(403, "Forbidden", "{\"message\":\"Resource not accessible\"}",
+            "X-RateLimit-Remaining: 42");
+
+        IOException thrown =
+            Assert.assertThrows(IOException.class, () -> client.fetchLatestReleaseJson(baseUrl()));
+        Assert.assertFalse(thrown instanceof GithubRateLimitedException);
+        Assert.assertTrue(thrown.getMessage().contains("403"));
+    }
+
+    @Test
+    public void fetchesAtomFeedBodyOnHttpOk() throws IOException {
+        String atom = "<feed><entry><title>0.119.2744</title></entry></feed>";
+        serveOnce(200, "OK", atom);
+
+        String result = client.fetchReleasesAtomFeed(baseUrl());
+
+        Assert.assertEquals(atom, result);
     }
 }

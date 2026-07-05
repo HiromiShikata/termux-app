@@ -56,14 +56,20 @@ public final class ApkUpdateUiController {
             }
 
             @Override
-            public void onCheckFailed(String message) {
+            public void onCheckFailed(String message, boolean rateLimited) {
                 Logger.logError(LOG_TAG, "APK update check failed: " + message);
-                if (notificationPolicy.shouldNotifyCheckFailed(userInitiated)) {
-                    Logger.showToast(activity,
-                        activity.getString(R.string.apk_update_check_failed, message), true);
+                if (notificationPolicy.shouldNotifyCheckFailed(userInitiated, rateLimited)) {
+                    Logger.showToast(activity, checkFailedMessage(message, rateLimited), true);
                 }
             }
         });
+    }
+
+    private String checkFailedMessage(String message, boolean rateLimited) {
+        if (rateLimited) {
+            return activity.getString(R.string.apk_update_check_rate_limited);
+        }
+        return activity.getString(R.string.apk_update_check_failed, message);
     }
 
     public void checkAndShowFloatingIndicator(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
@@ -82,8 +88,11 @@ public final class ApkUpdateUiController {
             }
 
             @Override
-            public void onCheckFailed(String message) {
+            public void onCheckFailed(String message, boolean rateLimited) {
                 Logger.logError(LOG_TAG, "APK update check failed: " + message);
+                if (notificationPolicy.shouldNotifyCheckFailed(false, rateLimited)) {
+                    Logger.showToast(activity, checkFailedMessage(message, rateLimited), true);
+                }
             }
         });
     }
