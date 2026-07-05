@@ -408,6 +408,7 @@
     <string name="apk_update_checking">Checking for updates…</string>
     <string name="apk_update_up_to_date">You are already on the latest version (%1$s)</string>
     <string name="apk_update_check_failed">Update check failed: %1$s</string>
+    <string name="apk_update_check_rate_limited">Couldn\'t check for updates: GitHub rate limit reached. Please try again later.</string>
     <string name="apk_update_no_matching_asset">No matching APK found in the latest release</string>
     <string name="apk_update_dialog_title">Update available</string>
     <string name="apk_update_dialog_message">A new version (%1$s) is available. Update now?</string>

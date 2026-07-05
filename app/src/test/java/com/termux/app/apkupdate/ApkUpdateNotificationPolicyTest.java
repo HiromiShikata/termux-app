@@ -14,8 +14,14 @@ public class ApkUpdateNotificationPolicyTest {
     }
 
     @Test
-    public void notifiesCheckFailedOnlyWhenUserInitiated() {
-        Assert.assertTrue(policy.shouldNotifyCheckFailed(true));
-        Assert.assertFalse(policy.shouldNotifyCheckFailed(false));
+    public void notifiesUserInitiatedCheckFailedRegardlessOfCause() {
+        Assert.assertTrue(policy.shouldNotifyCheckFailed(true, false));
+        Assert.assertTrue(policy.shouldNotifyCheckFailed(true, true));
+    }
+
+    @Test
+    public void notifiesAutoCheckFailedOnlyWhenRateLimited() {
+        Assert.assertFalse(policy.shouldNotifyCheckFailed(false, false));
+        Assert.assertTrue(policy.shouldNotifyCheckFailed(false, true));
     }
 }

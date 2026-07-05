@@ -49,11 +49,13 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
             }
 
             @Override
-            public void onCheckFailed(String message) {
+            public void onCheckFailed(String message, boolean rateLimited) {
                 updateInProgress = false;
                 Logger.logError(LOG_TAG, "Update tag check failed: " + message);
-                Logger.showToast(activity,
-                    activity.getString(R.string.apk_update_check_failed, message), true);
+                String toastMessage = rateLimited
+                    ? activity.getString(R.string.apk_update_check_rate_limited)
+                    : activity.getString(R.string.apk_update_check_failed, message);
+                Logger.showToast(activity, toastMessage, true);
             }
         });
     }
