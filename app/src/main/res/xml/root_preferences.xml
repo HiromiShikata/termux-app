@@ -68,6 +68,12 @@
         app:defaultValue="false"/>
 
     <Preference
+        app:key="share_diagnostics"
+        app:title="@string/share_diagnostics_preference_title"
+        app:summary="@string/share_diagnostics_preference_summary"
+        app:persistent="false"/>
+
+    <Preference
         app:key="crash_log_viewer"
         app:title="@string/action_open_crash_log_viewer"
         app:summary="@string/summary_crash_log_viewer"

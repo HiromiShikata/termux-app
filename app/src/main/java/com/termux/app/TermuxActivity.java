@@ -42,6 +42,7 @@ import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.browser.OpenTagBrowserController;
+import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
 import com.termux.shared.activities.ReportActivity;
@@ -539,6 +540,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mIsVisible = true;
 
+        TermuxActivityHolder.set(this);
+
         if (mTermuxService != null)
             mTermuxService.onActivityForegrounded();
 
@@ -617,6 +620,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTtsManager != null)
             mTtsManager.shutdown();
+
+        TermuxActivityHolder.clear(this);
 
         if (mIsInvalidState) return;
 

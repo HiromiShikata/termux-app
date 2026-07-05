@@ -23,6 +23,9 @@ import com.termux.app.apkupdate.ApkUpdateCheckTimeFormatter;
 import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateSettingsOpenCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
+import com.termux.app.TermuxActivity;
+import com.termux.app.diagnostics.DiagnosticsShareAction;
+import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.style.TermuxStyleLauncher;
 import com.termux.app.terminal.session.PersistedSessionClearer;
 import com.termux.app.terminal.session.PersistedSessionStore;
@@ -88,6 +91,7 @@ public class SettingsActivity extends AppCompatActivity {
             configureAutosshConfigPreference(context);
             configureSessionDefinitionConfigPreference(context);
             configureAlwaysNaSessionNamesPreference(context);
+            configureShareDiagnosticsPreference(context);
             configureCrashLogViewerPreference(context);
             configureClearSavedSessionsPreference(context);
             configureUpdateApkPreference(context);
@@ -160,6 +164,21 @@ public class SettingsActivity extends AppCompatActivity {
             if (alwaysNaSessionNamesPreference != null) {
                 alwaysNaSessionNamesPreference.setOnPreferenceClickListener(preference -> {
                     ActivityUtils.startActivity(context, new Intent(context, AlwaysNaSessionNamesConfigActivity.class));
+                    return true;
+                });
+            }
+        }
+
+        private void configureShareDiagnosticsPreference(@NonNull Context context) {
+            Preference shareDiagnosticsPreference = findPreference("share_diagnostics");
+            if (shareDiagnosticsPreference != null) {
+                shareDiagnosticsPreference.setOnPreferenceClickListener(preference -> {
+                    TermuxActivity termuxActivity = TermuxActivityHolder.get();
+                    if (termuxActivity == null) {
+                        Toast.makeText(context, R.string.msg_diagnostics_unavailable, Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
+                    new DiagnosticsShareAction().shareFrom(termuxActivity);
                     return true;
                 });
             }

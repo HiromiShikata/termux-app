@@ -310,6 +310,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         loadPersistedTabHistory();
     }
 
+    public int getTotalOpenTabCount() {
+        return mTabManager.getTotalOpenTabCount();
+    }
+
+    public int getTabHistoryEntryCount() {
+        return mTabHistory.getEntries().size();
+    }
+
     private void loadPersistedTabHistory() {
         try {
             mTabHistory = mTabHistorySerializer.deserialize(
