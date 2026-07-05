@@ -31,6 +31,8 @@ public final class SessionDefinitionController {
         new DefaultProjectManagerSessionPlanner();
     private final SessionDefinitionDuplicateSessionPlanner duplicateSessionPlanner =
         new SessionDefinitionDuplicateSessionPlanner();
+    private final SessionDefinitionCapCountPlanner capCountPlanner =
+        new SessionDefinitionCapCountPlanner();
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
@@ -158,7 +160,15 @@ public final class SessionDefinitionController {
         if (service == null) {
             return 0;
         }
-        return service.getTermuxSessionsSize();
+        String autosshCommandTemplate = activity.getPreferences().getAutosshCommand();
+        List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            countedSessions.add(new SessionDefinitionCapCountPlanner.CountedSession(
+                terminalSession == null ? null : terminalSession.mSessionName,
+                terminalSession != null && terminalSession.isRunning()));
+        }
+        return capCountPlanner.countSessionsTowardCap(countedSessions, autosshCommandTemplate);
     }
 
     private void reconcileDuplicateLiveSessions() {
