@@ -97,3 +97,4 @@ public class AppVersionComparatorTest {
         // A larger number of digits must rank higher even though it is lexically smaller at index 0.
         Assert.assertTrue(comparator.isNewer("0.119.10000", "0.119.9999"));
     }
+}
