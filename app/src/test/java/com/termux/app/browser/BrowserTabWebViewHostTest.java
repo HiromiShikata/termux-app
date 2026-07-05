@@ -198,6 +198,121 @@ public class BrowserTabWebViewHostTest {
         Assert.assertSame(recreated, host.getDisplayedWebView());
     }
 
+    @Test
+    public void liveWebViewCountIsBoundedToTheWindowSizeAcrossManyTabs() {
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new WebView(mActivity), 4);
+
+        for (int i = 0; i < 20; i++) {
+            host.showTab(tab(SESSION_A, "https://a.example/" + i));
+        }
+
+        Assert.assertEquals(4, host.getLiveWebViewCount());
+    }
+
+    @Test
+    public void displayedTabAlwaysKeepsItsLiveWebViewAfterEnforcingTheWindow() {
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new WebView(mActivity), 2);
+        BrowserTab firstTab = tab(SESSION_A, "https://a.example/first");
+        host.showTab(firstTab);
+        for (int i = 0; i < 5; i++) {
+            host.showTab(tab(SESSION_A, "https://a.example/other" + i));
+        }
+        BrowserTab currentTab = tab(SESSION_A, "https://a.example/current");
+        host.showTab(currentTab);
+
+        Assert.assertTrue(host.hasWebViewForTab(currentTab));
+        Assert.assertSame(currentTab, host.getDisplayedTab());
+        Assert.assertNotNull(host.getDisplayedWebView());
+    }
+
+    @Test
+    public void aDistantTabHasItsWebViewReleasedButIsRecreatedOnDemandWhenShownAgain() {
+        List<String> loadedUrls = new ArrayList<>();
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new UrlRecordingWebView(mActivity, loadedUrls), 2);
+        BrowserTab distantTab = tab(SESSION_A, "https://a.example/distant");
+        host.showTab(distantTab);
+        for (int i = 0; i < 4; i++) {
+            host.showTab(tab(SESSION_A, "https://a.example/push" + i));
+        }
+
+        Assert.assertFalse(host.hasWebViewForTab(distantTab));
+
+        loadedUrls.clear();
+        host.showTab(distantTab);
+
+        Assert.assertTrue(host.hasWebViewForTab(distantTab));
+        Assert.assertEquals("https://a.example/distant", loadedUrls.get(0));
+    }
+
+    @Test
+    public void releasingAWebViewOutsideTheWindowDestroysItExactlyOnce() {
+        List<WebView> created = new ArrayList<>();
+        List<WebView> destroyed = new ArrayList<>();
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> {
+                WebView webView = new DestroyRecordingWebView(mActivity, destroyed);
+                created.add(webView);
+                return webView;
+            }, 2);
+        BrowserTab distantTab = tab(SESSION_A, "https://a.example/distant");
+        host.showTab(distantTab);
+        WebView distantWebView = created.get(0);
+        for (int i = 0; i < 4; i++) {
+            host.showTab(tab(SESSION_A, "https://a.example/push" + i));
+        }
+
+        Assert.assertTrue(destroyed.contains(distantWebView));
+        Assert.assertEquals(1, java.util.Collections.frequency(destroyed, distantWebView));
+        Assert.assertTrue(host.isWebViewDestroyed(distantWebView));
+    }
+
+    @Test
+    public void destroyIsIdempotentWhenRemovingAnAlreadyReleasedTab() {
+        List<WebView> destroyed = new ArrayList<>();
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new DestroyRecordingWebView(mActivity, destroyed), 1);
+        BrowserTab distantTab = tab(SESSION_A, "https://a.example/distant");
+        host.showTab(distantTab);
+        host.showTab(tab(SESSION_A, "https://a.example/current"));
+
+        host.removeTab(distantTab);
+
+        Assert.assertEquals(1, destroyed.size());
+    }
+
+    @Test
+    public void canRunLifecycleCallReturnsFalseForNullAndDestroyedWebViews() {
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new WebView(mActivity), 4);
+        BrowserTab firstTab = tab(SESSION_A, "https://a.example/1");
+        WebView webView = host.showTab(firstTab);
+
+        Assert.assertFalse(host.canRunLifecycleCallOn(null));
+        Assert.assertTrue(host.canRunLifecycleCallOn(webView));
+
+        host.removeTab(firstTab);
+
+        Assert.assertFalse(host.canRunLifecycleCallOn(webView));
+    }
+
+    private static final class DestroyRecordingWebView extends WebView {
+        private final List<WebView> mDestroyed;
+
+        DestroyRecordingWebView(Activity activity, List<WebView> destroyed) {
+            super(activity);
+            mDestroyed = destroyed;
+        }
+
+        @Override
+        public void destroy() {
+            mDestroyed.add(this);
+            super.destroy();
+        }
+    }
+
     private static final class UrlRecordingWebView extends WebView {
         private final List<String> mLoadedUrls;
 

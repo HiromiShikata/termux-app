@@ -1136,7 +1136,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return;
         }
         WebView displayedWebView = currentWebView();
-        if (displayedWebView == null) return;
+        if (!mWebViewHost.canRunLifecycleCallOn(displayedWebView)) return;
         displayedWebView.evaluateJavascript(BrowserPageTextCapture.CAPTURE_SCRIPT, new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String capturedTextJson) {
@@ -1441,10 +1441,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mBrowserVisible,
             mAppForegrounded);
         for (WebView webView : plan.getWebViewsToResume()) {
-            webView.onResume();
+            if (mWebViewHost.canRunLifecycleCallOn(webView)) webView.onResume();
         }
         for (WebView webView : plan.getWebViewsToPause()) {
-            webView.onPause();
+            if (mWebViewHost.canRunLifecycleCallOn(webView)) webView.onPause();
         }
         if (plan.shouldTimersBeActive()) {
             resumeWebViewTimers();
@@ -1455,12 +1455,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void resumeWebViewTimers() {
         WebView displayedWebView = mWebViewHost.getDisplayedWebView();
-        if (displayedWebView != null) displayedWebView.resumeTimers();
+        if (mWebViewHost.canRunLifecycleCallOn(displayedWebView)) displayedWebView.resumeTimers();
     }
 
     private void pauseWebViewTimers() {
         WebView anyWebView = firstWebView();
-        if (anyWebView != null) anyWebView.pauseTimers();
+        if (mWebViewHost.canRunLifecycleCallOn(anyWebView)) anyWebView.pauseTimers();
     }
 
     @Nullable
@@ -1741,6 +1741,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void captureTabBodySnippet(@NonNull WebView view, @NonNull BrowserTab tab) {
+        if (!mWebViewHost.canRunLifecycleCallOn(view)) return;
         view.evaluateJavascript(BrowserPageTextCapture.CAPTURE_SCRIPT, new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String capturedTextJson) {

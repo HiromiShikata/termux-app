@@ -1,5 +1,6 @@
 package com.termux.app.browser;
 
+import android.os.Looper;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
@@ -8,9 +9,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class BrowserTabWebViewHost {
 
@@ -23,13 +27,23 @@ public final class BrowserTabWebViewHost {
 
     private final WebViewFactory mWebViewFactory;
 
-    private final Map<BrowserTab, WebView> mWebViewByTab = new IdentityHashMap<>();
+    private final int mLiveWebViewWindowSize;
+
+    private final Map<BrowserTab, WebView> mWebViewByTab = new LinkedHashMap<>();
+
+    private final Set<WebView> mDestroyedWebViews = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private BrowserTab mDisplayedTab;
 
     public BrowserTabWebViewHost(@NonNull FrameLayout container, @NonNull WebViewFactory webViewFactory) {
+        this(container, webViewFactory, BrowserLiveWebViewWindowPlanner.DEFAULT_WINDOW_SIZE);
+    }
+
+    public BrowserTabWebViewHost(@NonNull FrameLayout container, @NonNull WebViewFactory webViewFactory,
+                                 int liveWebViewWindowSize) {
         mContainer = container;
         mWebViewFactory = webViewFactory;
+        mLiveWebViewWindowSize = Math.max(1, liveWebViewWindowSize);
     }
 
     public boolean hasWebViewForTab(@NonNull BrowserTab tab) {
@@ -40,6 +54,7 @@ public final class BrowserTabWebViewHost {
     public WebView showTab(@NonNull BrowserTab tab) {
         boolean firstDisplay = !mWebViewByTab.containsKey(tab);
         WebView webView = webViewForTab(tab);
+        touchMostRecentlyUsed(tab, webView);
         for (Map.Entry<BrowserTab, WebView> entry : mWebViewByTab.entrySet()) {
             entry.getValue().setVisibility(entry.getKey() == tab ? View.VISIBLE : View.GONE);
         }
@@ -47,6 +62,7 @@ public final class BrowserTabWebViewHost {
         if (firstDisplay) {
             webView.loadUrl(tab.getUrl());
         }
+        enforceLiveWebViewWindow();
         return webView;
     }
 
@@ -62,10 +78,35 @@ public final class BrowserTabWebViewHost {
         return webView;
     }
 
+    private void touchMostRecentlyUsed(@NonNull BrowserTab tab, @NonNull WebView webView) {
+        mWebViewByTab.remove(tab);
+        mWebViewByTab.put(tab, webView);
+    }
+
+    private void enforceLiveWebViewWindow() {
+        List<BrowserTab> liveTabsMostRecentFirst = new ArrayList<>(mWebViewByTab.keySet());
+        Collections.reverse(liveTabsMostRecentFirst);
+        BrowserLiveWebViewWindowPlanner<BrowserTab> plan = BrowserLiveWebViewWindowPlanner.resolve(
+            mDisplayedTab, liveTabsMostRecentFirst, mLiveWebViewWindowSize);
+        for (BrowserTab tab : plan.getOwnersToRelease()) {
+            releaseWebViewForTab(tab);
+        }
+    }
+
+    private void releaseWebViewForTab(@NonNull BrowserTab tab) {
+        if (tab == mDisplayedTab) return;
+        WebView webView = mWebViewByTab.remove(tab);
+        if (webView != null) destroyWebView(webView);
+    }
+
     @Nullable
     public WebView getDisplayedWebView() {
         if (mDisplayedTab == null) return null;
         return mWebViewByTab.get(mDisplayedTab);
+    }
+
+    public int getLiveWebViewCount() {
+        return mWebViewByTab.size();
     }
 
     @NonNull
@@ -132,6 +173,7 @@ public final class BrowserTabWebViewHost {
     }
 
     private void destroyWebView(@NonNull WebView webView) {
+        if (!markDestroyedIfLive(webView)) return;
         webView.stopLoading();
         webView.loadUrl("about:blank");
         mContainer.removeView(webView);
@@ -140,8 +182,24 @@ public final class BrowserTabWebViewHost {
     }
 
     private void destroyDeadWebView(@NonNull WebView webView) {
+        if (!markDestroyedIfLive(webView)) return;
         mContainer.removeView(webView);
         webView.removeAllViews();
         webView.destroy();
+    }
+
+    private boolean markDestroyedIfLive(@NonNull WebView webView) {
+        return mDestroyedWebViews.add(webView);
+    }
+
+    public boolean isWebViewDestroyed(@NonNull WebView webView) {
+        return mDestroyedWebViews.contains(webView);
+    }
+
+    public boolean canRunLifecycleCallOn(@Nullable WebView webView) {
+        return webView != null
+            && Looper.myLooper() == Looper.getMainLooper()
+            && !mDestroyedWebViews.contains(webView)
+            && webView.getParent() != null;
     }
 }
