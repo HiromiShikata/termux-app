@@ -31,9 +31,15 @@ When the user (or a plugin) activates the wake lock via the `ACTION_WAKE_LOCK` i
 
 It also calls `requestDisableBatteryOptimizations()`, opting the app out of Doze entirely. These
 locks are the single largest discretionary battery driver because they prevent both the CPU and the
-Wi-Fi radio from sleeping. Before this change, the locks were held continuously until the user
-explicitly released them or the service was destroyed, including while the app was in the
-background.
+Wi-Fi radio from sleeping.
+
+The locks are also acquired automatically while the activity is in the foreground and at least one
+running definition-backed (autossh/ssh) session exists, so the SSH keepalive keeps those connections
+alive while the user is looking at the app. This automatic hold applies only in the foreground: when
+the activity leaves the foreground the locks are released regardless of how many definition-backed
+sessions are still running, so the CPU and Wi-Fi radio may sleep in the background. The sessions are
+not killed and reconnect on the next foreground scan. A manual release via the notification is
+preserved and is not re-acquired automatically while the same sessions stay active.
 
 ### Idle shell session baseline
 
@@ -57,17 +63,19 @@ When `TermuxActivity` enters the stopped state (`onStop()`), the app now reduces
 
 - If the wake lock and Wi-Fi lock were held, they are automatically released
   (`TermuxService.onActivityBackgrounded()`), allowing the CPU and Wi-Fi radio to return to
-  power-save while the app is backgrounded. The fact that they were held is remembered so they can
-  be restored later.
+  power-save while the app is backgrounded. This release happens even while running definition-backed
+  sessions still exist, so the background is always in the low-power state. The fact that they were
+  held is remembered so they can be restored later.
 - Terminal rendering updates are already suppressed while the activity is not visible: the session
   client's `onTextChanged()` returns early when `isVisible()` is false, so no screen redraw work is
   performed for background output.
 - The bell sound pool is released on stop, since the bell is not played in the background.
 
 When `TermuxActivity` returns to the foreground (`onStart()`),
-`TermuxService.onActivityForegrounded()` re-acquires the wake lock and Wi-Fi lock only if they were
-auto-released for background-idle and are not currently held. A wake lock that the user manually
-released via the notification (`ACTION_WAKE_UNLOCK`) is not re-acquired, preserving user intent.
+`TermuxService.onActivityForegrounded()` re-acquires the wake lock and Wi-Fi lock when at least one
+definition-backed session is active, or when they were auto-released for background-idle and are not
+currently held. A wake lock that the user manually released via the notification
+(`ACTION_WAKE_UNLOCK`) is not re-acquired, preserving user intent.
 
 ### What background-idle mode does not do
 

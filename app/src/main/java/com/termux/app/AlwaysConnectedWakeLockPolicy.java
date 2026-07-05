@@ -10,7 +10,10 @@ public final class AlwaysConnectedWakeLockPolicy {
 
     private boolean mManuallyReleasedWhileSessionsActive;
 
-    public synchronized Decision decide(int activeDefinitionBackedSessionCount, boolean wakeLockCurrentlyHeld) {
+    public synchronized Decision decide(int activeDefinitionBackedSessionCount, boolean wakeLockCurrentlyHeld, boolean activityInForeground) {
+        if (!activityInForeground) {
+            return wakeLockCurrentlyHeld ? Decision.RELEASE : Decision.NONE;
+        }
         if (activeDefinitionBackedSessionCount <= 0) {
             mManuallyReleasedWhileSessionsActive = false;
             return wakeLockCurrentlyHeld ? Decision.RELEASE : Decision.NONE;
