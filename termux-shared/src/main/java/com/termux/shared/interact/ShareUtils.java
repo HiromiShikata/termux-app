@@ -105,14 +105,33 @@ public class ShareUtils {
      */
     public static void copyTextToClipboard(Context context, @Nullable final String clipDataLabel,
                                            final String text, final String toastString) {
+        if (text == null) return;
+        setClipboardPrimaryClip(context, clipDataLabel,
+            DataUtils.getTruncatedCommandOutput(text, DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES,
+                true, false, false),
+            toastString);
+    }
+
+    /**
+     * Copy the full text to the primary clip of the clipboard without applying the
+     * {@link DataUtils#TRANSACTION_SIZE_LIMIT_IN_BYTES} truncation, so callers that must preserve
+     * the complete content (such as a crash log with its full native and Java stack trace) are not
+     * silently truncated.
+     */
+    public static void copyFullTextToClipboard(Context context, @Nullable final String clipDataLabel,
+                                               final String text, final String toastString) {
+        if (text == null) return;
+        setClipboardPrimaryClip(context, clipDataLabel, text, toastString);
+    }
+
+    private static void setClipboardPrimaryClip(Context context, @Nullable final String clipDataLabel,
+                                                final CharSequence text, final String toastString) {
         if (context == null || text == null) return;
 
         ClipboardManager clipboardManager = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboardManager == null) return;
 
-        clipboardManager.setPrimaryClip(ClipData.newPlainText(clipDataLabel,
-            DataUtils.getTruncatedCommandOutput(text, DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES,
-                true, false, false)));
+        clipboardManager.setPrimaryClip(ClipData.newPlainText(clipDataLabel, text));
 
         if (toastString != null && !toastString.isEmpty())
             Logger.showToast(context, toastString, true);

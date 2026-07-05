@@ -1,31 +1,28 @@
 package com.termux.app.browser;
 
-import androidx.webkit.WebSettingsCompat;
+import android.webkit.WebSettings;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 
+@RunWith(RobolectricTestRunner.class)
 public class BrowserWebAuthenticationTest {
 
-    @Test
-    public void enablesPasskeySupportWhenWebViewProvidesWebAuthentication() {
-        Assert.assertTrue(BrowserWebAuthentication.shouldEnableForBrowser(true));
+    private WebSettings newSettings() {
+        return new android.webkit.WebView(RuntimeEnvironment.getApplication()).getSettings();
     }
 
     @Test
-    public void leavesPasskeySupportDisabledWhenWebViewLacksWebAuthentication() {
-        Assert.assertFalse(BrowserWebAuthentication.shouldEnableForBrowser(false));
+    public void neverEnablesBrowserWebAuthenticationSoTheNativePasskeyCeremonyIsNotReached() {
+        Assert.assertFalse(BrowserWebAuthentication.shouldEnableForBrowser());
     }
 
     @Test
-    public void requiresTheWebAuthenticationWebViewFeature() {
-        Assert.assertEquals("WEB_AUTHENTICATION", BrowserWebAuthentication.REQUIRED_FEATURE);
-    }
-
-    @Test
-    public void usesBrowserSupportLevelSoArbitrarySiteOriginsAreAllowed() {
-        Assert.assertEquals(
-            WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_BROWSER,
-            BrowserWebAuthentication.SUPPORT_LEVEL);
+    public void applyLeavesWebSettingsAtTheDefaultSupportLevelWithoutThrowing() {
+        WebSettings settings = newSettings();
+        BrowserWebAuthentication.apply(settings);
     }
 }
