@@ -38,7 +38,7 @@ public class CrashLogViewerActivity extends AppCompatActivity {
         } else {
             crashLogText.setText(crashLog);
             copyButton.setOnClickListener(v ->
-                ShareUtils.copyTextToClipboard(this, crashLog, getString(R.string.msg_crash_log_copied)));
+                ShareUtils.copyFullTextToClipboard(this, null, crashLog, getString(R.string.msg_crash_log_copied)));
         }
     }
 

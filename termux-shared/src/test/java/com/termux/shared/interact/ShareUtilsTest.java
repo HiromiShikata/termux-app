@@ -51,6 +51,42 @@ public class ShareUtilsTest {
     }
 
     @Test
+    public void copyTextToClipboardTruncatesTextLargerThanTheTransactionSizeLimit() {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < com.termux.shared.data.DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES + 1024; index++)
+            builder.append('a');
+        String largeText = builder.toString();
+
+        ShareUtils.copyTextToClipboard(context(), largeText);
+
+        String stored = clipboard().getPrimaryClip().getItemAt(0).getText().toString();
+        Assert.assertTrue(stored.length() < largeText.length());
+    }
+
+    @Test
+    public void copyFullTextToClipboardPreservesTextLargerThanTheTransactionSizeLimit() {
+        StringBuilder builder = new StringBuilder();
+        for (int index = 0; index < com.termux.shared.data.DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES + 1024; index++)
+            builder.append('a');
+        String largeText = builder.toString();
+
+        ShareUtils.copyFullTextToClipboard(context(), null, largeText, null);
+
+        String stored = clipboard().getPrimaryClip().getItemAt(0).getText().toString();
+        Assert.assertEquals(largeText, stored);
+    }
+
+    @Test
+    public void copyFullTextToClipboardWithNullContextDoesNothing() {
+        ShareUtils.copyFullTextToClipboard(null, null, "ignored", null);
+    }
+
+    @Test
+    public void copyFullTextToClipboardWithNullTextDoesNothing() {
+        ShareUtils.copyFullTextToClipboard(context(), null, null, null);
+    }
+
+    @Test
     public void copyTextToClipboardWithNullTextDoesNothing() {
         ShareUtils.copyTextToClipboard(context(), null);
     }
