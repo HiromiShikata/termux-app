@@ -29,6 +29,8 @@ public final class SessionDefinitionController {
         new SessionDefinitionDisappearedSessionPlanner();
     private final DefaultProjectManagerSessionPlanner defaultProjectManagerSessionPlanner =
         new DefaultProjectManagerSessionPlanner();
+    private final SessionDefinitionDuplicateSessionPlanner duplicateSessionPlanner =
+        new SessionDefinitionDuplicateSessionPlanner();
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
@@ -91,6 +93,8 @@ public final class SessionDefinitionController {
             activity.showToast(activity.getString(R.string.msg_session_definition_no_entries), true);
         }
 
+        reconcileDuplicateLiveSessions();
+
         Set<String> liveSessionNames = collectLiveSessionNames();
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
@@ -104,7 +108,7 @@ public final class SessionDefinitionController {
 
         int configuredLimit = activity.getPreferences().getSessionDefinitionMaxSessions();
         SessionDefinitionLimitPlan limitPlan =
-            SessionDefinitionLimitPlan.forCapacity(sessionsToCreate.size(), liveSessionNames.size(), configuredLimit);
+            SessionDefinitionLimitPlan.forCapacity(sessionsToCreate.size(), countedLiveSessionCount(), configuredLimit);
 
         int createdCount = 0;
         for (SessionDefinitionPlannedSession plannedSession : sessionsToCreate) {
@@ -147,6 +151,38 @@ public final class SessionDefinitionController {
             liveSessionNames.add(terminalSession.mSessionName);
         }
         return liveSessionNames;
+    }
+
+    private int countedLiveSessionCount() {
+        TermuxService service = activity.getTermuxService();
+        if (service == null) {
+            return 0;
+        }
+        return service.getTermuxSessionsSize();
+    }
+
+    private void reconcileDuplicateLiveSessions() {
+        TermuxService service = activity.getTermuxService();
+        if (service == null) {
+            return;
+        }
+        List<TerminalSession> terminalSessionsByIndex = new ArrayList<>();
+        List<SessionDefinitionDuplicateSessionPlanner.LiveSession> liveSessions = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            terminalSessionsByIndex.add(terminalSession);
+            liveSessions.add(new SessionDefinitionDuplicateSessionPlanner.LiveSession(
+                terminalSession == null ? null : terminalSession.mSessionName,
+                terminalSession != null && terminalSession.isRunning()));
+        }
+        List<Integer> duplicateIndexesToRemove =
+            duplicateSessionPlanner.planDuplicateSessionIndexesToRemove(liveSessions);
+        for (int index : duplicateIndexesToRemove) {
+            TerminalSession terminalSession = terminalSessionsByIndex.get(index);
+            if (terminalSession != null) {
+                activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
+            }
+        }
     }
 
     private void removeSessionsWithDisappearedDefinition(List<SessionDefinitionEntry> currentEntries) {
