@@ -88,6 +88,14 @@ public final class BrowserTabManager {
         return tabs != null && !tabs.isEmpty();
     }
 
+    public int getTotalOpenTabCount() {
+        int total = 0;
+        for (List<BrowserTab> tabs : mTabsBySessionHandle.values()) {
+            total += tabs.size();
+        }
+        return total;
+    }
+
     public void restoreTabs(
             @NonNull String sessionHandle,
             @NonNull List<BrowserPersistedTab> persistedTabs,

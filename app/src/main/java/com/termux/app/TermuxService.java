@@ -22,6 +22,8 @@ import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.browser.OpenTagBrowserController;
+import com.termux.app.diagnostics.DiagnosticEventLogHolder;
+import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.PendingCallNotificationText;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -405,6 +407,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         updateNotification();
 
+        DiagnosticEventLogHolder.record(DiagnosticEventType.WAKE_LOCK_ACQUIRED, "");
+
         Logger.logDebug(LOG_TAG, "WakeLocks acquired successfully");
 
     }
@@ -431,7 +435,14 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (updateNotification)
             updateNotification();
 
+        DiagnosticEventLogHolder.record(DiagnosticEventType.WAKE_LOCK_RELEASED, "");
+
         Logger.logDebug(LOG_TAG, "WakeLocks released successfully");
+    }
+
+    private static String diagnosticSessionName(TerminalSession terminalSession) {
+        if (terminalSession == null || terminalSession.mSessionName == null) return "";
+        return terminalSession.mSessionName;
     }
 
     /** Acquire or release the wake and Wi-Fi locks so they are held exactly while at least one running
@@ -765,6 +776,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         mShellManager.mTermuxSessions.add(newTermuxSession);
 
+        DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_CREATED,
+            diagnosticSessionName(newTermuxSession.getTerminalSession()));
+
         // Remove the execution command from the pending plugin execution commands list since it has
         // now been processed
         if (executionCommand.isPluginExecutionCommand)
@@ -790,9 +804,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         if (index >= 0) {
             mShellManager.mTermuxSessions.get(index).finish();
-            if (removeFromTermuxSessions(mShellManager.mTermuxSessions, sessionToRemove)
-                && mTermuxTerminalSessionActivityClient != null)
-                mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
+            if (removeFromTermuxSessions(mShellManager.mTermuxSessions, sessionToRemove)) {
+                DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_REMOVED,
+                    diagnosticSessionName(sessionToRemove));
+                if (mTermuxTerminalSessionActivityClient != null)
+                    mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
+            }
         }
 
         return index;
@@ -1278,7 +1295,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return mWantsToStop;
     }
 
-    synchronized boolean isWakeLockHeld() {
+    public synchronized boolean isWakeLockHeld() {
         return mWakeLock != null;
     }
 

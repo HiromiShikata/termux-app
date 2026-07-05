@@ -34,6 +34,8 @@ import com.termux.app.browser.BrowserSessionRemovalReason;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.diagnostics.DiagnosticEventLogHolder;
+import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.VisibleSessionSelector;
@@ -120,6 +122,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
         if (droppedSessionCount <= 0) return;
+        DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+            "cap=" + configuredLimit + " dropped=" + droppedSessionCount);
         mActivity.showToast(mActivity.getString(R.string.msg_session_limit_exceeded, configuredLimit, droppedSessionCount), true);
     }
 
@@ -1264,6 +1268,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
         if (service.getTermuxSessionsSize() >= maxSessions()) {
+            DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+                "cap=" + maxSessions());
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
                 .setPositiveButton(android.R.string.ok, null));
         } else {
@@ -1324,6 +1330,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
         if (service.getTermuxSessionsSize() >= maxSessions()) {
+            DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+                "cap=" + maxSessions());
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
                 .setPositiveButton(android.R.string.ok, null));
         } else {
@@ -1757,12 +1765,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxSession newTermuxSession =
             service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
         if (newTermuxSession == null) {
+            DiagnosticEventLogHolder.record(DiagnosticEventType.RECONNECT_FAILED,
+                sessionName == null ? "" : sessionName);
             Logger.logError(LOG_TAG, "Failed to reconnect dead session \"" + sessionName
                 + "\"; the replacement session could not be created; live session count delta "
                 + netLiveSessionCountDeltaForReconnect(false));
             termuxSessionListNotifyUpdated();
             return null;
         }
+
+        DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_RECONNECTED,
+            sessionName == null ? "" : sessionName);
 
         TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
         recordPersistedSession(newTerminalSession,
