@@ -151,12 +151,15 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * the background and re-acquired when it returns to the foreground, preserving the user's intent. */
     private final BackgroundIdleWakeLockPolicy mBackgroundIdleWakeLockPolicy = new BackgroundIdleWakeLockPolicy();
 
-    /** Keeps the wake lock and Wi-Fi lock held, foreground or background, while at least one running
-     * definition-backed (autossh/ssh) session exists, so Android Doze does not freeze the CPU or
-     * Wi-Fi radio and the SSH keepalive keeps those connections alive. Released automatically when no
-     * such session remains. A manual release from the notification action suppresses re-acquisition
-     * until the active-session count returns to zero and rises again. */
+    /** Keeps the wake lock and Wi-Fi lock held while the activity is in the foreground and at least
+     * one running definition-backed (autossh/ssh) session exists, so Android Doze does not freeze the
+     * CPU or Wi-Fi radio and the SSH keepalive keeps those connections alive. Released automatically
+     * when no such session remains or the activity leaves the foreground, saving power in the
+     * background. A manual release from the notification action suppresses re-acquisition until the
+     * active-session count returns to zero and rises again. */
     private final AlwaysConnectedWakeLockPolicy mAlwaysConnectedWakeLockPolicy = new AlwaysConnectedWakeLockPolicy();
+
+    private boolean mActivityInForeground = true;
 
     private final DefinitionBackedSessionCounter mDefinitionBackedSessionCounter = new DefinitionBackedSessionCounter();
 
@@ -439,7 +442,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     synchronized void reconcileAlwaysConnectedWakeLock() {
         int activeDefinitionBackedSessionCount = countActiveDefinitionBackedSessions();
         boolean wakeLockCurrentlyHeld = mWakeLock != null;
-        switch (mAlwaysConnectedWakeLockPolicy.decide(activeDefinitionBackedSessionCount, wakeLockCurrentlyHeld)) {
+        switch (mAlwaysConnectedWakeLockPolicy.decide(activeDefinitionBackedSessionCount, wakeLockCurrentlyHeld, mActivityInForeground)) {
             case ACQUIRE:
                 Logger.logDebug(LOG_TAG, "Acquiring WakeLocks to keep " + activeDefinitionBackedSessionCount + " definition-backed session(s) connected");
                 actionAcquireWakeLock();
@@ -474,38 +477,32 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     /** Enter background-idle mode when {@link TermuxActivity} stops. Releases the held wake and Wi-Fi
      * locks so the CPU and Wi-Fi radio may return to power-save while the app is in the background,
-     * while remembering that they were held so they can be re-acquired on return to the foreground.
-     * Running shell sessions and background tasks are never killed and the foreground service stays
-     * alive; only the optional app-layer power locks are released. The always-connected hold takes
-     * precedence: while at least one running definition-backed session exists, the lock is kept so the
-     * background reconnect and SSH keepalive continue to work, and the background-idle release is
-     * skipped. */
+     * even while running definition-backed sessions still exist, saving the largest discretionary
+     * battery driver while backgrounded. The fact that they were held is remembered so they can be
+     * re-acquired on return to the foreground. Running shell sessions and background tasks are never
+     * killed and the foreground service stays alive; only the optional app-layer power locks are
+     * released. Backgrounded sessions may go stale and reconnect on the next foreground scan. */
     synchronized void onActivityBackgrounded() {
         Logger.logDebug(LOG_TAG, "onActivityBackgrounded");
 
-        if (countActiveDefinitionBackedSessions() > 0) {
-            Logger.logDebug(LOG_TAG, "Keeping WakeLocks held for active definition-backed sessions while backgrounded");
-            return;
-        }
+        mActivityInForeground = false;
 
         boolean wakeLockCurrentlyHeld = mWakeLock != null;
-        if (!mBackgroundIdleWakeLockPolicy.shouldReleaseWakeLockOnBackground(wakeLockCurrentlyHeld))
-            return;
+        mBackgroundIdleWakeLockPolicy.shouldReleaseWakeLockOnBackground(wakeLockCurrentlyHeld);
 
-        if (mShellManager.mTermuxSessions.isEmpty() && mShellManager.mTermuxTasks.isEmpty()) {
-            Logger.logDebug(LOG_TAG, "Skipping background-idle wake lock release since no sessions or tasks are running");
-            return;
-        }
-
-        Logger.logDebug(LOG_TAG, "Releasing WakeLocks for background-idle mode");
-        actionReleaseWakeLock(true);
+        reconcileAlwaysConnectedWakeLock();
     }
 
     /** Leave background-idle mode when {@link TermuxActivity} starts. Re-acquires the wake and Wi-Fi
-     * locks only if they were auto-released for background-idle and are not currently held, so the
-     * user's earlier wake-lock intent is restored without overriding a manual release. */
+     * locks when at least one definition-backed session is active, or when they were auto-released for
+     * background-idle and are not currently held, so the user's earlier wake-lock intent is restored
+     * without overriding a manual release. */
     synchronized void onActivityForegrounded() {
         Logger.logDebug(LOG_TAG, "onActivityForegrounded");
+
+        mActivityInForeground = true;
+
+        reconcileAlwaysConnectedWakeLock();
 
         boolean wakeLockCurrentlyHeld = mWakeLock != null;
         if (!mBackgroundIdleWakeLockPolicy.shouldReacquireWakeLockOnForeground(wakeLockCurrentlyHeld))

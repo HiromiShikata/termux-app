@@ -5,6 +5,7 @@ import android.os.PowerManager;
 
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_SERVICE;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
@@ -31,6 +32,8 @@ public class TermuxServiceBackgroundIdleTest {
     @Before
     public void setUp() throws Exception {
         TermuxShellManager.init(RuntimeEnvironment.getApplication());
+        TermuxShellManager.getShellManager().mTermuxSessions.clear();
+        TermuxAppSharedPreferences.build(RuntimeEnvironment.getApplication()).setAutosshCommand("");
         controller = Robolectric.buildService(TermuxService.class).create();
         service = controller.get();
     }
@@ -51,6 +54,19 @@ public class TermuxServiceBackgroundIdleTest {
         shellManagerField.setAccessible(true);
         TermuxShellManager shellManager = (TermuxShellManager) shellManagerField.get(service);
         shellManager.mTermuxSessions.add(newTermuxSession(newTerminalSession()));
+    }
+
+    private void addRunningDefinitionBackedSession(String sessionName) throws Exception {
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(RuntimeEnvironment.getApplication());
+        preferences.setAutosshCommand("autossh {name}");
+
+        TerminalSession terminalSession = newTerminalSession();
+        terminalSession.mSessionName = sessionName;
+
+        Field shellManagerField = TermuxService.class.getDeclaredField("mShellManager");
+        shellManagerField.setAccessible(true);
+        TermuxShellManager shellManager = (TermuxShellManager) shellManagerField.get(service);
+        shellManager.mTermuxSessions.add(newTermuxSession(terminalSession));
     }
 
     @SuppressWarnings("unchecked")
@@ -115,5 +131,61 @@ public class TermuxServiceBackgroundIdleTest {
 
         service.onActivityForegrounded();
         Assert.assertNull("Wake lock must not be acquired on foreground when it was never held", wakeLock());
+    }
+
+    @Test
+    public void releasesWakeLockOnBackgroundEvenWithActiveDefinitionBackedSession() throws Exception {
+        addRunningDefinitionBackedSession("prod-server");
+
+        sendAction(TERMUX_SERVICE.ACTION_WAKE_LOCK);
+        Assert.assertNotNull("Wake lock must be held after ACTION_WAKE_LOCK", wakeLock());
+        Assert.assertTrue(wakeLock().isHeld());
+
+        service.onActivityBackgrounded();
+        Assert.assertNull("Wake lock must be released when backgrounded even with an active "
+            + "definition-backed session", wakeLock());
+        Assert.assertEquals("Definition-backed session must not be killed when backgrounded",
+            1, runningSessions().size());
+        Assert.assertTrue("Definition-backed session process must still be alive when backgrounded",
+            runningSessions().get(0).getTerminalSession().isRunning());
+    }
+
+    @Test
+    public void reacquiresWakeLockOnForegroundWithActiveDefinitionBackedSession() throws Exception {
+        addRunningDefinitionBackedSession("prod-server");
+
+        sendAction(TERMUX_SERVICE.ACTION_WAKE_LOCK);
+        Assert.assertNotNull(wakeLock());
+
+        service.onActivityBackgrounded();
+        Assert.assertNull("Wake lock must be released while backgrounded", wakeLock());
+
+        service.onActivityForegrounded();
+        Assert.assertNotNull("Wake lock must be re-acquired on foreground while a definition-backed "
+            + "session is active", wakeLock());
+        Assert.assertTrue(wakeLock().isHeld());
+    }
+
+    @Test
+    public void reconcileAcquiresWakeLockForForegroundDefinitionBackedSession() throws Exception {
+        addRunningDefinitionBackedSession("prod-server");
+
+        service.onActivityForegrounded();
+        service.reconcileAlwaysConnectedWakeLock();
+
+        Assert.assertNotNull("Wake lock must be acquired for a foreground definition-backed session",
+            wakeLock());
+        Assert.assertTrue(wakeLock().isHeld());
+    }
+
+    @Test
+    public void reconcileDoesNotAcquireWakeLockForBackgroundedDefinitionBackedSession() throws Exception {
+        addRunningDefinitionBackedSession("prod-server");
+
+        service.onActivityBackgrounded();
+        service.reconcileAlwaysConnectedWakeLock();
+
+        Assert.assertNull("Wake lock must not be acquired while backgrounded even with an active "
+            + "definition-backed session", wakeLock());
     }
 }
