@@ -56,6 +56,20 @@ public class OpenTagScannerTest {
     }
 
     @Test
+    public void ignoresBlockWhoseUrlContainsJumpToBottomHint() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open>https://github.com/xcare-medica Jump to bottom (ctrl+End) ↓ 81</open>");
+        assertTrue(openUrls.isEmpty());
+    }
+
+    @Test
+    public void ignoresBlockWhoseUrlContainsPercentEncodedJumpToBottomHint() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open>https://github.com/xcare-medica%20Jump%20to%20bottom%20(ctrl+End)%20%E2%86%93%2081</open>");
+        assertTrue(openUrls.isEmpty());
+    }
+
+    @Test
     public void urlsToOpenReturnsEachUrlInOrderOnFirstScan() {
         OpenTagScanner scanner = new OpenTagScanner();
         List<String> openUrls = scanner.urlsToOpen(
