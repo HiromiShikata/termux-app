@@ -1,6 +1,7 @@
 package com.termux.app.browser;
 
 import com.termux.app.outputtag.OutputTagScanner;
+import com.termux.view.url.DetectedUrlSanitizer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,10 +23,10 @@ public final class OpenTagScanner {
 
     public static String normalizeUrl(String innerText) {
         if (innerText == null) return null;
-        String trimmed = innerText.trim();
-        if (trimmed.isEmpty()) return null;
-        if (!BrowserLinkLongPress.isOpenableLinkUrl(trimmed)) return null;
-        return trimmed;
+        String sanitized = DetectedUrlSanitizer.sanitize(innerText.trim());
+        if (sanitized == null || sanitized.isEmpty()) return null;
+        if (!BrowserLinkLongPress.isOpenableLinkUrl(sanitized)) return null;
+        return sanitized;
     }
 
     public List<String> urlsToOpen(String output) {

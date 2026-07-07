@@ -20,6 +20,8 @@ public final class TerminalUrlExtractor {
         while (end < lastIndex && !Character.isWhitespace(rowText.charAt(end + 1))) end++;
 
         String token = rowText.substring(start, end + 1);
-        return BrowsableUrlDetector.isLikelyBrowsableUrl(token) ? token : null;
+        String sanitized = DetectedUrlSanitizer.sanitize(token);
+        if (sanitized == null) return null;
+        return BrowsableUrlDetector.isLikelyBrowsableUrl(sanitized) ? sanitized : null;
     }
 }
