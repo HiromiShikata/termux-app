@@ -69,8 +69,8 @@ import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
 import com.termux.app.terminal.CallingSessionNavigator;
+import com.termux.app.terminal.CallingSessionSplit;
 import com.termux.app.terminal.SessionActivityDirection;
-import com.termux.app.terminal.SessionNewActivityTier;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.session.SessionDefinitionPrewarm;
@@ -102,7 +102,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * A terminal emulator activity.
@@ -1077,7 +1077,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mPreviousSessionButton == null || mNextSessionButton == null) {
             return;
         }
-        SessionActivityDirection direction = computeSessionActivityDirection();
+        CallingSessionSplit callingSessionSplit = computeCallingSessionSplit();
+        SessionActivityDirection direction = SessionActivityDirection.ofCallingSessionSplit(callingSessionSplit);
         int redColor = ContextCompat.getColor(this, R.color.session_activity_tier_red);
         int defaultColor = ContextCompat.getColor(this, com.termux.shared.R.color.white);
         SessionNavigationButtonsBinder.applyDirectionTier(
@@ -1086,19 +1087,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             SessionNavigationButtonsBinder.applyDirectionCountBadges(
                 mPreviousSessionCountBadge, mNextSessionCountBadge, direction);
         }
-        renderJumpToCallingSessionButton(redColor, defaultColor);
+        renderJumpToCallingSessionButton(callingSessionSplit, redColor, defaultColor);
     }
 
-    private void renderJumpToCallingSessionButton(int redColor, int defaultColor) {
+    private void renderJumpToCallingSessionButton(@NonNull CallingSessionSplit callingSessionSplit,
+                                                  int redColor, int defaultColor) {
         if (mJumpToCallingSessionButton == null || mJumpToCallingSessionCountBadge == null) {
             return;
         }
-        int callingSessionCount = mTermuxSessionListViewController == null
-            ? 0
-            : CallingSessionNavigator.callingSessionCount(
-                mTermuxSessionListViewController.getOrderedSessionIndexes(),
-                mTermuxSessionListViewController.getSessionNamesByIndex(),
-                mTermuxSessionListViewController.getPendingCallToUserSessionNames());
+        int callingSessionCount = callingSessionSplit.getTotalCount();
         mJumpToCallingSessionButton.setColorFilter(
             callingSessionCount >= 1 ? redColor : defaultColor);
         SessionNavigationButtonsBinder.applyCallingSessionCountBadge(
@@ -1106,16 +1103,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     @NonNull
-    private SessionActivityDirection computeSessionActivityDirection() {
+    private CallingSessionSplit computeCallingSessionSplit() {
         TermuxService service = getTermuxService();
         if (service == null || mTermuxSessionListViewController == null) {
-            return SessionActivityDirection.compute(Collections.emptyList(), -1, Collections.emptyMap());
+            return CallingSessionNavigator.split(
+                Collections.emptyList(), Collections.emptyList(), Collections.emptySet(), -1);
         }
         List<Integer> orderedSessionIndexes = mTermuxSessionListViewController.getOrderedSessionIndexes();
-        Map<Integer, SessionNewActivityTier> tiersByIndex =
-            mTermuxSessionListViewController.getSessionTiersByIndex();
+        List<String> sessionNamesByIndex = mTermuxSessionListViewController.getSessionNamesByIndex();
+        Set<String> callingSessionNames = mTermuxSessionListViewController.getPendingCallToUserSessionNames();
         int currentSessionIndex = service.getIndexOfSession(getCurrentSession());
-        return SessionActivityDirection.compute(orderedSessionIndexes, currentSessionIndex, tiersByIndex);
+        return CallingSessionNavigator.split(
+            orderedSessionIndexes, sessionNamesByIndex, callingSessionNames, currentSessionIndex);
     }
 
 

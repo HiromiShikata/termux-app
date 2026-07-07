@@ -29,17 +29,35 @@ public final class CallingSessionNavigator {
     public static int callingSessionCount(@NonNull List<Integer> orderedSessionIndexes,
                                           @NonNull List<String> sessionNamesByIndex,
                                           @NonNull Set<String> callingSessionNames) {
+        return split(orderedSessionIndexes, sessionNamesByIndex, callingSessionNames, -1).getTotalCount();
+    }
+
+    @NonNull
+    public static CallingSessionSplit split(@NonNull List<Integer> orderedSessionIndexes,
+                                            @NonNull List<String> sessionNamesByIndex,
+                                            @NonNull Set<String> callingSessionNames,
+                                            int currentSessionIndex) {
         if (callingSessionNames.isEmpty()) {
-            return 0;
+            return new CallingSessionSplit(0, 0, false);
         }
-        int count = 0;
-        for (int orderedSessionIndex : orderedSessionIndexes) {
-            String sessionName = sessionNameOrNull(sessionNamesByIndex, orderedSessionIndex);
-            if (sessionName != null && callingSessionNames.contains(sessionName)) {
-                count++;
+        int currentPosition = orderedSessionIndexes.indexOf(currentSessionIndex);
+        int aboveCount = 0;
+        int belowCount = 0;
+        boolean currentCalling = false;
+        for (int position = 0; position < orderedSessionIndexes.size(); position++) {
+            String sessionName = sessionNameOrNull(sessionNamesByIndex, orderedSessionIndexes.get(position));
+            if (sessionName == null || !callingSessionNames.contains(sessionName)) {
+                continue;
+            }
+            if (currentPosition >= 0 && position == currentPosition) {
+                currentCalling = true;
+            } else if (currentPosition < 0 || position < currentPosition) {
+                aboveCount++;
+            } else {
+                belowCount++;
             }
         }
-        return count;
+        return new CallingSessionSplit(aboveCount, belowCount, currentCalling);
     }
 
     @Nullable
