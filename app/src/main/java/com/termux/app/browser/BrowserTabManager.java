@@ -33,6 +33,18 @@ public final class BrowserTabManager {
         return tab;
     }
 
+    @NonNull
+    public BrowserTab insertTab(@NonNull String sessionHandle, @NonNull String url, int index) {
+        List<BrowserTab> tabs = getTabs(sessionHandle);
+        BrowserTab tab = new BrowserTab(sessionHandle, url);
+        int boundedIndex = index;
+        if (boundedIndex < 0) boundedIndex = 0;
+        if (boundedIndex > tabs.size()) boundedIndex = tabs.size();
+        tabs.add(boundedIndex, tab);
+        mActiveTabBySessionHandle.put(sessionHandle, tab);
+        return tab;
+    }
+
     public void removeTab(@NonNull BrowserTab tab) {
         String sessionHandle = tab.getSessionHandle();
         List<BrowserTab> tabs = getTabs(sessionHandle);
