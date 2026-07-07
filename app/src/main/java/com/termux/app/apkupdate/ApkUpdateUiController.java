@@ -123,8 +123,10 @@ public final class ApkUpdateUiController {
                 @Override
                 public void onDownloadFailed(String message) {
                     Logger.logError(LOG_TAG, "APK update pre-download failed: " + message);
+                    ApkUpdateAvailability withoutDownloadedFile = availability.withDownloadedFilePath(null);
+                    pendingState.save(withoutDownloadedFile);
                     if (activity.isFinishing()) return;
-                    indicatorController.onUpdateAvailable(availability);
+                    indicatorController.onUpdateAvailable(withoutDownloadedFile);
                 }
             });
     }

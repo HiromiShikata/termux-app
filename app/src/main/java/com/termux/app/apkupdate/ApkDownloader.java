@@ -58,9 +58,18 @@ public final class ApkDownloader {
                 }
                 outputStream.flush();
             }
+        } catch (IOException | RuntimeException exception) {
+            deleteQuietly(targetFile);
+            throw exception;
         } finally {
             connection.disconnect();
         }
         return targetFile;
+    }
+
+    private static void deleteQuietly(File file) {
+        if (file.exists()) {
+            file.delete();
+        }
     }
 }
