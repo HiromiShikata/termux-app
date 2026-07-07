@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
+import androidx.annotation.Nullable;
 import androidx.preference.PreferenceManager;
 
 import com.termux.BuildConfig;
@@ -47,6 +48,9 @@ public final class ApkUpdateManager {
     private final AtomReleaseJsonSynthesizer atomReleaseJsonSynthesizer;
     private final ApkUpdatePlanner updatePlanner;
     private final ApkDownloader apkDownloader;
+    private final Sha256SumsUrlResolver sha256SumsUrlResolver;
+    private final Sha256SumsParser sha256SumsParser;
+    private final ApkFileValidator apkFileValidator;
     private final Handler mainHandler;
 
     public ApkUpdateManager(Context context) {
@@ -58,6 +62,9 @@ public final class ApkUpdateManager {
             new AtomReleaseJsonSynthesizer(updateGuide.getReleasesOwner(), updateGuide.getReleasesRepo());
         this.updatePlanner = new ApkUpdatePlanner();
         this.apkDownloader = new ApkDownloader(this.context);
+        this.sha256SumsUrlResolver = new Sha256SumsUrlResolver();
+        this.sha256SumsParser = new Sha256SumsParser();
+        this.apkFileValidator = new ApkFileValidator();
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
 
@@ -131,13 +138,34 @@ public final class ApkUpdateManager {
     public void downloadApk(String downloadUrl, String assetName, DownloadListener listener) {
         new Thread(() -> {
             try {
+                String expectedSha256 = resolveExpectedSha256(downloadUrl, assetName);
                 File apkFile = apkDownloader.download(downloadUrl, sanitizeFileName(assetName));
+                String invalidReason = apkFileValidator.validate(apkFile, expectedSha256, 0L);
+                if (invalidReason != null) {
+                    apkFile.delete();
+                    mainHandler.post(() -> listener.onDownloadFailed(invalidReason));
+                    return;
+                }
                 mainHandler.post(() -> listener.onDownloaded(apkFile));
             } catch (Exception exception) {
                 String message = exception.getMessage() != null ? exception.getMessage() : exception.toString();
                 mainHandler.post(() -> listener.onDownloadFailed(message));
             }
         }).start();
+    }
+
+    @Nullable
+    private String resolveExpectedSha256(String downloadUrl, String assetName) {
+        String sumsUrl = sha256SumsUrlResolver.resolveFromAssetDownloadUrl(downloadUrl);
+        if (sumsUrl == null) {
+            return null;
+        }
+        try {
+            String sumsContent = releaseClient.fetchReleaseSha256Sums(sumsUrl);
+            return sha256SumsParser.findExpectedSha256(sumsContent, assetName);
+        } catch (Exception exception) {
+            return null;
+        }
     }
 
     private String sanitizeFileName(String assetName) {

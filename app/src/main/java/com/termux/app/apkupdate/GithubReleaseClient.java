@@ -28,6 +28,10 @@ public final class GithubReleaseClient {
         return fetch(url, "application/atom+xml");
     }
 
+    public String fetchReleaseSha256Sums(String url) throws IOException {
+        return fetch(url, "text/plain");
+    }
+
     private String fetch(String url, String acceptHeader) throws IOException {
         URLConnection urlConnection = new URL(url).openConnection();
         if (!(urlConnection instanceof HttpURLConnection)) {
