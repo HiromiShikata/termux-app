@@ -378,6 +378,16 @@
                         android:tint="?attr/termuxActivityDrawerImageTint" />
 
                     <ImageButton
+                        android:id="@+id/browser_bookmark_toggle_button"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_browser_bookmark_current_page"
+                        android:src="@drawable/ic_browser_bookmark_star_outline"
+                        android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                    <ImageButton
                         android:id="@+id/browser_open_in_chrome_button"
                         android:layout_width="0dp"
                         android:layout_height="44dp"

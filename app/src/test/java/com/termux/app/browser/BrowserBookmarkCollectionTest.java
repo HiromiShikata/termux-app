@@ -71,6 +71,38 @@ public class BrowserBookmarkCollectionTest {
     }
 
     @Test
+    public void toggledAddsBookmarkWhenAbsent() {
+        BrowserBookmarkCollection collection = new BrowserBookmarkCollection(new ArrayList<>())
+            .toggled(new BrowserBookmark("https://example.com/", "Example"));
+
+        Assert.assertTrue(collection.contains("https://example.com/"));
+        Assert.assertEquals(1, collection.getBookmarks().size());
+    }
+
+    @Test
+    public void toggledRemovesBookmarkWhenPresent() {
+        BrowserBookmarkCollection collection = new BrowserBookmarkCollection(Arrays.asList(
+            new BrowserBookmark("https://example.com/", "Example"),
+            new BrowserBookmark("https://termux.dev/", "Termux")))
+            .toggled(new BrowserBookmark("https://example.com/", "Example"));
+
+        Assert.assertFalse(collection.contains("https://example.com/"));
+        Assert.assertTrue(collection.contains("https://termux.dev/"));
+        Assert.assertEquals(1, collection.getBookmarks().size());
+    }
+
+    @Test
+    public void toggledTwiceRestoresOriginalState() {
+        BrowserBookmark bookmark = new BrowserBookmark("https://example.com/", "Example");
+        BrowserBookmarkCollection collection = new BrowserBookmarkCollection(new ArrayList<>())
+            .toggled(bookmark)
+            .toggled(bookmark);
+
+        Assert.assertFalse(collection.contains("https://example.com/"));
+        Assert.assertTrue(collection.getBookmarks().isEmpty());
+    }
+
+    @Test
     public void filteredWithEmptyQueryReturnsAllBookmarks() {
         List<BrowserBookmark> all = Arrays.asList(
             new BrowserBookmark("https://example.com/", "Example"),

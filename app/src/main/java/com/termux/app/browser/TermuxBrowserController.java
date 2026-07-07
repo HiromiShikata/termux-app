@@ -176,6 +176,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private ImageButton mDesktopModeToggle;
 
+    private ImageButton mBookmarkToggleButton;
+
     private String mDefaultUserAgent;
 
     private BrowserTabsListViewController mTabsListViewController;
@@ -299,16 +301,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @Override
             public void showBookmarksList() {
                 TermuxBrowserController.this.showBookmarksList();
-            }
-
-            @Override
-            public boolean hasRecentlyClosedTab() {
-                return TermuxBrowserController.this.hasRecentlyClosedTab();
-            }
-
-            @Override
-            public void reopenLastClosedTab() {
-                TermuxBrowserController.this.reopenLastClosedTab();
             }
         });
         configureWebView();
@@ -498,6 +490,33 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         BrowserBookmark bookmark = new BrowserBookmark(url, displayedTab.getTitle());
         saveBookmarks(loadBookmarks().added(bookmark));
         mActivity.showToast(mActivity.getString(R.string.msg_browser_bookmarked), false);
+    }
+
+    private void toggleCurrentPageBookmark() {
+        BrowserTab displayedTab = mRenderedFrame.getTab();
+        String url = currentPageFullUrl();
+        if (url == null || displayedTab == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        BrowserBookmarkCollection bookmarks = loadBookmarks();
+        boolean wasBookmarked = bookmarks.contains(url);
+        saveBookmarks(bookmarks.toggled(new BrowserBookmark(url, displayedTab.getTitle())));
+        mActivity.showToast(mActivity.getString(
+            wasBookmarked ? R.string.msg_browser_bookmark_removed : R.string.msg_browser_bookmarked), false);
+        updateBookmarkToggleState();
+    }
+
+    private void updateBookmarkToggleState() {
+        if (mBookmarkToggleButton == null) return;
+        String url = currentPageFullUrl();
+        boolean bookmarked = url != null && loadBookmarks().contains(url);
+        mBookmarkToggleButton.setImageResource(bookmarked
+            ? R.drawable.ic_browser_bookmark_star_filled
+            : R.drawable.ic_browser_bookmark_star_outline);
+        mBookmarkToggleButton.setContentDescription(mActivity.getString(bookmarked
+            ? R.string.action_browser_remove_bookmark_current_page
+            : R.string.action_browser_bookmark_current_page));
     }
 
     private void showBookmarksList() {
@@ -1074,6 +1093,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mPageTitleUrlHeaderView.setTextColor(primaryColor);
         mPageTitleUrlHeaderView.setText(buildHeaderText(primaryColor));
         updateProjectOverviewActionsVisibility();
+        updateBookmarkToggleState();
     }
 
     @NonNull
@@ -1132,6 +1152,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void configureDrawerControls() {
         mActivity.findViewById(R.id.browser_new_tab_button).setOnClickListener(v -> promptNewTab());
+        mBookmarkToggleButton = mActivity.findViewById(R.id.browser_bookmark_toggle_button);
+        mBookmarkToggleButton.setOnClickListener(v -> toggleCurrentPageBookmark());
         mActivity.findViewById(R.id.browser_open_in_chrome_button).setOnClickListener(v -> openCurrentPageInChrome());
         mActivity.findViewById(R.id.browser_send_page_text_button).setOnClickListener(v -> sendCurrentPageTextToTerminal());
         mActivity.findViewById(R.id.browser_send_screenshot_button).setOnClickListener(v -> sendCurrentScreenshotToTerminal());
@@ -1559,10 +1581,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             mActivity.getString(R.string.action_browser_reopen_closed_tab_undo),
             view -> reopenLastClosedTab());
         snackbar.show();
-    }
-
-    public boolean hasRecentlyClosedTab() {
-        return !mRecentlyClosedTabs.isEmpty();
     }
 
     public void reopenLastClosedTab() {
