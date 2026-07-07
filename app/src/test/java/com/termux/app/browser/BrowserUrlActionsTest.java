@@ -30,8 +30,6 @@ public class BrowserUrlActionsTest {
         String createdSessionUrl;
         int addBookmarkCalls;
         int showBookmarksCalls;
-        boolean recentlyClosedTabAvailable;
-        int reopenLastClosedTabCalls;
 
         RecordingHost(@Nullable String currentUrl) {
             this.currentUrl = currentUrl;
@@ -65,16 +63,6 @@ public class BrowserUrlActionsTest {
         @Override
         public void showBookmarksList() {
             showBookmarksCalls++;
-        }
-
-        @Override
-        public boolean hasRecentlyClosedTab() {
-            return recentlyClosedTabAvailable;
-        }
-
-        @Override
-        public void reopenLastClosedTab() {
-            reopenLastClosedTabCalls++;
         }
     }
 
@@ -162,32 +150,6 @@ public class BrowserUrlActionsTest {
         RecordingHost host = new RecordingHost("https://example.com/page");
         AlertDialog dialog = promptFor(host);
         button(dialog, R.id.browser_edit_url_open_in_chrome).performClick();
-        Assert.assertFalse(dialog.isShowing());
-    }
-
-    @Test
-    public void reopenClosedTabButtonIsDisabledWhenNoRecentlyClosedTab() {
-        RecordingHost host = new RecordingHost("https://example.com/page");
-        host.recentlyClosedTabAvailable = false;
-        AlertDialog dialog = promptFor(host);
-        Assert.assertFalse(button(dialog, R.id.browser_edit_url_reopen_closed_tab).isEnabled());
-    }
-
-    @Test
-    public void reopenClosedTabButtonIsEnabledWhenRecentlyClosedTabExists() {
-        RecordingHost host = new RecordingHost("https://example.com/page");
-        host.recentlyClosedTabAvailable = true;
-        AlertDialog dialog = promptFor(host);
-        Assert.assertTrue(button(dialog, R.id.browser_edit_url_reopen_closed_tab).isEnabled());
-    }
-
-    @Test
-    public void reopenClosedTabButtonDelegatesToHostAndDismisses() {
-        RecordingHost host = new RecordingHost("https://example.com/page");
-        host.recentlyClosedTabAvailable = true;
-        AlertDialog dialog = promptFor(host);
-        button(dialog, R.id.browser_edit_url_reopen_closed_tab).performClick();
-        Assert.assertEquals(1, host.reopenLastClosedTabCalls);
         Assert.assertFalse(dialog.isShowing());
     }
 

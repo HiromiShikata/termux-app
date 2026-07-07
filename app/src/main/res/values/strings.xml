@@ -112,7 +112,9 @@
     <string name="msg_browser_link_text_copied">Link text copied</string>
     <string name="action_browser_edit_url_add_bookmark">Bookmark</string>
     <string name="action_browser_edit_url_bookmarks">Bookmarks</string>
-    <string name="action_browser_reopen_closed_tab">Reopen closed tab</string>
+    <string name="action_browser_bookmark_current_page">Bookmark this page</string>
+    <string name="action_browser_remove_bookmark_current_page">Remove bookmark for this page</string>
+    <string name="msg_browser_bookmark_removed">Bookmark removed</string>
     <string name="action_browser_reopen_closed_tab_undo">UNDO</string>
     <string name="msg_browser_tab_closed">Tab closed</string>
     <string name="msg_browser_bookmarked">Bookmarked</string>

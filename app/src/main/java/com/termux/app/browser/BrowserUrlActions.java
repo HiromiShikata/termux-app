@@ -29,10 +29,6 @@ public final class BrowserUrlActions {
         void addCurrentPageBookmark();
 
         void showBookmarksList();
-
-        boolean hasRecentlyClosedTab();
-
-        void reopenLastClosedTab();
     }
 
     private final Context mContext;
@@ -70,7 +66,6 @@ public final class BrowserUrlActions {
         Button addBookmarkButton = dialogView.findViewById(R.id.browser_edit_url_add_bookmark);
         Button bookmarksButton = dialogView.findViewById(R.id.browser_edit_url_bookmarks);
         Button openInChromeButton = dialogView.findViewById(R.id.browser_edit_url_open_in_chrome);
-        Button reopenClosedTabButton = dialogView.findViewById(R.id.browser_edit_url_reopen_closed_tab);
 
         goButton.setText(R.string.action_browser_edit_url_confirm);
         copyButton.setText(R.string.action_browser_edit_url_copy);
@@ -79,8 +74,6 @@ public final class BrowserUrlActions {
         addBookmarkButton.setText(R.string.action_browser_edit_url_add_bookmark);
         bookmarksButton.setText(R.string.action_browser_edit_url_bookmarks);
         openInChromeButton.setText(R.string.action_browser_open_in_chrome);
-        reopenClosedTabButton.setText(R.string.action_browser_reopen_closed_tab);
-        reopenClosedTabButton.setEnabled(mHost.hasRecentlyClosedTab());
 
         goButton.setOnClickListener(view -> {
             mHost.navigateToUrl(urlInput.getText().toString());
@@ -99,10 +92,6 @@ public final class BrowserUrlActions {
         openInChromeButton.setOnClickListener(view -> {
             openEditedUrlInChrome(urlInput.getText().toString());
             dialog.dismiss();
-        });
-        reopenClosedTabButton.setOnClickListener(view -> {
-            dialog.dismiss();
-            mHost.reopenLastClosedTab();
         });
         cancelButton.setOnClickListener(view -> dialog.dismiss());
 

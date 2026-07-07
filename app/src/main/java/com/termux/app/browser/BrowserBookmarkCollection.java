@@ -57,4 +57,10 @@ public final class BrowserBookmarkCollection {
         }
         return new BrowserBookmarkCollection(updated);
     }
+
+    @NonNull
+    public BrowserBookmarkCollection toggled(@NonNull BrowserBookmark bookmark) {
+        if (contains(bookmark.getUrl())) return removed(bookmark.getUrl());
+        return added(bookmark);
+    }
 }
