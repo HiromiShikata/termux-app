@@ -41,6 +41,10 @@ public final class SessionNavigationButtonsBinder {
         applyCountBadge(nextSessionCountBadge, direction.getActiveBelowCount());
     }
 
+    public static void applyCallingSessionCountBadge(@NonNull TextView countBadge, int count) {
+        applyCountBadge(countBadge, count);
+    }
+
     static void applyCountBadge(@NonNull TextView countBadge, int count) {
         if (count <= 0) {
             countBadge.setText("");

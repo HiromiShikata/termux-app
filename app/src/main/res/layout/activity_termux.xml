@@ -664,6 +664,37 @@
                                 android:visibility="gone" />
                         </FrameLayout>
 
+                        <FrameLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_vertical">
+
+                            <ImageButton
+                                android:id="@+id/terminal_toolbar_jump_to_calling_session_button"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:background="?android:attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/action_jump_to_calling_session"
+                                android:paddingHorizontal="8dp"
+                                android:paddingVertical="4dp"
+                                android:src="@drawable/ic_toolbar_jump_to_calling_session"
+                                android:tint="@color/white" />
+
+                            <TextView
+                                android:id="@+id/terminal_toolbar_jump_to_calling_session_count_badge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="top|end"
+                                android:background="@drawable/bg_session_nav_count_badge"
+                                android:minWidth="16dp"
+                                android:gravity="center"
+                                android:paddingHorizontal="4dp"
+                                android:textColor="@color/white"
+                                android:textSize="8sp"
+                                android:textStyle="bold"
+                                android:visibility="gone" />
+                        </FrameLayout>
+
                         <ImageButton
                             android:id="@+id/terminal_toolbar_session_sheet_button"
                             android:layout_width="wrap_content"
