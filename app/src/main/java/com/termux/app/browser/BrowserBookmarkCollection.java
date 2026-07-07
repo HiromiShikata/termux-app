@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public final class BrowserBookmarkCollection {
 
@@ -17,6 +18,20 @@ public final class BrowserBookmarkCollection {
     @NonNull
     public List<BrowserBookmark> getBookmarks() {
         return Collections.unmodifiableList(new ArrayList<>(mBookmarks));
+    }
+
+    @NonNull
+    public static List<BrowserBookmark> filtered(@NonNull String query, @NonNull List<BrowserBookmark> bookmarks) {
+        String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
+        if (normalizedQuery.isEmpty()) return new ArrayList<>(bookmarks);
+        List<BrowserBookmark> matches = new ArrayList<>();
+        for (BrowserBookmark bookmark : bookmarks) {
+            if (bookmark.getTitle().toLowerCase(Locale.ROOT).contains(normalizedQuery)
+                || bookmark.getUrl().toLowerCase(Locale.ROOT).contains(normalizedQuery)) {
+                matches.add(bookmark);
+            }
+        }
+        return matches;
     }
 
     public boolean contains(@NonNull String url) {

@@ -137,7 +137,7 @@ public class SessionBrowserTabBarActionButtonsWiringTest {
         Assert.assertTrue(promptNewTabEnd > promptNewTabIndex);
         String promptNewTabBody = source.substring(promptNewTabIndex, promptNewTabEnd);
         Assert.assertTrue("New-tab action must offer a URL-entry field for every session",
-            promptNewTabBody.contains("new EditText("));
+            promptNewTabBody.contains("R.id.browser_new_tab_url_input"));
         Assert.assertTrue("New-tab action must open the typed URL in a new tab for every session",
             promptNewTabBody.contains("openTypedUrlInNewTab("));
         Assert.assertFalse("New-tab action must not branch on manager-session overview URLs",
