@@ -16,17 +16,16 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
@@ -89,10 +88,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private static final String BROWSER_SCREENSHOT_PNG_FILE_NAME = "browser-screenshot.png";
 
     private static final int BROWSER_SCREENSHOT_PNG_QUALITY = 100;
-
-    private static final float NEW_TAB_DIALOG_PADDING_DP = 16f;
-
-    private static final float NEW_TAB_DIALOG_HISTORY_LIST_MAX_HEIGHT_DP = 240f;
 
     private static final float BROWSER_TERMINAL_DIVIDER_THICKNESS_DP = 18f;
 
@@ -1581,37 +1576,22 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void promptNewTab() {
         if (mCurrentSessionHandle == null) return;
 
-        int padding = dpToPixels(NEW_TAB_DIALOG_PADDING_DP);
-        LinearLayout container = new LinearLayout(mActivity);
-        container.setOrientation(LinearLayout.VERTICAL);
+        View dialogView = LayoutInflater.from(mActivity).inflate(R.layout.dialog_browser_new_tab, null);
+        EditText urlInput = dialogView.findViewById(R.id.browser_new_tab_url_input);
+        ListView listView = dialogView.findViewById(R.id.browser_new_tab_bookmark_list);
 
-        EditText omniboxInput = new EditText(mActivity);
-        omniboxInput.setHint(R.string.hint_browser_omnibox);
-        omniboxInput.setSingleLine(true);
-        omniboxInput.setImeOptions(EditorInfo.IME_ACTION_GO);
-        omniboxInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        inputParams.setMargins(padding, padding, padding, 0);
-        omniboxInput.setLayoutParams(inputParams);
-
-        List<BrowserTabHistoryEntry> visibleEntries = new ArrayList<>(mTabHistory.filtered(""));
-        ListView listView = new ListView(mActivity);
-        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            dpToPixels(NEW_TAB_DIALOG_HISTORY_LIST_MAX_HEIGHT_DP));
-        listParams.setMargins(padding, 0, padding, padding);
-        listView.setLayoutParams(listParams);
-        ArrayAdapter<BrowserTabHistoryEntry> adapter = new ArrayAdapter<BrowserTabHistoryEntry>(
-            mActivity, R.layout.item_browser_history_entry, R.id.browser_history_entry_title, visibleEntries) {
+        List<BrowserBookmark> allBookmarks = loadBookmarks().getBookmarks();
+        List<BrowserBookmark> visibleBookmarks = BrowserBookmarkCollection.filtered("", allBookmarks);
+        ArrayAdapter<BrowserBookmark> adapter = new ArrayAdapter<BrowserBookmark>(
+            mActivity, R.layout.item_browser_history_entry, R.id.browser_history_entry_title, visibleBookmarks) {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
-                BrowserTabHistoryEntry entry = getItem(position);
-                if (entry != null) {
-                    ((TextView) view.findViewById(R.id.browser_history_entry_title)).setText(entry.getTitle());
-                    ((TextView) view.findViewById(R.id.browser_history_entry_url)).setText(entry.getUrl());
+                BrowserBookmark bookmark = getItem(position);
+                if (bookmark != null) {
+                    ((TextView) view.findViewById(R.id.browser_history_entry_title)).setText(bookmark.getTitle());
+                    ((TextView) view.findViewById(R.id.browser_history_entry_url)).setText(bookmark.getUrl());
                 }
                 return view;
             }
@@ -1620,19 +1600,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
         AlertDialog dialog = new AlertDialog.Builder(mActivity)
             .setTitle(R.string.title_browser_new_tab)
-            .setView(container)
+            .setView(dialogView)
+            .setPositiveButton(R.string.action_browser_new_tab_open, (d, which) -> {
+                String typed = urlInput.getText().toString().trim();
+                if (!typed.isEmpty()) openTypedUrlInNewTab(typed);
+            })
+            .setNegativeButton(android.R.string.cancel, null)
             .create();
         dialog.setCanceledOnTouchOutside(true);
 
-        omniboxInput.addTextChangedListener(new TextWatcher() {
+        urlInput.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                visibleEntries.clear();
-                visibleEntries.addAll(mTabHistory.filtered(s.toString()));
+                visibleBookmarks.clear();
+                visibleBookmarks.addAll(BrowserBookmarkCollection.filtered(s.toString(), allBookmarks));
                 adapter.notifyDataSetChanged();
             }
 
@@ -1641,8 +1626,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         });
 
-        omniboxInput.setOnEditorActionListener((view, actionId, event) -> {
-            String typed = omniboxInput.getText().toString().trim();
+        urlInput.setOnEditorActionListener((view, actionId, event) -> {
+            String typed = urlInput.getText().toString().trim();
             if (typed.isEmpty()) return false;
             dialog.dismiss();
             openTypedUrlInNewTab(typed);
@@ -1650,14 +1635,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         });
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
-            BrowserTabHistoryEntry entry = adapter.getItem(position);
-            if (entry == null) return;
+            BrowserBookmark bookmark = adapter.getItem(position);
+            if (bookmark == null) return;
             dialog.dismiss();
-            openUrlInNewTab(entry.getUrl());
+            openUrlInNewTab(bookmark.getUrl());
         });
 
-        container.addView(omniboxInput);
-        container.addView(listView);
         dialog.show();
     }
 
