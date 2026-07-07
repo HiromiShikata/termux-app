@@ -1,6 +1,7 @@
 package com.termux.app.browser;
 
 import com.termux.app.outputtag.OutputTagScanner;
+import com.termux.view.url.DetectedUrlSanitizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +27,10 @@ public final class BareUrlScanner {
         String trimmed = line.trim();
         if (trimmed.isEmpty()) return null;
         if (trimmed.indexOf(' ') >= 0 || trimmed.indexOf('\t') >= 0) return null;
-        if (!BrowserLinkLongPress.isOpenableLinkUrl(trimmed)) return null;
-        return trimmed;
+        String sanitized = DetectedUrlSanitizer.sanitize(trimmed);
+        if (sanitized == null) return null;
+        if (!BrowserLinkLongPress.isOpenableLinkUrl(sanitized)) return null;
+        return sanitized;
     }
 
     public List<String> urlsToOpen(String output) {
