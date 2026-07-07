@@ -161,6 +161,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final SwipeRefreshLayout mSwipeRefreshLayout;
 
+    private final BrowserWebViewScrollTracker mScrollTracker = new BrowserWebViewScrollTracker();
+
     private final ProgressBar mPageLoadProgressBar;
 
     private final View mWebViewCover;
@@ -244,6 +246,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             });
         this.mWebViewContainer = activity.findViewById(R.id.browser_web_view_container);
         this.mWebViewHost = new BrowserTabWebViewHost(mWebViewContainer, this::createWebViewForTab);
+        this.mWebViewHost.setWebViewDestroyListener(mScrollTracker::forget);
         this.mBrowserContentContainer = activity.findViewById(R.id.browser_content_container);
         this.mBrowserTerminalDivider = activity.findViewById(R.id.browser_terminal_divider);
         this.mPageTitleUrlHeaderView = activity.findViewById(R.id.browser_page_title_url_header);
@@ -728,11 +731,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mSwipeRefreshLayout.setOnRefreshListener(this::reloadDisplayedWebView);
         mSwipeRefreshLayout.setDistanceToTriggerSync(BrowserPullToRefreshGate.resolveTriggerDistancePixels(
             mActivity.getResources().getDisplayMetrics().density));
-        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
-            WebView displayedWebView = currentWebView();
-            return displayedWebView != null
-                && BrowserPullToRefreshGate.canWebViewScrollUp(displayedWebView);
-        });
+        mSwipeRefreshLayout.setOnChildScrollUpCallback((parent, child) ->
+            !mScrollTracker.isAtTop(currentWebView()));
     }
 
     @Nullable
@@ -773,6 +773,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void onPageStarted(@NonNull WebView view, @Nullable String url) {
+                mScrollTracker.resetToTop(view);
                 tab.setUrl(url);
                 if (isDisplayedTab(tab)) {
                     if (BrowserPageTransition.requiresCoverWhileLoading(
@@ -908,6 +909,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         }).attach();
 
+        mScrollTracker.attach(webView);
         return webView;
     }
 
