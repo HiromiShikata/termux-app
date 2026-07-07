@@ -1580,6 +1580,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         snackbar.setAction(
             mActivity.getString(R.string.action_browser_reopen_closed_tab_undo),
             view -> reopenLastClosedTab());
+        View tabBarAnchor = mActivity.findViewById(R.id.browser_tab_bar);
+        if (tabBarAnchor != null && tabBarAnchor.isShown()) {
+            snackbar.setAnchorView(tabBarAnchor);
+        }
         snackbar.show();
     }
 

@@ -121,4 +121,22 @@ public class BrowserBookmarkStarToolbarWiringTest {
         Assert.assertTrue("Undo action must reopen the last closed tab",
             source.contains("reopenLastClosedTab()"));
     }
+
+    @Test
+    public void undoSnackbarIsAnchoredAboveTheBrowserTabBar() throws IOException {
+        String source = readModuleResource(CONTROLLER_RELATIVE_PATH);
+        int snackbarIndex = source.indexOf("private void showTabClosedUndoSnackbar()");
+        Assert.assertTrue(snackbarIndex >= 0);
+        int snackbarEnd = source.indexOf("public void reopenLastClosedTab()", snackbarIndex);
+        Assert.assertTrue(snackbarEnd > snackbarIndex);
+        String body = source.substring(snackbarIndex, snackbarEnd);
+        Assert.assertTrue("Undo snackbar must anchor to the browser tab bar view",
+            body.contains("R.id.browser_tab_bar"));
+        Assert.assertTrue("Undo snackbar must position itself above the tab bar via setAnchorView",
+            body.contains("setAnchorView("));
+        Assert.assertTrue("Anchoring must be guarded so a missing tab bar view does not crash",
+            body.contains("!= null"));
+        Assert.assertTrue("Anchoring must only apply when the tab bar is currently shown",
+            body.contains("isShown()"));
+    }
 }
