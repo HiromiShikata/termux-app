@@ -59,7 +59,7 @@ public class BrowserVerticalScrollInstrumentedTest {
             swipeRefresh = new BrowserPinchAwareSwipeRefreshLayout(this);
             webView = new WebView(this);
             WebSettings settings = webView.getSettings();
-            BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, settings.getUserAgentString());
+            BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, settings.getUserAgentString());
             swipeRefresh.setOnChildScrollUpCallback((parent, child) ->
                 BrowserPullToRefreshGate.canWebViewScrollUp(webView));
             swipeRefresh.addView(webView, new FrameLayout.LayoutParams(

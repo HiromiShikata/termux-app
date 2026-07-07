@@ -15,14 +15,15 @@ public class BrowserWebViewConfiguratorTest {
     private static final String DEFAULT_USER_AGENT =
         "Mozilla/5.0 (Linux; Android 13; Pixel) AppleWebKit/537.36 Mobile Safari/537.36";
 
-    private WebSettings newSettings() {
-        return new WebView(RuntimeEnvironment.getApplication()).getSettings();
+    private WebView newWebView() {
+        return new WebView(RuntimeEnvironment.getApplication());
     }
 
     @Test
     public void mobileModeAppliesCleanMobileUserAgentWithoutWebViewMarker() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        WebSettings settings = webView.getSettings();
         Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT, settings.getUserAgentString());
         Assert.assertTrue(settings.getUserAgentString().contains("Chrome/"));
         Assert.assertFalse(settings.getUserAgentString().contains("wv"));
@@ -30,61 +31,65 @@ public class BrowserWebViewConfiguratorTest {
 
     @Test
     public void mobileModeEnablesJavaScriptAndDomStorageForLogin() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        WebSettings settings = webView.getSettings();
         Assert.assertTrue(settings.getJavaScriptEnabled());
         Assert.assertTrue(settings.getDomStorageEnabled());
     }
 
     @Test
     public void desktopModeUsesDesktopUserAgentRegardlessOfDefault() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
-        Assert.assertEquals(BrowserUserAgent.DESKTOP_USER_AGENT, settings.getUserAgentString());
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        Assert.assertEquals(BrowserUserAgent.DESKTOP_USER_AGENT, webView.getSettings().getUserAgentString());
     }
 
     @Test
     public void desktopUserAgentDoesNotAdvertiseMobile() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        WebSettings settings = webView.getSettings();
         Assert.assertFalse(settings.getUserAgentString().contains("Mobile"));
         Assert.assertFalse(settings.getUserAgentString().contains("Android"));
     }
 
     @Test
     public void commonSettingsAreEnabledForMobileMode() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
-        assertCommonSettings(settings);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        assertCommonSettings(webView.getSettings());
     }
 
     @Test
     public void commonSettingsAreEnabledForDesktopMode() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
-        assertCommonSettings(settings);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        assertCommonSettings(webView.getSettings());
     }
 
     @Test
     public void mobileModeDisablesOverviewModeSoPagesAreNotZoomedOutToFitWideContent() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
-        Assert.assertFalse(settings.getLoadWithOverviewMode());
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        Assert.assertFalse(webView.getSettings().getLoadWithOverviewMode());
     }
 
     @Test
     public void desktopModeEnablesOverviewModeToFitWideDesktopLayout() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
-        Assert.assertTrue(settings.getLoadWithOverviewMode());
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        Assert.assertTrue(webView.getSettings().getLoadWithOverviewMode());
     }
 
     @Test
     public void mobileAndDesktopShareIdenticalCommonSettingsExceptOverviewMode() {
-        WebSettings mobile = newSettings();
-        WebSettings desktop = newSettings();
-        BrowserWebViewConfigurator.apply(mobile, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
-        BrowserWebViewConfigurator.apply(desktop, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        WebView mobileWebView = newWebView();
+        WebView desktopWebView = newWebView();
+        BrowserWebViewConfigurator.apply(mobileWebView, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        BrowserWebViewConfigurator.apply(desktopWebView, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        WebSettings mobile = mobileWebView.getSettings();
+        WebSettings desktop = desktopWebView.getSettings();
 
         Assert.assertEquals(
             mobile.getJavaScriptEnabled(), desktop.getJavaScriptEnabled());
@@ -106,25 +111,28 @@ public class BrowserWebViewConfiguratorTest {
 
     @Test
     public void multipleWindowsSupportIsEnabledSoNewTabLinksReachOnCreateWindow() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.DESKTOP, DEFAULT_USER_AGENT);
+        WebSettings settings = webView.getSettings();
         Assert.assertTrue(settings.supportMultipleWindows());
         Assert.assertTrue(settings.getJavaScriptCanOpenWindowsAutomatically());
     }
 
     @Test
     public void requestedWithHeaderSuppressionIsWiredWithoutBreakingOtherSettings() {
-        WebSettings settings = newSettings();
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        WebView webView = newWebView();
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, DEFAULT_USER_AGENT);
+        WebSettings settings = webView.getSettings();
         Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT, settings.getUserAgentString());
         assertCommonSettings(settings);
     }
 
     @Test
     public void mobileModeWithNullDefaultUserAgentStillAppliesCleanMobileUserAgent() {
-        WebSettings settings = newSettings();
-        settings.setUserAgentString(null);
-        BrowserWebViewConfigurator.apply(settings, BrowserViewMode.MOBILE, null);
+        WebView webView = newWebView();
+        webView.getSettings().setUserAgentString(null);
+        BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, null);
+        WebSettings settings = webView.getSettings();
         Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT, settings.getUserAgentString());
         Assert.assertFalse(settings.getUserAgentString().contains("wv"));
     }

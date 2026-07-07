@@ -57,7 +57,7 @@ public class BrowserTabViewModeTest {
     public void sessionControllerDrivesConfiguratorFromTabViewMode() throws IOException {
         String source = readModuleSource(SESSION_CONTROLLER_PATH);
         Assert.assertTrue(source.contains(
-            "BrowserWebViewConfigurator.apply(settings, tab.getViewMode(), mDefaultUserAgent)"));
+            "BrowserWebViewConfigurator.apply(webView, tab.getViewMode(), mDefaultUserAgent)"));
         Assert.assertFalse(source.contains("tab.isDesktopMode() ? BrowserViewMode.DESKTOP : BrowserViewMode.MOBILE"));
     }
 

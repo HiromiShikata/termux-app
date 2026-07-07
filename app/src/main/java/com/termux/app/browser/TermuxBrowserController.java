@@ -753,7 +753,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         if (mDefaultUserAgent == null) {
             mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
         }
-        BrowserWebViewConfigurator.apply(settings, tab.getViewMode(), mDefaultUserAgent);
+        BrowserWebViewConfigurator.apply(webView, tab.getViewMode(), mDefaultUserAgent);
 
         applyDarkModeRendering(settings);
         BrowserWebViewAutofill.apply(webView, Build.VERSION.SDK_INT);
