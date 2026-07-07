@@ -1578,20 +1578,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
         View dialogView = LayoutInflater.from(mActivity).inflate(R.layout.dialog_browser_new_tab, null);
         EditText urlInput = dialogView.findViewById(R.id.browser_new_tab_url_input);
-        ListView listView = dialogView.findViewById(R.id.browser_new_tab_bookmark_list);
+        ListView listView = dialogView.findViewById(R.id.browser_new_tab_suggestion_list);
 
         List<BrowserBookmark> allBookmarks = loadBookmarks().getBookmarks();
-        List<BrowserBookmark> visibleBookmarks = BrowserBookmarkCollection.filtered("", allBookmarks);
-        ArrayAdapter<BrowserBookmark> adapter = new ArrayAdapter<BrowserBookmark>(
-            mActivity, R.layout.item_browser_history_entry, R.id.browser_history_entry_title, visibleBookmarks) {
+        List<BrowserTabHistoryEntry> allHistoryEntries = mTabHistory.getEntries();
+        List<BrowserNewTabEntry> visibleEntries =
+            BrowserNewTabList.combined("", allBookmarks, allHistoryEntries);
+        ArrayAdapter<BrowserNewTabEntry> adapter = new ArrayAdapter<BrowserNewTabEntry>(
+            mActivity, R.layout.item_browser_new_tab_suggestion, R.id.browser_new_tab_suggestion_title, visibleEntries) {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
-                BrowserBookmark bookmark = getItem(position);
-                if (bookmark != null) {
-                    ((TextView) view.findViewById(R.id.browser_history_entry_title)).setText(bookmark.getTitle());
-                    ((TextView) view.findViewById(R.id.browser_history_entry_url)).setText(bookmark.getUrl());
+                BrowserNewTabEntry entry = getItem(position);
+                if (entry != null) {
+                    ((TextView) view.findViewById(R.id.browser_new_tab_suggestion_title)).setText(entry.getTitle());
+                    ((TextView) view.findViewById(R.id.browser_new_tab_suggestion_url)).setText(entry.getUrl());
+                    view.findViewById(R.id.browser_new_tab_suggestion_bookmark_badge)
+                        .setVisibility(entry.isBookmark() ? View.VISIBLE : View.GONE);
                 }
                 return view;
             }
@@ -1616,8 +1620,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                visibleBookmarks.clear();
-                visibleBookmarks.addAll(BrowserBookmarkCollection.filtered(s.toString(), allBookmarks));
+                visibleEntries.clear();
+                visibleEntries.addAll(BrowserNewTabList.combined(s.toString(), allBookmarks, allHistoryEntries));
                 adapter.notifyDataSetChanged();
             }
 
@@ -1635,10 +1639,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         });
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
-            BrowserBookmark bookmark = adapter.getItem(position);
-            if (bookmark == null) return;
+            BrowserNewTabEntry entry = adapter.getItem(position);
+            if (entry == null) return;
             dialog.dismiss();
-            openUrlInNewTab(bookmark.getUrl());
+            openUrlInNewTab(entry.getUrl());
         });
 
         dialog.show();
