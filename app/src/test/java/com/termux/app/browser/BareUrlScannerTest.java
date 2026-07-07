@@ -77,6 +77,20 @@ public class BareUrlScannerTest {
     }
 
     @Test
+    public void doesNotOpenLineSoleUrlContainingPercentEncodedJumpToBottomHint() {
+        BareUrlScanner scanner = new BareUrlScanner();
+        assertTrue(scanner.urlsToOpen(
+            "https://github.com/xcare-medica%20Jump%20to%20bottom%20(ctrl+End)%20%E2%86%93%2081\n").isEmpty());
+    }
+
+    @Test
+    public void doesNotOpenLineSoleUrlEndingWithDownArrowHint() {
+        BareUrlScanner scanner = new BareUrlScanner();
+        assertTrue(scanner.urlsToOpen(
+            "https://github.com/HiromiShikata/termux-app/issues/1↓\n").isEmpty());
+    }
+
+    @Test
     public void returnsEmptyForNullOrPlainOutput() {
         BareUrlScanner scanner = new BareUrlScanner();
         assertTrue(scanner.urlsToOpen(null).isEmpty());

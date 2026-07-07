@@ -66,6 +66,20 @@ public class TerminalUrlExtractorTest {
     }
 
     @Test
+    public void tokenContainingPercentEncodedJumpToBottomHintReturnsNull() {
+        String row = "https://github.com/xcare-medica%20Jump%20to%20bottom%20(ctrl+End)%20%E2%86%93%2081";
+        int column = row.indexOf("xcare");
+        Assert.assertNull(TerminalUrlExtractor.extractBrowsableUrlAt(row, column));
+    }
+
+    @Test
+    public void tokenEndingWithDownArrowHintReturnsNull() {
+        String row = "https://github.com/HiromiShikata/termux-app/issues/1↓";
+        int column = row.indexOf("HiromiShikata");
+        Assert.assertNull(TerminalUrlExtractor.extractBrowsableUrlAt(row, column));
+    }
+
+    @Test
     public void ipHostUrlWithPortIsExtracted() {
         String row = "open http://50.30.32.53:9980/in-tmux/index.json please";
         int column = row.indexOf("50.30");
