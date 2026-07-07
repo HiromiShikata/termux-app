@@ -27,6 +27,40 @@ public class ApkUpdateAvailabilityTest {
     }
 
     @Test
+    public void availableDefaultsExpectedSizeBytesToZero() {
+        ApkUpdateAvailability availability =
+            ApkUpdateAvailability.available("0.119.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk");
+
+        Assert.assertEquals(0L, availability.getExpectedSizeBytes());
+    }
+
+    @Test
+    public void availableCarriesExpectedSizeBytes() {
+        ApkUpdateAvailability availability = ApkUpdateAvailability.available(
+            "0.119.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk", 4567890L);
+
+        Assert.assertEquals(4567890L, availability.getExpectedSizeBytes());
+    }
+
+    @Test
+    public void withDownloadedFilePathPreservesExpectedSizeBytes() {
+        ApkUpdateAvailability availability = ApkUpdateAvailability.available(
+                "0.119.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk", 4567890L)
+            .withDownloadedFilePath("/data/cache/apkupdate/termux-app_arm64-v8a.apk");
+
+        Assert.assertEquals(4567890L, availability.getExpectedSizeBytes());
+        Assert.assertEquals("/data/cache/apkupdate/termux-app_arm64-v8a.apk",
+            availability.getDownloadedFilePath());
+    }
+
+    @Test
+    public void upToDateHasZeroExpectedSizeBytes() {
+        ApkUpdateAvailability availability = ApkUpdateAvailability.upToDate("0.118.0");
+
+        Assert.assertEquals(0L, availability.getExpectedSizeBytes());
+    }
+
+    @Test
     public void availableHasNoDownloadedFilePathByDefault() {
         ApkUpdateAvailability availability =
             ApkUpdateAvailability.available("0.119.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk");

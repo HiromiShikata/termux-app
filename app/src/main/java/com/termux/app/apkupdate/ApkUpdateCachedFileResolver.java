@@ -6,6 +6,8 @@ import java.io.File;
 
 public final class ApkUpdateCachedFileResolver {
 
+    private static final String PARTIAL_FILE_SUFFIX = ".part";
+
     private final ApkFileValidator apkFileValidator;
 
     public ApkUpdateCachedFileResolver() {
@@ -22,10 +24,13 @@ public final class ApkUpdateCachedFileResolver {
             return null;
         }
         File file = new File(availability.getDownloadedFilePath());
+        if (file.getName().endsWith(PARTIAL_FILE_SUFFIX)) {
+            return null;
+        }
         if (!file.exists() || !file.isFile()) {
             return null;
         }
-        String invalidReason = apkFileValidator.validate(file, null, 0L);
+        String invalidReason = apkFileValidator.validate(file, null, availability.getExpectedSizeBytes());
         if (invalidReason != null) {
             file.delete();
             return null;

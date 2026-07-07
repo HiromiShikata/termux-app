@@ -13,8 +13,8 @@ public class ApkReleaseTest {
     @Test
     public void exposesVersionNameTagNameAndAssets() {
         List<ReleaseAsset> assets = Arrays.asList(
-            new ReleaseAsset("a.apk", "https://example.com/a"),
-            new ReleaseAsset("b.apk", "https://example.com/b"));
+            new ReleaseAsset("a.apk", "https://example.com/a", 0L),
+            new ReleaseAsset("b.apk", "https://example.com/b", 0L));
 
         ApkRelease release = new ApkRelease("0.119.0", "v0.119.0", assets);
 
@@ -36,14 +36,14 @@ public class ApkReleaseTest {
     public void returnedAssetListIsUnmodifiable() {
         ApkRelease release = new ApkRelease("1.0.0", "v1.0.0", new ArrayList<>());
 
-        release.getAssets().add(new ReleaseAsset("c.apk", "https://example.com/c"));
+        release.getAssets().add(new ReleaseAsset("c.apk", "https://example.com/c", 0L));
     }
 
     @Test
     public void exposesAssetsInProvidedOrder() {
         List<ReleaseAsset> source = new ArrayList<>();
-        source.add(new ReleaseAsset("first.apk", "https://example.com/first"));
-        source.add(new ReleaseAsset("second.apk", "https://example.com/second"));
+        source.add(new ReleaseAsset("first.apk", "https://example.com/first", 0L));
+        source.add(new ReleaseAsset("second.apk", "https://example.com/second", 0L));
 
         ApkRelease release = new ApkRelease("1.0.0", "v1.0.0", source);
 

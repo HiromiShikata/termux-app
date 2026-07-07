@@ -45,6 +45,31 @@ public class ApkUpdatePendingStateTest {
     }
 
     @Test
+    public void savesAndLoadsExpectedSizeBytes() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+
+        pendingState.save(ApkUpdateAvailability.available(
+            "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk", 9876543L));
+
+        ApkUpdateAvailability loaded = pendingState.load();
+        Assert.assertNotNull(loaded);
+        Assert.assertEquals(9876543L, loaded.getExpectedSizeBytes());
+    }
+
+    @Test
+    public void loadDefaultsExpectedSizeBytesToZeroWhenNotPersisted() {
+        InMemoryStore store = new InMemoryStore();
+        store.putString(ApkUpdatePendingState.KEY_LATEST_VERSION_NAME, "0.121.0");
+        store.putString(ApkUpdatePendingState.KEY_DOWNLOAD_URL, "https://example.com/arm64");
+        store.putString(ApkUpdatePendingState.KEY_ASSET_NAME, "termux-app_arm64-v8a.apk");
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+
+        ApkUpdateAvailability loaded = pendingState.load();
+        Assert.assertNotNull(loaded);
+        Assert.assertEquals(0L, loaded.getExpectedSizeBytes());
+    }
+
+    @Test
     public void savesAndLoadsDownloadedFilePath() {
         ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
 

@@ -135,12 +135,12 @@ public final class ApkUpdateManager {
         return exception.getMessage() != null ? exception.getMessage() : exception.toString();
     }
 
-    public void downloadApk(String downloadUrl, String assetName, DownloadListener listener) {
+    public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes, DownloadListener listener) {
         new Thread(() -> {
             try {
                 String expectedSha256 = resolveExpectedSha256(downloadUrl, assetName);
                 File apkFile = apkDownloader.download(downloadUrl, sanitizeFileName(assetName));
-                String invalidReason = apkFileValidator.validate(apkFile, expectedSha256, 0L);
+                String invalidReason = apkFileValidator.validate(apkFile, expectedSha256, expectedSizeBytes);
                 if (invalidReason != null) {
                     apkFile.delete();
                     mainHandler.post(() -> listener.onDownloadFailed(invalidReason));

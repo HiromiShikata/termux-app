@@ -16,6 +16,7 @@ public final class ApkDownloader {
     private static final int CONNECT_TIMEOUT_MILLIS = 30000;
     private static final int READ_TIMEOUT_MILLIS = 60000;
     private static final String CACHE_SUBDIRECTORY_NAME = "apkupdate";
+    private static final String PARTIAL_FILE_SUFFIX = ".part";
 
     private final Context context;
 
@@ -32,6 +33,8 @@ public final class ApkDownloader {
         }
         cachePruner.pruneExcept(targetDirectory, fileName);
         File targetFile = new File(targetDirectory, fileName);
+        File partialFile = new File(targetDirectory, fileName + PARTIAL_FILE_SUFFIX);
+        deleteQuietly(partialFile);
 
         URLConnection urlConnection = new URL(downloadUrl).openConnection();
         if (!(urlConnection instanceof HttpURLConnection)) {
@@ -49,17 +52,31 @@ public final class ApkDownloader {
                 throw new IOException("Unexpected HTTP response code " + responseCode + " for " + downloadUrl);
             }
 
+            long contentLength = connection.getContentLengthLong();
+            long bytesWritten = 0L;
             try (InputStream inputStream = connection.getInputStream();
-                 OutputStream outputStream = new FileOutputStream(targetFile)) {
+                 OutputStream outputStream = new FileOutputStream(partialFile)) {
                 byte[] chunk = new byte[8192];
                 int read;
                 while ((read = inputStream.read(chunk)) != -1) {
                     outputStream.write(chunk, 0, read);
+                    bytesWritten += read;
                 }
                 outputStream.flush();
             }
-        } catch (IOException | RuntimeException exception) {
+
+            if (contentLength > 0 && bytesWritten != contentLength) {
+                throw new IOException("Truncated download for " + downloadUrl + ": wrote " + bytesWritten
+                    + " bytes but Content-Length was " + contentLength);
+            }
+
             deleteQuietly(targetFile);
+            if (!partialFile.renameTo(targetFile)) {
+                throw new IOException("Failed to move downloaded APK into place: "
+                    + partialFile.getAbsolutePath() + " -> " + targetFile.getAbsolutePath());
+            }
+        } catch (IOException | RuntimeException exception) {
+            deleteQuietly(partialFile);
             throw exception;
         } finally {
             connection.disconnect();

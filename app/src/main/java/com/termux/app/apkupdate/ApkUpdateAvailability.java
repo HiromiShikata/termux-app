@@ -8,28 +8,36 @@ public final class ApkUpdateAvailability {
     private final String latestVersionName;
     private final String downloadUrl;
     private final String assetName;
+    private final long expectedSizeBytes;
     private final String downloadedFilePath;
 
     private ApkUpdateAvailability(boolean updateAvailable, String latestVersionName,
                                   @Nullable String downloadUrl, @Nullable String assetName,
-                                  @Nullable String downloadedFilePath) {
+                                  long expectedSizeBytes, @Nullable String downloadedFilePath) {
         this.updateAvailable = updateAvailable;
         this.latestVersionName = latestVersionName;
         this.downloadUrl = downloadUrl;
         this.assetName = assetName;
+        this.expectedSizeBytes = expectedSizeBytes;
         this.downloadedFilePath = downloadedFilePath;
     }
 
     public static ApkUpdateAvailability available(String latestVersionName, String downloadUrl, String assetName) {
-        return new ApkUpdateAvailability(true, latestVersionName, downloadUrl, assetName, null);
+        return available(latestVersionName, downloadUrl, assetName, 0L);
+    }
+
+    public static ApkUpdateAvailability available(String latestVersionName, String downloadUrl, String assetName,
+                                                  long expectedSizeBytes) {
+        return new ApkUpdateAvailability(true, latestVersionName, downloadUrl, assetName, expectedSizeBytes, null);
     }
 
     public static ApkUpdateAvailability upToDate(String latestVersionName) {
-        return new ApkUpdateAvailability(false, latestVersionName, null, null, null);
+        return new ApkUpdateAvailability(false, latestVersionName, null, null, 0L, null);
     }
 
     public ApkUpdateAvailability withDownloadedFilePath(@Nullable String filePath) {
-        return new ApkUpdateAvailability(updateAvailable, latestVersionName, downloadUrl, assetName, filePath);
+        return new ApkUpdateAvailability(updateAvailable, latestVersionName, downloadUrl, assetName,
+            expectedSizeBytes, filePath);
     }
 
     public boolean isUpdateAvailable() {
@@ -48,6 +56,10 @@ public final class ApkUpdateAvailability {
     @Nullable
     public String getAssetName() {
         return assetName;
+    }
+
+    public long getExpectedSizeBytes() {
+        return expectedSizeBytes;
     }
 
     @Nullable

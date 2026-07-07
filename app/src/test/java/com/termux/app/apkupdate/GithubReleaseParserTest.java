@@ -33,6 +33,33 @@ public class GithubReleaseParserTest {
     }
 
     @Test
+    public void extractsAssetSizeFromReleaseJson() throws JSONException {
+        String json = "{"
+            + "\"tag_name\":\"v0.119.0\","
+            + "\"assets\":["
+            + "{\"name\":\"termux-app_arm64-v8a.apk\",\"browser_download_url\":\"https://example.com/arm64\","
+            + "\"size\":123456789}"
+            + "]}";
+
+        ApkRelease release = parser.parseLatestRelease(json);
+
+        Assert.assertEquals(123456789L, release.getAssets().get(0).getSize());
+    }
+
+    @Test
+    public void defaultsAssetSizeToZeroWhenSizeKeyMissing() throws JSONException {
+        String json = "{"
+            + "\"tag_name\":\"v0.119.0\","
+            + "\"assets\":["
+            + "{\"name\":\"termux-app_arm64-v8a.apk\",\"browser_download_url\":\"https://example.com/arm64\"}"
+            + "]}";
+
+        ApkRelease release = parser.parseLatestRelease(json);
+
+        Assert.assertEquals(0L, release.getAssets().get(0).getSize());
+    }
+
+    @Test
     public void stripsBuildMetadataFromTagName() throws JSONException {
         String json = "{\"tag_name\":\"v0.119.0+abcdef1\",\"assets\":[]}";
 
