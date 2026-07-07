@@ -112,13 +112,15 @@ public class TermuxPropertyConstantsTest {
 
     @Test
     public void appPropertiesListContainsAllRegisteredKeys() {
-        Assert.assertEquals(33, TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST.size());
+        Assert.assertEquals(34, TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST.size());
         Assert.assertTrue(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST
             .contains(TermuxPropertyConstants.KEY_BELL_BEHAVIOUR));
         Assert.assertTrue(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST
             .contains(TermuxPropertyConstants.KEY_NIGHT_MODE));
         Assert.assertTrue(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST
             .contains(TermuxPropertyConstants.KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES));
+        Assert.assertTrue(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST
+            .contains(TermuxPropertyConstants.KEY_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES));
         Assert.assertTrue(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST
             .contains(TermuxConstants.PROP_ALLOW_EXTERNAL_APPS));
     }

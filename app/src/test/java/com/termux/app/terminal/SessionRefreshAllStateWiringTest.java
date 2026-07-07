@@ -122,7 +122,7 @@ public class SessionRefreshAllStateWiringTest {
     public void reconnectInBackgroundReturnsTheReconnectedSessionNamesForTheRetryToTrack() throws IOException {
         String source = readSource(CLIENT_RELATIVE_PATH);
         int methodIndex =
-            source.indexOf("public List<String> reconnectDeadDefinitionBackedSessionsInBackground() {");
+            source.indexOf("private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String> reconnectableSessionNames) {");
         Assert.assertTrue("reconnect-in-background must return the reconnected session names", methodIndex >= 0);
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
@@ -131,6 +131,39 @@ public class SessionRefreshAllStateWiringTest {
             methodBody.contains("reconnectedSessionNames.add(sessionName)"));
         Assert.assertTrue("the returned list must be the value the method produces",
             methodBody.contains("return reconnectedSessionNames"));
+    }
+
+    @Test
+    public void displayedSessionCallScanTickReconnectsThenFullCallScansDisplayedSessionsNearLive() throws IOException {
+        String source = readSource(CLIENT_RELATIVE_PATH);
+
+        Assert.assertTrue("the fast displayed-session cycle must start when the activity resumes",
+            source.contains("startDisplayedSessionCallScanTick();"));
+        Assert.assertTrue("the fast displayed-session cycle must be torn down when the activity stops",
+            source.contains("stopDisplayedSessionCallScanTick();"));
+
+        int refreshIndex = source.indexOf("private void refreshDisplayedSessionsForCallToUser() {");
+        Assert.assertTrue("the fast cycle must have a dedicated displayed-session refresh action", refreshIndex >= 0);
+        int refreshEnd = source.indexOf("\n    }", refreshIndex);
+        Assert.assertTrue(refreshEnd > refreshIndex);
+        String refreshBody = source.substring(refreshIndex, refreshEnd);
+
+        Assert.assertTrue("the fast cycle must select the displayed (non-hidden) session set, not the narrow visible set",
+            refreshBody.contains("displayedSessionNames()"));
+        Assert.assertTrue("the fast cycle must reconnect dead/hung displayed sessions so their accumulated output is pulled",
+            refreshBody.contains("reconnectDeadDisplayedSessionsInBackground(displayedSessionNames)"));
+        Assert.assertTrue("the fast cycle must run the full call-to-user transcript scan for every displayed session",
+            refreshBody.contains("backgroundOutputTagsForSession(session)"));
+
+        int selectorIndex = source.indexOf("private Set<String> displayedSessionNames() {");
+        Assert.assertTrue("displayed-session selection must exist", selectorIndex >= 0);
+        int selectorEnd = source.indexOf("\n    }", selectorIndex);
+        Assert.assertTrue(selectorEnd > selectorIndex);
+        String selectorBody = source.substring(selectorIndex, selectorEnd);
+        Assert.assertTrue("the displayed set must be computed independently of whether the session-list sheet is open",
+            !selectorBody.contains("sessionListOpen") && !selectorBody.contains("getOnScreenSessionNames"));
+        Assert.assertTrue("hidden sessions must stay excluded when the owner is hiding them",
+            selectorBody.contains("shouldHideHiddenSessions()") && selectorBody.contains("getDisabledSessionNames()"));
     }
 
     @Test

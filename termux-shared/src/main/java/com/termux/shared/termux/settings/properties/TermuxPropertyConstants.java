@@ -262,6 +262,17 @@ public final class TermuxPropertyConstants {
     public static final int DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES = 5;
 
 
+    /** Defines the key for how often, in minutes, every displayed (non-hidden) session the owner is
+     * monitoring is reconnected when dead and re-scanned for its call-to-user tag near-live, so the red
+     * call-to-user marker surfaces within about a minute regardless of whether the session-list bottom
+     * sheet is open. Hidden sessions stay on the slower {@link #KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES}
+     * cycle only. */
+    public static final String KEY_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES =  "background-displayed-call-scan-interval-minutes"; // Default: "background-displayed-call-scan-interval-minutes"
+    public static final int IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES_MIN = 1;
+    public static final int IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES_MAX = 60;
+    public static final int DEFAULT_IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES = 1;
+
+
 
 
 
@@ -422,6 +433,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_MARGIN_VERTICAL,
         KEY_TERMINAL_TRANSCRIPT_ROWS,
         KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
+        KEY_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES,
 
         /* float */
         KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR,

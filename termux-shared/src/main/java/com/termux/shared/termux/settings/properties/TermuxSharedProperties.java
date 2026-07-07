@@ -281,6 +281,8 @@ public abstract class TermuxSharedProperties {
                 return (int) getTerminalTranscriptRowsInternalPropertyValueFromValue(value);
             case TermuxPropertyConstants.KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES:
                 return (int) getBackgroundCallScanIntervalMinutesInternalPropertyValueFromValue(value);
+            case TermuxPropertyConstants.KEY_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES:
+                return (int) getBackgroundDisplayedCallScanIntervalMinutesInternalPropertyValueFromValue(value);
 
             /* float */
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
@@ -461,6 +463,24 @@ public abstract class TermuxSharedProperties {
             TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES,
             TermuxPropertyConstants.IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MIN,
             TermuxPropertyConstants.IVALUE_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES_MAX,
+            true, true, LOG_TAG);
+    }
+
+    /**
+     * Returns the int for the value if its not null and is between
+     * {@link TermuxPropertyConstants#IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES_MIN} and
+     * {@link TermuxPropertyConstants#IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES_MAX},
+     * otherwise returns {@link TermuxPropertyConstants#DEFAULT_IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES}.
+     *
+     * @param value The {@link String} value to convert.
+     * @return Returns the internal value for value.
+     */
+    public static int getBackgroundDisplayedCallScanIntervalMinutesInternalPropertyValueFromValue(String value) {
+        return SharedProperties.getDefaultIfNotInRange(TermuxPropertyConstants.KEY_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES,
+            DataUtils.getIntFromString(value, TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES),
+            TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES,
+            TermuxPropertyConstants.IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES_MIN,
+            TermuxPropertyConstants.IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES_MAX,
             true, true, LOG_TAG);
     }
 
@@ -682,6 +702,10 @@ public abstract class TermuxSharedProperties {
 
     public int getBackgroundCallScanIntervalMinutes() {
         return (int) getInternalPropertyValue(TermuxPropertyConstants.KEY_BACKGROUND_CALL_SCAN_INTERVAL_MINUTES, true);
+    }
+
+    public int getBackgroundDisplayedCallScanIntervalMinutes() {
+        return (int) getInternalPropertyValue(TermuxPropertyConstants.KEY_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES, true);
     }
 
     public float getTerminalToolbarHeightScaleFactor() {

@@ -37,6 +37,7 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
+import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.VisibleSessionSelector;
@@ -55,6 +56,7 @@ import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.app.TermuxService;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.terminal.io.BellHandler;
@@ -196,6 +198,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final VisibleSessionSelector mVisibleSessionSelector = new VisibleSessionSelector();
 
+    private final DisplayedSessionSelector mDisplayedSessionSelector = new DisplayedSessionSelector();
+
     private final StaggeredReconnectSchedule mStaggeredReconnectSchedule =
         new StaggeredReconnectSchedule(STAGGERED_RECONNECT_INTERVAL_MILLIS,
             STAGGERED_RECONNECT_CONCURRENT_WINDOW);
@@ -210,6 +214,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final Runnable mAllSessionsCallScanTickRunnable = this::onAllSessionsCallScanTick;
 
     private boolean mAllSessionsCallScanTickScheduled;
+
+    private final Runnable mDisplayedSessionCallScanTickRunnable = this::onDisplayedSessionCallScanTick;
+
+    private boolean mDisplayedSessionCallScanTickScheduled;
 
     public TermuxTerminalSessionActivityClient(TermuxActivity activity) {
         this.mActivity = activity;
@@ -268,6 +276,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         startActiveSessionSeenTick();
         startAllSessionsCallScanTick();
+        startDisplayedSessionCallScanTick();
     }
 
     /**
@@ -276,6 +285,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onStop() {
         stopActiveSessionSeenTick();
         stopAllSessionsCallScanTick();
+        stopDisplayedSessionCallScanTick();
         stopStatuslineParseThread();
 
         // Store current session in shared preferences so that it can be restored later in
@@ -744,6 +754,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             activeSessionName(), sessionListOpen, onScreenListSessionNames);
     }
 
+    @NonNull
+    private Set<String> displayedSessionNames() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) {
+            return Collections.emptySet();
+        }
+        List<String> allLiveSessionNames = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null || terminalSession.mSessionName == null) continue;
+            allLiveSessionNames.add(terminalSession.mSessionName);
+        }
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        boolean hideHiddenSessions = preferences != null && preferences.shouldHideHiddenSessions();
+        Set<String> hiddenSessionNames = preferences != null
+            ? preferences.getDisabledSessionNames()
+            : Collections.emptySet();
+        return mDisplayedSessionSelector.selectDisplayedSessionNames(mActivity.isVisible(),
+            activeSessionName(), allLiveSessionNames, hideHiddenSessions, hiddenSessionNames);
+    }
+
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
         mSessionOutputProgressTracker.forget(sessionName);
@@ -877,6 +908,77 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (!mActivity.isVisible()) return;
         repopulateStatuslineTimesForAllSessions();
         scheduleAllSessionsCallScanTick();
+    }
+
+    /**
+     * Reconnects and full-call-scans every displayed (non-hidden) session the owner is monitoring on a
+     * short (default one-minute) cycle so a call-to-user tag emitted by a displayed-but-not-foreground
+     * session surfaces its red marker near-live instead of only at the next slow reconnect/call-scan
+     * tick (which left displayed-but-not-foreground sessions undetected for up to ~23 minutes).
+     *
+     * <p>The slower {@link #startAllSessionsCallScanTick() all-sessions call-scan tick} only re-parses
+     * the statusline of the narrow visible set and never pulls a dead session's freshly-accumulated
+     * tmux output, so a displayed session whose call-to-user tag landed after its last reconnect is
+     * neither refreshed nor transcript-scanned until it becomes foreground or the sheet opens. This
+     * tick closes that gap: each cycle it reconnects the dead/hung displayed sessions (staggered via the
+     * shared {@link #reconnectDeadDisplayedSessionsInBackground} path so ~24 sessions never reconnect at
+     * once) so their accumulated output — including the call-to-user tag — is pulled, then runs the full
+     * {@link BackgroundOutputTagScanner} call-to-user transcript scan over every displayed session. The
+     * per-session {@link CallToUserTagScanner} dedup ensures an already-detected tag does not re-fire.
+     *
+     * <p>Hidden/filtered sessions are excluded (they stay on the slow cycle), and the tick runs only
+     * while the activity is visible and is removed in {@link #onStop}, so it adds no wake lock and does
+     * no work in the background, matching the existing tick behavior.
+     */
+    public void startDisplayedSessionCallScanTick() {
+        if (mActivity.isVisible())
+            refreshDisplayedSessionsForCallToUser();
+        scheduleDisplayedSessionCallScanTick();
+    }
+
+    private void scheduleDisplayedSessionCallScanTick() {
+        if (mDisplayedSessionCallScanTickScheduled) return;
+        if (!mActivity.isVisible()) return;
+        mDisplayedSessionCallScanTickScheduled = true;
+        mMainThreadHandler.postDelayed(mDisplayedSessionCallScanTickRunnable,
+            displayedSessionCallScanIntervalMillis());
+    }
+
+    private long displayedSessionCallScanIntervalMillis() {
+        TermuxAppSharedProperties properties = mActivity.getProperties();
+        int intervalMinutes = properties != null
+            ? properties.getBackgroundDisplayedCallScanIntervalMinutes()
+            : TermuxPropertyConstants.DEFAULT_IVALUE_BACKGROUND_DISPLAYED_CALL_SCAN_INTERVAL_MINUTES;
+        return intervalMinutes * MILLIS_PER_MINUTE;
+    }
+
+    public void stopDisplayedSessionCallScanTick() {
+        mDisplayedSessionCallScanTickScheduled = false;
+        mMainThreadHandler.removeCallbacks(mDisplayedSessionCallScanTickRunnable);
+    }
+
+    private void onDisplayedSessionCallScanTick() {
+        mDisplayedSessionCallScanTickScheduled = false;
+        if (!mActivity.isVisible()) return;
+        refreshDisplayedSessionsForCallToUser();
+        scheduleDisplayedSessionCallScanTick();
+    }
+
+    private void refreshDisplayedSessionsForCallToUser() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        Set<String> displayedSessionNames = displayedSessionNames();
+        if (displayedSessionNames.isEmpty()) return;
+
+        reconnectDeadDisplayedSessionsInBackground(displayedSessionNames);
+
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession session = termuxSession.getTerminalSession();
+            if (session == null || session.mSessionName == null) continue;
+            if (!displayedSessionNames.contains(session.mSessionName)) continue;
+            backgroundOutputTagsForSession(session);
+        }
     }
 
     @Override
@@ -1615,13 +1717,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @NonNull
     public List<String> reconnectDeadDefinitionBackedSessionsInBackground() {
+        return reconnectDeadDefinitionBackedSessionsInBackground(visibleSessionNames());
+    }
+
+    private List<String> reconnectDeadDisplayedSessionsInBackground(@NonNull Set<String> displayedSessionNames) {
+        return reconnectDeadDefinitionBackedSessionsInBackground(displayedSessionNames);
+    }
+
+    private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String> reconnectableSessionNames) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return Collections.emptyList();
 
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         String currentSessionName = activeSessionName();
-        Set<String> visibleSessionNames = visibleSessionNames();
         long nowMillis = System.currentTimeMillis();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
@@ -1631,7 +1740,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (terminalSession == null) continue;
             String sessionName = terminalSession.mSessionName;
             if (sessionName == null) continue;
-            if (!visibleSessionNames.contains(sessionName)) continue;
+            if (!reconnectableSessionNames.contains(sessionName)) continue;
             sessionByName.put(sessionName, terminalSession);
             boolean current = sessionName.equals(currentSessionName);
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
