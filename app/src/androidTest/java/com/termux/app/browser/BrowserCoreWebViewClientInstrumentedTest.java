@@ -141,7 +141,7 @@ public class BrowserCoreWebViewClientInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView webView = new WebView(targetContext());
-            BrowserWebViewConfigurator.apply(webView.getSettings(), viewMode,
+            BrowserWebViewConfigurator.apply(webView, viewMode,
                 BrowserUserAgent.normalizeDefault(webView.getSettings().getUserAgentString()));
             webView.setWebViewClient(new BrowserCoreWebViewClient(
                 new StubHost(viewMode, injectMobileViewport, pageFinishedLatchRef.get())));

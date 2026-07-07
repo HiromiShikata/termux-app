@@ -46,7 +46,7 @@ public class BrowserNewTabWindowOpenInstrumentedTest {
 
         runOnMainSync(() -> {
             WebView openerWebView = new WebView(targetContext());
-            BrowserWebViewConfigurator.apply(openerWebView.getSettings(), BrowserViewMode.DESKTOP,
+            BrowserWebViewConfigurator.apply(openerWebView, BrowserViewMode.DESKTOP,
                 BrowserUserAgent.normalizeDefault(openerWebView.getSettings().getUserAgentString()));
             openerWebView.setWebChromeClient(new WebChromeClient() {
                 @Override
