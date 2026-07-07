@@ -21,7 +21,8 @@ public final class GithubReleaseParser {
                 JSONObject asset = assetArray.getJSONObject(index);
                 String name = asset.getString("name");
                 String downloadUrl = asset.getString("browser_download_url");
-                assets.add(new ReleaseAsset(name, downloadUrl));
+                long size = asset.optLong("size", 0L);
+                assets.add(new ReleaseAsset(name, downloadUrl, size));
             }
         }
         return new ApkRelease(versionName, tagName, assets);

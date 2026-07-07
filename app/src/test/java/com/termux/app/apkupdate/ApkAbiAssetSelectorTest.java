@@ -13,12 +13,12 @@ public class ApkAbiAssetSelectorTest {
 
     private List<ReleaseAsset> sampleAssets() {
         return new ArrayList<>(Arrays.asList(
-            new ReleaseAsset("termux-app_universal.apk", "https://example.com/universal"),
-            new ReleaseAsset("termux-app_arm64-v8a.apk", "https://example.com/arm64"),
-            new ReleaseAsset("termux-app_armeabi-v7a.apk", "https://example.com/armeabi"),
-            new ReleaseAsset("termux-app_x86_64.apk", "https://example.com/x86_64"),
-            new ReleaseAsset("termux-app_x86.apk", "https://example.com/x86"),
-            new ReleaseAsset("termux-app_sha256sums", "https://example.com/sums")));
+            new ReleaseAsset("termux-app_universal.apk", "https://example.com/universal", 0L),
+            new ReleaseAsset("termux-app_arm64-v8a.apk", "https://example.com/arm64", 0L),
+            new ReleaseAsset("termux-app_armeabi-v7a.apk", "https://example.com/armeabi", 0L),
+            new ReleaseAsset("termux-app_x86_64.apk", "https://example.com/x86_64", 0L),
+            new ReleaseAsset("termux-app_x86.apk", "https://example.com/x86", 0L),
+            new ReleaseAsset("termux-app_sha256sums", "https://example.com/sums", 0L)));
     }
 
     @Test
@@ -54,7 +54,7 @@ public class ApkAbiAssetSelectorTest {
     @Test
     public void returnsNullWhenNoAbiMatchesAndNoUniversalAssetExists() {
         List<ReleaseAsset> assets = new ArrayList<>(Arrays.asList(
-            new ReleaseAsset("termux-app_arm64-v8a.apk", "https://example.com/arm64")));
+            new ReleaseAsset("termux-app_arm64-v8a.apk", "https://example.com/arm64", 0L)));
         ReleaseAsset selected = selector.selectForAbis(assets, new String[]{"x86"});
         Assert.assertNull(selected);
     }

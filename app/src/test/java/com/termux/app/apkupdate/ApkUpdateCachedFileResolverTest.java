@@ -79,6 +79,43 @@ public class ApkUpdateCachedFileResolverTest {
         Assert.assertFalse(corruptFile.exists());
     }
 
+    @Test
+    public void ignoresPartialFile() throws IOException {
+        File partialFile = writeValidApk("termux-app_arm64-v8a.apk.part");
+        ApkUpdateAvailability availability =
+            ApkUpdateAvailability.available("0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk")
+                .withDownloadedFilePath(partialFile.getAbsolutePath());
+
+        Assert.assertNull(resolver.resolveExistingFile(availability));
+        Assert.assertTrue("A .part file must be ignored, never deleted as a cached file", partialFile.exists());
+    }
+
+    @Test
+    public void deletesAndReturnsNullWhenCachedFileSizeDoesNotMatchExpected() throws IOException {
+        File apkFile = writeValidApk("termux-app_arm64-v8a.apk");
+        ApkUpdateAvailability availability = ApkUpdateAvailability.available(
+                "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk", apkFile.length() + 1)
+            .withDownloadedFilePath(apkFile.getAbsolutePath());
+
+        File resolved = resolver.resolveExistingFile(availability);
+
+        Assert.assertNull(resolved);
+        Assert.assertFalse(apkFile.exists());
+    }
+
+    @Test
+    public void returnsFileWhenCachedFileSizeMatchesExpected() throws IOException {
+        File apkFile = writeValidApk("termux-app_arm64-v8a.apk");
+        ApkUpdateAvailability availability = ApkUpdateAvailability.available(
+                "0.121.0", "https://example.com/arm64", "termux-app_arm64-v8a.apk", apkFile.length())
+            .withDownloadedFilePath(apkFile.getAbsolutePath());
+
+        File resolved = resolver.resolveExistingFile(availability);
+
+        Assert.assertNotNull(resolved);
+        Assert.assertEquals(apkFile.getAbsolutePath(), resolved.getAbsolutePath());
+    }
+
     private File writeValidApk(String fileName) throws IOException {
         File apkFile = temporaryFolder.newFile(fileName);
         try (OutputStream outputStream = new FileOutputStream(apkFile)) {

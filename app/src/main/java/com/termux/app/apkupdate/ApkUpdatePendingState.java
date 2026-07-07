@@ -19,6 +19,8 @@ public final class ApkUpdatePendingState {
 
     static final String KEY_ASSET_NAME = "apk_update_pending_asset_name";
 
+    static final String KEY_EXPECTED_SIZE_BYTES = "apk_update_pending_expected_size_bytes";
+
     static final String KEY_DOWNLOADED_FILE_PATH = "apk_update_pending_downloaded_file_path";
 
     private final Store store;
@@ -41,6 +43,7 @@ public final class ApkUpdatePendingState {
         store.putString(KEY_LATEST_VERSION_NAME, availability.getLatestVersionName());
         store.putString(KEY_DOWNLOAD_URL, availability.getDownloadUrl());
         store.putString(KEY_ASSET_NAME, availability.getAssetName());
+        store.putString(KEY_EXPECTED_SIZE_BYTES, Long.toString(availability.getExpectedSizeBytes()));
         if (availability.hasDownloadedFilePath()) {
             store.putString(KEY_DOWNLOADED_FILE_PATH, availability.getDownloadedFilePath());
         } else {
@@ -56,8 +59,9 @@ public final class ApkUpdatePendingState {
         if (latestVersionName == null || downloadUrl == null || assetName == null) {
             return null;
         }
+        long expectedSizeBytes = parseExpectedSizeBytes(store.getString(KEY_EXPECTED_SIZE_BYTES));
         String downloadedFilePath = store.getString(KEY_DOWNLOADED_FILE_PATH);
-        return ApkUpdateAvailability.available(latestVersionName, downloadUrl, assetName)
+        return ApkUpdateAvailability.available(latestVersionName, downloadUrl, assetName, expectedSizeBytes)
             .withDownloadedFilePath(downloadedFilePath);
     }
 
@@ -82,6 +86,18 @@ public final class ApkUpdatePendingState {
         store.remove(KEY_LATEST_VERSION_NAME);
         store.remove(KEY_DOWNLOAD_URL);
         store.remove(KEY_ASSET_NAME);
+        store.remove(KEY_EXPECTED_SIZE_BYTES);
         store.remove(KEY_DOWNLOADED_FILE_PATH);
+    }
+
+    private long parseExpectedSizeBytes(@Nullable String rawValue) {
+        if (rawValue == null || rawValue.isEmpty()) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(rawValue);
+        } catch (NumberFormatException exception) {
+            return 0L;
+        }
     }
 }

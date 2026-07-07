@@ -64,6 +64,7 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
         Context applicationContext = activity.getApplicationContext();
         Logger.showToast(activity, activity.getString(R.string.apk_update_downloading), false);
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
+            availability.getExpectedSizeBytes(),
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {

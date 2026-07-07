@@ -110,6 +110,7 @@ public final class ApkUpdateUiController {
                                               ApkUpdateFloatingIndicatorController indicatorController) {
         Logger.logInfo(LOG_TAG, "Pre-downloading APK update before showing indicator");
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
+            availability.getExpectedSizeBytes(),
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
@@ -166,6 +167,7 @@ public final class ApkUpdateUiController {
         Context applicationContext = activity.getApplicationContext();
         Logger.showToast(activity, activity.getString(R.string.apk_update_downloading), false);
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
+            availability.getExpectedSizeBytes(),
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {

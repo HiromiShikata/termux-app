@@ -30,6 +30,7 @@ public final class ApkUpdatePlanner {
         if (asset == null) {
             return ApkUpdateAvailability.upToDate(release.getVersionName());
         }
-        return ApkUpdateAvailability.available(release.getVersionName(), asset.getDownloadUrl(), asset.getName());
+        return ApkUpdateAvailability.available(release.getVersionName(), asset.getDownloadUrl(), asset.getName(),
+            asset.getSize());
     }
 }
