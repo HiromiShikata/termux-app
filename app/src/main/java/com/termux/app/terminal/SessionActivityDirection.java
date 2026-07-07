@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class SessionActivityDirection {
 
@@ -38,6 +39,22 @@ public final class SessionActivityDirection {
 
     public int getActiveBelowCount() {
         return activeBelowCount;
+    }
+
+    @NonNull
+    public static SessionActivityDirection compute(@NonNull List<Integer> orderedSessionIndexes,
+                                                   int currentSessionIndex,
+                                                   @NonNull List<String> sessionNamesByIndex,
+                                                   @NonNull Set<String> callingSessionNames) {
+        return ofCallingSessionSplit(CallingSessionNavigator.split(
+            orderedSessionIndexes, sessionNamesByIndex, callingSessionNames, currentSessionIndex));
+    }
+
+    @NonNull
+    public static SessionActivityDirection ofCallingSessionSplit(@NonNull CallingSessionSplit split) {
+        SessionNewActivityTier tier = split.getTotalCount() > 0
+            ? SessionNewActivityTier.RED : SessionNewActivityTier.NONE;
+        return new SessionActivityDirection(tier, split.getAboveCount(), split.getBelowCount());
     }
 
     @NonNull

@@ -471,9 +471,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     public List<Integer> getNavigationCandidateSessionIndexes() {
-        return NotifiedSessionNavigationCandidates.restrictToActiveTier(
-            getNavigableSessionIndexes(), getSessionTiersByIndex(),
-            indexOfSession(mActivity.getCurrentSession()));
+        return NotifiedSessionNavigationCandidates.restrictToCallingSessions(
+            getOrderedSessionIndexes(), getNavigableSessionIndexes(), sessionNamesByIndex(),
+            getPendingCallToUserSessionNames(), indexOfSession(mActivity.getCurrentSession()));
     }
 
     @NonNull
