@@ -49,19 +49,21 @@ public class TermuxBrowserControllerPullToRefreshWiringTest {
     }
 
     @Test
-    public void configureWebViewGatesArmingByScrollPositionUsingTheReliableCanScrollVerticallyCheck()
+    public void configureWebViewGatesArmingOnTheAuthoritativeTrackedScrollPosition()
             throws IOException {
         String configureBody = methodBody(readControllerSource(), "private void configureWebView()");
 
         Assert.assertTrue(configureBody.contains("setOnChildScrollUpCallback"));
         Assert.assertTrue(configureBody.contains(
-            "BrowserPullToRefreshGate.canWebViewScrollUp(displayedWebView)"));
+            "!mScrollTracker.isAtTop(currentWebView())"));
     }
 
     @Test
-    public void configureWebViewDoesNotGateOnTheUnreliableScrollYPosition() throws IOException {
+    public void configureWebViewDoesNotGateOnTheUnreliableCanScrollVerticallySignal()
+            throws IOException {
         String configureBody = methodBody(readControllerSource(), "private void configureWebView()");
 
-        Assert.assertFalse(configureBody.contains("getScrollY"));
+        Assert.assertFalse(configureBody.contains("canScrollVertically"));
+        Assert.assertFalse(configureBody.contains("canWebViewScrollUp"));
     }
 }

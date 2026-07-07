@@ -24,10 +24,13 @@ import org.junit.runner.RunWith;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class BrowserVerticalScrollInstrumentedTest {
+
+    private static final int SCROLL_UP_DIRECTION = -1;
 
     private static final int PAGE_LOAD_TIMEOUT_SECONDS = 20;
 
@@ -51,6 +54,8 @@ public class BrowserVerticalScrollInstrumentedTest {
     public static final class HostActivity extends Activity {
         public BrowserPinchAwareSwipeRefreshLayout swipeRefresh;
         public WebView webView;
+        public BrowserWebViewScrollTracker scrollTracker;
+        public final AtomicBoolean refreshTriggered = new AtomicBoolean(false);
 
         @Override
         protected void onCreate(Bundle savedInstanceState) {
@@ -58,10 +63,17 @@ public class BrowserVerticalScrollInstrumentedTest {
             FrameLayout root = new FrameLayout(this);
             swipeRefresh = new BrowserPinchAwareSwipeRefreshLayout(this);
             webView = new WebView(this);
+            scrollTracker = new BrowserWebViewScrollTracker();
             WebSettings settings = webView.getSettings();
             BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, settings.getUserAgentString());
+            scrollTracker.attach(webView);
+            swipeRefresh.setEnabled(true);
+            swipeRefresh.setOnRefreshListener(() -> {
+                refreshTriggered.set(true);
+                swipeRefresh.setRefreshing(false);
+            });
             swipeRefresh.setOnChildScrollUpCallback((parent, child) ->
-                BrowserPullToRefreshGate.canWebViewScrollUp(webView));
+                !scrollTracker.isAtTop(webView));
             swipeRefresh.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             root.addView(swipeRefresh, new FrameLayout.LayoutParams(
@@ -76,6 +88,9 @@ public class BrowserVerticalScrollInstrumentedTest {
         AtomicReference<HostActivity> ref = new AtomicReference<>();
         scenario.onActivity(ref::set);
         HostActivity activity = ref.get();
+
+        assertTrue("browser pull-to-refresh must remain enabled so a deliberate pull at the top refreshes",
+            swipeRefreshEnabled(activity));
 
         loadTallPage(activity);
         awaitScrollableFromTop(activity);
@@ -94,6 +109,9 @@ public class BrowserVerticalScrollInstrumentedTest {
             () -> canScrollUp(activity));
         assertTrue("vertical drag must scroll the tall page down so it can scroll back up (scrollY="
                 + scrollY(activity) + ")", canScrollUp(activity));
+
+        assertFalse("a downward drag while scrolled must scroll the WebView, not trigger refresh",
+            activity.refreshTriggered.get());
 
         dragUntil(device, activity,
             centerX, highY, centerX, lowY,
@@ -138,6 +156,11 @@ public class BrowserVerticalScrollInstrumentedTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             activity.webView.setWebViewClient(new WebViewClient() {
                 @Override
+                public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                    activity.scrollTracker.resetToTop(view);
+                }
+
+                @Override
                 public void onPageFinished(WebView view, String url) {
                     pageFinished.countDown();
                 }
@@ -162,7 +185,7 @@ public class BrowserVerticalScrollInstrumentedTest {
     private boolean canScrollUp(HostActivity activity) {
         AtomicReference<Boolean> value = new AtomicReference<>(false);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
-            value.set(activity.webView.canScrollVertically(BrowserPullToRefreshGate.SCROLL_UP_DIRECTION)));
+            value.set(activity.webView.canScrollVertically(SCROLL_UP_DIRECTION)));
         return value.get();
     }
 
@@ -170,6 +193,13 @@ public class BrowserVerticalScrollInstrumentedTest {
         AtomicReference<Boolean> value = new AtomicReference<>(false);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
             value.set(activity.webView.canScrollVertically(1)));
+        return value.get();
+    }
+
+    private boolean swipeRefreshEnabled(HostActivity activity) {
+        AtomicReference<Boolean> value = new AtomicReference<>(false);
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
+            value.set(activity.swipeRefresh.isEnabled()));
         return value.get();
     }
 

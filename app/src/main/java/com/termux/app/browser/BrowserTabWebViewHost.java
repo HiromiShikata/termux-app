@@ -23,9 +23,16 @@ public final class BrowserTabWebViewHost {
         WebView createWebViewForTab(@NonNull BrowserTab tab);
     }
 
+    public interface WebViewDestroyListener {
+        void onWebViewDestroyed(@NonNull WebView webView);
+    }
+
     private final FrameLayout mContainer;
 
     private final WebViewFactory mWebViewFactory;
+
+    @Nullable
+    private WebViewDestroyListener mWebViewDestroyListener;
 
     private final int mLiveWebViewWindowSize;
 
@@ -188,8 +195,16 @@ public final class BrowserTabWebViewHost {
         webView.destroy();
     }
 
+    public void setWebViewDestroyListener(@Nullable WebViewDestroyListener listener) {
+        mWebViewDestroyListener = listener;
+    }
+
     private boolean markDestroyedIfLive(@NonNull WebView webView) {
-        return mDestroyedWebViews.add(webView);
+        boolean newlyDestroyed = mDestroyedWebViews.add(webView);
+        if (newlyDestroyed && mWebViewDestroyListener != null) {
+            mWebViewDestroyListener.onWebViewDestroyed(webView);
+        }
+        return newlyDestroyed;
     }
 
     public boolean isWebViewDestroyed(@NonNull WebView webView) {
