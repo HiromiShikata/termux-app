@@ -1578,23 +1578,23 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
         View dialogView = LayoutInflater.from(mActivity).inflate(R.layout.dialog_browser_new_tab, null);
         EditText urlInput = dialogView.findViewById(R.id.browser_new_tab_url_input);
-        ListView listView = dialogView.findViewById(R.id.browser_new_tab_suggestion_list);
+        ListView listView = dialogView.findViewById(R.id.browser_new_tab_entry_list);
 
         List<BrowserBookmark> allBookmarks = loadBookmarks().getBookmarks();
         List<BrowserTabHistoryEntry> allHistoryEntries = mTabHistory.getEntries();
         List<BrowserNewTabEntry> visibleEntries =
             BrowserNewTabList.combined("", allBookmarks, allHistoryEntries);
         ArrayAdapter<BrowserNewTabEntry> adapter = new ArrayAdapter<BrowserNewTabEntry>(
-            mActivity, R.layout.item_browser_new_tab_suggestion, R.id.browser_new_tab_suggestion_title, visibleEntries) {
+            mActivity, R.layout.item_browser_new_tab_entry, R.id.browser_new_tab_entry_title, visibleEntries) {
             @NonNull
             @Override
             public View getView(int position, View convertView, @NonNull ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 BrowserNewTabEntry entry = getItem(position);
                 if (entry != null) {
-                    ((TextView) view.findViewById(R.id.browser_new_tab_suggestion_title)).setText(entry.getTitle());
-                    ((TextView) view.findViewById(R.id.browser_new_tab_suggestion_url)).setText(entry.getUrl());
-                    view.findViewById(R.id.browser_new_tab_suggestion_bookmark_badge)
+                    ((TextView) view.findViewById(R.id.browser_new_tab_entry_title)).setText(entry.getTitle());
+                    ((TextView) view.findViewById(R.id.browser_new_tab_entry_url)).setText(entry.getUrl());
+                    view.findViewById(R.id.browser_new_tab_entry_bookmark_badge)
                         .setVisibility(entry.isBookmark() ? View.VISIBLE : View.GONE);
                 }
                 return view;

@@ -15,7 +15,7 @@
         android:singleLine="true" />
 
     <ListView
-        android:id="@+id/browser_new_tab_suggestion_list"
+        android:id="@+id/browser_new_tab_entry_list"
         android:layout_width="match_parent"
         android:layout_height="240dp"
         android:layout_marginHorizontal="16dp"
