@@ -99,6 +99,41 @@ public class BrowserTabManagerTest {
     }
 
     @Test
+    public void insertTabPlacesTabAtRequestedIndexAndActivatesIt() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://a.example/0");
+        manager.addTab(SESSION_A, "https://a.example/1");
+        manager.addTab(SESSION_A, "https://a.example/2");
+
+        BrowserTab inserted = manager.insertTab(SESSION_A, "https://a.example/reopened", 1);
+
+        Assert.assertSame(inserted, manager.getTabs(SESSION_A).get(1));
+        Assert.assertSame(inserted, manager.getActiveTab(SESSION_A));
+        Assert.assertEquals(4, manager.getTabs(SESSION_A).size());
+    }
+
+    @Test
+    public void insertTabWithIndexBeyondSizeAppendsAtEnd() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://a.example/0");
+
+        BrowserTab inserted = manager.insertTab(SESSION_A, "https://a.example/reopened", 9);
+
+        Assert.assertSame(inserted, manager.getTabs(SESSION_A).get(1));
+        Assert.assertEquals(2, manager.getTabs(SESSION_A).size());
+    }
+
+    @Test
+    public void insertTabWithNegativeIndexPlacesTabAtStart() {
+        BrowserTabManager manager = new BrowserTabManager();
+        manager.addTab(SESSION_A, "https://a.example/0");
+
+        BrowserTab inserted = manager.insertTab(SESSION_A, "https://a.example/reopened", -1);
+
+        Assert.assertSame(inserted, manager.getTabs(SESSION_A).get(0));
+    }
+
+    @Test
     public void manyTabsCanBeOpenedWithoutCap() {
         BrowserTabManager manager = new BrowserTabManager();
         int tabCount = 100;

@@ -118,4 +118,15 @@
             android:textSize="11sp"
             android:text="@string/action_browser_open_in_chrome" />
     </LinearLayout>
+
+    <Button
+        android:id="@+id/browser_edit_url_reopen_closed_tab"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minWidth="0dp"
+        android:paddingLeft="4dp"
+        android:paddingRight="4dp"
+        android:textSize="11sp"
+        android:text="@string/action_browser_reopen_closed_tab" />
 </LinearLayout>

@@ -49,6 +49,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
@@ -97,6 +98,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final long TAB_HISTORY_PERSIST_DEBOUNCE_MS = 750L;
 
+    private static final int TAB_CLOSED_UNDO_SNACKBAR_DURATION_MS = 5000;
+
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
     private static final int HEADER_SECONDARY_TEXT_ALPHA = 0xB3;
@@ -104,6 +107,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final TermuxActivity mActivity;
 
     private final BrowserTabManager mTabManager = new BrowserTabManager();
+
+    private final BrowserRecentlyClosedTabs mRecentlyClosedTabs = new BrowserRecentlyClosedTabs();
 
     private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
 
@@ -291,6 +296,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @Override
             public void showBookmarksList() {
                 TermuxBrowserController.this.showBookmarksList();
+            }
+
+            @Override
+            public boolean hasRecentlyClosedTab() {
+                return TermuxBrowserController.this.hasRecentlyClosedTab();
+            }
+
+            @Override
+            public void reopenLastClosedTab() {
+                TermuxBrowserController.this.reopenLastClosedTab();
             }
         });
         configureWebView();
@@ -1350,6 +1365,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             blankFrame();
         mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
+        mRecentlyClosedTabs.removeSession(session.mHandle);
         if (BrowserSessionRemovalVisibilityRetention.shouldClearBrowserOpenSessionName(reason)) {
             mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
         } else {
@@ -1505,6 +1521,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void closeTab(@NonNull BrowserTab tab) {
+        rememberClosedTab(tab);
         mTabManager.removeTab(tab);
         mWebViewHost.removeTab(tab);
         if (mRenderedFrame.isDisplaying(tab)) blankFrame();
@@ -1519,6 +1536,41 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             updateDesktopModeToggleState();
         }
         persistSessionTabs();
+        showTabClosedUndoSnackbar();
+    }
+
+    private void rememberClosedTab(@NonNull BrowserTab tab) {
+        String sessionHandle = tab.getSessionHandle();
+        int listIndex = mTabManager.getTabs(sessionHandle).indexOf(tab);
+        mRecentlyClosedTabs.push(new BrowserClosedTab(
+            sessionHandle, tab.getUrl(), tab.getTitle(), tab.isDesktopMode(), listIndex));
+    }
+
+    private void showTabClosedUndoSnackbar() {
+        View snackbarRoot = mActivity.findViewById(android.R.id.content);
+        if (snackbarRoot == null) return;
+        Snackbar snackbar = Snackbar.make(
+            snackbarRoot,
+            mActivity.getString(R.string.msg_browser_tab_closed),
+            TAB_CLOSED_UNDO_SNACKBAR_DURATION_MS);
+        snackbar.setAction(
+            mActivity.getString(R.string.action_browser_reopen_closed_tab_undo),
+            view -> reopenLastClosedTab());
+        snackbar.show();
+    }
+
+    public boolean hasRecentlyClosedTab() {
+        return !mRecentlyClosedTabs.isEmpty();
+    }
+
+    public void reopenLastClosedTab() {
+        BrowserClosedTab closedTab = mRecentlyClosedTabs.pop();
+        if (closedTab == null) return;
+        BrowserTab tab = mTabManager.insertTab(
+            closedTab.getSessionHandle(), normalizeUrl(closedTab.getUrl()), closedTab.getListIndex());
+        tab.setTitle(closedTab.getTitle());
+        tab.setDesktopMode(closedTab.isDesktopMode());
+        openTab(tab);
     }
 
     public boolean openUrlInNewTab(@NonNull String url) {
