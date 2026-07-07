@@ -45,6 +45,18 @@
                         android:orientation="vertical"
                         android:visibility="gone">
 
+                        <androidx.coordinatorlayout.widget.CoordinatorLayout
+                            android:id="@+id/browser_content_coordinator"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent">
+
+                        <LinearLayout
+                            android:id="@+id/browser_content_inner"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:orientation="vertical">
+
                         <com.google.android.material.textview.MaterialTextView
                             android:id="@+id/browser_page_title_url_header"
                             android:layout_width="match_parent"
@@ -204,6 +216,8 @@
                                     android:visibility="gone" />
                             </LinearLayout>
                         </LinearLayout>
+                        </LinearLayout>
+                        </androidx.coordinatorlayout.widget.CoordinatorLayout>
                     </LinearLayout>
 
                     <LinearLayout

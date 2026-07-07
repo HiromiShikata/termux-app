@@ -56,4 +56,40 @@ public class BrowserTabHistoryEntryTest {
         Assert.assertNotEquals(base,
             new BrowserTabHistoryEntry("https://example.com/page", "Title", "other"));
     }
+
+    @Test
+    public void closedAtMillisDefaultsToNull() {
+        BrowserTabHistoryEntry entry = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body");
+        Assert.assertNull(entry.getClosedAtMillis());
+    }
+
+    @Test
+    public void withClosedAtMillisSetsCloseTimeAndKeepsOtherFields() {
+        BrowserTabHistoryEntry entry = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body").withClosedAtMillis(1234L);
+        Assert.assertEquals("https://example.com/page", entry.getUrl());
+        Assert.assertEquals("Title", entry.getTitle());
+        Assert.assertEquals("body", entry.getBodySnippet());
+        Assert.assertEquals(Long.valueOf(1234L), entry.getClosedAtMillis());
+    }
+
+    @Test
+    public void entriesDifferingOnlyInCloseTimeAreNotEqual() {
+        BrowserTabHistoryEntry open = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body", null);
+        BrowserTabHistoryEntry closed = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body", 1000L);
+        Assert.assertNotEquals(open, closed);
+    }
+
+    @Test
+    public void entriesWithSameCloseTimeAreEqual() {
+        BrowserTabHistoryEntry first = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body", 1000L);
+        BrowserTabHistoryEntry second = new BrowserTabHistoryEntry(
+            "https://example.com/page", "Title", "body", 1000L);
+        Assert.assertEquals(first, second);
+        Assert.assertEquals(first.hashCode(), second.hashCode());
+    }
 }

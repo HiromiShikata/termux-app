@@ -3,6 +3,7 @@ package com.termux.app.browser;
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -26,12 +27,22 @@ public final class BrowserNewTabList {
                 combined.add(new BrowserNewTabEntry(bookmark.getUrl(), bookmark.getTitle(), true));
             }
         }
-        for (BrowserTabHistoryEntry entry : historyEntries) {
+        for (BrowserTabHistoryEntry entry : sortedByCloseOrder(historyEntries)) {
             if (seenUrls.add(entry.getUrl()) && matches(normalizedQuery, entry.getTitle(), entry.getUrl())) {
                 combined.add(new BrowserNewTabEntry(entry.getUrl(), entry.getTitle(), false));
             }
         }
         return combined;
+    }
+
+    @NonNull
+    private static List<BrowserTabHistoryEntry> sortedByCloseOrder(
+        @NonNull List<BrowserTabHistoryEntry> historyEntries) {
+        List<BrowserTabHistoryEntry> sorted = new ArrayList<>(historyEntries);
+        sorted.sort(Comparator.comparing(
+            BrowserTabHistoryEntry::getClosedAtMillis,
+            Comparator.nullsLast(Comparator.reverseOrder())));
+        return sorted;
     }
 
     private static boolean matches(@NonNull String normalizedQuery, @NonNull String title, @NonNull String url) {

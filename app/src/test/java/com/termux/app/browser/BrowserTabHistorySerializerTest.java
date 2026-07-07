@@ -92,4 +92,46 @@ public class BrowserTabHistorySerializerTest {
     public void serializeEmptyHistoryProducesEmptyJsonArray() throws JSONException {
         Assert.assertEquals("[]", mSerializer.serialize(new BrowserTabHistory()));
     }
+
+    @Test
+    public void roundTripPreservesCloseTimestamp() throws JSONException {
+        BrowserTabHistory original = new BrowserTabHistory()
+            .recordClosed("https://example.com/closed", "Closed", 1717000000000L);
+
+        String serialized = mSerializer.serialize(original);
+        BrowserTabHistory restored = mSerializer.deserialize(serialized, BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+
+        Assert.assertEquals(Long.valueOf(1717000000000L),
+            restored.getEntries().get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void roundTripPreservesZeroCloseTimestampAsPresentNotAbsent() throws JSONException {
+        BrowserTabHistory original = new BrowserTabHistory()
+            .recordClosed("https://example.com/zero", "Zero", 0L);
+
+        String serialized = mSerializer.serialize(original);
+        BrowserTabHistory restored = mSerializer.deserialize(serialized, BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+
+        Assert.assertEquals(Long.valueOf(0L), restored.getEntries().get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void deserializeMissingCloseTimestampYieldsNull() throws JSONException {
+        String serialized = "[{\"url\":\"https://example.com/legacy\",\"title\":\"Legacy\"}]";
+
+        BrowserTabHistory restored = mSerializer.deserialize(serialized, BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+
+        Assert.assertNull(restored.getEntries().get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void serializeOmitsCloseTimestampKeyForStillOpenEntries() throws JSONException {
+        BrowserTabHistory original = new BrowserTabHistory()
+            .recorded("https://example.com/open", "Open");
+
+        String serialized = mSerializer.serialize(original);
+
+        Assert.assertFalse(serialized.contains("closedAtMillis"));
+    }
 }
