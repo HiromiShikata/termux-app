@@ -15,6 +15,7 @@ public final class BrowserTabHistorySerializer {
     private static final String KEY_URL = "url";
     private static final String KEY_TITLE = "title";
     private static final String KEY_BODY_SNIPPET = "bodySnippet";
+    private static final String KEY_CLOSED_AT_MILLIS = "closedAtMillis";
 
     @NonNull
     public String serialize(@NonNull BrowserTabHistory history) throws JSONException {
@@ -25,6 +26,9 @@ public final class BrowserTabHistorySerializer {
             entryObject.put(KEY_TITLE, entry.getTitle());
             if (!entry.getBodySnippet().isEmpty()) {
                 entryObject.put(KEY_BODY_SNIPPET, entry.getBodySnippet());
+            }
+            if (entry.getClosedAtMillis() != null) {
+                entryObject.put(KEY_CLOSED_AT_MILLIS, entry.getClosedAtMillis().longValue());
             }
             entriesArray.put(entryObject);
         }
@@ -43,7 +47,10 @@ public final class BrowserTabHistorySerializer {
             if (url.isEmpty()) continue;
             String title = entryObject.optString(KEY_TITLE, url);
             String bodySnippet = entryObject.optString(KEY_BODY_SNIPPET, "");
-            entries.add(new BrowserTabHistoryEntry(url, title, bodySnippet));
+            Long closedAtMillis = entryObject.has(KEY_CLOSED_AT_MILLIS)
+                ? entryObject.getLong(KEY_CLOSED_AT_MILLIS)
+                : null;
+            entries.add(new BrowserTabHistoryEntry(url, title, bodySnippet, closedAtMillis));
         }
         return new BrowserTabHistory(entries, maxEntries);
     }

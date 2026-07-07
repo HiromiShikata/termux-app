@@ -364,4 +364,87 @@ public class BrowserTabHistoryTest {
 
         Assert.assertFalse(rerecorded.hasSameEntriesAs(history));
     }
+
+    @Test
+    public void recordClosedSetsCloseTimeOnExistingEntry() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha");
+
+        BrowserTabHistory closed = history.recordClosed("https://example.com/a", "Alpha", 4242L);
+
+        List<BrowserTabHistoryEntry> entries = closed.getEntries();
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals(Long.valueOf(4242L), entries.get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void recordClosedUpdatesCloseTimeOnAlreadyClosedEntry() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha")
+            .recordClosed("https://example.com/a", "Alpha", 1000L);
+
+        BrowserTabHistory reclosed = history.recordClosed("https://example.com/a", "Alpha", 5000L);
+
+        Assert.assertEquals(Long.valueOf(5000L), reclosed.getEntries().get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void recordClosedAddsEntryWhenUrlIsAbsent() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recordClosed("https://example.com/new", "New", 7000L);
+
+        List<BrowserTabHistoryEntry> entries = history.getEntries();
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals("https://example.com/new", entries.get(0).getUrl());
+        Assert.assertEquals("New", entries.get(0).getTitle());
+        Assert.assertEquals(Long.valueOf(7000L), entries.get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void recordClosedMatchesByDeduplicationKeyIgnoringTrailingSlash() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/page/", "Page");
+
+        BrowserTabHistory closed = history.recordClosed("https://example.com/page", "Page", 999L);
+
+        List<BrowserTabHistoryEntry> entries = closed.getEntries();
+        Assert.assertEquals(1, entries.size());
+        Assert.assertEquals(Long.valueOf(999L), entries.get(0).getClosedAtMillis());
+    }
+
+    @Test
+    public void recordClosedPreservesOtherEntriesUnchanged() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha")
+            .recorded("https://example.com/b", "Beta");
+
+        BrowserTabHistory closed = history.recordClosed("https://example.com/b", "Beta", 1234L);
+
+        List<BrowserTabHistoryEntry> entries = closed.getEntries();
+        Assert.assertEquals(2, entries.size());
+        Assert.assertEquals("https://example.com/b", entries.get(0).getUrl());
+        Assert.assertEquals(Long.valueOf(1234L), entries.get(0).getClosedAtMillis());
+        Assert.assertEquals("https://example.com/a", entries.get(1).getUrl());
+        Assert.assertNull(entries.get(1).getClosedAtMillis());
+    }
+
+    @Test
+    public void recordClosedProducesDifferentEntriesThanOpenHistory() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha");
+
+        BrowserTabHistory closed = history.recordClosed("https://example.com/a", "Alpha", 100L);
+
+        Assert.assertFalse(closed.hasSameEntriesAs(history));
+    }
+
+    @Test
+    public void recordClosedIgnoresEmptyUrl() {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/a", "Alpha");
+
+        BrowserTabHistory closed = history.recordClosed("", "Nothing", 100L);
+
+        Assert.assertTrue(closed.hasSameEntriesAs(history));
+    }
 }

@@ -60,6 +60,28 @@ public final class BrowserTabHistory {
     }
 
     @NonNull
+    public BrowserTabHistory recordClosed(@NonNull String url, @NonNull String title, long closedAtMillis) {
+        if (url.isEmpty()) return this;
+        String canonicalUrl = canonicalizeUrl(url);
+        String key = deduplicationKey(canonicalUrl);
+        List<BrowserTabHistoryEntry> updated = new ArrayList<>();
+        boolean matched = false;
+        for (BrowserTabHistoryEntry entry : mEntries) {
+            if (deduplicationKey(entry.getUrl()).equals(key)) {
+                updated.add(entry.withClosedAtMillis(closedAtMillis));
+                matched = true;
+            } else {
+                updated.add(entry);
+            }
+        }
+        if (!matched) {
+            String preferredTitle = title.isEmpty() ? canonicalUrl : title;
+            updated.add(0, new BrowserTabHistoryEntry(canonicalUrl, preferredTitle, "", closedAtMillis));
+        }
+        return new BrowserTabHistory(updated, mMaxEntries);
+    }
+
+    @NonNull
     public List<BrowserTabHistoryEntry> filtered(@NonNull String query) {
         List<String> tokens = tokenize(query);
         List<BrowserTabHistoryEntry> matches = new ArrayList<>();

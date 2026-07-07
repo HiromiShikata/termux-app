@@ -1546,6 +1546,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void closeTab(@NonNull BrowserTab tab) {
         rememberClosedTab(tab);
+        recordTabClosedInHistory(tab);
         mTabManager.removeTab(tab);
         mWebViewHost.removeTab(tab);
         if (mRenderedFrame.isDisplaying(tab)) blankFrame();
@@ -1571,7 +1572,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void showTabClosedUndoSnackbar() {
-        View snackbarRoot = mActivity.findViewById(android.R.id.content);
+        View snackbarRoot = mActivity.findViewById(R.id.browser_content_coordinator);
+        if (snackbarRoot == null) snackbarRoot = mActivity.findViewById(android.R.id.content);
         if (snackbarRoot == null) return;
         Snackbar snackbar = Snackbar.make(
             snackbarRoot,
@@ -1790,6 +1792,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void recordTabInHistory(@NonNull BrowserTab tab) {
         BrowserTabHistory updated = mTabHistory.recorded(tab.getUrl(), tab.getTitle());
+        if (updated.hasSameEntriesAs(mTabHistory)) return;
+        mTabHistory = updated;
+        persistTabHistory();
+    }
+
+    private void recordTabClosedInHistory(@NonNull BrowserTab tab) {
+        if (tab.getUrl().isEmpty()) return;
+        BrowserTabHistory updated = mTabHistory.recordClosed(
+            tab.getUrl(), tab.getTitle(), System.currentTimeMillis());
         if (updated.hasSameEntriesAs(mTabHistory)) return;
         mTabHistory = updated;
         persistTabHistory();

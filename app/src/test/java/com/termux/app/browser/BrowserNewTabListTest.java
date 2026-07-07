@@ -161,6 +161,55 @@ public class BrowserNewTabListTest {
     }
 
     @Test
+    public void historyIsSortedByCloseTimeDescendingWithStillOpenTabsLast() {
+        List<BrowserTabHistoryEntry> history = Arrays.asList(
+            new BrowserTabHistoryEntry("https://still-open.example.com/", "Still open", "", null),
+            new BrowserTabHistoryEntry("https://closed-early.example.com/", "Closed early", "", 1000L),
+            new BrowserTabHistoryEntry("https://closed-late.example.com/", "Closed late", "", 3000L),
+            new BrowserTabHistoryEntry("https://closed-mid.example.com/", "Closed mid", "", 2000L));
+
+        List<BrowserNewTabEntry> combined =
+            BrowserNewTabList.combined("", new ArrayList<>(), history);
+
+        Assert.assertEquals(4, combined.size());
+        Assert.assertEquals("https://closed-late.example.com/", combined.get(0).getUrl());
+        Assert.assertEquals("https://closed-mid.example.com/", combined.get(1).getUrl());
+        Assert.assertEquals("https://closed-early.example.com/", combined.get(2).getUrl());
+        Assert.assertEquals("https://still-open.example.com/", combined.get(3).getUrl());
+    }
+
+    @Test
+    public void stillOpenTabsAppearAfterBookmarksAndClosedHistory() {
+        List<BrowserBookmark> bookmarks = Collections.singletonList(
+            new BrowserBookmark("https://bookmark.example.com/", "Bookmark"));
+        List<BrowserTabHistoryEntry> history = Arrays.asList(
+            new BrowserTabHistoryEntry("https://open.example.com/", "Open", "", null),
+            new BrowserTabHistoryEntry("https://closed.example.com/", "Closed", "", 5000L));
+
+        List<BrowserNewTabEntry> combined =
+            BrowserNewTabList.combined("", bookmarks, history);
+
+        Assert.assertEquals(3, combined.size());
+        Assert.assertEquals("https://bookmark.example.com/", combined.get(0).getUrl());
+        Assert.assertTrue(combined.get(0).isBookmark());
+        Assert.assertEquals("https://closed.example.com/", combined.get(1).getUrl());
+        Assert.assertEquals("https://open.example.com/", combined.get(2).getUrl());
+    }
+
+    @Test
+    public void entriesWithEqualCloseTimePreserveInputOrder() {
+        List<BrowserTabHistoryEntry> history = Arrays.asList(
+            new BrowserTabHistoryEntry("https://first.example.com/", "First", "", 1000L),
+            new BrowserTabHistoryEntry("https://second.example.com/", "Second", "", 1000L));
+
+        List<BrowserNewTabEntry> combined =
+            BrowserNewTabList.combined("", new ArrayList<>(), history);
+
+        Assert.assertEquals("https://first.example.com/", combined.get(0).getUrl());
+        Assert.assertEquals("https://second.example.com/", combined.get(1).getUrl());
+    }
+
+    @Test
     public void duplicateBookmarkUrlsAreCollapsedPreservingFirst() {
         List<BrowserBookmark> bookmarks = Arrays.asList(
             new BrowserBookmark("https://dup.example.com/", "First"),
