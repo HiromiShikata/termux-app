@@ -66,6 +66,7 @@
     <string name="action_open_session_sheet">Session list sheet</string>
     <string name="action_switch_to_previous_session">Switch to previous session</string>
     <string name="action_switch_to_next_session">Switch to next session</string>
+    <string name="action_jump_to_calling_session">Jump to topmost calling session</string>
     <string name="action_send_input_to_terminal">Send</string>
     <string name="title_session_list_bottom_sheet">Sessions</string>
 

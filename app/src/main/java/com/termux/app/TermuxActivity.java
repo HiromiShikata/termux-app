@@ -68,6 +68,7 @@ import com.termux.app.terminal.ProjectActionToken;
 import com.termux.app.terminal.ProjectActionTokenParser;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionListBottomSheetController;
+import com.termux.app.terminal.CallingSessionNavigator;
 import com.termux.app.terminal.SessionActivityDirection;
 import com.termux.app.terminal.SessionNewActivityTier;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
@@ -196,6 +197,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private TextView mPreviousSessionCountBadge;
 
     private TextView mNextSessionCountBadge;
+
+    private ImageButton mJumpToCallingSessionButton;
+
+    private TextView mJumpToCallingSessionCountBadge;
 
     private final SessionDefinitionRepository mSessionDefinitionRepository =
         new SessionDefinitionRepository();
@@ -1044,10 +1049,28 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mNextSessionButton = findViewById(R.id.terminal_toolbar_next_session_button);
         mPreviousSessionCountBadge = findViewById(R.id.terminal_toolbar_previous_session_count_badge);
         mNextSessionCountBadge = findViewById(R.id.terminal_toolbar_next_session_count_badge);
+        mJumpToCallingSessionButton = findViewById(R.id.terminal_toolbar_jump_to_calling_session_button);
+        mJumpToCallingSessionCountBadge =
+            findViewById(R.id.terminal_toolbar_jump_to_calling_session_count_badge);
         SessionNavigationButtonsBinder.bind(
             mPreviousSessionButton,
             mNextSessionButton,
             forward -> getSessionSwitchPickerController().onVolumeKeyDirection(forward));
+        mJumpToCallingSessionButton.setOnClickListener(v -> jumpToTopmostCallingSession());
+    }
+
+    private void jumpToTopmostCallingSession() {
+        if (mTermuxSessionListViewController == null) {
+            return;
+        }
+        int topmostCallingSessionIndex = CallingSessionNavigator.topmostCallingSessionIndex(
+            mTermuxSessionListViewController.getOrderedSessionIndexes(),
+            mTermuxSessionListViewController.getSessionNamesByIndex(),
+            mTermuxSessionListViewController.getPendingCallToUserSessionNames());
+        if (topmostCallingSessionIndex < 0) {
+            return;
+        }
+        mTermuxSessionListViewController.switchToSessionAtIndex(topmostCallingSessionIndex);
     }
 
     private void renderSessionNavigationActivityTier() {
@@ -1063,6 +1086,23 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             SessionNavigationButtonsBinder.applyDirectionCountBadges(
                 mPreviousSessionCountBadge, mNextSessionCountBadge, direction);
         }
+        renderJumpToCallingSessionButton(redColor, defaultColor);
+    }
+
+    private void renderJumpToCallingSessionButton(int redColor, int defaultColor) {
+        if (mJumpToCallingSessionButton == null || mJumpToCallingSessionCountBadge == null) {
+            return;
+        }
+        int callingSessionCount = mTermuxSessionListViewController == null
+            ? 0
+            : CallingSessionNavigator.callingSessionCount(
+                mTermuxSessionListViewController.getOrderedSessionIndexes(),
+                mTermuxSessionListViewController.getSessionNamesByIndex(),
+                mTermuxSessionListViewController.getPendingCallToUserSessionNames());
+        mJumpToCallingSessionButton.setColorFilter(
+            callingSessionCount >= 1 ? redColor : defaultColor);
+        SessionNavigationButtonsBinder.applyCallingSessionCountBadge(
+            mJumpToCallingSessionCountBadge, callingSessionCount);
     }
 
     @NonNull
