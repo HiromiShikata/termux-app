@@ -1,6 +1,7 @@
 package com.termux.app.sessiondefinition;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -199,6 +200,56 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
+    public void buildSessionsRefreshesDisplayedEntriesWithNewlyAddedEntryOnAuthoritativeReload() throws Exception {
+        TermuxSession liveSession = session("https://example.test/a");
+        shellManager.mTermuxSessions.add(liveSession);
+        attachCurrentSession(liveSession.getTerminalSession());
+
+        List<SessionDefinitionEntry> initialEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+        adapter.setEntries(initialEntries);
+
+        assertFalse(entryLabels(adapter.getEntries()).contains("storyNew"));
+
+        List<SessionDefinitionEntry> reloadedEntries = Arrays.asList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")),
+            new SessionDefinitionEntry("projectOne", "storyNew",
+                Collections.singletonList("https://example.test/new")));
+
+        SessionDefinitionLoadResult authoritativeResult = new SessionDefinitionLoadResult(
+            reloadedEntries, 1, Collections.emptyList());
+
+        invokeBuildSessions(authoritativeResult);
+
+        assertEquals(Arrays.asList("storyA", "storyNew"), entryLabels(adapter.getEntries()));
+    }
+
+    @Test
+    public void buildSessionsDoesNotRefreshDisplayedEntriesOnPartialReload() throws Exception {
+        TermuxSession liveSession = session("https://example.test/a");
+        shellManager.mTermuxSessions.add(liveSession);
+        attachCurrentSession(liveSession.getTerminalSession());
+
+        List<SessionDefinitionEntry> initialEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://example.test/a")));
+        adapter.setEntries(initialEntries);
+
+        List<SessionDefinitionEntry> partiallyLoadedEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyNew",
+                Collections.singletonList("https://example.test/new")));
+
+        SessionDefinitionLoadResult partialResult = new SessionDefinitionLoadResult(
+            partiallyLoadedEntries, 2, Collections.singletonList("failedGroup"));
+
+        invokeBuildSessions(partialResult);
+
+        assertEquals(Collections.singletonList("storyA"), entryLabels(adapter.getEntries()));
+    }
+
+    @Test
     public void ensureCurrentSessionValidAfterRebuildKeepsAValidCurrentSession() throws Exception {
         TermuxSession adHoc = session("adhoc-local");
         TermuxSession stillDefined = session("https://example.test/a");
@@ -250,6 +301,13 @@ public class SessionDefinitionControllerWashReplaceTest {
         for (TermuxSession termuxSession : service.getTermuxSessions())
             names.add(termuxSession.getTerminalSession().mSessionName);
         return names;
+    }
+
+    private List<String> entryLabels(List<SessionDefinitionEntry> entriesToRead) {
+        List<String> labels = new ArrayList<>();
+        for (SessionDefinitionEntry entry : entriesToRead)
+            labels.add(entry.getEntryLabel());
+        return labels;
     }
 
     private TermuxSession session(String name) throws Exception {

@@ -141,6 +141,10 @@ public final class SessionDefinitionController {
 
         activity.getTermuxTerminalSessionClient()
             .restoreDisplayedSessionAfterReloadIfStillLive(displayedSessionBeforeReload);
+
+        if (authoritativeLoad) {
+            activity.refreshDisplayedSessionDefinitionEntries(entries);
+        }
     }
 
     private Set<String> collectLiveSessionNames() {
