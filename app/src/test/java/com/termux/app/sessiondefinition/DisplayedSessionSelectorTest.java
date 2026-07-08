@@ -128,4 +128,81 @@ public class DisplayedSessionSelectorTest {
         Assert.assertTrue(displayed.contains("https://example.test/current"));
         Assert.assertTrue(displayed.contains("https://example.test/other"));
     }
+
+    @Test
+    public void excludesCollapsedProjectSessionsFromRefreshSet() {
+        Set<String> expandedProjectSessionNames = new LinkedHashSet<>(Arrays.asList(
+            "https://example.test/current", "https://example.test/expanded"));
+
+        Set<String> displayed = selector.selectDisplayedSessionNames(true,
+            "https://example.test/current",
+            Arrays.asList("https://example.test/current",
+                "https://example.test/expanded", "https://example.test/collapsed"),
+            true, Collections.emptySet(), expandedProjectSessionNames);
+
+        Assert.assertFalse(
+            "a session under a collapsed project must not be in the refresh/reconnect set",
+            displayed.contains("https://example.test/collapsed"));
+        Assert.assertTrue(displayed.contains("https://example.test/expanded"));
+        Assert.assertTrue(displayed.contains("https://example.test/current"));
+    }
+
+    @Test
+    public void excludesHiddenSessionsEvenWhenHideFilterIsOffForRefreshSet() {
+        Set<String> hidden = new LinkedHashSet<>(
+            Collections.singletonList("https://example.test/hidden"));
+        Set<String> expandedProjectSessionNames = new LinkedHashSet<>(Arrays.asList(
+            "https://example.test/current", "https://example.test/hidden",
+            "https://example.test/shown"));
+
+        Set<String> displayed = selector.selectDisplayedSessionNames(true,
+            "https://example.test/current",
+            Arrays.asList("https://example.test/current",
+                "https://example.test/hidden", "https://example.test/shown"),
+            true, hidden, expandedProjectSessionNames);
+
+        Assert.assertFalse(
+            "the refresh/reconnect set must always exclude hidden sessions so turning the hide filter "
+                + "off does not pull them into refresh",
+            displayed.contains("https://example.test/hidden"));
+        Assert.assertTrue(displayed.contains("https://example.test/shown"));
+        Assert.assertTrue(displayed.contains("https://example.test/current"));
+    }
+
+    @Test
+    public void includesVisibleExpandedSessionsInRefreshSet() {
+        Set<String> expandedProjectSessionNames = new LinkedHashSet<>(Arrays.asList(
+            "https://example.test/current", "https://example.test/second",
+            "https://example.test/third"));
+
+        Set<String> displayed = selector.selectDisplayedSessionNames(true,
+            "https://example.test/current",
+            Arrays.asList("https://example.test/current",
+                "https://example.test/second", "https://example.test/third"),
+            true, Collections.emptySet(), expandedProjectSessionNames);
+
+        Assert.assertEquals(
+            new LinkedHashSet<>(Arrays.asList("https://example.test/current",
+                "https://example.test/second", "https://example.test/third")),
+            displayed);
+    }
+
+    @Test
+    public void keepsCurrentSessionEvenWhenCollapsedAndHiddenInRefreshSet() {
+        Set<String> hidden = new LinkedHashSet<>(
+            Collections.singletonList("https://example.test/current"));
+        Set<String> expandedProjectSessionNames = new LinkedHashSet<>(
+            Collections.singletonList("https://example.test/other"));
+
+        Set<String> displayed = selector.selectDisplayedSessionNames(true,
+            "https://example.test/current",
+            Arrays.asList("https://example.test/current", "https://example.test/other"),
+            true, hidden, expandedProjectSessionNames);
+
+        Assert.assertTrue(
+            "the current session must always be refreshed even when it is hidden and its project is "
+                + "collapsed",
+            displayed.contains("https://example.test/current"));
+        Assert.assertTrue(displayed.contains("https://example.test/other"));
+    }
 }

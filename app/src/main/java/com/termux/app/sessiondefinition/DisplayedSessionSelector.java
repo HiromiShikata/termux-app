@@ -15,6 +15,17 @@ public final class DisplayedSessionSelector {
                                                    @NonNull Collection<String> allLiveSessionNames,
                                                    boolean hideHiddenSessions,
                                                    @NonNull Set<String> hiddenSessionNames) {
+        return selectDisplayedSessionNames(activityVisible, currentSessionName, allLiveSessionNames,
+            hideHiddenSessions, hiddenSessionNames, null);
+    }
+
+    @NonNull
+    public Set<String> selectDisplayedSessionNames(boolean activityVisible,
+                                                   @Nullable String currentSessionName,
+                                                   @NonNull Collection<String> allLiveSessionNames,
+                                                   boolean hideHiddenSessions,
+                                                   @NonNull Set<String> hiddenSessionNames,
+                                                   @Nullable Set<String> expandedProjectSessionNames) {
         Set<String> displayedSessionNames = new LinkedHashSet<>();
         if (!activityVisible) {
             return displayedSessionNames;
@@ -23,8 +34,15 @@ public final class DisplayedSessionSelector {
             if (sessionName == null) {
                 continue;
             }
-            if (hideHiddenSessions && hiddenSessionNames.contains(sessionName)
-                && !sessionName.equals(currentSessionName)) {
+            if (sessionName.equals(currentSessionName)) {
+                displayedSessionNames.add(sessionName);
+                continue;
+            }
+            if (hideHiddenSessions && hiddenSessionNames.contains(sessionName)) {
+                continue;
+            }
+            if (expandedProjectSessionNames != null
+                && !expandedProjectSessionNames.contains(sessionName)) {
                 continue;
             }
             displayedSessionNames.add(sessionName);

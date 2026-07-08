@@ -487,6 +487,23 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     @NonNull
+    public Set<String> getExpandedProjectSessionNames() {
+        List<SessionHierarchyRow> expandedProjectRows =
+            SessionHierarchyBuilder.filterCollapsedProjectSessions(buildAllRows(), mCollapsedProjectKeys);
+        Set<String> expandedProjectSessionNames = new LinkedHashSet<>();
+        for (SessionHierarchyRow row : expandedProjectRows) {
+            if (row.isHeader()) {
+                continue;
+            }
+            String sessionName = row.getSessionName();
+            if (sessionName != null) {
+                expandedProjectSessionNames.add(sessionName);
+            }
+        }
+        return expandedProjectSessionNames;
+    }
+
+    @NonNull
     public Set<String> getPendingCallToUserSessionNames() {
         return pendingCallToUserSessionNames(sessionNamesByIndex());
     }

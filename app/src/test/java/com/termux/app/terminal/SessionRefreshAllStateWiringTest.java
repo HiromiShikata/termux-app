@@ -162,8 +162,14 @@ public class SessionRefreshAllStateWiringTest {
         String selectorBody = source.substring(selectorIndex, selectorEnd);
         Assert.assertTrue("the displayed set must be computed independently of whether the session-list sheet is open",
             !selectorBody.contains("sessionListOpen") && !selectorBody.contains("getOnScreenSessionNames"));
-        Assert.assertTrue("hidden sessions must stay excluded when the owner is hiding them",
-            selectorBody.contains("shouldHideHiddenSessions()") && selectorBody.contains("getDisabledSessionNames()"));
+        Assert.assertTrue("hidden sessions must stay excluded from the refresh set even when the hide filter is off, "
+                + "so the conditional shouldHideHiddenSessions() gate must be dropped while the hidden-session set "
+                + "is still supplied to the selector",
+            !selectorBody.contains("shouldHideHiddenSessions()") && selectorBody.contains("getDisabledSessionNames()"));
+        Assert.assertTrue("collapsed-project sessions must be excluded by supplying the expanded-project session set",
+            selectorBody.contains("getExpandedProjectSessionNames()"));
+        Assert.assertTrue("the current session must always be kept in the refresh set",
+            selectorBody.contains("activeSessionName()"));
     }
 
     @Test
