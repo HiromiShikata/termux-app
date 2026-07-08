@@ -158,8 +158,8 @@ public class SessionDefinitionConfigActivityTest {
     }
 
     @Test
-    public void maxSessionsDefaultValueIsThirtyTwo() {
-        Assert.assertEquals(32,
+    public void maxSessionsDefaultValueIsSixtyFour() {
+        Assert.assertEquals(64,
             TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
     }
 
@@ -169,7 +169,7 @@ public class SessionDefinitionConfigActivityTest {
             .create().start().resume().get();
         TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
         Assert.assertNotNull(prefs);
-        Assert.assertEquals(32, prefs.getSessionDefinitionMaxSessions());
+        Assert.assertEquals(64, prefs.getSessionDefinitionMaxSessions());
     }
 
     @Test
@@ -222,10 +222,10 @@ public class SessionDefinitionConfigActivityTest {
 
     @Test
     public void parseMaxSessionsHandlesBlankAndInvalidAsDefault() {
-        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions(""));
-        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions("   "));
-        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions("abc"));
-        Assert.assertEquals(32, SessionDefinitionConfigActivity.parseMaxSessions(null));
+        Assert.assertEquals(64, SessionDefinitionConfigActivity.parseMaxSessions(""));
+        Assert.assertEquals(64, SessionDefinitionConfigActivity.parseMaxSessions("   "));
+        Assert.assertEquals(64, SessionDefinitionConfigActivity.parseMaxSessions("abc"));
+        Assert.assertEquals(64, SessionDefinitionConfigActivity.parseMaxSessions(null));
     }
 
     @Test
