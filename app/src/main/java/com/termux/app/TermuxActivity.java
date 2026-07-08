@@ -999,6 +999,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
     }
 
+    public void refreshDisplayedSessionDefinitionEntries(@NonNull List<SessionDefinitionEntry> entries) {
+        if (mTermuxSessionListViewController != null) {
+            mTermuxSessionListViewController.setEntries(entries);
+            applyPendingExpandedProjectsAllowlist();
+        }
+    }
+
     public void promptAndCreateNewSession() {
         TextInputDialogUtils.textInput(TermuxActivity.this,
             R.string.action_new_session, null,
