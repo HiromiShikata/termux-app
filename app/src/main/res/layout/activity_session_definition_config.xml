@@ -45,6 +45,21 @@
         android:inputType="number"
         android:gravity="top" />
 
+    <CheckBox
+        android:id="@+id/session_definition_remove_github_sessions_not_in_list_checkbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/label_session_definition_remove_github_sessions_not_in_list" />
+
+    <TextView
+        android:id="@+id/session_definition_remove_github_sessions_not_in_list_summary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/summary_session_definition_remove_github_sessions_not_in_list"
+        android:textSize="12sp" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/session_definition_config_save_button"
         android:layout_width="match_parent"

@@ -345,6 +345,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public boolean shouldRemoveGithubSessionsNotInList() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST);
+    }
+
+    public void setRemoveGithubSessionsNotInList(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST, value, false);
+    }
+
+
     public String getAlwaysNaSessionNamesText() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_ALWAYS_NA_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES, false);
     }

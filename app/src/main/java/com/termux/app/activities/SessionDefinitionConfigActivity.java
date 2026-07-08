@@ -1,6 +1,7 @@
 package com.termux.app.activities;
 
 import android.os.Bundle;
+import android.widget.CheckBox;
 import android.widget.EditText;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,6 +28,8 @@ public class SessionDefinitionConfigActivity extends AppCompatActivity {
         EditText urlInput = findViewById(R.id.session_definition_url_input);
         EditText reloadIntervalInput = findViewById(R.id.session_definition_reload_interval_input);
         EditText maxSessionsInput = findViewById(R.id.session_definition_max_sessions_input);
+        CheckBox removeGithubSessionsNotInListCheckbox =
+            findViewById(R.id.session_definition_remove_github_sessions_not_in_list_checkbox);
 
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this, true);
         if (preferences == null) {
@@ -37,6 +40,7 @@ public class SessionDefinitionConfigActivity extends AppCompatActivity {
         urlInput.setText(preferences.getSessionDefinitionUrl());
         reloadIntervalInput.setText(String.valueOf(preferences.getSessionDefinitionReloadIntervalMinutes()));
         maxSessionsInput.setText(String.valueOf(preferences.getSessionDefinitionMaxSessions()));
+        removeGithubSessionsNotInListCheckbox.setChecked(preferences.shouldRemoveGithubSessionsNotInList());
 
         findViewById(R.id.session_definition_config_save_button).setOnClickListener(v -> {
             preferences.setSessionDefinitionUrl(urlInput.getText().toString().trim());
@@ -44,6 +48,7 @@ public class SessionDefinitionConfigActivity extends AppCompatActivity {
                 parseReloadIntervalMinutes(reloadIntervalInput.getText().toString()));
             preferences.setSessionDefinitionMaxSessions(
                 parseMaxSessions(maxSessionsInput.getText().toString()));
+            preferences.setRemoveGithubSessionsNotInList(removeGithubSessionsNotInListCheckbox.isChecked());
             finish();
         });
     }

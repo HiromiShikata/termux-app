@@ -239,6 +239,9 @@ public final class TermuxPreferenceConstants {
         public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 64;
         public static final int MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 1;
 
+        public static final String KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST = "session_definition_remove_github_sessions_not_in_list";
+        public static final boolean DEFAULT_VALUE_KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST = true;
+
         public static final String KEY_ALWAYS_NA_SESSION_NAMES = "always_na_session_names";
         public static final String DEFAULT_VALUE_KEY_ALWAYS_NA_SESSION_NAMES = "";
 

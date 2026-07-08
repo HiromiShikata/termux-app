@@ -27,6 +27,8 @@ public final class SessionDefinitionController {
     private final SessionDefinitionPlanner planner;
     private final SessionDefinitionDisappearedSessionPlanner disappearedSessionPlanner =
         new SessionDefinitionDisappearedSessionPlanner();
+    private final GithubDisappearedSessionPlanner githubDisappearedSessionPlanner =
+        new GithubDisappearedSessionPlanner();
     private final DefaultProjectManagerSessionPlanner defaultProjectManagerSessionPlanner =
         new DefaultProjectManagerSessionPlanner();
     private final SessionDefinitionDuplicateSessionPlanner duplicateSessionPlanner =
@@ -109,6 +111,7 @@ public final class SessionDefinitionController {
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 
         if (authoritativeLoad) {
+            pruneHiddenStateForDisappearedGithubSessions(entries);
             removeSessionsWithDisappearedDefinition(entries);
         }
 
@@ -222,14 +225,35 @@ public final class SessionDefinitionController {
         }
         Set<String> protectedSessionNames = new HashSet<>(alwaysPresentSessionNames());
         protectedSessionNames.addAll(defaultProjectManagerSessionPlanner.planSessionNames(currentEntries));
-        List<String> sessionNamesToRemove = disappearedSessionPlanner.planSessionNamesToRemove(
-            currentEntries, protectedSessionNames, liveSessions);
+        List<String> sessionNamesToRemove = new ArrayList<>(disappearedSessionPlanner.planSessionNamesToRemove(
+            currentEntries, protectedSessionNames, liveSessions));
+        sessionNamesToRemove.addAll(githubDisappearedSessionPlanner.planGithubSessionNamesToRemove(
+            currentEntries, protectedSessionNames, new ArrayList<>(sessionByName.keySet()),
+            shouldRemoveGithubSessionsNotInList()));
         for (String sessionName : sessionNamesToRemove) {
             TerminalSession terminalSession = sessionByName.get(sessionName);
             if (terminalSession != null) {
                 activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
             }
         }
+    }
+
+    private void pruneHiddenStateForDisappearedGithubSessions(List<SessionDefinitionEntry> currentEntries) {
+        if (activity.getPreferences() == null) {
+            return;
+        }
+        Set<String> persistedHiddenSessionNames = activity.getPreferences().getDisabledSessionNames();
+        List<String> hiddenSessionNamesToPrune =
+            githubDisappearedSessionPlanner.planGithubHiddenSessionNamesToPrune(
+                currentEntries, persistedHiddenSessionNames);
+        for (String sessionName : hiddenSessionNamesToPrune) {
+            activity.getPreferences().setSessionDisabled(sessionName, false);
+        }
+    }
+
+    private boolean shouldRemoveGithubSessionsNotInList() {
+        return activity.getPreferences() != null
+            && activity.getPreferences().shouldRemoveGithubSessionsNotInList();
     }
 
     private Set<String> alwaysPresentSessionNames() {

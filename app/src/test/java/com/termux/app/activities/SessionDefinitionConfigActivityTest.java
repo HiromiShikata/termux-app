@@ -1,5 +1,6 @@
 package com.termux.app.activities;
 
+import android.widget.CheckBox;
 import android.widget.EditText;
 
 import com.termux.R;
@@ -238,5 +239,68 @@ public class SessionDefinitionConfigActivityTest {
     public void parseMaxSessionsParsesValidNumber() {
         Assert.assertEquals(50, SessionDefinitionConfigActivity.parseMaxSessions("50"));
         Assert.assertEquals(8, SessionDefinitionConfigActivity.parseMaxSessions("  8  "));
+    }
+
+    @Test
+    public void removeGithubSessionsNotInListKeyIsStable() {
+        Assert.assertEquals("session_definition_remove_github_sessions_not_in_list",
+            TermuxPreferenceConstants.TERMUX_APP.KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST);
+    }
+
+    @Test
+    public void removeGithubSessionsNotInListDefaultValueIsTrue() {
+        Assert.assertTrue(
+            TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST);
+    }
+
+    @Test
+    public void removeGithubSessionsNotInListGetReturnsTrueWhenUnset() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        Assert.assertTrue(prefs.shouldRemoveGithubSessionsNotInList());
+    }
+
+    @Test
+    public void removeGithubSessionsNotInListSetThenGetRoundTrips() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        prefs.setRemoveGithubSessionsNotInList(false);
+        Assert.assertFalse(prefs.shouldRemoveGithubSessionsNotInList());
+        prefs.setRemoveGithubSessionsNotInList(true);
+        Assert.assertTrue(prefs.shouldRemoveGithubSessionsNotInList());
+    }
+
+    @Test
+    public void onCreateLoadsStoredRemoveGithubSessionsNotInListIntoCheckbox() {
+        SessionDefinitionConfigActivity setupActivity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(setupActivity, true);
+        Assert.assertNotNull(prefs);
+        prefs.setRemoveGithubSessionsNotInList(false);
+
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+        CheckBox checkbox = activity.findViewById(
+            R.id.session_definition_remove_github_sessions_not_in_list_checkbox);
+        Assert.assertFalse(checkbox.isChecked());
+    }
+
+    @Test
+    public void saveButtonPersistsRemoveGithubSessionsNotInListToPreferences() {
+        SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
+            .create().start().resume().get();
+
+        CheckBox checkbox = activity.findViewById(
+            R.id.session_definition_remove_github_sessions_not_in_list_checkbox);
+        checkbox.setChecked(false);
+        activity.findViewById(R.id.session_definition_config_save_button).performClick();
+
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        Assert.assertNotNull(prefs);
+        Assert.assertFalse(prefs.shouldRemoveGithubSessionsNotInList());
     }
 }

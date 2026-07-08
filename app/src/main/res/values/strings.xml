@@ -146,6 +146,8 @@
     <string name="label_session_definition_reload_interval_minutes">Auto-reload the session list every N minutes while the app is open. Set to 0 to disable.</string>
     <string name="hint_session_definition_max_sessions">Maximum number of sessions</string>
     <string name="label_session_definition_max_sessions">Maximum number of sessions that can be open at once. Sessions beyond this limit are dropped. Default is 64.</string>
+    <string name="label_session_definition_remove_github_sessions_not_in_list">Remove GitHub sessions no longer in the list</string>
+    <string name="summary_session_definition_remove_github_sessions_not_in_list">When on, a live session whose name is a GitHub URL and that is no longer in the session list is disconnected and removed automatically. When off, such sessions are kept. Default is on.</string>
     <string name="action_session_definition_config_save">Save</string>
     <string name="action_load_session_definition">Load Sessions</string>
     <string name="msg_session_definition_url_not_set">Set the session definition URL first.</string>
