@@ -81,8 +81,12 @@ public final class SessionDefinitionRepository {
     }
 
     public void loadForRebuild(@NonNull String baseUrl, @NonNull OnEntriesReadyListener onEntriesReady, @NonNull OnLoadFailedListener onLoadFailed) {
+        loadForRebuild(baseUrl, false, onEntriesReady, onLoadFailed);
+    }
+
+    public void loadForRebuild(@NonNull String baseUrl, boolean forceRefresh, @NonNull OnEntriesReadyListener onEntriesReady, @NonNull OnLoadFailedListener onLoadFailed) {
         Handler mainThreadHandler = new Handler(Looper.getMainLooper());
-        if (loaded) {
+        if (loaded && !forceRefresh) {
             mainThreadHandler.post(() -> onEntriesReady.onEntriesReady(result));
             return;
         }

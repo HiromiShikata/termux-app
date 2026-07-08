@@ -145,4 +145,70 @@ public class SessionDefinitionRepositoryTest {
         assertFalse(repository.isLoaded());
         assertTrue(repository.getCachedEntries().isEmpty());
     }
+
+    @Test
+    public void forceRefreshReFetchesAndPicksUpNewlyAddedEntry() throws Exception {
+        CountingFetcher fetcher = fetcherWithTwoEntries();
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        repository.loadForRebuild(INDEX_URL, (entries) -> {}, (exception) -> {});
+        flushMainLooper();
+        assertEquals(1, fetcher.indexFetchCount.get());
+        assertEquals(2, repository.getCachedEntries().size());
+
+        fetcher.register(INDEX_URL, "{\"projects\":[\"groupOne\",\"groupTwo\",\"groupThree\"]}");
+        fetcher.register("https://example.test/base/groupThree.json",
+            "[{\"story\":\"storyC\",\"urls\":[\"https://example.test/c\"]}]");
+
+        AtomicReference<SessionDefinitionLoadResult> refreshed = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, true, refreshed::set, (exception) -> {});
+        flushMainLooper();
+
+        assertEquals(2, fetcher.indexFetchCount.get());
+        assertEquals(3, refreshed.get().getEntries().size());
+        assertEquals(3, repository.getCachedEntries().size());
+    }
+
+    @Test
+    public void plainRebuildDoesNotReFetchAfterInitialLoad() throws Exception {
+        CountingFetcher fetcher = fetcherWithTwoEntries();
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        repository.loadForRebuild(INDEX_URL, (entries) -> {}, (exception) -> {});
+        flushMainLooper();
+        assertEquals(1, fetcher.indexFetchCount.get());
+
+        fetcher.register(INDEX_URL, "{\"projects\":[\"groupOne\",\"groupTwo\",\"groupThree\"]}");
+        fetcher.register("https://example.test/base/groupThree.json",
+            "[{\"story\":\"storyC\",\"urls\":[\"https://example.test/c\"]}]");
+
+        AtomicReference<SessionDefinitionLoadResult> rebuilt = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, false, rebuilt::set, (exception) -> {});
+        flushMainLooper();
+
+        assertEquals(1, fetcher.indexFetchCount.get());
+        assertEquals(2, rebuilt.get().getEntries().size());
+    }
+
+    @Test
+    public void failedForceRefreshKeepsPriorCachedDocument() throws Exception {
+        CountingFetcher fetcher = fetcherWithTwoEntries();
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        AtomicReference<SessionDefinitionLoadResult> initial = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, initial::set, (exception) -> {});
+        flushMainLooper();
+        List<SessionDefinitionEntry> cachedBeforeFailure = repository.getCachedEntries();
+        assertEquals(2, cachedBeforeFailure.size());
+
+        fetcher.fail = true;
+        AtomicReference<Exception> failure = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, true, (entries) -> {}, failure::set);
+        flushMainLooper();
+
+        assertTrue(failure.get() instanceof IOException);
+        assertTrue(repository.isLoaded());
+        assertSame(cachedBeforeFailure, repository.getCachedEntries());
+        assertEquals(2, repository.getCachedEntries().size());
+    }
 }

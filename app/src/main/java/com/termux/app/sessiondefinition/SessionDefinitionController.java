@@ -45,6 +45,10 @@ public final class SessionDefinitionController {
     }
 
     public void loadAndBuildSessions() {
+        loadAndBuildSessions(false);
+    }
+
+    public void loadAndBuildSessions(boolean forceRefresh) {
         String baseUrl = activity.getPreferences().getSessionDefinitionUrl().trim();
         if (baseUrl.isEmpty()) {
             activity.showToast(activity.getString(R.string.msg_session_definition_url_not_set), true);
@@ -53,7 +57,7 @@ public final class SessionDefinitionController {
 
         setLoadingProgressVisible(true);
 
-        repository.loadForRebuild(baseUrl, result -> {
+        repository.loadForRebuild(baseUrl, forceRefresh, result -> {
             try {
                 notifyPartialLoad(result);
                 buildSessions(result);
