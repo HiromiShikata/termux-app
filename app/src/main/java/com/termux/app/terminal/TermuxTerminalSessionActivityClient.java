@@ -80,6 +80,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -170,6 +171,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * keeps the whole stale backlog draining quickly without a simultaneous resource spike.
      */
     static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
+
+    /**
+     * How many displayed sessions' statuslines are read and reparsed in one main-thread batch of the
+     * on-launch / on-reload displayed-session refresh ({@link
+     * #repopulateStatuslineTimesForDisplayedSessions(boolean)}). The displayed set can be as large as
+     * the session cap, so the transcript reads are chunked into batches of this size, each posted a
+     * further {@link #STAGGERED_RECONNECT_INTERVAL_MILLIS} apart, so a launch or reload with many
+     * displayed sessions never blocks the UI thread reading every transcript at once.
+     */
+    static final int STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE = 4;
 
     /**
      * The staleness threshold used to decide which non-current sessions the background tick reconnects.
@@ -263,6 +274,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mMainThreadHandler.post(this::repopulateStatuslineTimesForAllSessions);
         mMainThreadHandler.postDelayed(this::repopulateStatuslineTimesForAllSessions,
             ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS);
+
+        // The narrow passes above only populate the foreground/on-screen sessions; force a
+        // displayed-session refresh so every displayed row shows current content right after launch
+        // without a manual Send. Re-posted after the on-load delay to capture late-rendering statuslines.
+        repopulateStatuslineTimesForDisplayedSessions(true);
+        mMainThreadHandler.postDelayed(
+            () -> repopulateStatuslineTimesForDisplayedSessions(true), ON_LOAD_STATUSLINE_RESCAN_DELAY_MILLIS);
     }
 
     /**
@@ -459,6 +477,88 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession session = termuxSession.getTerminalSession();
             if (session == null || session.mSessionName == null) continue;
             if (!visibleSessionNames.contains(session.mSessionName)) continue;
+            TerminalEmulator emulator = session.getEmulator();
+            if (emulator == null) continue;
+            TerminalBuffer screen = emulator.getScreen();
+            if (screen == null) continue;
+            long screenContentVersion = emulator.getScreenContentVersion();
+            if (forceRescan) {
+                mAllSessionsStatuslineScanGate.markScanned(session.mHandle, screenContentVersion);
+            } else if (!mAllSessionsStatuslineScanGate.shouldScan(session.mHandle, screenContentVersion,
+                store.hasStoredStatuslineData(session.mSessionName))) {
+                continue;
+            }
+            sessionScreenTexts.add(new AllSessionsStatuslineParser.SessionScreenText(
+                session.mSessionName, statuslineScanText(emulator, screen)));
+        }
+        if (sessionScreenTexts.isEmpty()) {
+            return;
+        }
+        parseAndApplyStatuslineUpdatesOffThread(sessionScreenTexts, nowMillis);
+    }
+
+    /**
+     * Refreshes the displayed content (call/out/reply statusline tier) of every DISPLAYED (visible,
+     * non-hidden) session — the same broad set the fast displayed-session call-scan cycle uses — rather
+     * than only the narrow foreground/on-screen {@link #visibleSessionNames()} set the ordinary rescan
+     * covers. This is the on-launch and on-reload counterpart to the manual per-session refresh the
+     * owner otherwise triggers by switching to each session: it reproduces only the statusline
+     * display-refresh effect (reading and reparsing each session's current screen through the same
+     * {@link SessionNewActivityStore#recordStatuslineTimes} path), and never writes any input to any
+     * session. The displayed set can be as large as the session cap, so the per-session transcript
+     * reads are split into small staggered batches posted to the main-thread {@link Handler} — spaced
+     * by {@link #STAGGERED_RECONNECT_INTERVAL_MILLIS} — so a launch or reload with many displayed
+     * sessions never reads all their transcripts in one main-thread pass and never blocks the UI. Each
+     * batch forces the gate-bypassing rescan through {@link
+     * #repopulateStatuslineTimesForSessionNames(Set, boolean)}, whose heavy transcript materialization
+     * and regex parse still run off the main thread via {@link #parseAndApplyStatuslineUpdatesOffThread}.
+     */
+    private void repopulateStatuslineTimesForDisplayedSessions(boolean forceRescan) {
+        List<String> displayedSessionNames = new ArrayList<>(displayedSessionNames());
+        if (displayedSessionNames.isEmpty()) return;
+        int batchIndex = 0;
+        for (int start = 0; start < displayedSessionNames.size();
+                start += STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE) {
+            int end = Math.min(start + STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, displayedSessionNames.size());
+            Set<String> batchSessionNames =
+                new LinkedHashSet<>(displayedSessionNames.subList(start, end));
+            long batchDelayMillis = batchIndex * STAGGERED_RECONNECT_INTERVAL_MILLIS;
+            if (batchDelayMillis <= 0L) {
+                repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan);
+            } else {
+                mMainThreadHandler.postDelayed(
+                    () -> repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan),
+                    batchDelayMillis);
+            }
+            batchIndex++;
+        }
+    }
+
+    /**
+     * The shared body of {@link #repopulateStatuslineTimesForAllSessions(boolean)} and the per-batch
+     * {@link #repopulateStatuslineTimesForDisplayedSessions(boolean)} pass. When {@code forceRescan} is
+     * set it bypasses the {@link AllSessionsStatuslineScanGate} content-version skip so every named
+     * session's statusline is read and reparsed even when its screen is unchanged (still recording the
+     * scanned version on the gate); otherwise it keeps the gate so an idle unchanged session is skipped.
+     * A session whose store entry was never populated keeps an unchanged screen content version and
+     * would otherwise be skipped forever and stay on the uncolored tier, which is why the on-launch and
+     * on-reload paths force the rescan. Only the {@code call:}/{@code out:}/{@code reply:} tokens are
+     * read and reparsed; no input is written to any session. The transcript materialization and the
+     * regex parse stay off the main thread via {@link #parseAndApplyStatuslineUpdatesOffThread}.
+     */
+    private void repopulateStatuslineTimesForSessionNames(@NonNull Set<String> sessionNames,
+                                                          boolean forceRescan) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+
+        long nowMillis = System.currentTimeMillis();
+        List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts = new ArrayList<>();
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession session = termuxSession.getTerminalSession();
+            if (session == null || session.mSessionName == null) continue;
+            if (!sessionNames.contains(session.mSessionName)) continue;
             TerminalEmulator emulator = session.getEmulator();
             if (emulator == null) continue;
             TerminalBuffer screen = emulator.getScreen();
@@ -1801,6 +1901,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline() {
         List<String> reconnectedSessionNames = reconnectDeadDefinitionBackedSessionsInBackground();
         repopulateStatuslineTimesForAllSessions(true);
+        // Beyond the narrow visible set, refresh every displayed (non-hidden) row so the reload press
+        // updates each session's content without a manual Send per session.
+        repopulateStatuslineTimesForDisplayedSessions(true);
         if (reconnectedSessionNames.isEmpty()) return;
         TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
         if (listViewController != null) {
