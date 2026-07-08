@@ -935,7 +935,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public void loadSessionsFromDefinition() {
-        new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions();
+        new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions(true);
     }
 
     public void reloadSessionsAndRefreshAllState() {
