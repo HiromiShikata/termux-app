@@ -279,6 +279,180 @@ public class SessionDefinitionControllerWashReplaceTest {
             service.getTermuxSession(firstVisibleSessionIndex).getTerminalSession().mSessionName);
     }
 
+    @Test
+    public void authoritativeReloadWithSettingTrueRemovesDisappearedGithubNamedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(true);
+        TermuxSession stillListed = session("https://github.com/owner/repo/issues/1");
+        TermuxSession disappeared = session("https://github.com/owner/repo/issues/2");
+        shellManager.mTermuxSessions.add(stillListed);
+        shellManager.mTermuxSessions.add(disappeared);
+
+        List<SessionDefinitionEntry> reloadedEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        invokeRemoveSessionsWithDisappearedDefinition(reloadedEntries);
+
+        assertEquals(Collections.singletonList("https://github.com/owner/repo/issues/1"),
+            remainingSessionNames());
+    }
+
+    @Test
+    public void authoritativeReloadWithSettingFalseKeepsDisappearedGithubNamedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(false);
+        TermuxSession stillListed = session("https://github.com/owner/repo/issues/1");
+        TermuxSession disappeared = session("https://github.com/owner/repo/issues/2");
+        shellManager.mTermuxSessions.add(stillListed);
+        shellManager.mTermuxSessions.add(disappeared);
+
+        List<SessionDefinitionEntry> reloadedEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        invokeRemoveSessionsWithDisappearedDefinition(reloadedEntries);
+
+        assertEquals(Arrays.asList("https://github.com/owner/repo/issues/1",
+            "https://github.com/owner/repo/issues/2"), remainingSessionNames());
+    }
+
+    @Test
+    public void authoritativeReloadWithSettingTrueKeepsNonGithubDisappearedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(true);
+        shellManager.mTermuxSessions.add(session("adhoc-local"));
+        shellManager.mTermuxSessions.add(session("https://example.test/a"));
+
+        List<SessionDefinitionEntry> reloadedEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        invokeRemoveSessionsWithDisappearedDefinition(reloadedEntries);
+
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());
+    }
+
+    @Test
+    public void authoritativeReloadWithSettingTrueKeepsStillListedGithubNamedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(true);
+        shellManager.mTermuxSessions.add(session("https://github.com/owner/repo/issues/1"));
+
+        List<SessionDefinitionEntry> reloadedEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        invokeRemoveSessionsWithDisappearedDefinition(reloadedEntries);
+
+        assertEquals(Collections.singletonList("https://github.com/owner/repo/issues/1"),
+            remainingSessionNames());
+    }
+
+    @Test
+    public void partialReloadNeverRemovesDisappearedGithubNamedSessionEvenWithSettingTrue() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(true);
+        TermuxSession stillListed = session("https://github.com/owner/repo/issues/1");
+        TermuxSession disappeared = session("https://github.com/owner/repo/issues/2");
+        shellManager.mTermuxSessions.add(stillListed);
+        shellManager.mTermuxSessions.add(disappeared);
+        attachCurrentSession(stillListed.getTerminalSession());
+
+        List<SessionDefinitionEntry> survivingEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        SessionDefinitionLoadResult partialResult = new SessionDefinitionLoadResult(
+            survivingEntries, 2, Collections.singletonList("failedGroup"));
+
+        invokeBuildSessions(partialResult);
+
+        assertTrue(remainingSessionNames().contains("https://github.com/owner/repo/issues/2"));
+    }
+
+    @Test
+    public void authoritativeReloadPrunesHiddenStateOfDisappearedGithubNamedSessionSoReAddShowsVisible()
+        throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(false);
+        activity.getPreferences().setHideHiddenSessions(true);
+        activity.getPreferences().setSessionDisabled("https://github.com/owner/repo/issues/2", true);
+        assertTrue(activity.getPreferences().isSessionDisabled("https://github.com/owner/repo/issues/2"));
+
+        TermuxSession githubSession = session("https://github.com/owner/repo/issues/2");
+        shellManager.mTermuxSessions.add(githubSession);
+        attachCurrentSession(githubSession.getTerminalSession());
+
+        List<SessionDefinitionEntry> entriesWithoutGithubSession = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        SessionDefinitionLoadResult authoritativeResult = new SessionDefinitionLoadResult(
+            entriesWithoutGithubSession, 1, Collections.emptyList());
+
+        invokeBuildSessions(authoritativeResult);
+
+        assertFalse(activity.getPreferences().isSessionDisabled("https://github.com/owner/repo/issues/2"));
+    }
+
+    @Test
+    public void partialReloadDoesNotPruneHiddenStateOfDisappearedGithubNamedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(false);
+        activity.getPreferences().setSessionDisabled("https://github.com/owner/repo/issues/2", true);
+
+        TermuxSession githubSession = session("https://github.com/owner/repo/issues/2");
+        shellManager.mTermuxSessions.add(githubSession);
+        attachCurrentSession(githubSession.getTerminalSession());
+
+        List<SessionDefinitionEntry> survivingEntries = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        SessionDefinitionLoadResult partialResult = new SessionDefinitionLoadResult(
+            survivingEntries, 2, Collections.singletonList("failedGroup"));
+
+        invokeBuildSessions(partialResult);
+
+        assertTrue(activity.getPreferences().isSessionDisabled("https://github.com/owner/repo/issues/2"));
+    }
+
+    @Test
+    public void authoritativeReloadKeepsHiddenStateOfNonGithubDisappearedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(true);
+        activity.getPreferences().setSessionDisabled("adhoc-local", true);
+
+        TermuxSession adHoc = session("adhoc-local");
+        shellManager.mTermuxSessions.add(adHoc);
+        attachCurrentSession(adHoc.getTerminalSession());
+
+        List<SessionDefinitionEntry> entriesWithoutAdHoc = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        SessionDefinitionLoadResult authoritativeResult = new SessionDefinitionLoadResult(
+            entriesWithoutAdHoc, 1, Collections.emptyList());
+
+        invokeBuildSessions(authoritativeResult);
+
+        assertTrue(activity.getPreferences().isSessionDisabled("adhoc-local"));
+    }
+
+    @Test
+    public void authoritativeReloadKeepsHiddenStateOfStillListedGithubNamedSession() throws Exception {
+        activity.getPreferences().setRemoveGithubSessionsNotInList(false);
+        activity.getPreferences().setSessionDisabled("https://github.com/owner/repo/issues/1", true);
+
+        TermuxSession githubSession = session("https://github.com/owner/repo/issues/1");
+        shellManager.mTermuxSessions.add(githubSession);
+        attachCurrentSession(githubSession.getTerminalSession());
+
+        List<SessionDefinitionEntry> entriesWithGithubSession = Collections.singletonList(
+            new SessionDefinitionEntry("projectOne", "storyA",
+                Collections.singletonList("https://github.com/owner/repo/issues/1")));
+
+        SessionDefinitionLoadResult authoritativeResult = new SessionDefinitionLoadResult(
+            entriesWithGithubSession, 1, Collections.emptyList());
+
+        invokeBuildSessions(authoritativeResult);
+
+        assertTrue(activity.getPreferences().isSessionDisabled("https://github.com/owner/repo/issues/1"));
+    }
+
     private void invokeRemoveSessionsWithDisappearedDefinition(List<SessionDefinitionEntry> currentEntries)
         throws Exception {
         SessionDefinitionController controller = new SessionDefinitionController(activity);
