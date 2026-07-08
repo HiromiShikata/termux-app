@@ -498,9 +498,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     /**
-     * Refreshes the displayed content (call/out/reply statusline tier) of every DISPLAYED (visible,
-     * non-hidden) session — the same broad set the fast displayed-session call-scan cycle uses — rather
-     * than only the narrow foreground/on-screen {@link #visibleSessionNames()} set the ordinary rescan
+     * Refreshes the displayed content (call/out/reply statusline tier) of every DISPLAYED session under
+     * the normal applied filter — visible (not hidden) AND under an expanded (non-collapsed) project,
+     * plus the current session unconditionally — the same set the fast displayed-session call-scan cycle
+     * uses — rather than only the narrow foreground/on-screen {@link #visibleSessionNames()} set the
+     * ordinary rescan
      * covers. This is the on-launch and on-reload counterpart to the manual per-session refresh the
      * owner otherwise triggers by switching to each session: it reproduces only the statusline
      * display-refresh effect (reading and reparsing each session's current screen through the same
@@ -867,12 +869,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             allLiveSessionNames.add(terminalSession.mSessionName);
         }
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
-        boolean hideHiddenSessions = preferences != null && preferences.shouldHideHiddenSessions();
         Set<String> hiddenSessionNames = preferences != null
             ? preferences.getDisabledSessionNames()
             : Collections.emptySet();
+        TermuxSessionsListViewController listViewController =
+            mActivity.getTermuxSessionListViewController();
+        Set<String> expandedProjectSessionNames = listViewController != null
+            ? listViewController.getExpandedProjectSessionNames()
+            : null;
         return mDisplayedSessionSelector.selectDisplayedSessionNames(mActivity.isVisible(),
-            activeSessionName(), allLiveSessionNames, hideHiddenSessions, hiddenSessionNames);
+            activeSessionName(), allLiveSessionNames, true, hiddenSessionNames,
+            expandedProjectSessionNames);
     }
 
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
