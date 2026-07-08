@@ -1,5 +1,7 @@
 package com.termux.app.sessiondefinition;
 
+import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -12,6 +14,40 @@ public class SessionDefinitionCapCountPlannerTest {
     private static final String RECONNECTABLE_TEMPLATE = "autossh {name}";
 
     private final SessionDefinitionCapCountPlanner planner = new SessionDefinitionCapCountPlanner();
+
+    @Test
+    public void defaultCapIsSixtyFour() {
+        Assert.assertEquals(64,
+            TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
+    }
+
+    @Test
+    public void countsUpToSixtyFourAliveSessionsTowardCap() {
+        int aliveCount = 64;
+
+        List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
+        for (int i = 0; i < aliveCount; i++) {
+            countedSessions.add(countedSession("alive-" + i, true));
+        }
+
+        Assert.assertEquals(aliveCount, planner.countSessionsTowardCap(countedSessions, ""));
+    }
+
+    @Test
+    public void sixtyFourSessionsFitTheDefaultCapAndTheSixtyFifthIsDropped() {
+        int configuredLimit = TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS;
+
+        SessionDefinitionLimitPlan planAtCap = SessionDefinitionLimitPlan.forCapacity(
+            configuredLimit, 0, configuredLimit);
+        Assert.assertFalse(planAtCap.exceedsLimit());
+        Assert.assertEquals(configuredLimit, planAtCap.getSessionsToCreateCount());
+
+        SessionDefinitionLimitPlan planBeyondCap = SessionDefinitionLimitPlan.forCapacity(
+            configuredLimit + 1, 0, configuredLimit);
+        Assert.assertTrue(planBeyondCap.exceedsLimit());
+        Assert.assertEquals(configuredLimit, planBeyondCap.getSessionsToCreateCount());
+        Assert.assertEquals(1, planBeyondCap.getDroppedSessionCount());
+    }
 
     @Test
     public void countsEveryAliveSession() {

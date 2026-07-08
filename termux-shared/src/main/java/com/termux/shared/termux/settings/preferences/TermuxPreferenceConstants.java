@@ -236,7 +236,7 @@ public final class TermuxPreferenceConstants {
         public static final int DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES = 5;
 
         public static final String KEY_SESSION_DEFINITION_MAX_SESSIONS = "session_definition_max_sessions";
-        public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 32;
+        public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 64;
         public static final int MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 1;
 
         public static final String KEY_ALWAYS_NA_SESSION_NAMES = "always_na_session_names";
