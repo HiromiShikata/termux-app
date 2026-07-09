@@ -447,6 +447,14 @@ public final class TerminalEmulator {
         mCursorRow = cursor[1];
     }
 
+    public int getCellWidthPixels() {
+        return mCellWidthPixels;
+    }
+
+    public int getCellHeightPixels() {
+        return mCellHeightPixels;
+    }
+
     public int getCursorRow() {
         return mCursorRow;
     }

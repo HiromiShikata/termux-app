@@ -1193,6 +1193,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         enforceActiveSessionViewBinding(session);
 
         updateSessionNameOverlay();
+
+        forceRemoteRepaintOnOpen(session);
+    }
+
+    private void forceRemoteRepaintOnOpen(@NonNull TerminalSession session) {
+        TerminalView terminalView = mActivity.getTerminalView();
+        if (terminalView == null) return;
+        terminalView.post(() -> {
+            if (mActivity.getCurrentSession() != session) return;
+            TerminalEmulator emulator = session.getEmulator();
+            boolean hasEmulator = emulator != null;
+            int columns = hasEmulator ? emulator.mColumns : 0;
+            int rows = hasEmulator ? emulator.mRows : 0;
+            if (!SessionOpenRepaintDecision.shouldForceRemoteRepaint(session.isRunning(), hasEmulator, columns, rows))
+                return;
+            session.forceRemoteRepaint();
+        });
     }
 
     /**
