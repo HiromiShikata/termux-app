@@ -76,4 +76,24 @@ public class DetectedUrlSanitizerTest {
     public void nullReturnsNull() {
         Assert.assertNull(DetectedUrlSanitizer.sanitize(null));
     }
+
+    @Test
+    public void cleanTokenOnHintRowIsExcluded() {
+        String cleanPrefix = "https://github.com/X-Mile/e-learning-sa";
+        String lastRowText = "https://github.com/X-Mile/e-learning-sa Jump to bottom (ctrl+End) ↓";
+        Assert.assertNull(DetectedUrlSanitizer.sanitize(cleanPrefix, lastRowText));
+    }
+
+    @Test
+    public void cleanTokenWithNullHintScopeIsReturnedUnchanged() {
+        String url = "https://github.com/X-Mile/e-learning-saas";
+        Assert.assertEquals(url, DetectedUrlSanitizer.sanitize(url, null));
+    }
+
+    @Test
+    public void cleanTokenOnRowWithoutHintIsReturnedUnchanged() {
+        String url = "https://github.com/X-Mile/e-learning-saas";
+        String lastRowText = "$ echo https://github.com/X-Mile/e-learning-saas";
+        Assert.assertEquals(url, DetectedUrlSanitizer.sanitize(url, lastRowText));
+    }
 }

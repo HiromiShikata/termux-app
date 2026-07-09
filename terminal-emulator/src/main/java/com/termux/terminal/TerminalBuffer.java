@@ -107,6 +107,21 @@ public final class TerminalBuffer {
         return builder.toString();
     }
 
+    public WrappedLineLocation getWrappedLineAtLocation(int x, int y) {
+        int y1 = y;
+        int y2 = y;
+        while (y1 > 0 && !getSelectedText(0, y1 - 1, mColumns, y, true, true).contains("\n")) {
+            y1--;
+        }
+        while (y2 < mScreenRows && !getSelectedText(0, y, mColumns, y2 + 1, true, true).contains("\n")) {
+            y2++;
+        }
+
+        String text = getSelectedText(0, y1, mColumns, y2, true, true);
+        int offset = (y - y1) * mColumns + x;
+        return new WrappedLineLocation(text, offset);
+    }
+
     public String getWordAtLocation(int x, int y) {
         // Set y1 and y2 to the lines where the wrapped line starts and ends.
         // I.e. if a line that is wrapped to 3 lines starts at line 4, and this

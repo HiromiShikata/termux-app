@@ -8,6 +8,11 @@ public final class TerminalUrlExtractor {
 
     @Nullable
     public static String extractBrowsableUrlAt(@Nullable String rowText, int column) {
+        return extractBrowsableUrlAt(rowText, column, null);
+    }
+
+    @Nullable
+    public static String extractBrowsableUrlAt(@Nullable String rowText, int column, @Nullable String hintScopeRowText) {
         if (rowText == null) return null;
         if (column < 0 || column >= rowText.length()) return null;
         if (Character.isWhitespace(rowText.charAt(column))) return null;
@@ -20,7 +25,7 @@ public final class TerminalUrlExtractor {
         while (end < lastIndex && !Character.isWhitespace(rowText.charAt(end + 1))) end++;
 
         String token = rowText.substring(start, end + 1);
-        String sanitized = DetectedUrlSanitizer.sanitize(token);
+        String sanitized = DetectedUrlSanitizer.sanitize(token, hintScopeRowText);
         if (sanitized == null) return null;
         return BrowsableUrlDetector.isLikelyBrowsableUrl(sanitized) ? sanitized : null;
     }

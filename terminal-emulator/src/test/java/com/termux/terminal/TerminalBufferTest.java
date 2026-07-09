@@ -193,6 +193,32 @@ public class TerminalBufferTest extends TestCase {
 		assertEquals("", buffer.getWordAtLocation(2, 0));
 	}
 
+	public void testGetWrappedLineAtLocationJoinsWrappedRows() {
+		writeRow(0, "aaaaa");
+		writeRow(1, "bbbbb");
+		buffer.setLineWrap(0);
+		WrappedLineLocation location = buffer.getWrappedLineAtLocation(2, 0);
+		assertEquals("aaaaabbbbb", location.text);
+		assertEquals(2, location.offset);
+	}
+
+	public void testGetWrappedLineAtLocationFromContinuationRow() {
+		writeRow(0, "aaaaa");
+		writeRow(1, "bbbbb");
+		buffer.setLineWrap(0);
+		WrappedLineLocation location = buffer.getWrappedLineAtLocation(3, 1);
+		assertEquals("aaaaabbbbb", location.text);
+		assertEquals(8, location.offset);
+	}
+
+	public void testGetWrappedLineAtLocationNonWrappedRowIsSingleRow() {
+		writeRow(0, "aa");
+		writeRow(1, "bbbbb");
+		WrappedLineLocation location = buffer.getWrappedLineAtLocation(1, 0);
+		assertEquals("aa", location.text);
+		assertEquals(1, location.offset);
+	}
+
 	public void testHyperlinkUriStorageAndLookup() {
 		buffer.setChar(1, 0, 'L', TextStyle.NORMAL, "https://example.com");
 		assertEquals("https://example.com", buffer.getHyperlinkUri(0, 1));
