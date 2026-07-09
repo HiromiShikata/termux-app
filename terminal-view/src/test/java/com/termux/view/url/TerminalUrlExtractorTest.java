@@ -86,4 +86,37 @@ public class TerminalUrlExtractorTest {
         Assert.assertEquals("http://50.30.32.53:9980/in-tmux/index.json",
             TerminalUrlExtractor.extractBrowsableUrlAt(row, column));
     }
+
+    @Test
+    public void wrappedUrlJoinedAcrossRowsIsExtractedInFull() {
+        String joinedWrappedLine = "https://github.com/X-Mile/e-learning-saas";
+        int columnOnFirstRow = joinedWrappedLine.indexOf("github");
+        Assert.assertEquals("https://github.com/X-Mile/e-learning-saas",
+            TerminalUrlExtractor.extractBrowsableUrlAt(joinedWrappedLine, columnOnFirstRow));
+    }
+
+    @Test
+    public void wrappedUrlTailColumnIsExtractedInFull() {
+        String joinedWrappedLine = "https://github.com/X-Mile/e-learning-saas";
+        int columnInTail = joinedWrappedLine.length() - 1;
+        Assert.assertEquals("https://github.com/X-Mile/e-learning-saas",
+            TerminalUrlExtractor.extractBrowsableUrlAt(joinedWrappedLine, columnInTail));
+    }
+
+    @Test
+    public void urlOnLastRowWithHintTextAnywhereIsExcluded() {
+        String cleanPrefixText = "https://github.com/X-Mile/e-learning-sa";
+        int column = cleanPrefixText.indexOf("github");
+        String lastVisibleRowText = "https://github.com/X-Mile/e-learning-sa Jump to bottom (ctrl+End) ↓";
+        Assert.assertNull(
+            TerminalUrlExtractor.extractBrowsableUrlAt(cleanPrefixText, column, lastVisibleRowText));
+    }
+
+    @Test
+    public void cleanUrlOnLastRowWithoutHintIsExtractedUnchanged() {
+        String rowText = "https://github.com/X-Mile/e-learning-saas";
+        int column = rowText.indexOf("github");
+        Assert.assertEquals("https://github.com/X-Mile/e-learning-saas",
+            TerminalUrlExtractor.extractBrowsableUrlAt(rowText, column, rowText));
+    }
 }

@@ -19,8 +19,14 @@ public final class DetectedUrlSanitizer {
 
     @Nullable
     public static String sanitize(@Nullable String candidate) {
+        return sanitize(candidate, null);
+    }
+
+    @Nullable
+    public static String sanitize(@Nullable String candidate, @Nullable String hintScopeRowText) {
         if (candidate == null) return null;
         if (containsHintMarker(candidate)) return null;
+        if (hintScopeRowText != null && containsHintMarker(hintScopeRowText)) return null;
 
         String truncated = truncateAtFirstWhitespace(candidate);
         String trimmed = trimTrailingArtifacts(truncated);

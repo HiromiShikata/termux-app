@@ -98,13 +98,29 @@ public class TextSelectionCursorController implements CursorController {
         mSelY1 = mSelY2 = columnAndRow[1];
 
         TerminalBuffer screen = terminalView.mEmulator.getScreen();
+        int lastColumn = terminalView.mEmulator.mColumns - 1;
+        int firstRow = -screen.getActiveTranscriptRows();
+        int lastRow = terminalView.mEmulator.mRows - 1;
         if (!" ".equals(screen.getSelectedText(mSelX1, mSelY1, mSelX1, mSelY1))) {
-            // Selecting something other than whitespace. Expand to word.
-            while (mSelX1 > 0 && !"".equals(screen.getSelectedText(mSelX1 - 1, mSelY1, mSelX1 - 1, mSelY1))) {
-                mSelX1--;
+            while (true) {
+                if (mSelX1 > 0) {
+                    if ("".equals(screen.getSelectedText(mSelX1 - 1, mSelY1, mSelX1 - 1, mSelY1))) break;
+                    mSelX1--;
+                } else {
+                    if (mSelY1 <= firstRow || !screen.getLineWrap(mSelY1 - 1)) break;
+                    mSelY1--;
+                    mSelX1 = lastColumn;
+                }
             }
-            while (mSelX2 < terminalView.mEmulator.mColumns - 1 && !"".equals(screen.getSelectedText(mSelX2 + 1, mSelY1, mSelX2 + 1, mSelY1))) {
-                mSelX2++;
+            while (true) {
+                if (mSelX2 < lastColumn) {
+                    if ("".equals(screen.getSelectedText(mSelX2 + 1, mSelY2, mSelX2 + 1, mSelY2))) break;
+                    mSelX2++;
+                } else {
+                    if (mSelY2 >= lastRow || !screen.getLineWrap(mSelY2)) break;
+                    mSelY2++;
+                    mSelX2 = 0;
+                }
             }
         }
     }

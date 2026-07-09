@@ -42,6 +42,7 @@ import androidx.annotation.RequiresApi;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
+import com.termux.terminal.WrappedLineLocation;
 import com.termux.view.scroll.TerminalScrollController;
 import com.termux.view.scroll.TerminalScrollEvent;
 import com.termux.view.textselection.TextSelectionCursorController;
@@ -597,8 +598,14 @@ public final class TerminalView extends View {
         int activeTranscriptRows = mEmulator.getScreen().getActiveTranscriptRows();
         if (row < -activeTranscriptRows || row >= mEmulator.mRows) return false;
 
-        String rowText = mEmulator.getScreen().getSelectedText(0, row, mEmulator.mColumns - 1, row);
-        String url = TerminalUrlExtractor.extractBrowsableUrlAt(rowText, column);
+        WrappedLineLocation wrappedLine = mEmulator.getScreen().getWrappedLineAtLocation(column, row);
+
+        String hintScopeRowText = null;
+        if (row == mEmulator.mRows - 1) {
+            hintScopeRowText = mEmulator.getScreen().getSelectedText(0, row, mEmulator.mColumns - 1, row);
+        }
+
+        String url = TerminalUrlExtractor.extractBrowsableUrlAt(wrappedLine.text, wrappedLine.offset, hintScopeRowText);
         if (url == null) return false;
 
         return mClient.onOpenSelectedUrlRequested(url);
