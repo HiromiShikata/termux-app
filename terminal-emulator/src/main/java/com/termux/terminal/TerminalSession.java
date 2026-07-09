@@ -113,6 +113,18 @@ public final class TerminalSession extends TerminalOutput {
         }
     }
 
+    public void forceRemoteRepaint() {
+        if (!isRunning() || mEmulator == null) return;
+        int columns = mEmulator.mColumns;
+        int rows = mEmulator.mRows;
+        RemoteRepaintWindowSizeNudge nudge = RemoteRepaintWindowSizeNudge.forCurrentSize(columns, rows);
+        if (!nudge.shouldNudge()) return;
+        int cellWidthPixels = mEmulator.getCellWidthPixels();
+        int cellHeightPixels = mEmulator.getCellHeightPixels();
+        JNI.setPtyWindowSize(mTerminalFileDescriptor, nudge.getNudgedRows(), columns, cellWidthPixels, cellHeightPixels);
+        JNI.setPtyWindowSize(mTerminalFileDescriptor, nudge.getRestoredRows(), columns, cellWidthPixels, cellHeightPixels);
+    }
+
     /** The terminal title as set through escape sequences or null if none set. */
     public String getTitle() {
         return (mEmulator == null) ? null : mEmulator.getTitle();
