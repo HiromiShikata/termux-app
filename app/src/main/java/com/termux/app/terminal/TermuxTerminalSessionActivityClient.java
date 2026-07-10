@@ -127,7 +127,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private int cappedSessionCount(@NonNull TermuxService service) {
-        String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
         List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
         for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
@@ -135,7 +134,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return mCapCountPlanner.countSessionsTowardCap(countedSessions, autosshCommandTemplate);
+        return mCapCountPlanner.countSessionsTowardCap(countedSessions);
     }
 
     private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
