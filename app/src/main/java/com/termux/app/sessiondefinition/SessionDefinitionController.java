@@ -171,7 +171,6 @@ public final class SessionDefinitionController {
         if (service == null) {
             return 0;
         }
-        String autosshCommandTemplate = activity.getPreferences().getAutosshCommand();
         List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
         for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
@@ -179,7 +178,7 @@ public final class SessionDefinitionController {
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return capCountPlanner.countSessionsTowardCap(countedSessions, autosshCommandTemplate);
+        return capCountPlanner.countSessionsTowardCap(countedSessions);
     }
 
     private void reconcileDuplicateLiveSessions() {

@@ -3,8 +3,6 @@ package com.termux.app.sessiondefinition;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.app.terminal.session.FinishedSessionEnterAction;
-
 import java.util.List;
 
 public final class SessionDefinitionCapCountPlanner {
@@ -28,23 +26,18 @@ public final class SessionDefinitionCapCountPlanner {
             return running;
         }
 
-        boolean countsTowardCap(@Nullable String autosshCommandTemplate) {
-            if (running) {
-                return true;
-            }
-            return FinishedSessionEnterAction.decide(name, autosshCommandTemplate).getKind()
-                == FinishedSessionEnterAction.Kind.RECONNECT;
+        boolean countsTowardCap() {
+            return running;
         }
     }
 
-    public int countSessionsTowardCap(@NonNull List<CountedSession> countedSessions,
-                                      @Nullable String autosshCommandTemplate) {
+    public int countSessionsTowardCap(@NonNull List<CountedSession> countedSessions) {
         int count = 0;
         for (CountedSession countedSession : countedSessions) {
             if (countedSession == null) {
                 continue;
             }
-            if (countedSession.countsTowardCap(autosshCommandTemplate)) {
+            if (countedSession.countsTowardCap()) {
                 count++;
             }
         }
