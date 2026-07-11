@@ -51,9 +51,13 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     static final Object RELATIVE_TIME_PAYLOAD = new Object();
 
-    private static final long HEADER_ITEM_ID_NAMESPACE = 0x1_0000_0000L;
-    private static final long PROJECT_HEADER_ITEM_ID_NAMESPACE = 0x2_0000_0000L;
-    private static final long SESSION_ITEM_ID_NAMESPACE = 0x3_0000_0000L;
+    private static final long STORY_HEADER_ITEM_ID_TYPE_SEED = 0x1000_0000_0000_0001L;
+    private static final long PROJECT_HEADER_ITEM_ID_TYPE_SEED = 0x2000_0000_0000_0002L;
+    private static final long SESSION_NAME_ITEM_ID_TYPE_SEED = 0x3000_0000_0000_0003L;
+    private static final long SESSION_INDEX_ITEM_ID_TYPE_SEED = 0x4000_0000_0000_0004L;
+
+    private static final long ITEM_ID_HASH_OFFSET_BASIS = 0xCBF2_9CE4_8422_2325L;
+    private static final long ITEM_ID_HASH_PRIME = 0x0000_0100_0000_01B3L;
 
     private static final int VIEW_TYPE_SESSION = 0;
     private static final int VIEW_TYPE_PROJECT_HEADER = 1;
@@ -903,20 +907,37 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     static long rowItemId(@NonNull SessionHierarchyRow row) {
         switch (row.getType()) {
             case PROJECT_HEADER:
-                return PROJECT_HEADER_ITEM_ID_NAMESPACE | labelIdentityHash(row.getLabel());
+                return identityHash(PROJECT_HEADER_ITEM_ID_TYPE_SEED, row.getLabel());
             case STORY_HEADER:
-                return HEADER_ITEM_ID_NAMESPACE | labelIdentityHash(row.getLabel());
+                return identityHash(STORY_HEADER_ITEM_ID_TYPE_SEED, row.getLabel());
             default:
                 String sessionName = row.getSessionName();
                 if (sessionName != null) {
-                    return SESSION_ITEM_ID_NAMESPACE | labelIdentityHash(sessionName);
+                    return identityHash(SESSION_NAME_ITEM_ID_TYPE_SEED, sessionName);
                 }
-                return row.getSessionIndex();
+                return mixHash(SESSION_INDEX_ITEM_ID_TYPE_SEED, row.getSessionIndex());
         }
     }
 
-    private static long labelIdentityHash(@Nullable String label) {
-        return (label == null ? 0 : label.hashCode()) & 0xFFFF_FFFFL;
+    private static long identityHash(long typeSeed, @Nullable String identity) {
+        long hash = ITEM_ID_HASH_OFFSET_BASIS ^ typeSeed;
+        if (identity == null) {
+            return hash * ITEM_ID_HASH_PRIME;
+        }
+        for (int index = 0; index < identity.length(); index++) {
+            hash ^= identity.charAt(index);
+            hash *= ITEM_ID_HASH_PRIME;
+        }
+        return hash;
+    }
+
+    private static long mixHash(long typeSeed, int value) {
+        long hash = ITEM_ID_HASH_OFFSET_BASIS ^ typeSeed;
+        for (int shift = 0; shift < Integer.SIZE; shift += Byte.SIZE) {
+            hash ^= (value >>> shift) & 0xFF;
+            hash *= ITEM_ID_HASH_PRIME;
+        }
+        return hash;
     }
 
     @Override

@@ -701,6 +701,54 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void sessionRowsWhoseNamesShareA32BitHashCodeStillReceiveDistinctStableIds() {
+        Assert.assertEquals("Aa".hashCode(), "BB".hashCode());
+
+        long firstCollidingSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(0, "Aa"));
+        long secondCollidingSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(1, "BB"));
+
+        Assert.assertNotEquals(firstCollidingSessionId, secondCollidingSessionId);
+    }
+
+    @Test
+    public void headerLabelsThatShareA32BitHashCodeStillReceiveDistinctStableIds() {
+        Assert.assertEquals("Aa".hashCode(), "BB".hashCode());
+
+        long firstCollidingProjectHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("Aa"));
+        long secondCollidingProjectHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("BB"));
+        long firstCollidingStoryHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.storyHeader("Aa"));
+        long secondCollidingStoryHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.storyHeader("BB"));
+
+        Assert.assertNotEquals(firstCollidingProjectHeaderId, secondCollidingProjectHeaderId);
+        Assert.assertNotEquals(firstCollidingStoryHeaderId, secondCollidingStoryHeaderId);
+    }
+
+    @Test
+    public void sessionRowsWithoutNamesFallBackToDistinctStableIdsPerSessionIndex() {
+        long firstIndexlessSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(0));
+        long firstIndexlessSessionIdAgain = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(0));
+        long secondIndexlessSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(1));
+        long namedSessionId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(2, "worker"));
+        long projectHeaderId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.projectHeader("worker"));
+
+        Assert.assertEquals(firstIndexlessSessionId, firstIndexlessSessionIdAgain);
+        Assert.assertNotEquals(firstIndexlessSessionId, secondIndexlessSessionId);
+        Assert.assertNotEquals(firstIndexlessSessionId, namedSessionId);
+        Assert.assertNotEquals(firstIndexlessSessionId, projectHeaderId);
+    }
+
+    @Test
     public void clickResolvesTheRowToItsSessionByNameEvenAfterAConcurrentReconnectShiftedTheIndex() {
         SessionHierarchyRow row = SessionHierarchyRow.session(0, "worker");
         List<String> sessionNamesAfterReconnectShiftedIndexes = Arrays.asList("builder", "manager", "worker");
