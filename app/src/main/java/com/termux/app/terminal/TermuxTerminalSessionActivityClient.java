@@ -1507,10 +1507,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
-        if (cappedSessionCount(service) >= maxSessions()) {
+        int liveSessionCount = cappedSessionCount(service);
+        if (liveSessionCount >= maxSessions()) {
             DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
                 "cap=" + maxSessions());
-            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached)
+                .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
                 .setPositiveButton(android.R.string.ok, null));
         } else {
             TerminalSession currentSession = mActivity.getCurrentSession();
@@ -1569,10 +1571,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (revealExistingSessionByName(sessionName, closeDrawerAfter)) return;
 
-        if (cappedSessionCount(service) >= maxSessions()) {
+        int liveSessionCount = cappedSessionCount(service);
+        if (liveSessionCount >= maxSessions()) {
             DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
                 "cap=" + maxSessions());
-            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached).setMessage(R.string.msg_max_terminals_reached)
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity).setTitle(R.string.title_max_terminals_reached)
+                .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
                 .setPositiveButton(android.R.string.ok, null));
         } else {
             TerminalSession currentSession = mActivity.getCurrentSession();
