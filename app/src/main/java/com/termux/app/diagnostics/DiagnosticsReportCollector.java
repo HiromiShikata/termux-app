@@ -6,6 +6,7 @@ import com.termux.BuildConfig;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -19,6 +20,9 @@ public final class DiagnosticsReportCollector {
     @NonNull
     private final DiagnosticEventLog mEventLog;
 
+    @NonNull
+    private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
+
     public DiagnosticsReportCollector() {
         this(DiagnosticEventLogHolder.getInstance());
     }
@@ -31,7 +35,7 @@ public final class DiagnosticsReportCollector {
     public DiagnosticsReport collect(@NonNull TermuxActivity activity, long nowMillis) {
         TermuxService service = activity.getTermuxService();
 
-        int countedTowardCap = service != null ? service.getTermuxSessionsSize() : 0;
+        int countedTowardCap = cappedSessionCount(service);
         int displayedCount = displayedSessionCount(activity);
         int maxSessionsCap = activity.getPreferences().getSessionDefinitionMaxSessions();
 
@@ -46,6 +50,25 @@ public final class DiagnosticsReportCollector {
         return new DiagnosticsReport(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, nowMillis,
             countedTowardCap, displayedCount, maxSessionsCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, recentEvents);
+    }
+
+    /**
+     * Counts the sessions that actually count toward the max-session cap, using the exact same
+     * live-only rule the cap enforces (see {@link
+     * com.termux.app.terminal.TermuxTerminalSessionActivityClient#cappedSessionCount}). Dead sessions
+     * — orphans and dead-but-reconnectable rows — are excluded, so the diagnostics "counted toward cap"
+     * figure matches the number the cap uses rather than {@code getTermuxSessionsSize()} (all sessions).
+     */
+    private int cappedSessionCount(TermuxService service) {
+        if (service == null) return 0;
+        List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            countedSessions.add(new SessionDefinitionCapCountPlanner.CountedSession(
+                terminalSession == null ? null : terminalSession.mSessionName,
+                terminalSession != null && terminalSession.isRunning()));
+        }
+        return mCapCountPlanner.countSessionsTowardCap(countedSessions);
     }
 
     private int displayedSessionCount(@NonNull TermuxActivity activity) {
