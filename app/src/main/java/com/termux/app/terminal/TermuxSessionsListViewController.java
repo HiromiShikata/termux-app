@@ -1038,12 +1038,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void bindHeaderTitle(@NonNull View headerRowView, @NonNull SessionHierarchyRow row, int titleViewId) {
         TextView headerTitleView = headerRowView.findViewById(titleViewId);
+        if (headerTitleView == null) {
+            return;
+        }
         headerTitleView.setText(row.getLabel());
         headerTitleView.setTextColor(fadedSurfacePrimaryTextColor());
     }
 
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
         TextView headerTitleView = projectHeaderView.findViewById(R.id.session_project_header_title);
+        if (headerTitleView == null) {
+            return;
+        }
         headerTitleView.setText(projectHeaderTitle(row.getLabel(),
             projectPendingCallSessionCount(row.getLabel()), projectSessionCount(row.getLabel()),
             mCollapsedProjectKeys.contains(row.getLabel())));
@@ -1072,6 +1078,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void bindProjectCollapseIndicator(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
         TextView collapseIndicatorView = projectHeaderView.findViewById(R.id.session_project_header_collapse_indicator);
+        if (collapseIndicatorView == null) {
+            return;
+        }
         boolean collapsed = mCollapsedProjectKeys.contains(row.getLabel());
         collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
         collapseIndicatorView.setTextColor(surfacePrimaryTextColor());
