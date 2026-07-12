@@ -34,6 +34,7 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;
+import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
@@ -50,6 +51,8 @@ import java.util.Set;
 public class TermuxSessionsListViewController extends RecyclerView.Adapter<TermuxSessionsListViewController.SessionRowViewHolder> {
 
     static final Object RELATIVE_TIME_PAYLOAD = new Object();
+
+    private static final String LOG_TAG = "TermuxSessionsListViewController";
 
     private static final long STORY_HEADER_ITEM_ID_TYPE_SEED = 0x1000_0000_0000_0001L;
     private static final long PROJECT_HEADER_ITEM_ID_TYPE_SEED = 0x2000_0000_0000_0002L;
@@ -942,14 +945,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @Override
     public int getItemViewType(int position) {
-        switch (mRows.get(position).getType()) {
-            case PROJECT_HEADER:
-                return VIEW_TYPE_PROJECT_HEADER;
-            case STORY_HEADER:
-                return VIEW_TYPE_STORY_HEADER;
-            default:
-                return VIEW_TYPE_SESSION;
-        }
+        return viewTypeForRowType(mRows.get(position).getType());
     }
 
     @NonNull
@@ -984,17 +980,50 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull SessionRowViewHolder holder, int position) {
-        bindRowView(mRows.get(position), holder.itemView, position);
+        SessionHierarchyRow row = mRows.get(position);
+        if (isViewTypeMismatchedForRow(holder, row, position)) {
+            return;
+        }
+        bindRowView(row, holder.itemView, position);
     }
 
     @Override
     public void onBindViewHolder(@NonNull SessionRowViewHolder holder, int position,
                                  @NonNull List<Object> payloads) {
         if (payloads.contains(RELATIVE_TIME_PAYLOAD)) {
-            bindSessionRowTimesOnly(mRows.get(position), holder.itemView);
+            SessionHierarchyRow row = mRows.get(position);
+            if (isViewTypeMismatchedForRow(holder, row, position)) {
+                return;
+            }
+            bindSessionRowTimesOnly(row, holder.itemView);
             return;
         }
         super.onBindViewHolder(holder, position, payloads);
+    }
+
+    private boolean isViewTypeMismatchedForRow(@NonNull SessionRowViewHolder holder,
+                                               @NonNull SessionHierarchyRow row, int position) {
+        int holderViewType = holder.getItemViewType();
+        int rowViewType = viewTypeForRowType(row.getType());
+        if (holderViewType == rowViewType) {
+            return false;
+        }
+        Logger.logWarn(LOG_TAG, "Skipped binding row type " + row.getType()
+            + " at position " + position + " into a mismatched view holder of type " + holderViewType
+            + " (expected view type " + rowViewType + "); a RecyclerView layout-inconsistency retry rebound a"
+            + " recycled view holder against a different row type");
+        return true;
+    }
+
+    private static int viewTypeForRowType(@NonNull SessionHierarchyRow.Type rowType) {
+        switch (rowType) {
+            case PROJECT_HEADER:
+                return VIEW_TYPE_PROJECT_HEADER;
+            case STORY_HEADER:
+                return VIEW_TYPE_STORY_HEADER;
+            default:
+                return VIEW_TYPE_SESSION;
+        }
     }
 
     private void bindSessionRowTimesOnly(@NonNull SessionHierarchyRow row, @NonNull View sessionRowView) {
@@ -1037,17 +1066,34 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     private void bindHeaderTitle(@NonNull View headerRowView, @NonNull SessionHierarchyRow row, int titleViewId) {
-        TextView headerTitleView = headerRowView.findViewById(titleViewId);
+        TextView headerTitleView = resolveHeaderView(headerRowView, titleViewId, "story-header title");
+        if (headerTitleView == null) {
+            return;
+        }
         headerTitleView.setText(row.getLabel());
         headerTitleView.setTextColor(fadedSurfacePrimaryTextColor());
     }
 
     private void bindProjectHeaderTitle(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
-        TextView headerTitleView = projectHeaderView.findViewById(R.id.session_project_header_title);
+        TextView headerTitleView = resolveHeaderView(projectHeaderView,
+            R.id.session_project_header_title, "project-header title");
+        if (headerTitleView == null) {
+            return;
+        }
         headerTitleView.setText(projectHeaderTitle(row.getLabel(),
             projectPendingCallSessionCount(row.getLabel()), projectSessionCount(row.getLabel()),
             mCollapsedProjectKeys.contains(row.getLabel())));
         headerTitleView.setTextColor(surfacePrimaryTextColor());
+    }
+
+    @Nullable
+    private static TextView resolveHeaderView(@NonNull View headerRowView, int viewId, @NonNull String viewName) {
+        TextView headerView = headerRowView.findViewById(viewId);
+        if (headerView == null) {
+            Logger.logWarn(LOG_TAG, "Skipped rendering the " + viewName
+                + " because it was absent from the bound item view; the row was bound into a mismatched layout");
+        }
+        return headerView;
     }
 
     private int projectSessionCount(@Nullable String projectLabel) {
@@ -1071,7 +1117,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     private void bindProjectCollapseIndicator(@NonNull View projectHeaderView, @NonNull SessionHierarchyRow row) {
-        TextView collapseIndicatorView = projectHeaderView.findViewById(R.id.session_project_header_collapse_indicator);
+        TextView collapseIndicatorView = resolveHeaderView(projectHeaderView,
+            R.id.session_project_header_collapse_indicator, "project-header collapse indicator");
+        if (collapseIndicatorView == null) {
+            return;
+        }
         boolean collapsed = mCollapsedProjectKeys.contains(row.getLabel());
         collapseIndicatorView.setText(collapsed ? PROJECT_COLLAPSED_INDICATOR : PROJECT_EXPANDED_INDICATOR);
         collapseIndicatorView.setTextColor(surfacePrimaryTextColor());
