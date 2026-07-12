@@ -372,15 +372,25 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
 
         // Send the notification
         NotificationManager notificationManager = NotificationUtils.getNotificationManager(termuxPackageContext);
-        if (notificationManager != null)
-            notificationManager.notify(nextNotificationId, builder.build());
+        if (notificationManager != null) {
+            try {
+                notificationManager.notify(nextNotificationId, builder.build());
+            } catch (Throwable throwable) {
+                Logger.logStackTraceWithMessage(logTag, "Failed to post crash report notification", throwable);
+            }
+        }
+    }
+
+    public static boolean shouldIncludeNotificationCopyAction(final String reportString) {
+        return reportString != null && !reportString.isEmpty()
+            && reportString.length() <= DataUtils.TRANSACTION_SIZE_LIMIT_IN_BYTES;
     }
 
     private static void addCopyReportAction(final Context termuxPackageContext,
                                             final Notification.Builder builder,
                                             final int notificationId,
                                             final String reportString) {
-        if (builder == null || reportString == null || reportString.isEmpty()) return;
+        if (builder == null || !shouldIncludeNotificationCopyAction(reportString)) return;
 
         Intent copyIntent = new Intent(termuxPackageContext, CrashReportCopyBroadcastReceiver.class);
         copyIntent.putExtra(CrashReportCopyBroadcastReceiver.EXTRA_REPORT_TEXT, reportString);
