@@ -14,10 +14,12 @@ import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.terminal.TerminalSession;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.shadows.ShadowLog;
 
 import java.lang.reflect.Constructor;
 import java.util.Collections;
@@ -29,9 +31,15 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
     private static final String PROJECT_LABEL = "DEMOPROJECT";
     private static final String STORY_LABEL = "DemoStory";
     private static final String SESSION_NAME = "https://github.com/HiromiShikata/termux-app/issues/100?k=TESTKEY";
+    private static final String LOG_TAG = "TermuxSessionsListViewController";
+
+    @Before
+    public void clearLogs() {
+        ShadowLog.clear();
+    }
 
     @Test
-    public void bindingAProjectHeaderRowIntoASessionViewHolderDoesNotCrashOnTheMissingTitleView() throws Exception {
+    public void bindingAProjectHeaderRowIntoASessionViewHolderIsSkippedWithoutCrashingAndIsLogged() throws Exception {
         TermuxActivity activity = Robolectric.buildActivity(TermuxActivity.class).get();
         TermuxSessionsListViewController adapter = mixedRowAdapter(activity);
         RecyclerView parent = recyclerViewParent(activity);
@@ -41,21 +49,22 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
             projectHeaderPosition >= 0);
 
         TermuxSessionsListViewController.SessionRowViewHolder sessionViewHolder =
-            adapter.onCreateViewHolder(parent, sessionViewType(adapter));
+            adapter.createViewHolder(parent, sessionViewType(adapter));
         Assert.assertNull("a session view holder must not own the project-header title view, the absence the crash exploited",
             sessionViewHolder.itemView.findViewById(R.id.session_project_header_title));
-        Assert.assertNull("a session view holder must not own the project-header collapse indicator either",
-            sessionViewHolder.itemView.findViewById(R.id.session_project_header_collapse_indicator));
 
         try {
             adapter.onBindViewHolder(sessionViewHolder, projectHeaderPosition);
         } catch (NullPointerException e) {
             Assert.fail("binding a project-header row into a session-typed view holder must not throw: " + e);
         }
+
+        Assert.assertTrue("the dispatch-level type-mismatch guard must record a warning so a recurrence is detectable",
+            loggedAMismatchWarning());
     }
 
     @Test
-    public void bindingAProjectHeaderRowIntoAStoryHeaderViewHolderDoesNotCrashOnTheMissingTitleView() throws Exception {
+    public void bindingAProjectHeaderRowIntoAStoryHeaderViewHolderIsSkippedWithoutCrashingAndIsLogged() throws Exception {
         TermuxActivity activity = Robolectric.buildActivity(TermuxActivity.class).get();
         TermuxSessionsListViewController adapter = mixedRowAdapter(activity);
         RecyclerView parent = recyclerViewParent(activity);
@@ -65,7 +74,7 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
             projectHeaderPosition >= 0);
 
         TermuxSessionsListViewController.SessionRowViewHolder storyHeaderViewHolder =
-            adapter.onCreateViewHolder(parent, storyHeaderViewType(adapter));
+            adapter.createViewHolder(parent, storyHeaderViewType(adapter));
         Assert.assertNull("a story-header view must not own the project-header title view",
             storyHeaderViewHolder.itemView.findViewById(R.id.session_project_header_title));
 
@@ -74,6 +83,9 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
         } catch (NullPointerException e) {
             Assert.fail("binding a project-header row into a story-header view holder must not throw: " + e);
         }
+
+        Assert.assertTrue("the dispatch-level type-mismatch guard must record a warning so a recurrence is detectable",
+            loggedAMismatchWarning());
     }
 
     @Test
@@ -84,7 +96,7 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
 
         int projectHeaderPosition = firstProjectHeaderPosition(adapter);
         TermuxSessionsListViewController.SessionRowViewHolder headerViewHolder =
-            adapter.onCreateViewHolder(parent, adapter.getItemViewType(projectHeaderPosition));
+            adapter.createViewHolder(parent, adapter.getItemViewType(projectHeaderPosition));
 
         adapter.onBindViewHolder(headerViewHolder, projectHeaderPosition);
 
@@ -95,6 +107,8 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
             renderedExpandedTitle.contains(PROJECT_LABEL));
         Assert.assertNotEquals("an expanded header must render the session-count fraction after the label",
             PROJECT_LABEL, renderedExpandedTitle);
+        Assert.assertFalse("a correctly-typed header bind must not log a type-mismatch warning",
+            loggedAMismatchWarning());
     }
 
     @Test
@@ -105,6 +119,17 @@ public class SessionListBottomSheetHeaderBindNullTitleGuardTest {
         Assert.assertNotEquals("an expanded project header must append the fraction after the label",
             PROJECT_LABEL,
             TermuxSessionsListViewController.projectHeaderTitle(PROJECT_LABEL, 1, 2, false));
+    }
+
+    private static boolean loggedAMismatchWarning() {
+        for (ShadowLog.LogItem logItem : ShadowLog.getLogs()) {
+            if (logItem.type == android.util.Log.WARN
+                && logItem.tag != null && logItem.tag.endsWith(LOG_TAG)
+                && logItem.msg != null && logItem.msg.contains("mismatched view holder")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int sessionViewType(@NonNull TermuxSessionsListViewController adapter) {

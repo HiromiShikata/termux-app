@@ -45,7 +45,7 @@ public class SessionListBottomSheetHeaderRebindTypeMismatchTest {
 
         int headerViewType = adapter.getItemViewType(headerPosition);
         TermuxSessionsListViewController.SessionRowViewHolder headerViewHolder =
-            adapter.onCreateViewHolder(parent, headerViewType);
+            adapter.createViewHolder(parent, headerViewType);
         Assert.assertNotNull("a header view type must create a header-typed view holder that owns the header title view",
             headerViewHolder.itemView.findViewById(R.id.session_project_header_title));
 
