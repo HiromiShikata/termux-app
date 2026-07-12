@@ -228,6 +228,10 @@
             android:name=".shared.activities.ReportActivity$ReportActivityBroadcastReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".shared.termux.crash.CrashReportCopyBroadcastReceiver"
+            android:exported="false" />
+
 
         <service
             android:name=".app.TermuxService"

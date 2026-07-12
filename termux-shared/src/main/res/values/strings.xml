@@ -110,6 +110,8 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_save_to_file">Save To File</string>
 
+    <string name="msg_crash_report_copied">Crash report copied</string>
+
     <string name="msg_storage_permission_granted_on_request">The storage permission granted by user on request</string>
     <string name="msg_storage_permission_not_granted_on_request">The storage permission not granted by user on request</string>
 

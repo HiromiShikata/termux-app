@@ -11,6 +11,7 @@ import android.os.Environment;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.shared.R;
 import com.termux.shared.activities.ReportActivity;
 import com.termux.shared.android.AndroidUtils;
 import com.termux.shared.crash.CrashHandler;
@@ -326,10 +327,16 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
         if (addDeviceInfo)
             reportString.append("\n\n").append(AndroidUtils.getDeviceInfoMarkdownString(currentPackageContext, true));
 
+        String supplementSection = CrashReportSupplementHolder.buildSupplementSection(currentPackageContext);
+        if (supplementSection != null && !supplementSection.isEmpty())
+            reportString.append("\n\n").append(supplementSection);
+
+        String reportStringFinal = reportString.toString();
+
         String userActionName = UserAction.CRASH_REPORT.getName();
 
         ReportInfo reportInfo = new ReportInfo(userActionName, logTag, title.toString());
-        reportInfo.setReportString(reportString.toString());
+        reportInfo.setReportString(reportStringFinal);
         reportInfo.setReportStringSuffix("\n\n" + TermuxUtils.getReportIssueMarkdownString(currentPackageContext));
         reportInfo.setAddReportInfoHeaderToMarkdown(true);
         reportInfo.setReportSaveFileLabelAndPath(userActionName,
@@ -361,10 +368,32 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
             NotificationUtils.NOTIFICATION_MODE_VIBRATE);
         if (builder == null) return;
 
+        addCopyReportAction(termuxPackageContext, builder, nextNotificationId, reportStringFinal);
+
         // Send the notification
         NotificationManager notificationManager = NotificationUtils.getNotificationManager(termuxPackageContext);
         if (notificationManager != null)
             notificationManager.notify(nextNotificationId, builder.build());
+    }
+
+    private static void addCopyReportAction(final Context termuxPackageContext,
+                                            final Notification.Builder builder,
+                                            final int notificationId,
+                                            final String reportString) {
+        if (builder == null || reportString == null || reportString.isEmpty()) return;
+
+        Intent copyIntent = new Intent(termuxPackageContext, CrashReportCopyBroadcastReceiver.class);
+        copyIntent.putExtra(CrashReportCopyBroadcastReceiver.EXTRA_REPORT_TEXT, reportString);
+
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+
+        PendingIntent copyPendingIntent = PendingIntent.getBroadcast(termuxPackageContext,
+            notificationId, copyIntent, flags);
+
+        builder.addAction(R.drawable.ic_copy,
+            termuxPackageContext.getString(R.string.action_copy), copyPendingIntent);
     }
 
     /**

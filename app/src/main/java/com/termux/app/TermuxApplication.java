@@ -4,10 +4,12 @@ import android.app.Application;
 import android.content.Context;
 
 import com.termux.BuildConfig;
+import com.termux.app.diagnostics.CrashReportDiagnosticsSupplement;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.TermuxBootstrap;
 import com.termux.shared.termux.TermuxConstants;
+import com.termux.shared.termux.crash.CrashReportSupplementHolder;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.file.TermuxFileUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
@@ -28,6 +30,8 @@ public class TermuxApplication extends Application {
 
         // Set crash handler for the app
         TermuxCrashUtils.setDefaultCrashHandler(this);
+
+        CrashReportSupplementHolder.set(new CrashReportDiagnosticsSupplement());
 
         // Set log config for the app
         setLogConfig(context);
