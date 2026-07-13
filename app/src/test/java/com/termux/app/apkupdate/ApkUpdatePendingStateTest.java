@@ -219,4 +219,69 @@ public class ApkUpdatePendingStateTest {
 
         Assert.assertNull(pendingState.loadIfNewerThanInstalled("0.118.2535"));
     }
+
+    @Test
+    public void isInstallLaunchSuppressedReturnsFalseWhenNoMarker() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+
+        Assert.assertFalse(pendingState.isInstallLaunchSuppressed("0.118.2535", 0L));
+    }
+
+    @Test
+    public void installLaunchedMarkerSuppressesReShowWhileInstalledVersionUnchanged() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.markInstallLaunched("0.118.2536", 0L);
+
+        Assert.assertTrue(pendingState.isInstallLaunchSuppressed("0.118.2535", 1000L));
+    }
+
+    @Test
+    public void installLaunchedMarkerClearsAndDoesNotSuppressAfterInstalledVersionAdvances() {
+        InMemoryStore store = new InMemoryStore();
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+        pendingState.markInstallLaunched("0.118.2536", 0L);
+
+        Assert.assertFalse(pendingState.isInstallLaunchSuppressed("0.118.2536", 1000L));
+        Assert.assertNull(store.getString(ApkUpdatePendingState.KEY_INSTALL_LAUNCHED_VERSION_NAME));
+    }
+
+    @Test
+    public void installLaunchedMarkerClearsAndDoesNotSuppressWhenInstalledVersionIsNewer() {
+        InMemoryStore store = new InMemoryStore();
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+        pendingState.markInstallLaunched("0.118.2536", 0L);
+
+        Assert.assertFalse(pendingState.isInstallLaunchSuppressed("0.118.2537", 1000L));
+        Assert.assertNull(store.getString(ApkUpdatePendingState.KEY_INSTALL_LAUNCHED_VERSION_NAME));
+    }
+
+    @Test
+    public void installLaunchedMarkerExpiresAfterCooldownElapses() {
+        InMemoryStore store = new InMemoryStore();
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(store);
+        pendingState.markInstallLaunched("0.118.2536", 0L);
+
+        Assert.assertFalse(pendingState.isInstallLaunchSuppressed(
+            "0.118.2535", ApkUpdatePendingState.INSTALL_LAUNCHED_COOLDOWN_MILLIS));
+        Assert.assertNull(store.getString(ApkUpdatePendingState.KEY_INSTALL_LAUNCHED_VERSION_NAME));
+    }
+
+    @Test
+    public void installLaunchedMarkerStillSuppressesJustBeforeCooldownElapses() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.markInstallLaunched("0.118.2536", 0L);
+
+        Assert.assertTrue(pendingState.isInstallLaunchSuppressed(
+            "0.118.2535", ApkUpdatePendingState.INSTALL_LAUNCHED_COOLDOWN_MILLIS - 1L));
+    }
+
+    @Test
+    public void clearInstallLaunchedMarkerRemovesSuppression() {
+        ApkUpdatePendingState pendingState = new ApkUpdatePendingState(new InMemoryStore());
+        pendingState.markInstallLaunched("0.118.2536", 0L);
+
+        pendingState.clearInstallLaunchedMarker();
+
+        Assert.assertFalse(pendingState.isInstallLaunchSuppressed("0.118.2535", 1000L));
+    }
 }

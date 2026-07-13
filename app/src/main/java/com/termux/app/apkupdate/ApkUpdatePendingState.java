@@ -23,6 +23,12 @@ public final class ApkUpdatePendingState {
 
     static final String KEY_DOWNLOADED_FILE_PATH = "apk_update_pending_downloaded_file_path";
 
+    static final String KEY_INSTALL_LAUNCHED_VERSION_NAME = "apk_update_install_launched_version_name";
+
+    static final String KEY_INSTALL_LAUNCHED_AT_MILLIS = "apk_update_install_launched_at_millis";
+
+    public static final long INSTALL_LAUNCHED_COOLDOWN_MILLIS = 60L * 60L * 1000L;
+
     private final Store store;
     private final AppVersionComparator versionComparator;
 
@@ -82,6 +88,33 @@ public final class ApkUpdatePendingState {
         return load() != null;
     }
 
+    public void markInstallLaunched(String launchedVersionName, long nowMillis) {
+        store.putString(KEY_INSTALL_LAUNCHED_VERSION_NAME, launchedVersionName);
+        store.putString(KEY_INSTALL_LAUNCHED_AT_MILLIS, Long.toString(nowMillis));
+    }
+
+    public void clearInstallLaunchedMarker() {
+        store.remove(KEY_INSTALL_LAUNCHED_VERSION_NAME);
+        store.remove(KEY_INSTALL_LAUNCHED_AT_MILLIS);
+    }
+
+    public boolean isInstallLaunchSuppressed(String installedVersionName, long nowMillis) {
+        String launchedVersionName = store.getString(KEY_INSTALL_LAUNCHED_VERSION_NAME);
+        if (launchedVersionName == null) {
+            return false;
+        }
+        if (!versionComparator.isNewer(launchedVersionName, installedVersionName)) {
+            clearInstallLaunchedMarker();
+            return false;
+        }
+        long launchedAtMillis = parseLong(store.getString(KEY_INSTALL_LAUNCHED_AT_MILLIS));
+        if (nowMillis - launchedAtMillis >= INSTALL_LAUNCHED_COOLDOWN_MILLIS) {
+            clearInstallLaunchedMarker();
+            return false;
+        }
+        return true;
+    }
+
     public void clear() {
         store.remove(KEY_LATEST_VERSION_NAME);
         store.remove(KEY_DOWNLOAD_URL);
@@ -91,6 +124,10 @@ public final class ApkUpdatePendingState {
     }
 
     private long parseExpectedSizeBytes(@Nullable String rawValue) {
+        return parseLong(rawValue);
+    }
+
+    private long parseLong(@Nullable String rawValue) {
         if (rawValue == null || rawValue.isEmpty()) {
             return 0L;
         }
