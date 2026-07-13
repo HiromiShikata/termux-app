@@ -561,7 +561,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         registerTermuxActivityBroadcastReceiver();
 
-        new ApkUpdateUiController(this).showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
+        ApkUpdateUiController apkUpdateUiController = new ApkUpdateUiController(this);
+        apkUpdateUiController.resumePendingInstallIfPermissionGranted();
+        apkUpdateUiController.showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
 
         checkForApkUpdateAndShowIndicator();
 

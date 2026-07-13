@@ -21,6 +21,7 @@ public final class ApkUpdateUiController {
     private final ApkInstaller apkInstaller;
     private final ApkUpdateNotificationPolicy notificationPolicy;
     private final ApkUpdatePendingState pendingState;
+    private final ApkUpdateInstallResumeRequest pendingInstallResume;
     private final ApkUpdateCachedFileResolver cachedFileResolver;
 
     public ApkUpdateUiController(Activity activity) {
@@ -28,7 +29,9 @@ public final class ApkUpdateUiController {
         this.updateManager = new ApkUpdateManager(activity);
         this.apkInstaller = new ApkInstaller(activity);
         this.notificationPolicy = new ApkUpdateNotificationPolicy();
-        this.pendingState = new ApkUpdatePendingState(new SharedPreferencesApkUpdatePendingStore(activity));
+        ApkUpdatePendingState.Store store = new SharedPreferencesApkUpdatePendingStore(activity);
+        this.pendingState = new ApkUpdatePendingState(store);
+        this.pendingInstallResume = new ApkUpdateInstallResumeRequest(store);
         this.cachedFileResolver = new ApkUpdateCachedFileResolver();
     }
 
@@ -73,10 +76,16 @@ public final class ApkUpdateUiController {
     }
 
     public void checkAndShowFloatingIndicator(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
+        if (pendingState.isInstallLaunchSuppressed(BuildConfig.VERSION_NAME, System.currentTimeMillis())) {
+            return;
+        }
         ApkUpdateFloatingIndicatorController indicatorController = newIndicatorController(indicatorView);
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
+                if (pendingState.isInstallLaunchSuppressed(BuildConfig.VERSION_NAME, System.currentTimeMillis())) {
+                    return;
+                }
                 pendingState.save(availability);
                 preDownloadThenShowIndicator(availability, indicatorController);
             }
@@ -98,6 +107,10 @@ public final class ApkUpdateUiController {
     }
 
     public void showPendingIndicatorIfAny(ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
+        if (pendingState.isInstallLaunchSuppressed(BuildConfig.VERSION_NAME, System.currentTimeMillis())) {
+            indicatorView.hide();
+            return;
+        }
         ApkUpdateAvailability availability = pendingState.loadIfNewerThanInstalled(BuildConfig.VERSION_NAME);
         if (availability == null) {
             indicatorView.hide();
@@ -150,6 +163,7 @@ public final class ApkUpdateUiController {
         if (!apkInstaller.canRequestPackageInstalls()) {
             Logger.showToast(activity,
                 activity.getString(R.string.apk_update_install_permission_required), true);
+            pendingInstallResume.saveResumeRequest(availability);
             Intent settingsIntent = apkInstaller.buildInstallUnknownAppsSettingsIntent();
             if (settingsIntent != null) {
                 activity.startActivity(settingsIntent);
@@ -160,7 +174,7 @@ public final class ApkUpdateUiController {
         File cachedApkFile = cachedFileResolver.resolveExistingFile(availability);
         if (cachedApkFile != null) {
             pendingState.clear();
-            launchInstall(cachedApkFile);
+            launchInstall(availability, cachedApkFile);
             return;
         }
 
@@ -172,7 +186,7 @@ public final class ApkUpdateUiController {
                 @Override
                 public void onDownloaded(File apkFile) {
                     pendingState.clear();
-                    launchInstall(apkFile);
+                    launchInstall(availability, apkFile);
                 }
 
                 @Override
@@ -184,7 +198,21 @@ public final class ApkUpdateUiController {
             });
     }
 
-    private void launchInstall(File apkFile) {
+    public void resumePendingInstallIfPermissionGranted() {
+        ApkUpdateAvailability availability = pendingInstallResume.loadResumeRequest();
+        if (availability == null) {
+            return;
+        }
+        if (!apkInstaller.canRequestPackageInstalls()) {
+            return;
+        }
+        pendingInstallResume.clearResumeRequest();
+        startDownloadAndInstall(availability);
+    }
+
+    private void launchInstall(ApkUpdateAvailability availability, File apkFile) {
+        pendingState.markInstallLaunched(availability.getLatestVersionName(), System.currentTimeMillis());
+        pendingInstallResume.clearResumeRequest();
         activity.getApplicationContext().startActivity(apkInstaller.buildInstallIntent(apkFile));
     }
 }
