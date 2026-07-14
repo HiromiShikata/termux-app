@@ -193,11 +193,17 @@ public class SessionNewActivityStore {
      * "the activity dot is yellow even though out is more than a day old" defect. When the incoming
      * value is the same wall-clock time of day as the stored value but lands on a later calendar day,
      * it is that clock-aliased re-resolution and the genuine older stored time is kept; otherwise the
-     * incoming value is a real advance and is used.
+     * incoming value is a real advance and is used. A dated-token value ({@code fromDatedToken})
+     * already carries its own calendar day, so it is never a clock-aliased re-resolution and the guard
+     * is skipped for it: the newer dated value is always used, keeping the cross-midnight fix intact.
      */
     private static long genuineStatuslineTimeMillis(@Nullable Long storedTimeMillis,
-                                                    long incomingTimeMillis) {
+                                                    long incomingTimeMillis,
+                                                    boolean fromDatedToken) {
         if (storedTimeMillis == null) {
+            return incomingTimeMillis;
+        }
+        if (fromDatedToken) {
             return incomingTimeMillis;
         }
         if (ClockAliasedStatuslineTimeGuard.isOlderDayWithSameClockTime(
@@ -219,6 +225,18 @@ public class SessionNewActivityStore {
                                       @Nullable Long outTimeMillis,
                                       @Nullable Long replyTimeMillis,
                                       int subagentCount) {
+        recordStatuslineTimes(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis,
+            subagentCount, false, false, false);
+    }
+
+    public void recordStatuslineTimes(@NonNull String sessionName,
+                                      @Nullable Long callTimeMillis,
+                                      @Nullable Long outTimeMillis,
+                                      @Nullable Long replyTimeMillis,
+                                      int subagentCount,
+                                      boolean callTimeFromDatedToken,
+                                      boolean outTimeFromDatedToken,
+                                      boolean replyTimeFromDatedToken) {
         if (statuslineTimesUnchanged(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis,
             subagentCount)) {
             return;
@@ -226,19 +244,22 @@ public class SessionNewActivityStore {
         mSubagentCountByName.put(sessionName, subagentCount);
         if (callTimeMillis != null) {
             long genuineCallTimeMillis = genuineStatuslineTimeMillis(
-                mStatuslineCallTimeMillisByName.get(sessionName), callTimeMillis);
+                mStatuslineCallTimeMillisByName.get(sessionName), callTimeMillis,
+                callTimeFromDatedToken);
             mStatuslineCallTimeMillisByName.put(sessionName, genuineCallTimeMillis);
             mLastExplicitCallTimeMillisByName.put(sessionName, genuineCallTimeMillis);
         }
         if (outTimeMillis != null) {
             long genuineOutTimeMillis = genuineStatuslineTimeMillis(
-                mStatuslineOutTimeMillisByName.get(sessionName), outTimeMillis);
+                mStatuslineOutTimeMillisByName.get(sessionName), outTimeMillis,
+                outTimeFromDatedToken);
             mStatuslineOutTimeMillisByName.put(sessionName, genuineOutTimeMillis);
             mLastOutputActivityTimeMillisByName.put(sessionName, genuineOutTimeMillis);
         }
         if (replyTimeMillis != null) {
             long genuineReplyTimeMillis = genuineStatuslineTimeMillis(
-                mStatuslineReplyTimeMillisByName.get(sessionName), replyTimeMillis);
+                mStatuslineReplyTimeMillisByName.get(sessionName), replyTimeMillis,
+                replyTimeFromDatedToken);
             advanceStatuslineReplyTime(sessionName, genuineReplyTimeMillis);
             if (statuslineReplyAcknowledgesPendingReasons(sessionName, genuineReplyTimeMillis)) {
                 acknowledgeCallReasons(sessionName);

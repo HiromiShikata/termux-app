@@ -35,7 +35,10 @@ public final class SessionStatuslineReloadScanner {
             statuslineTimes.getCallTimeMillis(),
             statuslineTimes.getOutTimeMillis(),
             statuslineTimes.getReplyTimeMillis(),
-            statuslineTimes.getSubagentCount());
+            statuslineTimes.getSubagentCount(),
+            statuslineTimes.isCallTimeFromDatedToken(),
+            statuslineTimes.isOutTimeFromDatedToken(),
+            statuslineTimes.isReplyTimeFromDatedToken());
         store.clearReconnecting(sessionName);
     }
 }

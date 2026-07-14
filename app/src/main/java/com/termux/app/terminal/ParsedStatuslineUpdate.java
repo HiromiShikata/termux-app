@@ -17,6 +17,12 @@ public final class ParsedStatuslineUpdate {
     @Nullable
     private final Long mReplyTimeMillis;
 
+    private final boolean mCallTimeFromDatedToken;
+
+    private final boolean mOutTimeFromDatedToken;
+
+    private final boolean mReplyTimeFromDatedToken;
+
     private final int mSubagentCount;
 
     public ParsedStatuslineUpdate(@NonNull String sessionName,
@@ -24,11 +30,26 @@ public final class ParsedStatuslineUpdate {
                                   @Nullable Long outTimeMillis,
                                   @Nullable Long replyTimeMillis,
                                   int subagentCount) {
+        this(sessionName, callTimeMillis, outTimeMillis, replyTimeMillis, subagentCount,
+            false, false, false);
+    }
+
+    public ParsedStatuslineUpdate(@NonNull String sessionName,
+                                  @Nullable Long callTimeMillis,
+                                  @Nullable Long outTimeMillis,
+                                  @Nullable Long replyTimeMillis,
+                                  int subagentCount,
+                                  boolean callTimeFromDatedToken,
+                                  boolean outTimeFromDatedToken,
+                                  boolean replyTimeFromDatedToken) {
         mSessionName = sessionName;
         mCallTimeMillis = callTimeMillis;
         mOutTimeMillis = outTimeMillis;
         mReplyTimeMillis = replyTimeMillis;
         mSubagentCount = subagentCount;
+        mCallTimeFromDatedToken = callTimeFromDatedToken;
+        mOutTimeFromDatedToken = outTimeFromDatedToken;
+        mReplyTimeFromDatedToken = replyTimeFromDatedToken;
     }
 
     @NonNull
@@ -51,12 +72,24 @@ public final class ParsedStatuslineUpdate {
         return mReplyTimeMillis;
     }
 
+    public boolean isCallTimeFromDatedToken() {
+        return mCallTimeFromDatedToken;
+    }
+
+    public boolean isOutTimeFromDatedToken() {
+        return mOutTimeFromDatedToken;
+    }
+
+    public boolean isReplyTimeFromDatedToken() {
+        return mReplyTimeFromDatedToken;
+    }
+
     public int getSubagentCount() {
         return mSubagentCount;
     }
 
     public void applyTo(@NonNull SessionNewActivityStore store) {
         store.recordStatuslineTimes(mSessionName, mCallTimeMillis, mOutTimeMillis, mReplyTimeMillis,
-            mSubagentCount);
+            mSubagentCount, mCallTimeFromDatedToken, mOutTimeFromDatedToken, mReplyTimeFromDatedToken);
     }
 }

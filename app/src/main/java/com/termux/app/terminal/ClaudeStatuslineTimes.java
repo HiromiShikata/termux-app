@@ -3,6 +3,10 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.time.DateTimeException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -10,6 +14,9 @@ import java.util.regex.Pattern;
 
 public final class ClaudeStatuslineTimes {
 
+    private static final Pattern CALL_DATED_PATTERN = datedTokenPattern("call");
+    private static final Pattern OUT_DATED_PATTERN = datedTokenPattern("out");
+    private static final Pattern REPLY_DATED_PATTERN = datedTokenPattern("reply");
     private static final Pattern CALL_PATTERN = tokenPattern("call");
     private static final Pattern OUT_PATTERN = tokenPattern("out");
     private static final Pattern REPLY_PATTERN = tokenPattern("reply");
@@ -24,15 +31,24 @@ public final class ClaudeStatuslineTimes {
     @Nullable
     private final Long mReplyTimeMillis;
 
+    private final boolean mCallTimeFromDatedToken;
+
+    private final boolean mOutTimeFromDatedToken;
+
+    private final boolean mReplyTimeFromDatedToken;
+
     private final int mSubagentCount;
 
-    private ClaudeStatuslineTimes(@Nullable Long callTimeMillis,
-                                  @Nullable Long outTimeMillis,
-                                  @Nullable Long replyTimeMillis,
+    private ClaudeStatuslineTimes(@NonNull TokenTime callTime,
+                                  @NonNull TokenTime outTime,
+                                  @NonNull TokenTime replyTime,
                                   int subagentCount) {
-        mCallTimeMillis = callTimeMillis;
-        mOutTimeMillis = outTimeMillis;
-        mReplyTimeMillis = replyTimeMillis;
+        mCallTimeMillis = callTime.timeMillis;
+        mOutTimeMillis = outTime.timeMillis;
+        mReplyTimeMillis = replyTime.timeMillis;
+        mCallTimeFromDatedToken = callTime.fromDatedToken;
+        mOutTimeFromDatedToken = outTime.fromDatedToken;
+        mReplyTimeFromDatedToken = replyTime.fromDatedToken;
         mSubagentCount = subagentCount;
     }
 
@@ -40,12 +56,13 @@ public final class ClaudeStatuslineTimes {
     public static ClaudeStatuslineTimes parse(@Nullable String screenText, long nowMillis,
                                               @NonNull TimeZone timeZone) {
         if (screenText == null || screenText.isEmpty()) {
-            return new ClaudeStatuslineTimes(null, null, null, 0);
+            return new ClaudeStatuslineTimes(TokenTime.absent(), TokenTime.absent(),
+                TokenTime.absent(), 0);
         }
         return new ClaudeStatuslineTimes(
-            absoluteTimeMillis(CALL_PATTERN, screenText, nowMillis, timeZone),
-            absoluteTimeMillis(OUT_PATTERN, screenText, nowMillis, timeZone),
-            absoluteTimeMillis(REPLY_PATTERN, screenText, nowMillis, timeZone),
+            tokenTime(CALL_DATED_PATTERN, CALL_PATTERN, screenText, nowMillis, timeZone),
+            tokenTime(OUT_DATED_PATTERN, OUT_PATTERN, screenText, nowMillis, timeZone),
+            tokenTime(REPLY_DATED_PATTERN, REPLY_PATTERN, screenText, nowMillis, timeZone),
             subagentCount(screenText));
     }
 
@@ -73,6 +90,18 @@ public final class ClaudeStatuslineTimes {
         return mReplyTimeMillis;
     }
 
+    public boolean isCallTimeFromDatedToken() {
+        return mCallTimeFromDatedToken;
+    }
+
+    public boolean isOutTimeFromDatedToken() {
+        return mOutTimeFromDatedToken;
+    }
+
+    public boolean isReplyTimeFromDatedToken() {
+        return mReplyTimeFromDatedToken;
+    }
+
     private static int subagentCount(@NonNull String screenText) {
         Matcher matcher = SUBAGENT_COUNT_PATTERN.matcher(screenText);
         int lastMatch = 0;
@@ -91,9 +120,69 @@ public final class ClaudeStatuslineTimes {
         return Pattern.compile("\\b" + name + ":(\\d{1,2}):(\\d{2}):(\\d{2})\\b");
     }
 
+    @NonNull
+    private static Pattern datedTokenPattern(@NonNull String name) {
+        String date = "(\\d{4})-(\\d{2})-(\\d{2})";
+        String dateTimeSeparator = "[T ]";
+        String clock = "(\\d{2}):(\\d{2}):(\\d{2})";
+        String optionalFractionalSeconds = "(?:\\.\\d+)?";
+        String optionalZoneOffset = "(Z|[+-]\\d{2}:\\d{2})?";
+        return Pattern.compile("\\b" + name + ":" + date + dateTimeSeparator + clock
+            + optionalFractionalSeconds + optionalZoneOffset);
+    }
+
+    @NonNull
+    private static TokenTime tokenTime(@NonNull Pattern datedPattern, @NonNull Pattern pattern,
+                                       @NonNull String screenText, long nowMillis,
+                                       @NonNull TimeZone timeZone) {
+        Long datedMatch = datedTimeMillis(datedPattern, screenText, timeZone);
+        if (datedMatch != null) {
+            return TokenTime.fromDatedToken(datedMatch);
+        }
+        Long clockMatch = clockTimeMillis(pattern, screenText, nowMillis, timeZone);
+        return TokenTime.fromClockToken(clockMatch);
+    }
+
     @Nullable
-    private static Long absoluteTimeMillis(@NonNull Pattern pattern, @NonNull String screenText,
-                                           long nowMillis, @NonNull TimeZone timeZone) {
+    private static Long datedTimeMillis(@NonNull Pattern datedPattern, @NonNull String screenText,
+                                        @NonNull TimeZone timeZone) {
+        Matcher matcher = datedPattern.matcher(screenText);
+        Long lastMatch = null;
+        while (matcher.find()) {
+            Long parsed = epochMillisFromDatedMatch(matcher, timeZone);
+            if (parsed != null) {
+                lastMatch = parsed;
+            }
+        }
+        return lastMatch;
+    }
+
+    @Nullable
+    private static Long epochMillisFromDatedMatch(@NonNull Matcher matcher,
+                                                  @NonNull TimeZone timeZone) {
+        int year = Integer.parseInt(matcher.group(1));
+        int month = Integer.parseInt(matcher.group(2));
+        int day = Integer.parseInt(matcher.group(3));
+        int hours = Integer.parseInt(matcher.group(4));
+        int minutes = Integer.parseInt(matcher.group(5));
+        int seconds = Integer.parseInt(matcher.group(6));
+        String zone = matcher.group(7);
+        try {
+            LocalDateTime localDateTime =
+                LocalDateTime.of(year, month, day, hours, minutes, seconds);
+            if (zone == null) {
+                return localDateTime.atZone(timeZone.toZoneId()).toInstant().toEpochMilli();
+            }
+            ZoneOffset offset = "Z".equals(zone) ? ZoneOffset.UTC : ZoneOffset.of(zone);
+            return OffsetDateTime.of(localDateTime, offset).toInstant().toEpochMilli();
+        } catch (DateTimeException invalidDateTime) {
+            return null;
+        }
+    }
+
+    @Nullable
+    private static Long clockTimeMillis(@NonNull Pattern pattern, @NonNull String screenText,
+                                        long nowMillis, @NonNull TimeZone timeZone) {
         Matcher matcher = pattern.matcher(screenText);
         Long lastMatch = null;
         while (matcher.find()) {
@@ -120,5 +209,33 @@ public final class ClaudeStatuslineTimes {
             calendar.add(Calendar.DAY_OF_MONTH, -1);
         }
         return calendar.getTimeInMillis();
+    }
+
+    private static final class TokenTime {
+
+        @Nullable
+        private final Long timeMillis;
+
+        private final boolean fromDatedToken;
+
+        private TokenTime(@Nullable Long timeMillis, boolean fromDatedToken) {
+            this.timeMillis = timeMillis;
+            this.fromDatedToken = fromDatedToken;
+        }
+
+        @NonNull
+        private static TokenTime absent() {
+            return new TokenTime(null, false);
+        }
+
+        @NonNull
+        private static TokenTime fromDatedToken(@NonNull Long timeMillis) {
+            return new TokenTime(timeMillis, true);
+        }
+
+        @NonNull
+        private static TokenTime fromClockToken(@Nullable Long timeMillis) {
+            return new TokenTime(timeMillis, false);
+        }
     }
 }

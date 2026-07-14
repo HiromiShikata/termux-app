@@ -246,4 +246,187 @@ public class ClaudeStatuslineTimesTest {
         Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 0, 0)),
             times.getOutTimeMillis());
     }
+
+    private static long timeMillisAt(TimeZone zone, int year, int month, int day,
+                                     int hour, int minute, int second) {
+        Calendar calendar = Calendar.getInstance(zone);
+        calendar.clear();
+        calendar.set(year, month - 1, day, hour, minute, second);
+        return calendar.getTimeInMillis();
+    }
+
+    @Test
+    public void aDatedTokenParsesToTheExactEmbeddedInstantInLocalTime() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "model | call:2026-06-26T13:45:30 | branch";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 45, 30)),
+            times.getCallTimeMillis());
+    }
+
+    @Test
+    public void aDatedTokenIsInterpretedInTheProvidedLocalTimeZoneWhenNoOffsetIsPresent() {
+        TimeZone tokyo = TimeZone.getTimeZone("Asia/Tokyo");
+        long now = timeMillisAt(tokyo, 2026, 6, 26, 14, 0, 0);
+        String screen = "call:2026-06-26T13:45:30";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, tokyo);
+
+        Assert.assertEquals(Long.valueOf(timeMillisAt(tokyo, 2026, 6, 26, 13, 45, 30)),
+            times.getCallTimeMillis());
+        // The same wall-clock string in UTC is 9 hours later in absolute time than in Tokyo.
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 45, 30) - 9L * 3600L * 1000L),
+            times.getCallTimeMillis());
+    }
+
+    @Test
+    public void aDatedTokenBypassesTheMostRecentClockHeuristicAcrossMidnight() {
+        // now is on 2026-06-28 but the embedded date is the previous day: the exact
+        // embedded instant is used directly rather than being reconstructed from now.
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        String screen = "reply:2026-06-27T23:59:30";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 23, 59, 30)),
+            times.getReplyTimeMillis());
+    }
+
+    @Test
+    public void aDatedTokenWithADateInThePastIsNotClampedToTheMostRecentDay() {
+        // A genuinely old dated token (more than a day ago) keeps its embedded date,
+        // whereas the time-only heuristic would have snapped it to the most recent day.
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        String screen = "out:2026-06-25T11:00:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 25, 11, 0, 0)),
+            times.getOutTimeMillis());
+    }
+
+    @Test
+    public void aTimeOnlyTokenStillUsesTheMostRecentClockHeuristic() {
+        long now = timeMillis(2026, 6, 28, 0, 0, 10);
+        String screen = "reply:23:59:30";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        // No embedded date, so the previous-day reconstruction still applies.
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 23, 59, 30)),
+            times.getReplyTimeMillis());
+    }
+
+    @Test
+    public void mixedDatedAndTimeOnlyTokensEachUseTheirOwnPath() {
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        // call is dated (previous day, used exactly), out is time-only (heuristic ->
+        // today because 11:00 is before now), reply is dated on today.
+        String screen = "call:2026-06-27T09:00:00 out:11:00:00 reply:2026-06-28T10:30:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 9, 0, 0)),
+            times.getCallTimeMillis());
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 28, 11, 0, 0)),
+            times.getOutTimeMillis());
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 28, 10, 30, 0)),
+            times.getReplyTimeMillis());
+    }
+
+    @Test
+    public void tolerateSpaceSeparatorInsteadOfTBetweenDateAndTime() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "call:2026-06-26 13:45:30";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 45, 30)),
+            times.getCallTimeMillis());
+    }
+
+    @Test
+    public void tolerateATrailingZuluZoneDesignatorAndTreatItAsUtc() {
+        TimeZone tokyo = TimeZone.getTimeZone("Asia/Tokyo");
+        long now = timeMillisAt(tokyo, 2026, 6, 26, 23, 0, 0);
+        String screen = "call:2026-06-26T13:45:30Z";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, tokyo);
+
+        // Z means UTC regardless of the provided local zone.
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 45, 30)),
+            times.getCallTimeMillis());
+    }
+
+    @Test
+    public void tolerateAnExplicitPositiveZoneOffset() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "call:2026-06-26T13:45:30+09:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        // 13:45:30+09:00 equals 04:45:30 UTC.
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 4, 45, 30)),
+            times.getCallTimeMillis());
+    }
+
+    @Test
+    public void tolerateAnExplicitNegativeZoneOffset() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "call:2026-06-26T13:45:30-05:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        // 13:45:30-05:00 equals 18:45:30 UTC.
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 18, 45, 30)),
+            times.getCallTimeMillis());
+    }
+
+    @Test
+    public void tolerateFractionalSecondsWhichAreTruncatedToWholeSeconds() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "call:2026-06-26T13:45:30.123 out:2026-06-26T13:50:00.5Z";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 45, 30)),
+            times.getCallTimeMillis());
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 26, 13, 50, 0)),
+            times.getOutTimeMillis());
+    }
+
+    @Test
+    public void aDatedTokenTakesPrecedenceOverAnEarlierTimeOnlyTokenForTheSameName() {
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        String screen = "out:11:00:00 ... refreshed out:2026-06-27T09:00:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 9, 0, 0)),
+            times.getOutTimeMillis());
+    }
+
+    @Test
+    public void usesTheLastDatedOccurrenceWhenADatedTokenAppearsMultipleTimes() {
+        long now = timeMillis(2026, 6, 28, 12, 0, 0);
+        String screen = "reply:2026-06-26T08:00:00 later reply:2026-06-27T09:30:00";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertEquals(Long.valueOf(timeMillis(2026, 6, 27, 9, 30, 0)),
+            times.getReplyTimeMillis());
+    }
+
+    @Test
+    public void aDatedTokenWithAnInvalidCalendarDateIsIgnored() {
+        long now = timeMillis(2026, 6, 26, 14, 0, 0);
+        String screen = "call:2026-13-40T13:45:30";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertNull(times.getCallTimeMillis());
+        Assert.assertFalse(times.hasAnyToken());
+    }
 }

@@ -23,7 +23,10 @@ public final class AllSessionsStatuslineParser {
                 statuslineTimes.getCallTimeMillis(),
                 statuslineTimes.getOutTimeMillis(),
                 statuslineTimes.getReplyTimeMillis(),
-                statuslineTimes.getSubagentCount()));
+                statuslineTimes.getSubagentCount(),
+                statuslineTimes.isCallTimeFromDatedToken(),
+                statuslineTimes.isOutTimeFromDatedToken(),
+                statuslineTimes.isReplyTimeFromDatedToken()));
         }
         return updates;
     }
