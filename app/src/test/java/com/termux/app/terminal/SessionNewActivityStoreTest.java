@@ -1238,6 +1238,50 @@ public class SessionNewActivityStoreTest {
         Assert.assertFalse(store.isReconnecting("worker"));
     }
 
+    @Test
+    public void aDatedCallOnALaterDayWithTheSameClockTimeReplacesTheOlderStoredEpoch() {
+        java.util.TimeZone originalDefault = java.util.TimeZone.getDefault();
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+        try {
+            SessionNewActivityStore store = new SessionNewActivityStore();
+            long dayZeroCallMillis = 1_700_000_000_000L;
+            long dayOneCallMillis = dayZeroCallMillis + ONE_DAY_MILLIS;
+
+            store.recordStatuslineTimes("session-one", dayZeroCallMillis, null, null, 0, true, false, false);
+            store.recordStatuslineTimes("session-one", dayOneCallMillis, null, null, 0, true, false, false);
+
+            Assert.assertEquals("A dated call token on a later calendar day is unambiguous, so the clock "
+                    + "alias guard must be skipped and the newer dated epoch stored",
+                Long.valueOf(dayOneCallMillis), store.getStatuslineCallTimeMillis("session-one"));
+            Assert.assertEquals(Long.valueOf(dayOneCallMillis),
+                store.getLastExplicitCallTimeMillis("session-one"));
+        } finally {
+            java.util.TimeZone.setDefault(originalDefault);
+        }
+    }
+
+    @Test
+    public void aTimeOnlyCallOnALaterDayWithTheSameClockTimeKeepsTheOlderStoredEpoch() {
+        java.util.TimeZone originalDefault = java.util.TimeZone.getDefault();
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+        try {
+            SessionNewActivityStore store = new SessionNewActivityStore();
+            long dayZeroCallMillis = 1_700_000_000_000L;
+            long dayOneCallMillis = dayZeroCallMillis + ONE_DAY_MILLIS;
+
+            store.recordStatuslineTimes("session-one", dayZeroCallMillis, null, null, 0, false, false, false);
+            store.recordStatuslineTimes("session-one", dayOneCallMillis, null, null, 0, false, false, false);
+
+            Assert.assertEquals("A time-only call token that re-resolves to the same clock time on a "
+                    + "later day is a clock alias, so the guard must keep the genuine older epoch",
+                Long.valueOf(dayZeroCallMillis), store.getStatuslineCallTimeMillis("session-one"));
+        } finally {
+            java.util.TimeZone.setDefault(originalDefault);
+        }
+    }
+
+    private static final long ONE_DAY_MILLIS = 24L * 60L * 60L * 1000L;
+
     private static final class SaveCountingPersistence implements SessionNewActivityPersistence {
 
         private List<SessionNewActivityState> mStates = new ArrayList<>();
