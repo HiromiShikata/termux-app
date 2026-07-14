@@ -3,6 +3,11 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.time.DateTimeException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
@@ -10,6 +15,9 @@ import java.util.regex.Pattern;
 
 public final class ClaudeStatuslineTimes {
 
+    private static final Pattern CALL_DATED_PATTERN = datedTokenPattern("call");
+    private static final Pattern OUT_DATED_PATTERN = datedTokenPattern("out");
+    private static final Pattern REPLY_DATED_PATTERN = datedTokenPattern("reply");
     private static final Pattern CALL_PATTERN = tokenPattern("call");
     private static final Pattern OUT_PATTERN = tokenPattern("out");
     private static final Pattern REPLY_PATTERN = tokenPattern("reply");
@@ -43,9 +51,9 @@ public final class ClaudeStatuslineTimes {
             return new ClaudeStatuslineTimes(null, null, null, 0);
         }
         return new ClaudeStatuslineTimes(
-            absoluteTimeMillis(CALL_PATTERN, screenText, nowMillis, timeZone),
-            absoluteTimeMillis(OUT_PATTERN, screenText, nowMillis, timeZone),
-            absoluteTimeMillis(REPLY_PATTERN, screenText, nowMillis, timeZone),
+            absoluteTimeMillis(CALL_DATED_PATTERN, CALL_PATTERN, screenText, nowMillis, timeZone),
+            absoluteTimeMillis(OUT_DATED_PATTERN, OUT_PATTERN, screenText, nowMillis, timeZone),
+            absoluteTimeMillis(REPLY_DATED_PATTERN, REPLY_PATTERN, screenText, nowMillis, timeZone),
             subagentCount(screenText));
     }
 
@@ -91,9 +99,66 @@ public final class ClaudeStatuslineTimes {
         return Pattern.compile("\\b" + name + ":(\\d{1,2}):(\\d{2}):(\\d{2})\\b");
     }
 
+    @NonNull
+    private static Pattern datedTokenPattern(@NonNull String name) {
+        // YYYY-MM-DD, then a 'T' or space separator, then HH:MM:SS, then an optional
+        // fractional-seconds part and an optional 'Z' or +HH:MM / -HH:MM zone offset.
+        return Pattern.compile("\\b" + name
+            + ":(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?"
+            + "(Z|[+-]\\d{2}:\\d{2})?");
+    }
+
     @Nullable
-    private static Long absoluteTimeMillis(@NonNull Pattern pattern, @NonNull String screenText,
-                                           long nowMillis, @NonNull TimeZone timeZone) {
+    private static Long absoluteTimeMillis(@NonNull Pattern datedPattern, @NonNull Pattern pattern,
+                                           @NonNull String screenText, long nowMillis,
+                                           @NonNull TimeZone timeZone) {
+        Long datedMatch = datedTimeMillis(datedPattern, screenText, timeZone);
+        if (datedMatch != null) {
+            return datedMatch;
+        }
+        return clockTimeMillis(pattern, screenText, nowMillis, timeZone);
+    }
+
+    @Nullable
+    private static Long datedTimeMillis(@NonNull Pattern datedPattern, @NonNull String screenText,
+                                        @NonNull TimeZone timeZone) {
+        Matcher matcher = datedPattern.matcher(screenText);
+        Long lastMatch = null;
+        while (matcher.find()) {
+            Long parsed = epochMillisFromDatedMatch(matcher, timeZone);
+            if (parsed != null) {
+                lastMatch = parsed;
+            }
+        }
+        return lastMatch;
+    }
+
+    @Nullable
+    private static Long epochMillisFromDatedMatch(@NonNull Matcher matcher,
+                                                  @NonNull TimeZone timeZone) {
+        int year = Integer.parseInt(matcher.group(1));
+        int month = Integer.parseInt(matcher.group(2));
+        int day = Integer.parseInt(matcher.group(3));
+        int hours = Integer.parseInt(matcher.group(4));
+        int minutes = Integer.parseInt(matcher.group(5));
+        int seconds = Integer.parseInt(matcher.group(6));
+        String zone = matcher.group(7);
+        try {
+            LocalDateTime localDateTime =
+                LocalDateTime.of(year, month, day, hours, minutes, seconds);
+            if (zone == null) {
+                return localDateTime.atZone(timeZone.toZoneId()).toInstant().toEpochMilli();
+            }
+            ZoneOffset offset = "Z".equals(zone) ? ZoneOffset.UTC : ZoneOffset.of(zone);
+            return OffsetDateTime.of(localDateTime, offset).toInstant().toEpochMilli();
+        } catch (DateTimeException invalidDateTime) {
+            return null;
+        }
+    }
+
+    @Nullable
+    private static Long clockTimeMillis(@NonNull Pattern pattern, @NonNull String screenText,
+                                        long nowMillis, @NonNull TimeZone timeZone) {
         Matcher matcher = pattern.matcher(screenText);
         Long lastMatch = null;
         while (matcher.find()) {
