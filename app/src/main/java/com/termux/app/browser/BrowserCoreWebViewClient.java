@@ -136,11 +136,13 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     }
 
     private void injectViewport(@NonNull WebView view, @Nullable String url) {
-        String postLoadScript = BrowserViewportInjector.postLoadScript(
-            mHost.getViewMode(),
-            mHost.shouldInjectMobileViewport(),
-            mHost.getDocumentStartViewportScript());
-        if (postLoadScript == null) return;
-        view.evaluateJavascript(postLoadScript, null);
+        String documentStartScript = mHost.getDocumentStartViewportScript();
+        if (mHost.getViewMode().isDesktop()) {
+            if (BrowserDesktopViewport.INJECTION_SCRIPT.equals(documentStartScript)) return;
+            view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
+        } else if (mHost.shouldInjectMobileViewport()) {
+            if (BrowserMobileViewport.INJECTION_SCRIPT.equals(documentStartScript)) return;
+            view.evaluateJavascript(BrowserMobileViewport.INJECTION_SCRIPT, null);
+        }
     }
 }

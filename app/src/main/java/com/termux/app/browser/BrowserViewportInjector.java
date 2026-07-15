@@ -52,15 +52,4 @@ public final class BrowserViewportInjector {
         }
         return null;
     }
-
-    @Nullable
-    public static String postLoadScript(
-            @NonNull BrowserViewMode viewMode,
-            boolean injectMobileViewport,
-            @Nullable String documentStartScript) {
-        String desiredScript = scriptFor(viewMode, injectMobileViewport);
-        if (desiredScript == null) return null;
-        if (desiredScript.equals(documentStartScript)) return null;
-        return desiredScript;
-    }
 }

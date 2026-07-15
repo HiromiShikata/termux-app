@@ -3,7 +3,19 @@ package com.termux.app.browser;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 public class BrowserViewportInjectorTest {
+
+    private static final String CORE_CLIENT_PATH =
+        "src/main/java/com/termux/app/browser/BrowserCoreWebViewClient.java";
+
+    private static final String SESSION_CONTROLLER_PATH =
+        "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
 
     @Test
     public void desktopModeSelectsTheDesktopViewportScript() {
@@ -32,36 +44,35 @@ public class BrowserViewportInjectorTest {
     }
 
     @Test
-    public void postLoadSkipsDesktopScriptThatWasAlreadyRegisteredAtDocumentStart() {
-        Assert.assertNull(BrowserViewportInjector.postLoadScript(
-            BrowserViewMode.DESKTOP, false, BrowserDesktopViewport.INJECTION_SCRIPT));
+    public void postLoadInjectionSkipsOnlyTheScriptAlreadyRegisteredAtDocumentStart()
+            throws IOException {
+        String source = readModuleSource(CORE_CLIENT_PATH);
+        int injectIndex = source.indexOf("private void injectViewport");
+        Assert.assertTrue(injectIndex >= 0);
+        String body = source.substring(injectIndex, source.indexOf("\n    }", injectIndex));
+        Assert.assertTrue("post-load injection must consult the document-start script",
+            body.contains("getDocumentStartViewportScript()"));
+        Assert.assertTrue("desktop post-load injection must skip only the desktop script when it"
+                + " was already registered at document-start",
+            body.contains("BrowserDesktopViewport.INJECTION_SCRIPT.equals(documentStartScript)"));
+        Assert.assertTrue("mobile post-load injection must skip only the mobile script when it"
+                + " was already registered at document-start",
+            body.contains("BrowserMobileViewport.INJECTION_SCRIPT.equals(documentStartScript)"));
     }
 
     @Test
-    public void postLoadInjectsMobileScriptWhenOnlyDesktopWasRegisteredAtDocumentStart() {
-        Assert.assertEquals(
-            BrowserMobileViewport.INJECTION_SCRIPT,
-            BrowserViewportInjector.postLoadScript(
-                BrowserViewMode.MOBILE, true, BrowserDesktopViewport.INJECTION_SCRIPT));
+    public void sessionControllerRegistersDesktopViewportAtDocumentStart() throws IOException {
+        String source = readModuleSource(SESSION_CONTROLLER_PATH);
+        Assert.assertTrue(source.contains("BrowserViewportInjector.applyDocumentStart(webView"));
+        Assert.assertTrue(source.contains("getDocumentStartViewportScript()"));
     }
 
-    @Test
-    public void postLoadInjectsMobileScriptWhenNothingWasRegisteredAtDocumentStart() {
-        Assert.assertEquals(
-            BrowserMobileViewport.INJECTION_SCRIPT,
-            BrowserViewportInjector.postLoadScript(BrowserViewMode.MOBILE, true, null));
-    }
-
-    @Test
-    public void postLoadInjectsDesktopScriptWhenDocumentStartInjectionWasUnavailable() {
-        Assert.assertEquals(
-            BrowserDesktopViewport.INJECTION_SCRIPT,
-            BrowserViewportInjector.postLoadScript(BrowserViewMode.DESKTOP, false, null));
-    }
-
-    @Test
-    public void postLoadInjectsNothingForMobileWhenMobileInjectionIsDisabled() {
-        Assert.assertNull(
-            BrowserViewportInjector.postLoadScript(BrowserViewMode.MOBILE, false, null));
+    private String readModuleSource(String relativePath) throws IOException {
+        Path moduleRelative = Paths.get(relativePath);
+        if (Files.exists(moduleRelative)) {
+            return new String(Files.readAllBytes(moduleRelative), StandardCharsets.UTF_8);
+        }
+        Path repoRelative = Paths.get("app").resolve(relativePath);
+        return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
     }
 }
