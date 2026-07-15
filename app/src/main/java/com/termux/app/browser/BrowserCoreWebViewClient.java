@@ -20,6 +20,11 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
 
         boolean shouldInjectMobileViewport();
 
+        @Nullable
+        default String getDocumentStartViewportScript() {
+            return null;
+        }
+
         void onPageStarted(@NonNull WebView view, @Nullable String url);
 
         void onPageCommitVisible(@NonNull WebView view, @Nullable String url);
@@ -131,9 +136,12 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     }
 
     private void injectViewport(@NonNull WebView view, @Nullable String url) {
+        String documentStartScript = mHost.getDocumentStartViewportScript();
         if (mHost.getViewMode().isDesktop()) {
+            if (BrowserDesktopViewport.INJECTION_SCRIPT.equals(documentStartScript)) return;
             view.evaluateJavascript(BrowserDesktopViewport.INJECTION_SCRIPT, null);
         } else if (mHost.shouldInjectMobileViewport()) {
+            if (BrowserMobileViewport.INJECTION_SCRIPT.equals(documentStartScript)) return;
             view.evaluateJavascript(BrowserMobileViewport.INJECTION_SCRIPT, null);
         }
     }
