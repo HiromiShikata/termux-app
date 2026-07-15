@@ -11,20 +11,18 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowLooper;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 @RunWith(RobolectricTestRunner.class)
 public class BrowserPasskeyBridgeTest {
 
-    private static final class RecordingHost implements BrowserPasskeyBridge.Host {
+    private static final class CountingHost implements BrowserPasskeyBridge.Host {
 
-        final List<String> shownUrls = new ArrayList<>();
+        int shownCount;
 
         @Override
-        public void onPasskeyCeremonyDetected(String pageUrl) {
-            shownUrls.add(pageUrl);
+        public void onPasskeyCeremonyDetected() {
+            shownCount++;
         }
     }
 
@@ -39,60 +37,47 @@ public class BrowserPasskeyBridgeTest {
         mClock = new AtomicLong(0L);
     }
 
-    private BrowserPasskeyBridge bridge(RecordingHost host) {
+    private BrowserPasskeyBridge bridge(CountingHost host) {
         return new BrowserPasskeyBridge(
             mHandler, host, new BrowserPasskeyHintDebounce(10_000L), mClock::get);
     }
 
     @Test
-    public void showsTheAffordanceForTheDetectedPageUrlOnTheMainThread() {
-        RecordingHost host = new RecordingHost();
+    public void showsTheAffordanceOnTheMainThreadWhenACeremonyIsDetected() {
+        CountingHost host = new CountingHost();
         BrowserPasskeyBridge bridge = bridge(host);
 
-        bridge.onPasskeyCeremonyDetected("https://example.com/login");
-        Assert.assertTrue(host.shownUrls.isEmpty());
+        bridge.onPasskeyCeremonyDetected("https://attacker.example/phishing");
+        Assert.assertEquals(0, host.shownCount);
 
         mShadowLooper.idle();
 
-        Assert.assertEquals(1, host.shownUrls.size());
-        Assert.assertEquals("https://example.com/login", host.shownUrls.get(0));
+        Assert.assertEquals(1, host.shownCount);
     }
 
     @Test
     public void debouncesRepeatedDetectionsSoTheSnackbarIsNotSpammed() {
-        RecordingHost host = new RecordingHost();
+        CountingHost host = new CountingHost();
         BrowserPasskeyBridge bridge = bridge(host);
 
-        bridge.deliverOnMainThread("https://example.com/login");
+        bridge.deliverOnMainThread();
         mClock.set(2_000L);
-        bridge.deliverOnMainThread("https://example.com/login");
+        bridge.deliverOnMainThread();
         mClock.set(9_000L);
-        bridge.deliverOnMainThread("https://example.com/login");
+        bridge.deliverOnMainThread();
 
-        Assert.assertEquals(1, host.shownUrls.size());
+        Assert.assertEquals(1, host.shownCount);
     }
 
     @Test
     public void showsAgainAfterTheDebounceIntervalElapses() {
-        RecordingHost host = new RecordingHost();
+        CountingHost host = new CountingHost();
         BrowserPasskeyBridge bridge = bridge(host);
 
-        bridge.deliverOnMainThread("https://example.com/login");
+        bridge.deliverOnMainThread();
         mClock.set(11_000L);
-        bridge.deliverOnMainThread("https://example.com/login");
+        bridge.deliverOnMainThread();
 
-        Assert.assertEquals(2, host.shownUrls.size());
-    }
-
-    @Test
-    public void ignoresNullAndEmptyPageUrls() {
-        RecordingHost host = new RecordingHost();
-        BrowserPasskeyBridge bridge = bridge(host);
-
-        bridge.onPasskeyCeremonyDetected(null);
-        bridge.onPasskeyCeremonyDetected("");
-        mShadowLooper.idle();
-
-        Assert.assertTrue(host.shownUrls.isEmpty());
+        Assert.assertEquals(2, host.shownCount);
     }
 }

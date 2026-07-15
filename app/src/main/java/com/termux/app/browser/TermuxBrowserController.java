@@ -1627,22 +1627,31 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         snackbar.show();
     }
 
-    private void showPasskeyOpenInChromeHint(@NonNull String pageUrl) {
+    private void showPasskeyOpenInChromeHint() {
         View snackbarRoot = mActivity.findViewById(R.id.browser_content_coordinator);
         if (snackbarRoot == null) snackbarRoot = mActivity.findViewById(android.R.id.content);
         if (snackbarRoot == null) return;
+        BrowserPasskeyOpenInChromeAction openAction = new BrowserPasskeyOpenInChromeAction(
+            this::currentTrustedPageUrl,
+            url -> ShareUtils.openUrlInChrome(mActivity, url));
         Snackbar snackbar = Snackbar.make(
             snackbarRoot,
             mActivity.getString(R.string.msg_browser_passkey_open_in_chrome),
             PASSKEY_OPEN_IN_CHROME_SNACKBAR_DURATION_MS);
         snackbar.setAction(
             mActivity.getString(R.string.action_browser_passkey_open_in_chrome),
-            view -> ShareUtils.openUrlInChrome(mActivity, pageUrl));
+            view -> openAction.openTrustedCurrentUrlInChrome());
         View tabBarAnchor = mActivity.findViewById(R.id.browser_tab_bar);
         if (tabBarAnchor != null && tabBarAnchor.isShown()) {
             snackbar.setAnchorView(tabBarAnchor);
         }
         snackbar.show();
+    }
+
+    @Nullable
+    private String currentTrustedPageUrl() {
+        WebView displayedWebView = currentWebView();
+        return displayedWebView == null ? null : displayedWebView.getUrl();
     }
 
     public void reopenLastClosedTab() {

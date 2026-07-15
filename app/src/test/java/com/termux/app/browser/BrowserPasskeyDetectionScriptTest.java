@@ -33,11 +33,12 @@ public class BrowserPasskeyDetectionScriptTest {
     }
 
     @Test
-    public void invokesTheHostBridgeWithThePageUrl() {
+    public void signalsTheHostBridgeWithoutPassingThePageControlledUrl() {
         String script = BrowserPasskeyDetectionScript.documentStartScript();
 
         Assert.assertTrue(script.contains("window." + BrowserPasskeyDetectionScript.BRIDGE_NAME
-            + "." + BrowserPasskeyDetectionScript.BRIDGE_METHOD + "(String(location.href));"));
+            + "." + BrowserPasskeyDetectionScript.BRIDGE_METHOD + "('');"));
+        Assert.assertFalse(script.contains("location.href"));
     }
 
     @Test

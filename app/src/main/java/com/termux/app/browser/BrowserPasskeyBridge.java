@@ -10,7 +10,7 @@ public final class BrowserPasskeyBridge {
 
     public interface Host {
 
-        void onPasskeyCeremonyDetected(@NonNull String pageUrl);
+        void onPasskeyCeremonyDetected();
     }
 
     private final Handler mMainHandler;
@@ -42,13 +42,12 @@ public final class BrowserPasskeyBridge {
     }
 
     @JavascriptInterface
-    public void onPasskeyCeremonyDetected(@Nullable String pageUrl) {
-        if (pageUrl == null || pageUrl.isEmpty()) return;
-        mMainHandler.post(() -> deliverOnMainThread(pageUrl));
+    public void onPasskeyCeremonyDetected(@Nullable String ignoredPageUrl) {
+        mMainHandler.post(this::deliverOnMainThread);
     }
 
-    void deliverOnMainThread(@NonNull String pageUrl) {
+    void deliverOnMainThread() {
         if (!mDebounce.shouldShow(mClock.nowMs())) return;
-        mHost.onPasskeyCeremonyDetected(pageUrl);
+        mHost.onPasskeyCeremonyDetected();
     }
 }

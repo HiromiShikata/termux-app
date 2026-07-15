@@ -15,7 +15,7 @@ public final class BrowserPasskeyDetectionScript {
             + "window.__termuxPasskeyShimApplied=true;"
             + "function notifyHost(){try{"
             + "if(window." + BRIDGE_NAME + "&&typeof window." + BRIDGE_NAME + "." + BRIDGE_METHOD + "==='function'){"
-            + "window." + BRIDGE_NAME + "." + BRIDGE_METHOD + "(String(location.href));}"
+            + "window." + BRIDGE_NAME + "." + BRIDGE_METHOD + "('');}"
             + "}catch(e){}}"
             + "if(!navigator.credentials){return;}"
             + "function isPublicKeyRequest(options){try{"
