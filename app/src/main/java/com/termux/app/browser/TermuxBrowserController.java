@@ -1378,6 +1378,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
         preloadProjectOverviewTabForSession(mCurrentSessionHandle, mCurrentSessionName);
         rebindTabsList();
+        rebindTabStripToCurrentSession();
         updateDesktopModeToggleState();
         updateProjectActionButtons();
         if (switchingSession) {
@@ -1415,6 +1416,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mTabsListViewController = new BrowserTabsListViewController(mActivity, this, tabs);
         mTabsListView.setAdapter(mTabsListViewController);
         mTabsListView.setOnItemClickListener(mTabsListViewController);
+    }
+
+    private void rebindTabStripToCurrentSession() {
+        if (mTabFaviconStripController == null) return;
+        BrowserSessionTabStripBinding binding =
+            BrowserSessionTabStripBinding.forSession(mCurrentSessionHandle, mTabManager);
+        mTabFaviconStripController.update(binding.getTabs(), binding.getActiveTab());
     }
 
     public void onSessionRemoved(@NonNull TerminalSession session) {
@@ -1847,12 +1855,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void notifyTabsUpdated() {
         if (mTabsListViewController != null) mTabsListViewController.notifyDataSetChanged();
-        if (mTabFaviconStripController != null && mCurrentSessionHandle != null) {
-            mTabFaviconStripController.update(
-                mTabManager.getTabs(mCurrentSessionHandle),
-                getActiveTab()
-            );
-        }
+        if (mCurrentSessionHandle != null) rebindTabStripToCurrentSession();
     }
 
     private void recordTabInHistory(@NonNull BrowserTab tab) {
