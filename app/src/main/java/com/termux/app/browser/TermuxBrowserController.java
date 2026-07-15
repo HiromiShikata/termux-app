@@ -27,6 +27,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebChromeClient;
@@ -238,8 +239,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private ValueCallback<Uri[]> mPendingFileChooserCallback;
 
+    private final BrowserMediaCapturePermissionController mMediaCapturePermissionController;
+
     public TermuxBrowserController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
+        this.mMediaCapturePermissionController =
+            new BrowserMediaCapturePermissionController(() -> mActivity);
         this.mTabHistoryPersistThread = new HandlerThread("BrowserTabHistoryPersist");
         this.mTabHistoryPersistThread.start();
         this.mTabHistoryPersistHandler = new Handler(mTabHistoryPersistThread.getLooper());
@@ -792,6 +797,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         applyDarkModeRendering(settings);
         BrowserWebViewAutofill.apply(webView, Build.VERSION.SDK_INT);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+        BrowserMeetLowPowerVideoInjector.applyDocumentStart(webView, resolveMeetLowPowerVideoSettings());
 
         webView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
             @NonNull
@@ -808,6 +814,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @Override
             public void onPageStarted(@NonNull WebView view, @Nullable String url) {
                 mScrollTracker.resetToTop(view);
+                BrowserMeetLowPowerVideoInjector.injectAtPageStartFallback(
+                    view, url, resolveMeetLowPowerVideoSettings());
                 tab.setUrl(url);
                 if (isDisplayedTab(tab)) {
                     if (BrowserPageTransition.requiresCoverWhileLoading(
@@ -926,6 +934,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             public void onCloseWindow(WebView window) {
                 mWebChromeCallbackGuard.run("onCloseWindow", () -> closeTabForWebView(window));
             }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                mWebChromeCallbackGuard.run("onPermissionRequest",
+                    () -> mMediaCapturePermissionController.onPermissionRequest(request));
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                mWebChromeCallbackGuard.run("onPermissionRequestCanceled",
+                    () -> mMediaCapturePermissionController.onPermissionRequestCanceled(request));
+            }
         });
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
@@ -949,6 +969,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private boolean isDisplayedTab(@NonNull BrowserTab tab) {
         return mWebViewHost.getDisplayedTab() == tab;
+    }
+
+    @NonNull
+    private BrowserMeetLowPowerVideoSettings resolveMeetLowPowerVideoSettings() {
+        return BrowserMeetLowPowerVideoSettings.fromPreferences(mActivity.getPreferences());
+    }
+
+    public boolean deliverMediaCapturePermissionResult(
+            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        return mMediaCapturePermissionController.onRequestPermissionsResult(
+            requestCode, permissions, grantResults);
     }
 
     private boolean openNewWindowAsTab(@Nullable WebView requestingWebView, @Nullable Message resultMsg) {

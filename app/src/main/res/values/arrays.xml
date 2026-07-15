@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string-array name="browser_meet_low_power_video_max_resolution_entries">
+        <item>640 x 360</item>
+        <item>480 x 270</item>
+        <item>320 x 180</item>
+    </string-array>
+
+    <string-array name="browser_meet_low_power_video_max_resolution_values">
+        <item>640</item>
+        <item>480</item>
+        <item>320</item>
+    </string-array>
+
+    <string-array name="browser_meet_low_power_video_max_framerate_entries">
+        <item>24 fps</item>
+        <item>15 fps</item>
+        <item>10 fps</item>
+        <item>5 fps</item>
+    </string-array>
+
+    <string-array name="browser_meet_low_power_video_max_framerate_values">
+        <item>24</item>
+        <item>15</item>
+        <item>10</item>
+        <item>5</item>
+    </string-array>
+
+</resources>

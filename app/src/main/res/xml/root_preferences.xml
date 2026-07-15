@@ -35,6 +35,12 @@
         app:fragment="com.termux.app.fragments.settings.TermuxWidgetPreferencesFragment"/>
 
     <Preference
+        app:key="browser"
+        app:title="@string/browser_preferences_title"
+        app:summary="@string/browser_preferences_summary"
+        app:fragment="com.termux.app.fragments.settings.BrowserPreferencesFragment"/>
+
+    <Preference
         app:key="style"
         app:title="@string/action_style_terminal"
         app:persistent="false"/>

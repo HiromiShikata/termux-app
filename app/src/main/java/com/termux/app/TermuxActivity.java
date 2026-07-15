@@ -1346,6 +1346,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: "  + Arrays.toString(permissions) + ", grantResults: "  + Arrays.toString(grantResults));
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
+            return;
+        }
+        if (mTermuxBrowserController != null
+                && mTermuxBrowserController.deliverMediaCapturePermissionResult(requestCode, permissions, grantResults)) {
+            return;
         }
     }
 

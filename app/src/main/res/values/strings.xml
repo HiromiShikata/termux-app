@@ -305,6 +305,18 @@
                 <string name="termux_crash_report_notifications_enabled_on">Show notifications for crash reports. (Default)</string>
 
 
+        <!-- Browser Preferences -->
+        <string name="browser_preferences_title">Browser</string>
+        <string name="browser_preferences_summary">Preferences for the in-app browser</string>
+
+            <!-- Meet low-power video Category -->
+            <string name="browser_meet_low_power_video_header">Google Meet low-power video</string>
+            <string name="browser_meet_low_power_video_enabled_title">Reduce outgoing video</string>
+            <string name="browser_meet_low_power_video_enabled_off">Camera sends at the call\'s normal resolution and framerate.</string>
+            <string name="browser_meet_low_power_video_enabled_on">Camera keeps working but sends lower-resolution, lower-framerate video to save battery on meet.google.com.</string>
+            <string name="browser_meet_low_power_video_max_resolution_title">Max send resolution</string>
+            <string name="browser_meet_low_power_video_max_framerate_title">Max send framerate</string>
+
         <!-- Terminal IO Preferences -->
         <string name="termux_terminal_io_preferences_title">Terminal I/O</string>
         <string name="termux_terminal_io_preferences_summary">Preferences for terminal I/O</string>
