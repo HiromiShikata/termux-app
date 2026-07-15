@@ -801,7 +801,19 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         BrowserMeetLowPowerVideoInjector.applyDocumentStart(webView, resolveMeetLowPowerVideoSettings());
         webView.addJavascriptInterface(
-            new BrowserPasskeyBridge(mMainHandler, this::showPasskeyOpenInChromeHint),
+            new BrowserPasskeyBridge(mMainHandler, new BrowserPasskeyBridge.Host() {
+                @Override
+                public void onPasskeyCeremonyDetected() {
+                    showSecureLoginTabHint(R.string.msg_browser_passkey_open_in_chrome,
+                        R.string.action_browser_passkey_open_in_chrome);
+                }
+
+                @Override
+                public void onLoginFormDetected() {
+                    showSecureLoginTabHint(R.string.msg_browser_login_open_secure_tab,
+                        R.string.action_browser_login_open_secure_tab);
+                }
+            }),
             BrowserPasskeyDetectionScript.BRIDGE_NAME);
         BrowserPasskeyDetectionInjector.applyDocumentStart(webView);
 
@@ -1193,6 +1205,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mBookmarkToggleButton = mActivity.findViewById(R.id.browser_bookmark_toggle_button);
         mBookmarkToggleButton.setOnClickListener(v -> toggleCurrentPageBookmark());
         mActivity.findViewById(R.id.browser_open_in_chrome_button).setOnClickListener(v -> openCurrentPageInChrome());
+        mActivity.findViewById(R.id.browser_secure_login_button).setOnClickListener(v -> openCurrentPageInSecureLoginTab());
         mActivity.findViewById(R.id.browser_send_page_text_button).setOnClickListener(v -> sendCurrentPageTextToTerminal());
         mActivity.findViewById(R.id.browser_send_screenshot_button).setOnClickListener(v -> sendCurrentScreenshotToTerminal());
         mActivity.findViewById(R.id.browser_clear_cache_button).setOnClickListener(v -> clearCurrentTabCache());
@@ -1627,25 +1640,40 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         snackbar.show();
     }
 
-    private void showPasskeyOpenInChromeHint() {
+    private void showSecureLoginTabHint(int messageResId, int actionResId) {
         View snackbarRoot = mActivity.findViewById(R.id.browser_content_coordinator);
         if (snackbarRoot == null) snackbarRoot = mActivity.findViewById(android.R.id.content);
         if (snackbarRoot == null) return;
-        BrowserPasskeyOpenInChromeAction openAction = new BrowserPasskeyOpenInChromeAction(
-            this::currentTrustedPageUrl,
-            url -> ShareUtils.openUrlInChrome(mActivity, url));
+        BrowserSecureLoginTabLauncher launcher = createSecureLoginTabLauncher();
         Snackbar snackbar = Snackbar.make(
             snackbarRoot,
-            mActivity.getString(R.string.msg_browser_passkey_open_in_chrome),
+            mActivity.getString(messageResId),
             PASSKEY_OPEN_IN_CHROME_SNACKBAR_DURATION_MS);
         snackbar.setAction(
-            mActivity.getString(R.string.action_browser_passkey_open_in_chrome),
-            view -> openAction.openTrustedCurrentUrlInChrome());
+            mActivity.getString(actionResId),
+            view -> launcher.openTrustedCurrentUrlInSecureLoginTab());
         View tabBarAnchor = mActivity.findViewById(R.id.browser_tab_bar);
         if (tabBarAnchor != null && tabBarAnchor.isShown()) {
             snackbar.setAnchorView(tabBarAnchor);
         }
         snackbar.show();
+    }
+
+    private BrowserSecureLoginTabLauncher createSecureLoginTabLauncher() {
+        return new BrowserSecureLoginTabLauncher(
+            this::currentTrustedPageUrl,
+            () -> BrowserSecureLoginTab.resolveMechanism(mActivity),
+            (mechanism, url) -> BrowserSecureLoginTab.openInCustomTab(mActivity, url),
+            url -> ShareUtils.openUrlInChrome(mActivity, url));
+    }
+
+    private void openCurrentPageInSecureLoginTab() {
+        String trustedUrl = currentTrustedPageUrl();
+        if (trustedUrl == null || trustedUrl.trim().isEmpty()) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        createSecureLoginTabLauncher().openTrustedCurrentUrlInSecureLoginTab();
     }
 
     @Nullable

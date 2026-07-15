@@ -55,5 +55,33 @@ public class BrowserPasskeyDetectionScriptTest {
     public void bridgeIdentifiersAreStable() {
         Assert.assertEquals("__termuxPasskeyBridge", BrowserPasskeyDetectionScript.BRIDGE_NAME);
         Assert.assertEquals("onPasskeyCeremonyDetected", BrowserPasskeyDetectionScript.BRIDGE_METHOD);
+        Assert.assertEquals("onLoginFormDetected", BrowserPasskeyDetectionScript.LOGIN_FORM_BRIDGE_METHOD);
+    }
+
+    @Test
+    public void detectsPasswordFieldsAndSignalsTheLoginFormBridgeWithoutAPageControlledUrl() {
+        String script = BrowserPasskeyDetectionScript.documentStartScript();
+
+        Assert.assertTrue(script.contains("input[type=\"password\"]"));
+        Assert.assertTrue(script.contains("window." + BrowserPasskeyDetectionScript.BRIDGE_NAME
+            + "." + BrowserPasskeyDetectionScript.LOGIN_FORM_BRIDGE_METHOD + "('');"));
+    }
+
+    @Test
+    public void notifiesTheLoginFormBridgeAtMostOncePerPageViaAGuardFlag() {
+        String script = BrowserPasskeyDetectionScript.documentStartScript();
+
+        Assert.assertTrue(script.contains("var loginFormNotified=false;"));
+        Assert.assertTrue(script.contains("if(loginFormNotified){return;}"));
+        Assert.assertTrue(script.contains("loginFormNotified=true;notifyLoginForm();"));
+    }
+
+    @Test
+    public void checksForLoginFormsBothAtDomContentLoadedAndOnPasswordFieldFocus() {
+        String script = BrowserPasskeyDetectionScript.documentStartScript();
+
+        Assert.assertTrue(script.contains("document.addEventListener('DOMContentLoaded',checkLoginForm,{once:true});"));
+        Assert.assertTrue(script.contains("document.addEventListener('focusin',function(event){"));
+        Assert.assertFalse(script.contains("location.href"));
     }
 }

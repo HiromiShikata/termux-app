@@ -18,11 +18,18 @@ public class BrowserPasskeyBridgeTest {
 
     private static final class CountingHost implements BrowserPasskeyBridge.Host {
 
-        int shownCount;
+        int passkeyShownCount;
+
+        int loginFormShownCount;
 
         @Override
         public void onPasskeyCeremonyDetected() {
-            shownCount++;
+            passkeyShownCount++;
+        }
+
+        @Override
+        public void onLoginFormDetected() {
+            loginFormShownCount++;
         }
     }
 
@@ -39,7 +46,10 @@ public class BrowserPasskeyBridgeTest {
 
     private BrowserPasskeyBridge bridge(CountingHost host) {
         return new BrowserPasskeyBridge(
-            mHandler, host, new BrowserPasskeyHintDebounce(10_000L), mClock::get);
+            mHandler, host,
+            new BrowserPasskeyHintDebounce(10_000L),
+            new BrowserPasskeyHintDebounce(10_000L),
+            mClock::get);
     }
 
     @Test
@@ -48,11 +58,25 @@ public class BrowserPasskeyBridgeTest {
         BrowserPasskeyBridge bridge = bridge(host);
 
         bridge.onPasskeyCeremonyDetected("https://attacker.example/phishing");
-        Assert.assertEquals(0, host.shownCount);
+        Assert.assertEquals(0, host.passkeyShownCount);
 
         mShadowLooper.idle();
 
-        Assert.assertEquals(1, host.shownCount);
+        Assert.assertEquals(1, host.passkeyShownCount);
+    }
+
+    @Test
+    public void showsTheLoginFormAffordanceOnTheMainThreadWhenALoginFormIsDetected() {
+        CountingHost host = new CountingHost();
+        BrowserPasskeyBridge bridge = bridge(host);
+
+        bridge.onLoginFormDetected("https://attacker.example/phishing");
+        Assert.assertEquals(0, host.loginFormShownCount);
+
+        mShadowLooper.idle();
+
+        Assert.assertEquals(1, host.loginFormShownCount);
+        Assert.assertEquals(0, host.passkeyShownCount);
     }
 
     @Test
@@ -60,13 +84,29 @@ public class BrowserPasskeyBridgeTest {
         CountingHost host = new CountingHost();
         BrowserPasskeyBridge bridge = bridge(host);
 
-        bridge.deliverOnMainThread();
+        bridge.deliverPasskeyOnMainThread();
         mClock.set(2_000L);
-        bridge.deliverOnMainThread();
+        bridge.deliverPasskeyOnMainThread();
         mClock.set(9_000L);
-        bridge.deliverOnMainThread();
+        bridge.deliverPasskeyOnMainThread();
 
-        Assert.assertEquals(1, host.shownCount);
+        Assert.assertEquals(1, host.passkeyShownCount);
+    }
+
+    @Test
+    public void debouncesRepeatedLoginFormDetectionsIndependentlyFromPasskey() {
+        CountingHost host = new CountingHost();
+        BrowserPasskeyBridge bridge = bridge(host);
+
+        bridge.deliverLoginFormOnMainThread();
+        mClock.set(2_000L);
+        bridge.deliverLoginFormOnMainThread();
+
+        Assert.assertEquals(1, host.loginFormShownCount);
+
+        bridge.deliverPasskeyOnMainThread();
+
+        Assert.assertEquals(1, host.passkeyShownCount);
     }
 
     @Test
@@ -74,10 +114,10 @@ public class BrowserPasskeyBridgeTest {
         CountingHost host = new CountingHost();
         BrowserPasskeyBridge bridge = bridge(host);
 
-        bridge.deliverOnMainThread();
+        bridge.deliverPasskeyOnMainThread();
         mClock.set(11_000L);
-        bridge.deliverOnMainThread();
+        bridge.deliverPasskeyOnMainThread();
 
-        Assert.assertEquals(2, host.shownCount);
+        Assert.assertEquals(2, host.passkeyShownCount);
     }
 }

@@ -412,6 +412,16 @@
                         android:tint="?attr/termuxActivityDrawerImageTint" />
 
                     <ImageButton
+                        android:id="@+id/browser_secure_login_button"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_browser_login_open_secure_tab"
+                        android:src="@drawable/ic_browser_secure_login"
+                        android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                    <ImageButton
                         android:id="@+id/browser_send_page_text_button"
                         android:layout_width="0dp"
                         android:layout_height="44dp"
