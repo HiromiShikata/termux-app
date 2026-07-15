@@ -1182,6 +1182,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getTermuxBrowserController() != null)
             mActivity.getTermuxBrowserController().onSessionChanged(session);
 
+        mActivity.routePendingInboundBrowserUrl();
+
         SessionListBottomSheetController sessionListBottomSheetController = mActivity.getSessionListBottomSheetController();
         if (sessionListBottomSheetController != null)
             sessionListBottomSheetController.revealCurrentSessionRowIfShowing();

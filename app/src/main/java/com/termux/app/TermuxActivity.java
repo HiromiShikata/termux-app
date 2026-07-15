@@ -41,6 +41,7 @@ import com.termux.app.apkupdate.UpdateTagUpdateRunner;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
+import com.termux.app.browser.BrowserInboundViewUrl;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.browser.TermuxBrowserController;
@@ -185,6 +186,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private List<String> mPendingExpandedProjectsAllowlist = Collections.emptyList();
 
     private List<ProjectActionToken> mPendingProjectActionTokens = Collections.emptyList();
+
+    @Nullable
+    private String mPendingInboundBrowserUrl;
 
     SessionListBottomSheetController mSessionListBottomSheetController;
 
@@ -681,6 +685,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mPendingExpandedProjectsAllowlist = parseExpandedProjectsAllowlist(intent);
         mPendingProjectActionTokens = parseProjectActionTokens(intent);
+        mPendingInboundBrowserUrl = parseInboundBrowserUrl(intent);
 
         setTermuxSessionsListView();
 
@@ -736,6 +741,33 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTermuxService.setOpenTagUrlOpener(mOpenTagUrlOpener);
 
         eagerLoadAllSessions();
+
+        routePendingInboundBrowserUrl();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String inboundUrl = parseInboundBrowserUrl(intent);
+        if (inboundUrl == null) return;
+        mPendingInboundBrowserUrl = inboundUrl;
+        routePendingInboundBrowserUrl();
+    }
+
+    @Nullable
+    private String parseInboundBrowserUrl(@Nullable Intent intent) {
+        if (intent == null) return null;
+        return BrowserInboundViewUrl.resolveInAppBrowserUrl(intent.getAction(), intent.getDataString());
+    }
+
+    public void routePendingInboundBrowserUrl() {
+        if (mPendingInboundBrowserUrl == null) return;
+        if (mTermuxBrowserController == null) return;
+        if (getCurrentSession() == null) return;
+        String inboundUrl = mPendingInboundBrowserUrl;
+        mPendingInboundBrowserUrl = null;
+        mMainThreadHandler.post(() -> mTermuxBrowserController.openUrlInNewTab(inboundUrl));
     }
 
     @Override
