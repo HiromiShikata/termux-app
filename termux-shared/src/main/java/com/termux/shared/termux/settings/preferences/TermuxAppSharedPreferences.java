@@ -592,4 +592,37 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_TAB_HISTORY, value, false);
     }
 
+
+    public boolean isBrowserMeetLowPowerVideoEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_ENABLED, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_ENABLED);
+    }
+
+    public void setBrowserMeetLowPowerVideoEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_ENABLED, value, false);
+    }
+
+    public int getBrowserMeetLowPowerVideoMaxWidth() {
+        return SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_WIDTH, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_WIDTH);
+    }
+
+    public void setBrowserMeetLowPowerVideoMaxWidth(int value) {
+        SharedPreferenceUtils.setIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_WIDTH, value, false);
+    }
+
+    public int getBrowserMeetLowPowerVideoMaxHeight() {
+        return SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_HEIGHT, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_HEIGHT);
+    }
+
+    public void setBrowserMeetLowPowerVideoMaxHeight(int value) {
+        SharedPreferenceUtils.setIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_HEIGHT, value, false);
+    }
+
+    public int getBrowserMeetLowPowerVideoMaxFramerate() {
+        return SharedPreferenceUtils.getIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_FRAMERATE, TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_FRAMERATE);
+    }
+
+    public void setBrowserMeetLowPowerVideoMaxFramerate(int value) {
+        SharedPreferenceUtils.setIntStoredAsString(mSharedPreferences, TERMUX_APP.KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_FRAMERATE, value, false);
+    }
+
 }

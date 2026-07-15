@@ -281,6 +281,18 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_BROWSER_TAB_HISTORY = "browser_tab_history";
         public static final String DEFAULT_VALUE_KEY_BROWSER_TAB_HISTORY = "";
 
+        public static final String KEY_BROWSER_MEET_LOW_POWER_VIDEO_ENABLED = "browser_meet_low_power_video_enabled";
+        public static final boolean DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_ENABLED = false;
+
+        public static final String KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_WIDTH = "browser_meet_low_power_video_max_width";
+        public static final int DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_WIDTH = 640;
+
+        public static final String KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_HEIGHT = "browser_meet_low_power_video_max_height";
+        public static final int DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_HEIGHT = 360;
+
+        public static final String KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_FRAMERATE = "browser_meet_low_power_video_max_framerate";
+        public static final int DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_FRAMERATE = 15;
+
         /**
          * The {@link ExecutionCommand.Runner#APP_SHELL} number after termux app process since boot.
          */
