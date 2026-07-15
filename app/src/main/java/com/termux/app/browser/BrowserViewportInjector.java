@@ -25,17 +25,20 @@ public final class BrowserViewportInjector {
         return WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT);
     }
 
-    public static void applyDocumentStart(
+    @Nullable
+    public static String applyDocumentStart(
             @NonNull WebView webView,
             @NonNull BrowserViewMode viewMode,
             boolean injectMobileViewport) {
-        if (!supportsDocumentStartInjection()) return;
+        if (!supportsDocumentStartInjection()) return null;
         String script = scriptFor(viewMode, injectMobileViewport);
-        if (script == null) return;
+        if (script == null) return null;
         try {
             WebViewCompat.addDocumentStartJavaScript(webView, script, ALLOWED_ORIGIN_RULES);
+            return script;
         } catch (RuntimeException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to add document-start viewport shim", e);
+            return null;
         }
     }
 
@@ -48,5 +51,16 @@ public final class BrowserViewportInjector {
             return BrowserMobileViewport.INJECTION_SCRIPT;
         }
         return null;
+    }
+
+    @Nullable
+    public static String postLoadScript(
+            @NonNull BrowserViewMode viewMode,
+            boolean injectMobileViewport,
+            @Nullable String documentStartScript) {
+        String desiredScript = scriptFor(viewMode, injectMobileViewport);
+        if (desiredScript == null) return null;
+        if (desiredScript.equals(documentStartScript)) return null;
+        return desiredScript;
     }
 }

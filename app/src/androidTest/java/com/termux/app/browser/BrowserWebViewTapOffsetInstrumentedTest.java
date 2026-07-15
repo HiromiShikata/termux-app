@@ -20,6 +20,7 @@ import androidx.test.uiautomator.UiDevice;
 
 import com.termux.app.RetryRule;
 
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -177,9 +178,9 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
 
     @Test
     public void desktopViewportOverrideIsAppliedViaDocumentStartInjection() throws Exception {
-        if (!BrowserViewportInjector.supportsDocumentStartInjection()) {
-            return;
-        }
+        Assume.assumeTrue(
+            "device WebView must support document-start script injection for this test",
+            BrowserViewportInjector.supportsDocumentStartInjection());
         HostActivity.sSplitLayout = true;
         HostActivity.sDesktopDocumentStartViewport = true;
         ActivityScenario<HostActivity> scenario = ActivityScenario.launch(HostActivity.class);

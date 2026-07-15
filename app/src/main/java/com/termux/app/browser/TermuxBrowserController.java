@@ -804,7 +804,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             new BrowserPasskeyBridge(mMainHandler, this::showPasskeyOpenInChromeHint),
             BrowserPasskeyDetectionScript.BRIDGE_NAME);
         BrowserPasskeyDetectionInjector.applyDocumentStart(webView);
-        BrowserViewportInjector.applyDocumentStart(webView, tab.getViewMode(), false);
+        String documentStartViewportScript =
+            BrowserViewportInjector.applyDocumentStart(webView, tab.getViewMode(), false);
 
         webView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
             @NonNull
@@ -816,6 +817,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @Override
             public boolean shouldInjectMobileViewport() {
                 return false;
+            }
+
+            @Nullable
+            @Override
+            public String getDocumentStartViewportScript() {
+                return documentStartViewportScript;
             }
 
             @Override

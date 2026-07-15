@@ -30,4 +30,38 @@ public class BrowserViewportInjectorTest {
             BrowserMobileViewport.INJECTION_SCRIPT,
             BrowserViewportInjector.scriptFor(BrowserViewMode.MOBILE, true));
     }
+
+    @Test
+    public void postLoadSkipsDesktopScriptThatWasAlreadyRegisteredAtDocumentStart() {
+        Assert.assertNull(BrowserViewportInjector.postLoadScript(
+            BrowserViewMode.DESKTOP, false, BrowserDesktopViewport.INJECTION_SCRIPT));
+    }
+
+    @Test
+    public void postLoadInjectsMobileScriptWhenOnlyDesktopWasRegisteredAtDocumentStart() {
+        Assert.assertEquals(
+            BrowserMobileViewport.INJECTION_SCRIPT,
+            BrowserViewportInjector.postLoadScript(
+                BrowserViewMode.MOBILE, true, BrowserDesktopViewport.INJECTION_SCRIPT));
+    }
+
+    @Test
+    public void postLoadInjectsMobileScriptWhenNothingWasRegisteredAtDocumentStart() {
+        Assert.assertEquals(
+            BrowserMobileViewport.INJECTION_SCRIPT,
+            BrowserViewportInjector.postLoadScript(BrowserViewMode.MOBILE, true, null));
+    }
+
+    @Test
+    public void postLoadInjectsDesktopScriptWhenDocumentStartInjectionWasUnavailable() {
+        Assert.assertEquals(
+            BrowserDesktopViewport.INJECTION_SCRIPT,
+            BrowserViewportInjector.postLoadScript(BrowserViewMode.DESKTOP, false, null));
+    }
+
+    @Test
+    public void postLoadInjectsNothingForMobileWhenMobileInjectionIsDisabled() {
+        Assert.assertNull(
+            BrowserViewportInjector.postLoadScript(BrowserViewMode.MOBILE, false, null));
+    }
 }
