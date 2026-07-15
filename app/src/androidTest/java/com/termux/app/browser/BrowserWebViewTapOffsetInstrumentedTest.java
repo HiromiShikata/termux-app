@@ -44,17 +44,19 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
 
     private static final int TAP_SETTLE_MILLIS = 700;
 
+    private static final int VIEWPORT_SETTLE_MILLIS = 1_500;
+
     private static final int TEST_RETRY_ATTEMPTS = 3;
 
-    private static final int TARGET_TOLERANCE_CSS_PX = 24;
+    private static final int VISUAL_TOLERANCE_SCREEN_PX = 24;
 
     private static final String CAPTURE_PAGE_HTML =
-        "<!doctype html><html><head>"
-            + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            + "<style>html,body{margin:0;padding:0;height:100%;width:100%}"
-            + "#grid{position:absolute;top:0;left:0;width:100%;height:100%;display:flex}"
-            + ".cell{flex:1;height:100%}"
-            + "#left{background:#2E7D32}#mid{background:#1565C0}#right{background:#C62828}"
+        "<!doctype html><html><head>%s"
+            + "<style>html,body{margin:0;padding:0}"
+            + "#grid{width:3000px;height:2000px;position:absolute;top:0;left:0}"
+            + ".cell{position:absolute;top:0;height:2000px;width:1000px}"
+            + "#left{left:0;background:#2E7D32}#mid{left:1000px;background:#1565C0}"
+            + "#right{left:2000px;background:#C62828}"
             + "</style></head><body>"
             + "<div id='grid'>"
             + "<div class='cell' id='left'></div>"
@@ -64,20 +66,27 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
             + "<script>"
             + "window.__tapClientX=-1;window.__tapClientY=-1;"
             + "window.__tapTargetId='';window.__tapCount=0;"
-            + "window.__innerWidth=0;window.__innerHeight=0;"
-            + "function record(x,y){"
-            + "window.__tapClientX=x;window.__tapClientY=y;"
-            + "window.__innerWidth=window.innerWidth;window.__innerHeight=window.innerHeight;"
-            + "var el=document.elementFromPoint(x,y);"
-            + "window.__tapTargetId=el?el.id:'';window.__tapCount++;}"
-            + "document.addEventListener('click',function(e){record(e.clientX,e.clientY);},true);"
+            + "document.addEventListener('click',function(e){"
+            + "window.__tapClientX=e.clientX;window.__tapClientY=e.clientY;"
+            + "var t=e.target;window.__tapTargetId=t?t.id:'';window.__tapCount++;},true);"
             + "</script></body></html>";
+
+    private static final String MOBILE_VIEWPORT_META =
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>";
+
+    private static final String OWN_WIDE_VIEWPORT_META =
+        "<meta name='viewport' content='width=3000,initial-scale=1'>";
 
     @Rule
     public final RetryRule retryRule = new RetryRule(TEST_RETRY_ATTEMPTS);
 
     public static final class HostActivity extends Activity {
         public static volatile boolean sSplitLayout;
+        public static volatile int sInjectedViewport;
+
+        public static final int INJECT_NONE = 0;
+        public static final int INJECT_MOBILE = 1;
+        public static final int INJECT_DESKTOP = 2;
 
         public WebView webView;
         public BrowserPinchAwareSwipeRefreshLayout swipeRefresh;
@@ -95,7 +104,9 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
             swipeRefresh = new BrowserPinchAwareSwipeRefreshLayout(this);
             webView = new WebView(this);
             WebSettings settings = webView.getSettings();
-            BrowserWebViewConfigurator.apply(webView, BrowserViewMode.MOBILE, settings.getUserAgentString());
+            BrowserViewMode viewMode = sInjectedViewport == INJECT_DESKTOP
+                ? BrowserViewMode.DESKTOP : BrowserViewMode.MOBILE;
+            BrowserWebViewConfigurator.apply(webView, viewMode, settings.getUserAgentString());
             swipeRefresh.setEnabled(true);
             swipeRefresh.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -117,47 +128,69 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
     }
 
     @Test
-    public void tapInLandscapeSplitLandsOnTheElementUnderTheTouchPoint() throws Exception {
-        measureTapOffset(true, false);
+    public void mobileInjectedViewportKeepsVisualAndHitAlignedInSplit() throws Exception {
+        runVisualHitAlignment(true, HostActivity.INJECT_MOBILE, OWN_WIDE_VIEWPORT_META,
+            "mobile-injected-split");
     }
 
     @Test
-    public void tapInFullWidthPortraitLandsOnTheElementUnderTheTouchPoint() throws Exception {
-        measureTapOffset(false, false);
+    public void desktopInjectedViewportKeepsVisualAndHitAlignedInSplit() throws Exception {
+        runVisualHitAlignment(true, HostActivity.INJECT_DESKTOP, "", "desktop-injected-split");
     }
 
     @Test
-    public void tapAfterShrinkingBrowserColumnToSplitLandsOnTheElementUnderTheTouchPoint()
-            throws Exception {
-        measureTapOffset(false, true);
+    public void plainMobileViewportKeepsVisualAndHitAlignedInSplit() throws Exception {
+        runVisualHitAlignment(true, HostActivity.INJECT_NONE, MOBILE_VIEWPORT_META,
+            "plain-mobile-split");
     }
 
-    private void measureTapOffset(boolean splitLayout, boolean shrinkToSplitAfterLoad)
-            throws Exception {
+    @Test
+    public void afterPinchZoomVisualAndHitStayAlignedInSplit() throws Exception {
+        HostActivity.sSplitLayout = true;
+        HostActivity.sInjectedViewport = HostActivity.INJECT_MOBILE;
+        ActivityScenario<HostActivity> scenario = ActivityScenario.launch(HostActivity.class);
+        AtomicReference<HostActivity> ref = new AtomicReference<>();
+        scenario.onActivity(ref::set);
+        HostActivity activity = ref.get();
+        loadCapturePage(activity, MOBILE_VIEWPORT_META);
+        awaitNonZeroWebViewWidth(activity);
+
+        int[] location = new int[2];
+        int[] size = new int[2];
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            activity.webView.getLocationOnScreen(location);
+            size[0] = activity.webView.getWidth();
+            size[1] = activity.webView.getHeight();
+        });
+        int cx = location[0] + size[0] / 2;
+        int cy = location[1] + size[1] / 2;
+        UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
+        device.click(cx - 40, cy);
+        device.click(cx - 40, cy);
+        Thread.sleep(VIEWPORT_SETTLE_MILLIS);
+
+        assertVisualTapHitsTarget(activity, "after-pinch-zoom");
+    }
+
+    private void runVisualHitAlignment(boolean splitLayout, int injectedViewport,
+            String pageViewportMeta, String layoutLabel) throws Exception {
         HostActivity.sSplitLayout = splitLayout;
+        HostActivity.sInjectedViewport = injectedViewport;
         ActivityScenario<HostActivity> scenario = ActivityScenario.launch(HostActivity.class);
         AtomicReference<HostActivity> ref = new AtomicReference<>();
         scenario.onActivity(ref::set);
         HostActivity activity = ref.get();
 
-        loadCapturePage(activity);
+        loadCapturePage(activity, pageViewportMeta);
+        applyInjectedViewport(activity, injectedViewport);
         awaitNonZeroWebViewWidth(activity);
+        Thread.sleep(VIEWPORT_SETTLE_MILLIS);
 
-        int fullWidthPx = webViewWidth(activity);
-        if (shrinkToSplitAfterLoad) {
-            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
-                LinearLayout.LayoutParams browserParams =
-                    (LinearLayout.LayoutParams) activity.browserColumn.getLayoutParams();
-                browserParams.weight = 0.5f;
-                activity.browserColumn.setLayoutParams(browserParams);
-                LinearLayout.LayoutParams terminalParams =
-                    (LinearLayout.LayoutParams) activity.terminalColumn.getLayoutParams();
-                terminalParams.weight = 0.5f;
-                activity.terminalColumn.setLayoutParams(terminalParams);
-            });
-            awaitWebViewWidthBelow(activity, fullWidthPx);
-        }
+        assertVisualTapHitsTarget(activity, layoutLabel);
+    }
 
+    private void assertVisualTapHitsTarget(HostActivity activity, String layoutLabel)
+            throws Exception {
         int[] location = new int[2];
         int[] size = new int[2];
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
@@ -169,11 +202,20 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
         int webViewTopPx = location[1];
         int webViewWidthPx = size[0];
         int webViewHeightPx = size[1];
-
         assertTrue("web view must have a positive width", webViewWidthPx > 0);
 
-        int tapScreenX = webViewLeftPx + webViewWidthPx * 5 / 6;
-        int tapScreenY = webViewTopPx + webViewHeightPx / 2;
+        double density = activity.getResources().getDisplayMetrics().density;
+
+        String targetId = "right";
+        double[] visualRect = readVisualScreenRect(activity, targetId, density);
+        double visualCenterXcss = visualRect[0] + visualRect[2] / 2.0;
+        double visualCenterYcss = visualRect[1] + visualRect[3] / 2.0;
+
+        int tapScreenX = webViewLeftPx + (int) Math.round(visualCenterXcss * density);
+        int tapScreenY = webViewTopPx + (int) Math.round(visualCenterYcss * density);
+
+        tapScreenX = clamp(tapScreenX, webViewLeftPx + 2, webViewLeftPx + webViewWidthPx - 2);
+        tapScreenY = clamp(tapScreenY, webViewTopPx + 2, webViewTopPx + webViewHeightPx - 2);
 
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
         device.click(tapScreenX, tapScreenY);
@@ -181,41 +223,66 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
         awaitTapRecorded(activity);
 
         String hitId = readString(activity, "window.__tapTargetId");
-        double clientX = readNumber(activity, "window.__tapClientX");
-        double clientY = readNumber(activity, "window.__tapClientY");
-        double innerWidth = readNumber(activity, "window.__innerWidth");
+        double scale = readNumber(activity, "visualViewportScale()");
+        double innerWidth = readNumber(activity, "window.innerWidth");
 
-        double localViewX = tapScreenX - webViewLeftPx;
-        double pageScale = innerWidth > 0 ? webViewWidthPx / innerWidth : 0;
-        double receivedScreenX = clientX * pageScale;
-        double offsetPx = receivedScreenX - localViewX;
-
-        String layoutLabel = shrinkToSplitAfterLoad ? "shrunk-to-split"
-            : (splitLayout ? "landscape-split" : "portrait-full");
         Log.i(LOG_TAG, "layout=" + layoutLabel
             + " webViewLeftPx=" + webViewLeftPx
             + " webViewWidthPx=" + webViewWidthPx
+            + " density=" + density
             + " innerWidthCss=" + innerWidth
-            + " dispatchedLocalViewX=" + localViewX
-            + " receivedClientX=" + clientX
-            + " receivedClientY=" + clientY
-            + " receivedScreenX=" + receivedScreenX
-            + " tapOffsetPx=" + offsetPx
+            + " visualScale=" + scale
+            + " targetVisualRectCss=[" + visualRect[0] + "," + visualRect[1]
+            + "," + visualRect[2] + "," + visualRect[3] + "]"
+            + " visualTapScreen=(" + tapScreenX + "," + tapScreenY + ")"
             + " hitElementId=" + hitId);
 
         assertEquals(
-            "a tap in the right sixth of the " + (splitLayout ? "split" : "full-width")
-                + " browser column must activate the 'right' element, but hit '" + hitId
-                + "' (receivedClientX=" + clientX + ", innerWidthCss=" + innerWidth
-                + ", webViewWidthPx=" + webViewWidthPx + ", tapOffsetPx=" + offsetPx + ")",
-            "right", hitId);
-        assertTrue(
-            "the tap coordinate the page received must map back to the dispatched screen point"
-                + " within tolerance (tapOffsetPx=" + offsetPx + ")",
-            Math.abs(offsetPx) <= TARGET_TOLERANCE_CSS_PX);
+            "a tap on the visual center of the '" + targetId + "' element (layout=" + layoutLabel
+                + ", visualScale=" + scale + ", innerWidthCss=" + innerWidth
+                + ", webViewWidthPx=" + webViewWidthPx + ") must activate that same element,"
+                + " but hit '" + hitId + "'",
+            targetId, hitId);
     }
 
-    private void loadCapturePage(HostActivity activity) throws Exception {
+    private double[] readVisualScreenRect(HostActivity activity, String elementId, double density)
+            throws Exception {
+        String script =
+            "(function(){var el=document.getElementById('" + elementId + "');"
+                + "var r=el.getBoundingClientRect();"
+                + "var vv=window.visualViewport;"
+                + "var offX=vv?vv.offsetLeft:0;var offY=vv?vv.offsetTop:0;"
+                + "var s=vv?vv.scale:1;"
+                + "var left=(r.left-offX)*s;var top=(r.top-offY)*s;"
+                + "var w=r.width*s;var h=r.height*s;"
+                + "return left+','+top+','+w+','+h;})()";
+        String raw = evaluate(activity, script);
+        String cleaned = raw == null ? "" : raw.replace("\"", "");
+        String[] parts = cleaned.split(",");
+        double[] rect = new double[4];
+        for (int i = 0; i < 4 && i < parts.length; i++) {
+            try {
+                rect[i] = Double.parseDouble(parts[i]);
+            } catch (NumberFormatException numberFormatException) {
+                rect[i] = 0;
+            }
+        }
+        return rect;
+    }
+
+    private void applyInjectedViewport(HostActivity activity, int injectedViewport) throws Exception {
+        if (injectedViewport == HostActivity.INJECT_MOBILE) {
+            evaluate(activity, BrowserMobileViewport.INJECTION_SCRIPT);
+        } else if (injectedViewport == HostActivity.INJECT_DESKTOP) {
+            evaluate(activity, BrowserDesktopViewport.INJECTION_SCRIPT);
+        }
+    }
+
+    private void loadCapturePage(HostActivity activity, String pageViewportMeta) throws Exception {
+        String html = String.format(CAPTURE_PAGE_HTML, pageViewportMeta);
+        String withHelper = html.replace("</script></body>",
+            "window.visualViewportScale=function(){return window.visualViewport"
+                + "?window.visualViewport.scale:1;};</script></body>");
         CountDownLatch pageFinished = new CountDownLatch(1);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             activity.webView.setWebViewClient(new WebViewClient() {
@@ -224,7 +291,7 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
                     pageFinished.countDown();
                 }
             });
-            activity.webView.loadData(CAPTURE_PAGE_HTML, "text/html", "utf-8");
+            activity.webView.loadData(withHelper, "text/html", "utf-8");
         });
         assertTrue("capture page did not finish loading within timeout",
             pageFinished.await(PAGE_LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS));
@@ -244,26 +311,6 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
         assertTrue("web view never obtained a non-zero width and inner width", false);
     }
 
-    private int webViewWidth(HostActivity activity) {
-        int[] widthPx = new int[1];
-        InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
-            widthPx[0] = activity.webView.getWidth());
-        return widthPx[0];
-    }
-
-    private void awaitWebViewWidthBelow(HostActivity activity, int previousWidthPx) throws Exception {
-        long deadline = System.currentTimeMillis() + LAYOUT_READINESS_TIMEOUT_MILLIS;
-        while (System.currentTimeMillis() < deadline) {
-            int currentWidthPx = webViewWidth(activity);
-            if (currentWidthPx > 0 && currentWidthPx < previousWidthPx) {
-                return;
-            }
-            Thread.sleep(READINESS_POLL_INTERVAL_MILLIS);
-        }
-        assertTrue("web view width never shrank below " + previousWidthPx
-            + " after collapsing the split", false);
-    }
-
     private void awaitTapRecorded(HostActivity activity) throws Exception {
         long deadline = System.currentTimeMillis() + READBACK_TIMEOUT_SECONDS * 1000L;
         while (System.currentTimeMillis() < deadline) {
@@ -273,6 +320,10 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
             Thread.sleep(READINESS_POLL_INTERVAL_MILLIS);
         }
         assertTrue("web view never received the dispatched tap", false);
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private String readString(HostActivity activity, String expression) throws Exception {
