@@ -804,6 +804,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             new BrowserPasskeyBridge(mMainHandler, this::showPasskeyOpenInChromeHint),
             BrowserPasskeyDetectionScript.BRIDGE_NAME);
         BrowserPasskeyDetectionInjector.applyDocumentStart(webView);
+        BrowserViewportInjector.applyDocumentStart(webView, tab.getViewMode(), false);
 
         webView.setWebViewClient(new BrowserCoreWebViewClient(new BrowserCoreWebViewClient.Host() {
             @NonNull

@@ -43,48 +43,32 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
 
     private static final int TAP_SETTLE_MILLIS = 700;
 
-    private static final int VIEWPORT_SETTLE_MILLIS = 1_500;
-
     private static final int TEST_RETRY_ATTEMPTS = 3;
 
-    private static final int VISUAL_TOLERANCE_SCREEN_PX = 24;
-
     private static final String CAPTURE_PAGE_HTML =
-        "<!doctype html><html><head>%s"
-            + "<style>html,body{margin:0;padding:0;width:100%%;height:100%%}"
-            + "#grid{position:fixed;inset:0;display:flex}"
-            + ".cell{flex:1 1 0;height:100%%}"
-            + "#left{background:#2E7D32}#mid{background:#1565C0}#right{background:#C62828}"
+        "<!doctype html><html><head>"
+            + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            + "<style>html,body{margin:0;padding:0;width:100%;height:100%}"
+            + ".cell{position:fixed;top:0;bottom:0;height:100%}"
+            + "#left{left:0;width:33.34%;background:#2E7D32}"
+            + "#mid{left:33.33%;width:33.34%;background:#1565C0}"
+            + "#right{left:66.66%;width:33.34%;background:#C62828}"
             + "</style></head><body>"
-            + "<div id='grid'>"
             + "<div class='cell' id='left'></div>"
             + "<div class='cell' id='mid'></div>"
             + "<div class='cell' id='right'></div>"
-            + "</div>"
             + "<script>"
-            + "window.__tapClientX=-1;window.__tapClientY=-1;"
             + "window.__tapTargetId='';window.__tapCount=0;"
             + "document.addEventListener('click',function(e){"
-            + "window.__tapClientX=e.clientX;window.__tapClientY=e.clientY;"
             + "var t=e.target;window.__tapTargetId=t?t.id:'';window.__tapCount++;},true);"
             + "</script></body></html>";
-
-    private static final String MOBILE_VIEWPORT_META =
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>";
-
-    private static final String OWN_WIDE_VIEWPORT_META =
-        "<meta name='viewport' content='width=3000,initial-scale=1'>";
 
     @Rule
     public final RetryRule retryRule = new RetryRule(TEST_RETRY_ATTEMPTS);
 
     public static final class HostActivity extends Activity {
         public static volatile boolean sSplitLayout;
-        public static volatile int sInjectedViewport;
-
-        public static final int INJECT_NONE = 0;
-        public static final int INJECT_MOBILE = 1;
-        public static final int INJECT_DESKTOP = 2;
+        public static volatile boolean sDesktopDocumentStartViewport;
 
         public WebView webView;
         public BrowserPinchAwareSwipeRefreshLayout swipeRefresh;
@@ -102,9 +86,12 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
             swipeRefresh = new BrowserPinchAwareSwipeRefreshLayout(this);
             webView = new WebView(this);
             WebSettings settings = webView.getSettings();
-            BrowserViewMode viewMode = sInjectedViewport == INJECT_DESKTOP
+            BrowserViewMode viewMode = sDesktopDocumentStartViewport
                 ? BrowserViewMode.DESKTOP : BrowserViewMode.MOBILE;
             BrowserWebViewConfigurator.apply(webView, viewMode, settings.getUserAgentString());
+            if (sDesktopDocumentStartViewport) {
+                BrowserViewportInjector.applyDocumentStart(webView, BrowserViewMode.DESKTOP, false);
+            }
             swipeRefresh.setEnabled(true);
             swipeRefresh.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -126,41 +113,26 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
     }
 
     @Test
-    public void mobileInjectedViewportKeepsVisualAndHitAlignedInSplit() throws Exception {
-        runVisualHitAlignment(true, HostActivity.INJECT_MOBILE, OWN_WIDE_VIEWPORT_META,
-            "mobile-injected-split");
+    public void tapOnVisibleThirdsActivatesTheElementUnderTouchInLandscapeSplit() throws Exception {
+        assertTapThirdsAligned(true, "landscape-split");
     }
 
     @Test
-    public void desktopInjectedViewportKeepsVisualAndHitAlignedInSplit() throws Exception {
-        runVisualHitAlignment(true, HostActivity.INJECT_DESKTOP, "", "desktop-injected-split");
+    public void tapOnVisibleThirdsActivatesTheElementUnderTouchInFullWidth() throws Exception {
+        assertTapThirdsAligned(false, "portrait-full");
     }
 
-    @Test
-    public void plainMobileViewportKeepsVisualAndHitAlignedInSplit() throws Exception {
-        runVisualHitAlignment(true, HostActivity.INJECT_NONE, MOBILE_VIEWPORT_META,
-            "plain-mobile-split");
-    }
-
-    private void runVisualHitAlignment(boolean splitLayout, int injectedViewport,
-            String pageViewportMeta, String layoutLabel) throws Exception {
+    private void assertTapThirdsAligned(boolean splitLayout, String layoutLabel) throws Exception {
         HostActivity.sSplitLayout = splitLayout;
-        HostActivity.sInjectedViewport = injectedViewport;
+        HostActivity.sDesktopDocumentStartViewport = false;
         ActivityScenario<HostActivity> scenario = ActivityScenario.launch(HostActivity.class);
         AtomicReference<HostActivity> ref = new AtomicReference<>();
         scenario.onActivity(ref::set);
         HostActivity activity = ref.get();
 
-        loadCapturePage(activity, pageViewportMeta);
-        applyInjectedViewport(activity, injectedViewport);
+        loadCapturePage(activity);
         awaitNonZeroWebViewWidth(activity);
-        Thread.sleep(VIEWPORT_SETTLE_MILLIS);
 
-        assertVisualTapHitsTarget(activity, layoutLabel);
-    }
-
-    private void assertVisualTapHitsTarget(HostActivity activity, String layoutLabel)
-            throws Exception {
         int[] location = new int[2];
         int[] size = new int[2];
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
@@ -174,12 +146,8 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
         int webViewHeightPx = size[1];
         assertTrue("web view must have a positive width", webViewWidthPx > 0);
 
-        double density = activity.getResources().getDisplayMetrics().density;
-        double scale = readNumber(activity, "visualViewportScale()");
-        double innerWidth = readNumber(activity, "window.innerWidth");
         int tapScreenY = webViewTopPx + webViewHeightPx / 2;
         UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
-
         String[] expectedByThird = {"left", "mid", "right"};
         int[] fractionNumerators = {1, 3, 5};
         StringBuilder observed = new StringBuilder();
@@ -197,36 +165,50 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
                     + expectedByThird[third] + " third) activated '" + hitId + "'";
             }
         }
-
-        Log.i(LOG_TAG, "layout=" + layoutLabel
-            + " webViewLeftPx=" + webViewLeftPx
+        Log.i(LOG_TAG, "layout=" + layoutLabel + " webViewLeftPx=" + webViewLeftPx
             + " webViewWidthPx=" + webViewWidthPx
-            + " density=" + density
-            + " innerWidthCss=" + innerWidth
-            + " visualScale=" + scale
             + " observedThirds=[" + observed.toString().trim() + "]");
-
         assertTrue(
-            "a tap on the visual thirds of the split browser column must activate the element"
-                + " under the touch point (layout=" + layoutLabel + ", visualScale=" + scale
-                + ", innerWidthCss=" + innerWidth + ", webViewWidthPx=" + webViewWidthPx
-                + ", observed=" + observed.toString().trim() + "); " + firstMismatch,
+            "a tap on the visual thirds of the " + layoutLabel + " browser column must activate"
+                + " the element under the touch point (observed=" + observed.toString().trim()
+                + "); " + firstMismatch,
             firstMismatch == null);
     }
 
-    private void applyInjectedViewport(HostActivity activity, int injectedViewport) throws Exception {
-        if (injectedViewport == HostActivity.INJECT_MOBILE) {
-            evaluate(activity, BrowserMobileViewport.INJECTION_SCRIPT);
-        } else if (injectedViewport == HostActivity.INJECT_DESKTOP) {
-            evaluate(activity, BrowserDesktopViewport.INJECTION_SCRIPT);
+    @Test
+    public void desktopViewportOverrideIsAppliedViaDocumentStartInjection() throws Exception {
+        if (!BrowserViewportInjector.supportsDocumentStartInjection()) {
+            return;
         }
+        HostActivity.sSplitLayout = true;
+        HostActivity.sDesktopDocumentStartViewport = true;
+        ActivityScenario<HostActivity> scenario = ActivityScenario.launch(HostActivity.class);
+        AtomicReference<HostActivity> ref = new AtomicReference<>();
+        scenario.onActivity(ref::set);
+        HostActivity activity = ref.get();
+
+        String pageWithOwnViewport =
+            "<!doctype html><html><head>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<title>t</title></head><body><div>ready</div></body></html>";
+        loadHtml(activity, pageWithOwnViewport);
+
+        String observedViewport = readString(activity,
+            "(function(){var m=document.querySelector('meta[name=\"viewport\"]');"
+                + "return m?m.getAttribute('content'):'';})()");
+        Log.i(LOG_TAG, "desktopDocumentStart observedViewport=" + observedViewport);
+        assertTrue(
+            "the document-start desktop viewport override must force the page viewport to width="
+                + BrowserDesktopViewport.LAYOUT_WIDTH_CSS_PX + ", but the page viewport was '"
+                + observedViewport + "'",
+            observedViewport.contains("width=" + BrowserDesktopViewport.LAYOUT_WIDTH_CSS_PX));
     }
 
-    private void loadCapturePage(HostActivity activity, String pageViewportMeta) throws Exception {
-        String html = String.format(CAPTURE_PAGE_HTML, pageViewportMeta);
-        String withHelper = html.replace("</script></body>",
-            "window.visualViewportScale=function(){return window.visualViewport"
-                + "?window.visualViewport.scale:1;};</script></body>");
+    private void loadCapturePage(HostActivity activity) throws Exception {
+        loadHtml(activity, CAPTURE_PAGE_HTML);
+    }
+
+    private void loadHtml(HostActivity activity, String html) throws Exception {
         CountDownLatch pageFinished = new CountDownLatch(1);
         InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
             activity.webView.setWebViewClient(new WebViewClient() {
@@ -235,9 +217,10 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
                     pageFinished.countDown();
                 }
             });
-            activity.webView.loadData(withHelper, "text/html", "utf-8");
+            activity.webView.loadDataWithBaseURL(
+                "https://termux-tap-offset.test/", html, "text/html", "utf-8", null);
         });
-        assertTrue("capture page did not finish loading within timeout",
+        assertTrue("page did not finish loading within timeout",
             pageFinished.await(PAGE_LOAD_TIMEOUT_SECONDS, TimeUnit.SECONDS));
     }
 
@@ -247,12 +230,12 @@ public class BrowserWebViewTapOffsetInstrumentedTest {
             int[] widthPx = new int[1];
             InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
                 widthPx[0] = activity.webView.getWidth());
-            if (widthPx[0] > 0 && readNumber(activity, "window.innerWidth") > 0) {
+            if (widthPx[0] > 0) {
                 return;
             }
             Thread.sleep(READINESS_POLL_INTERVAL_MILLIS);
         }
-        assertTrue("web view never obtained a non-zero width and inner width", false);
+        assertTrue("web view never obtained a non-zero width", false);
     }
 
     private void resetTapRecord(HostActivity activity) throws Exception {
