@@ -99,6 +99,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final long TAB_HISTORY_PERSIST_DEBOUNCE_MS = 750L;
 
+    private static final long FIND_DEBOUNCE_MS = 300L;
+
     private static final int TAB_CLOSED_UNDO_SNACKBAR_DURATION_MS = 5000;
 
     private static final int PASSKEY_OPEN_IN_CHROME_SNACKBAR_DURATION_MS = 7000;
@@ -180,6 +182,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private ImageButton mDesktopModeToggle;
 
     private ImageButton mBookmarkToggleButton;
+
+    private LinearLayout mFindBar;
+
+    private EditText mFindQueryInput;
+
+    private TextView mFindMatchCounter;
+
+    private BrowserFindInPageController mFindController;
 
     private String mDefaultUserAgent;
 
@@ -313,6 +323,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureWebView();
         configureCookies();
         configureDrawerControls();
+        configureFindBar();
         configureProjectOverviewActions();
         configureBrowserSplitDivider();
         configureHeaderInteractions();
@@ -839,6 +850,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     }
                     showPageLoadProgress(0);
                     updatePageHeader();
+                    mFindController.onPageOrTabChanged();
                 }
                 notifyTabsUpdated();
             }
@@ -979,6 +991,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }).attach();
 
         mScrollTracker.attach(webView);
+        webView.setFindListener((activeMatchOrdinal, numberOfMatches, isDoneCounting) -> {
+            if (isDisplayedTab(tab)) {
+                mFindController.onFindResultReceived(activeMatchOrdinal, numberOfMatches, isDoneCounting);
+            }
+        });
         return webView;
     }
 
@@ -1204,8 +1221,111 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mActivity.findViewById(R.id.browser_send_page_text_button).setOnClickListener(v -> sendCurrentPageTextToTerminal());
         mActivity.findViewById(R.id.browser_send_screenshot_button).setOnClickListener(v -> sendCurrentScreenshotToTerminal());
         mActivity.findViewById(R.id.browser_clear_cache_button).setOnClickListener(v -> clearCurrentTabCache());
+        mActivity.findViewById(R.id.browser_find_in_page_button).setOnClickListener(v -> openFindInPage());
         mDesktopModeToggle = mActivity.findViewById(R.id.browser_desktop_mode_toggle);
         mDesktopModeToggle.setOnClickListener(v -> toggleActiveTabDesktopMode());
+    }
+
+    private void configureFindBar() {
+        mFindBar = mActivity.findViewById(R.id.browser_find_bar);
+        mFindQueryInput = mActivity.findViewById(R.id.browser_find_query_input);
+        mFindMatchCounter = mActivity.findViewById(R.id.browser_find_match_counter);
+        mFindController = new BrowserFindInPageController(
+            new BrowserFindInPageController.FindTarget() {
+                @Override
+                public void findAll(@NonNull String query) {
+                    WebView displayedWebView = currentWebView();
+                    if (displayedWebView != null) displayedWebView.findAllAsync(query);
+                }
+
+                @Override
+                public void findNext(boolean forward) {
+                    WebView displayedWebView = currentWebView();
+                    if (displayedWebView != null) displayedWebView.findNext(forward);
+                }
+
+                @Override
+                public void clearMatches() {
+                    WebView displayedWebView = currentWebView();
+                    if (displayedWebView != null) displayedWebView.clearMatches();
+                }
+            },
+            new BrowserFindInPageController.View() {
+                @Override
+                public void showFindBar() {
+                    mFindBar.setVisibility(View.VISIBLE);
+                    mFindQueryInput.setText("");
+                }
+
+                @Override
+                public void hideFindBar() {
+                    mFindBar.setVisibility(View.GONE);
+                    KeyboardUtils.hideSoftKeyboard(mActivity, mFindQueryInput);
+                }
+
+                @Override
+                public void focusQueryInputAndShowKeyboard() {
+                    mFindQueryInput.requestFocus();
+                    KeyboardUtils.showSoftKeyboard(mActivity, mFindQueryInput);
+                }
+
+                @Override
+                public void updateMatchCounter(@NonNull String counterText) {
+                    mFindMatchCounter.setText(counterText);
+                }
+            },
+            newFindDebouncer());
+
+        mFindQueryInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                mFindController.onQueryChanged(s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+        mFindQueryInput.setOnEditorActionListener((view, actionId, event) -> {
+            mFindController.submitQuery();
+            mFindController.findNext();
+            return true;
+        });
+        mActivity.findViewById(R.id.browser_find_prev_button)
+            .setOnClickListener(v -> mFindController.findPrevious());
+        mActivity.findViewById(R.id.browser_find_next_button)
+            .setOnClickListener(v -> mFindController.findNext());
+        mActivity.findViewById(R.id.browser_find_close_button)
+            .setOnClickListener(v -> mFindController.close());
+    }
+
+    @NonNull
+    private BrowserFindInPageController.Debouncer newFindDebouncer() {
+        MainThreadDebouncer delegate = new MainThreadDebouncer(mMainHandler, FIND_DEBOUNCE_MS);
+        return new BrowserFindInPageController.Debouncer() {
+            @Override
+            public void schedule(@NonNull Runnable task) {
+                delegate.schedule(task);
+            }
+
+            @Override
+            public void cancel() {
+                delegate.cancel();
+            }
+        };
+    }
+
+    private void openFindInPage() {
+        if (!mBrowserVisible) return;
+        if (currentWebView() == null) {
+            mActivity.showToast(mActivity.getString(R.string.msg_browser_no_current_url), false);
+            return;
+        }
+        mFindController.open();
     }
 
     private void sendCurrentPageTextToTerminal() {
@@ -1833,6 +1953,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void displayTab(@NonNull BrowserTab tab, boolean forceReload) {
+        if (mFindController != null) mFindController.onPageOrTabChanged();
         boolean firstDisplay = !mWebViewHost.hasWebViewForTab(tab);
         if (firstDisplay) showWebViewCover();
         renderFrame(tab);

@@ -112,6 +112,69 @@
                                 android:visibility="gone" />
 
                             <LinearLayout
+                                android:id="@+id/browser_find_bar"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="top"
+                                android:background="?attr/termuxActivityDrawerBackground"
+                                android:elevation="6dp"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal"
+                                android:paddingHorizontal="4dp"
+                                android:paddingVertical="2dp"
+                                android:visibility="gone">
+
+                                <EditText
+                                    android:id="@+id/browser_find_query_input"
+                                    android:layout_width="0dp"
+                                    android:layout_height="wrap_content"
+                                    android:layout_weight="1"
+                                    android:hint="@string/hint_browser_find_in_page"
+                                    android:imeOptions="actionSearch"
+                                    android:importantForAutofill="no"
+                                    android:inputType="text"
+                                    android:maxLines="1"
+                                    android:singleLine="true"
+                                    android:textSize="14sp" />
+
+                                <TextView
+                                    android:id="@+id/browser_find_match_counter"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginHorizontal="6dp"
+                                    android:minWidth="40dp"
+                                    android:gravity="center"
+                                    android:textSize="12sp" />
+
+                                <ImageButton
+                                    android:id="@+id/browser_find_prev_button"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                                    android:contentDescription="@string/action_browser_find_prev"
+                                    android:src="@drawable/ic_browser_find_prev"
+                                    android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                                <ImageButton
+                                    android:id="@+id/browser_find_next_button"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                                    android:contentDescription="@string/action_browser_find_next"
+                                    android:src="@drawable/ic_browser_find_next"
+                                    android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                                <ImageButton
+                                    android:id="@+id/browser_find_close_button"
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                                    android:contentDescription="@string/action_browser_find_close"
+                                    android:src="@drawable/ic_browser_find_close"
+                                    android:tint="?attr/termuxActivityDrawerImageTint" />
+                            </LinearLayout>
+
+                            <LinearLayout
                                 android:id="@+id/browser_project_overview_actions"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
@@ -439,6 +502,16 @@
                         android:background="?android:attr/selectableItemBackgroundBorderless"
                         android:contentDescription="@string/action_browser_clear_cache"
                         android:src="@drawable/ic_browser_clear_cache"
+                        android:tint="?attr/termuxActivityDrawerImageTint" />
+
+                    <ImageButton
+                        android:id="@+id/browser_find_in_page_button"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:background="?android:attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/action_browser_find_in_page"
+                        android:src="@drawable/ic_browser_find_in_page"
                         android:tint="?attr/termuxActivityDrawerImageTint" />
 
                 </LinearLayout>
