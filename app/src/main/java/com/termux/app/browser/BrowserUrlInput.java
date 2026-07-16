@@ -7,7 +7,7 @@ import androidx.annotation.Nullable;
 
 public final class BrowserUrlInput {
 
-    private static final String SEARCH_URL_PREFIX = "https://duckduckgo.com/?q=";
+    private static final String SEARCH_URL_PREFIX = "https://www.google.com/search?q=";
 
     private BrowserUrlInput() {
     }

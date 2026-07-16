@@ -32,14 +32,14 @@ public class BrowserUrlInputTest {
     @Test
     public void searchesWhenInputHasNoDot() {
         Assert.assertEquals(
-            "https://duckduckgo.com/?q=termux",
+            "https://www.google.com/search?q=termux",
             BrowserUrlInput.normalize("termux"));
     }
 
     @Test
     public void searchesWhenInputContainsSpace() {
         Assert.assertEquals(
-            "https://duckduckgo.com/?q=termux%20browser",
+            "https://www.google.com/search?q=termux%20browser",
             BrowserUrlInput.normalize("termux browser"));
     }
 
