@@ -16,6 +16,7 @@ import androidx.viewpager.widget.PagerAdapter;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.SessionNewActivityStore;
+import com.termux.app.terminal.SessionReplyTimeRecorder;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
@@ -114,12 +115,13 @@ public class TerminalToolbarViewPager {
             writeTextInputToSession(editText, true);
         }
 
-        public void commitTextInputToTerminal(final EditText editText) {
-            writeTextInputToSession(editText, false);
+        public boolean commitTextInputToTerminal(final EditText editText) {
+            return writeTextInputToSession(editText, false);
         }
 
-        private void writeTextInputToSession(final EditText editText, boolean submitWhenEmpty) {
+        private boolean writeTextInputToSession(final EditText editText, boolean submitWhenEmpty) {
             TerminalSession session = mActivity.getCurrentSession();
+            boolean ownerContentSubmitted = false;
             if (session != null) {
                 String submittedTextInput = editText.getText().toString();
                 addSubmittedTextInputToHistory(submittedTextInput);
@@ -127,6 +129,7 @@ public class TerminalToolbarViewPager {
                     if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput, submitWhenEmpty)) {
                         session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
                         recordUserInputForSession(session);
+                        ownerContentSubmitted = true;
                     }
                 } else if (mActivity.getTermuxTerminalSessionClient().decideFinishedSessionEnterAction(session).isReconnect()) {
                     mActivity.getTermuxTerminalSessionClient().reconnectFinishedSessionInPlace(session, submittedTextInput);
@@ -136,13 +139,15 @@ public class TerminalToolbarViewPager {
                 editText.setText("");
                 mSessionTextInputs.remove(session);
             }
+            return ownerContentSubmitted;
         }
 
         private void recordUserInputForSession(@NonNull TerminalSession session) {
-            if (session.mSessionName == null) return;
             SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
             if (store == null) return;
-            store.recordUserInput(session.mSessionName, System.currentTimeMillis());
+            boolean recorded = new SessionReplyTimeRecorder(store)
+                .recordReplyOnSubmit(session, System.currentTimeMillis());
+            if (!recorded) return;
             TermuxTerminalSessionActivityClient sessionClient =
                 mActivity.getTermuxTerminalSessionClient();
             if (sessionClient != null && session == mActivity.getCurrentSession()) {

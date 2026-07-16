@@ -6,6 +6,9 @@ import android.widget.ImageButton;
 import androidx.annotation.NonNull;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionNewActivityStore;
+import com.termux.app.terminal.SessionReplyTimeRecorder;
+import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -23,8 +26,11 @@ public class TerminalEnterKeyController {
 
     private void send() {
         finishComposingText();
-        commitToolbarTextInput();
+        boolean ownerContentSubmitted = commitToolbarTextInput();
         sendEnter();
+        if (SendButtonReplySubmitDecision.shouldRecordReply(ownerContentSubmitted)) {
+            recordReplyOnSubmit();
+        }
     }
 
     private void finishComposingText() {
@@ -32,13 +38,13 @@ public class TerminalEnterKeyController {
         if (terminalView != null) terminalView.finishComposingTextToTerminal();
     }
 
-    private void commitToolbarTextInput() {
-        if (!mActivity.isTerminalToolbarTextInputViewSelected()) return;
+    private boolean commitToolbarTextInput() {
+        if (!mActivity.isTerminalToolbarTextInputViewSelected()) return false;
         EditText editText = mActivity.getTerminalToolbarTextInput();
-        if (editText == null) return;
+        if (editText == null) return false;
         TerminalToolbarViewPager.PageAdapter adapter = mActivity.getTerminalToolbarViewPagerAdapter();
-        if (adapter == null) return;
-        adapter.commitTextInputToTerminal(editText);
+        if (adapter == null) return false;
+        return adapter.commitTextInputToTerminal(editText);
     }
 
     private void sendEnter() {
@@ -48,5 +54,20 @@ public class TerminalEnterKeyController {
         if (emulator == null) return;
         session.write(TerminalEnterKeyEncoder.enterSequence(
             emulator.isCursorKeysApplicationMode(), emulator.isKeypadApplicationMode()));
+    }
+
+    private void recordReplyOnSubmit() {
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session == null || !session.isRunning()) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        boolean recorded = new SessionReplyTimeRecorder(store)
+            .recordReplyOnSubmit(session, System.currentTimeMillis());
+        if (!recorded) return;
+        TermuxTerminalSessionActivityClient sessionClient =
+            mActivity.getTermuxTerminalSessionClient();
+        if (sessionClient != null && session == mActivity.getCurrentSession()) {
+            sessionClient.updateSessionNameOverlay();
+        }
     }
 }
