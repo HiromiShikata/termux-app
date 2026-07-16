@@ -6,6 +6,9 @@ import android.widget.ImageButton;
 import androidx.annotation.NonNull;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionNewActivityStore;
+import com.termux.app.terminal.SessionReplyTimeRecorder;
+import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -48,5 +51,19 @@ public class TerminalEnterKeyController {
         if (emulator == null) return;
         session.write(TerminalEnterKeyEncoder.enterSequence(
             emulator.isCursorKeysApplicationMode(), emulator.isKeypadApplicationMode()));
+        recordReplyOnSubmit(session);
+    }
+
+    private void recordReplyOnSubmit(@NonNull TerminalSession session) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        boolean recorded = new SessionReplyTimeRecorder(store)
+            .recordReplyOnSubmit(session, System.currentTimeMillis());
+        if (!recorded) return;
+        TermuxTerminalSessionActivityClient sessionClient =
+            mActivity.getTermuxTerminalSessionClient();
+        if (sessionClient != null && session == mActivity.getCurrentSession()) {
+            sessionClient.updateSessionNameOverlay();
+        }
     }
 }
