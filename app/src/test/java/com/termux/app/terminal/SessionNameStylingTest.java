@@ -3,6 +3,7 @@ package com.termux.app.terminal;
 import android.graphics.Typeface;
 import android.text.Spanned;
 import android.text.SpannableString;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 
@@ -186,5 +187,53 @@ public class SessionNameStylingTest {
 
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
         Assert.assertEquals(0, styled.getSpans(0, styled.length(), StyleSpan.class).length);
+    }
+
+    @Test
+    public void sessionNameBarTitleReceivesAWhiteForegroundColorSoTheDescriptionStandsOut() {
+        String sessionName = "github.com/HiromiShikata/termux-app";
+        String description = "make the session description white";
+        String fullText = sessionName + "\n" + description;
+        SpannableString styled = new SpannableString(fullText);
+        int titleStart = sessionName.length() + 1;
+        int titleEnd = fullText.length();
+
+        TermuxTerminalSessionActivityClient.applySessionNameBarTitleStyling(styled, titleStart, titleEnd);
+
+        ForegroundColorSpan[] colorSpans = styled.getSpans(titleStart, titleEnd, ForegroundColorSpan.class);
+        Assert.assertEquals(1, colorSpans.length);
+        Assert.assertEquals(0xFFFFFFFF, colorSpans[0].getForegroundColor());
+        Assert.assertEquals(titleStart, styled.getSpanStart(colorSpans[0]));
+        Assert.assertEquals(titleEnd, styled.getSpanEnd(colorSpans[0]));
+    }
+
+    @Test
+    public void sessionNameBarTitleReceivesARelativeSizeThatIsATinyBumpAboveThePreviousSizeButStillBelowTheSessionName() {
+        String sessionName = "github.com/HiromiShikata/termux-app";
+        String description = "make the session description a tiny bit larger";
+        String fullText = sessionName + "\n" + description;
+        SpannableString styled = new SpannableString(fullText);
+        int titleStart = sessionName.length() + 1;
+        int titleEnd = fullText.length();
+
+        TermuxTerminalSessionActivityClient.applySessionNameBarTitleStyling(styled, titleStart, titleEnd);
+
+        RelativeSizeSpan[] sizeSpans = styled.getSpans(titleStart, titleEnd, RelativeSizeSpan.class);
+        Assert.assertEquals(1, sizeSpans.length);
+        Assert.assertEquals(0.79f, sizeSpans[0].getSizeChange(), 0.0001f);
+        Assert.assertTrue(sizeSpans[0].getSizeChange() > 0.7f);
+        Assert.assertTrue(sizeSpans[0].getSizeChange() < 1.0f);
+        Assert.assertEquals(titleStart, styled.getSpanStart(sizeSpans[0]));
+        Assert.assertEquals(titleEnd, styled.getSpanEnd(sizeSpans[0]));
+    }
+
+    @Test
+    public void sessionNameBarTitleStylingDoesNothingWhenThereIsNoTitleRange() {
+        SpannableString styled = new SpannableString("github.com/HiromiShikata/termux-app");
+
+        TermuxTerminalSessionActivityClient.applySessionNameBarTitleStyling(styled, -1, -1);
+
+        Assert.assertEquals(0, styled.getSpans(0, styled.length(), RelativeSizeSpan.class).length);
+        Assert.assertEquals(0, styled.getSpans(0, styled.length(), ForegroundColorSpan.class).length);
     }
 }
