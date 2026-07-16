@@ -16,6 +16,7 @@ import android.os.Looper;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.View;
 import android.widget.TextView;
@@ -150,7 +151,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private static final String LOG_TAG = "TermuxTerminalSessionActivityClient";
 
-    private static final float SESSION_NAME_BAR_TITLE_RELATIVE_SIZE = 0.7f;
+    private static final float SESSION_NAME_BAR_TITLE_RELATIVE_SIZE = 0.79f;
+
+    private static final int SESSION_NAME_BAR_TITLE_TEXT_COLOR = 0xFFFFFFFF;
 
     private static final long ACTIVE_SESSION_SEEN_TICK_INTERVAL_MILLIS = 1000L;
 
@@ -1377,9 +1380,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private CharSequence buildSessionNameBarText(SessionNameBarContent content) {
         if (!content.hasTitle()) return content.getName();
         SpannableString spannable = new SpannableString(content.getText());
-        spannable.setSpan(new RelativeSizeSpan(SESSION_NAME_BAR_TITLE_RELATIVE_SIZE),
-            content.getTitleStart(), content.getTitleEnd(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        applySessionNameBarTitleStyling(spannable, content.getTitleStart(), content.getTitleEnd());
         return spannable;
+    }
+
+    static void applySessionNameBarTitleStyling(@NonNull Spannable spannable, int titleStart, int titleEnd) {
+        if (titleStart < 0 || titleEnd <= titleStart) return;
+        spannable.setSpan(new RelativeSizeSpan(SESSION_NAME_BAR_TITLE_RELATIVE_SIZE),
+            titleStart, titleEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        spannable.setSpan(new ForegroundColorSpan(SESSION_NAME_BAR_TITLE_TEXT_COLOR),
+            titleStart, titleEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     private void onSessionNameBarTapped() {
