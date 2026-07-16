@@ -86,6 +86,11 @@
     <string name="action_browser_send_page_text">Send page text to terminal</string>
     <string name="action_browser_send_screenshot">Send screenshot to terminal</string>
     <string name="action_browser_clear_cache">Clear cache</string>
+    <string name="action_browser_find_in_page">Find in page</string>
+    <string name="action_browser_find_prev">Previous match</string>
+    <string name="action_browser_find_next">Next match</string>
+    <string name="action_browser_find_close">Close find bar</string>
+    <string name="hint_browser_find_in_page">Find in page</string>
     <string name="msg_browser_cache_cleared">Cache cleared</string>
     <string name="msg_browser_page_text_sent">Page text sent to terminal</string>
     <string name="msg_browser_page_text_failed">Failed to capture page text</string>
