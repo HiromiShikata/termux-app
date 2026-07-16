@@ -16,7 +16,6 @@ import androidx.viewpager.widget.PagerAdapter;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.SessionNewActivityStore;
-import com.termux.app.terminal.SessionReplyTimeRecorder;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
@@ -140,11 +139,10 @@ public class TerminalToolbarViewPager {
         }
 
         private void recordUserInputForSession(@NonNull TerminalSession session) {
+            if (session.mSessionName == null) return;
             SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
             if (store == null) return;
-            boolean recorded = new SessionReplyTimeRecorder(store)
-                .recordReplyOnSubmit(session, System.currentTimeMillis());
-            if (!recorded) return;
+            store.recordUserInput(session.mSessionName, System.currentTimeMillis());
             TermuxTerminalSessionActivityClient sessionClient =
                 mActivity.getTermuxTerminalSessionClient();
             if (sessionClient != null && session == mActivity.getCurrentSession()) {
