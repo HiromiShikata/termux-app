@@ -135,4 +135,94 @@ public class SessionShortcutBarPlannerTest {
         Assert.assertEquals(Arrays.asList("xmilepm", "na1"), targetSessionNames(renderOrderShortcuts));
         Assert.assertEquals(Arrays.asList("xmile", "na1"), labels(renderOrderShortcuts));
     }
+
+    private static SessionDefinitionEntry entry(String groupLabel, String entryLabel, String... urls) {
+        return new SessionDefinitionEntry(groupLabel, entryLabel, Arrays.asList(urls));
+    }
+
+    @Test
+    public void alwaysNaConfiguredByCompositeSessionNameResolvesToTheLiveUrlSession() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("umino/story");
+        List<String> liveSessionNames = Arrays.asList("uminopm", url);
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Arrays.asList("umino/story", "umino"), labels(shortcuts));
+        Assert.assertEquals(Arrays.asList(url, "uminopm"), targetSessionNames(shortcuts));
+    }
+
+    @Test
+    public void alwaysNaCompositeSessionThatExistsRendersAButtonInRightMostGroupAheadOfPm() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("umino/story");
+        List<String> liveSessionNames = Arrays.asList("uminopm", url);
+        List<SessionShortcut> rightToLeftShortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+        Set<String> presentSessionNames = namesInOrder("uminopm", url);
+
+        List<SessionShortcut> renderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+
+        Assert.assertEquals(Arrays.asList("umino", "umino/story"), labels(renderOrderShortcuts));
+        Assert.assertEquals(Arrays.asList("uminopm", url), targetSessionNames(renderOrderShortcuts));
+    }
+
+    @Test
+    public void alwaysNaConfiguredByExactLiveNameStillResolvesToThatName() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino"));
+        Set<String> alwaysNaSessionNames = namesInOrder("na-inbox");
+        List<String> liveSessionNames = Arrays.asList("uminopm", "na-inbox");
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Arrays.asList("na-inbox", "umino"), labels(shortcuts));
+        Assert.assertEquals(Arrays.asList("na-inbox", "uminopm"), targetSessionNames(shortcuts));
+    }
+
+    @Test
+    public void alwaysNaCompositeWithNoLiveSessionKeepsTheConfiguredNameSoThePresentFilterDropsIt() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("umino/story");
+        List<String> liveSessionNames = Collections.singletonList("uminopm");
+        List<SessionShortcut> rightToLeftShortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+        Set<String> presentSessionNames = namesInOrder("uminopm");
+
+        List<SessionShortcut> renderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+
+        Assert.assertEquals(Collections.singletonList("umino"), labels(renderOrderShortcuts));
+    }
+
+    @Test
+    public void legacyLiveNameUnawarePlanningLeavesACompositeConfiguredNameUnresolvedSoItNeverMatchesAUrlSession() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("umino/story");
+
+        List<SessionShortcut> shortcuts = planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
+
+        Assert.assertEquals(Arrays.asList("umino/story", "uminopm"), targetSessionNames(shortcuts));
+    }
+
+    @Test
+    public void alwaysNaCompositeEntryWithMultipleLiveUrlsIsAmbiguousSoTheConfiguredNameIsKept() {
+        String firstUrl = "https://github.com/HiromiShikata/secretary/issues/1";
+        String secondUrl = "https://github.com/HiromiShikata/secretary/issues/2";
+        List<SessionDefinitionEntry> entries =
+            Collections.singletonList(entry("umino", "story", firstUrl, secondUrl));
+        Set<String> alwaysNaSessionNames = namesInOrder("umino/story");
+        List<String> liveSessionNames = Arrays.asList("uminopm", firstUrl, secondUrl);
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Arrays.asList("umino/story", "uminopm"), targetSessionNames(shortcuts));
+    }
 }

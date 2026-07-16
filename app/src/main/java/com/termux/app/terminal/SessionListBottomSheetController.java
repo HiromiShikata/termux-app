@@ -30,6 +30,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -486,7 +487,8 @@ public class SessionListBottomSheetController {
         }
         Set<String> alwaysNaSessionNames = mActivity.getPreferences().getAlwaysNaSessionNames();
         List<SessionShortcut> rightToLeftShortcuts =
-            mSessionShortcutBarPlanner.planRightToLeftShortcuts(alwaysNaSessionNames, listController.getEntries());
+            mSessionShortcutBarPlanner.planRightToLeftShortcuts(alwaysNaSessionNames,
+                listController.getEntries(), liveSessionNames(service));
         Set<String> presentSessionNames = presentSessionNames(service, rightToLeftShortcuts);
         List<SessionShortcut> renderOrderShortcuts =
             SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
@@ -497,6 +499,18 @@ public class SessionListBottomSheetController {
             }
             mShortcutsContainer.addView(createShortcutButton(shortcut, targetSession));
         }
+    }
+
+    @NonNull
+    private List<String> liveSessionNames(@NonNull TermuxService service) {
+        List<String> liveSessionNames = new ArrayList<>();
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession != null && terminalSession.mSessionName != null) {
+                liveSessionNames.add(terminalSession.mSessionName);
+            }
+        }
+        return liveSessionNames;
     }
 
     @NonNull
