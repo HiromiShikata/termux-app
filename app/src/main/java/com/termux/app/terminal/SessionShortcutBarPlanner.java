@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
+import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,9 +16,16 @@ import java.util.Set;
 public final class SessionShortcutBarPlanner {
 
     private final DefaultProjectManagerSessionPlanner projectManagerSessionPlanner;
+    private final SessionDefinitionEntryMatcher sessionDefinitionEntryMatcher;
 
     public SessionShortcutBarPlanner(@NonNull DefaultProjectManagerSessionPlanner projectManagerSessionPlanner) {
+        this(projectManagerSessionPlanner, new SessionDefinitionEntryMatcher());
+    }
+
+    public SessionShortcutBarPlanner(@NonNull DefaultProjectManagerSessionPlanner projectManagerSessionPlanner,
+                                     @NonNull SessionDefinitionEntryMatcher sessionDefinitionEntryMatcher) {
         this.projectManagerSessionPlanner = projectManagerSessionPlanner;
+        this.sessionDefinitionEntryMatcher = sessionDefinitionEntryMatcher;
     }
 
     @NonNull
@@ -31,14 +39,18 @@ public final class SessionShortcutBarPlanner {
                                                           @NonNull List<SessionDefinitionEntry> entries,
                                                           @NonNull List<String> liveSessionNames) {
         List<SessionShortcut> rightToLeftShortcuts = new ArrayList<>();
+        Set<String> projectManagerSessionNames = projectManagerSessionNames(entries);
         Set<String> seenAlwaysNaTargets = new LinkedHashSet<>();
         for (String alwaysNaSessionName : alwaysNaSessionNames) {
             String trimmedName = alwaysNaSessionName.trim();
             if (trimmedName.isEmpty()) {
                 continue;
             }
-            String targetSessionName =
-                resolveAlwaysNaTargetSessionName(trimmedName, entries, liveSessionNames);
+            String targetSessionName = resolveAlwaysNaTargetSessionName(
+                trimmedName, entries, liveSessionNames, projectManagerSessionNames);
+            if (projectManagerSessionNames.contains(targetSessionName)) {
+                continue;
+            }
             if (!seenAlwaysNaTargets.add(targetSessionName)) {
                 continue;
             }
@@ -62,7 +74,8 @@ public final class SessionShortcutBarPlanner {
     @NonNull
     private String resolveAlwaysNaTargetSessionName(@NonNull String configuredName,
                                                     @NonNull List<SessionDefinitionEntry> entries,
-                                                    @NonNull List<String> liveSessionNames) {
+                                                    @NonNull List<String> liveSessionNames,
+                                                    @NonNull Set<String> projectManagerSessionNames) {
         if (liveSessionNames.contains(configuredName)) {
             return configuredName;
         }
@@ -71,7 +84,55 @@ public final class SessionShortcutBarPlanner {
         if (liveSessionNameForCompositeEntry != null) {
             return liveSessionNameForCompositeEntry;
         }
+        String liveSessionNameByResolvedName = uniqueLiveSessionNameByResolvedName(
+            configuredName, entries, liveSessionNames, projectManagerSessionNames);
+        if (liveSessionNameByResolvedName != null) {
+            return liveSessionNameByResolvedName;
+        }
         return configuredName;
+    }
+
+    @Nullable
+    private String uniqueLiveSessionNameByResolvedName(@NonNull String configuredName,
+                                                       @NonNull List<SessionDefinitionEntry> entries,
+                                                       @NonNull List<String> liveSessionNames,
+                                                       @NonNull Set<String> projectManagerSessionNames) {
+        String uniqueLiveSessionName = null;
+        for (String liveSessionName : liveSessionNames) {
+            if (liveSessionName == null || liveSessionName.isEmpty()) {
+                continue;
+            }
+            if (projectManagerSessionNames.contains(liveSessionName)) {
+                continue;
+            }
+            if (!liveSessionMatchesConfiguredName(liveSessionName, configuredName, entries)) {
+                continue;
+            }
+            if (uniqueLiveSessionName != null) {
+                return null;
+            }
+            uniqueLiveSessionName = liveSessionName;
+        }
+        return uniqueLiveSessionName;
+    }
+
+    private boolean liveSessionMatchesConfiguredName(@NonNull String liveSessionName,
+                                                     @NonNull String configuredName,
+                                                     @NonNull List<SessionDefinitionEntry> entries) {
+        if (configuredName.equals(liveSessionName)) {
+            return true;
+        }
+        if (configuredName.equals(
+                sessionDefinitionEntryMatcher.findGroupLabelForSessionName(entries, liveSessionName))) {
+            return true;
+        }
+        if (configuredName.equals(
+                sessionDefinitionEntryMatcher.findTitleForSessionName(entries, liveSessionName))) {
+            return true;
+        }
+        SessionDefinitionEntry owningEntry =
+            sessionDefinitionEntryMatcher.findEntryForSessionName(entries, liveSessionName);
+        return owningEntry != null && configuredName.equals(owningEntry.getSessionName());
     }
 
     @Nullable
@@ -95,6 +156,18 @@ public final class SessionShortcutBarPlanner {
             return singleLiveUrl;
         }
         return null;
+    }
+
+    @NonNull
+    private Set<String> projectManagerSessionNames(@NonNull List<SessionDefinitionEntry> entries) {
+        Set<String> projectManagerSessionNames = new LinkedHashSet<>();
+        for (SessionDefinitionEntry entry : entries) {
+            String pmSessionName = projectManagerSessionPlanner.sessionNameForProjectLabel(entry.getGroupLabel());
+            if (pmSessionName != null) {
+                projectManagerSessionNames.add(pmSessionName);
+            }
+        }
+        return projectManagerSessionNames;
     }
 
     @NonNull

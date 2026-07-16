@@ -225,4 +225,97 @@ public class SessionShortcutBarPlannerTest {
 
         Assert.assertEquals(Arrays.asList("umino/story", "uminopm"), targetSessionNames(shortcuts));
     }
+
+    @Test
+    public void alwaysNaConfiguredByBareProjectLabelMatchesTheLiveUrlSessionOfThatProject() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("secretary", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("secretary");
+        List<String> liveSessionNames = Arrays.asList("secretarypm", url);
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Arrays.asList("secretary", "secretary"), labels(shortcuts));
+        Assert.assertEquals(Arrays.asList(url, "secretarypm"), targetSessionNames(shortcuts));
+    }
+
+    @Test
+    public void alwaysNaMatchedByBareProjectLabelRendersInRightMostGroupAheadOfPm() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("secretary", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("secretary");
+        List<String> liveSessionNames = Arrays.asList("secretarypm", url);
+        List<SessionShortcut> rightToLeftShortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+        Set<String> presentSessionNames = namesInOrder("secretarypm", url);
+
+        List<SessionShortcut> renderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+
+        Assert.assertEquals(Arrays.asList("secretary", "secretary"), labels(renderOrderShortcuts));
+        Assert.assertEquals(Arrays.asList("secretarypm", url), targetSessionNames(renderOrderShortcuts));
+    }
+
+    @Test
+    public void alwaysNaConfiguredByResolvedTitleMatchesTheLiveUrlSession() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        java.util.Map<String, String> titlesByUrl = new java.util.HashMap<>();
+        titlesByUrl.put(url, "inbox-title");
+        List<SessionDefinitionEntry> entries = Collections.singletonList(
+            new SessionDefinitionEntry("umino", "story", Collections.singletonList(url), titlesByUrl));
+        Set<String> alwaysNaSessionNames = namesInOrder("inbox-title");
+        List<String> liveSessionNames = Arrays.asList("uminopm", url);
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Arrays.asList("inbox-title", "umino"), labels(shortcuts));
+        Assert.assertEquals(Arrays.asList(url, "uminopm"), targetSessionNames(shortcuts));
+    }
+
+    @Test
+    public void alwaysNaConfiguredNameMatchingNoLiveSessionRendersNoButtonAfterPresentFilter() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("secretary", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("nonexistent");
+        List<String> liveSessionNames = Arrays.asList("secretarypm", url);
+        List<SessionShortcut> rightToLeftShortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+        Set<String> presentSessionNames = namesInOrder("secretarypm", url);
+
+        List<SessionShortcut> renderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+
+        Assert.assertEquals(Collections.singletonList("secretary"), labels(renderOrderShortcuts));
+        Assert.assertEquals(Collections.singletonList("secretarypm"),
+            targetSessionNames(renderOrderShortcuts));
+    }
+
+    @Test
+    public void aLiveSessionMatchingMultipleCriteriaRendersOnlyOneAlwaysNaButton() {
+        String url = "https://github.com/HiromiShikata/secretary";
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("secretary", "story", url));
+        Set<String> alwaysNaSessionNames = namesInOrder("secretary", "secretary/story");
+        List<String> liveSessionNames = Arrays.asList("secretarypm", url);
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Arrays.asList("secretary", "secretary"), labels(shortcuts));
+        Assert.assertEquals(Arrays.asList(url, "secretarypm"), targetSessionNames(shortcuts));
+    }
+
+    @Test
+    public void alwaysNaMatchingASessionThatIsAlreadyAPmTargetDoesNotDoubleRender() {
+        List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino"));
+        Set<String> alwaysNaSessionNames = namesInOrder("uminopm");
+        List<String> liveSessionNames = Collections.singletonList("uminopm");
+
+        List<SessionShortcut> shortcuts =
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
+
+        Assert.assertEquals(Collections.singletonList("umino"), labels(shortcuts));
+        Assert.assertEquals(Collections.singletonList("uminopm"), targetSessionNames(shortcuts));
+    }
 }
