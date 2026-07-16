@@ -10,6 +10,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -24,11 +25,15 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
 
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class SessionListBottomSheetController {
 
@@ -51,6 +56,9 @@ public class SessionListBottomSheetController {
     private final View mLoadSessionButton;
     private final View mGoogleButton;
     private final ImageButton mHiddenToggleButton;
+    private final LinearLayout mShortcutsContainer;
+    private final SessionShortcutBarPlanner mSessionShortcutBarPlanner =
+        new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
 
     private boolean mAdapterBound;
     private float mDragStartRawY;
@@ -78,6 +86,7 @@ public class SessionListBottomSheetController {
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         this.mGoogleButton = activity.findViewById(R.id.session_list_bottom_sheet_google_button);
         this.mHiddenToggleButton = activity.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button);
+        this.mShortcutsContainer = activity.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
         bindActionButtons();
         bindHiddenToggleButton();
         bindDragToDismiss();
@@ -286,6 +295,7 @@ public class SessionListBottomSheetController {
         bindSessionList(listController);
         applyHiddenToggleButtonState(listController);
         applySessionCountTitle(listController);
+        rebuildSessionShortcuts(listController);
         mSheetView.animate().cancel();
         mScrimView.setVisibility(scrimVisibilityForSheet(View.VISIBLE));
         applySessionInfoVisibilityForSheet(View.VISIBLE);
@@ -466,6 +476,88 @@ public class SessionListBottomSheetController {
     static String sessionCountTitle(@NonNull String baseTitle, int pendingCallSessionCount,
                                     int visibleSessionCount) {
         return baseTitle + " " + SessionCountFraction.of(pendingCallSessionCount, visibleSessionCount);
+    }
+
+    private void rebuildSessionShortcuts(@NonNull TermuxSessionsListViewController listController) {
+        mShortcutsContainer.removeAllViews();
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) {
+            return;
+        }
+        Set<String> alwaysNaSessionNames = mActivity.getPreferences().getAlwaysNaSessionNames();
+        List<SessionShortcut> rightToLeftShortcuts =
+            mSessionShortcutBarPlanner.planRightToLeftShortcuts(alwaysNaSessionNames, listController.getEntries());
+        Set<String> presentSessionNames = presentSessionNames(service, rightToLeftShortcuts);
+        List<SessionShortcut> renderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+        for (SessionShortcut shortcut : renderOrderShortcuts) {
+            TermuxSession targetSession = service.getTermuxSessionForSessionName(shortcut.getTargetSessionName());
+            if (targetSession == null) {
+                continue;
+            }
+            mShortcutsContainer.addView(createShortcutButton(shortcut, targetSession));
+        }
+    }
+
+    @NonNull
+    private Set<String> presentSessionNames(@NonNull TermuxService service,
+                                            @NonNull List<SessionShortcut> shortcuts) {
+        Set<String> presentSessionNames = new LinkedHashSet<>();
+        for (SessionShortcut shortcut : shortcuts) {
+            if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {
+                presentSessionNames.add(shortcut.getTargetSessionName());
+            }
+        }
+        return presentSessionNames;
+    }
+
+    @NonNull
+    private View createShortcutButton(@NonNull SessionShortcut shortcut, @NonNull TermuxSession targetSession) {
+        TextView shortcutButton = newShortcutButtonView(mActivity, shortcut.getLabel());
+        shortcutButton.setOnClickListener(v -> switchToShortcutSession(targetSession));
+        return shortcutButton;
+    }
+
+    @NonNull
+    static TextView newShortcutButtonView(@NonNull android.content.Context context, @NonNull String label) {
+        TextView shortcutButton = new TextView(context);
+        shortcutButton.setText(label);
+        shortcutButton.setTextColor(ContextCompat.getColor(context,
+            com.termux.shared.R.color.schema_text_primary));
+        shortcutButton.setSingleLine(true);
+        shortcutButton.setContentDescription(label);
+        int horizontalPaddingPixels = dpToPixels(context, 12);
+        int verticalPaddingPixels = dpToPixels(context, 6);
+        shortcutButton.setPadding(horizontalPaddingPixels, verticalPaddingPixels,
+            horizontalPaddingPixels, verticalPaddingPixels);
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layoutParams.setMarginStart(dpToPixels(context, 4));
+        shortcutButton.setLayoutParams(layoutParams);
+        shortcutButton.setBackgroundResource(shortcutBackgroundResource(context));
+        return shortcutButton;
+    }
+
+    private void switchToShortcutSession(@NonNull TermuxSession targetSession) {
+        TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
+        if (sessionClient != null) {
+            sessionClient.switchToSessionReconnectingIfDead(targetSession.getTerminalSession());
+        }
+        hideSoftKeyboard();
+        hide();
+    }
+
+    private static int shortcutBackgroundResource(@NonNull android.content.Context context) {
+        int[] attribute = new int[]{android.R.attr.selectableItemBackground};
+        android.content.res.TypedArray typedArray = context.obtainStyledAttributes(attribute);
+        int backgroundResource = typedArray.getResourceId(0, 0);
+        typedArray.recycle();
+        return backgroundResource;
+    }
+
+    private static int dpToPixels(@NonNull android.content.Context context, int densityIndependentPixels) {
+        float density = context.getResources().getDisplayMetrics().density;
+        return Math.round(densityIndependentPixels * density);
     }
 
     private void applySheetDefaultHeight() {

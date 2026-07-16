@@ -585,54 +585,10 @@
                 android:layout_weight="1"
                 android:scrollbars="vertical" />
 
-            <LinearLayout
+            <include
+                layout="@layout/session_list_bottom_sheet_control_bar"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:gravity="end"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/session_list_bottom_sheet_settings_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_open_settings"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_settings"
-                    android:tint="?attr/termuxActivityDrawerImageTint" />
-
-                <ImageButton
-                    android:id="@+id/session_list_bottom_sheet_new_session_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_new_session"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_add"
-                    android:tint="?attr/termuxActivityDrawerImageTint" />
-
-                <ImageButton
-                    android:id="@+id/session_list_bottom_sheet_load_session_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_load_session_definition"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_load_session"
-                    android:tint="?attr/termuxActivityDrawerImageTint" />
-
-                <ImageButton
-                    android:id="@+id/session_list_bottom_sheet_google_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="?android:attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/action_open_google"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_google"
-                    android:tint="?attr/termuxActivityDrawerImageTint" />
-
-            </LinearLayout>
+                android:layout_height="wrap_content" />
 
         </LinearLayout>
 
