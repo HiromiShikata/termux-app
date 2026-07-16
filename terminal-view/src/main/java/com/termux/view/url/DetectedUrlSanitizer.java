@@ -28,7 +28,8 @@ public final class DetectedUrlSanitizer {
         if (containsHintMarker(candidate)) return null;
         if (hintScopeRowText != null && containsHintMarker(hintScopeRowText)) return null;
 
-        String truncated = truncateAtFirstWhitespace(candidate);
+        String withoutWhitespaceTail = truncateAtFirstWhitespace(candidate);
+        String truncated = truncateAtFirstNonAsciiCharacter(withoutWhitespaceTail);
         String trimmed = trimTrailingArtifacts(truncated);
 
         if (trimmed.isEmpty()) return null;
@@ -46,6 +47,15 @@ public final class DetectedUrlSanitizer {
     private static String truncateAtFirstWhitespace(String value) {
         for (int index = 0; index < value.length(); index++) {
             if (Character.isWhitespace(value.charAt(index))) {
+                return value.substring(0, index);
+            }
+        }
+        return value;
+    }
+
+    private static String truncateAtFirstNonAsciiCharacter(String value) {
+        for (int index = 0; index < value.length(); index++) {
+            if (value.charAt(index) > 0x7F) {
                 return value.substring(0, index);
             }
         }

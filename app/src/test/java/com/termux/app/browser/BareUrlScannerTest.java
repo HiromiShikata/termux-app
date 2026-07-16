@@ -96,4 +96,25 @@ public class BareUrlScannerTest {
         assertTrue(scanner.urlsToOpen(null).isEmpty());
         assertTrue(scanner.urlsToOpen("plain terminal output with no url\n").isEmpty());
     }
+
+    @Test
+    public void truncatesUrlBeforeAdjacentFullWidthTextJoinedBySoftWrap() {
+        BareUrlScanner scanner = new BareUrlScanner();
+        assertEquals(List.of("https://example.com/owner/repo/pull/123"),
+            scanner.urlsToOpen("https://example.com/owner/repo/pull/123（説明文がここに続く）\n"));
+    }
+
+    @Test
+    public void detectsUrlWhenFollowingFullWidthTextIsOnASeparateLine() {
+        BareUrlScanner scanner = new BareUrlScanner();
+        assertEquals(List.of("https://example.com/owner/repo/pull/123"),
+            scanner.urlsToOpen("https://example.com/owner/repo/pull/123\n（説明文がここに続く）\n"));
+    }
+
+    @Test
+    public void preservesLineSoleUrlWithAsciiQueryAndFragment() {
+        BareUrlScanner scanner = new BareUrlScanner();
+        assertEquals(List.of("https://example.com/search?q=hello+world&x=1#section"),
+            scanner.urlsToOpen("https://example.com/search?q=hello+world&x=1#section\n"));
+    }
 }

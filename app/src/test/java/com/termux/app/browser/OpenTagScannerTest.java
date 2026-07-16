@@ -215,4 +215,25 @@ public class OpenTagScannerTest {
         assertTrue(scanner.urlsToOpen(
             "<open>https://example.com/a</open>\nline\n<open>https://example.com/a</open>\n").isEmpty());
     }
+
+    @Test
+    public void taggedUrlWithAdjacentFullWidthTextIsTruncatedBeforeTheFullWidthCharacters() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open>https://example.com/owner/repo/pull/123（説明文）</open>");
+        assertEquals(List.of("https://example.com/owner/repo/pull/123"), openUrls);
+    }
+
+    @Test
+    public void taggedUrlFollowedByNewlineThenFullWidthTextYieldsOnlyTheUrl() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open>https://example.com/owner/repo/pull/123\n（説明文）</open>");
+        assertEquals(List.of("https://example.com/owner/repo/pull/123"), openUrls);
+    }
+
+    @Test
+    public void taggedUrlWithAsciiQueryAndFragmentIsPreserved() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open>https://example.com/search?q=hello+world&x=1#section</open>");
+        assertEquals(List.of("https://example.com/search?q=hello+world&x=1#section"), openUrls);
+    }
 }
