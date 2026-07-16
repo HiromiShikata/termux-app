@@ -550,11 +550,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     }
 
     private void recordUserInputForSession(@Nullable TerminalSession session) {
+        if (session == null || session.mSessionName == null) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
-        boolean recorded = new SessionReplyTimeRecorder(store)
-            .recordReplyOnSubmit(session, System.currentTimeMillis());
-        if (!recorded) return;
+        store.recordUserInput(session.mSessionName, System.currentTimeMillis());
         if (mTermuxTerminalSessionActivityClient != null
             && session == mActivity.getCurrentSession()) {
             mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();
