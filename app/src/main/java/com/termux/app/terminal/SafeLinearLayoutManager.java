@@ -14,6 +14,7 @@ public class SafeLinearLayoutManager extends LinearLayoutManager {
 
     public SafeLinearLayoutManager(@NonNull Context context) {
         super(context);
+        setItemPrefetchEnabled(false);
     }
 
     @Override

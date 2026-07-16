@@ -104,6 +104,23 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
+    public void bindsSessionListAdapterDisablesItemPrefetchToPreventGapWorkerUnhideCrash() {
+        RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
+        StringRecyclerAdapter delegate =
+            new StringRecyclerAdapter(Arrays.asList("project header", "session a", "session b"));
+
+        SessionListBottomSheetController.bindSessionListAdapter(recyclerView, delegate);
+
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        Assert.assertTrue("the bottom-sheet list must use a LinearLayoutManager",
+            layoutManager instanceof LinearLayoutManager);
+        Assert.assertFalse("the bottom-sheet list must disable item prefetch so the RecyclerView GapWorker "
+                + "cannot throw \"view is not a child, cannot hide\" while prefetching during the "
+                + "empty-session transition",
+            ((LinearLayoutManager) layoutManager).isItemPrefetchEnabled());
+    }
+
+    @Test
     public void bindsSessionListAdapterPreservesRowOrderWithoutReversing() {
         RecyclerView recyclerView = new RecyclerView(RuntimeEnvironment.getApplication());
         StringRecyclerAdapter delegate =

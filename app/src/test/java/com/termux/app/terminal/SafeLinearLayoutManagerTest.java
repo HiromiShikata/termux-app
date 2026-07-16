@@ -4,9 +4,21 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 
 @RunWith(RobolectricTestRunner.class)
 public class SafeLinearLayoutManagerTest {
+
+    @Test
+    public void itemPrefetchIsDisabledSoTheGapWorkerUnhidePrefetchCrashCannotOccur() {
+        SafeLinearLayoutManager layoutManager =
+            new SafeLinearLayoutManager(RuntimeEnvironment.getApplication());
+
+        Assert.assertFalse("item prefetch must be disabled so the RecyclerView GapWorker does not run the "
+                + "prefetch path that throws \"view is not a child, cannot hide\" during the empty-session "
+                + "transition",
+            layoutManager.isItemPrefetchEnabled());
+    }
 
     @Test
     public void layoutPassThatThrowsInconsistencyIsSwallowedSoTheActivityDoesNotCrash() {
