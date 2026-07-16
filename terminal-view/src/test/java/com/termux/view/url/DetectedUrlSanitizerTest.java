@@ -73,6 +73,33 @@ public class DetectedUrlSanitizerTest {
     }
 
     @Test
+    public void fullWidthTextAdjacentToUrlIsTruncatedBeforeTheFullWidthCharacters() {
+        String candidate = "https://example.com/owner/repo/pull/123（説明文がここに続く）";
+        Assert.assertEquals("https://example.com/owner/repo/pull/123",
+            DetectedUrlSanitizer.sanitize(candidate));
+    }
+
+    @Test
+    public void fullWidthParenthesisImmediatelyAfterUrlIsTruncated() {
+        String candidate = "https://example.com/path（";
+        Assert.assertEquals("https://example.com/path",
+            DetectedUrlSanitizer.sanitize(candidate));
+    }
+
+    @Test
+    public void cjkTextImmediatelyAfterUrlIsTruncated() {
+        String candidate = "https://example.com/path説明";
+        Assert.assertEquals("https://example.com/path",
+            DetectedUrlSanitizer.sanitize(candidate));
+    }
+
+    @Test
+    public void asciiQueryAndFragmentAreNotTruncatedByNonAsciiRule() {
+        String url = "https://example.com/search?q=hello+world&x=1#section";
+        Assert.assertEquals(url, DetectedUrlSanitizer.sanitize(url));
+    }
+
+    @Test
     public void nullReturnsNull() {
         Assert.assertNull(DetectedUrlSanitizer.sanitize(null));
     }
