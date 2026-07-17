@@ -87,6 +87,53 @@ public class ShortcutFlowLayoutWrapVisibilityTest {
             flowLayout.getMeasuredHeight() > firstButtonRowHeight);
     }
 
+    @Test
+    public void everyRowIncludingANonFullLastRowIsRightJustifiedAgainstTheRightEdge() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShortcutFlowLayout flowLayout = new ShortcutFlowLayout(context);
+        for (int index = 0; index < 7; index++) {
+            flowLayout.addView(fixedSizeChild(context));
+        }
+        int narrowWidth = 250;
+
+        measureAndLayout(flowLayout, narrowWidth);
+
+        int rightEdge = flowLayout.getMeasuredWidth() - flowLayout.getPaddingRight();
+        int rowCount = 0;
+        int previousTop = Integer.MIN_VALUE;
+        int rowMaxRight = 0;
+        int lastRowChildCount = 0;
+        int currentRowChildCount = 0;
+        for (int index = 0; index < flowLayout.getChildCount(); index++) {
+            View child = flowLayout.getChildAt(index);
+            if (child.getTop() != previousTop) {
+                if (index != 0) {
+                    assertRowRightJustified(rowMaxRight, rightEdge);
+                    lastRowChildCount = currentRowChildCount;
+                }
+                rowCount++;
+                previousTop = child.getTop();
+                rowMaxRight = child.getRight();
+                currentRowChildCount = 1;
+            } else {
+                rowMaxRight = Math.max(rowMaxRight, child.getRight());
+                currentRowChildCount++;
+            }
+        }
+        assertRowRightJustified(rowMaxRight, rightEdge);
+        lastRowChildCount = currentRowChildCount;
+
+        assertTrue("wrapping onto more than one row must be exercised", rowCount > 1);
+        assertTrue("the last row must be a non-full row so left-alignment would fail this assertion",
+            lastRowChildCount < 2);
+    }
+
+    private static void assertRowRightJustified(int rowMaxRight, int rightEdge) {
+        assertTrue("a row must not extend past the right edge", rowMaxRight <= rightEdge);
+        assertTrue("each row must be right-justified so its rightmost child ends at the right edge",
+            rowMaxRight >= rightEdge - HORIZONTAL_MARGIN_PIXELS - 1);
+    }
+
     private List<SessionShortcut> renderOrderShortcutsWithSecretaryAndManyProjects() {
         List<SessionDefinitionEntry> entries = new ArrayList<>();
         Set<String> presentSessionNames = new LinkedHashSet<>();
