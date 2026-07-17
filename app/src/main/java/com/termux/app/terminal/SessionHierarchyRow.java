@@ -15,17 +15,20 @@ public final class SessionHierarchyRow {
     private final String label;
     private final int sessionIndex;
     private final String sessionName;
+    private final String sessionHandle;
     private final String overviewUrl;
     private final String tdpmConsoleUrl;
     private final String newIssueUrl;
 
     private SessionHierarchyRow(@NonNull Type type, @Nullable String label, int sessionIndex,
-                               @Nullable String sessionName, @Nullable String overviewUrl,
+                               @Nullable String sessionName, @Nullable String sessionHandle,
+                               @Nullable String overviewUrl,
                                @Nullable String tdpmConsoleUrl, @Nullable String newIssueUrl) {
         this.type = type;
         this.label = label;
         this.sessionIndex = sessionIndex;
         this.sessionName = sessionName;
+        this.sessionHandle = sessionHandle;
         this.overviewUrl = overviewUrl;
         this.tdpmConsoleUrl = tdpmConsoleUrl;
         this.newIssueUrl = newIssueUrl;
@@ -40,12 +43,13 @@ public final class SessionHierarchyRow {
     public static SessionHierarchyRow projectHeader(@NonNull String label, @Nullable String overviewUrl,
                                                     @Nullable String tdpmConsoleUrl,
                                                     @Nullable String newIssueUrl) {
-        return new SessionHierarchyRow(Type.PROJECT_HEADER, label, -1, null, overviewUrl, tdpmConsoleUrl, newIssueUrl);
+        return new SessionHierarchyRow(Type.PROJECT_HEADER, label, -1, null, null, overviewUrl, tdpmConsoleUrl,
+            newIssueUrl);
     }
 
     @NonNull
     public static SessionHierarchyRow storyHeader(@NonNull String label) {
-        return new SessionHierarchyRow(Type.STORY_HEADER, label, -1, null, null, null, null);
+        return new SessionHierarchyRow(Type.STORY_HEADER, label, -1, null, null, null, null, null);
     }
 
     @NonNull
@@ -55,7 +59,13 @@ public final class SessionHierarchyRow {
 
     @NonNull
     public static SessionHierarchyRow session(int sessionIndex, @Nullable String sessionName) {
-        return new SessionHierarchyRow(Type.SESSION, null, sessionIndex, sessionName, null, null, null);
+        return session(sessionIndex, sessionName, null);
+    }
+
+    @NonNull
+    public static SessionHierarchyRow session(int sessionIndex, @Nullable String sessionName,
+                                              @Nullable String sessionHandle) {
+        return new SessionHierarchyRow(Type.SESSION, null, sessionIndex, sessionName, sessionHandle, null, null, null);
     }
 
     @NonNull
@@ -79,6 +89,11 @@ public final class SessionHierarchyRow {
     @Nullable
     public String getSessionName() {
         return sessionName;
+    }
+
+    @Nullable
+    public String getSessionHandle() {
+        return sessionHandle;
     }
 
     @Nullable

@@ -38,8 +38,17 @@ public final class SessionHierarchyBuilder {
                                            @NonNull List<SessionDefinitionEntry> entries,
                                            @NonNull String naProjectLabel,
                                            @NonNull Set<String> alwaysNaSessionNames) {
+        return build(sessionNames, null, entries, naProjectLabel, alwaysNaSessionNames);
+    }
+
+    @NonNull
+    public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
+                                           @Nullable List<String> sessionHandles,
+                                           @NonNull List<SessionDefinitionEntry> entries,
+                                           @NonNull String naProjectLabel,
+                                           @NonNull Set<String> alwaysNaSessionNames) {
         if (entries.isEmpty()) {
-            return flatten(sessionNames);
+            return flatten(sessionNames, sessionHandles);
         }
 
         Map<String, String> projectLabelByManagerSessionName = projectLabelByManagerSessionName(entries);
@@ -119,7 +128,7 @@ public final class SessionHierarchyBuilder {
         if (!unmatchedSessionIndexes.isEmpty()) {
             rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
             for (int sessionIndex : unmatchedSessionIndexes) {
-                rows.add(sessionRow(sessionNames, sessionIndex));
+                rows.add(sessionRow(sessionNames, sessionHandles, sessionIndex));
             }
         }
         Set<String> definedProjectLabels = new LinkedHashSet<>();
@@ -132,7 +141,7 @@ public final class SessionHierarchyBuilder {
                 newIssueUrlByProject.get(projectLabel)));
             Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
             if (managerSessionIndex != null) {
-                rows.add(sessionRow(sessionNames, managerSessionIndex));
+                rows.add(sessionRow(sessionNames, sessionHandles, managerSessionIndex));
             }
             Map<String, List<Integer>> storiesInProject = sessionIndexesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
@@ -141,7 +150,7 @@ public final class SessionHierarchyBuilder {
             for (Map.Entry<String, List<Integer>> story : storiesInProject.entrySet()) {
                 rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
                 for (int sessionIndex : story.getValue()) {
-                    rows.add(sessionRow(sessionNames, sessionIndex));
+                    rows.add(sessionRow(sessionNames, sessionHandles, sessionIndex));
                 }
             }
         }
@@ -438,18 +447,22 @@ public final class SessionHierarchyBuilder {
     }
 
     @NonNull
-    private List<SessionHierarchyRow> flatten(@NonNull List<String> sessionNames) {
+    private List<SessionHierarchyRow> flatten(@NonNull List<String> sessionNames,
+                                              @Nullable List<String> sessionHandles) {
         List<SessionHierarchyRow> rows = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
-            rows.add(sessionRow(sessionNames, sessionIndex));
+            rows.add(sessionRow(sessionNames, sessionHandles, sessionIndex));
         }
         return rows;
     }
 
     @NonNull
-    private static SessionHierarchyRow sessionRow(@NonNull List<String> sessionNames, int sessionIndex) {
+    private static SessionHierarchyRow sessionRow(@NonNull List<String> sessionNames,
+                                                  @Nullable List<String> sessionHandles, int sessionIndex) {
         String sessionName = sessionIndex >= 0 && sessionIndex < sessionNames.size()
             ? sessionNames.get(sessionIndex) : null;
-        return SessionHierarchyRow.session(sessionIndex, sessionName);
+        String sessionHandle = sessionHandles != null && sessionIndex >= 0 && sessionIndex < sessionHandles.size()
+            ? sessionHandles.get(sessionIndex) : null;
+        return SessionHierarchyRow.session(sessionIndex, sessionName, sessionHandle);
     }
 }

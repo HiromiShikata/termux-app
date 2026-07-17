@@ -58,6 +58,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private static final long PROJECT_HEADER_ITEM_ID_TYPE_SEED = 0x2000_0000_0000_0002L;
     private static final long SESSION_NAME_ITEM_ID_TYPE_SEED = 0x3000_0000_0000_0003L;
     private static final long SESSION_INDEX_ITEM_ID_TYPE_SEED = 0x4000_0000_0000_0004L;
+    private static final long SESSION_HANDLE_ITEM_ID_TYPE_SEED = 0x5000_0000_0000_0005L;
 
     private static final long ITEM_ID_HASH_OFFSET_BASIS = 0xCBF2_9CE4_8422_2325L;
     private static final long ITEM_ID_HASH_PRIME = 0x0000_0100_0000_01B3L;
@@ -312,6 +313,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return false;
         }
         if (firstRow.getType() == SessionHierarchyRow.Type.SESSION) {
+            String firstHandle = firstRow.getSessionHandle();
+            String secondHandle = secondRow.getSessionHandle();
+            if (firstHandle != null || secondHandle != null) {
+                return TextUtils.equals(firstHandle, secondHandle);
+            }
             String firstName = firstRow.getSessionName();
             String secondName = secondRow.getSessionName();
             if (firstName != null || secondName != null) {
@@ -324,11 +330,13 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private List<SessionHierarchyRow> buildAllRows() {
         List<String> sessionNames = new ArrayList<>(mSessionList.size());
+        List<String> sessionHandles = new ArrayList<>(mSessionList.size());
         for (TermuxSession session : mSessionList) {
             TerminalSession terminalSession = session.getTerminalSession();
             sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
+            sessionHandles.add(terminalSession == null ? null : terminalSession.mHandle);
         }
-        return mHierarchyBuilder.build(sessionNames, mEntries,
+        return mHierarchyBuilder.build(sessionNames, sessionHandles, mEntries,
             mActivity.getString(R.string.session_list_na_group_header),
             alwaysNaSessionNames());
     }
@@ -914,6 +922,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             case STORY_HEADER:
                 return identityHash(STORY_HEADER_ITEM_ID_TYPE_SEED, row.getLabel());
             default:
+                String sessionHandle = row.getSessionHandle();
+                if (sessionHandle != null) {
+                    return identityHash(SESSION_HANDLE_ITEM_ID_TYPE_SEED, sessionHandle);
+                }
                 String sessionName = row.getSessionName();
                 if (sessionName != null) {
                     return identityHash(SESSION_NAME_ITEM_ID_TYPE_SEED, sessionName);
