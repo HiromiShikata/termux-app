@@ -107,7 +107,10 @@ public class TermuxSessionsListViewControllerRowRebuildPerformanceTest {
 
         TermuxSessionsListViewController.SessionRowDiffCallback callback =
             new TermuxSessionsListViewController.SessionRowDiffCallback(
-                rows, rows, previousContent, currentContent);
+                rows, rows,
+                TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+                TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+                previousContent, currentContent);
 
         Assert.assertTrue(callback.areItemsTheSame(0, 0));
         Assert.assertTrue(callback.areContentsTheSame(0, 0));
@@ -124,7 +127,10 @@ public class TermuxSessionsListViewControllerRowRebuildPerformanceTest {
 
         TermuxSessionsListViewController.SessionRowDiffCallback callback =
             new TermuxSessionsListViewController.SessionRowDiffCallback(
-                rows, rows, previousContent, currentContent);
+                rows, rows,
+                TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+                TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+                previousContent, currentContent);
 
         Assert.assertTrue(callback.areItemsTheSame(0, 0));
         Assert.assertFalse(callback.areContentsTheSame(0, 0));
@@ -142,7 +148,10 @@ public class TermuxSessionsListViewControllerRowRebuildPerformanceTest {
 
         TermuxSessionsListViewController.SessionRowDiffCallback callback =
             new TermuxSessionsListViewController.SessionRowDiffCallback(
-                rows, rows, previousContent, currentContent);
+                rows, rows,
+                TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+                TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+                previousContent, currentContent);
 
         Assert.assertFalse(callback.areContentsTheSame(0, 0));
     }
