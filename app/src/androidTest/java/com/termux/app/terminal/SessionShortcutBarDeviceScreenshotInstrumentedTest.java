@@ -9,7 +9,6 @@ import android.graphics.Canvas;
 import android.os.Environment;
 import android.view.ContextThemeWrapper;
 import android.view.View;
-import android.widget.LinearLayout;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -46,7 +45,7 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         Context context = new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
         View controlBar = View.inflate(context, R.layout.session_list_bottom_sheet_control_bar, null);
-        LinearLayout shortcutsContainer =
+        ShortcutFlowLayout shortcutsContainer =
             controlBar.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
 
         Set<String> alwaysNaSessionNames = new LinkedHashSet<>(Arrays.asList("inbox", "review"));
