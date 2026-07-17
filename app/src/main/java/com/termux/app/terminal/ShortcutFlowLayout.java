@@ -75,31 +75,47 @@ public class ShortcutFlowLayout extends ViewGroup {
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         int availableWidth = Math.max(0, getWidth() - getPaddingLeft() - getPaddingRight());
-        int cursorX = getPaddingLeft();
+        int rightEdge = getWidth() - getPaddingRight();
         int cursorY = getPaddingTop();
-        int rowHeight = 0;
-        boolean rowHasChild = false;
-        for (int index = 0; index < getChildCount(); index++) {
-            View child = getChildAt(index);
-            if (child.getVisibility() == GONE) {
-                continue;
+        int childCount = getChildCount();
+        int index = 0;
+        while (index < childCount) {
+            int rowStartIndex = index;
+            int rowWidth = 0;
+            int rowHeight = 0;
+            boolean rowHasChild = false;
+            while (index < childCount) {
+                View child = getChildAt(index);
+                if (child.getVisibility() == GONE) {
+                    index++;
+                    continue;
+                }
+                MarginLayoutParams layoutParams = (MarginLayoutParams) child.getLayoutParams();
+                int childOuterWidth = child.getMeasuredWidth() + layoutParams.leftMargin + layoutParams.rightMargin;
+                int childOuterHeight = child.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin;
+                if (rowHasChild && rowWidth + childOuterWidth > availableWidth) {
+                    break;
+                }
+                rowWidth += childOuterWidth;
+                rowHeight = Math.max(rowHeight, childOuterHeight);
+                rowHasChild = true;
+                index++;
             }
-            MarginLayoutParams layoutParams = (MarginLayoutParams) child.getLayoutParams();
-            int childOuterWidth = child.getMeasuredWidth() + layoutParams.leftMargin + layoutParams.rightMargin;
-            int childOuterHeight = child.getMeasuredHeight() + layoutParams.topMargin + layoutParams.bottomMargin;
-            if (rowHasChild && cursorX - getPaddingLeft() + childOuterWidth > availableWidth) {
-                cursorX = getPaddingLeft();
-                cursorY += rowHeight;
-                rowHeight = 0;
-                rowHasChild = false;
+            int cursorX = rightEdge - rowWidth;
+            for (int placeIndex = rowStartIndex; placeIndex < index; placeIndex++) {
+                View child = getChildAt(placeIndex);
+                if (child.getVisibility() == GONE) {
+                    continue;
+                }
+                MarginLayoutParams layoutParams = (MarginLayoutParams) child.getLayoutParams();
+                int childOuterWidth = child.getMeasuredWidth() + layoutParams.leftMargin + layoutParams.rightMargin;
+                int childLeft = cursorX + layoutParams.leftMargin;
+                int childTop = cursorY + layoutParams.topMargin;
+                child.layout(childLeft, childTop, childLeft + child.getMeasuredWidth(),
+                    childTop + child.getMeasuredHeight());
+                cursorX += childOuterWidth;
             }
-            int childLeft = cursorX + layoutParams.leftMargin;
-            int childTop = cursorY + layoutParams.topMargin;
-            child.layout(childLeft, childTop, childLeft + child.getMeasuredWidth(),
-                childTop + child.getMeasuredHeight());
-            cursorX += childOuterWidth;
-            rowHeight = Math.max(rowHeight, childOuterHeight);
-            rowHasChild = true;
+            cursorY += rowHeight;
         }
     }
 

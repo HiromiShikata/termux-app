@@ -9,6 +9,7 @@ import android.graphics.Canvas;
 import android.os.Environment;
 import android.view.ContextThemeWrapper;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -83,22 +84,33 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         canvas.drawColor(SURFACE_COLOR);
         controlBar.draw(canvas);
 
-        View controlsGroup = controlBar.findViewById(R.id.session_list_bottom_sheet_controls_group);
+        ViewGroup controlsGroup = controlBar.findViewById(R.id.session_list_bottom_sheet_controls_group);
         int controlsGroupBottomInBar = topInBar(controlBar, controlsGroup) + controlsGroup.getHeight();
-        assertTrue("existing controls must sit at the top-left of the bar",
-            controlsGroup.getLeft() < BAR_WIDTH / 2);
+        View firstControlButton = firstVisibleChild(controlsGroup);
+        View lastControlButton = lastVisibleChild(controlsGroup);
+        int controlsGroupRightEdge = controlsGroup.getWidth() - controlsGroup.getPaddingRight();
+        assertTrue("the rightmost control icon button must reach the right edge of the controls row",
+            lastControlButton.getRight() >= controlsGroupRightEdge - 1);
+        assertTrue("the control icon buttons must be right-aligned, leaving free space on the left",
+            firstControlButton.getLeft() > controlsGroup.getPaddingLeft());
         int shortcutsTopInBar = topInBar(controlBar, shortcutsContainer);
         assertTrue("session shortcuts must sit on their own row below the controls",
             shortcutsTopInBar >= controlsGroupBottomInBar);
         int shortcutsLeftInBar = leftInBar(controlBar, shortcutsContainer);
-        assertTrue("the session shortcut row must span the full width and start at the left edge",
-            shortcutsLeftInBar <= controlBar.getPaddingLeft());
+        assertTrue("the session shortcut row must span the full bar width",
+            shortcutsContainer.getWidth() >= BAR_WIDTH - controlBar.getPaddingLeft() - controlBar.getPaddingRight());
         int visibleRightEdge = BAR_WIDTH - controlBar.getPaddingRight();
         for (int index = 0; index < shortcutsContainer.getChildCount(); index++) {
             View shortcut = shortcutsContainer.getChildAt(index);
             assertTrue("every shortcut right edge must stay within the visible bar width",
                 shortcutsLeftInBar + shortcut.getRight() <= visibleRightEdge);
         }
+        View rightmostShortcut = shortcutsContainer.getChildAt(shortcutsContainer.getChildCount() - 1);
+        int rightmostShortcutRightEdgeInBar = shortcutsLeftInBar + rightmostShortcut.getRight();
+        int shortcutRightMargin =
+            ((ViewGroup.MarginLayoutParams) rightmostShortcut.getLayoutParams()).rightMargin;
+        assertTrue("the rightmost shortcut must be right-justified to end at the visible right edge",
+            rightmostShortcutRightEdgeInBar >= visibleRightEdge - shortcutRightMargin - 1);
         assertEquals("all four present shortcuts must be rendered",
             4, shortcutsContainer.getChildCount());
 
@@ -108,6 +120,26 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
         }
         assertTrue(out.exists() && out.length() > 0);
+    }
+
+    private static View firstVisibleChild(ViewGroup parent) {
+        for (int index = 0; index < parent.getChildCount(); index++) {
+            View child = parent.getChildAt(index);
+            if (child.getVisibility() != View.GONE) {
+                return child;
+            }
+        }
+        throw new AssertionError("expected at least one visible control button");
+    }
+
+    private static View lastVisibleChild(ViewGroup parent) {
+        for (int index = parent.getChildCount() - 1; index >= 0; index--) {
+            View child = parent.getChildAt(index);
+            if (child.getVisibility() != View.GONE) {
+                return child;
+            }
+        }
+        throw new AssertionError("expected at least one visible control button");
     }
 
     private static int leftInBar(View controlBar, View descendant) {
