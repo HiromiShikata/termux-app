@@ -9,10 +9,13 @@ import com.termux.R;
 import com.termux.shared.logger.Logger;
 
 import java.io.File;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ApkUpdateUiController {
 
     private static final String LOG_TAG = "ApkUpdateUiController";
+
+    static final AtomicBoolean DOWNLOAD_IN_PROGRESS = new AtomicBoolean(false);
 
     private static final ApkUpdateFloatingIndicatorController.IndicatorView NO_OP_INDICATOR_VIEW =
         new ApkUpdateFloatingIndicatorController.IndicatorView() {
@@ -118,12 +121,17 @@ public final class ApkUpdateUiController {
 
     private void preDownloadThenShowIndicator(ApkUpdateAvailability availability,
                                               ApkUpdateFloatingIndicatorController indicatorController) {
+        if (!DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
+            indicatorController.onUpdateAvailable(availability);
+            return;
+        }
         Logger.logInfo(LOG_TAG, "Pre-downloading APK update before showing indicator");
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
             availability.getExpectedSizeBytes(),
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
+                    DOWNLOAD_IN_PROGRESS.set(false);
                     ApkUpdateAvailability downloadedAvailability =
                         availability.withDownloadedFilePath(apkFile.getAbsolutePath());
                     pendingState.save(downloadedAvailability);
@@ -133,6 +141,7 @@ public final class ApkUpdateUiController {
 
                 @Override
                 public void onDownloadFailed(String message) {
+                    DOWNLOAD_IN_PROGRESS.set(false);
                     Logger.logError(LOG_TAG, "APK update pre-download failed: " + message);
                     ApkUpdateAvailability withoutDownloadedFile = availability.withDownloadedFilePath(null);
                     pendingState.save(withoutDownloadedFile);

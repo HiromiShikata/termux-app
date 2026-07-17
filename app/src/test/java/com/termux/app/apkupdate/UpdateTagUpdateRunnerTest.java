@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
@@ -84,6 +85,11 @@ public class UpdateTagUpdateRunnerTest {
         public void hide() {
             hideCount++;
         }
+    }
+
+    @Before
+    public void resetDownloadGuard() {
+        ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
     }
 
     private Activity newActivity() {

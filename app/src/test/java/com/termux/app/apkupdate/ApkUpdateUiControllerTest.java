@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
@@ -24,9 +25,11 @@ public class ApkUpdateUiControllerTest {
 
     private static final class FakeUpdateManager extends ApkUpdateManager {
         boolean reportAvailable = true;
+        boolean autoCompleteDownload = true;
         int checkCount;
         int downloadCount;
         File downloadedFile;
+        DownloadListener pendingDownloadListener;
 
         FakeUpdateManager(Activity activity) {
             super(activity);
@@ -46,6 +49,16 @@ public class ApkUpdateUiControllerTest {
         public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes,
                                 DownloadListener listener) {
             downloadCount++;
+            if (autoCompleteDownload) {
+                listener.onDownloaded(downloadedFile);
+            } else {
+                pendingDownloadListener = listener;
+            }
+        }
+
+        void completePendingDownload() {
+            DownloadListener listener = pendingDownloadListener;
+            pendingDownloadListener = null;
             listener.onDownloaded(downloadedFile);
         }
     }
@@ -88,6 +101,11 @@ public class ApkUpdateUiControllerTest {
         public void hide() {
             hideCount++;
         }
+    }
+
+    @Before
+    public void resetDownloadGuard() {
+        ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
     }
 
     private Activity newActivity() {
@@ -177,6 +195,28 @@ public class ApkUpdateUiControllerTest {
         Assert.assertNull("the settings check must not force a blocking dialog", ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the settings check must auto-download in the background", 1, manager.downloadCount);
         Assert.assertTrue("the settings check must not install without a tap", installer.installedFiles.isEmpty());
+    }
+
+    @Test
+    public void concurrentUpdateEventsBeforeDownloadFinishesTriggerOnlyOneDownload() throws IOException {
+        Activity activity = newActivity();
+        FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
+        manager.autoCompleteDownload = false;
+        FakeApkInstaller installer = new FakeApkInstaller(activity);
+        ApkUpdateUiController controller = new ApkUpdateUiController(activity, manager, installer);
+
+        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+
+        Assert.assertEquals("a download already in progress must not be duplicated by a rapid second event",
+            1, manager.downloadCount);
+
+        manager.completePendingDownload();
+        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+
+        Assert.assertEquals("once the in-progress download completes the guard is cleared so a later event may download",
+            2, manager.downloadCount);
     }
 
     @Test
