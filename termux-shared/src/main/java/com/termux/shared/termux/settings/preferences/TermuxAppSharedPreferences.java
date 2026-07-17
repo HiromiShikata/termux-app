@@ -411,6 +411,14 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         return keys;
     }
 
+    public String getPinnedTextInputHistory() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_PINNED_TEXT_INPUT_HISTORY, TERMUX_APP.DEFAULT_VALUE_KEY_PINNED_TEXT_INPUT_HISTORY, false);
+    }
+
+    public void setPinnedTextInputHistory(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_PINNED_TEXT_INPUT_HISTORY, value, false);
+    }
+
     @NonNull
     public static String serializeCollapsedProjectKeys(@NonNull Set<String> collapsedProjectKeys) {
         StringBuilder serialized = new StringBuilder();

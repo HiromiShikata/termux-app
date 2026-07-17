@@ -1,13 +1,15 @@
 package com.termux.app.terminal.io;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,11 +23,11 @@ import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.terminal.TerminalSession;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TerminalToolbarViewPager {
@@ -38,11 +40,27 @@ public class TerminalToolbarViewPager {
         private final Map<TerminalSession, String> mSessionTextInputs = new HashMap<>();
 
         static final int SUBMITTED_TEXT_INPUT_HISTORY_SIZE = 5;
-        private final Deque<String> mSubmittedTextInputHistory = new ArrayDeque<>(SUBMITTED_TEXT_INPUT_HISTORY_SIZE);
+        private final PinnedTextInputHistorySerializer mPinnedTextInputHistorySerializer = new PinnedTextInputHistorySerializer();
+        private final SubmittedTextInputHistory mSubmittedTextInputHistory;
 
         public PageAdapter(TermuxActivity activity, String savedTextInput) {
             this.mActivity = activity;
             this.mSavedTextInput = savedTextInput;
+            this.mSubmittedTextInputHistory = new SubmittedTextInputHistory(
+                SUBMITTED_TEXT_INPUT_HISTORY_SIZE, loadPersistedPinnedTextInputHistory(activity));
+        }
+
+        private List<String> loadPersistedPinnedTextInputHistory(TermuxActivity activity) {
+            TermuxAppSharedPreferences preferences = activity.getPreferences();
+            String serialized = preferences == null ? null : preferences.getPinnedTextInputHistory();
+            return mPinnedTextInputHistorySerializer.deserialize(serialized);
+        }
+
+        private void persistPinnedTextInputHistory() {
+            TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+            if (preferences == null) return;
+            preferences.setPinnedTextInputHistory(
+                mPinnedTextInputHistorySerializer.serialize(mSubmittedTextInputHistory.getPinnedEntries()));
         }
 
         public void saveTextInputForSession(@Nullable TerminalSession session) {
@@ -65,12 +83,7 @@ public class TerminalToolbarViewPager {
         }
 
         void addSubmittedTextInputToHistory(String submittedTextInput) {
-            if (submittedTextInput == null || submittedTextInput.length() == 0) return;
-            mSubmittedTextInputHistory.remove(submittedTextInput);
-            mSubmittedTextInputHistory.addFirst(submittedTextInput);
-            while (mSubmittedTextInputHistory.size() > SUBMITTED_TEXT_INPUT_HISTORY_SIZE) {
-                mSubmittedTextInputHistory.removeLast();
-            }
+            mSubmittedTextInputHistory.add(submittedTextInput);
         }
 
         public void setupTextInputRow(final View textInputRow) {
@@ -161,12 +174,12 @@ public class TerminalToolbarViewPager {
                 return;
             }
 
-            final CharSequence[] history = mSubmittedTextInputHistory.toArray(new CharSequence[0]);
-            ArrayAdapter<CharSequence> adapter = new ArrayAdapter<>(mActivity, R.layout.item_toolbar_text_input_history, history);
+            final SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
+                mActivity, mSubmittedTextInputHistory, this::persistPinnedTextInputHistory);
             DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
                 .setTitle(R.string.title_toolbar_text_input_history_dialog)
                 .setAdapter(adapter, (dialog, which) -> {
-                    editText.setText(history[which]);
+                    editText.setText(adapter.getItem(which));
                     editText.setSelection(editText.getText().length());
                 }));
         }
@@ -206,6 +219,71 @@ public class TerminalToolbarViewPager {
             collection.removeView((View) view);
         }
 
+    }
+
+    static final class SubmittedTextInputHistoryAdapter extends BaseAdapter {
+
+        private final Context mContext;
+        private final SubmittedTextInputHistory mHistory;
+        private final Runnable mOnPinnedChanged;
+        private final LayoutInflater mInflater;
+        private List<String> mOrderedEntries;
+
+        SubmittedTextInputHistoryAdapter(@NonNull Context context,
+                                         @NonNull SubmittedTextInputHistory history,
+                                         @NonNull Runnable onPinnedChanged) {
+            mContext = context;
+            mHistory = history;
+            mOnPinnedChanged = onPinnedChanged;
+            mInflater = LayoutInflater.from(context);
+            mOrderedEntries = history.getOrderedEntries();
+        }
+
+        @Override
+        public int getCount() {
+            return mOrderedEntries.size();
+        }
+
+        @NonNull
+        @Override
+        public String getItem(int position) {
+            return mOrderedEntries.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            View row = convertView != null
+                ? convertView
+                : mInflater.inflate(R.layout.item_toolbar_text_input_history, parent, false);
+            final String entry = getItem(position);
+            TextView entryView = row.findViewById(R.id.toolbar_text_input_history_entry);
+            entryView.setText(entry);
+            ImageButton pinButton = row.findViewById(R.id.toolbar_text_input_history_pin_button);
+            boolean pinned = mHistory.isPinned(entry);
+            pinButton.setImageResource(pinned
+                ? R.drawable.ic_browser_bookmark_star_filled
+                : R.drawable.ic_browser_bookmark_star_outline);
+            pinButton.setContentDescription(mContext.getString(pinned
+                ? R.string.action_toolbar_text_input_history_unpin
+                : R.string.action_toolbar_text_input_history_pin));
+            pinButton.setOnClickListener(v -> {
+                mHistory.togglePin(entry);
+                mOnPinnedChanged.run();
+                refresh();
+            });
+            return row;
+        }
+
+        private void refresh() {
+            mOrderedEntries = mHistory.getOrderedEntries();
+            notifyDataSetChanged();
+        }
     }
 
 }
