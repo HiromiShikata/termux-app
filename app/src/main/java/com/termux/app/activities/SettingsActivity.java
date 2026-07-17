@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.termux.BuildConfig;
 import com.termux.R;
 import com.termux.app.apkupdate.ApkUpdateCheckTimeFormatter;
+import com.termux.app.apkupdate.ApkRevertUiController;
 import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateSettingsOpenCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
@@ -95,6 +96,7 @@ public class SettingsActivity extends AppCompatActivity {
             configureCrashLogViewerPreference(context);
             configureClearSavedSessionsPreference(context);
             configureUpdateApkPreference(context);
+            configureRevertApkPreference();
             configureAboutPreference(context);
 
             configurePluginPreferenceVisibility(context);
@@ -237,6 +239,16 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
             updateLastCheckSummary(context);
+        }
+
+        private void configureRevertApkPreference() {
+            Preference revertApkPreference = findPreference("revert_apk");
+            if (revertApkPreference != null) {
+                revertApkPreference.setOnPreferenceClickListener(preference -> {
+                    new ApkRevertUiController(requireActivity()).startRevert();
+                    return true;
+                });
+            }
         }
 
         private void checkForApkUpdateOnSettingsOpen(@NonNull Context context) {

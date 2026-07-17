@@ -9,10 +9,12 @@ import java.util.List;
 
 public final class GithubReleaseParser {
 
+    private final ReleaseTagVersionNameResolver tagVersionNameResolver = new ReleaseTagVersionNameResolver();
+
     public ApkRelease parseLatestRelease(String json) throws JSONException {
         JSONObject root = new JSONObject(json);
         String tagName = root.getString("tag_name");
-        String versionName = versionNameFromTag(tagName);
+        String versionName = tagVersionNameResolver.resolveFromTag(tagName);
 
         List<ReleaseAsset> assets = new ArrayList<>();
         JSONArray assetArray = root.optJSONArray("assets");
@@ -26,17 +28,5 @@ public final class GithubReleaseParser {
             }
         }
         return new ApkRelease(versionName, tagName, assets);
-    }
-
-    private String versionNameFromTag(String tagName) {
-        String version = tagName;
-        if (version.startsWith("v") || version.startsWith("V")) {
-            version = version.substring(1);
-        }
-        int buildMetadataIndex = version.indexOf('+');
-        if (buildMetadataIndex >= 0) {
-            version = version.substring(0, buildMetadataIndex);
-        }
-        return version;
     }
 }

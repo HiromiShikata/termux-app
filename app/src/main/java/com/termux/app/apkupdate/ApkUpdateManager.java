@@ -41,12 +41,20 @@ public class ApkUpdateManager {
         void onDownloadFailed(String message);
     }
 
+    public interface PreviousBuildsListener {
+        void onPreviousBuilds(java.util.List<ApkRelease> previousBuilds);
+
+        void onPreviousBuildsFailed(String message, boolean rateLimited);
+    }
+
     private final Context context;
     private final ApkUpdateGuide updateGuide;
     private final GithubReleaseClient releaseClient;
     private final GithubAtomReleaseFeedParser atomReleaseFeedParser;
     private final AtomReleaseJsonSynthesizer atomReleaseJsonSynthesizer;
     private final ApkUpdatePlanner updatePlanner;
+    private final GithubReleaseListParser releaseListParser;
+    private final PreviousReleaseSelector previousReleaseSelector;
     private final ApkDownloader apkDownloader;
     private final Sha256SumsUrlResolver sha256SumsUrlResolver;
     private final Sha256SumsParser sha256SumsParser;
@@ -61,6 +69,8 @@ public class ApkUpdateManager {
         this.atomReleaseJsonSynthesizer =
             new AtomReleaseJsonSynthesizer(updateGuide.getReleasesOwner(), updateGuide.getReleasesRepo());
         this.updatePlanner = new ApkUpdatePlanner();
+        this.releaseListParser = new GithubReleaseListParser();
+        this.previousReleaseSelector = new PreviousReleaseSelector();
         this.apkDownloader = new ApkDownloader(this.context);
         this.sha256SumsUrlResolver = new Sha256SumsUrlResolver();
         this.sha256SumsParser = new Sha256SumsParser();
@@ -133,6 +143,24 @@ public class ApkUpdateManager {
 
     private static String messageOf(Exception exception) {
         return exception.getMessage() != null ? exception.getMessage() : exception.toString();
+    }
+
+    public void fetchPreviousBuilds(String currentVersionName, PreviousBuildsListener listener) {
+        new Thread(() -> {
+            try {
+                String json = releaseClient.fetchReleasesListJson(updateGuide.getReleasesListApiUrl());
+                java.util.List<ApkRelease> releases = releaseListParser.parseReleases(json);
+                java.util.List<ApkRelease> previousBuilds =
+                    previousReleaseSelector.selectOlderThan(releases, currentVersionName);
+                mainHandler.post(() -> listener.onPreviousBuilds(previousBuilds));
+            } catch (GithubRateLimitedException rateLimitedException) {
+                String message = messageOf(rateLimitedException);
+                mainHandler.post(() -> listener.onPreviousBuildsFailed(message, true));
+            } catch (Exception exception) {
+                String message = messageOf(exception);
+                mainHandler.post(() -> listener.onPreviousBuildsFailed(message, false));
+            }
+        }).start();
     }
 
     public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes, DownloadListener listener) {
