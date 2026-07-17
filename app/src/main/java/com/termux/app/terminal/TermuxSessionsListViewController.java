@@ -121,6 +121,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private List<SessionHierarchyRow> mRows = Collections.emptyList();
 
+    private List<Long> mRowItemIds = Collections.emptyList();
+
     private Map<Integer, SessionRow> mSessionRowsByIndex = Collections.emptyMap();
 
     private Map<Integer, SessionNewActivityIndicator> mSessionActivityIndicatorsByIndex = Collections.emptyMap();
@@ -238,10 +240,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         List<SessionHierarchyRow> previousRows = mRows;
+        List<Long> previousRowItemIds = mRowItemIds;
         Map<Long, SessionRowContent> previousRowContentByItemId = mRowContentByItemId;
         rebuildRows();
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(
-            new SessionRowDiffCallback(previousRows, mRows,
+            new SessionRowDiffCallback(previousRows, mRows, previousRowItemIds, mRowItemIds,
                 previousRowContentByItemId, mRowContentByItemId), true);
         diffResult.dispatchUpdatesTo(this);
     }
@@ -269,15 +272,21 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
         private final List<SessionHierarchyRow> previousRows;
         private final List<SessionHierarchyRow> currentRows;
+        private final List<Long> previousRowItemIds;
+        private final List<Long> currentRowItemIds;
         private final Map<Long, SessionRowContent> previousRowContentByItemId;
         private final Map<Long, SessionRowContent> currentRowContentByItemId;
 
         SessionRowDiffCallback(@NonNull List<SessionHierarchyRow> previousRows,
                                @NonNull List<SessionHierarchyRow> currentRows,
+                               @NonNull List<Long> previousRowItemIds,
+                               @NonNull List<Long> currentRowItemIds,
                                @NonNull Map<Long, SessionRowContent> previousRowContentByItemId,
                                @NonNull Map<Long, SessionRowContent> currentRowContentByItemId) {
             this.previousRows = previousRows;
             this.currentRows = currentRows;
+            this.previousRowItemIds = previousRowItemIds;
+            this.currentRowItemIds = currentRowItemIds;
             this.previousRowContentByItemId = previousRowContentByItemId;
             this.currentRowContentByItemId = currentRowContentByItemId;
         }
@@ -300,9 +309,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         @Override
         public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
             SessionRowContent previousContent = previousRowContentByItemId.get(
-                rowItemId(previousRows.get(oldItemPosition)));
+                previousRowItemIds.get(oldItemPosition));
             SessionRowContent currentContent = currentRowContentByItemId.get(
-                rowItemId(currentRows.get(newItemPosition)));
+                currentRowItemIds.get(newItemPosition));
             return SessionRowContent.sameContent(previousContent, currentContent);
         }
     }
@@ -361,6 +370,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, mCollapsedProjectKeys);
         mRows = Collections.unmodifiableList(
             mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys));
+        mRowItemIds = assignUniqueRowItemIds(mRows);
         mSessionActivityIndicatorsByIndex = sessionActivityIndicatorsByIndex();
         mSessionRowsByIndex = getSessionRows();
         mVisibleSessionCount = SessionHierarchyBuilder.totalSessionCount(countedRows);
@@ -379,7 +389,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         for (int position = 0; position < mRows.size(); position++) {
             SessionHierarchyRow row = mRows.get(position);
             SessionHierarchyRow.Type previousRowType = position > 0 ? mRows.get(position - 1).getType() : null;
-            rowContentByItemId.put(rowItemId(row), new SessionRowContent(rowContentText(row, previousRowType)));
+            rowContentByItemId.put(mRowItemIds.get(position), new SessionRowContent(rowContentText(row, previousRowType)));
         }
         return rowContentByItemId;
     }
@@ -904,7 +914,33 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @Override
     public long getItemId(int position) {
-        return rowItemId(mRows.get(position));
+        return mRowItemIds.get(position);
+    }
+
+    @NonNull
+    static List<Long> assignUniqueRowItemIds(@NonNull List<SessionHierarchyRow> rows) {
+        List<Long> rowItemIds = new ArrayList<>(rows.size());
+        Set<Long> assignedItemIds = new LinkedHashSet<>();
+        for (SessionHierarchyRow row : rows) {
+            long baseItemId = rowItemId(row);
+            long itemId = baseItemId;
+            int collisionProbe = 1;
+            while (!assignedItemIds.add(itemId)) {
+                itemId = disambiguateCollidingRowItemId(baseItemId, collisionProbe);
+                collisionProbe++;
+            }
+            rowItemIds.add(itemId);
+        }
+        return Collections.unmodifiableList(rowItemIds);
+    }
+
+    private static long disambiguateCollidingRowItemId(long baseItemId, int collisionProbe) {
+        long hash = ITEM_ID_HASH_OFFSET_BASIS ^ baseItemId;
+        for (int shift = 0; shift < Integer.SIZE; shift += Byte.SIZE) {
+            hash ^= (collisionProbe >>> shift) & 0xFF;
+            hash *= ITEM_ID_HASH_PRIME;
+        }
+        return hash;
     }
 
     static long rowItemId(@NonNull SessionHierarchyRow row) {
