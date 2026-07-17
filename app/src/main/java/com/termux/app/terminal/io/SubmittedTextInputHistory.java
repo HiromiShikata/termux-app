@@ -27,7 +27,7 @@ public final class SubmittedTextInputHistory {
         for (String pinnedEntry : initialPinnedEntries) {
             if (pinnedEntry == null || pinnedEntry.isEmpty()) continue;
             if (mEntries.contains(pinnedEntry)) continue;
-            mEntries.addLast(pinnedEntry);
+            mEntries.add(pinnedEntry);
             mPinnedEntries.add(pinnedEntry);
         }
     }
@@ -35,7 +35,7 @@ public final class SubmittedTextInputHistory {
     public void add(@Nullable String submittedTextInput) {
         if (submittedTextInput == null || submittedTextInput.isEmpty()) return;
         mEntries.remove(submittedTextInput);
-        mEntries.addFirst(submittedTextInput);
+        mEntries.add(0, submittedTextInput);
         enforceUnpinnedCapacity();
     }
 
