@@ -248,6 +248,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_COLLAPSED_PROJECT_KEYS = "collapsed_project_keys";
         public static final String DEFAULT_VALUE_KEY_COLLAPSED_PROJECT_KEYS = "";
 
+        public static final String KEY_SUBMITTED_TEXT_INPUT_PINNED_HISTORY = "submitted_text_input_pinned_history";
+        public static final String DEFAULT_VALUE_KEY_SUBMITTED_TEXT_INPUT_PINNED_HISTORY = "";
+
         public static final String KEY_SESSION_SWITCH_PREVIEW_FIRST = "session_switch_preview_first";
         public static final boolean DEFAULT_VALUE_KEY_SESSION_SWITCH_PREVIEW_FIRST = false;
 

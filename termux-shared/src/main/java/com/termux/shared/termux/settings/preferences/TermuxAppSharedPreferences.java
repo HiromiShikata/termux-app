@@ -431,6 +431,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public String getSubmittedTextInputPinnedHistory() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_SUBMITTED_TEXT_INPUT_PINNED_HISTORY, TERMUX_APP.DEFAULT_VALUE_KEY_SUBMITTED_TEXT_INPUT_PINNED_HISTORY, false);
+    }
+
+    public void setSubmittedTextInputPinnedHistory(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_SUBMITTED_TEXT_INPUT_PINNED_HISTORY, value, false);
+    }
+
+
     public boolean isSessionSwitchPreviewFirstEnabled() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_PREVIEW_FIRST, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_SWITCH_PREVIEW_FIRST);
     }
