@@ -19,11 +19,11 @@
         <item name="android:paddingVertical">6dp</item>
     </style>
 
-    <style name="TextAppearance.Termux.DialogListItemTitle" parent="">
+    <style name="TextAppearance.Termux.DialogListItemTitle" parent="TextAppearance.AppCompat">
         <item name="android:textSize">13sp</item>
     </style>
 
-    <style name="TextAppearance.Termux.DialogListItemDetail" parent="">
+    <style name="TextAppearance.Termux.DialogListItemDetail" parent="TextAppearance.AppCompat">
         <item name="android:textSize">11sp</item>
     </style>
 
