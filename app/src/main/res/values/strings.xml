@@ -441,10 +441,6 @@
     <string name="apk_update_check_failed">Update check failed: %1$s</string>
     <string name="apk_update_check_rate_limited">Couldn\'t check for updates: GitHub rate limit reached. Please try again later.</string>
     <string name="apk_update_no_matching_asset">No matching APK found in the latest release</string>
-    <string name="apk_update_dialog_title">Update available</string>
-    <string name="apk_update_dialog_message">A new version (%1$s) is available. Update now?</string>
-    <string name="apk_update_dialog_install">Update now</string>
-    <string name="apk_update_dialog_cancel">Later</string>
     <string name="apk_update_downloading">Downloading update…</string>
     <string name="apk_update_download_failed">Update download failed: %1$s</string>
     <string name="apk_update_install_permission_required">Allow installing unknown apps, then tap update again</string>
@@ -466,6 +462,5 @@
     <string name="apk_revert_install_permission_required">Allow installing unknown apps, then tap revert again</string>
     <string name="apk_revert_install_success">Reverted to the selected build</string>
     <string name="apk_revert_install_failed">Revert install failed: %1$s</string>
-    <string name="update_tag_update_dialog_message">A new version (%1$s) is available.\n\nReason: %2$s\n\nUpdate now?</string>
 
 </resources>

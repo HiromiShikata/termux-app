@@ -1,15 +1,10 @@
 package com.termux.app.apkupdate;
 
-import static org.robolectric.Shadows.shadowOf;
-
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
-import android.os.Looper;
-
-import com.termux.R;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
@@ -17,6 +12,8 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.shadows.ShadowAlertDialog;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,11 +21,12 @@ import java.util.List;
 public class UpdateTagUpdateRunnerTest {
 
     private static final ApkUpdateAvailability AVAILABILITY =
-        ApkUpdateAvailability.available("1.2.3", "https://example.com/app.apk", "app.apk", 1000L);
+        ApkUpdateAvailability.available("1.2.3", "https://example.com/app.apk", "app.apk", 0L);
 
     private static final class FakeUpdateManager extends ApkUpdateManager {
         boolean reportAvailable = true;
         int downloadCount;
+        File downloadedFile;
 
         FakeUpdateManager(Activity activity) {
             super(activity);
@@ -47,7 +45,7 @@ public class UpdateTagUpdateRunnerTest {
         public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes,
                                 DownloadListener listener) {
             downloadCount++;
-            listener.onDownloaded(new File("/dev/null"));
+            listener.onDownloaded(downloadedFile);
         }
     }
 
@@ -72,75 +70,79 @@ public class UpdateTagUpdateRunnerTest {
         }
     }
 
+    private static final class RecordingIndicatorView
+        implements ApkUpdateFloatingIndicatorController.IndicatorView {
+
+        final List<String> shownVersions = new ArrayList<>();
+        int hideCount;
+
+        @Override
+        public void showUpdateAvailable(String latestVersionName, Runnable onTapped) {
+            shownVersions.add(latestVersionName);
+        }
+
+        @Override
+        public void hide() {
+            hideCount++;
+        }
+    }
+
+    @Before
+    public void resetDownloadGuard() {
+        ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
+    }
+
     private Activity newActivity() {
         return Robolectric.buildActivity(Activity.class).create().start().resume().get();
     }
 
-    @Test
-    public void showsSingleUpdateDialogBeforeDownloading() {
-        Activity activity = newActivity();
-        FakeUpdateManager manager = new FakeUpdateManager(activity);
-        FakeApkInstaller installer = new FakeApkInstaller(activity);
-        UpdateTagUpdateRunner runner = new UpdateTagUpdateRunner(activity, manager, installer);
-
-        runner.onUpdateRequested("security fix");
-
-        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
-        Assert.assertNotNull(dialog);
-        Assert.assertTrue(dialog.isShowing());
-        Assert.assertEquals(0, manager.downloadCount);
-        Assert.assertEquals(activity.getString(R.string.apk_update_dialog_install),
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).getText().toString());
-        Assert.assertEquals(activity.getString(R.string.apk_update_dialog_cancel),
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).getText().toString());
+    private File newValidApkFile() throws IOException {
+        File file = File.createTempFile("termux-update", ".apk");
+        byte[] content = new byte[(int) (1024L * 1024L + 16L)];
+        content[0] = 0x50;
+        content[1] = 0x4B;
+        content[2] = 0x03;
+        content[3] = 0x04;
+        try (FileOutputStream stream = new FileOutputStream(file)) {
+            stream.write(content);
+        }
+        file.deleteOnExit();
+        return file;
     }
 
     @Test
-    public void tappingUpdateStartsDownloadAndInstall() {
+    public void updateTagAutoDownloadsAndSurfacesButtonWithoutBlockingDialog() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
         FakeApkInstaller installer = new FakeApkInstaller(activity);
-        UpdateTagUpdateRunner runner = new UpdateTagUpdateRunner(activity, manager, installer);
+        RecordingIndicatorView indicatorView = new RecordingIndicatorView();
+        UpdateTagUpdateRunner runner = new UpdateTagUpdateRunner(
+            new ApkUpdateUiController(activity, manager, installer), indicatorView);
 
         runner.onUpdateRequested("security fix");
-        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-        shadowOf(Looper.getMainLooper()).idle();
 
-        Assert.assertEquals(1, manager.downloadCount);
-        Assert.assertEquals(1, installer.installedFiles.size());
+        Assert.assertNull("the update tag must not force a blocking dialog", ShadowAlertDialog.getLatestAlertDialog());
+        Assert.assertEquals("the update tag must auto-download the APK", 1, manager.downloadCount);
+        Assert.assertEquals("the floating install button must surface directly", 1, indicatorView.shownVersions.size());
+        Assert.assertEquals("1.2.3", indicatorView.shownVersions.get(0));
+        Assert.assertTrue("nothing is installed until the button is tapped", installer.installedFiles.isEmpty());
     }
 
     @Test
-    public void tappingLaterDeclinesWithoutDownloading() {
+    public void updateTagWhenUpToDateDownloadsNothingAndHidesButton() {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.reportAvailable = false;
         FakeApkInstaller installer = new FakeApkInstaller(activity);
-        UpdateTagUpdateRunner runner = new UpdateTagUpdateRunner(activity, manager, installer);
+        RecordingIndicatorView indicatorView = new RecordingIndicatorView();
+        UpdateTagUpdateRunner runner = new UpdateTagUpdateRunner(
+            new ApkUpdateUiController(activity, manager, installer), indicatorView);
 
         runner.onUpdateRequested("security fix");
-        AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
 
+        Assert.assertNull(ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals(0, manager.downloadCount);
-        Assert.assertTrue(installer.installedFiles.isEmpty());
-    }
-
-    @Test
-    public void decliningThenNewTagPromptsAgain() {
-        Activity activity = newActivity();
-        FakeUpdateManager manager = new FakeUpdateManager(activity);
-        FakeApkInstaller installer = new FakeApkInstaller(activity);
-        UpdateTagUpdateRunner runner = new UpdateTagUpdateRunner(activity, manager, installer);
-
-        runner.onUpdateRequested("first reason");
-        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
-
-        runner.onUpdateRequested("second reason");
-
-        AlertDialog secondDialog = ShadowAlertDialog.getLatestAlertDialog();
-        Assert.assertNotNull(secondDialog);
-        Assert.assertTrue(secondDialog.isShowing());
-        Assert.assertEquals(0, manager.downloadCount);
+        Assert.assertEquals(1, indicatorView.hideCount);
     }
 }

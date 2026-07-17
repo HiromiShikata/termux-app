@@ -252,10 +252,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
 
     /**
-     * The foreground update-flow trigger (download and install-prompt). It requires this activity for
-     * its UI, so it is registered with the service-owned {@link UpdateTagUpdateController} only while
-     * the activity is bound; the controller itself lives in {@link TermuxService} so the update tag is
-     * detected for every session even when this activity is not the one currently shown.
+     * The foreground update-flow trigger. When an update tag is detected it auto-downloads the APK in
+     * the background and surfaces the floating install button rather than blocking on a dialog. It
+     * requires this activity for its UI, so it is registered with the service-owned
+     * {@link UpdateTagUpdateController} only while the activity is bound; the controller itself lives in
+     * {@link TermuxService} so the update tag is detected for every session even when this activity is
+     * not the one currently shown.
      */
     UpdateTagUpdateRunner mUpdateTagUpdateRunner;
 
@@ -1057,7 +1059,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession;
         // The update-flow trigger only needs the activity for its UI; it is registered with the
         // service-owned controller in onServiceConnected once the service is bound.
-        mUpdateTagUpdateRunner = new UpdateTagUpdateRunner(this);
+        mUpdateTagUpdateRunner = new UpdateTagUpdateRunner(this, new ApkUpdateFloatingIndicatorView());
     }
 
     private void setBrowserToggleBarView() {
