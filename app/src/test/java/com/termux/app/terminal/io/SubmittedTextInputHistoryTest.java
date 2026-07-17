@@ -20,6 +20,15 @@ public class SubmittedTextInputHistoryTest {
     }
 
     @Test
+    public void addPlacesNewestEntryAtIndexZero() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("older");
+        history.add("newest");
+
+        Assert.assertEquals("newest", history.getOrderedEntries().get(0));
+    }
+
+    @Test
     public void pinnedEntryIsAlwaysRenderedAboveUnpinnedEntries() {
         SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
         history.add("first");
