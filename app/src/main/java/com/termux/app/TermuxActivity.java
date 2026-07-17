@@ -1112,6 +1112,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             return;
         }
         mTermuxSessionListViewController.switchToSessionAtIndex(topmostCallingSessionIndex);
+        if (mSessionListBottomSheetController != null) {
+            mSessionListBottomSheetController.hide();
+        }
     }
 
     private void renderSessionNavigationActivityTier() {
