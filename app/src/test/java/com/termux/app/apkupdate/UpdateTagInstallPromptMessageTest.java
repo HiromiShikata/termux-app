@@ -18,13 +18,13 @@ import org.robolectric.shadows.ShadowAlertDialog;
 public class UpdateTagInstallPromptMessageTest {
 
     @Test
-    public void installPromptMessageContainsVersionAndReason() {
+    public void updatePromptMessageContainsVersionAndReason() {
         Activity activity = Robolectric.buildActivity(Activity.class).create().start().resume().get();
         String reason = "セキュリティ修正のため更新してください";
-        String message = activity.getString(R.string.update_tag_install_dialog_message, "1.2.3", reason);
+        String message = activity.getString(R.string.update_tag_update_dialog_message, "1.2.3", reason);
 
         DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
-            .setTitle(R.string.update_tag_install_dialog_title)
+            .setTitle(R.string.apk_update_dialog_title)
             .setMessage(message)
             .setPositiveButton(R.string.apk_update_dialog_install, null)
             .setNegativeButton(R.string.apk_update_dialog_cancel, null));
