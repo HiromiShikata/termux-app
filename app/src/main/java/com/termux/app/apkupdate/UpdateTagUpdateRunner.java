@@ -24,9 +24,14 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
     private boolean updateInProgress;
 
     public UpdateTagUpdateRunner(@NonNull Activity activity) {
+        this(activity, new ApkUpdateManager(activity), new ApkInstaller(activity));
+    }
+
+    UpdateTagUpdateRunner(@NonNull Activity activity, @NonNull ApkUpdateManager updateManager,
+                          @NonNull ApkInstaller apkInstaller) {
         this.activity = activity;
-        this.updateManager = new ApkUpdateManager(activity);
-        this.apkInstaller = new ApkInstaller(activity);
+        this.updateManager = updateManager;
+        this.apkInstaller = apkInstaller;
     }
 
     @Override
@@ -38,7 +43,7 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
-                downloadAndPrompt(availability, reason);
+                promptUpdate(availability, reason);
             }
 
             @Override
@@ -60,7 +65,23 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
         });
     }
 
-    private void downloadAndPrompt(ApkUpdateAvailability availability, String reason) {
+    private void promptUpdate(ApkUpdateAvailability availability, String reason) {
+        updateInProgress = false;
+        if (activity.isFinishing()) {
+            downloadAndInstall(availability);
+            return;
+        }
+        AlertDialog updateDialog = DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
+            .setTitle(R.string.apk_update_dialog_title)
+            .setMessage(activity.getString(R.string.update_tag_update_dialog_message,
+                availability.getLatestVersionName(), reason))
+            .setPositiveButton(R.string.apk_update_dialog_install,
+                (dialog, which) -> downloadAndInstall(availability))
+            .setNegativeButton(R.string.apk_update_dialog_cancel, null));
+        UpdateDialogContentTextSizeReducer.reduceContentTextToHalf(updateDialog);
+    }
+
+    private void downloadAndInstall(ApkUpdateAvailability availability) {
         Context applicationContext = activity.getApplicationContext();
         Logger.showToast(activity, activity.getString(R.string.apk_update_downloading), false);
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
@@ -68,32 +89,16 @@ public final class UpdateTagUpdateRunner implements UpdateTagUpdateController.Re
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    updateInProgress = false;
-                    promptInstall(apkFile, availability.getLatestVersionName(), reason);
+                    launchInstall(apkFile);
                 }
 
                 @Override
                 public void onDownloadFailed(String message) {
-                    updateInProgress = false;
                     Logger.logError(LOG_TAG, "Update tag download failed: " + message);
                     Logger.showToast(applicationContext,
                         applicationContext.getString(R.string.apk_update_download_failed, message), true);
                 }
             });
-    }
-
-    private void promptInstall(File apkFile, String latestVersionName, String reason) {
-        if (activity.isFinishing()) {
-            launchInstall(apkFile);
-            return;
-        }
-        AlertDialog installDialog = DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(activity)
-            .setTitle(R.string.update_tag_install_dialog_title)
-            .setMessage(activity.getString(R.string.update_tag_install_dialog_message, latestVersionName, reason))
-            .setPositiveButton(R.string.apk_update_dialog_install,
-                (dialog, which) -> launchInstall(apkFile))
-            .setNegativeButton(R.string.apk_update_dialog_cancel, null));
-        UpdateDialogContentTextSizeReducer.reduceContentTextToHalf(installDialog);
     }
 
     private void launchInstall(File apkFile) {

@@ -10,7 +10,7 @@ import androidx.core.content.FileProvider;
 
 import java.io.File;
 
-public final class ApkInstaller {
+public class ApkInstaller {
 
     private static final String FILE_PROVIDER_AUTHORITY_SUFFIX = ".apkupdate.fileprovider";
     private static final String APK_MIME_TYPE = "application/vnd.android.package-archive";

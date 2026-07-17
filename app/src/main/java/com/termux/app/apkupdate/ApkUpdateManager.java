@@ -13,7 +13,7 @@ import com.termux.BuildConfig;
 
 import java.io.File;
 
-public final class ApkUpdateManager {
+public class ApkUpdateManager {
 
     public static final String PREFERENCE_KEY_AUTO_CHECK = "auto_check_for_updates";
 
