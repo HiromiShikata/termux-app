@@ -147,20 +147,6 @@ public class SessionListBottomSheetController {
         return hidingHiddenSessions ? R.string.action_session_filter_on : R.string.action_session_filter_off;
     }
 
-    private void hideBrowserIfShowing() {
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-        if (browserController == null) {
-            return;
-        }
-        if (shouldHideBrowserOnOpen(browserController.isBrowserVisible())) {
-            browserController.hideBrowserForSessionOverlay();
-        }
-    }
-
-    static boolean shouldHideBrowserOnOpen(boolean browserVisible) {
-        return browserVisible;
-    }
-
     private void openGoogle() {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) {
@@ -287,7 +273,6 @@ public class SessionListBottomSheetController {
         if (listController == null) {
             return;
         }
-        hideBrowserIfShowing();
         hideSoftKeyboard();
         applyTitleColor();
         applyHorizontalBounds();
