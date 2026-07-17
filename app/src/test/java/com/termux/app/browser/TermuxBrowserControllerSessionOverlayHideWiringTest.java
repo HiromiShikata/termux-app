@@ -32,15 +32,6 @@ public class TermuxBrowserControllerSessionOverlayHideWiringTest {
     }
 
     @Test
-    public void hideBrowserForSessionOverlayHidesViewsWithoutForgettingRememberedVisibility() throws IOException {
-        String overlayBody = methodBody(
-            readControllerSource(), "public void hideBrowserForSessionOverlay() {");
-
-        Assert.assertTrue(overlayBody.contains("hideBrowserViews()"));
-        Assert.assertFalse(overlayBody.contains("setBrowserVisible"));
-    }
-
-    @Test
     public void showTerminalForgetsRememberedVisibilityForTheCurrentSession() throws IOException {
         String showTerminalBody = methodBody(readControllerSource(), "public void showTerminal() {");
 

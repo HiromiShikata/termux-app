@@ -210,16 +210,6 @@ public class SessionListBottomSheetControllerTest {
     }
 
     @Test
-    public void openingSheetClosesTheBrowserWhenTheBrowserIsCurrentlyShowing() {
-        Assert.assertTrue(SessionListBottomSheetController.shouldHideBrowserOnOpen(true));
-    }
-
-    @Test
-    public void openingSheetLeavesTheTerminalUntouchedWhenTheBrowserIsNotShowing() {
-        Assert.assertFalse(SessionListBottomSheetController.shouldHideBrowserOnOpen(false));
-    }
-
-    @Test
     public void relativeTimeRefreshKeepsTickingWhileTheSheetIsVisible() {
         Assert.assertTrue(SessionListBottomSheetController.shouldKeepRefreshing(View.VISIBLE));
     }

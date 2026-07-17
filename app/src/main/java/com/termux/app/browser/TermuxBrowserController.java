@@ -1623,10 +1623,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         hideBrowserViews();
     }
 
-    public void hideBrowserForSessionOverlay() {
-        hideBrowserViews();
-    }
-
     private void hideBrowserViews() {
         mBrowserVisible = false;
         revealWebView();
