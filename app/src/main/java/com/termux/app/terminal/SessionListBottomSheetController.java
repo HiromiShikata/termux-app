@@ -25,6 +25,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
@@ -541,12 +542,25 @@ public class SessionListBottomSheetController {
     }
 
     private void switchToShortcutSession(@NonNull TermuxSession targetSession) {
+        unhideNavigatedShortcutSession(targetSession);
         TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
         if (sessionClient != null) {
             sessionClient.switchToSessionReconnectingIfDead(targetSession.getTerminalSession());
         }
         hideSoftKeyboard();
         hide();
+    }
+
+    private void unhideNavigatedShortcutSession(@NonNull TermuxSession targetSession) {
+        TerminalSession terminalSession = targetSession.getTerminalSession();
+        if (terminalSession == null) {
+            return;
+        }
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return;
+        }
+        ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, terminalSession.mSessionName);
     }
 
     private static int shortcutBackgroundResource(@NonNull android.content.Context context) {
