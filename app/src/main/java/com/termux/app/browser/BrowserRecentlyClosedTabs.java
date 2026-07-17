@@ -26,7 +26,7 @@ public final class BrowserRecentlyClosedTabs {
     public void push(@NonNull BrowserClosedTab closedTab) {
         mClosedTabs.push(closedTab);
         while (mClosedTabs.size() > mMaxSize) {
-            mClosedTabs.removeLast();
+            mClosedTabs.pollLast();
         }
     }
 
