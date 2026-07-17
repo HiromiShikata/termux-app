@@ -6,6 +6,9 @@ import androidx.annotation.Nullable;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 
+import java.util.Collections;
+import java.util.Set;
+
 public final class FinishedSessionEnterAction {
 
     public enum Kind {
@@ -49,7 +52,16 @@ public final class FinishedSessionEnterAction {
 
     @NonNull
     public static FinishedSessionEnterAction decide(@Nullable String sessionName, @Nullable String autosshCommandTemplate) {
+        return decide(sessionName, autosshCommandTemplate, Collections.emptySet());
+    }
+
+    @NonNull
+    public static FinishedSessionEnterAction decide(@Nullable String sessionName, @Nullable String autosshCommandTemplate,
+                                                    @NonNull Set<String> userRemovedSessionNames) {
         if (sessionName == null || sessionName.trim().isEmpty()) {
+            return new FinishedSessionEnterAction(Kind.REMOVE, sessionName, null);
+        }
+        if (userRemovedSessionNames.contains(sessionName)) {
             return new FinishedSessionEnterAction(Kind.REMOVE, sessionName, null);
         }
         SessionDefinitionPlannedSession plannedSession =

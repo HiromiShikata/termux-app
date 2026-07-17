@@ -3,7 +3,28 @@ package com.termux.app.terminal.session;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
+
 public class FinishedSessionEnterActionTest {
+
+    @Test
+    public void decideRemovesUserRemovedSessionEvenWhenAutosshTemplateConfigured() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide(
+            "google logon", "ssh {name}", Collections.singleton("google logon"));
+
+        Assert.assertFalse(action.isReconnect());
+        Assert.assertEquals(FinishedSessionEnterAction.Kind.REMOVE, action.getKind());
+        Assert.assertNull(action.getCommand());
+    }
+
+    @Test
+    public void decideReconnectsSessionNotInUserRemovedSet() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide(
+            "myhost", "ssh {name}", Collections.singleton("google logon"));
+
+        Assert.assertTrue(action.isReconnect());
+        Assert.assertEquals("myhost", action.getSessionName());
+    }
 
     @Test
     public void decideReconnectsDefinitionBackedSessionWhenAutosshTemplateConfigured() {
