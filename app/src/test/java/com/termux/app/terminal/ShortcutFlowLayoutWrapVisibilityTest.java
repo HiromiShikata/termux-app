@@ -32,7 +32,7 @@ public class ShortcutFlowLayoutWrapVisibilityTest {
 
     private static final int FIXED_CHILD_WIDTH_PIXELS = 100;
     private static final int FIXED_CHILD_HEIGHT_PIXELS = 40;
-    private static final int HORIZONTAL_MARGIN_PIXELS = 2;
+    private static final int HORIZONTAL_MARGIN_PIXELS = 1;
     private static final int TOP_MARGIN_PIXELS = 3;
 
     @Test
