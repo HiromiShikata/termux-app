@@ -896,6 +896,16 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return labelsToCollapse;
     }
 
+    public boolean expandCollapsedProjectForSession(@Nullable String sessionName) {
+        boolean expanded = ShortcutNavigationProjectExpander.expandCollapsedProjectForSession(
+            buildAllRows(), mCollapsedProjectKeys, sessionName);
+        if (expanded) {
+            persistCollapsedProjectKeys();
+            refreshSessionList();
+        }
+        return expanded;
+    }
+
     private void toggleProjectCollapsed(@Nullable String projectKey) {
         if (projectKey == null) {
             return;

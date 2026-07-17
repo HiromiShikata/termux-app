@@ -543,6 +543,7 @@ public class SessionListBottomSheetController {
 
     private void switchToShortcutSession(@NonNull TermuxSession targetSession) {
         unhideNavigatedShortcutSession(targetSession);
+        expandNavigatedShortcutSessionProject(targetSession);
         TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
         if (sessionClient != null) {
             sessionClient.switchToSessionReconnectingIfDead(targetSession.getTerminalSession());
@@ -561,6 +562,18 @@ public class SessionListBottomSheetController {
             return;
         }
         ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, terminalSession.mSessionName);
+    }
+
+    private void expandNavigatedShortcutSessionProject(@NonNull TermuxSession targetSession) {
+        TerminalSession terminalSession = targetSession.getTerminalSession();
+        if (terminalSession == null) {
+            return;
+        }
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController == null) {
+            return;
+        }
+        listController.expandCollapsedProjectForSession(terminalSession.mSessionName);
     }
 
     private static int shortcutBackgroundResource(@NonNull android.content.Context context) {

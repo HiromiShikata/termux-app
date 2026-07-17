@@ -370,6 +370,24 @@ public final class SessionHierarchyBuilder {
         return sessionName != null && hiddenSessionNames.contains(sessionName);
     }
 
+    @Nullable
+    public static String projectLabelForSessionName(@NonNull List<SessionHierarchyRow> rows,
+                                                    @Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return null;
+        }
+        String currentProjectLabel = null;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                currentProjectLabel = row.getLabel();
+            } else if (row.getType() == SessionHierarchyRow.Type.SESSION
+                && sessionName.equals(row.getSessionName())) {
+                return currentProjectLabel;
+            }
+        }
+        return null;
+    }
+
     @NonNull
     public List<SessionHierarchyRow> filterCollapsedProjects(@NonNull List<SessionHierarchyRow> rows,
                                                              @NonNull Set<String> collapsedProjectKeys) {
