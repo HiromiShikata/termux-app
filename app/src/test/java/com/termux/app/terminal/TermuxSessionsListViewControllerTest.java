@@ -749,6 +749,63 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void twoLiveSessionsSharingASessionNameCollideAtTheNameDerivedBaseIdWhichIsTheCrashRootCause() {
+        long firstWorkerRowBaseId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(3, "worker"));
+        long secondWorkerRowBaseId = TermuxSessionsListViewController.rowItemId(
+            SessionHierarchyRow.session(4, "worker"));
+
+        Assert.assertEquals(firstWorkerRowBaseId, secondWorkerRowBaseId);
+    }
+
+    @Test
+    public void everyRowInARepresentativeListWithCollidingSessionNamesAndStoryLabelsReceivesAUniqueStableId() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("alpha"),
+            SessionHierarchyRow.storyHeader("regular"),
+            SessionHierarchyRow.session(0, "manager"),
+            SessionHierarchyRow.session(3, "worker"),
+            SessionHierarchyRow.session(4, "worker"),
+            SessionHierarchyRow.projectHeader("beta"),
+            SessionHierarchyRow.storyHeader("regular"),
+            SessionHierarchyRow.session(5, "worker"),
+            SessionHierarchyRow.session(6, null),
+            SessionHierarchyRow.session(7, null));
+
+        List<Long> itemIds = TermuxSessionsListViewController.assignUniqueRowItemIds(rows);
+
+        Assert.assertEquals(rows.size(), itemIds.size());
+        Assert.assertEquals("every row must carry a stable id that is unique across the whole list",
+            rows.size(), new LinkedHashSet<>(itemIds).size());
+    }
+
+    @Test
+    public void assignedStableIdsPreserveTheNameDerivedBaseIdForTheFirstOccurrenceSoUnchangedRowsKeepTheirIdentity() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("alpha"),
+            SessionHierarchyRow.session(3, "worker"),
+            SessionHierarchyRow.session(4, "worker"));
+
+        List<Long> itemIds = TermuxSessionsListViewController.assignUniqueRowItemIds(rows);
+
+        Assert.assertEquals(TermuxSessionsListViewController.rowItemId(rows.get(0)), (long) itemIds.get(0));
+        Assert.assertEquals(TermuxSessionsListViewController.rowItemId(rows.get(1)), (long) itemIds.get(1));
+        Assert.assertNotEquals((long) itemIds.get(1), (long) itemIds.get(2));
+    }
+
+    @Test
+    public void assignUniqueRowItemIdsIsDeterministicSoTheSameSnapshotAlwaysProducesTheSameStableIds() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.session(3, "worker"),
+            SessionHierarchyRow.session(4, "worker"),
+            SessionHierarchyRow.session(5, "worker"));
+
+        Assert.assertEquals(
+            TermuxSessionsListViewController.assignUniqueRowItemIds(rows),
+            TermuxSessionsListViewController.assignUniqueRowItemIds(rows));
+    }
+
+    @Test
     public void clickResolvesTheRowToItsSessionByNameEvenAfterAConcurrentReconnectShiftedTheIndex() {
         SessionHierarchyRow row = SessionHierarchyRow.session(0, "worker");
         List<String> sessionNamesAfterReconnectShiftedIndexes = Arrays.asList("builder", "manager", "worker");
@@ -825,7 +882,10 @@ public class TermuxSessionsListViewControllerTest {
 
         TermuxSessionsListViewController.SessionRowDiffCallback callback =
             new TermuxSessionsListViewController.SessionRowDiffCallback(
-                previousRows, currentRows, previousContent, currentContent);
+                previousRows, currentRows,
+                TermuxSessionsListViewController.assignUniqueRowItemIds(previousRows),
+                TermuxSessionsListViewController.assignUniqueRowItemIds(currentRows),
+                previousContent, currentContent);
 
         Assert.assertEquals(previousRows.size(), callback.getOldListSize());
         Assert.assertEquals(currentRows.size(), callback.getNewListSize());
