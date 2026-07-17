@@ -548,7 +548,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             labels.add(bookmark.getTitle() + "\n" + bookmark.getUrl());
         }
         ListView listView = new ListView(mActivity);
-        listView.setAdapter(new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, labels));
+        listView.setAdapter(new ArrayAdapter<>(mActivity, R.layout.item_browser_bookmark_list_entry, labels));
         AlertDialog dialog = new AlertDialog.Builder(mActivity)
             .setTitle(R.string.title_browser_bookmarks)
             .setView(listView)

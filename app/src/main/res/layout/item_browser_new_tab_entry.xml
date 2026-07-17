@@ -1,10 +1,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.Termux.DialogListItemRow"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingHorizontal="12dp"
-    android:paddingVertical="2dp">
+    android:orientation="horizontal">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/browser_new_tab_entry_bookmark_badge"
@@ -12,8 +11,8 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="6dp"
         android:text="@string/label_browser_new_tab_bookmark_badge"
+        android:textAppearance="@style/TextAppearance.Termux.DialogListItemDetail"
         android:textColor="?android:attr/textColorSecondary"
-        android:textSize="11sp"
         android:visibility="gone" />
 
     <LinearLayout
@@ -29,7 +28,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:singleLine="true"
-            android:textSize="13sp" />
+            android:textAppearance="@style/TextAppearance.Termux.DialogListItemTitle" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/browser_new_tab_entry_url"
@@ -38,7 +37,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:singleLine="true"
-            android:textColor="?android:attr/textColorSecondary"
-            android:textSize="10sp" />
+            android:textAppearance="@style/TextAppearance.Termux.DialogListItemDetail"
+            android:textColor="?android:attr/textColorSecondary" />
     </LinearLayout>
 </LinearLayout>
