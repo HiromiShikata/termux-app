@@ -313,6 +313,9 @@ public class SessionNewActivityStore {
         if (callTimeMillis == null) {
             return true;
         }
+        if (hasUnacknowledgedCallReasons(sessionName)) {
+            return replyTimeMillis > callTimeMillis;
+        }
         return replyTimeMillis >= callTimeMillis;
     }
 

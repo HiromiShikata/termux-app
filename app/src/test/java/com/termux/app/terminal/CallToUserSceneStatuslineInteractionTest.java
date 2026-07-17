@@ -60,7 +60,7 @@ public class CallToUserSceneStatuslineInteractionTest {
     }
 
     @Test
-    public void statuslineReplyAtTheSameWholeSecondAsTheCallTokenAcknowledgesTheSceneAfterReload() {
+    public void statuslineReplyAtTheSameWholeSecondAsTheCallTokenDoesNotAcknowledgeAnUnansweredCall() {
         InMemorySessionNewActivityPersistence persistence =
             new InMemorySessionNewActivityPersistence();
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
@@ -80,12 +80,12 @@ public class CallToUserSceneStatuslineInteractionTest {
         PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
             reloadedStore.tierFor(SESSION), mostRecentReason(reloadedStore));
 
-        Assert.assertTrue("a statusline reply at the same whole second as the call: token must "
-                + "acknowledge the pending scene, because the reply is compared against the call "
-                + "token time and reply >= call acknowledges",
+        Assert.assertFalse("a passive statusline reply: token that only equals the call: token must "
+                + "not acknowledge an unanswered call-to-user, because a reply equal to the call is a "
+                + "displayed clock value, not a real user reply newer than the call",
             reloadedStore.getUnacknowledgedCallReasons(SESSION).isEmpty());
-        Assert.assertNotEquals(SessionNewActivityTier.RED, reloadedStore.tierFor(SESSION));
-        Assert.assertFalse(decision.isVisible());
+        Assert.assertEquals(SessionNewActivityTier.RED, reloadedStore.tierFor(SESSION));
+        Assert.assertTrue(decision.isVisible());
     }
 
     @Test
