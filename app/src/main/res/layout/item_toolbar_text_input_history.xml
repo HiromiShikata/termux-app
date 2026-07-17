@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.Termux.DialogListItemRow"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:descendantFocusability="blocksDescendants"
@@ -11,9 +12,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:paddingHorizontal="20dp"
-        android:paddingVertical="16dp"
-        android:textSize="12sp" />
+        android:textAppearance="@style/TextAppearance.Termux.DialogListItemDetail" />
 
     <ImageButton
         android:id="@+id/toolbar_text_input_history_pin_button"
@@ -21,7 +20,7 @@
         android:layout_height="match_parent"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:focusable="false"
-        android:paddingHorizontal="16dp"
+        android:paddingHorizontal="12dp"
         android:scaleType="centerInside"
         android:src="@drawable/ic_browser_bookmark_star_outline" />
 </LinearLayout>
