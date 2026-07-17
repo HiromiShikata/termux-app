@@ -35,6 +35,8 @@ public final class SessionDefinitionController {
         new SessionDefinitionDuplicateSessionPlanner();
     private final SessionDefinitionCapCountPlanner capCountPlanner =
         new SessionDefinitionCapCountPlanner();
+    private final SessionDefinitionAlwaysPresentPriorityPlanner alwaysPresentPriorityPlanner =
+        new SessionDefinitionAlwaysPresentPriorityPlanner();
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
@@ -95,9 +97,12 @@ public final class SessionDefinitionController {
         List<SessionDefinitionEntry> entries = result.getEntries();
         boolean authoritativeLoad = !result.hasFailedGroups();
         String commandTemplate = activity.getPreferences().getAutosshCommand();
-        List<SessionDefinitionPlannedSession> plannedSessions = planner.plan(entries, commandTemplate);
+        List<SessionDefinitionPlannedSession> definitionSessions = planner.plan(entries, commandTemplate);
+        List<SessionDefinitionPlannedSession> plannedSessions =
+            alwaysPresentPriorityPlanner.planPrioritizedSessions(
+                definitionSessions, alwaysPresentSessionNames(), commandTemplate);
 
-        if (plannedSessions.isEmpty() && authoritativeLoad) {
+        if (definitionSessions.isEmpty() && authoritativeLoad) {
             activity.showToast(activity.getString(R.string.msg_session_definition_no_entries), true);
         }
 
