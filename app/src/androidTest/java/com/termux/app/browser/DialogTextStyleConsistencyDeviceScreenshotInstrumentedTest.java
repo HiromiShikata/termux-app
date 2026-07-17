@@ -4,8 +4,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.os.Environment;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
@@ -46,6 +49,28 @@ public class DialogTextStyleConsistencyDeviceScreenshotInstrumentedTest {
     private Context themedContext() {
         Context appContext = ApplicationProvider.getApplicationContext();
         return new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+    }
+
+    private Context nightThemedContext() {
+        Context appContext = ApplicationProvider.getApplicationContext();
+        Configuration nightConfiguration = new Configuration(appContext.getResources().getConfiguration());
+        nightConfiguration.uiMode = (nightConfiguration.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+            | Configuration.UI_MODE_NIGHT_YES;
+        Context nightBaseContext = appContext.createConfigurationContext(nightConfiguration);
+        return new ContextThemeWrapper(nightBaseContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+    }
+
+    private int resolveThemeColor(Context context, int attribute) {
+        TypedValue resolvedValue = new TypedValue();
+        assertTrue("theme attribute must resolve",
+            context.getTheme().resolveAttribute(attribute, resolvedValue, true));
+        if (resolvedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT
+            && resolvedValue.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+            return resolvedValue.data;
+        }
+        ColorStateList colorStateList =
+            context.getResources().getColorStateList(resolvedValue.resourceId, context.getTheme());
+        return colorStateList.getDefaultColor();
     }
 
     private int spToPx(Context context, float sp) {
@@ -135,6 +160,42 @@ public class DialogTextStyleConsistencyDeviceScreenshotInstrumentedTest {
         saveScreenshot(renderToBitmap(consistencyAfter), "dialog-consistency-after.png");
     }
 
+    @Test
+    public void sharedStyleGivesDialogRowsThemeTextColorReadableOnTheDarkDialogSurface() throws Exception {
+        Context context = nightThemedContext();
+        LayoutInflater inflater = LayoutInflater.from(context);
+
+        View historyRow = inflater.inflate(R.layout.item_toolbar_text_input_history, null);
+        View newTabRow = inflater.inflate(R.layout.item_browser_new_tab_entry, null);
+        View browserHistoryRow = inflater.inflate(R.layout.item_browser_history_entry, null);
+        View bookmarkRow = inflater.inflate(R.layout.item_browser_bookmark_list_entry, null);
+
+        TextView historyEntry = historyRow.findViewById(R.id.toolbar_text_input_history_entry);
+        TextView newTabTitle = newTabRow.findViewById(R.id.browser_new_tab_entry_title);
+        TextView browserHistoryTitle = browserHistoryRow.findViewById(R.id.browser_history_entry_title);
+        TextView bookmarkEntry = bookmarkRow.findViewById(android.R.id.text1);
+
+        int themePrimaryTextColor = resolveThemeColor(context, android.R.attr.textColorPrimary);
+
+        assertEquals("history dialog entry text must inherit the theme primary text color, not the "
+            + "platform default black that a parentless text appearance falls back to",
+            themePrimaryTextColor, historyEntry.getCurrentTextColor());
+        assertEquals("browser new-tab title must inherit the theme primary text color",
+            themePrimaryTextColor, newTabTitle.getCurrentTextColor());
+        assertEquals("browser history title must inherit the theme primary text color",
+            themePrimaryTextColor, browserHistoryTitle.getCurrentTextColor());
+        assertEquals("bookmark list entry must inherit the theme primary text color",
+            themePrimaryTextColor, bookmarkEntry.getCurrentTextColor());
+
+        assertTrue("the theme primary text color on the dark dialog surface must not be opaque black",
+            themePrimaryTextColor != Color.BLACK);
+
+        int darkDialogSurfaceColor = resolveThemeColor(context, android.R.attr.colorBackground);
+        View consistencyNight = buildCrossDialogList(context);
+        saveScreenshot(renderToBitmap(consistencyNight, darkDialogSurfaceColor),
+            "dialog-consistency-night.png");
+    }
+
     private LinearLayout buildHistoryList(Context context, boolean legacySizing) {
         LayoutInflater inflater = LayoutInflater.from(context);
         LinearLayout container = new LinearLayout(context);
@@ -198,6 +259,10 @@ public class DialogTextStyleConsistencyDeviceScreenshotInstrumentedTest {
     }
 
     private Bitmap renderToBitmap(View container) {
+        return renderToBitmap(container, LIGHT_SURFACE_COLOR);
+    }
+
+    private Bitmap renderToBitmap(View container, int backgroundColor) {
         int widthSpec = View.MeasureSpec.makeMeasureSpec(DIALOG_WIDTH, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
         container.measure(widthSpec, heightSpec);
@@ -205,7 +270,7 @@ public class DialogTextStyleConsistencyDeviceScreenshotInstrumentedTest {
         container.layout(0, 0, DIALOG_WIDTH, height);
         Bitmap bitmap = Bitmap.createBitmap(DIALOG_WIDTH, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        canvas.drawColor(LIGHT_SURFACE_COLOR);
+        canvas.drawColor(backgroundColor);
         container.draw(canvas);
         return bitmap;
     }
