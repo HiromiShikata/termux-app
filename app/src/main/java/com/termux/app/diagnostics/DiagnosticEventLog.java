@@ -25,9 +25,9 @@ public final class DiagnosticEventLog {
     }
 
     public synchronized void record(long timestampMillis, @NonNull DiagnosticEventType type, @NonNull String detail) {
-        mEvents.addLast(new DiagnosticEvent(timestampMillis, type, detail));
+        mEvents.add(new DiagnosticEvent(timestampMillis, type, detail));
         while (mEvents.size() > mMaxEntries) {
-            mEvents.removeFirst();
+            mEvents.remove();
         }
     }
 

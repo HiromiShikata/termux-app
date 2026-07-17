@@ -166,7 +166,7 @@ public class TermuxDocumentsProvider extends DocumentsProvider {
 
         final int MAX_SEARCH_RESULTS = 50;
         while (!pending.isEmpty() && result.getCount() < MAX_SEARCH_RESULTS) {
-            final File file = pending.removeFirst();
+            final File file = pending.remove();
             // Avoid directories outside the $HOME directory linked with symlinks (to avoid e.g. search
             // through the whole SD card).
             boolean isInsideHome;

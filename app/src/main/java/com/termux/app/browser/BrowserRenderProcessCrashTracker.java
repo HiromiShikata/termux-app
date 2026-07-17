@@ -21,9 +21,9 @@ public final class BrowserRenderProcessCrashTracker {
             timestamps = new ArrayDeque<>();
             mCrashTimestampsByTabId.put(tabId, timestamps);
         }
-        timestamps.addLast(nowMillis);
+        timestamps.add(nowMillis);
         while (!timestamps.isEmpty() && nowMillis - timestamps.peekFirst() > CRASH_WINDOW_MILLIS) {
-            timestamps.removeFirst();
+            timestamps.remove();
         }
         return timestamps.size() > MAX_CRASHES_WITHIN_WINDOW;
     }
