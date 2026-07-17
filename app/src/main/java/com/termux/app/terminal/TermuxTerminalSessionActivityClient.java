@@ -51,6 +51,7 @@ import com.termux.app.terminal.session.DuplicateSessionNameResolution;
 import com.termux.app.terminal.session.FinishedSessionEnterAction;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
+import com.termux.app.terminal.session.UserRemovedSessionReconnectSuppressionPlanner;
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
@@ -208,6 +209,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
     private final DeadSessionReconnectPlanner mDeadSessionReconnectPlanner = new DeadSessionReconnectPlanner();
+    private final UserRemovedSessionReconnectSuppressionPlanner mUserRemovedSessionReconnectSuppressionPlanner =
+        new UserRemovedSessionReconnectSuppressionPlanner();
 
     private final VisibleSessionSelector mVisibleSessionSelector = new VisibleSessionSelector();
 
@@ -1475,11 +1478,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void deleteSession(final TerminalSession sessionToDelete) {
         if (sessionToDelete == null) return;
 
+        suppressReconnectForUserRemovedSession(sessionToDelete.mSessionName);
+
         TerminalSession currentSession = mActivity.getCurrentSession();
         sessionToDelete.finishIfRunning();
         removeFinishedSession(sessionToDelete);
         if (currentSession != null && currentSession != sessionToDelete)
             setCurrentSession(currentSession);
+    }
+
+    private void suppressReconnectForUserRemovedSession(@Nullable String sessionName) {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return;
+        if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterUserRemoval(
+                sessionName, preferences.getAlwaysNaSessionNames())) {
+            preferences.setSessionUserRemoved(sessionName, true);
+        }
     }
 
     public void killHostSession(final TerminalSession sessionToKill) {
@@ -1778,7 +1792,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             return FinishedSessionEnterAction.decide(null, null);
         }
         return FinishedSessionEnterAction.decide(finishedSession.mSessionName,
-            mActivity.getPreferences().getAutosshCommand());
+            mActivity.getPreferences().getAutosshCommand(),
+            mActivity.getPreferences().getUserRemovedSessionNames());
     }
 
     public boolean reconnectFinishedSessionInPlace(@Nullable TerminalSession finishedSession,
@@ -1890,7 +1905,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         List<String> sessionNamesToReconnect =
             mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate,
-                DeadSessionReconnectPlanner.UNLIMITED);
+                DeadSessionReconnectPlanner.UNLIMITED,
+                mActivity.getPreferences().getUserRemovedSessionNames());
         List<String> reconnectedSessionNames = new ArrayList<>();
         int reconnectIndex = 0;
         for (String sessionName : sessionNamesToReconnect) {
@@ -2177,7 +2193,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void recordPersistedSession(TerminalSession terminalSession, PersistedSession persistedSession) {
         mPersistedSessionBySession.put(terminalSession, persistedSession);
+        clearReconnectSuppressionForRecreatedSession(terminalSession);
         savePersistedSessions();
+    }
+
+    private void clearReconnectSuppressionForRecreatedSession(@Nullable TerminalSession terminalSession) {
+        if (terminalSession == null) return;
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return;
+        if (preferences.isSessionUserRemoved(terminalSession.mSessionName)) {
+            preferences.setSessionUserRemoved(terminalSession.mSessionName, false);
+        }
     }
 
     private void savePersistedSessions() {

@@ -517,6 +517,35 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public String getUserRemovedSessionNamesText() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_USER_REMOVED_SESSION_NAMES, TERMUX_APP.DEFAULT_VALUE_KEY_USER_REMOVED_SESSION_NAMES, false);
+    }
+
+    public void setUserRemovedSessionNames(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_USER_REMOVED_SESSION_NAMES, value, false);
+    }
+
+    @NonNull
+    public Set<String> getUserRemovedSessionNames() {
+        return parseDisabledSessionNames(getUserRemovedSessionNamesText());
+    }
+
+    public boolean isSessionUserRemoved(@Nullable String sessionName) {
+        return sessionName != null && getUserRemovedSessionNames().contains(sessionName);
+    }
+
+    public void setSessionUserRemoved(@Nullable String sessionName, boolean removed) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        Set<String> names = getUserRemovedSessionNames();
+        boolean changed = removed ? names.add(sessionName) : names.remove(sessionName);
+        if (changed) {
+            setUserRemovedSessionNames(serializeDisabledSessionNames(names));
+        }
+    }
+
+
     public boolean shouldHideHiddenSessions() {
         return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_HIDE_HIDDEN_SESSIONS, TERMUX_APP.DEFAULT_VALUE_KEY_HIDE_HIDDEN_SESSIONS);
     }

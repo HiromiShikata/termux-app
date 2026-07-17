@@ -5,11 +5,27 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class DeadSessionReconnectPlannerTest {
 
     private final DeadSessionReconnectPlanner planner = new DeadSessionReconnectPlanner();
+
+    @Test
+    public void doesNotReconnectDeadSessionThatUserExplicitlyRemoved() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
+            new DeadSessionReconnectPlanner.CandidateSession("google logon", false),
+            new DeadSessionReconnectPlanner.CandidateSession("https://example.test/dead", false));
+        Set<String> userRemovedSessionNames = new HashSet<>();
+        userRemovedSessionNames.add("google logon");
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(
+            candidates, "ssh {name}", DeadSessionReconnectPlanner.UNLIMITED, userRemovedSessionNames);
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/dead"), namesToReconnect);
+    }
 
     @Test
     public void reconnectsOnlyDeadDefinitionBackedSessions() {
