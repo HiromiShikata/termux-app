@@ -252,6 +252,10 @@
             android:name=".shared.termux.crash.CrashReportCopyBroadcastReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".app.apkupdate.ApkInstallStatusReceiver"
+            android:exported="false" />
+
 
         <service
             android:name=".app.TermuxService"

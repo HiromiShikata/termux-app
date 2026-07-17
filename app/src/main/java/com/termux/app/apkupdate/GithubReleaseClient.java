@@ -19,6 +19,10 @@ public final class GithubReleaseClient {
         return fetch(url, "application/vnd.github+json");
     }
 
+    public String fetchReleasesListJson(String url) throws IOException {
+        return fetch(url, "application/vnd.github+json");
+    }
+
     /**
      * Fetches the GitHub Releases Atom feed. The Atom feed is served from the github.com web host,
      * not {@code api.github.com}, so it is not subject to the unauthenticated REST rate limit and is
