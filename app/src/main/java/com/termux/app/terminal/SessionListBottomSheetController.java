@@ -530,7 +530,7 @@ public class SessionListBottomSheetController {
             horizontalPaddingPixels, verticalPaddingPixels);
         ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        int horizontalMarginPixels = dpToPixels(context, 2);
+        int horizontalMarginPixels = dpToPixels(context, 1);
         int rowGapPixels = dpToPixels(context, 3);
         layoutParams.leftMargin = horizontalMarginPixels;
         layoutParams.rightMargin = horizontalMarginPixels;

@@ -40,7 +40,7 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
     @Test
-    public void renderedControlBarPlacesControlsLeftAndSessionShortcutsRight() throws Exception {
+    public void renderedControlBarPlacesShortcutsOnAFullWidthRowBelowTheControls() throws Exception {
         Context appContext = ApplicationProvider.getApplicationContext();
         Context context = new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
@@ -50,21 +50,21 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
 
         Set<String> alwaysNaSessionNames = new LinkedHashSet<>(Arrays.asList("inbox", "review"));
         List<SessionDefinitionEntry> entries = Arrays.asList(
-            new SessionDefinitionEntry("umino", "storyA",
-                java.util.Collections.singletonList("https://example.test/u1")),
-            new SessionDefinitionEntry("xmile", "storyB",
-                java.util.Collections.singletonList("https://example.test/x1")));
+            new SessionDefinitionEntry("alpha", "storyA",
+                java.util.Collections.singletonList("https://example.test/a1")),
+            new SessionDefinitionEntry("beta", "storyB",
+                java.util.Collections.singletonList("https://example.test/b1")));
 
         SessionShortcutBarPlanner planner =
             new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
         Set<String> presentSessionNames = new LinkedHashSet<>(
-            Arrays.asList("inbox", "review", "uminopm", "xmilepm"));
+            Arrays.asList("inbox", "review", "alphapm", "betapm"));
         List<SessionShortcut> renderOrderShortcuts =
             SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
 
-        assertEquals(Arrays.asList("xmilepm", "uminopm", "review", "inbox"),
+        assertEquals(Arrays.asList("betapm", "alphapm", "review", "inbox"),
             targetSessionNames(renderOrderShortcuts));
 
         for (SessionShortcut shortcut : renderOrderShortcuts) {
@@ -84,14 +84,21 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         controlBar.draw(canvas);
 
         View controlsGroup = controlBar.findViewById(R.id.session_list_bottom_sheet_controls_group);
-        int controlsGroupRightInBar = controlsGroup.getLeft() + controlsGroup.getWidth();
-        assertTrue("existing controls must sit on the left half of the bar",
+        int controlsGroupBottomInBar = topInBar(controlBar, controlsGroup) + controlsGroup.getHeight();
+        assertTrue("existing controls must sit at the top-left of the bar",
             controlsGroup.getLeft() < BAR_WIDTH / 2);
-        int shortcutsLeftInBar = shortcutsLeftInBar(controlBar, shortcutsContainer);
-        assertTrue("the weighted spacer must push session shortcuts to the right of the existing controls",
-            shortcutsLeftInBar > controlsGroupRightInBar);
-        assertTrue("session shortcuts must sit on the right half of the bar",
-            shortcutsLeftInBar > BAR_WIDTH / 2);
+        int shortcutsTopInBar = topInBar(controlBar, shortcutsContainer);
+        assertTrue("session shortcuts must sit on their own row below the controls",
+            shortcutsTopInBar >= controlsGroupBottomInBar);
+        int shortcutsLeftInBar = leftInBar(controlBar, shortcutsContainer);
+        assertTrue("the session shortcut row must span the full width and start at the left edge",
+            shortcutsLeftInBar <= controlBar.getPaddingLeft());
+        int visibleRightEdge = BAR_WIDTH - controlBar.getPaddingRight();
+        for (int index = 0; index < shortcutsContainer.getChildCount(); index++) {
+            View shortcut = shortcutsContainer.getChildAt(index);
+            assertTrue("every shortcut right edge must stay within the visible bar width",
+                shortcutsLeftInBar + shortcut.getRight() <= visibleRightEdge);
+        }
         assertEquals("all four present shortcuts must be rendered",
             4, shortcutsContainer.getChildCount());
 
@@ -103,15 +110,26 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         assertTrue(out.exists() && out.length() > 0);
     }
 
-    private static int shortcutsLeftInBar(View controlBar, View shortcutsContainer) {
+    private static int leftInBar(View controlBar, View descendant) {
         int left = 0;
-        View current = shortcutsContainer;
+        View current = descendant;
         while (current != null && current != controlBar) {
             left += current.getLeft();
             Object parent = current.getParent();
             current = (parent instanceof View) ? (View) parent : null;
         }
         return left;
+    }
+
+    private static int topInBar(View controlBar, View descendant) {
+        int top = 0;
+        View current = descendant;
+        while (current != null && current != controlBar) {
+            top += current.getTop();
+            Object parent = current.getParent();
+            current = (parent instanceof View) ? (View) parent : null;
+        }
+        return top;
     }
 
     private static List<String> targetSessionNames(List<SessionShortcut> shortcuts) {
