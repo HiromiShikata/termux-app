@@ -10,7 +10,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -57,7 +56,7 @@ public class SessionListBottomSheetController {
     private final View mLoadSessionButton;
     private final View mGoogleButton;
     private final ImageButton mHiddenToggleButton;
-    private final LinearLayout mShortcutsContainer;
+    private final ShortcutFlowLayout mShortcutsContainer;
     private final SessionShortcutBarPlanner mSessionShortcutBarPlanner =
         new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
 
@@ -540,13 +539,17 @@ public class SessionListBottomSheetController {
             com.termux.shared.R.color.schema_text_primary));
         shortcutButton.setSingleLine(true);
         shortcutButton.setContentDescription(label);
-        int horizontalPaddingPixels = dpToPixels(context, 12);
+        int horizontalPaddingPixels = dpToPixels(context, 8);
         int verticalPaddingPixels = dpToPixels(context, 6);
         shortcutButton.setPadding(horizontalPaddingPixels, verticalPaddingPixels,
             horizontalPaddingPixels, verticalPaddingPixels);
-        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+        ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layoutParams.setMarginStart(dpToPixels(context, 4));
+        int horizontalMarginPixels = dpToPixels(context, 2);
+        int rowGapPixels = dpToPixels(context, 3);
+        layoutParams.leftMargin = horizontalMarginPixels;
+        layoutParams.rightMargin = horizontalMarginPixels;
+        layoutParams.topMargin = rowGapPixels;
         shortcutButton.setLayoutParams(layoutParams);
         shortcutButton.setBackgroundResource(shortcutBackgroundResource(context));
         return shortcutButton;
