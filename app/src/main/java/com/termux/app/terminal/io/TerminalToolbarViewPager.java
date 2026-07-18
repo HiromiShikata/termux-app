@@ -17,6 +17,7 @@ import androidx.viewpager.widget.PagerAdapter;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.MaxHeightScrollView;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionReplyTimeRecorder;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
@@ -264,6 +265,9 @@ public class TerminalToolbarViewPager {
             final String entry = getItem(position);
             TextView entryView = row.findViewById(R.id.toolbar_text_input_history_entry);
             entryView.setText(entry);
+            MaxHeightScrollView entryScroll =
+                row.findViewById(R.id.toolbar_text_input_history_entry_scroll);
+            HistoryEntryScrollBinder.bind(entryScroll, entryView);
             ImageButton pinButton = row.findViewById(R.id.toolbar_text_input_history_pin_button);
             boolean pinned = mHistory.isPinned(entry);
             pinButton.setImageResource(pinned
