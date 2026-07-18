@@ -212,6 +212,9 @@
     <string name="msg_toolbar_text_input_history_empty">No recent submissions to restore</string>
     <string name="action_toolbar_text_input_history_pin">Pin to top</string>
     <string name="action_toolbar_text_input_history_unpin">Unpin</string>
+    <string name="action_toolbar_text_input_history_edit">Edit pinned entry</string>
+    <string name="title_toolbar_text_input_history_edit_dialog">Edit pinned entry</string>
+    <string name="action_toolbar_text_input_history_edit_save">Save</string>
 
     <string name="action_share_transcript">Share transcript</string>
     <string name="title_share_transcript">Terminal transcript</string>

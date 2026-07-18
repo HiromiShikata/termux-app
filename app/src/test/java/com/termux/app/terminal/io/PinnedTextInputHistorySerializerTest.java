@@ -52,6 +52,22 @@ public class PinnedTextInputHistorySerializerTest {
     }
 
     @Test
+    public void anEditedPinnedEntryPersistsItsNewTextAcrossASerializationRoundTrip() {
+        SubmittedTextInputHistory beforeRestart = new SubmittedTextInputHistory(5);
+        beforeRestart.add("deploy.sh");
+        beforeRestart.pin("deploy.sh");
+        beforeRestart.editPinnedEntry("deploy.sh", "deploy.sh --production");
+
+        String persisted = mSerializer.serialize(beforeRestart.getPinnedEntries());
+        SubmittedTextInputHistory afterRestart =
+            new SubmittedTextInputHistory(5, mSerializer.deserialize(persisted));
+
+        Assert.assertTrue(afterRestart.isPinned("deploy.sh --production"));
+        Assert.assertFalse(afterRestart.isPinned("deploy.sh"));
+        Assert.assertEquals("deploy.sh --production", afterRestart.getOrderedEntries().get(0));
+    }
+
+    @Test
     public void pinnedEntriesSurviveASerializationRoundTripAndRenderAtTopAfterRestart() {
         SubmittedTextInputHistory beforeRestart = new SubmittedTextInputHistory(5);
         beforeRestart.add("deploy.sh");
