@@ -61,6 +61,27 @@ public final class SubmittedTextInputHistory {
         }
     }
 
+    public boolean editPinnedEntry(@NonNull String currentEntry, @Nullable String newEntry) {
+        if (!isPinned(currentEntry)) return false;
+        if (newEntry == null || newEntry.isEmpty()) return false;
+        if (newEntry.equals(currentEntry)) return false;
+
+        int position = mEntries.indexOf(currentEntry);
+        if (position < 0) return false;
+
+        int existingNewEntryPosition = mEntries.indexOf(newEntry);
+        if (existingNewEntryPosition >= 0) {
+            mEntries.remove(existingNewEntryPosition);
+            mPinnedEntries.remove(newEntry);
+            if (existingNewEntryPosition < position) position--;
+        }
+
+        mEntries.set(position, newEntry);
+        mPinnedEntries.remove(currentEntry);
+        mPinnedEntries.add(newEntry);
+        return true;
+    }
+
     public boolean isEmpty() {
         return mEntries.isEmpty();
     }

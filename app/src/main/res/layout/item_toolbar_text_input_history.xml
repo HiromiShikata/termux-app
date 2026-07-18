@@ -23,6 +23,17 @@
     </com.termux.app.terminal.MaxHeightScrollView>
 
     <ImageButton
+        android:id="@+id/toolbar_text_input_history_edit_button"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:focusable="false"
+        android:paddingHorizontal="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_edit_pencil"
+        android:visibility="gone" />
+
+    <ImageButton
         android:id="@+id/toolbar_text_input_history_pin_button"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"

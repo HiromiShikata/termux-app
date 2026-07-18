@@ -281,6 +281,15 @@ public class TerminalToolbarViewPager {
                 mOnPinnedChanged.run();
                 refresh();
             });
+            ImageButton editButton = row.findViewById(R.id.toolbar_text_input_history_edit_button);
+            editButton.setVisibility(pinned ? View.VISIBLE : View.GONE);
+            editButton.setContentDescription(
+                mContext.getString(R.string.action_toolbar_text_input_history_edit));
+            editButton.setOnClickListener(v -> new PinnedTextInputHistoryEditPrompt(
+                mContext, mHistory, () -> {
+                    mOnPinnedChanged.run();
+                    refresh();
+                }).promptEdit(entry));
             return row;
         }
 

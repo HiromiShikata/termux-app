@@ -139,6 +139,99 @@ public class SubmittedTextInputHistoryTest {
     }
 
     @Test
+    public void editingAPinnedEntryReplacesItsTextWhileKeepingItPinnedAtItsPosition() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("a");
+        history.add("b");
+        history.add("c");
+        history.pin("b");
+        Assert.assertEquals(Arrays.asList("b", "c", "a"), history.getOrderedEntries());
+
+        boolean edited = history.editPinnedEntry("b", "b-edited");
+
+        Assert.assertTrue(edited);
+        Assert.assertEquals(Arrays.asList("b-edited", "c", "a"), history.getOrderedEntries());
+        Assert.assertTrue(history.isPinned("b-edited"));
+        Assert.assertFalse(history.isPinned("b"));
+    }
+
+    @Test
+    public void editedPinnedTextIsWhatGetsPersisted() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("keep-first");
+        history.add("deploy.sh");
+        history.pin("deploy.sh");
+
+        history.editPinnedEntry("deploy.sh", "deploy.sh --production");
+
+        Assert.assertEquals(Collections.singletonList("deploy.sh --production"),
+            history.getPinnedEntries());
+    }
+
+    @Test
+    public void editedPinnedEntryStaysPinnedAtTopAfterRestart() {
+        SubmittedTextInputHistory beforeRestart = new SubmittedTextInputHistory(5);
+        beforeRestart.add("git status");
+        beforeRestart.add("build.sh");
+        beforeRestart.pin("build.sh");
+        beforeRestart.editPinnedEntry("build.sh", "build.sh --release");
+
+        SubmittedTextInputHistory afterRestart =
+            new SubmittedTextInputHistory(5, beforeRestart.getPinnedEntries());
+        afterRestart.add("fresh");
+
+        Assert.assertTrue(afterRestart.isPinned("build.sh --release"));
+        Assert.assertFalse(afterRestart.isPinned("build.sh"));
+        Assert.assertEquals("build.sh --release", afterRestart.getOrderedEntries().get(0));
+    }
+
+    @Test
+    public void editingAnUnpinnedEntryIsRejected() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("plain");
+
+        boolean edited = history.editPinnedEntry("plain", "plain-edited");
+
+        Assert.assertFalse(edited);
+        Assert.assertEquals(Collections.singletonList("plain"), history.getOrderedEntries());
+    }
+
+    @Test
+    public void editingAPinnedEntryToBlankTextIsRejected() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("pinned");
+        history.pin("pinned");
+
+        Assert.assertFalse(history.editPinnedEntry("pinned", ""));
+        Assert.assertFalse(history.editPinnedEntry("pinned", null));
+        Assert.assertEquals(Collections.singletonList("pinned"), history.getPinnedEntries());
+    }
+
+    @Test
+    public void editingAPinnedEntryToTheSameTextChangesNothing() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("pinned");
+        history.pin("pinned");
+
+        Assert.assertFalse(history.editPinnedEntry("pinned", "pinned"));
+        Assert.assertTrue(history.isPinned("pinned"));
+    }
+
+    @Test
+    public void editingAPinnedEntryOntoAnExistingEntryDoesNotCreateADuplicate() {
+        SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
+        history.add("existing");
+        history.add("pinned");
+        history.pin("pinned");
+
+        boolean edited = history.editPinnedEntry("pinned", "existing");
+
+        Assert.assertTrue(edited);
+        Assert.assertEquals(Collections.singletonList("existing"), history.getOrderedEntries());
+        Assert.assertTrue(history.isPinned("existing"));
+    }
+
+    @Test
     public void blankSubmissionsAreIgnored() {
         SubmittedTextInputHistory history = new SubmittedTextInputHistory(5);
         history.add(null);
