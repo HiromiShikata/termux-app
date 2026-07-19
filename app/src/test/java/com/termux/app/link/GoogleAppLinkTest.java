@@ -1,15 +1,22 @@
-package com.termux.app.browser;
+package com.termux.app.link;
+
+import android.app.Application;
+import android.content.Context;
+import android.content.Intent;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
+import org.robolectric.shadows.ShadowApplication;
 
 @RunWith(RobolectricTestRunner.class)
-public class BrowserGoogleAppLinkTest {
+public class GoogleAppLinkTest {
 
     private void assertTarget(String url, String expectedLabel, String expectedPackage) {
-        BrowserGoogleAppLink.GoogleAppTarget target = BrowserGoogleAppLink.resolveTarget(url);
+        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
         Assert.assertNotNull("expected a target for " + url, target);
         Assert.assertEquals(expectedLabel, target.getAppDisplayName());
         Assert.assertEquals(expectedPackage, target.getPackageName());
@@ -46,8 +53,20 @@ public class BrowserGoogleAppLinkTest {
     }
 
     @Test
-    public void calendarUrlMapsToCalendar() {
+    public void calendarSubdomainUrlMapsToCalendar() {
         assertTarget("https://calendar.google.com/calendar/u/0/r",
+            "Google Calendar", "com.google.android.calendar");
+    }
+
+    @Test
+    public void calendarEventUrlMapsToCalendar() {
+        assertTarget("https://calendar.google.com/calendar/u/0/r/eventedit/abc123",
+            "Google Calendar", "com.google.android.calendar");
+    }
+
+    @Test
+    public void googleCalendarPathUrlMapsToCalendar() {
+        assertTarget("https://www.google.com/calendar/render?action=TEMPLATE",
             "Google Calendar", "com.google.android.calendar");
     }
 
@@ -83,32 +102,64 @@ public class BrowserGoogleAppLinkTest {
 
     @Test
     public void docsWithoutRecognizedEditorPathHasNoTarget() {
-        Assert.assertNull(BrowserGoogleAppLink.resolveTarget("https://docs.google.com/"));
+        Assert.assertNull(GoogleAppLink.resolveTarget("https://docs.google.com/"));
     }
 
     @Test
-    public void googleSearchWithoutMapsPathHasNoTarget() {
-        Assert.assertNull(BrowserGoogleAppLink.resolveTarget("https://www.google.com/search?q=test"));
+    public void googleSearchWithoutRecognizedPathHasNoTarget() {
+        Assert.assertNull(GoogleAppLink.resolveTarget("https://www.google.com/search?q=test"));
     }
 
     @Test
     public void nonGoogleUrlHasNoTarget() {
-        Assert.assertNull(BrowserGoogleAppLink.resolveTarget("https://example.com/spreadsheets/d/abc"));
+        Assert.assertNull(GoogleAppLink.resolveTarget("https://example.com/spreadsheets/d/abc"));
     }
 
     @Test
     public void nonHttpSchemeHasNoTarget() {
-        Assert.assertNull(BrowserGoogleAppLink.resolveTarget("ftp://drive.google.com/file"));
+        Assert.assertNull(GoogleAppLink.resolveTarget("ftp://drive.google.com/file"));
     }
 
     @Test
     public void nullUrlHasNoTarget() {
-        Assert.assertNull(BrowserGoogleAppLink.resolveTarget(null));
+        Assert.assertNull(GoogleAppLink.resolveTarget(null));
     }
 
     @Test
     public void hostMatchingIsCaseInsensitive() {
         assertTarget("https://Drive.Google.com/file/d/abc123/view",
             "Google Drive", "com.google.android.apps.docs");
+    }
+
+    @Test
+    public void openInGoogleAppStartsViewIntentWithMappedPackage() {
+        Context context = RuntimeEnvironment.getApplication();
+        String url = "https://calendar.google.com/calendar/u/0/r";
+        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        Assert.assertNotNull(target);
+
+        boolean launched = GoogleAppLink.openInGoogleApp(context, url, target);
+
+        Assert.assertTrue(launched);
+        Intent started = Shadows.shadowOf((Application) context).getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.google.android.calendar", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
+    }
+
+    @Test
+    public void openInGoogleAppReturnsFalseWhenAppNotInstalled() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        shadowApplication.checkActivities(true);
+        String url = "https://docs.google.com/spreadsheets/d/abc123/edit";
+        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        Assert.assertNotNull(target);
+
+        boolean launched = GoogleAppLink.openInGoogleApp(context, url, target);
+
+        Assert.assertFalse(launched);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
 }

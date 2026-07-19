@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.link.GoogleAppLink;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.shell.ShellUtils;
@@ -461,6 +462,18 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     public void openLongPressedUrlInChrome() {
         if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
         ShareUtils.openUrlInChrome(mActivity, mLongPressedUrl);
+    }
+
+    public GoogleAppLink.GoogleAppTarget getLongPressedUrlGoogleAppTarget() {
+        return GoogleAppLink.resolveTarget(mLongPressedUrl);
+    }
+
+    public void openLongPressedUrlInGoogleApp() {
+        if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
+        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(mLongPressedUrl);
+        if (target == null || !GoogleAppLink.openInGoogleApp(mActivity, mLongPressedUrl, target)) {
+            openUrlInApp(mLongPressedUrl);
+        }
     }
 
     public void copyLongPressedUrlToClipboard() {

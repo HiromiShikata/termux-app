@@ -152,6 +152,18 @@ public class BrowserLinkContextMenuControllerTest {
     }
 
     @Test
+    public void googleCalendarUrlAddsOpenInCalendarItem() {
+        WebView webView = new WebView(context());
+        AlertDialog dialog = showMenuFor(webView,
+            "https://calendar.google.com/calendar/u/0/r", new RecordingActions());
+        ListAdapter adapter = dialog.getListView().getAdapter();
+        Assert.assertEquals(6, adapter.getCount());
+        Assert.assertEquals(
+            context().getString(R.string.action_browser_open_in_google_app, "Google Calendar"),
+            adapter.getItem(3));
+    }
+
+    @Test
     public void selectingOpenInGoogleAppLaunchesIntentWithMappedPackage() {
         Context context = context();
         WebView webView = new WebView(context);

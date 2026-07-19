@@ -42,6 +42,7 @@ import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.browser.BrowserInboundViewUrl;
+import com.termux.app.link.GoogleAppLink;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.browser.TermuxBrowserController;
@@ -311,6 +312,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID = 14;
     private static final int CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID = 15;
     private static final int CONTEXT_MENU_COPY_LINK_URL_ID = 16;
+    static final int CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID = 17;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
 
@@ -1203,10 +1205,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         boolean autoFillEnabled = mTerminalView.isAutoFillEnabled();
 
-        if (mTermuxTerminalViewClient != null && TermuxTerminalViewClient.shouldShowLongPressedUrlMenuItems(mTermuxTerminalViewClient.getLongPressedUrl())) {
-            menu.add(Menu.NONE, CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID, Menu.NONE, R.string.action_open_link_in_browser);
-            menu.add(Menu.NONE, CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID, Menu.NONE, R.string.action_open_link_in_chrome);
-            menu.add(Menu.NONE, CONTEXT_MENU_COPY_LINK_URL_ID, Menu.NONE, R.string.action_copy_link_url);
+        if (mTermuxTerminalViewClient != null) {
+            for (LongPressedUrlMenuItem item : longPressedUrlMenuItems(this, mTermuxTerminalViewClient.getLongPressedUrl())) {
+                menu.add(Menu.NONE, item.getMenuItemId(), Menu.NONE, item.getTitle());
+            }
         }
 
         menu.add(Menu.NONE, CONTEXT_MENU_SELECT_URL_ID, Menu.NONE, R.string.action_select_url);
@@ -1239,6 +1241,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 return true;
             case CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID:
                 mTermuxTerminalViewClient.openLongPressedUrlInChrome();
+                return true;
+            case CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID:
+                mTermuxTerminalViewClient.openLongPressedUrlInGoogleApp();
                 return true;
             case CONTEXT_MENU_COPY_LINK_URL_ID:
                 mTermuxTerminalViewClient.copyLongPressedUrlToClipboard();
@@ -1323,6 +1328,49 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Intent googleTranslateIntent = createProcessTextIntent(selectedText);
         googleTranslateIntent.setPackage(GOOGLE_TRANSLATE_PACKAGE_NAME);
         return googleTranslateIntent;
+    }
+
+    static String longPressedUrlGoogleAppMenuTitle(Context context, String longPressedUrl) {
+        GoogleAppLink.GoogleAppTarget googleAppTarget = GoogleAppLink.resolveTarget(longPressedUrl);
+        if (googleAppTarget == null) return null;
+        return context.getString(R.string.action_open_link_in_google_app,
+            googleAppTarget.getAppDisplayName());
+    }
+
+    static final class LongPressedUrlMenuItem {
+
+        private final int mMenuItemId;
+
+        private final CharSequence mTitle;
+
+        LongPressedUrlMenuItem(int menuItemId, CharSequence title) {
+            this.mMenuItemId = menuItemId;
+            this.mTitle = title;
+        }
+
+        int getMenuItemId() {
+            return mMenuItemId;
+        }
+
+        CharSequence getTitle() {
+            return mTitle;
+        }
+    }
+
+    static List<LongPressedUrlMenuItem> longPressedUrlMenuItems(Context context, String longPressedUrl) {
+        List<LongPressedUrlMenuItem> items = new ArrayList<>();
+        if (!TermuxTerminalViewClient.shouldShowLongPressedUrlMenuItems(longPressedUrl)) return items;
+        items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID,
+            context.getString(R.string.action_open_link_in_browser)));
+        items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID,
+            context.getString(R.string.action_open_link_in_chrome)));
+        String googleAppMenuTitle = longPressedUrlGoogleAppMenuTitle(context, longPressedUrl);
+        if (googleAppMenuTitle != null) {
+            items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, googleAppMenuTitle));
+        }
+        items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_COPY_LINK_URL_ID,
+            context.getString(R.string.action_copy_link_url)));
+        return items;
     }
 
     private void sendSelectedTextToTerminal(TerminalSession session) {

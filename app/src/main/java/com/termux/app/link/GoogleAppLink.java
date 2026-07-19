@@ -1,5 +1,8 @@
-package com.termux.app.browser;
+package com.termux.app.link;
 
+import android.content.ActivityNotFoundException;
+import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
@@ -7,7 +10,7 @@ import androidx.annotation.Nullable;
 
 import java.util.Locale;
 
-public final class BrowserGoogleAppLink {
+public final class GoogleAppLink {
 
     public static final class GoogleAppTarget {
 
@@ -31,7 +34,7 @@ public final class BrowserGoogleAppLink {
         }
     }
 
-    private BrowserGoogleAppLink() {
+    private GoogleAppLink() {
     }
 
     @Nullable
@@ -86,8 +89,24 @@ public final class BrowserGoogleAppLink {
             if (path.startsWith("/maps")) {
                 return new GoogleAppTarget("Google Maps", "com.google.android.apps.maps");
             }
+            if (path.startsWith("/calendar")) {
+                return new GoogleAppTarget("Google Calendar", "com.google.android.calendar");
+            }
             return null;
         }
         return null;
+    }
+
+    public static boolean openInGoogleApp(@NonNull Context context, @NonNull String url,
+                                          @NonNull GoogleAppTarget target) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        intent.setPackage(target.getPackageName());
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            context.startActivity(intent);
+            return true;
+        } catch (ActivityNotFoundException activityNotFound) {
+            return false;
+        }
     }
 }
