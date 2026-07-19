@@ -2,10 +2,7 @@ package com.termux.app.browser;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -15,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
+import com.termux.app.link.GoogleAppLink;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 
@@ -85,8 +83,8 @@ public final class BrowserLinkContextMenuController {
     }
 
     void showLinkContextMenu(@NonNull String linkUrl, @Nullable String anchorText) {
-        BrowserGoogleAppLink.GoogleAppTarget googleAppTarget =
-            BrowserGoogleAppLink.resolveTarget(linkUrl);
+        GoogleAppLink.GoogleAppTarget googleAppTarget =
+            GoogleAppLink.resolveTarget(linkUrl);
 
         List<CharSequence> actions = new ArrayList<>();
         actions.add(mContext.getString(R.string.action_browser_copy_link_text));
@@ -124,13 +122,8 @@ public final class BrowserLinkContextMenuController {
     }
 
     private void openLinkInGoogleApp(@NonNull String linkUrl,
-                                     @NonNull BrowserGoogleAppLink.GoogleAppTarget googleAppTarget) {
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(linkUrl));
-        intent.setPackage(googleAppTarget.getPackageName());
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            mContext.startActivity(intent);
-        } catch (ActivityNotFoundException e) {
+                                     @NonNull GoogleAppLink.GoogleAppTarget googleAppTarget) {
+        if (!GoogleAppLink.openInGoogleApp(mContext, linkUrl, googleAppTarget)) {
             mActions.openLinkInBrowser(linkUrl);
         }
     }
