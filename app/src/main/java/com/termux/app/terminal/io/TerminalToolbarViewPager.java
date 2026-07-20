@@ -104,10 +104,11 @@ public class TerminalToolbarViewPager {
             }
 
             editText.setOnEditorActionListener((v, actionId, event) -> {
-                if (ToolbarTextInputSubmitDecision.shouldSubmitForEditorAction(actionId, event != null)) {
+                boolean shouldSubmit = ToolbarTextInputSubmitDecision.shouldSubmitForEditorAction(actionId, event != null);
+                if (shouldSubmit) {
                     submitTextInput(editText);
                 }
-                return true;
+                return shouldSubmit;
             });
 
             editText.setOnKeyListener((v, keyCode, event) -> {

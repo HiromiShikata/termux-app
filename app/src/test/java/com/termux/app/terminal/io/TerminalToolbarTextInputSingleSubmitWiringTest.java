@@ -40,4 +40,20 @@ public class TerminalToolbarTextInputSingleSubmitWiringTest {
                 + "for the same IME event",
             body.contains("ToolbarTextInputSubmitDecision.shouldSubmitForEditorAction(actionId, event != null)"));
     }
+
+    @Test
+    public void editorActionListenerConsumesOnlyTheActionsItActuallySubmits() throws IOException {
+        String source = readViewPagerSource();
+        String body = methodBody(source, "public void setupTextInputRow(final View textInputRow) {");
+        int editorActionListenerStart = body.indexOf("editText.setOnEditorActionListener(");
+        int keyListenerStart = body.indexOf("editText.setOnKeyListener(");
+        Assert.assertTrue(editorActionListenerStart >= 0 && keyListenerStart > editorActionListenerStart);
+        String editorActionListener = body.substring(editorActionListenerStart, keyListenerStart);
+        Assert.assertTrue("the editor action listener must return the submit decision so an unhandled IME "
+                + "action (next, previous, search, or a key-event-driven action) propagates to the IME "
+                + "default behavior instead of being silently consumed",
+            editorActionListener.contains("return shouldSubmit;"));
+        Assert.assertFalse("the editor action listener must not unconditionally consume every IME action",
+            editorActionListener.contains("return true;"));
+    }
 }
