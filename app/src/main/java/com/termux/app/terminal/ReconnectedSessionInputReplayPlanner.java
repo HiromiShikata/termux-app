@@ -21,6 +21,14 @@ final class ReconnectedSessionInputReplayPlanner {
         return remainingAttempts > 0;
     }
 
+    static boolean hasReplayableInput(String pendingInput) {
+        return pendingInput != null && !pendingInput.isEmpty();
+    }
+
+    static String replayPayload(String pendingInput) {
+        return pendingInput + "\r";
+    }
+
     static long maxReplayWindowMillis() {
         return (long) MAX_RETRY_ATTEMPTS * RETRY_DELAY_MILLIS;
     }
