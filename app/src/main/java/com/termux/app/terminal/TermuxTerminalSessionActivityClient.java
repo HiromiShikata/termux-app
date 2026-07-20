@@ -1865,8 +1865,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void replayPendingInputWhenConnected(@NonNull TerminalSession reconnectedSession,
                                                  @Nullable String pendingInput) {
-        String textToSend = (pendingInput == null ? "" : pendingInput) + "\n";
-        mMainThreadHandler.post(new ReconnectedSessionInputReplay(mMainThreadHandler, reconnectedSession, textToSend));
+        if (!ReconnectedSessionInputReplayPlanner.hasReplayableInput(pendingInput)) return;
+        mMainThreadHandler.post(new ReconnectedSessionInputReplay(mMainThreadHandler, reconnectedSession,
+            ReconnectedSessionInputReplayPlanner.replayPayload(pendingInput)));
     }
 
     @NonNull
