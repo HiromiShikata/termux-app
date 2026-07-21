@@ -28,6 +28,15 @@
 
     </LinearLayout>
 
+    <ProgressBar
+        android:id="@+id/browser_tab_strip_loading_indicator"
+        style="?android:attr/progressBarStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
     <ImageView
         android:id="@+id/browser_tab_strip_close_button"
         android:layout_width="15dp"

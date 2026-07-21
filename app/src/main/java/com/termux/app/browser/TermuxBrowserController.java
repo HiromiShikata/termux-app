@@ -843,6 +843,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     view, url, resolveMeetLowPowerVideoSettings());
                 BrowserPasskeyDetectionInjector.injectAtPageStartFallback(view, url);
                 tab.setUrl(url);
+                tab.setLoading(true);
                 if (isDisplayedTab(tab)) {
                     if (BrowserPageTransition.requiresCoverWhileLoading(
                             mRenderedFrame.getCommittedUrl(), url, mBrowserVisible)) {
@@ -870,6 +871,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 }
                 tab.setUrl(url);
                 tab.setTitle(view.getTitle());
+                tab.setLoading(false);
                 recordTabInHistory(tab);
                 captureTabBodySnippet(view, tab);
                 CookieManager.getInstance().flush();
@@ -894,6 +896,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public void onMainFrameError(@NonNull WebView view) {
+                tab.setLoading(false);
                 if (isDisplayedTab(tab)) handleMainFrameError();
             }
 
@@ -912,6 +915,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
                 mWebChromeCallbackGuard.run("onProgressChanged", () -> {
+                    tab.setLoading(newProgress < 100);
                     if (!isDisplayedTab(tab)) return;
                     BrowserPageLoadProgressState progressState =
                         BrowserPageLoadProgressState.forProgress(newProgress);
@@ -1103,6 +1107,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private boolean recoverFromRenderProcessGone(@NonNull WebView deadWebView, boolean didCrash) {
         BrowserTab tab = mWebViewHost.findTabForWebView(deadWebView);
+        if (tab != null) tab.setLoading(false);
         boolean looping = tab != null
             && mRenderProcessCrashTracker.recordCrashAndCheckLooping(tab.getId(), System.currentTimeMillis());
         BrowserRenderProcessGoneDecision decision = BrowserRenderProcessGoneDecision.forDiedWebView(

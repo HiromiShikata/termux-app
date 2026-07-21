@@ -48,4 +48,25 @@ public class BrowserTabTest {
         tab.setDesktopMode(true);
         Assert.assertTrue(tab.isDesktopMode());
     }
+
+    @Test
+    public void loadingDefaultsToFalse() {
+        BrowserTab tab = new BrowserTab("session", "https://example.com/");
+        Assert.assertFalse(tab.isLoading());
+    }
+
+    @Test
+    public void setLoadingToTrueMarksTabAsLoading() {
+        BrowserTab tab = new BrowserTab("session", "https://example.com/");
+        tab.setLoading(true);
+        Assert.assertTrue(tab.isLoading());
+    }
+
+    @Test
+    public void setLoadingToFalseMarksTabAsNotLoading() {
+        BrowserTab tab = new BrowserTab("session", "https://example.com/");
+        tab.setLoading(true);
+        tab.setLoading(false);
+        Assert.assertFalse(tab.isLoading());
+    }
 }

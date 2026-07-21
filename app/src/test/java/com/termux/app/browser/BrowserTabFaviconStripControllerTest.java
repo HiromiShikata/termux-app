@@ -441,6 +441,74 @@ public class BrowserTabFaviconStripControllerTest {
             1, listener.openedTabs.size());
     }
 
+    @Test
+    public void loadingIndicatorIsVisibleOnlyForLoadingTab() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab loadingTab = new BrowserTab(SESSION, "https://loading.example/");
+        BrowserTab idleTab = new BrowserTab(SESSION, "https://idle.example/");
+        loadingTab.setLoading(true);
+
+        controllerFor(listener, scrollView, container)
+            .update(Arrays.asList(loadingTab, idleTab), loadingTab);
+
+        View loadingTabItem = container.getChildAt(0);
+        View idleTabItem = container.getChildAt(1);
+        View loadingIndicatorOnLoadingTab =
+            loadingTabItem.findViewById(R.id.browser_tab_strip_loading_indicator);
+        View loadingIndicatorOnIdleTab =
+            idleTabItem.findViewById(R.id.browser_tab_strip_loading_indicator);
+
+        Assert.assertEquals(
+            "Loading tab must show the loading indicator",
+            View.VISIBLE, loadingIndicatorOnLoadingTab.getVisibility());
+        Assert.assertEquals(
+            "Non-loading tab must not show the loading indicator",
+            View.GONE, loadingIndicatorOnIdleTab.getVisibility());
+    }
+
+    @Test
+    public void loadingIndicatorIsGoneWhenTabIsNotLoading() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab tab = new BrowserTab(SESSION, "https://example.com/");
+
+        controllerFor(listener, scrollView, container).update(Arrays.asList(tab), tab);
+
+        View item = container.getChildAt(0);
+        View loadingIndicator = item.findViewById(R.id.browser_tab_strip_loading_indicator);
+
+        Assert.assertEquals(
+            "Tab that is not loading must have its loading indicator gone",
+            View.GONE, loadingIndicator.getVisibility());
+    }
+
+    @Test
+    public void activeTabLoadingDoesNotLightUpBackgroundTabLoadingIndicator() {
+        Context context = themedContext();
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        RecordingSelectionListener listener = new RecordingSelectionListener();
+        BrowserTab activeLoadingTab = new BrowserTab(SESSION, "https://active.example/");
+        BrowserTab backgroundIdleTab = new BrowserTab(SESSION, "https://background.example/");
+        activeLoadingTab.setLoading(true);
+
+        controllerFor(listener, scrollView, container)
+            .update(Arrays.asList(activeLoadingTab, backgroundIdleTab), activeLoadingTab);
+
+        View backgroundTabItem = container.getChildAt(1);
+        View backgroundLoadingIndicator =
+            backgroundTabItem.findViewById(R.id.browser_tab_strip_loading_indicator);
+
+        Assert.assertEquals(
+            "Active tab loading must not light up the background tab loading indicator",
+            View.GONE, backgroundLoadingIndicator.getVisibility());
+    }
+
     private static boolean dispatchTap(@NonNull View target, int x, int y) {
         long downTime = SystemClock.uptimeMillis();
         MotionEvent down = MotionEvent.obtain(

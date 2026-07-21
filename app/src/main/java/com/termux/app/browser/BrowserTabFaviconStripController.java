@@ -42,6 +42,7 @@ public final class BrowserTabFaviconStripController {
             View item = inflater.inflate(R.layout.item_browser_tab_favicon_strip, mContainer, false);
             ImageView faviconView = item.findViewById(R.id.browser_tab_strip_favicon);
             View indicator = item.findViewById(R.id.browser_tab_strip_active_indicator);
+            View loadingIndicator = item.findViewById(R.id.browser_tab_strip_loading_indicator);
             View closeButton = item.findViewById(R.id.browser_tab_strip_close_button);
             Bitmap favicon = tab.getFavicon();
             if (favicon != null) {
@@ -50,6 +51,7 @@ public final class BrowserTabFaviconStripController {
                 faviconView.setImageBitmap(BrowserTabFaviconPlaceholder.letterBitmapForTab(tab));
             }
             indicator.setVisibility(tab == activeTab ? View.VISIBLE : View.INVISIBLE);
+            loadingIndicator.setVisibility(tab.isLoading() ? View.VISIBLE : View.GONE);
             item.setOnClickListener(v -> mListener.openTab(tab));
             closeButton.setOnClickListener(v -> mListener.closeTab(tab));
             applyCloseButtonCornerTouchTarget(item, closeButton);
