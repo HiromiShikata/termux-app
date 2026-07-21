@@ -130,7 +130,7 @@ public class TermuxBrowserControllerInstrumentedTest {
             browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
 
             assertNull(browserController.getActiveTab());
-            assertFalse(browserController.isBrowserVisible());
+            assertTrue(browserController.isBrowserVisible());
         });
     }
 
