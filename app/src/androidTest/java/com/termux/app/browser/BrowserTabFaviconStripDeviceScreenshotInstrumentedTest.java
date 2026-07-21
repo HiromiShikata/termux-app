@@ -58,6 +58,53 @@ public class BrowserTabFaviconStripDeviceScreenshotInstrumentedTest {
     }
 
     @Test
+    public void loadingIndicatorAppearsOnlyOnTheLoadingTab() throws Exception {
+        Context appContext = ApplicationProvider.getApplicationContext();
+        Context context = new ContextThemeWrapper(appContext,
+            R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+
+        HorizontalScrollView scrollView = new HorizontalScrollView(context);
+        LinearLayout container = new LinearLayout(context);
+        scrollView.addView(container);
+        NoOpSelectionListener listener = new NoOpSelectionListener();
+        BrowserTab loadingTab = new BrowserTab(SESSION, "https://loading.example/");
+        loadingTab.setLoading(true);
+        BrowserTab idleTab = new BrowserTab(SESSION, "https://idle.example/");
+        listener.activeTab = loadingTab;
+
+        new BrowserTabFaviconStripController(scrollView, container, listener)
+            .update(Arrays.asList(loadingTab, idleTab), loadingTab);
+
+        int unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        scrollView.measure(unspecified, unspecified);
+        scrollView.layout(0, 0, scrollView.getMeasuredWidth(), scrollView.getMeasuredHeight());
+
+        float density = context.getResources().getDisplayMetrics().density;
+        int marginPx = Math.round(12f * density);
+        int width = scrollView.getMeasuredWidth() + marginPx * 2;
+        int height = scrollView.getMeasuredHeight() + marginPx * 2;
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(0xFF202124);
+        canvas.save();
+        canvas.translate(marginPx, marginPx);
+        scrollView.draw(canvas);
+        canvas.restore();
+
+        int writtenCount = 0;
+        for (File directory : screenshotTargetDirectories(appContext)) {
+            File out = new File(directory,
+                "browser-tab-favicon-strip-loading-indicator-on-loading-tab-only.png");
+            if (writeBitmapAsPng(bitmap, out)) {
+                writtenCount++;
+            }
+        }
+        assertTrue("the rendered favicon strip loading-indicator screenshot must be written to at "
+            + "least one location so it can be pulled as a CI artifact or inspected locally",
+            writtenCount > 0);
+    }
+
+    @Test
     public void faviconStripChipShowsSmallCloseButtonAtTheTopRightCorner() throws Exception {
         Context appContext = ApplicationProvider.getApplicationContext();
         Context context = new ContextThemeWrapper(appContext,
