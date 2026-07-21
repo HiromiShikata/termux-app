@@ -209,8 +209,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private String mCurrentSessionHandle;
 
-    private boolean mSessionHandleExplicitlyCleared;
-
     private String mCurrentSessionName;
 
     private BrowserRenderedFrame mRenderedFrame = BrowserRenderedFrame.BLANK;
@@ -1504,7 +1502,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         boolean switchingSession =
             BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
         mCurrentSessionHandle = newSessionHandle;
-        mSessionHandleExplicitlyCleared = (newSessionHandle == null);
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
         preloadProjectOverviewTabForSession(mCurrentSessionHandle, mCurrentSessionName);
@@ -1802,7 +1799,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public boolean openUrlInNewTab(@NonNull String url) {
         String sessionHandle = mCurrentSessionHandle;
         if (sessionHandle == null) {
-            if (mSessionHandleExplicitlyCleared) return false;
             TerminalSession currentSession = mActivity.getCurrentSession();
             if (currentSession == null) return false;
             sessionHandle = currentSession.mHandle;
@@ -1815,7 +1811,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void openUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
         String sessionHandle = mCurrentSessionHandle;
         if (sessionHandle == null) {
-            if (mSessionHandleExplicitlyCleared) return;
             TerminalSession currentSession = mActivity.getCurrentSession();
             if (currentSession == null) return;
             sessionHandle = currentSession.mHandle;
