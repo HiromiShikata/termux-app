@@ -452,6 +452,9 @@
     <string name="apk_update_install_permission_required">Allow installing unknown apps, then tap update again</string>
     <string name="apk_update_floating_indicator_content_description_generic">Update available. Tap to download and install the update.</string>
     <string name="apk_update_floating_indicator_content_description">Update available, version %1$s. Tap to download and install the update.</string>
+    <string name="apk_update_notification_channel_name">APK Updates</string>
+    <string name="apk_update_notification_title">Update available</string>
+    <string name="apk_update_notification_text">HS Termux %1$s is available. Tap to open and install.</string>
     <string name="apk_revert_preference_title">Revert to a previous build</string>
     <string name="apk_revert_preference_summary">Recover from a broken release by installing an earlier build from GitHub Releases</string>
     <string name="apk_revert_loading">Loading previous builds…</string>

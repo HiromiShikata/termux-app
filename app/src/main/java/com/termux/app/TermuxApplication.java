@@ -4,6 +4,7 @@ import android.app.Application;
 import android.content.Context;
 
 import com.termux.BuildConfig;
+import com.termux.app.apkupdate.ApkUpdateCheckWorker;
 import com.termux.app.diagnostics.CrashReportDiagnosticsSupplement;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
@@ -14,9 +15,9 @@ import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.file.TermuxFileUtils;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
-import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.termux.shell.am.TermuxAmSocketServer;
 import com.termux.shared.termux.shell.TermuxShellManager;
+import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.termux.theme.TermuxThemeUtils;
 
 public class TermuxApplication extends Application {
@@ -75,6 +76,8 @@ public class TermuxApplication extends Application {
         if (isTermuxFilesDirectoryAccessible) {
             TermuxShellEnvironment.writeEnvironmentToFile(this);
         }
+
+        ApkUpdateCheckWorker.schedule(this);
     }
 
     public static void setLogConfig(Context context) {

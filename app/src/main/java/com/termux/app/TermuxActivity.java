@@ -1,7 +1,9 @@
 package com.termux.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
+import android.content.pm.PackageManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -96,6 +98,7 @@ import com.termux.view.TerminalViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
@@ -301,6 +304,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private float mTerminalToolbarDefaultHeight;
 
+
+    private static final int REQUEST_POST_NOTIFICATIONS = 3001;
 
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
     private static final int CONTEXT_MENU_SHARE_TRANSCRIPT_ID = 1;
@@ -509,6 +514,19 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new ApkUpdateUiController(this).checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
     }
 
+    private void requestPostNotificationsPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        ActivityCompat.requestPermissions(this,
+            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+            REQUEST_POST_NOTIFICATIONS);
+    }
+
     private final class ApkUpdateFloatingIndicatorView
         implements ApkUpdateFloatingIndicatorController.IndicatorView {
 
@@ -575,6 +593,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         apkUpdateUiController.showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
 
         checkForApkUpdateAndShowIndicator();
+        requestPostNotificationsPermissionIfNeeded();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
         mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
@@ -1437,6 +1456,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: "  + Arrays.toString(permissions) + ", grantResults: "  + Arrays.toString(grantResults));
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
+            return;
+        }
+        if (requestCode == REQUEST_POST_NOTIFICATIONS) {
+            Logger.logInfo(LOG_TAG, "POST_NOTIFICATIONS permission result: "
+                + (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    ? "granted" : "not granted"));
             return;
         }
         if (mTermuxBrowserController != null
