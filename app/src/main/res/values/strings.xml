@@ -241,6 +241,7 @@
     <string name="action_toggle_hidden_sessions">Toggle hidden sessions</string>
     <string name="action_session_filter_off">Showing all sessions; tap to hide hidden-designated sessions</string>
     <string name="action_session_filter_on">Hiding hidden-designated sessions; tap to show all sessions</string>
+    <string name="session_reconnect_failed_tap_to_retry">Reconnect failed; tap to retry</string>
 
     <string name="error_styling_not_installed">The &TERMUX_STYLING_APP_NAME; Plugin App is not installed.</string>
     <string name="action_styling_install">Install</string>

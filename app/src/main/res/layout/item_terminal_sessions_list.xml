@@ -54,15 +54,30 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <ProgressBar
-            android:id="@+id/session_reconnecting_indicator"
-            style="?android:attr/progressBarStyleSmall"
+        <FrameLayout
             android:layout_width="14dip"
             android:layout_height="14dip"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="2dip"
-            android:indeterminate="true"
-            android:visibility="invisible" />
+            android:layout_marginStart="2dip">
+
+            <ProgressBar
+                android:id="@+id/session_reconnecting_indicator"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:indeterminate="true"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/session_reconnect_failed_indicator"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_load_session"
+                android:tint="@color/session_reconnect_failed_indicator"
+                android:contentDescription="@string/session_reconnect_failed_tap_to_retry"
+                android:visibility="invisible" />
+        </FrameLayout>
 
         <ImageView
             android:id="@+id/session_disable_toggle"
