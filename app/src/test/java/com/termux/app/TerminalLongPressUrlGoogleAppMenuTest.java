@@ -67,12 +67,13 @@ public class TerminalLongPressUrlGoogleAppMenuTest {
         List<TermuxActivity.LongPressedUrlMenuItem> items =
             TermuxActivity.longPressedUrlMenuItems(context(), "https://calendar.google.com/calendar/u/0/r");
 
-        Assert.assertEquals(4, items.size());
+        Assert.assertEquals(5, items.size());
         assertItem(items.get(0), context().getString(R.string.action_open_link_in_browser));
-        assertItem(items.get(1), context().getString(R.string.action_open_link_in_chrome));
-        assertItem(items.get(2), context().getString(R.string.action_open_link_in_google_app, "Google Calendar"));
-        Assert.assertEquals(TermuxActivity.CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, items.get(2).getMenuItemId());
-        assertItem(items.get(3), context().getString(R.string.action_copy_link_url));
+        assertItem(items.get(1), context().getString(R.string.action_open_link_in_browser_background));
+        assertItem(items.get(2), context().getString(R.string.action_open_link_in_chrome));
+        assertItem(items.get(3), context().getString(R.string.action_open_link_in_google_app, "Google Calendar"));
+        Assert.assertEquals(TermuxActivity.CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, items.get(3).getMenuItemId());
+        assertItem(items.get(4), context().getString(R.string.action_copy_link_url));
     }
 
     @Test
@@ -81,9 +82,9 @@ public class TerminalLongPressUrlGoogleAppMenuTest {
             TermuxActivity.longPressedUrlMenuItems(context(),
                 "https://docs.google.com/spreadsheets/d/abc123/edit");
 
-        Assert.assertEquals(4, items.size());
-        assertItem(items.get(2), context().getString(R.string.action_open_link_in_google_app, "Google Sheets"));
-        Assert.assertEquals(TermuxActivity.CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, items.get(2).getMenuItemId());
+        Assert.assertEquals(5, items.size());
+        assertItem(items.get(3), context().getString(R.string.action_open_link_in_google_app, "Google Sheets"));
+        Assert.assertEquals(TermuxActivity.CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, items.get(3).getMenuItemId());
     }
 
     @Test
@@ -91,10 +92,20 @@ public class TerminalLongPressUrlGoogleAppMenuTest {
         List<TermuxActivity.LongPressedUrlMenuItem> items =
             TermuxActivity.longPressedUrlMenuItems(context(), "https://example.com/page");
 
-        Assert.assertEquals(3, items.size());
+        Assert.assertEquals(4, items.size());
         for (TermuxActivity.LongPressedUrlMenuItem item : items) {
             Assert.assertNotEquals(TermuxActivity.CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, item.getMenuItemId());
         }
+    }
+
+    @Test
+    public void nonGoogleUrlMenuIncludesOpenInBrowserBackgroundItemSecond() {
+        List<TermuxActivity.LongPressedUrlMenuItem> items =
+            TermuxActivity.longPressedUrlMenuItems(context(), "https://example.com/page");
+
+        Assert.assertEquals(4, items.size());
+        assertItem(items.get(0), context().getString(R.string.action_open_link_in_browser));
+        assertItem(items.get(1), context().getString(R.string.action_open_link_in_browser_background));
     }
 
     @Test

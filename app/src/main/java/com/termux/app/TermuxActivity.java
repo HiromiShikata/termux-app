@@ -313,6 +313,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID = 15;
     private static final int CONTEXT_MENU_COPY_LINK_URL_ID = 16;
     static final int CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID = 17;
+    private static final int CONTEXT_MENU_OPEN_LINK_IN_BROWSER_BACKGROUND_ID = 18;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
 
@@ -1239,6 +1240,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             case CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID:
                 mTermuxTerminalViewClient.openLongPressedUrlInApp();
                 return true;
+            case CONTEXT_MENU_OPEN_LINK_IN_BROWSER_BACKGROUND_ID:
+                mTermuxTerminalViewClient.openLongPressedUrlInAppBackground();
+                return true;
             case CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID:
                 mTermuxTerminalViewClient.openLongPressedUrlInChrome();
                 return true;
@@ -1362,6 +1366,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (!TermuxTerminalViewClient.shouldShowLongPressedUrlMenuItems(longPressedUrl)) return items;
         items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID,
             context.getString(R.string.action_open_link_in_browser)));
+        items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_BROWSER_BACKGROUND_ID,
+            context.getString(R.string.action_open_link_in_browser_background)));
         items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID,
             context.getString(R.string.action_open_link_in_chrome)));
         String googleAppMenuTitle = longPressedUrlGoogleAppMenuTitle(context, longPressedUrl);

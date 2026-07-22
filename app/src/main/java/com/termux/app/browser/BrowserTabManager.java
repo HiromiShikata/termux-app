@@ -34,6 +34,17 @@ public final class BrowserTabManager {
     }
 
     @NonNull
+    public BrowserTab addBackgroundTab(@NonNull String sessionHandle, @NonNull String url) {
+        List<BrowserTab> tabs = getTabs(sessionHandle);
+        BrowserTab tab = new BrowserTab(sessionHandle, url);
+        tabs.add(tab);
+        if (mActiveTabBySessionHandle.get(sessionHandle) == null) {
+            mActiveTabBySessionHandle.put(sessionHandle, tab);
+        }
+        return tab;
+    }
+
+    @NonNull
     public BrowserTab insertTab(@NonNull String sessionHandle, @NonNull String url, int index) {
         List<BrowserTab> tabs = getTabs(sessionHandle);
         BrowserTab tab = new BrowserTab(sessionHandle, url);
