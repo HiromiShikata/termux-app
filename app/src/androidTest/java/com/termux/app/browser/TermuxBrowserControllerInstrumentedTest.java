@@ -133,10 +133,12 @@ public class TermuxBrowserControllerInstrumentedTest {
             BrowserTab firstActiveTab = browserController.getActiveTab();
             assertNotNull(firstActiveTab);
             assertEquals(LOOPBACK_TAB_URL, firstActiveTab.getUrl());
+            int tabCountBeforeBackground = browserController.getTotalOpenTabCount();
 
             browserController.openUrlInNewBackgroundTab(SECONDARY_LOOPBACK_TAB_URL);
 
             BrowserTab activeTabAfterBackgroundOpen = browserController.getActiveTab();
+            assertEquals(tabCountBeforeBackground + 1, browserController.getTotalOpenTabCount());
             assertSame(firstActiveTab, activeTabAfterBackgroundOpen);
             assertTrue(browserController.isBrowserVisible());
         });
