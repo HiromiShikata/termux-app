@@ -1950,12 +1950,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void displayTab(@NonNull BrowserTab tab, boolean forceReload) {
         mSwipeRefreshLayout.setRefreshing(false);
-        hidePageLoadProgress();
         if (mFindController != null) mFindController.onPageOrTabChanged();
         boolean firstDisplay = !mWebViewHost.hasWebViewForTab(tab);
         if (firstDisplay) showWebViewCover();
         renderFrame(tab);
         WebView webView = mWebViewHost.showTab(tab);
+        if (webView.getProgress() < 100) {
+            showPageLoadProgress(webView.getProgress());
+        } else {
+            hidePageLoadProgress();
+        }
         applyWebViewPauseState();
         if (forceReload && !firstDisplay) webView.reload();
         else if (!firstDisplay) revealWebView();
