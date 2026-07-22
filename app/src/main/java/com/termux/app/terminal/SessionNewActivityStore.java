@@ -37,6 +37,8 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mStatuslineReplyTimeMillisByName = new HashMap<>();
     private final Map<String, Integer> mSubagentCountByName = new HashMap<>();
     private final Map<String, Long> mReconnectingStartTimeMillisByName = new HashMap<>();
+    private final Set<String> mReconnectFailedByName = new HashSet<>();
+    private final Map<String, Integer> mReconnectRetryAttemptByName = new HashMap<>();
     private final Map<String, Long> mLastCallToUserTagScanCallTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mGenuineAppReplyTimeMillisByName = new HashMap<>();
 
@@ -389,6 +391,8 @@ public class SessionNewActivityStore {
         mStatuslineReplyTimeMillisByName.remove(sessionName);
         mSubagentCountByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
+        mReconnectFailedByName.remove(sessionName);
+        mReconnectRetryAttemptByName.remove(sessionName);
         mLastCallToUserTagScanCallTimeMillisByName.remove(sessionName);
         mGenuineAppReplyTimeMillisByName.remove(sessionName);
         save();
@@ -438,6 +442,8 @@ public class SessionNewActivityStore {
         changed |= mStatuslineReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mSubagentCountByName.keySet().retainAll(knownSessionNames);
         changed |= mReconnectingStartTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mReconnectFailedByName.retainAll(knownSessionNames);
+        changed |= mReconnectRetryAttemptByName.keySet().retainAll(knownSessionNames);
         changed |= mLastCallToUserTagScanCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mGenuineAppReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
@@ -560,8 +566,10 @@ public class SessionNewActivityStore {
      * #save()}, so the transient flag never enters persistence.
      */
     public void setReconnecting(@NonNull String sessionName, long startTimeMillis) {
+        boolean failedCleared = mReconnectFailedByName.remove(sessionName);
         Long stored = mReconnectingStartTimeMillisByName.get(sessionName);
-        if (stored != null && stored == startTimeMillis) {
+        boolean startUnchanged = stored != null && stored == startTimeMillis;
+        if (startUnchanged && !failedCleared) {
             return;
         }
         mReconnectingStartTimeMillisByName.put(sessionName, startTimeMillis);
@@ -569,7 +577,10 @@ public class SessionNewActivityStore {
     }
 
     public void clearReconnecting(@NonNull String sessionName) {
-        if (mReconnectingStartTimeMillisByName.remove(sessionName) == null) {
+        boolean reconnectingRemoved = mReconnectingStartTimeMillisByName.remove(sessionName) != null;
+        boolean failedRemoved = mReconnectFailedByName.remove(sessionName);
+        boolean retryAttemptRemoved = mReconnectRetryAttemptByName.remove(sessionName) != null;
+        if (!reconnectingRemoved && !failedRemoved && !retryAttemptRemoved) {
             return;
         }
         notifyChanged();
@@ -582,6 +593,52 @@ public class SessionNewActivityStore {
     public long getReconnectingStartTimeMillis(@NonNull String sessionName) {
         Long startTimeMillis = mReconnectingStartTimeMillisByName.get(sessionName);
         return startTimeMillis == null ? 0L : startTimeMillis;
+    }
+
+    /**
+     * The reconnect-failed flag for {@code sessionName}, an in-memory-only signal that the row's
+     * reconnect attempt exhausted its bounded timeout retries without any statusline data arriving.
+     * Setting it stops the infinite spinner: the reconnecting flag is cleared here so the row leaves
+     * the perpetual spinner and shows the distinct "reconnect failed / tap to retry" state instead.
+     * It is cleared when a fresh reconnect is armed ({@link #setReconnecting}), when statusline data
+     * arrives or the row is hidden ({@link #clearReconnecting}), and on tap-to-retry.
+     */
+    public void setReconnectFailed(@NonNull String sessionName) {
+        boolean reconnectingRemoved = mReconnectingStartTimeMillisByName.remove(sessionName) != null;
+        boolean failedAdded = mReconnectFailedByName.add(sessionName);
+        if (!reconnectingRemoved && !failedAdded) {
+            return;
+        }
+        notifyChanged();
+    }
+
+    public void clearReconnectFailed(@NonNull String sessionName) {
+        if (!mReconnectFailedByName.remove(sessionName)) {
+            return;
+        }
+        notifyChanged();
+    }
+
+    public boolean isReconnectFailed(@NonNull String sessionName) {
+        return mReconnectFailedByName.contains(sessionName);
+    }
+
+    public int getReconnectRetryAttempt(@NonNull String sessionName) {
+        Integer attempt = mReconnectRetryAttemptByName.get(sessionName);
+        return attempt == null ? 0 : attempt;
+    }
+
+    public int incrementReconnectRetryAttempt(@NonNull String sessionName) {
+        int next = getReconnectRetryAttempt(sessionName) + 1;
+        mReconnectRetryAttemptByName.put(sessionName, next);
+        return next;
+    }
+
+    public void resetReconnectRetryAttempt(@NonNull String sessionName) {
+        if (mReconnectRetryAttemptByName.remove(sessionName) == null) {
+            return;
+        }
+        notifyChanged();
     }
 
     @NonNull

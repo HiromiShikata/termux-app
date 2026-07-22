@@ -15,4 +15,12 @@ public final class SessionReconnectingIndicatorState {
         }
         return store.isReconnecting(sessionName);
     }
+
+    public static boolean shouldShowReconnectFailedIndicator(@NonNull String sessionName,
+                                                             @Nullable SessionNewActivityStore store) {
+        if (store == null) {
+            return false;
+        }
+        return store.isReconnectFailed(sessionName);
+    }
 }

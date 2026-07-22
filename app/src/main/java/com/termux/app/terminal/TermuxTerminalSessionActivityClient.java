@@ -204,6 +204,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final PostReconnectStatuslineRescanRetryPlanner mPostReconnectStatuslineRescanRetryPlanner =
         new PostReconnectStatuslineRescanRetryPlanner(POST_RECONNECT_STATUSLINE_RESCAN_BACKOFF_MILLIS);
 
+    /**
+     * How long a row is allowed to stay on the reconnecting spinner without any statusline data
+     * arriving before the timeout fires. When it fires and the row is still reconnecting, a bounded
+     * backoff retry ({@link #RECONNECT_RETRY_BACKOFF_MILLIS}) is attempted, and once those are
+     * exhausted the row leaves the perpetual spinner for the "reconnect failed / tap to retry" state.
+     */
+    static final long RECONNECT_TIMEOUT_MILLIS = 30L * 1000L;
+
+    /**
+     * The bounded auto-retry backoff schedule applied after {@link #RECONNECT_TIMEOUT_MILLIS} elapses
+     * while a row is still reconnecting. Each entry is the delay before the next re-attempt; the array
+     * length caps the number of retries so a truly-dead remote settles on the failed state instead of
+     * looping forever.
+     */
+    static final long[] RECONNECT_RETRY_BACKOFF_MILLIS = {5L * 1000L, 15L * 1000L};
+
+    private final SessionReconnectRetryPlan mReconnectRetryPlan =
+        new SessionReconnectRetryPlan(RECONNECT_TIMEOUT_MILLIS, RECONNECT_RETRY_BACKOFF_MILLIS);
+
+    private final Map<String, Runnable> mReconnectTimeoutRunnableByName = new HashMap<>();
+
     private static final long MILLIS_PER_MINUTE = 60L * 1000L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
@@ -450,6 +471,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         long nowMillis = System.currentTimeMillis();
         mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store, session.mSessionName,
             statuslineScanText, nowMillis, TimeZone.getDefault());
+        if (!store.isReconnecting(session.mSessionName)) {
+            cancelReconnectTimeout(session.mSessionName);
+        }
         termuxSessionListNotifyUpdated();
     }
 
@@ -627,6 +651,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         for (ParsedStatuslineUpdate update : updates) {
             update.applyTo(store);
             store.clearReconnecting(update.getSessionName());
+            cancelReconnectTimeout(update.getSessionName());
         }
         termuxSessionListNotifyUpdated();
     }
@@ -939,7 +964,89 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
         store.setReconnecting(sessionName, System.currentTimeMillis());
+        scheduleReconnectTimeout(sessionName);
         termuxSessionListNotifyUpdated();
+    }
+
+    private void scheduleReconnectTimeout(@NonNull String sessionName) {
+        cancelReconnectTimeout(sessionName);
+        Runnable timeoutRunnable = () -> onReconnectTimeout(sessionName);
+        mReconnectTimeoutRunnableByName.put(sessionName, timeoutRunnable);
+        mMainThreadHandler.postDelayed(timeoutRunnable, mReconnectRetryPlan.getTimeoutMillis());
+    }
+
+    /**
+     * Cancels any pending reconnect timeout or backoff-retry runnable for {@code sessionName}. Called
+     * on every success path that clears the reconnecting flag (statusline arrival) and when the row is
+     * hidden, so a settled row never leaks a queued timeout or races into a false failed state.
+     */
+    public void cancelReconnectTimeout(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        Runnable pending = mReconnectTimeoutRunnableByName.remove(sessionName);
+        if (pending != null) {
+            mMainThreadHandler.removeCallbacks(pending);
+        }
+    }
+
+    private void onReconnectTimeout(@NonNull String sessionName) {
+        mReconnectTimeoutRunnableByName.remove(sessionName);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        SessionReconnectTimeoutOutcome outcome = mReconnectRetryPlan.onTimeout(store, sessionName);
+        switch (outcome.getDecision()) {
+            case NOT_RECONNECTING:
+                return;
+            case RETRY:
+                Runnable retryRunnable = () -> retryReconnect(sessionName);
+                mReconnectTimeoutRunnableByName.put(sessionName, retryRunnable);
+                mMainThreadHandler.postDelayed(retryRunnable, outcome.getRetryBackoffMillis());
+                return;
+            case FAILED:
+            default:
+                termuxSessionListNotifyUpdated();
+        }
+    }
+
+    private void retryReconnect(@NonNull String sessionName) {
+        mReconnectTimeoutRunnableByName.remove(sessionName);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        if (!store.isReconnecting(sessionName)) return;
+        TerminalSession session = findTerminalSessionByName(sessionName);
+        if (session == null) return;
+        reconnectDeadSessionPreservingDisplayedSession(session);
+        markSessionReconnecting(sessionName);
+    }
+
+    /**
+     * Re-initiates the reconnect for a row the owner tapped while it was showing the "reconnect
+     * failed / tap to retry" state: the failed flag and the exhausted retry counter are cleared so the
+     * row re-enters the reconnecting spinner with a fresh bounded-retry budget.
+     */
+    public void retryReconnectAfterFailure(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        store.clearReconnectFailed(sessionName);
+        store.resetReconnectRetryAttempt(sessionName);
+        TerminalSession session = findTerminalSessionByName(sessionName);
+        if (session == null) return;
+        reconnectDeadSessionPreservingDisplayedSession(session);
+        markSessionReconnecting(sessionName);
+    }
+
+    @Nullable
+    private TerminalSession findTerminalSessionByName(@NonNull String sessionName) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null) continue;
+            if (sessionName.equals(terminalSession.mSessionName)) {
+                return terminalSession;
+            }
+        }
+        return null;
     }
 
     private void onActiveSessionSeenTick() {
