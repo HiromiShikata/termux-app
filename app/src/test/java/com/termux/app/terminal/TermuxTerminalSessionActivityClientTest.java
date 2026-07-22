@@ -3,7 +3,45 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
+
 public class TermuxTerminalSessionActivityClientTest {
+
+    @Test
+    public void liveSessionWithNameAlreadyExistsReturnsTrueWhenNameIsInLiveList() {
+        Assert.assertTrue(
+            TermuxTerminalSessionActivityClient.liveSessionWithNameAlreadyExists(
+                "secretary", Arrays.asList("secretary", "other")));
+    }
+
+    @Test
+    public void liveSessionWithNameAlreadyExistsReturnsFalseWhenNameIsNotInLiveList() {
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.liveSessionWithNameAlreadyExists(
+                "secretary", Arrays.asList("other", "bash")));
+    }
+
+    @Test
+    public void liveSessionWithNameAlreadyExistsReturnsFalseForNullName() {
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.liveSessionWithNameAlreadyExists(
+                null, Arrays.asList("secretary")));
+    }
+
+    @Test
+    public void liveSessionWithNameAlreadyExistsReturnsFalseForEmptyName() {
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.liveSessionWithNameAlreadyExists(
+                "", Arrays.asList("secretary")));
+    }
+
+    @Test
+    public void liveSessionWithNameAlreadyExistsReturnsFalseWhenLiveListIsEmpty() {
+        Assert.assertFalse(
+            TermuxTerminalSessionActivityClient.liveSessionWithNameAlreadyExists(
+                "secretary", Collections.emptyList()));
+    }
 
     @Test
     public void copiesSessionNameWhenNameIsPresent() {

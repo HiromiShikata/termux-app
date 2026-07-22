@@ -1863,6 +1863,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return replacementCreated ? 0 : -1;
     }
 
+    static boolean liveSessionWithNameAlreadyExists(@Nullable String sessionName,
+                                                    @NonNull Collection<String> currentLiveSessionNames) {
+        if (sessionName == null || sessionName.isEmpty()) return false;
+        return currentLiveSessionNames.contains(sessionName);
+    }
+
     private void replayPendingInputWhenConnected(@NonNull TerminalSession reconnectedSession,
                                                  @Nullable String pendingInput) {
         if (!ReconnectedSessionInputReplayPlanner.hasReplayableInput(pendingInput)) return;
@@ -2044,6 +2050,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             toolbarAdapter.removeTextInputForSession(deadSession);
 
         service.removeTermuxSession(deadSession);
+
+        List<String> currentLiveSessionNames = new ArrayList<>();
+        for (TermuxSession liveSession : service.getTermuxSessions()) {
+            currentLiveSessionNames.add(liveSession.getTerminalSession().mSessionName);
+        }
+        if (liveSessionWithNameAlreadyExists(sessionName, currentLiveSessionNames)) {
+            return null;
+        }
 
         TermuxSession newTermuxSession =
             service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
