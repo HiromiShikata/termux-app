@@ -11,7 +11,7 @@ public class SessionNewActivityStoreReplyRecencyGateTest {
     private static final long NINE_HOURS_MILLIS = 9L * 60L * ONE_MINUTE_MILLIS;
 
     @Test
-    public void longIdleSessionThatWasRedGoesYellowOnceTheOwnerRepliesBecauseTheReplyIsRecent() {
+    public void longIdleSessionThatWasRedStaysRedOnARawKeystrokeAndClearsToYellowOnlyOnAGenuineReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long staleOut = NOW_MILLIS - NINE_HOURS_MILLIS;
         long oldReply = staleOut - ONE_MINUTE_MILLIS;
@@ -22,8 +22,11 @@ public class SessionNewActivityStoreReplyRecencyGateTest {
 
         store.recordUserInput(SESSION, NOW_MILLIS);
 
-        SessionNewActivityTier tierAfterReply = store.tierFor(SESSION, NOW_MILLIS);
-        Assert.assertEquals(SessionNewActivityTier.YELLOW, tierAfterReply);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION, NOW_MILLIS));
+
+        store.recordStatuslineTimes(SESSION, null, null, NOW_MILLIS);
+
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, store.tierFor(SESSION, NOW_MILLIS));
     }
 
     @Test
@@ -38,7 +41,7 @@ public class SessionNewActivityStoreReplyRecencyGateTest {
     }
 
     @Test
-    public void freshReplyKeepsTheBottomSheetIndicatorYellowEvenWhenOutIsStale() {
+    public void bottomSheetIndicatorStaysRedOnARawKeystrokeAndGoesYellowOnlyOnAGenuineReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long staleOut = NOW_MILLIS - NINE_HOURS_MILLIS;
         long oldReply = staleOut - ONE_MINUTE_MILLIS;
@@ -46,10 +49,15 @@ public class SessionNewActivityStoreReplyRecencyGateTest {
         store.recordStatuslineTimes(SESSION, olderCall, staleOut, oldReply);
         store.recordUserInput(SESSION, NOW_MILLIS);
 
-        SessionNewActivityIndicator indicator =
+        SessionNewActivityIndicator indicatorAfterKeystroke =
             TermuxSessionsListViewController.newActivityIndicator(store, SESSION, NOW_MILLIS);
+        Assert.assertEquals(SessionNewActivityTier.RED, indicatorAfterKeystroke.getTier());
 
-        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicator.getTier());
+        store.recordStatuslineTimes(SESSION, null, null, NOW_MILLIS);
+
+        SessionNewActivityIndicator indicatorAfterGenuineReply =
+            TermuxSessionsListViewController.newActivityIndicator(store, SESSION, NOW_MILLIS);
+        Assert.assertEquals(SessionNewActivityTier.YELLOW, indicatorAfterGenuineReply.getTier());
     }
 
     @Test

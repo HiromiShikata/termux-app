@@ -37,6 +37,7 @@ public class SessionNewActivityStore {
     private final Map<String, Long> mStatuslineReplyTimeMillisByName = new HashMap<>();
     private final Map<String, Integer> mSubagentCountByName = new HashMap<>();
     private final Map<String, Long> mReconnectingStartTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mLastCallToUserTagScanCallTimeMillisByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -361,6 +362,7 @@ public class SessionNewActivityStore {
         mStatuslineReplyTimeMillisByName.remove(sessionName);
         mSubagentCountByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
+        mLastCallToUserTagScanCallTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -386,6 +388,7 @@ public class SessionNewActivityStore {
         mAcknowledgedCallReasonsByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
+        mLastCallToUserTagScanCallTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -407,6 +410,7 @@ public class SessionNewActivityStore {
         changed |= mStatuslineReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mSubagentCountByName.keySet().retainAll(knownSessionNames);
         changed |= mReconnectingStartTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mLastCallToUserTagScanCallTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
@@ -604,11 +608,18 @@ public class SessionNewActivityStore {
      * tick ({@link #recordStatuslineTimes} keeps {@link #mStatuslineCallTimeMillisByName} and {@link
      * #mStatuslineReplyTimeMillisByName} fresh), so the call-newer-than-reply relation is observed
      * reliably, unlike the one-shot tag whose last firing before idle can land inside the scan
-     * throttle window and never be re-scanned. The session is pending exactly when a {@code call:}
-     * token exists and no {@code reply:} has caught up to it ({@code reply == null || call > reply}),
-     * in which case the call token time is returned; otherwise null. A session with no statusline at
-     * all (a non-Claude session) has a null {@code call:} token and is never armed through this
-     * signal, leaving the tag-scan path as its sole, unchanged source of the RED tier.
+     * throttle window and never be re-scanned. The call is compared against the genuine statusline
+     * {@code reply:} token ({@link #getStatuslineReplyTimeMillis}) alone, never against {@link
+     * #effectiveReplyTimeMillis}: the effective reply folds in the app-captured owner input ({@link
+     * #getLastUserInputTimeMillis}, advanced by every raw keystroke, clipboard paste, and toolbar
+     * key), so folding it in here would let a stray keystroke newer than the call — with no genuine
+     * reply — clear the pending state and leave a genuinely unreplied owner-call showing as not RED.
+     * The authoritative "owner replied" signal is the statusline {@code reply:} token (the last
+     * genuine user message), so the session is pending exactly when a {@code call:} token exists and
+     * no genuine {@code reply:} has caught up to it ({@code reply == null || call > reply}), in which
+     * case the call token time is returned; otherwise null. A session with no statusline at all (a
+     * non-Claude session) has a null {@code call:} token and is never armed through this signal,
+     * leaving the tag-scan path as its sole, unchanged source of the RED tier.
      */
     @Nullable
     public Long statuslineCallPendingTimeMillis(@NonNull String sessionName) {
@@ -616,8 +627,8 @@ public class SessionNewActivityStore {
         if (statuslineCallTimeMillis == null) {
             return null;
         }
-        Long effectiveReplyTimeMillis = effectiveReplyTimeMillis(sessionName);
-        if (effectiveReplyTimeMillis == null || statuslineCallTimeMillis > effectiveReplyTimeMillis) {
+        Long statuslineReplyTimeMillis = getStatuslineReplyTimeMillis(sessionName);
+        if (statuslineReplyTimeMillis == null || statuslineCallTimeMillis > statuslineReplyTimeMillis) {
             return statuslineCallTimeMillis;
         }
         return null;
@@ -650,18 +661,56 @@ public class SessionNewActivityStore {
 
     /**
      * Whether the expensive transcript {@code <call-to-user>} reason/scene scan should run for this
-     * session. It runs only when the session has a pending call on its reliable statusline signal
-     * ({@link #statuslineCallPendingTimeMillis} is non-null, i.e. {@code call: > reply:}), or when the
-     * session has no statusline at all (a non-Claude session with neither a {@code call:} nor a {@code
-     * reply:} token, which has no statusline-pending signal and so keeps the tag scan as its sole
-     * call-to-user source). A session whose statusline shows a reply caught up to the call is not
-     * pending and skips the scan, removing the per-output tag-scan cost for the common idle case.
+     * session. It runs when the session has a pending call on its reliable statusline signal ({@link
+     * #statuslineCallPendingTimeMillis} is non-null, i.e. {@code call: > reply:}), when the session
+     * has no statusline at all (a non-Claude session with neither a {@code call:} nor a {@code reply:}
+     * token, which has no statusline-pending signal and so keeps the tag scan as its sole
+     * call-to-user source), or when the current statusline {@code call:} time has never actually been
+     * scanned ({@link #isUnscannedStatuslineCall}). The last case guards a passive rendering artifact:
+     * a {@code reply:} token equal to a brand new {@code call:} token on the very first observation of
+     * that call is not a genuine reply, but it already makes {@link #statuslineCallPendingTimeMillis}
+     * null, so without this case the scan that would ever discover and record that call's reason would
+     * never run and the session would stay stuck out of RED. Once that same {@code call:} time has
+     * actually been scanned ({@link #recordCallToUserTagScanPerformed}), an unchanged equal {@code
+     * call:}/{@code reply:} pair no longer requests a re-scan, keeping the idle-cost optimization for
+     * the common case where the reply is genuinely newer than the call.
      */
     public boolean shouldScanCallToUserTag(@NonNull String sessionName) {
         if (statuslineCallPendingTimeMillis(sessionName) != null) {
             return true;
         }
-        return !hasStatusline(sessionName);
+        if (!hasStatusline(sessionName)) {
+            return true;
+        }
+        return isUnscannedStatuslineCall(sessionName);
+    }
+
+    private boolean isUnscannedStatuslineCall(@NonNull String sessionName) {
+        Long statuslineCallTimeMillis = mStatuslineCallTimeMillisByName.get(sessionName);
+        if (statuslineCallTimeMillis == null) {
+            return false;
+        }
+        Long effectiveReplyTimeMillis = effectiveReplyTimeMillis(sessionName);
+        if (effectiveReplyTimeMillis == null || !statuslineCallTimeMillis.equals(effectiveReplyTimeMillis)) {
+            return false;
+        }
+        Long lastScannedCallTimeMillis = mLastCallToUserTagScanCallTimeMillisByName.get(sessionName);
+        return lastScannedCallTimeMillis == null || !lastScannedCallTimeMillis.equals(statuslineCallTimeMillis);
+    }
+
+    /**
+     * Records that the transcript {@code <call-to-user>} scan has actually run for the {@code call:}
+     * time currently on this session's statusline, so {@link #shouldScanCallToUserTag} does not
+     * request the same equal-{@code call:}/{@code reply:} scan again until a newer {@code call:} time
+     * arrives. Callers MUST invoke this immediately after performing the scan (regardless of whether
+     * the scan found a tag), and only when the scan actually ran for this session.
+     */
+    public void recordCallToUserTagScanPerformed(@NonNull String sessionName) {
+        Long statuslineCallTimeMillis = mStatuslineCallTimeMillisByName.get(sessionName);
+        if (statuslineCallTimeMillis == null) {
+            return;
+        }
+        mLastCallToUserTagScanCallTimeMillisByName.put(sessionName, statuslineCallTimeMillis);
     }
 
     private boolean hasStatusline(@NonNull String sessionName) {

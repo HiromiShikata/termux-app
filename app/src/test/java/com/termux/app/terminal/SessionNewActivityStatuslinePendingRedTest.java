@@ -114,4 +114,85 @@ public class SessionNewActivityStatuslinePendingRedTest {
 
         Assert.assertTrue(store.shouldScanCallToUserTag(SESSION));
     }
+
+    @Test
+    public void unrepliedCallStaysRedEvenWhenAStrayKeystrokeIsNewerThanTheCall() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long genuineReplyMillis = 1_000L;
+        long callMillis = 2_000L;
+        long strayKeystrokeMillis = 3_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, genuineReplyMillis);
+        store.recordUserInput(SESSION, strayKeystrokeMillis);
+
+        Assert.assertEquals(Long.valueOf(callMillis),
+            store.statuslineCallPendingTimeMillis(SESSION));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+    }
+
+    @Test
+    public void redClearsOnceAGenuineStatuslineReplyNewerThanTheCallIsRecorded() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long genuineReplyMillis = 1_000L;
+        long callMillis = 2_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, genuineReplyMillis);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+
+        long newerGenuineReplyMillis = 3_000L;
+        store.recordStatuslineTimes(SESSION, null, null, newerGenuineReplyMillis);
+
+        Assert.assertNull(store.statuslineCallPendingTimeMillis(SESSION));
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+    }
+
+    @Test
+    public void aRawKeystrokeAloneDoesNotClearRedWhenThereIsNoGenuineReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long callMillis = 2_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, null);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+
+        store.recordUserInput(SESSION, 5_000L);
+
+        Assert.assertEquals(Long.valueOf(callMillis),
+            store.statuslineCallPendingTimeMillis(SESSION));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+    }
+
+    @Test
+    public void tagScanRunsForAFreshCallEvenWhenTheReplyAlreadyEqualsItOnFirstObservation() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long callMillis = 2_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, callMillis);
+
+        Assert.assertTrue(store.shouldScanCallToUserTag(SESSION));
+    }
+
+    @Test
+    public void tagScanIsNotRepeatedForTheSameEqualCallAndReplyOnceItHasAlreadyBeenScanned() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long callMillis = 2_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, callMillis);
+        store.recordCallToUserTagScanPerformed(SESSION);
+
+        Assert.assertFalse(store.shouldScanCallToUserTag(SESSION));
+    }
+
+    @Test
+    public void anUnscannedEqualCallAndReplyStillReachesRedOnceTheScanRecordsItsReason() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long callMillis = 2_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, callMillis);
+        Assert.assertTrue(store.shouldScanCallToUserTag(SESSION));
+
+        store.recordExplicitCall(SESSION, callMillis, "needs approval");
+        store.recordCallToUserTagScanPerformed(SESSION);
+
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+    }
 }
