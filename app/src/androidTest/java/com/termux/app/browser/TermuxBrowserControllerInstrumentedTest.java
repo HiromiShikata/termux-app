@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -143,6 +144,29 @@ public class TermuxBrowserControllerInstrumentedTest {
             assertNotNull(activity.findViewById(R.id.browser_send_page_text_button));
             assertNotNull(activity.findViewById(R.id.browser_clear_cache_button));
             assertNotNull(activity.findViewById(R.id.browser_desktop_mode_toggle));
+        });
+    }
+
+    @Test
+    public void sharedSwipeRefreshSpinnerIsResetWhenSwitchingToNewTab() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+
+            browserController.onSessionChanged(newDetachedSession());
+            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+
+            SwipeRefreshLayout swipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
+            assertNotNull(swipeRefreshLayout);
+            swipeRefreshLayout.setRefreshing(true);
+            assertTrue(swipeRefreshLayout.isRefreshing());
+
+            browserController.openUrlInNewTab(SECONDARY_LOOPBACK_TAB_URL);
+
+            assertFalse(
+                "Switching to a new tab must reset the shared pull-to-refresh spinner; "
+                    + "the circular indicator must not remain visible on the newly displayed tab",
+                swipeRefreshLayout.isRefreshing());
         });
     }
 
