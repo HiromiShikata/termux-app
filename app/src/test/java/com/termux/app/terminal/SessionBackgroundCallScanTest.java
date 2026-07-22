@@ -96,7 +96,31 @@ public class SessionBackgroundCallScanTest {
     }
 
     @Test
-    public void repeatedSweepWithoutChangeDoesNotReArmAfterAppSideReply() {
+    public void repeatedSweepWithoutChangeDoesNotReArmAfterGenuineAppReply() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long staleReplyMillis = NOW_MILLIS - 10L * 60L * 1000L;
+        long callMillis = NOW_MILLIS - 2L * 60L * 1000L;
+        String unrepliedBuffer =
+            statuslineWithCall(callMillis, NOW_MILLIS - 90L * 1000L, staleReplyMillis);
+        Map<String, String> sweep = new LinkedHashMap<>();
+        sweep.put("background-session", unrepliedBuffer);
+
+        scan(store, sweep, NOW_MILLIS);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("background-session"));
+
+        store.recordGenuineAppReply("background-session", NOW_MILLIS);
+        Assert.assertFalse("a genuine in-app reply submit clears the pending call",
+            store.hasPendingExplicitCall("background-session"));
+
+        scan(store, sweep, NOW_MILLIS + 5L * 60L * 1000L);
+
+        Assert.assertFalse("a later sweep of the same unchanged buffer with a still-stale statusline "
+            + "reply must not re-arm RED after the owner genuinely replied in-app",
+            store.hasPendingExplicitCall("background-session"));
+    }
+
+    @Test
+    public void repeatedSweepKeepsRedAfterBareRawKeystrokeWithoutGenuineReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long staleReplyMillis = NOW_MILLIS - 10L * 60L * 1000L;
         long callMillis = NOW_MILLIS - 2L * 60L * 1000L;
@@ -109,13 +133,14 @@ public class SessionBackgroundCallScanTest {
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("background-session"));
 
         store.recordUserInput("background-session", NOW_MILLIS);
-        Assert.assertFalse("owner input clears the pending call",
-            store.hasPendingExplicitCall("background-session"));
+        Assert.assertTrue("a bare raw keystroke newer than the call is not a genuine reply and must "
+            + "not clear the statusline-call RED", store.hasPendingExplicitCall("background-session"));
 
         scan(store, sweep, NOW_MILLIS + 5L * 60L * 1000L);
 
-        Assert.assertFalse("a later sweep of the same unchanged buffer must not re-arm RED after the "
-            + "owner already replied in-app", store.hasPendingExplicitCall("background-session"));
+        Assert.assertTrue("a later sweep of the same unchanged unreplied buffer keeps RED armed "
+            + "because a raw keystroke never counted as a reply",
+            store.hasPendingExplicitCall("background-session"));
     }
 
     @Test
@@ -162,7 +187,7 @@ public class SessionBackgroundCallScanTest {
     }
 
     @Test
-    public void periodicSweepDoesNotReArmWhenTheCallTimeIsUnchanged() {
+    public void periodicSweepDoesNotReArmWhenTheCallTimeIsUnchangedAfterGenuineAppReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long callMillis = NOW_MILLIS - 2L * 60L * 1000L;
         long staleReplyMillis = NOW_MILLIS - 10L * 60L * 1000L;
@@ -173,13 +198,13 @@ public class SessionBackgroundCallScanTest {
         scan(store, sweep, NOW_MILLIS);
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("background-session"));
 
-        store.recordUserInput("background-session", NOW_MILLIS);
-        Assert.assertFalse("owner input clears the pending call",
+        store.recordGenuineAppReply("background-session", NOW_MILLIS);
+        Assert.assertFalse("a genuine in-app reply submit clears the pending call",
             store.hasPendingExplicitCall("background-session"));
 
         scan(store, sweep, NOW_MILLIS + 6L * 60L * 1000L);
 
-        Assert.assertFalse("an unchanged call time must not re-arm RED after the owner replied",
+        Assert.assertFalse("an unchanged call time must not re-arm RED after a genuine in-app reply",
             store.hasPendingExplicitCall("background-session"));
     }
 }

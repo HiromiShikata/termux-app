@@ -162,6 +162,26 @@ public class SessionNewActivityStatuslinePendingRedTest {
     }
 
     @Test
+    public void aGenuineInAppReplyClearsRedImmediatelyWhileTheStatuslineReplyIsStillStale() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        long staleStatuslineReplyMillis = 1_000L;
+        long callMillis = 2_000L;
+
+        store.recordStatuslineTimes(SESSION, callMillis, callMillis, staleStatuslineReplyMillis);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+
+        long genuineAppReplyMillis = 3_000L;
+        store.recordGenuineAppReply(SESSION, genuineAppReplyMillis);
+
+        Assert.assertNull("a genuine in-app reply submit newer than the call clears RED without "
+            + "waiting for the laggy statusline reply token to catch up",
+            store.statuslineCallPendingTimeMillis(SESSION));
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
+        Assert.assertEquals("the stale statusline reply token is left untouched by the in-app reply",
+            Long.valueOf(staleStatuslineReplyMillis), store.getStatuslineReplyTimeMillis(SESSION));
+    }
+
+    @Test
     public void tagScanRunsForAFreshCallEvenWhenTheReplyAlreadyEqualsItOnFirstObservation() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         long callMillis = 2_000L;

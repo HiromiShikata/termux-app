@@ -38,6 +38,7 @@ public class SessionNewActivityStore {
     private final Map<String, Integer> mSubagentCountByName = new HashMap<>();
     private final Map<String, Long> mReconnectingStartTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastCallToUserTagScanCallTimeMillisByName = new HashMap<>();
+    private final Map<String, Long> mGenuineAppReplyTimeMillisByName = new HashMap<>();
 
     @NonNull
     private final SessionNewActivityPersistence mPersistence;
@@ -168,12 +169,38 @@ public class SessionNewActivityStore {
         save();
     }
 
+    /**
+     * Records a genuine in-app owner reply submit (a real content submit gated by {@link
+     * com.termux.app.terminal.io.SendButtonReplySubmitDecision#shouldRecordReply}), the only app-side
+     * signal that clears the RED owner-call dot immediately without waiting for the laggy statusline
+     * {@code reply:} token. Unlike {@link #recordUserInput} — which is also advanced by raw keystrokes,
+     * clipboard paste, and toolbar keys and therefore MUST NOT clear a genuinely unreplied owner-call —
+     * this records the dedicated {@link #mGenuineAppReplyTimeMillisByName} time that {@link
+     * #statuslineCallPendingTimeMillis} folds into its reply comparison. The submit is genuine owner
+     * input, so it also advances {@link #getLastUserInputTimeMillis} (keeping the displayed {@code
+     * reply:} and the hung-age tier accurate) and acknowledges the tag-scan call reasons.
+     */
+    public void recordGenuineAppReply(@NonNull String sessionName, long replyTimeMillis) {
+        advanceGenuineAppReplyTime(sessionName, replyTimeMillis);
+        advanceLastUserInputTime(sessionName, replyTimeMillis);
+        acknowledgeCallReasons(sessionName);
+        save();
+    }
+
     private void advanceLastUserInputTime(@NonNull String sessionName, long userInputTimeMillis) {
         Long stored = mLastUserInputTimeMillisByName.get(sessionName);
         if (stored != null && stored >= userInputTimeMillis) {
             return;
         }
         mLastUserInputTimeMillisByName.put(sessionName, userInputTimeMillis);
+    }
+
+    private void advanceGenuineAppReplyTime(@NonNull String sessionName, long replyTimeMillis) {
+        Long stored = mGenuineAppReplyTimeMillisByName.get(sessionName);
+        if (stored != null && stored >= replyTimeMillis) {
+            return;
+        }
+        mGenuineAppReplyTimeMillisByName.put(sessionName, replyTimeMillis);
     }
 
     private void advanceStatuslineReplyTime(@NonNull String sessionName, long replyTimeMillis) {
@@ -363,6 +390,7 @@ public class SessionNewActivityStore {
         mSubagentCountByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
         mLastCallToUserTagScanCallTimeMillisByName.remove(sessionName);
+        mGenuineAppReplyTimeMillisByName.remove(sessionName);
         save();
     }
 
@@ -411,6 +439,7 @@ public class SessionNewActivityStore {
         changed |= mSubagentCountByName.keySet().retainAll(knownSessionNames);
         changed |= mReconnectingStartTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastCallToUserTagScanCallTimeMillisByName.keySet().retainAll(knownSessionNames);
+        changed |= mGenuineAppReplyTimeMillisByName.keySet().retainAll(knownSessionNames);
         if (changed)
             save();
     }
@@ -608,18 +637,19 @@ public class SessionNewActivityStore {
      * tick ({@link #recordStatuslineTimes} keeps {@link #mStatuslineCallTimeMillisByName} and {@link
      * #mStatuslineReplyTimeMillisByName} fresh), so the call-newer-than-reply relation is observed
      * reliably, unlike the one-shot tag whose last firing before idle can land inside the scan
-     * throttle window and never be re-scanned. The call is compared against the genuine statusline
-     * {@code reply:} token ({@link #getStatuslineReplyTimeMillis}) alone, never against {@link
-     * #effectiveReplyTimeMillis}: the effective reply folds in the app-captured owner input ({@link
-     * #getLastUserInputTimeMillis}, advanced by every raw keystroke, clipboard paste, and toolbar
-     * key), so folding it in here would let a stray keystroke newer than the call — with no genuine
-     * reply — clear the pending state and leave a genuinely unreplied owner-call showing as not RED.
-     * The authoritative "owner replied" signal is the statusline {@code reply:} token (the last
-     * genuine user message), so the session is pending exactly when a {@code call:} token exists and
-     * no genuine {@code reply:} has caught up to it ({@code reply == null || call > reply}), in which
-     * case the call token time is returned; otherwise null. A session with no statusline at all (a
-     * non-Claude session) has a null {@code call:} token and is never armed through this signal,
-     * leaving the tag-scan path as its sole, unchanged source of the RED tier.
+     * throttle window and never be re-scanned. The call is compared against the genuine reply time
+     * ({@link #genuineReplyTimeMillis}) — the later of the statusline {@code reply:} token and the
+     * dedicated genuine in-app reply-submit time ({@link #mGenuineAppReplyTimeMillisByName}) — never
+     * against {@link #effectiveReplyTimeMillis}: the effective reply folds in every app-captured owner
+     * input ({@link #getLastUserInputTimeMillis}, advanced by every raw keystroke, clipboard paste, and
+     * toolbar key), so folding it in here would let a stray keystroke newer than the call — with no
+     * genuine reply — clear the pending state and leave a genuinely unreplied owner-call showing as not
+     * RED. Only a genuine reply signal counts: the laggy statusline {@code reply:} token (the last
+     * genuine user message) or a real in-app reply submit, so the session is pending exactly when a
+     * {@code call:} token exists and no genuine reply has caught up to it ({@code reply == null || call
+     * > reply}), in which case the call token time is returned; otherwise null. A session with no
+     * statusline at all (a non-Claude session) has a null {@code call:} token and is never armed
+     * through this signal, leaving the tag-scan path as its sole, unchanged source of the RED tier.
      */
     @Nullable
     public Long statuslineCallPendingTimeMillis(@NonNull String sessionName) {
@@ -627,11 +657,36 @@ public class SessionNewActivityStore {
         if (statuslineCallTimeMillis == null) {
             return null;
         }
-        Long statuslineReplyTimeMillis = getStatuslineReplyTimeMillis(sessionName);
-        if (statuslineReplyTimeMillis == null || statuslineCallTimeMillis > statuslineReplyTimeMillis) {
+        Long genuineReplyTimeMillis = genuineReplyTimeMillis(sessionName);
+        if (genuineReplyTimeMillis == null || statuslineCallTimeMillis > genuineReplyTimeMillis) {
             return statuslineCallTimeMillis;
         }
         return null;
+    }
+
+    /**
+     * The genuine "owner replied" time that {@link #statuslineCallPendingTimeMillis} compares the
+     * {@code call:} token against: the later of the laggy statusline {@code reply:} token ({@link
+     * #getStatuslineReplyTimeMillis}) and a genuine in-app reply submit ({@link
+     * #mGenuineAppReplyTimeMillisByName}, recorded only by {@link #recordGenuineAppReply}). Both are
+     * genuine reply signals — a real last user message and a real content submit — so folding them in
+     * lets a genuine in-app submit clear the RED dot immediately without waiting minutes for the
+     * statusline token, while raw keystrokes, which feed neither, never clear it. The genuine app-reply
+     * time is in-memory only; after a restart that loses it the statusline {@code reply:} token is the
+     * sole remaining genuine source and is used as the fallback. Returns null only when neither genuine
+     * source has a value.
+     */
+    @Nullable
+    public Long genuineReplyTimeMillis(@NonNull String sessionName) {
+        Long statuslineReplyTimeMillis = getStatuslineReplyTimeMillis(sessionName);
+        Long genuineAppReplyTimeMillis = mGenuineAppReplyTimeMillisByName.get(sessionName);
+        if (statuslineReplyTimeMillis == null) {
+            return genuineAppReplyTimeMillis;
+        }
+        if (genuineAppReplyTimeMillis == null) {
+            return statuslineReplyTimeMillis;
+        }
+        return Math.max(statuslineReplyTimeMillis, genuineAppReplyTimeMillis);
     }
 
     /**
