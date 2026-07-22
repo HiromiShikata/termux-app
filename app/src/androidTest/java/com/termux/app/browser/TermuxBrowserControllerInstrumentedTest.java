@@ -121,6 +121,41 @@ public class TermuxBrowserControllerInstrumentedTest {
     }
 
     @Test
+    public void openUrlInNewBackgroundTabPreservesExistingActiveTab() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+            assertNotNull(browserController);
+
+            browserController.onSessionChanged(newDetachedSession());
+            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+            BrowserTab firstActiveTab = browserController.getActiveTab();
+            assertNotNull(firstActiveTab);
+            assertEquals(LOOPBACK_TAB_URL, firstActiveTab.getUrl());
+
+            browserController.openUrlInNewBackgroundTab(SECONDARY_LOOPBACK_TAB_URL);
+
+            BrowserTab activeTabAfterBackgroundOpen = browserController.getActiveTab();
+            assertSame(firstActiveTab, activeTabAfterBackgroundOpen);
+            assertTrue(browserController.isBrowserVisible());
+        });
+    }
+
+    @Test
+    public void openUrlInNewBackgroundTabIsNoOpWhenNoSessionIsSelected() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+
+            browserController.onSessionChanged(null);
+            browserController.openUrlInNewBackgroundTab(LOOPBACK_TAB_URL);
+
+            assertNull(browserController.getActiveTab());
+            assertFalse(browserController.isBrowserVisible());
+        });
+    }
+
+    @Test
     public void openUrlInNewTabIsNoOpWhenNoSessionIsSelected() {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
         scenario.onActivity(activity -> {

@@ -459,6 +459,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         openUrlInApp(mLongPressedUrl);
     }
 
+    public void openLongPressedUrlInAppBackground() {
+        if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
+        openUrlInAppBackground(mLongPressedUrl);
+    }
+
     public void openLongPressedUrlInChrome() {
         if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
         ShareUtils.openUrlInChrome(mActivity, mLongPressedUrl);
@@ -845,6 +850,12 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController == null) return;
         browserController.openUrlInNewTab(url);
+    }
+
+    private void openUrlInAppBackground(String url) {
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController == null) return;
+        browserController.openUrlInNewBackgroundTab(url);
     }
 
     public void doPaste() {

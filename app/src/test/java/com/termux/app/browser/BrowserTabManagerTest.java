@@ -192,6 +192,36 @@ public class BrowserTabManagerTest {
     }
 
     @Test
+    public void addBackgroundTabAppendsTabWithoutChangingExistingActiveTab() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab first = manager.addTab(SESSION_A, "https://a.example/first");
+
+        manager.addBackgroundTab(SESSION_A, "https://a.example/background");
+
+        Assert.assertEquals(2, manager.getTabs(SESSION_A).size());
+        Assert.assertSame(first, manager.getActiveTab(SESSION_A));
+    }
+
+    @Test
+    public void addBackgroundTabBecomesActiveWhenNoTabExistsYet() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab background = manager.addBackgroundTab(SESSION_A, "https://a.example/background");
+
+        Assert.assertEquals(1, manager.getTabs(SESSION_A).size());
+        Assert.assertSame(background, manager.getActiveTab(SESSION_A));
+    }
+
+    @Test
+    public void addBackgroundTabDoesNotAffectActiveTabOfOtherSession() {
+        BrowserTabManager manager = new BrowserTabManager();
+        BrowserTab tabInSessionB = manager.addTab(SESSION_B, "https://b.example/");
+
+        manager.addBackgroundTab(SESSION_A, "https://a.example/background");
+
+        Assert.assertSame(tabInSessionB, manager.getActiveTab(SESSION_B));
+    }
+
+    @Test
     public void removingSessionDiscardsItsTabs() {
         BrowserTabManager manager = new BrowserTabManager();
         manager.addTab(SESSION_A, "https://a.example/");

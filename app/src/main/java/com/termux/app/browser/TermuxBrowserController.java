@@ -985,6 +985,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
 
             @Override
+            public void openLinkInBrowserBackground(@NonNull String linkUrl) {
+                openUrlInNewBackgroundTab(linkUrl);
+            }
+
+            @Override
             public void createSessionForLink(@NonNull String linkUrl) {
                 mActivity.getTermuxTerminalSessionClient().addNewSessionForBrowserUrl(linkUrl);
             }
@@ -1805,6 +1810,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         openTab(tab);
+        return true;
+    }
+
+    public boolean openUrlInNewBackgroundTab(@NonNull String url) {
+        String sessionHandle = mCurrentSessionHandle;
+        if (sessionHandle == null) {
+            TerminalSession currentSession = mActivity.getCurrentSession();
+            if (currentSession == null) return false;
+            sessionHandle = currentSession.mHandle;
+        }
+        BrowserTab tab = mTabManager.addBackgroundTab(sessionHandle, normalizeUrl(url));
+        recordTabInHistory(tab);
+        notifyTabsUpdated();
+        persistSessionTabs();
         return true;
     }
 
