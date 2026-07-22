@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>google-meet-webrtc-clamp loopback fixture</title></head>
+<body>
+<script>
+async function waitForConnected(pc) {
+  if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') return;
+  await new Promise((resolve) => {
+    const check = () => {
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        pc.removeEventListener('iceconnectionstatechange', check);
+        resolve();
+      }
+    };
+    pc.addEventListener('iceconnectionstatechange', check);
+  });
+}
+
+async function negotiateLoopback(pc1, pc2) {
+  pc1.addEventListener('icecandidate', (event) => {
+    if (event.candidate) pc2.addIceCandidate(event.candidate).catch(() => {});
+  });
+  pc2.addEventListener('icecandidate', (event) => {
+    if (event.candidate) pc1.addIceCandidate(event.candidate).catch(() => {});
+  });
+
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  const answer = await pc2.createAnswer();
+  await pc2.setLocalDescription(answer);
+  await pc1.setRemoteDescription(answer);
+
+  await waitForConnected(pc1);
+}
+
+function makeOversizedCanvasVideoTrack(width, height, frameRate) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#336699';
+  ctx.fillRect(0, 0, width, height);
+  const stream = canvas.captureStream(frameRate);
+  return stream.getVideoTracks()[0];
+}
+
+window.__loopbackTest = {
+  async getUserMediaClampedSettings(constraints) {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    track.stop();
+    return settings;
+  },
+
+  async senderEncodingClampAfterAddTrack(width, height, frameRate) {
+    const track = makeOversizedCanvasVideoTrack(width, height, frameRate);
+    const pc1 = new RTCPeerConnection();
+    const pc2 = new RTCPeerConnection();
+    const sender = pc1.addTrack(track, new MediaStream([track]));
+
+    await negotiateLoopback(pc1, pc2);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const parametersAfterAddTrack = sender.getParameters();
+
+    pc1.close();
+    pc2.close();
+    track.stop();
+
+    return {
+      encodings: parametersAfterAddTrack.encodings || [],
+    };
+  },
+
+  async directSetParametersOnConnectedSenderReliability(width, height, frameRate) {
+    const track = makeOversizedCanvasVideoTrack(width, height, frameRate);
+    const pc1 = new RTCPeerConnection();
+    const pc2 = new RTCPeerConnection();
+    const sender = pc1.addTrack(track, new MediaStream([track]));
+
+    await negotiateLoopback(pc1, pc2);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const result = { threw: false, errorMessage: null, appliedScaleResolutionDownBy: null, appliedMaxFramerate: null };
+    try {
+      const parameters = sender.getParameters();
+      if (!parameters.encodings || parameters.encodings.length === 0) parameters.encodings = [{}];
+      parameters.encodings[0].scaleResolutionDownBy = 2;
+      parameters.encodings[0].maxFramerate = 15;
+      await sender.setParameters(parameters);
+      const readBack = sender.getParameters();
+      result.appliedScaleResolutionDownBy = readBack.encodings[0] ? readBack.encodings[0].scaleResolutionDownBy : null;
+      result.appliedMaxFramerate = readBack.encodings[0] ? readBack.encodings[0].maxFramerate : null;
+    } catch (e) {
+      result.threw = true;
+      result.errorMessage = String(e && e.message ? e.message : e);
+    }
+
+    pc1.close();
+    pc2.close();
+    track.stop();
+
+    return result;
+  },
+};
+</script>
+</body>
+</html>

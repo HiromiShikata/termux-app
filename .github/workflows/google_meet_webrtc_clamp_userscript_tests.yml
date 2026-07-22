@@ -1,0 +1,59 @@
+name: Google Meet WebRTC clamp userscript tests
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - android-10
+    paths:
+      - 'browser-userscripts/google-meet-webrtc-clamp/**'
+      - '.github/workflows/google_meet_webrtc_clamp_userscript_tests.yml'
+  pull_request:
+    branches:
+      - master
+      - main
+      - android-10
+    paths:
+      - 'browser-userscripts/google-meet-webrtc-clamp/**'
+      - '.github/workflows/google_meet_webrtc_clamp_userscript_tests.yml'
+
+concurrency:
+  group: google-meet-webrtc-clamp-userscript-tests-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: browser-userscripts/google-meet-webrtc-clamp
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox
+      - name: Run unit tests for the clamp script generator
+        run: npm run test:unit
+      - name: Verify the checked-in userscript is up to date with the generator
+        run: |
+          npm run build
+          git diff --exit-code -- google-meet-webrtc-clamp.user.js
+      - name: Run cross-engine (Chromium + Firefox) loopback tests
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: google-meet-webrtc-clamp-playwright-report
+          path: browser-userscripts/google-meet-webrtc-clamp/playwright-report
+          if-no-files-found: ignore
