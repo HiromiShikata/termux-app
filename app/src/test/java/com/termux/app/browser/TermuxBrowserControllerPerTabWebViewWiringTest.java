@@ -14,12 +14,24 @@ public class TermuxBrowserControllerPerTabWebViewWiringTest {
     private static final String CONTROLLER_RELATIVE_PATH =
         "src/main/java/com/termux/app/browser/TermuxBrowserController.java";
 
+    private static final String BROWSER_CORE_CHROME_CLIENT_RELATIVE_PATH =
+        "src/main/java/com/termux/app/browser/BrowserCoreWebChromeClient.java";
+
     private String readControllerSource() throws IOException {
         Path moduleRelative = Paths.get(CONTROLLER_RELATIVE_PATH);
         if (Files.exists(moduleRelative)) {
             return new String(Files.readAllBytes(moduleRelative), StandardCharsets.UTF_8);
         }
         Path repoRelative = Paths.get("app").resolve(CONTROLLER_RELATIVE_PATH);
+        return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
+    }
+
+    private String readBrowserCoreSource() throws IOException {
+        Path moduleRelative = Paths.get(BROWSER_CORE_CHROME_CLIENT_RELATIVE_PATH);
+        if (Files.exists(moduleRelative)) {
+            return new String(Files.readAllBytes(moduleRelative), StandardCharsets.UTF_8);
+        }
+        Path repoRelative = Paths.get("app").resolve(BROWSER_CORE_CHROME_CLIENT_RELATIVE_PATH);
         return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
     }
 
@@ -103,30 +115,26 @@ public class TermuxBrowserControllerPerTabWebViewWiringTest {
     public void perTabChromeClientRoutesNewWindowLinksIntoANewTab() throws IOException {
         String factoryBody = methodBody(
             readControllerSource(), "private WebView createWebViewForTab(@NonNull BrowserTab tab)");
+        String browserCoreSource = readBrowserCoreSource();
 
-        Assert.assertTrue(factoryBody.contains(
+        Assert.assertTrue(browserCoreSource.contains(
             "public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,"));
-        Assert.assertTrue(factoryBody.contains("openNewWindowAsTab(view, resultMsg)"));
-        Assert.assertTrue(factoryBody.contains("public void onCloseWindow(WebView window)"));
+        Assert.assertTrue(factoryBody.contains("openNewTabForUrl(@NonNull String url)"));
+        Assert.assertTrue(factoryBody.contains("public void onCloseWindow(@Nullable WebView window)"));
         Assert.assertTrue(factoryBody.contains("closeTabForWebView(window)"));
     }
 
     @Test
-    public void newWindowHandlerCapturesTargetUrlAndOpensItInANewTabWithCurrentTabFallback()
-            throws IOException {
-        String openHelper = methodBody(
-            readControllerSource(),
-            "private boolean openNewWindowAsTab(@Nullable WebView requestingWebView, @Nullable Message resultMsg)");
+    public void newWindowHandlerCapturesTargetUrlAndOpensItInANewTab() throws IOException {
+        String browserCoreSource = readBrowserCoreSource();
 
-        Assert.assertTrue(openHelper.contains("new BrowserNewWindowUrlProbeWebViewClient("));
-        Assert.assertTrue(openHelper.contains("transport.setWebView(newWindowUrlProbeWebView)"));
-        Assert.assertTrue(openHelper.contains("resultMsg.sendToTarget()"));
+        Assert.assertTrue(browserCoreSource.contains("new BrowserNewWindowUrlProbeWebViewClient("));
+        Assert.assertTrue(browserCoreSource.contains("transport.setWebView(hrefProbeWebView)"));
+        Assert.assertTrue(browserCoreSource.contains("resultMsg.sendToTarget()"));
 
-        String fallbackHelper = methodBody(
-            readControllerSource(),
-            "private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url)");
-        Assert.assertTrue(fallbackHelper.contains("if (openUrlInNewTab(url)) return true;"));
-        Assert.assertTrue(fallbackHelper.contains("requestingWebView.loadUrl(normalizeUrl(url))"));
+        String factoryBody = methodBody(
+            readControllerSource(), "private WebView createWebViewForTab(@NonNull BrowserTab tab)");
+        Assert.assertTrue(factoryBody.contains("openUrlInNewTab(url)"));
     }
 
     @Test
