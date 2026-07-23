@@ -7,8 +7,10 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.webkit.JsPromptResult;
 import android.webkit.JsResult;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -34,6 +36,10 @@ public class BrowserCoreWebChromeClientTest {
         String lastTitle;
         Bitmap lastIcon;
         boolean throwOnLaunch;
+        boolean closeWindowCalled;
+        WebView closedWindow;
+        PermissionRequest lastPermissionRequest;
+        boolean permissionRequestCanceled;
 
         @NonNull
         @Override
@@ -63,6 +69,22 @@ public class BrowserCoreWebChromeClientTest {
         @Override
         public void onReceivedIcon(@NonNull Bitmap icon) {
             lastIcon = icon;
+        }
+
+        @Override
+        public void onCloseWindow(@Nullable WebView window) {
+            closeWindowCalled = true;
+            closedWindow = window;
+        }
+
+        @Override
+        public void onPermissionRequest(@NonNull PermissionRequest request) {
+            lastPermissionRequest = request;
+        }
+
+        @Override
+        public void onPermissionRequestCanceled(@NonNull PermissionRequest request) {
+            permissionRequestCanceled = true;
         }
     }
 
@@ -294,6 +316,69 @@ public class BrowserCoreWebChromeClientTest {
         };
         Assert.assertTrue(host.openNewTabForUrl("https://example.com/new"));
         Assert.assertEquals("https://example.com/new", openedUrlRef.get());
+    }
+
+    private PermissionRequest newPermissionRequest() {
+        return new PermissionRequest() {
+            @Override
+            public Uri getOrigin() {
+                return Uri.parse("https://example.com");
+            }
+
+            @Override
+            public String[] getResources() {
+                return new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE};
+            }
+
+            @Override
+            public void grant(String[] resources) {}
+
+            @Override
+            public void deny() {}
+        };
+    }
+
+    @Test
+    public void onCloseWindowForwardsWindowToHost() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebChromeClient client = new BrowserCoreWebChromeClient(host);
+        client.onCloseWindow(null);
+        Assert.assertTrue(host.closeWindowCalled);
+        Assert.assertNull(host.closedWindow);
+    }
+
+    @Test
+    public void onPermissionRequestForwardsNonNullRequestToHost() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebChromeClient client = new BrowserCoreWebChromeClient(host);
+        PermissionRequest request = newPermissionRequest();
+        client.onPermissionRequest(request);
+        Assert.assertSame(request, host.lastPermissionRequest);
+    }
+
+    @Test
+    public void onPermissionRequestIgnoresNullRequest() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebChromeClient client = new BrowserCoreWebChromeClient(host);
+        client.onPermissionRequest(null);
+        Assert.assertNull(host.lastPermissionRequest);
+    }
+
+    @Test
+    public void onPermissionRequestCanceledForwardsNonNullRequestToHost() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebChromeClient client = new BrowserCoreWebChromeClient(host);
+        PermissionRequest request = newPermissionRequest();
+        client.onPermissionRequestCanceled(request);
+        Assert.assertTrue(host.permissionRequestCanceled);
+    }
+
+    @Test
+    public void onPermissionRequestCanceledIgnoresNullRequest() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebChromeClient client = new BrowserCoreWebChromeClient(host);
+        client.onPermissionRequestCanceled(null);
+        Assert.assertFalse(host.permissionRequestCanceled);
     }
 
     @Test
