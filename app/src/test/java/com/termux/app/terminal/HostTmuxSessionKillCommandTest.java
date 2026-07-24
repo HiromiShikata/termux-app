@@ -45,4 +45,10 @@ public class HostTmuxSessionKillCommandTest {
     public void returnsNullForEmptySessionName() {
         Assert.assertNull(HostTmuxSessionKillCommand.forSessionName(""));
     }
+
+    @Test
+    public void targetsNormalizedHostSessionNameForRawUrlContainingDotsAndColons() {
+        Assert.assertEquals((char) 0x02 + ":kill-session -t 'https_//github_com/owner/repo/issues/123'\n",
+            HostTmuxSessionKillCommand.forSessionName("https://github.com/owner/repo/issues/123", (char) 0x02));
+    }
 }
