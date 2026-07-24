@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
+import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
@@ -135,6 +136,17 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * (app backgrounded). */
     private OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
 
+    /** Detects the app-open output tag for the currently viewed session. Owned by the service so the
+     * single per-session scanner deduplication state survives activity recreation, mirroring
+     * {@link #mOpenTagBrowserController}. The actual app launch is dispatched to {@link #mAppLauncher},
+     * registered only while the activity is bound, so an app launches only when the app is in the
+     * foreground. */
+    private AppOpenTagController mAppOpenTagController;
+
+    /** The foreground app launcher registered by the bound activity, or null when no activity is bound
+     * (app backgrounded). */
+    private AppOpenTagController.AppLauncher mAppLauncher;
+
     /**
      * Termux app shared properties manager, loaded from termux.properties
      */
@@ -186,9 +198,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         updatePendingCallNotification();
 
         TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
-        if (openTagPreferences != null)
+        if (openTagPreferences != null) {
             mOpenTagBrowserController =
                 new OpenTagBrowserController(openTagPreferences, this::dispatchOpenTagUrl);
+            mAppOpenTagController =
+                new AppOpenTagController(openTagPreferences, this::dispatchAppOpen);
+        }
 
         runStartForeground();
 
@@ -1176,6 +1191,30 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         OpenTagBrowserController.UrlOpener opener = mOpenTagUrlOpener;
         if (opener == null) return;
         opener.openUrlInTabForSession(sessionHandle, url);
+    }
+
+    /** The shared app-open tag controller. The activity client feeds the currently viewed session's
+     * output here so the app-open tag is deduplicated by a single per-session scanner that survives
+     * activity recreation, preventing an already-launched tag still visible in the transcript from
+     * re-firing. Null when preferences were unavailable at service creation, in which case the
+     * app-open feature is inactive. */
+    @Nullable
+    public AppOpenTagController getAppOpenTagController() {
+        return mAppOpenTagController;
+    }
+
+    /** Registers the foreground app launcher supplied by the bound activity. Passing null unregisters
+     * it when the activity is destroyed so no activity reference is retained. */
+    public void setAppLauncher(AppOpenTagController.AppLauncher appLauncher) {
+        mAppLauncher = appLauncher;
+        if (mAppOpenTagController != null)
+            mAppOpenTagController.setAppLauncher(appLauncher);
+    }
+
+    private void dispatchAppOpen(@NonNull String packageId) {
+        AppOpenTagController.AppLauncher appLauncher = mAppLauncher;
+        if (appLauncher == null) return;
+        appLauncher.launchApp(packageId);
     }
 
     private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {

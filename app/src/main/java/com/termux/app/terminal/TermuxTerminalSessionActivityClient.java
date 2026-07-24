@@ -32,6 +32,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.BrowserSessionRemovalReason;
+import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
@@ -399,7 +400,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
-        openTagBrowserController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+        String transcriptText = screen.getTranscriptText();
+        openTagBrowserController.onSessionTextChanged(session.mHandle, transcriptText);
+
+        AppOpenTagController appOpenTagController = mActivity.getAppOpenTagController();
+        if (appOpenTagController != null && appOpenTagController.isAutoOpenEnabled())
+            appOpenTagController.onSessionTextChanged(session.mHandle, transcriptText);
     }
 
     private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {
@@ -727,6 +733,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (mActivity.getOpenTagBrowserController() != null)
             mActivity.getOpenTagBrowserController().forgetSession(finishedSession.mHandle);
+
+        if (mActivity.getAppOpenTagController() != null)
+            mActivity.getAppOpenTagController().forgetSession(finishedSession.mHandle);
 
         if (mActivity.getUpdateTagUpdateController() != null)
             mActivity.getUpdateTagUpdateController().forgetSession(finishedSession.mHandle);
