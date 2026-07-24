@@ -213,9 +213,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserRenderProcessCrashTracker mRenderProcessCrashTracker = new BrowserRenderProcessCrashTracker();
 
-    private final BrowserWebViewCallbackGuard mWebChromeCallbackGuard =
-        new BrowserWebViewCallbackGuard("TermuxBrowserControllerWebChromeClient");
-
     private boolean mBrowserVisible;
 
     private final BrowserDownloadController mDownloadController = new BrowserDownloadController(
