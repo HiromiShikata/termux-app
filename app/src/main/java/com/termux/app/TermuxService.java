@@ -21,6 +21,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
+import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
@@ -135,6 +136,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * (app backgrounded). */
     private OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
 
+    private AppOpenTagController mAppOpenTagController;
+
+    private AppOpenTagController.AppLauncher mAppLauncher;
+
     /**
      * Termux app shared properties manager, loaded from termux.properties
      */
@@ -186,9 +191,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         updatePendingCallNotification();
 
         TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
-        if (openTagPreferences != null)
+        if (openTagPreferences != null) {
             mOpenTagBrowserController =
                 new OpenTagBrowserController(openTagPreferences, this::dispatchOpenTagUrl);
+            mAppOpenTagController =
+                new AppOpenTagController(openTagPreferences, this::dispatchAppOpen);
+        }
 
         runStartForeground();
 
@@ -1176,6 +1184,23 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         OpenTagBrowserController.UrlOpener opener = mOpenTagUrlOpener;
         if (opener == null) return;
         opener.openUrlInTabForSession(sessionHandle, url);
+    }
+
+    @Nullable
+    public AppOpenTagController getAppOpenTagController() {
+        return mAppOpenTagController;
+    }
+
+    public void setAppLauncher(AppOpenTagController.AppLauncher appLauncher) {
+        mAppLauncher = appLauncher;
+        if (mAppOpenTagController != null)
+            mAppOpenTagController.setAppLauncher(appLauncher);
+    }
+
+    private void dispatchAppOpen(@NonNull String packageId) {
+        AppOpenTagController.AppLauncher appLauncher = mAppLauncher;
+        if (appLauncher == null) return;
+        appLauncher.launchApp(packageId);
     }
 
     private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {
