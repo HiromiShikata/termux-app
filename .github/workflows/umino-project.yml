@@ -279,7 +279,8 @@ jobs:
     name: Check linked issues in pull requests
     if: >-
       (github.event_name == 'pull_request') &&
-      (github.event.action == 'edited' ||
+      (github.event.action == 'opened' ||
+       github.event.action == 'edited' ||
        github.event.action == 'synchronize' ||
        github.event.action == 'reopened') &&
       github.actor != 'dependabot[bot]' &&
