@@ -67,4 +67,33 @@ public class SessionReconnectingIndicatorStateTest {
         Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
             "session-one", null));
     }
+
+    @Test
+    public void failedStateShowsTheFailedIndicatorAndHidesTheSpinner() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("session-one", 10_000L);
+        store.setReconnectFailed("session-one");
+
+        Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+            "session-one", store));
+        Assert.assertTrue(SessionReconnectingIndicatorState.shouldShowReconnectFailedIndicator(
+            "session-one", store));
+    }
+
+    @Test
+    public void reconnectingShowsSpinnerButNotTheFailedIndicator() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.setReconnecting("session-one", 10_000L);
+
+        Assert.assertTrue(SessionReconnectingIndicatorState.shouldShowReconnectingIndicator(
+            "session-one", store));
+        Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectFailedIndicator(
+            "session-one", store));
+    }
+
+    @Test
+    public void nullStoreDoesNotShowFailedIndicator() {
+        Assert.assertFalse(SessionReconnectingIndicatorState.shouldShowReconnectFailedIndicator(
+            "session-one", null));
+    }
 }
