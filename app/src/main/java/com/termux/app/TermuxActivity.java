@@ -257,13 +257,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
 
-    /**
-     * The foreground app launcher for `<app-open>...</app-open>` tags. Launching an installed app is a
-     * foreground action, so this launcher is registered with the service-owned
-     * {@link AppOpenTagController} only while the activity is bound; the controller itself (and its
-     * per-session deduplication state) lives in {@link TermuxService} so an already-launched tag still
-     * visible in the transcript does not re-fire when this activity is recreated.
-     */
     AppOpenTagController.AppLauncher mAppLauncher;
 
     /**
@@ -776,9 +769,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mOpenTagUrlOpener != null)
             mTermuxService.setOpenTagUrlOpener(mOpenTagUrlOpener);
 
-        // Register the foreground app launcher so a detected app-open tag launches an installed app
-        // while this activity is in the foreground; the deduplication state stays in the
-        // service-owned controller.
         if (mAppLauncher != null)
             mTermuxService.setAppLauncher(mAppLauncher);
 
