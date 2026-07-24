@@ -236,4 +236,13 @@ public class OpenTagScannerTest {
             "<open>https://example.com/search?q=hello+world&x=1#section</open>");
         assertEquals(List.of("https://example.com/search?q=hello+world&x=1#section"), openUrls);
     }
+
+    @Test
+    public void onlyOpensTagWrappedUrlAndIgnoresBareUrlAloneOnItsOwnLine() {
+        OpenTagScanner scanner = new OpenTagScanner();
+        List<String> opened = scanner.urlsToOpen(
+            "before\nhttps://example.com/bare\n<open>https://example.com/tagged</open>\nafter\n");
+
+        assertEquals(List.of("https://example.com/tagged"), opened);
+    }
 }
