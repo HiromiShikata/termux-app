@@ -2211,9 +2211,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (displayedSession == deadSession) {
             setCurrentSession(newTerminalSession);
         } else {
+            eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
             termuxSessionListNotifyUpdated();
         }
         return newTerminalSession;
+    }
+
+    private void eagerInitializeReconnectedBackgroundSessionEmulator(@NonNull TerminalSession session) {
+        if (session.getEmulator() != null) return;
+        TerminalView terminalView = mActivity.getTerminalView();
+        if (terminalView == null) return;
+        int[] dimensions = terminalView.computeSessionEmulatorDimensions();
+        if (dimensions == null) return;
+        session.updateSize(dimensions[0], dimensions[1], dimensions[2], dimensions[3]);
+        session.forceRemoteRepaint();
     }
 
     private static final class ReconnectedSessionInputReplay implements Runnable {
