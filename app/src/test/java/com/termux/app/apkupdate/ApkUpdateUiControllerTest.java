@@ -220,6 +220,38 @@ public class ApkUpdateUiControllerTest {
     }
 
     @Test
+    public void tappingTheIndicatorWhileAPreDownloadIsInProgressDoesNotStartASecondDownload() throws IOException {
+        Activity activity = newActivity();
+        FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
+        manager.autoCompleteDownload = false;
+        FakeApkInstaller installer = new FakeApkInstaller(activity);
+        ApkUpdateUiController preDownloadController = new ApkUpdateUiController(activity, manager, installer);
+
+        preDownloadController.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+        Assert.assertEquals("the pre-download must have started", 1, manager.downloadCount);
+
+        ApkUpdateUiController tapController = new ApkUpdateUiController(activity, manager, installer);
+        RecordingIndicatorView pendingIndicatorView = new RecordingIndicatorView();
+        tapController.showPendingIndicatorIfAny(pendingIndicatorView);
+        Assert.assertNotNull("the pending update must surface a tappable indicator",
+            pendingIndicatorView.lastTapAction);
+
+        pendingIndicatorView.lastTapAction.run();
+
+        Assert.assertEquals(
+            "a tap that races with an in-flight pre-download must not start a second concurrent download",
+            1, manager.downloadCount);
+
+        manager.completePendingDownload();
+        pendingIndicatorView.lastTapAction.run();
+
+        Assert.assertEquals(
+            "once the in-flight download completes and the guard is released, a later tap may download",
+            2, manager.downloadCount);
+    }
+
+    @Test
     public void upToDateCheckDownloadsNothingAndHidesTheButton() {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);

@@ -6,6 +6,8 @@ import java.io.File;
 
 public final class ApkUpdateCachePruner {
 
+    private static final String PARTIAL_FILE_SUFFIX = ".part";
+
     public void pruneExcept(@NonNull File cacheDirectory, @NonNull String fileNameToKeep) {
         if (!cacheDirectory.isDirectory()) {
             return;
@@ -14,11 +16,13 @@ public final class ApkUpdateCachePruner {
         if (cachedFiles == null) {
             return;
         }
+        String partialFileNameToKeep = fileNameToKeep + PARTIAL_FILE_SUFFIX;
         for (File cachedFile : cachedFiles) {
             if (!cachedFile.isFile()) {
                 continue;
             }
-            if (cachedFile.getName().equals(fileNameToKeep)) {
+            String cachedFileName = cachedFile.getName();
+            if (cachedFileName.equals(fileNameToKeep) || cachedFileName.equals(partialFileNameToKeep)) {
                 continue;
             }
             cachedFile.delete();
