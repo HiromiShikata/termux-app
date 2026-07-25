@@ -1384,6 +1384,14 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             sessionRowView.findViewById(R.id.session_reconnect_failed_indicator);
         boolean showFailedIndicator = reconnectFailed(sessionName);
         reconnectFailedIndicatorView.setVisibility(showFailedIndicator ? View.VISIBLE : View.INVISIBLE);
+        reconnectFailedIndicatorView.setOnClickListener(v -> retryReconnectFailedSession(sessionName));
+    }
+
+    private void retryReconnectFailedSession(@Nullable String sessionName) {
+        if (sessionName == null) {
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient().retryReconnectAfterFailure(sessionName);
     }
 
     private int sessionTitleTextStartPaddingPx() {
@@ -1534,12 +1542,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         TerminalSession clickedTerminalSession = clickedSession.getTerminalSession();
-        String clickedSessionName =
-            clickedTerminalSession == null ? null : clickedTerminalSession.mSessionName;
-        if (clickedSessionName != null && reconnectFailed(clickedSessionName)) {
-            mActivity.getTermuxTerminalSessionClient().retryReconnectAfterFailure(clickedSessionName);
-            return;
-        }
         mActivity.getTermuxTerminalSessionClient()
             .switchToSessionReconnectingIfDead(clickedTerminalSession);
         if (mSessionClickHost != null) {
