@@ -40,7 +40,7 @@ public class SessionTimesLineTest {
             null, NOW - 12L * ONE_MINUTE_MILLIS, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1d  out: 12m  reply: >1d  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: 12m  reply: -  sub: 0", line.getText());
     }
 
     @Test
@@ -56,7 +56,7 @@ public class SessionTimesLineTest {
         SessionTimesLine line = SessionTimesLine.of(null, null, null, 0, NOW);
 
         Assert.assertTrue(line.isVisible());
-        Assert.assertEquals("call: >1d  out: >1d  reply: >1d  sub: 0", line.getText());
+        Assert.assertEquals("call: >1d  out: >1d  reply: -  sub: 0", line.getText());
     }
 
     @Test
@@ -115,7 +115,7 @@ public class SessionTimesLineTest {
     public void columnAlignedLineKeepsTheWidestExpectedValueIntact() {
         SessionTimesLine line = SessionTimesLine.ofColumnAligned(null, null, null, 0, NOW);
 
-        Assert.assertEquals("call: >1d out: >1d reply: >1d sub: 0  ", line.getText());
+        Assert.assertEquals("call: >1d out: >1d reply: -   sub: 0  ", line.getText());
     }
 
     @Test
