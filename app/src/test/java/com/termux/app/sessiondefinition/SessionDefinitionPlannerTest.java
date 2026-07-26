@@ -201,7 +201,7 @@ public class SessionDefinitionPlannerTest {
             planner.plan(entries, "ssh {name}");
 
         Assert.assertEquals(
-            "ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'https://example.test/a1'",
+            "ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes -o ConnectTimeout=10 'https://example.test/a1'",
             plannedSessions.get(1).getCommand());
     }
 
@@ -211,7 +211,7 @@ public class SessionDefinitionPlannerTest {
             planner.planNamedSession("https://example.test/a1", "autossh -M 0 ssh {name}");
 
         Assert.assertEquals(
-            "AUTOSSH_GATETIME=0 autossh -M 0 ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes 'https://example.test/a1'",
+            "AUTOSSH_GATETIME=0 autossh -M 0 ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes -o ConnectTimeout=10 'https://example.test/a1'",
             plannedSession.getCommand());
     }
 

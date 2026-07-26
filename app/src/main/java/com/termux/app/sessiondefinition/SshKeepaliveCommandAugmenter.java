@@ -11,10 +11,13 @@ public final class SshKeepaliveCommandAugmenter {
 
     public static final String AUTOSSH_GATETIME_ENV = "AUTOSSH_GATETIME=0";
 
+    public static final int CONNECT_TIMEOUT_SECONDS = 10;
+
     private static final String KEEPALIVE_OPTIONS =
         "-o ServerAliveInterval=" + SERVER_ALIVE_INTERVAL_SECONDS
             + " -o ServerAliveCountMax=" + SERVER_ALIVE_COUNT_MAX
-            + " -o TCPKeepAlive=yes";
+            + " -o TCPKeepAlive=yes"
+            + " -o ConnectTimeout=" + CONNECT_TIMEOUT_SECONDS;
 
     private static final Pattern SSH_INVOCATION = Pattern.compile("(^|\\s)(ssh)(\\s)");
 
