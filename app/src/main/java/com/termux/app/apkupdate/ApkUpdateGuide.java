@@ -13,11 +13,6 @@ public final class ApkUpdateGuide {
     public static final String RELEASES_LIST_API_URL =
         "https://api.github.com/repos/HiromiShikata/termux-app/releases?per_page=30";
 
-    /**
-     * Rate-limit-resilient fallback source for the latest release. The Atom feed is served from the
-     * github.com web host and is not subject to the 60-requests-per-hour unauthenticated REST limit
-     * that {@link #RELEASES_LATEST_API_URL} enforces.
-     */
     public static final String RELEASES_ATOM_FEED_URL =
         "https://github.com/HiromiShikata/termux-app/releases.atom";
 
