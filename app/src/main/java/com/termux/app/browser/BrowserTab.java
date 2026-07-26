@@ -23,6 +23,8 @@ public final class BrowserTab {
 
     private Bitmap mFavicon;
 
+    private boolean mLoading;
+
     public BrowserTab(@NonNull String sessionHandle, @NonNull String url) {
         this.mSessionHandle = sessionHandle;
         this.mUrl = url;
@@ -81,5 +83,13 @@ public final class BrowserTab {
 
     public void setFavicon(@Nullable Bitmap favicon) {
         this.mFavicon = favicon;
+    }
+
+    public boolean isLoading() {
+        return mLoading;
+    }
+
+    public void setLoading(boolean loading) {
+        this.mLoading = loading;
     }
 }
