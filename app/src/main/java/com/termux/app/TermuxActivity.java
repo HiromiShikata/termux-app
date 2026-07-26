@@ -1,7 +1,9 @@
 package com.termux.app;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ActivityNotFoundException;
+import android.content.pm.PackageManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -41,6 +43,8 @@ import com.termux.app.apkupdate.UpdateTagUpdateRunner;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
+import com.termux.app.appopen.AppOpenTagController;
+import com.termux.app.appopen.InstalledAppLauncher;
 import com.termux.app.browser.BrowserInboundViewUrl;
 import com.termux.app.link.GoogleAppLink;
 import com.termux.app.browser.OpenTagBrowserController;
@@ -96,6 +100,7 @@ import com.termux.view.TerminalViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
@@ -252,6 +257,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
 
+    AppOpenTagController.AppLauncher mAppLauncher;
+
     /**
      * The foreground update-flow trigger. When an update tag is detected it auto-downloads the APK in
      * the background and surfaces the floating install button rather than blocking on a dialog. It
@@ -302,6 +309,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private float mTerminalToolbarDefaultHeight;
 
 
+    private static final int REQUEST_POST_NOTIFICATIONS = 3001;
+
     private static final int CONTEXT_MENU_SELECT_URL_ID = 0;
     private static final int CONTEXT_MENU_SHARE_TRANSCRIPT_ID = 1;
     private static final int CONTEXT_MENU_SHARE_SELECTED_TEXT = 10;
@@ -313,6 +322,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID = 15;
     private static final int CONTEXT_MENU_COPY_LINK_URL_ID = 16;
     static final int CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID = 17;
+    private static final int CONTEXT_MENU_OPEN_LINK_IN_BROWSER_BACKGROUND_ID = 18;
 
     static final String GOOGLE_TRANSLATE_PACKAGE_NAME = "com.google.android.apps.translate";
 
@@ -508,6 +518,19 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new ApkUpdateUiController(this).checkAndShowFloatingIndicator(new ApkUpdateFloatingIndicatorView());
     }
 
+    private void requestPostNotificationsPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        ActivityCompat.requestPermissions(this,
+            new String[]{Manifest.permission.POST_NOTIFICATIONS},
+            REQUEST_POST_NOTIFICATIONS);
+    }
+
     private final class ApkUpdateFloatingIndicatorView
         implements ApkUpdateFloatingIndicatorController.IndicatorView {
 
@@ -574,6 +597,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         apkUpdateUiController.showPendingIndicatorIfAny(new ApkUpdateFloatingIndicatorView());
 
         checkForApkUpdateAndShowIndicator();
+        requestPostNotificationsPermissionIfNeeded();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
         mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
@@ -649,6 +673,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             // Do not leave service and session clients with references to activity.
             mTermuxService.setUpdateTagReasonTrigger(null);
             mTermuxService.setOpenTagUrlOpener(null);
+            mTermuxService.setAppLauncher(null);
             mTermuxService.unsetTermuxTerminalSessionClient();
             mTermuxService = null;
         }
@@ -743,6 +768,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // in the foreground; the deduplication state stays in the service-owned controller.
         if (mOpenTagUrlOpener != null)
             mTermuxService.setOpenTagUrlOpener(mOpenTagUrlOpener);
+
+        if (mAppLauncher != null)
+            mTermuxService.setAppLauncher(mAppLauncher);
 
         eagerLoadAllSessions();
 
@@ -1059,6 +1087,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
         mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession;
+        mAppLauncher = new InstalledAppLauncher(
+            getPackageManager()::getLaunchIntentForPackage, this::startActivity);
         // The update-flow trigger only needs the activity for its UI; it is registered with the
         // service-owned controller in onServiceConnected once the service is bound.
         mUpdateTagUpdateRunner = new UpdateTagUpdateRunner(this, new ApkUpdateFloatingIndicatorView());
@@ -1239,6 +1269,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             case CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID:
                 mTermuxTerminalViewClient.openLongPressedUrlInApp();
                 return true;
+            case CONTEXT_MENU_OPEN_LINK_IN_BROWSER_BACKGROUND_ID:
+                mTermuxTerminalViewClient.openLongPressedUrlInAppBackground();
+                return true;
             case CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID:
                 mTermuxTerminalViewClient.openLongPressedUrlInChrome();
                 return true;
@@ -1362,6 +1395,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (!TermuxTerminalViewClient.shouldShowLongPressedUrlMenuItems(longPressedUrl)) return items;
         items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_BROWSER_ID,
             context.getString(R.string.action_open_link_in_browser)));
+        items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_BROWSER_BACKGROUND_ID,
+            context.getString(R.string.action_open_link_in_browser_background)));
         items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID,
             context.getString(R.string.action_open_link_in_chrome)));
         String googleAppMenuTitle = longPressedUrlGoogleAppMenuTitle(context, longPressedUrl);
@@ -1433,6 +1468,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             requestStoragePermission(true);
             return;
         }
+        if (requestCode == REQUEST_POST_NOTIFICATIONS) {
+            Logger.logInfo(LOG_TAG, "POST_NOTIFICATIONS permission result: "
+                + (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    ? "granted" : "not granted"));
+            return;
+        }
         if (mTermuxBrowserController != null
                 && mTermuxBrowserController.deliverMediaCapturePermissionResult(requestCode, permissions, grantResults)) {
             return;
@@ -1496,6 +1537,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxBrowserController getTermuxBrowserController() {
         return mTermuxBrowserController;
+    }
+
+    @Nullable
+    public AppOpenTagController getAppOpenTagController() {
+        return mTermuxService == null ? null : mTermuxService.getAppOpenTagController();
     }
 
     @Nullable

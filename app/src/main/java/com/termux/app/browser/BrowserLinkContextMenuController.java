@@ -24,6 +24,8 @@ public final class BrowserLinkContextMenuController {
     public interface Actions {
         void openLinkInBrowser(@NonNull String linkUrl);
 
+        void openLinkInBrowserBackground(@NonNull String linkUrl);
+
         void createSessionForLink(@NonNull String linkUrl);
     }
 
@@ -90,6 +92,7 @@ public final class BrowserLinkContextMenuController {
         actions.add(mContext.getString(R.string.action_browser_copy_link_text));
         actions.add(mContext.getString(R.string.action_browser_copy_link_url));
         actions.add(mContext.getString(R.string.action_browser_open_link));
+        actions.add(mContext.getString(R.string.action_browser_open_link_background));
         if (googleAppTarget != null) {
             actions.add(mContext.getString(R.string.action_browser_open_in_google_app,
                 googleAppTarget.getAppDisplayName()));
@@ -108,6 +111,8 @@ public final class BrowserLinkContextMenuController {
                     copyLinkUrl(linkUrl);
                 } else if (selected.equals(mContext.getString(R.string.action_browser_open_link))) {
                     mActions.openLinkInBrowser(linkUrl);
+                } else if (selected.equals(mContext.getString(R.string.action_browser_open_link_background))) {
+                    mActions.openLinkInBrowserBackground(linkUrl);
                 } else if (googleAppTarget != null && selected.equals(
                     mContext.getString(R.string.action_browser_open_in_google_app,
                         googleAppTarget.getAppDisplayName()))) {

@@ -619,6 +619,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (store != null) {
             store.clearReconnecting(sessionName);
         }
+        mActivity.getTermuxTerminalSessionClient().cancelReconnectTimeout(sessionName);
         refreshSessionList();
     }
 
@@ -1379,6 +1380,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         View reconnectingIndicatorView = sessionRowView.findViewById(R.id.session_reconnecting_indicator);
         boolean showIndicator = reconnectingIndicatorVisible(sessionName);
         reconnectingIndicatorView.setVisibility(showIndicator ? View.VISIBLE : View.INVISIBLE);
+        View reconnectFailedIndicatorView =
+            sessionRowView.findViewById(R.id.session_reconnect_failed_indicator);
+        boolean showFailedIndicator = reconnectFailed(sessionName);
+        reconnectFailedIndicatorView.setVisibility(showFailedIndicator ? View.VISIBLE : View.INVISIBLE);
+        reconnectFailedIndicatorView.setOnClickListener(v -> retryReconnectFailedSession(sessionName));
+    }
+
+    private void retryReconnectFailedSession(@Nullable String sessionName) {
+        if (sessionName == null) {
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient().retryReconnectAfterFailure(sessionName);
     }
 
     private int sessionTitleTextStartPaddingPx() {
@@ -1528,11 +1541,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (clickedSession == null) {
             return;
         }
+        TerminalSession clickedTerminalSession = clickedSession.getTerminalSession();
         mActivity.getTermuxTerminalSessionClient()
-            .switchToSessionReconnectingIfDead(clickedSession.getTerminalSession());
+            .switchToSessionReconnectingIfDead(clickedTerminalSession);
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }
+    }
+
+    private boolean reconnectFailed(@Nullable String sessionName) {
+        return sessionName != null
+            && SessionReconnectingIndicatorState.shouldShowReconnectFailedIndicator(
+                sessionName, mActivity.getSessionNewActivityStore());
     }
 
     private boolean onSessionRowLongClicked(int position) {

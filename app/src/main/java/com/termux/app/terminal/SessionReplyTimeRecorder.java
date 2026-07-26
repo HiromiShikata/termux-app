@@ -18,7 +18,7 @@ public final class SessionReplyTimeRecorder {
         if (session == null || session.mSessionName == null) {
             return false;
         }
-        mStore.recordUserInput(session.mSessionName, submitTimeMillis);
+        mStore.recordGenuineAppReply(session.mSessionName, submitTimeMillis);
         return true;
     }
 }

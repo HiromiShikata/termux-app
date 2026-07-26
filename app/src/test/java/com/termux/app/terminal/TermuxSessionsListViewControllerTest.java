@@ -439,6 +439,93 @@ public class TermuxSessionsListViewControllerTest {
     }
 
     @Test
+    public void reconnectFailedIndicatorIsClickableButNotFocusableSoTheRowItemClickDoesNotConsumeItsTap() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View reconnectFailedIndicator = row.findViewById(R.id.session_reconnect_failed_indicator);
+
+        Assert.assertTrue(reconnectFailedIndicator.isClickable());
+        Assert.assertFalse(reconnectFailedIndicator.isFocusable());
+        Assert.assertFalse(reconnectFailedIndicator.isFocusableInTouchMode());
+    }
+
+    @Test
+    public void tappingTheReconnectFailedIndicatorInvokesItsOwnClickHandlerRatherThanSelectingTheRow() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View reconnectFailedIndicator = row.findViewById(R.id.session_reconnect_failed_indicator);
+        boolean[] retried = {false};
+        reconnectFailedIndicator.setOnClickListener(v -> retried[0] = true);
+
+        boolean handled = reconnectFailedIndicator.performClick();
+
+        Assert.assertTrue(handled);
+        Assert.assertTrue(retried[0]);
+    }
+
+    @Test
+    public void reconnectFailedIndicatorExposesAtLeastTheAccessibilityMinimumTouchTarget() {
+        Context context = themedContext();
+        View row = LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        View reconnectFailedIndicator = row.findViewById(R.id.session_reconnect_failed_indicator);
+        ViewGroup.LayoutParams layoutParams = reconnectFailedIndicator.getLayoutParams();
+
+        int minimumTouchTargetPx = Math.round(48f
+            * context.getResources().getDisplayMetrics().density);
+
+        Assert.assertTrue("reconnect failed indicator touch target width below the accessibility minimum",
+            layoutParams.width >= minimumTouchTargetPx);
+        Assert.assertTrue("reconnect failed indicator touch target height below the accessibility minimum",
+            layoutParams.height >= minimumTouchTargetPx);
+        Assert.assertTrue("reconnect failed indicator minWidth below the accessibility minimum",
+            reconnectFailedIndicator.getMinimumWidth() >= minimumTouchTargetPx);
+        Assert.assertTrue("reconnect failed indicator minHeight below the accessibility minimum",
+            reconnectFailedIndicator.getMinimumHeight() >= minimumTouchTargetPx);
+    }
+
+    @Test
+    public void reconnectFailedIndicatorAndDisableToggleTapAreasDoNotOverlapAfterLayout() {
+        Context context = themedContext();
+        ViewGroup row = (ViewGroup) LayoutInflater.from(context)
+            .inflate(R.layout.item_terminal_sessions_list, new FrameLayout(context), false);
+
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        row.measure(widthSpec, heightSpec);
+        row.layout(0, 0, row.getMeasuredWidth(), row.getMeasuredHeight());
+
+        View reconnectFailedIndicator = row.findViewById(R.id.session_reconnect_failed_indicator);
+        View disableToggle = row.findViewById(R.id.session_disable_toggle);
+
+        int reconnectFailedIndicatorRight = absoluteLeft(reconnectFailedIndicator, row)
+            + reconnectFailedIndicator.getWidth();
+        int disableToggleLeft = absoluteLeft(disableToggle, row);
+
+        int minimumGapPx = Math.round(8f * context.getResources().getDisplayMetrics().density);
+
+        Assert.assertTrue(
+            "the reload button and the show/hide toggle must have clear, non-overlapping tap areas",
+            disableToggleLeft - reconnectFailedIndicatorRight >= minimumGapPx);
+    }
+
+    private static int absoluteLeft(View view, ViewGroup ancestor) {
+        int left = 0;
+        View current = view;
+        while (current != null && current != ancestor) {
+            left += current.getLeft();
+            Object parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        return left;
+    }
+
+    @Test
     public void timestampLineShowsMoreThanOneDayForCallOutAndReplyWhenNoStatuslineIsRecorded() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 

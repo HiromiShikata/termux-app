@@ -985,6 +985,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
 
             @Override
+            public void openLinkInBrowserBackground(@NonNull String linkUrl) {
+                openUrlInNewBackgroundTab(linkUrl);
+            }
+
+            @Override
             public void createSessionForLink(@NonNull String linkUrl) {
                 mActivity.getTermuxTerminalSessionClient().addNewSessionForBrowserUrl(linkUrl);
             }
@@ -1808,6 +1813,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return true;
     }
 
+    public boolean openUrlInNewBackgroundTab(@NonNull String url) {
+        String sessionHandle = mCurrentSessionHandle;
+        if (sessionHandle == null) {
+            TerminalSession currentSession = mActivity.getCurrentSession();
+            if (currentSession == null) return false;
+            sessionHandle = currentSession.mHandle;
+        }
+        BrowserTab tab = mTabManager.addBackgroundTab(sessionHandle, normalizeUrl(url));
+        recordTabInHistory(tab);
+        notifyTabsUpdated();
+        persistSessionTabs();
+        return true;
+    }
+
     public void openUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
         String sessionHandle = mCurrentSessionHandle;
         if (sessionHandle == null) {
@@ -1949,11 +1968,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     private void displayTab(@NonNull BrowserTab tab, boolean forceReload) {
+        mSwipeRefreshLayout.setRefreshing(false);
         if (mFindController != null) mFindController.onPageOrTabChanged();
         boolean firstDisplay = !mWebViewHost.hasWebViewForTab(tab);
         if (firstDisplay) showWebViewCover();
         renderFrame(tab);
         WebView webView = mWebViewHost.showTab(tab);
+        if (webView.getProgress() < 100) {
+            showPageLoadProgress(webView.getProgress());
+        } else {
+            hidePageLoadProgress();
+        }
         applyWebViewPauseState();
         if (forceReload && !firstDisplay) webView.reload();
         else if (!firstDisplay) revealWebView();

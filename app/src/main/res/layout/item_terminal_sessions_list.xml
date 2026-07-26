@@ -54,15 +54,40 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <ProgressBar
-            android:id="@+id/session_reconnecting_indicator"
-            style="?android:attr/progressBarStyleSmall"
-            android:layout_width="14dip"
-            android:layout_height="14dip"
+        <FrameLayout
+            android:layout_width="48dip"
+            android:layout_height="48dip"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="2dip"
-            android:indeterminate="true"
-            android:visibility="invisible" />
+            android:layout_marginStart="2dip">
+
+            <ProgressBar
+                android:id="@+id/session_reconnecting_indicator"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="14dip"
+                android:layout_height="14dip"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                android:visibility="invisible" />
+
+            <ImageView
+                android:id="@+id/session_reconnect_failed_indicator"
+                android:layout_width="48dip"
+                android:layout_height="48dip"
+                android:minWidth="48dip"
+                android:minHeight="48dip"
+                android:layout_gravity="center"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="false"
+                android:focusableInTouchMode="false"
+                android:duplicateParentState="false"
+                android:padding="17dip"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_load_session"
+                android:tint="@color/session_reconnect_failed_indicator"
+                android:contentDescription="@string/session_reconnect_failed_tap_to_retry"
+                android:visibility="invisible" />
+        </FrameLayout>
 
         <ImageView
             android:id="@+id/session_disable_toggle"
@@ -71,7 +96,7 @@
             android:minWidth="48dip"
             android:minHeight="48dip"
             android:layout_gravity="center_vertical"
-            android:layout_marginStart="2dip"
+            android:layout_marginStart="16dip"
             android:layout_marginEnd="6dip"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:clickable="true"

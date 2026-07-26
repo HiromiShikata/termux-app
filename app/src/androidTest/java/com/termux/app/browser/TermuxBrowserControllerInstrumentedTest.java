@@ -4,8 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -121,6 +123,43 @@ public class TermuxBrowserControllerInstrumentedTest {
     }
 
     @Test
+    public void openUrlInNewBackgroundTabPreservesExistingActiveTab() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+            assertNotNull(browserController);
+
+            browserController.onSessionChanged(newDetachedSession());
+            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+            BrowserTab firstActiveTab = browserController.getActiveTab();
+            assertNotNull(firstActiveTab);
+            assertEquals(LOOPBACK_TAB_URL, firstActiveTab.getUrl());
+            int tabCountBeforeBackground = browserController.getTotalOpenTabCount();
+
+            browserController.openUrlInNewBackgroundTab(SECONDARY_LOOPBACK_TAB_URL);
+
+            BrowserTab activeTabAfterBackgroundOpen = browserController.getActiveTab();
+            assertEquals(tabCountBeforeBackground + 1, browserController.getTotalOpenTabCount());
+            assertSame(firstActiveTab, activeTabAfterBackgroundOpen);
+            assertTrue(browserController.isBrowserVisible());
+        });
+    }
+
+    @Test
+    public void openUrlInNewBackgroundTabIsNoOpWhenNoSessionIsSelected() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+
+            browserController.onSessionChanged(null);
+            browserController.openUrlInNewBackgroundTab(LOOPBACK_TAB_URL);
+
+            assertNull(browserController.getActiveTab());
+            assertFalse(browserController.isBrowserVisible());
+        });
+    }
+
+    @Test
     public void openUrlInNewTabIsNoOpWhenNoSessionIsSelected() {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
         scenario.onActivity(activity -> {
@@ -143,6 +182,29 @@ public class TermuxBrowserControllerInstrumentedTest {
             assertNotNull(activity.findViewById(R.id.browser_send_page_text_button));
             assertNotNull(activity.findViewById(R.id.browser_clear_cache_button));
             assertNotNull(activity.findViewById(R.id.browser_desktop_mode_toggle));
+        });
+    }
+
+    @Test
+    public void sharedSwipeRefreshSpinnerIsResetWhenSwitchingToNewTab() {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario.onActivity(activity -> {
+            TermuxBrowserController browserController = activity.getTermuxBrowserController();
+
+            browserController.onSessionChanged(newDetachedSession());
+            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
+
+            SwipeRefreshLayout swipeRefreshLayout = activity.findViewById(R.id.browser_swipe_refresh);
+            assertNotNull(swipeRefreshLayout);
+            swipeRefreshLayout.setRefreshing(true);
+            assertTrue(swipeRefreshLayout.isRefreshing());
+
+            browserController.openUrlInNewTab(SECONDARY_LOOPBACK_TAB_URL);
+
+            assertFalse(
+                "Switching to a new tab must reset the shared pull-to-refresh spinner; "
+                    + "the circular indicator must not remain visible on the newly displayed tab",
+                swipeRefreshLayout.isRefreshing());
         });
     }
 

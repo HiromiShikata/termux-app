@@ -947,12 +947,18 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void appInputAtOrAfterTheStatuslineCallClearsTheRedDotInstantlyBeforeTheReplyTokenCatchesUp() {
+    public void rawAppInputAtTheStatuslineCallLeavesTheRedDotArmedUntilAGenuineReply() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
 
         store.recordUserInput("worker", 9_000L);
+
+        Assert.assertEquals(Long.valueOf(9_000L), store.statuslineCallPendingTimeMillis("worker"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertTrue(store.hasPendingExplicitCall("worker"));
+
+        store.recordGenuineAppReply("worker", 9_000L);
 
         Assert.assertNull(store.statuslineCallPendingTimeMillis("worker"));
         Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
@@ -960,12 +966,25 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void appInputNewerThanTheStatuslineCallClearsTheRedDotInstantly() {
+    public void rawAppInputNewerThanTheStatuslineCallStillLeavesTheRedDotArmed() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
 
         store.recordUserInput("worker", 12_000L);
+
+        Assert.assertEquals(Long.valueOf(9_000L), store.statuslineCallPendingTimeMillis("worker"));
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+        Assert.assertTrue(store.hasPendingExplicitCall("worker"));
+    }
+
+    @Test
+    public void aGenuineAppReplyNewerThanTheStatuslineCallClearsTheRedDotInstantly() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
+        Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
+
+        store.recordGenuineAppReply("worker", 12_000L);
 
         Assert.assertNull(store.statuslineCallPendingTimeMillis("worker"));
         Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("worker"));

@@ -77,6 +77,7 @@
     <string name="action_browser_copy_link_text">Copy link text</string>
     <string name="action_browser_copy_link_url">Copy link URL</string>
     <string name="action_browser_open_link">Open in Browser</string>
+    <string name="action_browser_open_link_background">Open in Browser (background)</string>
     <string name="action_browser_desktop_mode">Desktop site (PC mode)</string>
     <string name="action_browser_desktop_mode_toggle">Toggle desktop mode</string>
     <string name="action_browser_open_in_chrome">Open in Chrome</string>
@@ -200,6 +201,7 @@
     <string name="action_open_url_in_app">Open</string>
     <string name="action_create_session_from_url">Create new session</string>
     <string name="action_open_link_in_browser">Open in Browser</string>
+    <string name="action_open_link_in_browser_background">Open in Browser (background)</string>
     <string name="action_open_link_in_chrome">Open in Chrome</string>
     <string name="action_open_link_in_google_app">Open in %1$s</string>
     <string name="action_copy_link_url">Copy URL</string>
@@ -239,6 +241,7 @@
     <string name="action_toggle_hidden_sessions">Toggle hidden sessions</string>
     <string name="action_session_filter_off">Showing all sessions; tap to hide hidden-designated sessions</string>
     <string name="action_session_filter_on">Hiding hidden-designated sessions; tap to show all sessions</string>
+    <string name="session_reconnect_failed_tap_to_retry">Reconnect failed; tap to retry</string>
 
     <string name="error_styling_not_installed">The &TERMUX_STYLING_APP_NAME; Plugin App is not installed.</string>
     <string name="action_styling_install">Install</string>
@@ -450,6 +453,9 @@
     <string name="apk_update_install_permission_required">Allow installing unknown apps, then tap update again</string>
     <string name="apk_update_floating_indicator_content_description_generic">Update available. Tap to download and install the update.</string>
     <string name="apk_update_floating_indicator_content_description">Update available, version %1$s. Tap to download and install the update.</string>
+    <string name="apk_update_notification_channel_name">APK Updates</string>
+    <string name="apk_update_notification_title">Update available</string>
+    <string name="apk_update_notification_text">HS Termux %1$s is available. Tap to open and install.</string>
     <string name="apk_revert_preference_title">Revert to a previous build</string>
     <string name="apk_revert_preference_summary">Recover from a broken release by installing an earlier build from GitHub Releases</string>
     <string name="apk_revert_loading">Loading previous builds…</string>
