@@ -49,6 +49,8 @@ name: Android instrumentation tests
 
 on:
   push:
+    branches-ignore:
+      - main
   pull_request:
     branches:
       - main
@@ -74,8 +76,6 @@ jobs:
       - name: Determine affected test classes
         id: select
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref }}
           BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
         run: |
           set -euo pipefail
@@ -88,10 +88,6 @@ jobs:
             echo "mode=full ($2)" >> "$GITHUB_OUTPUT"
             exit 0
           }
-
-          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "refs/heads/main" ]; then
-            emit_full "Post-submit push to the default branch; running the full suite." "post-submit push to main"
-          fi
 
           base="$BASE_REF"
           if ! git rev-parse --verify --quiet "$base" >/dev/null; then
@@ -163,7 +159,6 @@ jobs:
     name: app connectedDebugAndroidTest (emulator)
     needs: select-tests
     runs-on: ubuntu-latest
-    continue-on-error: ${{ github.event_name != 'pull_request' }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
