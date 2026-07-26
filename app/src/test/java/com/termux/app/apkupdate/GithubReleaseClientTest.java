@@ -49,7 +49,6 @@ public class GithubReleaseClientTest {
                     new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 String line;
                 while ((line = reader.readLine()) != null && !line.isEmpty()) {
-                    // Consume request headers until the blank line.
                 }
                 byte[] bodyBytes = body.getBytes(StandardCharsets.UTF_8);
                 StringBuilder header = new StringBuilder();
@@ -65,7 +64,6 @@ public class GithubReleaseClientTest {
                 out.write(bodyBytes);
                 out.flush();
             } catch (IOException ignored) {
-                // Test teardown closes the socket; ignore the resulting exception.
             }
         });
         serverThread.setDaemon(true);
