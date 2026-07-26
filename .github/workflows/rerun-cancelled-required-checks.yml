@@ -1,0 +1,40 @@
+name: Rerun cancelled required checks
+
+on:
+  workflow_run:
+    workflows:
+      - Build
+      - Unit tests
+      - Android instrumentation tests
+    types:
+      - completed
+
+jobs:
+  rerun-if-still-current:
+    if: github.event.workflow_run.conclusion == 'cancelled'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Rerun the cancelled workflow run if its commit is still the current head
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PULL_REQUESTS_JSON: ${{ toJson(github.event.workflow_run.pull_requests) }}
+        run: |
+          set -euo pipefail
+          pr_number=$(echo "$PULL_REQUESTS_JSON" | jq -r '.[0].number // empty')
+          if [ -n "$pr_number" ]; then
+            current_sha=$(gh api "repos/$REPO/pulls/$pr_number" --jq '.head.sha')
+          else
+            current_sha=$(gh api "repos/$REPO/commits/$HEAD_BRANCH" --jq '.sha')
+          fi
+          if [ "$current_sha" != "$HEAD_SHA" ]; then
+            echo "Cancelled run $RUN_ID head $HEAD_SHA is stale (current head is $current_sha); skipping rerun."
+            exit 0
+          fi
+          echo "Cancelled run $RUN_ID is still current at $HEAD_SHA; requesting a rerun."
+          gh api --method POST "repos/$REPO/actions/runs/$RUN_ID/rerun"
