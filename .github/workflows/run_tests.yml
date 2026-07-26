@@ -18,131 +18,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  select-unit-tests:
-    name: Select affected unit tests
-    runs-on: ubuntu-latest
-    outputs:
-      gradle-test-args: ${{ steps.select.outputs.gradle-test-args }}
-      mode: ${{ steps.select.outputs.mode }}
-    steps:
-      - name: Clone repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Determine affected unit test classes
-        id: select
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref }}
-          BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
-        run: |
-          set -euo pipefail
-          modules="app termux-shared terminal-emulator terminal-view"
-
-          emit_full() {
-            echo "$1"
-            echo "gradle-test-args=" >> "$GITHUB_OUTPUT"
-            echo "mode=full ($2)" >> "$GITHUB_OUTPUT"
-            exit 0
-          }
-
-          if [ "$EVENT_NAME" != "pull_request" ]; then
-            emit_full "Non-pull_request event; running the full suite." "post-submit $EVENT_NAME on $REF_NAME"
-          fi
-
-          base="$BASE_REF"
-          if ! git rev-parse --verify --quiet "$base" >/dev/null; then
-            git fetch origin main --depth=1 || true
-            base="origin/main"
-          fi
-          merge_base=$(git merge-base "$base" HEAD 2>/dev/null || echo "")
-          [ -n "$merge_base" ] || emit_full "Could not determine a merge base; running the full suite." "no merge base"
-
-          changed=$(git diff --name-only "$merge_base" HEAD)
-          echo "Changed files:"
-          echo "$changed" | sed 's/^/  /'
-          [ -n "$changed" ] || emit_full "No changed files detected; running the full suite as a safety net." "empty diff"
-
-          broad_pattern='^(settings.gradle|build.gradle|gradle.properties|gradle/|(app|termux-shared|terminal-emulator|terminal-view)/build.gradle|(app|termux-shared|terminal-view)/src/main/(AndroidManifest.xml|res/))'
-          if echo "$changed" | grep -qE "$broad_pattern"; then
-            emit_full "Broad or core change detected; running the full suite." "broad or core change"
-          fi
-
-          harness_changed=$(echo "$changed" | grep -E '^(app|termux-shared|terminal-emulator|terminal-view)/src/test/java/.*\.java$' | grep -vE '[A-Za-z0-9]Test\.java$' || true)
-          if [ -n "$harness_changed" ]; then
-            emit_full "A non-Test.java file changed under a test source tree; running the full suite so shared test helpers stay covered." "test helper change"
-          fi
-
-          task_args=""
-          mode_summary=""
-          any_selected=false
-          for module in $modules; do
-            main_prefix="$module/src/main/java/"
-            test_root="$module/src/test/java"
-
-            module_changed_main=$(echo "$changed" | grep -E "^${main_prefix}" || true)
-            module_changed_test=$(echo "$changed" | grep -E "^${test_root}/.*Test\.java$" || true)
-
-            [ -n "$module_changed_main" ] || [ -n "$module_changed_test" ] || continue
-
-            packages=$(echo "$module_changed_main" \
-              | sed -E "s#^${main_prefix}(.*)/[^/]+\$#\1#" \
-              | sort -u || true)
-
-            module_test_classes=""
-            for pkg_path in $packages; do
-              dir="$test_root/$pkg_path"
-              [ -d "$dir" ] || emit_full "Changed package '$module/$pkg_path' has no unit test directory; running the full suite so coverage is never skipped." "package without matching test dir ($module/$pkg_path)"
-              for f in "$dir"/*Test.java; do
-                [ -e "$f" ] || continue
-                fqcn=$(echo "$f" | sed -E "s#^$test_root/##; s#/#.#g; s#\.java\$##")
-                module_test_classes="$module_test_classes
-          $fqcn"
-              done
-            done
-
-            while IFS= read -r f; do
-              [ -n "$f" ] || continue
-              fqcn=$(echo "$f" | sed -E "s#^$test_root/##; s#/#.#g; s#\.java\$##")
-              module_test_classes="$module_test_classes
-          $fqcn"
-            done <<< "$module_changed_test"
-
-            module_test_classes=$(echo "$module_test_classes" | sed 's/^ *//; /^$/d' | sort -u)
-            [ -n "$module_test_classes" ] || emit_full "Changed sources in '$module' did not map to any unit test class; running the full suite so coverage is never skipped." "no matching test class in $module"
-
-            task_args="$task_args :$module:test"
-            while IFS= read -r fqcn; do
-              [ -n "$fqcn" ] || continue
-              task_args="$task_args --tests $fqcn"
-            done <<< "$module_test_classes"
-
-            class_count=$(echo "$module_test_classes" | wc -l | tr -d ' ')
-            mode_summary="$mode_summary $module=$class_count"
-            any_selected=true
-          done
-
-          if [ "$any_selected" = false ]; then
-            emit_full "No module had unit-test-relevant changes; running the full suite as a safety net." "no affected module"
-          fi
-
-          task_args=$(echo "$task_args" | sed -E 's/^ +//')
-          echo "Selected unit test task arguments:"
-          echo "  $task_args"
-          echo "gradle-test-args=$task_args" >> "$GITHUB_OUTPUT"
-          echo "mode=selective ($(echo "$mode_summary" | sed -E 's/^ +//'))" >> "$GITHUB_OUTPUT"
-
   testing:
     runs-on: ubuntu-latest
-    needs: select-unit-tests
-    continue-on-error: ${{ github.event_name != 'pull_request' }}
     permissions:
       contents: read
       pull-requests: write
-    env:
-      GRADLE_TEST_ARGS: ${{ needs.select-unit-tests.outputs.gradle-test-args }}
-      SELECTION_MODE: ${{ needs.select-unit-tests.outputs.mode }}
     steps:
     - name: Clone repository
       uses: actions/checkout@v6
@@ -153,13 +33,9 @@ jobs:
         java-version: '17'
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
-    - name: Report test selection
-      run: |
-        echo "Selection mode: $SELECTION_MODE"
-        echo "Gradle test args: ${GRADLE_TEST_ARGS:-(full suite)}"
     - name: Execute tests with JaCoCo coverage
       run: |
-        ./gradlew ${GRADLE_TEST_ARGS:-test} jacocoTestReport
+        ./gradlew test jacocoTestReport
     - name: Print overall coverage percentage to the log
       run: |
         REPORT="build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
