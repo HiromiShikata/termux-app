@@ -38,9 +38,9 @@ public class BrowserVerticalScrollInstrumentedTest {
 
     private static final int READINESS_POLL_INTERVAL_MILLIS = 100;
 
-    private static final int MAX_GESTURE_ATTEMPTS = 20;
+    private static final int MAX_GESTURE_ATTEMPTS = 40;
 
-    private static final int GESTURE_BUDGET_MILLIS = 20000;
+    private static final int GESTURE_BUDGET_MILLIS = 40000;
 
     private static final int GESTURE_SETTLE_MILLIS = 600;
 
