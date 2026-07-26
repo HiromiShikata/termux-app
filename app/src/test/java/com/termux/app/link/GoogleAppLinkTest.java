@@ -162,4 +162,48 @@ public class GoogleAppLinkTest {
         Assert.assertFalse(launched);
         Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
+
+    @Test
+    public void openInGoogleAppOrElseOpensNativeAppForResolvableInstalledUrl() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://calendar.google.com/calendar/u/0/r";
+        boolean[] fallbackRan = {false};
+
+        GoogleAppLink.openInGoogleAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertFalse("browser fallback must not run when the native app is installed", fallbackRan[0]);
+        Intent started = shadowApplication.getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.google.android.calendar", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
+    }
+
+    @Test
+    public void openInGoogleAppOrElseFallsBackToBrowserWhenNativeAppNotInstalled() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        shadowApplication.checkActivities(true);
+        String url = "https://docs.google.com/spreadsheets/d/abc123/edit";
+        boolean[] fallbackRan = {false};
+
+        GoogleAppLink.openInGoogleAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertTrue("browser fallback must run when the native app is not installed", fallbackRan[0]);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
+    }
+
+    @Test
+    public void openInGoogleAppOrElseFallsBackToBrowserForNonResolvableUrl() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://example.com/some/page";
+        boolean[] fallbackRan = {false};
+
+        GoogleAppLink.openInGoogleAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertTrue("browser fallback must run for a URL with no matching native app", fallbackRan[0]);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
+    }
 }

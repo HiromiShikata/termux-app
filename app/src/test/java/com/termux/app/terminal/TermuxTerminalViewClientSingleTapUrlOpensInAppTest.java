@@ -32,12 +32,30 @@ public class TermuxTerminalViewClientSingleTapUrlOpensInAppTest {
     }
 
     @Test
-    public void singleTapOnPlainTextUrlOpensInAppBrowser() throws IOException {
+    public void singleTapOnPlainTextUrlRoutesThroughMatchingAppOrBrowserHelper() throws IOException {
         String methodBody = methodBody(
             readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void onSingleTapUp(");
 
-        Assert.assertTrue("single tap on a plain-text URL must open the in-app browser",
-            methodBody.contains("openUrlInApp(url)"));
+        Assert.assertTrue("single tap on a plain-text URL must resolve to the matching native app or fall back to the browser",
+            methodBody.contains("openUrlInMatchingAppOrBrowser(url)"));
+    }
+
+    @Test
+    public void singleTapOnHyperlinkRoutesThroughMatchingAppOrBrowserHelper() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void onSingleTapUp(");
+
+        Assert.assertTrue("single tap on an OSC 8 hyperlink must resolve to the matching native app or fall back to the browser",
+            methodBody.contains("openUrlInMatchingAppOrBrowser(hyperlinkUri)"));
+    }
+
+    @Test
+    public void singleTapNoLongerOpensTheInAppBrowserUnconditionally() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void onSingleTapUp(");
+
+        Assert.assertFalse("single tap must no longer bypass native-app resolution by calling openUrlInApp directly",
+            methodBody.contains("openUrlInApp("));
     }
 
     @Test
@@ -47,6 +65,26 @@ public class TermuxTerminalViewClientSingleTapUrlOpensInAppTest {
 
         Assert.assertFalse("single tap on a plain-text URL must not launch the external browser",
             methodBody.contains("ShareUtils.openUrl"));
+    }
+
+    @Test
+    public void matchingAppOrBrowserHelperResolvesThenFallsBackToTheInAppBrowser() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "private void openUrlInMatchingAppOrBrowser(");
+
+        Assert.assertTrue("the shared helper must delegate the resolve-then-fallback decision to GoogleAppLink",
+            methodBody.contains("GoogleAppLink.openInGoogleAppOrElse(mActivity, url"));
+        Assert.assertTrue("the shared helper must fall back to the in-app browser",
+            methodBody.contains("openUrlInApp(url)"));
+    }
+
+    @Test
+    public void longPressOpenInGoogleAppReusesTheSharedHelper() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void openLongPressedUrlInGoogleApp(");
+
+        Assert.assertTrue("long-press Open in Google app must reuse the shared resolve-then-fallback helper",
+            methodBody.contains("openUrlInMatchingAppOrBrowser(mLongPressedUrl)"));
     }
 
     @Test
