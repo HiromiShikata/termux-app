@@ -91,10 +91,7 @@ public class AppVersionComparatorTest {
 
     @Test
     public void comparesBuildComponentNumericallyNotLexically() {
-        // Lexical comparison would rank "2733" above "2744" because '3' < '4' only decides after the
-        // shared "27" prefix; this asserts the component is compared as the integer it represents.
         Assert.assertTrue(comparator.compare("0.119.2744", "0.119.2733") > 0);
-        // A larger number of digits must rank higher even though it is lexically smaller at index 0.
         Assert.assertTrue(comparator.isNewer("0.119.10000", "0.119.9999"));
     }
 }
