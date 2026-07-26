@@ -2407,7 +2407,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         for (PersistedSessionRestoreData persistedSession : persistedSessions) {
             String name = persistedSession.getName();
             if (name != null && !restoredNames.add(name)) continue;
-            if (service.getTermuxSessionsSize() >= configuredLimit) {
+            if (cappedSessionCount(service) >= configuredLimit) {
                 droppedSessionCount++;
                 continue;
             }
@@ -2474,7 +2474,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TerminalSession firstCreatedSession = null;
         for (String sessionName : missingSessionNames) {
-            if (service.getTermuxSessionsSize() >= configuredLimit) {
+            if (cappedSessionCount(service) >= configuredLimit) {
                 droppedSessionCount++;
                 continue;
             }
