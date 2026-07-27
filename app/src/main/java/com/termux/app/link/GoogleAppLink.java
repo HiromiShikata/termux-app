@@ -109,4 +109,12 @@ public final class GoogleAppLink {
             return false;
         }
     }
+
+    public static void openInGoogleAppOrElse(@NonNull Context context, @NonNull String url,
+                                             @NonNull Runnable browserFallback) {
+        GoogleAppTarget target = resolveTarget(url);
+        if (target == null || !openInGoogleApp(context, url, target)) {
+            browserFallback.run();
+        }
+    }
 }

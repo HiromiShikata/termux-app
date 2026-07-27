@@ -198,7 +198,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
             String hyperlinkUri = term.getScreen().getHyperlinkUri(columnAndRow[1], columnAndRow[0]);
             if (hyperlinkUri != null) {
-                openUrlInApp(hyperlinkUri);
+                openUrlInMatchingAppOrBrowser(hyperlinkUri);
                 return;
             }
 
@@ -207,7 +207,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
             if (!urlSet.isEmpty()) {
                 String url = (String) urlSet.iterator().next();
-                openUrlInApp(url);
+                openUrlInMatchingAppOrBrowser(url);
                 return;
             }
         }
@@ -475,10 +475,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     public void openLongPressedUrlInGoogleApp() {
         if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
-        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(mLongPressedUrl);
-        if (target == null || !GoogleAppLink.openInGoogleApp(mActivity, mLongPressedUrl, target)) {
-            openUrlInApp(mLongPressedUrl);
-        }
+        openUrlInMatchingAppOrBrowser(mLongPressedUrl);
     }
 
     public void copyLongPressedUrlToClipboard() {
@@ -844,6 +841,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                     mTermuxTerminalSessionActivityClient.addNewSessionApplyingAutosshConfig(url);
                 }
             }));
+    }
+
+    private void openUrlInMatchingAppOrBrowser(String url) {
+        GoogleAppLink.openInGoogleAppOrElse(mActivity, url, () -> openUrlInApp(url));
     }
 
     private void openUrlInApp(String url) {
