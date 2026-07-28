@@ -193,7 +193,7 @@ public class CallToUserTagScannerTest {
     @Test
     public void newReasonsReturnsEachReasonInOrderOnFirstScan() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
-        List<String> reasons = newTriggerValues(scanner, 
+        List<String> reasons = newTriggerValues(scanner,
             "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>");
         assertEquals(2, reasons.size());
         assertEquals("first", reasons.get(0));
@@ -217,7 +217,7 @@ public class CallToUserTagScannerTest {
             newTriggerValues(scanner, "<call-to-user>first</call-to-user>"));
         assertEquals(List.of("second"),
             newTriggerValues(scanner, "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>"));
-        assertTrue(newTriggerValues(scanner, 
+        assertTrue(newTriggerValues(scanner,
             "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>").isEmpty());
     }
 
@@ -242,9 +242,9 @@ public class CallToUserTagScannerTest {
         assertEquals(List.of("approval"),
             newTriggerValues(scanner, "<call-to-user>approval</call-to-user>"));
 
-        assertTrue(newTriggerValues(scanner, 
+        assertTrue(newTriggerValues(scanner,
             "<call-to-user>approval</call-to-user>\nmore output line 1").isEmpty());
-        assertTrue(newTriggerValues(scanner, 
+        assertTrue(newTriggerValues(scanner,
             "<call-to-user>approval</call-to-user>\nmore output line 1\nmore output line 2").isEmpty());
     }
 
@@ -255,7 +255,7 @@ public class CallToUserTagScannerTest {
         assertEquals(List.of("alpha"),
             newTriggerValues(scanner, "<call-to-user>alpha</call-to-user>"));
 
-        List<String> burst = newTriggerValues(scanner, 
+        List<String> burst = newTriggerValues(scanner,
             "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user><call-to-user>gamma</call-to-user>");
         assertEquals(2, burst.size());
         assertEquals("beta", burst.get(0));
@@ -284,7 +284,7 @@ public class CallToUserTagScannerTest {
 
         assertEquals(List.of("needs    review of   diff"), newTriggerValues(scanner, output));
         assertTrue(newTriggerValues(scanner, output).isEmpty());
-        assertTrue(newTriggerValues(scanner, 
+        assertTrue(newTriggerValues(scanner,
             output + "\nmore output appended after the answer").isEmpty());
     }
 
@@ -294,7 +294,7 @@ public class CallToUserTagScannerTest {
 
         assertEquals(List.of("approval"),
             newTriggerValues(scanner, "<call-to-user>approval</call-to-user>\nline a\nline b\n"));
-        assertTrue(newTriggerValues(scanner, 
+        assertTrue(newTriggerValues(scanner,
             "line a\nline b\nstill the same already fired output\n").isEmpty());
     }
 
@@ -307,7 +307,7 @@ public class CallToUserTagScannerTest {
         assertEquals(List.of("second"),
             newTriggerValues(scanner, "<call-to-user>first</call-to-user>\n<call-to-user>second</call-to-user>\n"));
 
-        assertTrue(newTriggerValues(scanner, 
+        assertTrue(newTriggerValues(scanner,
             "<call-to-user>first</call-to-user>\nlater plain output\n").isEmpty());
 
         assertEquals(List.of("third"),

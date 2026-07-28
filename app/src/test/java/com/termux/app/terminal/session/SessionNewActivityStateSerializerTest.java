@@ -201,6 +201,72 @@ public class SessionNewActivityStateSerializerTest {
     }
 
     @Test
+    public void legacyAcknowledgedCallReasonsSeedCallTriggerValues() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"lastExplicitCallTimeMillis\":1000,"
+                + "\"lastExplicitCallReason\":\"needs approval\","
+                + "\"acknowledgedCallReasons\":[\"needs approval\"]}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(
+            Arrays.asList("needs approval"),
+            result.get(0).getCallTriggerValues());
+    }
+
+    @Test
+    public void legacyUnacknowledgedCallReasonsAlsoSeedCallTriggerValues() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"lastExplicitCallTimeMillis\":1000,"
+                + "\"acknowledgedCallReasons\":[\"answered call\"],"
+                + "\"unacknowledgedCallReasons\":[\"pending call\"]}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(
+            Arrays.asList("answered call", "pending call"),
+            result.get(0).getCallTriggerValues());
+        Assert.assertEquals(
+            Arrays.asList("pending call"),
+            result.get(0).getUnacknowledgedCallReasons());
+    }
+
+    @Test
+    public void storedCallTriggerValuesWinOverLegacyAcknowledgedCallReasons() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"acknowledgedCallReasons\":[\"legacy reason\"],"
+                + "\"callTriggerValues\":[\"trigger value\"]}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(
+            Arrays.asList("trigger value"),
+            result.get(0).getCallTriggerValues());
+    }
+
+    @Test
+    public void legacySeededCallTriggerValuesObeyTheStoredStateCaps() throws JSONException {
+        StringBuilder oversizedReason = new StringBuilder();
+        for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASON_LENGTH + 5_000; index++) {
+            oversizedReason.append('x');
+        }
+        org.json.JSONArray legacyReasons = new org.json.JSONArray();
+        for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION + 50; index++) {
+            legacyReasons.put(index + oversizedReason.toString());
+        }
+        org.json.JSONObject legacyEntry = new org.json.JSONObject();
+        legacyEntry.put("sessionName", "legacy");
+        legacyEntry.put("acknowledgedCallReasons", legacyReasons);
+        String legacyDocument = new org.json.JSONArray().put(legacyEntry).toString();
+
+        List<SessionNewActivityState> result = serializer.deserialize(legacyDocument);
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
+            result.get(0).getCallTriggerValues().size());
+        for (String triggerValue : result.get(0).getCallTriggerValues()) {
+            Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH, triggerValue.length());
+        }
+    }
+
+    @Test
     public void deserializeShrinksOversizedStoredStateOnLoad() throws JSONException {
         StringBuilder oversizedReason = new StringBuilder();
         for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASON_LENGTH + 5_000; index++) {

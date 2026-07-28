@@ -17,6 +17,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_LAST_EXPLICIT_CALL_REASON = "lastExplicitCallReason";
     private static final String KEY_UNACKNOWLEDGED_CALL_REASONS = "unacknowledgedCallReasons";
     private static final String KEY_CALL_TRIGGER_VALUES = "callTriggerValues";
+    private static final String KEY_LEGACY_ACKNOWLEDGED_CALL_REASONS = "acknowledgedCallReasons";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
     private static final String KEY_LAST_USER_INPUT_TIME_MILLIS = "lastUserInputTimeMillis";
     private static final String KEY_STATUSLINE_CALL_TIME_MILLIS = "statuslineCallTimeMillis";
@@ -75,8 +76,9 @@ public final class SessionNewActivityStateSerializer {
             String lastExplicitCallReason = optionalString(object, KEY_LAST_EXPLICIT_CALL_REASON);
             List<String> unacknowledgedCallReasons =
                 optionalStringList(object, KEY_UNACKNOWLEDGED_CALL_REASONS);
-            List<String> callTriggerValues =
-                optionalStringList(object, KEY_CALL_TRIGGER_VALUES);
+            List<String> callTriggerValues = object.isNull(KEY_CALL_TRIGGER_VALUES)
+                ? legacyCallTriggerValues(object, unacknowledgedCallReasons)
+                : optionalStringList(object, KEY_CALL_TRIGGER_VALUES);
             Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
             Long lastUserInputTimeMillis = optionalLong(object, KEY_LAST_USER_INPUT_TIME_MILLIS);
             Long statuslineCallTimeMillis = optionalLong(object, KEY_STATUSLINE_CALL_TIME_MILLIS);
@@ -91,6 +93,46 @@ public final class SessionNewActivityStateSerializer {
                 statuslineReplyTimeMillis, subagentCount)));
         }
         return states;
+    }
+
+    /**
+     * The call trigger values recovered from an entry a previous app version wrote, which carries no
+     * {@link #KEY_CALL_TRIGGER_VALUES} entry. That version keyed call deduplication on the reason
+     * text itself and treated a call as already known when the reason appeared in either its
+     * acknowledged or its unacknowledged reason list, so both lists together are exactly the legacy
+     * key set and both must be seeded. Seeding only the acknowledged list would leave a call that is
+     * still pending unknown, and the first transcript scan after the update — which re-detects every
+     * owner-call tag still in the scrollback — would append that call's reason a second time; seeding
+     * neither would additionally re-arm the red pending state for every already-answered call. The
+     * acknowledged reasons come first because a reason is acknowledged only after it stopped being
+     * pending, so that order is oldest-first and matches the trailing size cap
+     * {@link SessionNewActivityStateCaps#capReasons} applies to the returned list through
+     * {@link SessionNewActivityStateCaps#capState}. An entry carrying neither legacy list recorded no
+     * call at all and yields null, the unchanged result for an entry that has none of the three keys.
+     */
+    private static List<String> legacyCallTriggerValues(JSONObject object,
+                                                        List<String> unacknowledgedCallReasons)
+            throws JSONException {
+        List<String> acknowledgedCallReasons =
+            optionalStringList(object, KEY_LEGACY_ACKNOWLEDGED_CALL_REASONS);
+        if (acknowledgedCallReasons == null && unacknowledgedCallReasons == null) {
+            return null;
+        }
+        List<String> seeded = new ArrayList<>();
+        appendMissing(seeded, acknowledgedCallReasons);
+        appendMissing(seeded, unacknowledgedCallReasons);
+        return seeded;
+    }
+
+    private static void appendMissing(List<String> target, List<String> values) {
+        if (values == null) {
+            return;
+        }
+        for (String value : values) {
+            if (!target.contains(value)) {
+                target.add(value);
+            }
+        }
     }
 
     private static Long optionalLong(JSONObject object, String key) throws JSONException {
