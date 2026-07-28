@@ -2177,7 +2177,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (toolbarAdapter != null)
             toolbarAdapter.removeTextInputForSession(deadSession);
 
-        service.removeTermuxSession(deadSession);
+        service.removeTermuxSessionBeingReplaced(deadSession);
 
         List<String> currentLiveSessionNames = new ArrayList<>();
         for (TermuxSession liveSession : service.getTermuxSessions()) {

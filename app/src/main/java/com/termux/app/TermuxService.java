@@ -806,6 +806,16 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return newTermuxSession;
     }
 
+    public synchronized int removeTermuxSessionBeingReplaced(TerminalSession sessionToRemove) {
+        terminateSessionBeingReplaced(sessionToRemove);
+        return removeTermuxSession(sessionToRemove);
+    }
+
+    static void terminateSessionBeingReplaced(@Nullable TerminalSession sessionToRemove) {
+        if (sessionToRemove == null) return;
+        sessionToRemove.finishIfRunning();
+    }
+
     /** Remove a TermuxSession. */
     public synchronized int removeTermuxSession(TerminalSession sessionToRemove) {
         int index = getIndexOfSession(sessionToRemove);
