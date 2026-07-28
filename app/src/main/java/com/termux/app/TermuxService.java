@@ -806,6 +806,22 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return newTermuxSession;
     }
 
+    /**
+     * Remove a TermuxSession that a reconnect is replacing, terminating its shell process group
+     * first. {@link #removeTermuxSession} on its own delegates to {@link TermuxSession#finish()},
+     * which returns without signalling anything while the process is still running, so the outgoing
+     * shell and everything it started would survive the replacement as orphans.
+     */
+    public synchronized int removeTermuxSessionBeingReplaced(TerminalSession sessionToRemove) {
+        terminateSessionBeingReplaced(sessionToRemove);
+        return removeTermuxSession(sessionToRemove);
+    }
+
+    static void terminateSessionBeingReplaced(@Nullable TerminalSession sessionToRemove) {
+        if (sessionToRemove == null) return;
+        sessionToRemove.finishIfRunning();
+    }
+
     /** Remove a TermuxSession. */
     public synchronized int removeTermuxSession(TerminalSession sessionToRemove) {
         int index = getIndexOfSession(sessionToRemove);
