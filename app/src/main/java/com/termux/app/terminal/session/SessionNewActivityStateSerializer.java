@@ -109,14 +109,18 @@ public final class SessionNewActivityStateSerializer {
      * still-pending call unknown, so the first transcript scan after the update appends that call's
      * reason a second time.
      *
-     * <p>The seeded list passes through the trailing cap {@link SessionNewActivityStateCaps#capReasons}
-     * applies via {@link SessionNewActivityStateCaps#capState}, which keeps the LAST
-     * {@link SessionNewActivityStateCaps#MAX_REASONS_PER_SESSION} entries and discards from the head.
-     * Each legacy list is itself capped at that same size, so their union can be twice the cap and
-     * whatever sits at the head is dropped. The unacknowledged reasons are therefore placed first and
-     * the acknowledged reasons last, so the acknowledged values are the ones that survive: losing an
-     * acknowledged value re-arms the red indicator for a call the owner already answered, while losing
-     * an unacknowledged value only repeats a reason on a session whose indicator is already showing.
+     * <p>The seeded list passes through the trailing cap
+     * {@link SessionNewActivityStateCaps#capCallTriggerValues} applies via
+     * {@link SessionNewActivityStateCaps#capState}, which keeps the LAST
+     * {@link SessionNewActivityStateCaps#MAX_CALL_TRIGGER_VALUES_PER_SESSION} entries and discards
+     * from the head. Each legacy list is itself capped at
+     * {@link SessionNewActivityStateCaps#MAX_REASONS_PER_SESSION}, so their union is at most exactly
+     * that trigger-value cap and a union built from a document the previous version wrote loses
+     * nothing. Order still matters for a hand-built or future oversized document: the unacknowledged
+     * reasons are placed first and the acknowledged reasons last, so the acknowledged values are the
+     * ones that survive any truncation, because losing an acknowledged value re-arms the red indicator
+     * for a call the owner already answered while losing an unacknowledged value only repeats a reason
+     * on a session whose indicator is already showing.
      *
      * <p>An entry carrying neither legacy list recorded no call at all and yields null, the unchanged
      * result for an entry that has none of the three keys.
