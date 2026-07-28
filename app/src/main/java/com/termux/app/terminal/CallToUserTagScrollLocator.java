@@ -4,11 +4,19 @@ import androidx.annotation.NonNull;
 
 import java.util.List;
 
+/**
+ * Locates the row the owner should be scrolled to when they open a pending call.
+ *
+ * <p>The target is the candidate {@code <call-to-user-pending>} tag the agent printed, because that
+ * tag sits inside the message the owner needs to read. The literal {@code <call-to-user>} tag is
+ * rendered by the statusline and carries only an opaque trigger value, so scrolling there would land
+ * the owner on the status line instead of on the message.
+ */
 public final class CallToUserTagScrollLocator {
 
     public static final int NO_TAG_ROW = Integer.MIN_VALUE;
 
-    private static final String OPEN_TAG = "<call-to-user>";
+    private static final String OPEN_TAG = "<call-to-user-pending>";
 
     private CallToUserTagScrollLocator() {
     }

@@ -6,7 +6,7 @@ import java.util.Map;
 public final class CallToUserTagController {
 
     public interface CallTrigger {
-        void onCallToUser(String sessionKey, String reason);
+        void onCallToUser(String sessionKey, String triggerValue, String reason);
     }
 
     private final CallTrigger callTrigger;
@@ -21,8 +21,8 @@ public final class CallToUserTagController {
         if (sessionKey == null) return;
 
         CallToUserTagScanner scanner = scannerForSession(sessionKey);
-        for (String reason : scanner.newReasons(screenText)) {
-            callTrigger.onCallToUser(sessionKey, reason);
+        for (ApprovedCallToUser call : scanner.newCalls(screenText)) {
+            callTrigger.onCallToUser(sessionKey, call.getTriggerValue(), call.getDisplayReason());
         }
     }
 

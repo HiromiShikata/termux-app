@@ -14,7 +14,7 @@ public class CallToUserTagScrollLocatorTest {
     public void returnsExternalRowOfTagWithinVisibleScreen() {
         List<String> rowTexts = Arrays.asList(
             "first output line",
-            "<call-to-user>needs approval</call-to-user>",
+            "<call-to-user-pending>needs approval</call-to-user-pending>",
             "trailing output line");
 
         int externalRow = CallToUserTagScrollLocator.mostRecentOpenTagExternalRow(rowTexts, 0);
@@ -26,7 +26,7 @@ public class CallToUserTagScrollLocatorTest {
     public void mapsTranscriptRowsToNegativeExternalIndices() {
         List<String> rowTexts = Arrays.asList(
             "scrollback line a",
-            "<call-to-user>review now</call-to-user>",
+            "<call-to-user-pending>review now</call-to-user-pending>",
             "screen line one",
             "screen line two");
 
@@ -38,9 +38,9 @@ public class CallToUserTagScrollLocatorTest {
     @Test
     public void returnsRowOfMostRecentTagWhenMultipleArePresent() {
         List<String> rowTexts = Arrays.asList(
-            "<call-to-user>older request</call-to-user>",
+            "<call-to-user-pending>older request</call-to-user-pending>",
             "intervening output",
-            "<call-to-user>newest request</call-to-user>");
+            "<call-to-user-pending>newest request</call-to-user-pending>");
 
         int externalRow = CallToUserTagScrollLocator.mostRecentOpenTagExternalRow(rowTexts, -2);
 
@@ -52,7 +52,7 @@ public class CallToUserTagScrollLocatorTest {
         List<String> rowTexts = Arrays.asList(
             "preceding output line",
             "blah blah blah blah <call-to",
-            "-user>please review</call-to-user>");
+            "-user-pending>please review</call-to-user-pending>");
 
         int externalRow = CallToUserTagScrollLocator.mostRecentOpenTagExternalRow(rowTexts, 0);
 
@@ -96,7 +96,7 @@ public class CallToUserTagScrollLocatorTest {
         List<String> rowTexts = Arrays.asList(
             "scrollback line a",
             "scrollback line b",
-            "<call-to-user>review now</call-to-user>",
+            "<call-to-user-pending>review now</call-to-user-pending>",
             "screen line one");
 
         int targetTopRow = CallToUserTagScrollLocator.scrollTargetTopRow(rowTexts, -3, 3);
@@ -111,5 +111,29 @@ public class CallToUserTagScrollLocatorTest {
         int targetTopRow = CallToUserTagScrollLocator.scrollTargetTopRow(rowTexts, -1, 1);
 
         assertEquals(CallToUserTagScrollLocator.NO_TAG_ROW, targetTopRow);
+    }
+
+    @Test
+    public void targetsTheCandidateTagCarryingTheMessageRatherThanTheStatuslineLine() {
+        List<String> rowTexts = Arrays.asList(
+            "preceding output line",
+            "<call-to-user-pending>please approve the rollout</call-to-user-pending>",
+            "call:09:00:00 out:09:00:01 reply:08:59:00",
+            "<call-to-user>2026-07-28T09:00:01.234Z</call-to-user>");
+
+        int externalRow = CallToUserTagScrollLocator.mostRecentOpenTagExternalRow(rowTexts, 0);
+
+        assertEquals(1, externalRow);
+    }
+
+    @Test
+    public void ignoresTheStatuslineLineWhenNoCandidateTagIsPresent() {
+        List<String> rowTexts = Arrays.asList(
+            "preceding output line",
+            "<call-to-user>2026-07-28T09:00:01.234Z</call-to-user>");
+
+        int externalRow = CallToUserTagScrollLocator.mostRecentOpenTagExternalRow(rowTexts, 0);
+
+        assertEquals(CallToUserTagScrollLocator.NO_TAG_ROW, externalRow);
     }
 }

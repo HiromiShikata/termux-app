@@ -15,7 +15,7 @@ public class CallToUserTagControllerTest {
         final List<String> reasons = new ArrayList<>();
 
         @Override
-        public void onCallToUser(String sessionKey, String reason) {
+        public void onCallToUser(String sessionKey, String triggerValue, String reason) {
             sessionKeys.add(sessionKey);
             reasons.add(reason);
         }

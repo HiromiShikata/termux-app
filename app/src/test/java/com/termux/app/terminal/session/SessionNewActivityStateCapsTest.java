@@ -67,7 +67,7 @@ public class SessionNewActivityStateCapsTest {
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
             capped.getUnacknowledgedCallReasons().size());
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
-            capped.getAcknowledgedCallReasons().size());
+            capped.getCallTriggerValues().size());
         Assert.assertEquals(Long.valueOf(5L), capped.getStatuslineCallTimeMillis());
     }
 
@@ -80,7 +80,7 @@ public class SessionNewActivityStateCapsTest {
 
         Assert.assertNull(capped.getLastExplicitCallReason());
         Assert.assertNull(capped.getUnacknowledgedCallReasons());
-        Assert.assertNull(capped.getAcknowledgedCallReasons());
+        Assert.assertNull(capped.getCallTriggerValues());
     }
 
     private static String repeat(String unit, int count) {

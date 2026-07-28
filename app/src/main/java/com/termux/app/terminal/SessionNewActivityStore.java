@@ -29,7 +29,7 @@ public class SessionNewActivityStore {
     private final Map<String, String> mLastExplicitCallReasonByName = new HashMap<>();
     private final Map<String, List<String>> mUnacknowledgedCallReasonsByName = new HashMap<>();
     private final Map<String, Long> mUnacknowledgedCallReasonsRecordedTimeMillisByName = new HashMap<>();
-    private final Map<String, List<String>> mAcknowledgedCallReasonsByName = new HashMap<>();
+    private final Map<String, List<String>> mCallTriggerValuesByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mStatuslineCallTimeMillisByName = new HashMap<>();
@@ -73,9 +73,9 @@ public class SessionNewActivityStore {
                     mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(state.getSessionName(),
                         state.getLastExplicitCallTimeMillis());
             }
-            if (state.getAcknowledgedCallReasons() != null)
-                mAcknowledgedCallReasonsByName.put(state.getSessionName(),
-                    new ArrayList<>(state.getAcknowledgedCallReasons()));
+            if (state.getCallTriggerValues() != null)
+                mCallTriggerValuesByName.put(state.getSessionName(),
+                    new ArrayList<>(state.getCallTriggerValues()));
             if (state.getLastSeenTimeMillis() != null)
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
             if (state.getLastUserInputTimeMillis() != null)
@@ -102,12 +102,35 @@ public class SessionNewActivityStore {
 
     public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
                                    @NonNull String reason) {
+        recordExplicitCall(sessionName, explicitCallTimeMillis, reason, reason);
+    }
+
+    /**
+     * Records one owner call. {@code triggerValue} is the opaque value carried by the literal {@code
+     * <call-to-user>} tag that fired the call and is the deduplication key; {@code reason} is
+     * display-only payload taken from the candidate tag, which two different calls may legitimately
+     * repeat. Keying deduplication on the reason would collapse two successive calls that share a
+     * subject line and leave the second one unable to re-arm the pending state.
+     */
+    public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
+                                   @NonNull String triggerValue, @NonNull String reason) {
+        String cappedTriggerValue = SessionNewActivityStateCaps.capReason(triggerValue);
         String cappedReason = SessionNewActivityStateCaps.capReason(reason);
-        if (!cappedReason.trim().isEmpty() && isAlreadyKnownCall(sessionName, cappedReason)) {
+        if (!cappedTriggerValue.trim().isEmpty()
+            && isAlreadyKnownCall(sessionName, cappedTriggerValue)) {
             return;
         }
         mLastExplicitCallTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         mLastExplicitCallReasonByName.put(sessionName, cappedReason);
+        if (!cappedTriggerValue.trim().isEmpty()) {
+            List<String> knownTriggerValues = mCallTriggerValuesByName.get(sessionName);
+            if (knownTriggerValues == null) {
+                knownTriggerValues = new ArrayList<>();
+                mCallTriggerValuesByName.put(sessionName, knownTriggerValues);
+            }
+            knownTriggerValues.add(cappedTriggerValue);
+            capTrailing(knownTriggerValues);
+        }
         if (!cappedReason.trim().isEmpty()) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
             if (reasons == null) {
@@ -127,18 +150,19 @@ public class SessionNewActivityStore {
         }
     }
 
-    private boolean isAlreadyKnownCall(@NonNull String sessionName, @NonNull String reason) {
-        return containsCanonically(mUnacknowledgedCallReasonsByName.get(sessionName), reason)
-            || containsCanonically(mAcknowledgedCallReasonsByName.get(sessionName), reason);
+    private boolean isAlreadyKnownCall(@NonNull String sessionName, @NonNull String triggerValue) {
+        return containsCanonically(mCallTriggerValuesByName.get(sessionName), triggerValue);
     }
 
-    private static boolean containsCanonically(@Nullable List<String> reasons, @NonNull String reason) {
-        if (reasons == null) {
+    private static boolean containsCanonically(@Nullable List<String> knownTriggerValues,
+                                               @NonNull String triggerValue) {
+        if (knownTriggerValues == null) {
             return false;
         }
-        String canonicalReason = canonicalReasonKey(reason);
-        for (String knownReason : reasons) {
-            if (knownReason != null && canonicalReasonKey(knownReason).equals(canonicalReason)) {
+        String canonicalTriggerValue = canonicalCallTriggerKey(triggerValue);
+        for (String knownTriggerValue : knownTriggerValues) {
+            if (knownTriggerValue != null
+                && canonicalCallTriggerKey(knownTriggerValue).equals(canonicalTriggerValue)) {
                 return true;
             }
         }
@@ -146,18 +170,18 @@ public class SessionNewActivityStore {
     }
 
     /**
-     * The reflow-insensitive identity of a call-to-user reason used for deduplication only (the
-     * stored and displayed reason text keeps its original whitespace). The same {@code
-     * <call-to-user>} tag re-rendered after a terminal column resize or a scrollback reflow wraps its
-     * inner text across different line boundaries, so a re-scan on the load/reload path produces the
-     * same reason with interior newlines and spaces shifted. Collapsing every run of whitespace to a
-     * single space and trimming yields a stable key, so a reloaded session whose call-to-user was
-     * already recorded or acknowledged is recognized as already known and {@code recordExplicitCall}
-     * stays a no-op — it does not bump the timestamp or re-arm the red tier.
+     * The reflow-insensitive identity of a call trigger value used for deduplication only. The same
+     * {@code <call-to-user>} tag re-rendered after a terminal column resize or a scrollback reflow
+     * wraps its inner text across different line boundaries, so a re-scan on the load/reload path
+     * produces the same trigger value with interior newlines and spaces shifted. Collapsing every run
+     * of whitespace to a single space and trimming yields a stable key, so a reloaded session whose
+     * call-to-user was already recorded is recognized as already known and {@code recordExplicitCall}
+     * stays a no-op — it does not bump the timestamp or re-arm the red tier. Acknowledging a call
+     * does not forget its trigger value, so a re-scan after the owner replied does not re-arm either.
      */
     @NonNull
-    private static String canonicalReasonKey(@NonNull String reason) {
-        return reason.replaceAll("\\s+", " ").trim();
+    private static String canonicalCallTriggerKey(@NonNull String triggerValue) {
+        return triggerValue.replaceAll("\\s+", " ").trim();
     }
 
     public void recordSeen(@NonNull String sessionName, long seenTimeMillis) {
@@ -358,23 +382,15 @@ public class SessionNewActivityStore {
         return mLastExplicitCallTimeMillisByName.get(sessionName);
     }
 
+    /**
+     * Clears the displayed pending reasons once the owner has replied. The trigger values of those
+     * calls are deliberately kept: they are the deduplication keys, and a transcript re-scan after
+     * the reply still sees the same already-handled {@code <call-to-user>} tags, which MUST NOT
+     * re-arm the red tier.
+     */
     private void acknowledgeCallReasons(@NonNull String sessionName) {
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
-        List<String> clearedReasons = mUnacknowledgedCallReasonsByName.remove(sessionName);
-        if (clearedReasons == null) {
-            return;
-        }
-        List<String> acknowledged = mAcknowledgedCallReasonsByName.get(sessionName);
-        if (acknowledged == null) {
-            acknowledged = new ArrayList<>();
-            mAcknowledgedCallReasonsByName.put(sessionName, acknowledged);
-        }
-        for (String reason : clearedReasons) {
-            if (!acknowledged.contains(reason)) {
-                acknowledged.add(reason);
-            }
-        }
-        capTrailing(acknowledged);
+        mUnacknowledgedCallReasonsByName.remove(sessionName);
     }
 
     public void purgeSession(@NonNull String sessionName) {
@@ -383,7 +399,7 @@ public class SessionNewActivityStore {
         mLastExplicitCallReasonByName.remove(sessionName);
         mUnacknowledgedCallReasonsByName.remove(sessionName);
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
-        mAcknowledgedCallReasonsByName.remove(sessionName);
+        mCallTriggerValuesByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
         mStatuslineCallTimeMillisByName.remove(sessionName);
@@ -417,7 +433,7 @@ public class SessionNewActivityStore {
         mLastExplicitCallReasonByName.remove(sessionName);
         mUnacknowledgedCallReasonsByName.remove(sessionName);
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
-        mAcknowledgedCallReasonsByName.remove(sessionName);
+        mCallTriggerValuesByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
         mLastCallToUserTagScanCallTimeMillisByName.remove(sessionName);
@@ -434,7 +450,7 @@ public class SessionNewActivityStore {
         changed |= mLastExplicitCallReasonByName.keySet().retainAll(knownSessionNames);
         changed |= mUnacknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
         changed |= mUnacknowledgedCallReasonsRecordedTimeMillisByName.keySet().retainAll(knownSessionNames);
-        changed |= mAcknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
+        changed |= mCallTriggerValuesByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mStatuslineCallTimeMillisByName.keySet().retainAll(knownSessionNames);
@@ -907,7 +923,7 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mLastExplicitCallTimeMillisByName.keySet());
         sessionNames.addAll(mLastExplicitCallReasonByName.keySet());
         sessionNames.addAll(mUnacknowledgedCallReasonsByName.keySet());
-        sessionNames.addAll(mAcknowledgedCallReasonsByName.keySet());
+        sessionNames.addAll(mCallTriggerValuesByName.keySet());
         sessionNames.addAll(mLastSeenTimeMillisByName.keySet());
         sessionNames.addAll(mLastUserInputTimeMillisByName.keySet());
         sessionNames.addAll(mStatuslineCallTimeMillisByName.keySet());
@@ -917,7 +933,7 @@ public class SessionNewActivityStore {
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
-            List<String> acknowledgedReasons = mAcknowledgedCallReasonsByName.get(sessionName);
+            List<String> callTriggerValues = mCallTriggerValuesByName.get(sessionName);
             states.add(new SessionNewActivityState(sessionName,
                 mLastOutputActivityTimeMillisByName.get(sessionName),
                 mLastExplicitCallTimeMillisByName.get(sessionName),
@@ -925,7 +941,7 @@ public class SessionNewActivityStore {
                 mLastSeenTimeMillisByName.get(sessionName),
                 mLastUserInputTimeMillisByName.get(sessionName),
                 reasons == null ? null : new ArrayList<>(reasons),
-                acknowledgedReasons == null ? null : new ArrayList<>(acknowledgedReasons),
+                callTriggerValues == null ? null : new ArrayList<>(callTriggerValues),
                 mStatuslineCallTimeMillisByName.get(sessionName),
                 mStatuslineOutTimeMillisByName.get(sessionName),
                 mStatuslineReplyTimeMillisByName.get(sessionName),

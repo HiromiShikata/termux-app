@@ -60,7 +60,7 @@ public final class SessionNewActivityStateCaps {
             state.getLastSeenTimeMillis(),
             state.getLastUserInputTimeMillis(),
             capReasons(state.getUnacknowledgedCallReasons()),
-            capReasons(state.getAcknowledgedCallReasons()),
+            capReasons(state.getCallTriggerValues()),
             state.getStatuslineCallTimeMillis(),
             state.getStatuslineOutTimeMillis(),
             state.getStatuslineReplyTimeMillis(),

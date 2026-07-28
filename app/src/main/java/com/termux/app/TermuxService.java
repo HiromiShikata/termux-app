@@ -1213,10 +1213,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         appLauncher.launchApp(packageId);
     }
 
-    private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {
+    private void recordCallToUserForSessionHandle(String sessionHandle, String triggerValue,
+                                                  String reason) {
         TerminalSession session = getTerminalSessionForHandle(sessionHandle);
         if (session == null || session.mSessionName == null) return;
-        mSessionNewActivityStore.recordExplicitCall(session.mSessionName, System.currentTimeMillis(), reason);
+        mSessionNewActivityStore.recordExplicitCall(session.mSessionName, System.currentTimeMillis(),
+            triggerValue, reason);
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)
             activityClient.termuxSessionListNotifyUpdated();

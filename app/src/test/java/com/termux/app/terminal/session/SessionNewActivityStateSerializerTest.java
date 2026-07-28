@@ -178,26 +178,26 @@ public class SessionNewActivityStateSerializerTest {
     }
 
     @Test
-    public void roundTripPreservesAcknowledgedCallReasons() throws JSONException {
+    public void roundTripPreservesCallTriggerValues() throws JSONException {
         List<SessionNewActivityState> states = Arrays.asList(
             new SessionNewActivityState("session-one", 1_000L, 2_000L, "second reason", 3_000L, 4_000L,
-                Arrays.asList("pending reason"), Arrays.asList("answered reason")));
+                Arrays.asList("pending reason"), Arrays.asList("trigger value")));
 
         List<SessionNewActivityState> result = serializer.deserialize(serializer.serialize(states));
 
         Assert.assertEquals(1, result.size());
         Assert.assertEquals(
-            Arrays.asList("answered reason"),
-            result.get(0).getAcknowledgedCallReasons());
+            Arrays.asList("trigger value"),
+            result.get(0).getCallTriggerValues());
     }
 
     @Test
-    public void legacyEntryWithoutAcknowledgedCallReasonsDeserializesToNull() throws JSONException {
+    public void legacyEntryWithoutCallTriggerValuesDeserializesToNull() throws JSONException {
         List<SessionNewActivityState> result = serializer.deserialize(
             "[{\"sessionName\":\"legacy\",\"lastExplicitCallTimeMillis\":1000,\"lastExplicitCallReason\":\"needs approval\"}]");
 
         Assert.assertEquals(1, result.size());
-        Assert.assertNull(result.get(0).getAcknowledgedCallReasons());
+        Assert.assertNull(result.get(0).getCallTriggerValues());
     }
 
     @Test
@@ -223,7 +223,7 @@ public class SessionNewActivityStateSerializerTest {
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
             result.get(0).getUnacknowledgedCallReasons().size());
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
-            result.get(0).getAcknowledgedCallReasons().size());
+            result.get(0).getCallTriggerValues().size());
         for (String reason : result.get(0).getUnacknowledgedCallReasons()) {
             Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH, reason.length());
         }
@@ -254,7 +254,7 @@ public class SessionNewActivityStateSerializerTest {
             object.put("lastExplicitCallTimeMillis", state.getLastExplicitCallTimeMillis());
             object.put("lastExplicitCallReason", state.getLastExplicitCallReason());
             object.put("unacknowledgedCallReasons", new org.json.JSONArray(state.getUnacknowledgedCallReasons()));
-            object.put("acknowledgedCallReasons", new org.json.JSONArray(state.getAcknowledgedCallReasons()));
+            object.put("callTriggerValues", new org.json.JSONArray(state.getCallTriggerValues()));
             object.put("lastSeenTimeMillis", state.getLastSeenTimeMillis());
             object.put("lastUserInputTimeMillis", state.getLastUserInputTimeMillis());
             object.put("statuslineCallTimeMillis", state.getStatuslineCallTimeMillis());

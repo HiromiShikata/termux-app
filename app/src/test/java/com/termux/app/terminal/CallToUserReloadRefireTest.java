@@ -21,8 +21,8 @@ public class CallToUserReloadRefireTest {
      */
     private static CallToUserTagController reloadControllerInto(SessionNewActivityStore store,
                                                                 long fixedTimeMillis) {
-        return new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, fixedTimeMillis, reason));
+        return new CallToUserTagController((sessionKey, triggerValue, reason) ->
+            store.recordExplicitCall(sessionKey, fixedTimeMillis, triggerValue, reason));
     }
 
     @Test

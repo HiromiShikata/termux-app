@@ -9,8 +9,8 @@ public class CallToUserTagRedDotEndToEndTest {
     private static final String OTHER_SESSION = "other-session";
 
     private static CallToUserTagController controllerRecordingInto(SessionNewActivityStore store) {
-        return new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, System.currentTimeMillis(), reason));
+        return new CallToUserTagController((sessionKey, triggerValue, reason) ->
+            store.recordExplicitCall(sessionKey, System.currentTimeMillis(), triggerValue, reason));
     }
 
     @Test
@@ -111,8 +111,8 @@ public class CallToUserTagRedDotEndToEndTest {
 
     private static CallToUserTagController controllerRecordingAtFixedTime(SessionNewActivityStore store,
                                                                           long fixedTimeMillis) {
-        return new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, fixedTimeMillis, reason));
+        return new CallToUserTagController((sessionKey, triggerValue, reason) ->
+            store.recordExplicitCall(sessionKey, fixedTimeMillis, triggerValue, reason));
     }
 
     @Test

@@ -33,7 +33,7 @@ public class BackgroundOutputTagScannerTest {
     private static BackgroundOutputTagScanner scannerRecordingInto(
             SessionNewActivityStore store, UpdateTagUpdateController.ReasonTrigger updateTrigger) {
         CallToUserTagController callToUserTagController = new CallToUserTagController(
-            (sessionKey, reason) -> store.recordExplicitCall(sessionKey, System.currentTimeMillis(), reason));
+            (sessionKey, triggerValue, reason) -> store.recordExplicitCall(sessionKey, System.currentTimeMillis(), triggerValue, reason));
         UpdateTagUpdateController updateTagUpdateController = new UpdateTagUpdateController(updateTrigger);
         return new BackgroundOutputTagScanner(callToUserTagController, updateTagUpdateController);
     }
@@ -87,7 +87,7 @@ public class BackgroundOutputTagScannerTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
         RecordingUpdateTrigger updateTrigger = new RecordingUpdateTrigger();
         CallToUserTagController callToUserTagController = new CallToUserTagController(
-            (sessionKey, reason) -> store.recordExplicitCall(sessionKey, System.currentTimeMillis(), reason));
+            (sessionKey, triggerValue, reason) -> store.recordExplicitCall(sessionKey, System.currentTimeMillis(), triggerValue, reason));
         BackgroundOutputTagScanner scanner =
             new BackgroundOutputTagScanner(callToUserTagController, new UpdateTagUpdateController(updateTrigger));
 

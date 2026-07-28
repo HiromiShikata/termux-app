@@ -16,7 +16,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_LAST_EXPLICIT_CALL_TIME_MILLIS = "lastExplicitCallTimeMillis";
     private static final String KEY_LAST_EXPLICIT_CALL_REASON = "lastExplicitCallReason";
     private static final String KEY_UNACKNOWLEDGED_CALL_REASONS = "unacknowledgedCallReasons";
-    private static final String KEY_ACKNOWLEDGED_CALL_REASONS = "acknowledgedCallReasons";
+    private static final String KEY_CALL_TRIGGER_VALUES = "callTriggerValues";
     private static final String KEY_LAST_SEEN_TIME_MILLIS = "lastSeenTimeMillis";
     private static final String KEY_LAST_USER_INPUT_TIME_MILLIS = "lastUserInputTimeMillis";
     private static final String KEY_STATUSLINE_CALL_TIME_MILLIS = "statuslineCallTimeMillis";
@@ -38,9 +38,9 @@ public final class SessionNewActivityStateSerializer {
             if (state.getUnacknowledgedCallReasons() != null)
                 object.put(KEY_UNACKNOWLEDGED_CALL_REASONS,
                     new JSONArray(state.getUnacknowledgedCallReasons()));
-            if (state.getAcknowledgedCallReasons() != null)
-                object.put(KEY_ACKNOWLEDGED_CALL_REASONS,
-                    new JSONArray(state.getAcknowledgedCallReasons()));
+            if (state.getCallTriggerValues() != null)
+                object.put(KEY_CALL_TRIGGER_VALUES,
+                    new JSONArray(state.getCallTriggerValues()));
             if (state.getLastSeenTimeMillis() != null)
                 object.put(KEY_LAST_SEEN_TIME_MILLIS, state.getLastSeenTimeMillis().longValue());
             if (state.getLastUserInputTimeMillis() != null)
@@ -75,8 +75,8 @@ public final class SessionNewActivityStateSerializer {
             String lastExplicitCallReason = optionalString(object, KEY_LAST_EXPLICIT_CALL_REASON);
             List<String> unacknowledgedCallReasons =
                 optionalStringList(object, KEY_UNACKNOWLEDGED_CALL_REASONS);
-            List<String> acknowledgedCallReasons =
-                optionalStringList(object, KEY_ACKNOWLEDGED_CALL_REASONS);
+            List<String> callTriggerValues =
+                optionalStringList(object, KEY_CALL_TRIGGER_VALUES);
             Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
             Long lastUserInputTimeMillis = optionalLong(object, KEY_LAST_USER_INPUT_TIME_MILLIS);
             Long statuslineCallTimeMillis = optionalLong(object, KEY_STATUSLINE_CALL_TIME_MILLIS);
@@ -87,7 +87,7 @@ public final class SessionNewActivityStateSerializer {
             states.add(SessionNewActivityStateCaps.capState(new SessionNewActivityState(sessionName,
                 lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastExplicitCallReason,
                 lastSeenTimeMillis, lastUserInputTimeMillis, unacknowledgedCallReasons,
-                acknowledgedCallReasons, statuslineCallTimeMillis, statuslineOutTimeMillis,
+                callTriggerValues, statuslineCallTimeMillis, statuslineOutTimeMillis,
                 statuslineReplyTimeMillis, subagentCount)));
         }
         return states;
