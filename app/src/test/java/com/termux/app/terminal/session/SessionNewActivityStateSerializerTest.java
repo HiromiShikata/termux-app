@@ -222,11 +222,34 @@ public class SessionNewActivityStateSerializerTest {
 
         Assert.assertEquals(1, result.size());
         Assert.assertEquals(
-            Arrays.asList("answered call", "pending call"),
+            "unacknowledged first so the acknowledged values survive the trailing cap",
+            Arrays.asList("pending call", "answered call"),
             result.get(0).getCallTriggerValues());
         Assert.assertEquals(
             Arrays.asList("pending call"),
             result.get(0).getUnacknowledgedCallReasons());
+    }
+
+    @Test
+    public void anEmptyStoredCallTriggerValuesArrayStillSeedsFromTheLegacyReasons() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"callTriggerValues\":[],"
+                + "\"acknowledgedCallReasons\":[\"answered call\"],"
+                + "\"unacknowledgedCallReasons\":[\"pending call\"]}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertEquals(
+            Arrays.asList("pending call", "answered call"),
+            result.get(0).getCallTriggerValues());
+    }
+
+    @Test
+    public void anEmptyStoredCallTriggerValuesArrayWithoutLegacyReasonsStaysEmpty() throws JSONException {
+        List<SessionNewActivityState> result = serializer.deserialize(
+            "[{\"sessionName\":\"legacy\",\"callTriggerValues\":[]}]");
+
+        Assert.assertEquals(1, result.size());
+        Assert.assertTrue(result.get(0).getCallTriggerValues().isEmpty());
     }
 
     @Test
@@ -242,14 +265,21 @@ public class SessionNewActivityStateSerializerTest {
     }
 
     @Test
-    public void legacySeededCallTriggerValuesObeyTheStoredStateCaps() throws JSONException {
-        StringBuilder oversizedReason = new StringBuilder();
+    public void legacySeededCallTriggerValuesKeepTheNewestEntriesUnderTheCap() throws JSONException {
+        int legacyCount = SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION + 50;
+        StringBuilder oversizedTail = new StringBuilder();
         for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASON_LENGTH + 5_000; index++) {
-            oversizedReason.append('x');
+            oversizedTail.append('x');
         }
         org.json.JSONArray legacyReasons = new org.json.JSONArray();
-        for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION + 50; index++) {
-            legacyReasons.put(index + oversizedReason.toString());
+        List<String> expectedSurvivors = new ArrayList<>();
+        for (int index = 0; index < legacyCount; index++) {
+            String reason = "reason-" + index + "-" + oversizedTail;
+            legacyReasons.put(reason);
+            if (index >= legacyCount - SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION) {
+                expectedSurvivors.add(
+                    reason.substring(0, SessionNewActivityStateCaps.MAX_REASON_LENGTH));
+            }
         }
         org.json.JSONObject legacyEntry = new org.json.JSONObject();
         legacyEntry.put("sessionName", "legacy");
@@ -259,11 +289,38 @@ public class SessionNewActivityStateSerializerTest {
         List<SessionNewActivityState> result = serializer.deserialize(legacyDocument);
 
         Assert.assertEquals(1, result.size());
-        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
-            result.get(0).getCallTriggerValues().size());
-        for (String triggerValue : result.get(0).getCallTriggerValues()) {
-            Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH, triggerValue.length());
+        Assert.assertEquals("the newest legacy reasons are the ones that survive",
+            expectedSurvivors, result.get(0).getCallTriggerValues());
+    }
+
+    @Test
+    public void legacySeedingKeepsAcknowledgedValuesWhenTheUnionExceedsTheCap() throws JSONException {
+        int perList = SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION - 5;
+        org.json.JSONArray acknowledged = new org.json.JSONArray();
+        org.json.JSONArray unacknowledged = new org.json.JSONArray();
+        for (int index = 0; index < perList; index++) {
+            acknowledged.put("answered-" + index);
+            unacknowledged.put("pending-" + index);
         }
+        org.json.JSONObject legacyEntry = new org.json.JSONObject();
+        legacyEntry.put("sessionName", "legacy");
+        legacyEntry.put("acknowledgedCallReasons", acknowledged);
+        legacyEntry.put("unacknowledgedCallReasons", unacknowledged);
+        String legacyDocument = new org.json.JSONArray().put(legacyEntry).toString();
+
+        List<SessionNewActivityState> result = serializer.deserialize(legacyDocument);
+
+        List<String> seeded = result.get(0).getCallTriggerValues();
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION,
+            seeded.size());
+        for (int index = 0; index < perList; index++) {
+            Assert.assertTrue("every answered call must survive the cap: answered-" + index,
+                seeded.contains("answered-" + index));
+        }
+        Assert.assertFalse("the oldest pending reason is the one dropped",
+            seeded.contains("pending-0"));
+        Assert.assertTrue("the newest pending reason survives",
+            seeded.contains("pending-" + (perList - 1)));
     }
 
     @Test
@@ -288,7 +345,7 @@ public class SessionNewActivityStateSerializerTest {
             result.get(0).getLastExplicitCallReason().length());
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
             result.get(0).getUnacknowledgedCallReasons().size());
-        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION,
             result.get(0).getCallTriggerValues().size());
         for (String reason : result.get(0).getUnacknowledgedCallReasons()) {
             Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH, reason.length());

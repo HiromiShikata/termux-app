@@ -52,13 +52,16 @@ public class SessionNewActivityStateCapsTest {
     public void capStateCapsExplicitReasonAndBothLists() {
         String oversized = repeat("z", SessionNewActivityStateCaps.MAX_REASON_LENGTH + 50);
         List<String> manyUnacknowledged = new ArrayList<>();
-        List<String> manyAcknowledged = new ArrayList<>();
         for (int index = 0; index < SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION + 5; index++) {
             manyUnacknowledged.add("u-" + index);
-            manyAcknowledged.add("a-" + index);
+        }
+        List<String> manyTriggerValues = new ArrayList<>();
+        for (int index = 0;
+             index < SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION + 5; index++) {
+            manyTriggerValues.add("t-" + index);
         }
         SessionNewActivityState state = new SessionNewActivityState("session-one", 1L, 2L, oversized,
-            3L, 4L, manyUnacknowledged, manyAcknowledged, 5L, 6L, 7L);
+            3L, 4L, manyUnacknowledged, manyTriggerValues, 5L, 6L, 7L);
 
         SessionNewActivityState capped = SessionNewActivityStateCaps.capState(state);
 
@@ -66,8 +69,14 @@ public class SessionNewActivityStateCapsTest {
             capped.getLastExplicitCallReason().length());
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
             capped.getUnacknowledgedCallReasons().size());
-        Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION,
+        Assert.assertEquals("the newest reasons survive the trailing cap",
+            manyUnacknowledged.subList(5, manyUnacknowledged.size()),
+            capped.getUnacknowledgedCallReasons());
+        Assert.assertEquals(SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION,
             capped.getCallTriggerValues().size());
+        Assert.assertEquals("the newest trigger values survive the trailing cap",
+            manyTriggerValues.subList(5, manyTriggerValues.size()),
+            capped.getCallTriggerValues());
         Assert.assertEquals(Long.valueOf(5L), capped.getStatuslineCallTimeMillis());
     }
 

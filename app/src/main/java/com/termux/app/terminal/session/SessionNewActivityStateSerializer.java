@@ -76,9 +76,13 @@ public final class SessionNewActivityStateSerializer {
             String lastExplicitCallReason = optionalString(object, KEY_LAST_EXPLICIT_CALL_REASON);
             List<String> unacknowledgedCallReasons =
                 optionalStringList(object, KEY_UNACKNOWLEDGED_CALL_REASONS);
-            List<String> callTriggerValues = object.isNull(KEY_CALL_TRIGGER_VALUES)
-                ? legacyCallTriggerValues(object, unacknowledgedCallReasons)
-                : optionalStringList(object, KEY_CALL_TRIGGER_VALUES);
+            List<String> storedCallTriggerValues =
+                optionalStringList(object, KEY_CALL_TRIGGER_VALUES);
+            List<String> callTriggerValues =
+                storedCallTriggerValues == null || storedCallTriggerValues.isEmpty()
+                    ? legacyCallTriggerValues(object, unacknowledgedCallReasons,
+                        storedCallTriggerValues)
+                    : storedCallTriggerValues;
             Long lastSeenTimeMillis = optionalLong(object, KEY_LAST_SEEN_TIME_MILLIS);
             Long lastUserInputTimeMillis = optionalLong(object, KEY_LAST_USER_INPUT_TIME_MILLIS);
             Long statuslineCallTimeMillis = optionalLong(object, KEY_STATUSLINE_CALL_TIME_MILLIS);
@@ -97,30 +101,38 @@ public final class SessionNewActivityStateSerializer {
 
     /**
      * The call trigger values recovered from an entry a previous app version wrote, which carries no
-     * {@link #KEY_CALL_TRIGGER_VALUES} entry. That version keyed call deduplication on the reason
-     * text itself and treated a call as already known when the reason appeared in either its
+     * usable {@link #KEY_CALL_TRIGGER_VALUES} entry. That version keyed call deduplication on the
+     * reason text itself and treated a call as already known when the reason appeared in either its
      * acknowledged or its unacknowledged reason list, so both lists together are exactly the legacy
-     * key set and both must be seeded. Seeding only the acknowledged list would leave a call that is
-     * still pending unknown, and the first transcript scan after the update — which re-detects every
-     * owner-call tag still in the scrollback — would append that call's reason a second time; seeding
-     * neither would additionally re-arm the red pending state for every already-answered call. The
-     * acknowledged reasons come first because a reason is acknowledged only after it stopped being
-     * pending, so that order is oldest-first and matches the trailing size cap
-     * {@link SessionNewActivityStateCaps#capReasons} applies to the returned list through
-     * {@link SessionNewActivityStateCaps#capState}. An entry carrying neither legacy list recorded no
-     * call at all and yields null, the unchanged result for an entry that has none of the three keys.
+     * key set and both must be seeded. Seeding neither re-arms the red pending state for every
+     * already-answered call still in the scrollback; seeding only the acknowledged list leaves a
+     * still-pending call unknown, so the first transcript scan after the update appends that call's
+     * reason a second time.
+     *
+     * <p>The seeded list passes through the trailing cap {@link SessionNewActivityStateCaps#capReasons}
+     * applies via {@link SessionNewActivityStateCaps#capState}, which keeps the LAST
+     * {@link SessionNewActivityStateCaps#MAX_REASONS_PER_SESSION} entries and discards from the head.
+     * Each legacy list is itself capped at that same size, so their union can be twice the cap and
+     * whatever sits at the head is dropped. The unacknowledged reasons are therefore placed first and
+     * the acknowledged reasons last, so the acknowledged values are the ones that survive: losing an
+     * acknowledged value re-arms the red indicator for a call the owner already answered, while losing
+     * an unacknowledged value only repeats a reason on a session whose indicator is already showing.
+     *
+     * <p>An entry carrying neither legacy list recorded no call at all and yields null, the unchanged
+     * result for an entry that has none of the three keys.
      */
     private static List<String> legacyCallTriggerValues(JSONObject object,
-                                                        List<String> unacknowledgedCallReasons)
+                                                        List<String> unacknowledgedCallReasons,
+                                                        List<String> storedCallTriggerValues)
             throws JSONException {
         List<String> acknowledgedCallReasons =
             optionalStringList(object, KEY_LEGACY_ACKNOWLEDGED_CALL_REASONS);
         if (acknowledgedCallReasons == null && unacknowledgedCallReasons == null) {
-            return null;
+            return storedCallTriggerValues;
         }
         List<String> seeded = new ArrayList<>();
-        appendMissing(seeded, acknowledgedCallReasons);
         appendMissing(seeded, unacknowledgedCallReasons);
+        appendMissing(seeded, acknowledgedCallReasons);
         return seeded;
     }
 

@@ -90,6 +90,82 @@ public class CallToUserLegacyStateMigrationTest {
         Assert.assertEquals(Long.valueOf(1_000L), store.getLastExplicitCallTimeMillis(SESSION));
     }
 
+    /**
+     * Bytes produced by the previous version's own serializer for a session with six answered and six
+     * pending calls. Each legacy list is independently capped at {@code MAX_REASONS_PER_SESSION}, so
+     * their union is twice that cap and exercises the over-cap boundary of the single replacement list.
+     */
+    private static final String SIX_ANSWERED_SIX_PENDING_LEGACY_DOCUMENT =
+        "[{\"sessionName\":\"session-one\",\"lastExplicitCallTimeMillis\":6005,"
+            + "\"lastExplicitCallReason\":\"pending 5\","
+            + "\"unacknowledgedCallReasons\":[\"pending 0\",\"pending 1\",\"pending 2\","
+            + "\"pending 3\",\"pending 4\",\"pending 5\"],"
+            + "\"acknowledgedCallReasons\":[\"answered 0\",\"answered 1\",\"answered 2\","
+            + "\"answered 3\",\"answered 4\",\"answered 5\"],"
+            + "\"lastUserInputTimeMillis\":5000}]";
+
+    private static final String TEN_ANSWERED_ONE_PENDING_LEGACY_DOCUMENT =
+        "[{\"sessionName\":\"session-one\",\"lastExplicitCallTimeMillis\":6000,"
+            + "\"lastExplicitCallReason\":\"pending 0\","
+            + "\"unacknowledgedCallReasons\":[\"pending 0\"],"
+            + "\"acknowledgedCallReasons\":[\"answered 0\",\"answered 1\",\"answered 2\","
+            + "\"answered 3\",\"answered 4\",\"answered 5\",\"answered 6\",\"answered 7\","
+            + "\"answered 8\",\"answered 9\"],"
+            + "\"lastUserInputTimeMillis\":5000}]";
+
+    private static String transcriptOf(int answeredCount, int pendingCount) {
+        StringBuilder transcript = new StringBuilder();
+        for (int index = 0; index < answeredCount; index++) {
+            transcript.append("<call-to-user>answered ").append(index).append("</call-to-user>\n");
+        }
+        for (int index = 0; index < pendingCount; index++) {
+            transcript.append("<call-to-user>pending ").append(index).append("</call-to-user>\n");
+        }
+        return transcript.toString();
+    }
+
+    private static void assertNoAnsweredCallReArms(SessionNewActivityStore store,
+                                                   int answeredCount, int pendingCount) {
+        List<String> pendingReasons = store.getUnacknowledgedCallReasons(SESSION);
+        for (int index = 0; index < answeredCount; index++) {
+            Assert.assertFalse("answered " + index + " must not re-arm",
+                pendingReasons.contains("answered " + index));
+        }
+        for (int index = 0; index < pendingCount; index++) {
+            int occurrences = 0;
+            for (String reason : pendingReasons) {
+                if (("pending " + index).equals(reason)) {
+                    occurrences++;
+                }
+            }
+            Assert.assertTrue("pending " + index + " must not be duplicated", occurrences <= 1);
+        }
+    }
+
+    @Test
+    public void noAnsweredCallReArmsWhenTheLegacyKeySetExceedsTheReasonCap() {
+        SessionNewActivityStore store = storeLoadedFrom(SIX_ANSWERED_SIX_PENDING_LEGACY_DOCUMENT);
+        String transcript = transcriptOf(6, 6);
+
+        reloadControllerInto(store, 9_000_000L).onSessionTextChanged(SESSION, transcript);
+        reloadControllerInto(store, 9_000_000L).onSessionTextChanged(SESSION, transcript);
+
+        assertNoAnsweredCallReArms(store, 6, 6);
+        Assert.assertEquals(Long.valueOf(6_005L), store.getLastExplicitCallTimeMillis(SESSION));
+    }
+
+    @Test
+    public void noAnsweredCallReArmsWhenTheLegacyAcknowledgedListIsAtItsCap() {
+        SessionNewActivityStore store = storeLoadedFrom(TEN_ANSWERED_ONE_PENDING_LEGACY_DOCUMENT);
+        String transcript = transcriptOf(10, 1);
+
+        reloadControllerInto(store, 9_000_000L).onSessionTextChanged(SESSION, transcript);
+        reloadControllerInto(store, 9_000_000L).onSessionTextChanged(SESSION, transcript);
+
+        assertNoAnsweredCallReArms(store, 10, 1);
+        Assert.assertEquals(Long.valueOf(6_000L), store.getLastExplicitCallTimeMillis(SESSION));
+    }
+
     @Test
     public void aGenuinelyNewCallStillFiresAfterLoadingTheOldFormat() {
         SessionNewActivityStore store = storeLoadedFrom(ANSWERED_LEGACY_DOCUMENT);

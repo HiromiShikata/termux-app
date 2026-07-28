@@ -18,6 +18,9 @@ public class SessionNewActivityStore {
 
     static final int MAX_REASONS_PER_SESSION = SessionNewActivityStateCaps.MAX_REASONS_PER_SESSION;
 
+    static final int MAX_CALL_TRIGGER_VALUES_PER_SESSION =
+        SessionNewActivityStateCaps.MAX_CALL_TRIGGER_VALUES_PER_SESSION;
+
     private static final long ONE_SECOND_MILLIS = 1000L;
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long ONE_HOUR_MILLIS = 60L * ONE_MINUTE_MILLIS;
@@ -129,7 +132,7 @@ public class SessionNewActivityStore {
                 mCallTriggerValuesByName.put(sessionName, knownTriggerValues);
             }
             knownTriggerValues.add(cappedTriggerValue);
-            capTrailing(knownTriggerValues);
+            capTrailing(knownTriggerValues, MAX_CALL_TRIGGER_VALUES_PER_SESSION);
         }
         if (!cappedReason.trim().isEmpty()) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
@@ -138,15 +141,15 @@ public class SessionNewActivityStore {
                 mUnacknowledgedCallReasonsByName.put(sessionName, reasons);
             }
             reasons.add(cappedReason);
-            capTrailing(reasons);
+            capTrailing(reasons, MAX_REASONS_PER_SESSION);
             mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         }
         save();
     }
 
-    private static void capTrailing(@NonNull List<String> reasons) {
-        while (reasons.size() > MAX_REASONS_PER_SESSION) {
-            reasons.remove(0);
+    private static void capTrailing(@NonNull List<String> values, int maxSize) {
+        while (values.size() > maxSize) {
+            values.remove(0);
         }
     }
 
