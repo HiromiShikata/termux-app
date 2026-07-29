@@ -25,14 +25,14 @@ public class SessionActionChooserResetSessionWiringTest {
         String selectedSessionName = SessionAction.atIndex(4) == SessionAction.RESET_SESSION
             ? "host.example.com" : null;
         Assert.assertEquals("ssh gateway /opt/reset.sh 'host_example_com'",
-            ResetSessionCommand.forTemplateAndSessionName(
-                "ssh gateway /opt/reset.sh {name}", selectedSessionName));
+            ResetSessionPlanner.plan("ssh gateway /opt/reset.sh {name}", selectedSessionName).getCommand());
     }
 
     @Test
     public void resetSessionActionSurfacesNotConfiguredStateForEmptyTemplate() {
         String selectedSessionName = SessionAction.atIndex(4) == SessionAction.RESET_SESSION
             ? "host.example.com" : null;
-        Assert.assertNull(ResetSessionCommand.forTemplateAndSessionName("", selectedSessionName));
+        Assert.assertEquals(ResetSessionPlan.Outcome.COMMAND_NOT_CONFIGURED,
+            ResetSessionPlanner.plan("", selectedSessionName).getOutcome());
     }
 }

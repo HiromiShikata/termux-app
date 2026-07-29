@@ -30,8 +30,9 @@ public class HostTmuxSessionNameTest {
         String sessionName = "host.example.com:8080";
         String normalized = HostTmuxSessionName.normalize(sessionName);
 
-        Assert.assertTrue(HostTmuxSessionKillCommand.forSessionName(sessionName).contains("'" + normalized + "'"));
-        Assert.assertTrue(ResetSessionCommand.forTemplateAndSessionName("reset.sh {name}", sessionName)
-            .contains("'" + normalized + "'"));
+        Assert.assertEquals("\u0002:kill-session -t '" + normalized + "'\n",
+            HostTmuxSessionKillCommand.forSessionName(sessionName));
+        Assert.assertEquals("reset.sh '" + normalized + "'",
+            ResetSessionPlanner.plan("reset.sh {name}", sessionName).getCommand());
     }
 }
