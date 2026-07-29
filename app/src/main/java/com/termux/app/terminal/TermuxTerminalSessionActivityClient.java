@@ -124,6 +124,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final LinkedHashMap<TerminalSession, PersistedSession> mPersistedSessionBySession = new LinkedHashMap<>();
 
+    private boolean mStartupDisplayedSessionSelectionPending;
+
     private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
 
     private int maxSessions() {
@@ -281,7 +283,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // session they are working in.
         if (mActivity.getTermuxService() != null) {
             if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
-                setCurrentSession(getCurrentStoredSessionOrLast());
+                setStartupDisplayedSession(getCurrentStoredSessionOrLast());
             termuxSessionListNotifyUpdated();
             mActivity.prewarmSessionDefinitionDocument();
             mActivity.eagerLoadAllSessions();
@@ -1295,6 +1297,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void setCurrentSession(TerminalSession session) {
         if (session == null) return;
 
+        mStartupDisplayedSessionSelectionPending = false;
+
         stopActiveSessionSeenTick();
 
         TerminalSession previousSession = mActivity.getCurrentSession();
@@ -1907,7 +1911,48 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     public void setCurrentSessionOnReconnectIfNoneDisplayed() {
         if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
-            setCurrentSession(getCurrentStoredSessionOrLast());
+            setStartupDisplayedSession(getCurrentStoredSessionOrLast());
+    }
+
+    /**
+     * The session a startup path displays: the topmost non-hidden session in the ordering the user
+     * sees in the session list, falling back to the caller's own choice when no non-hidden session
+     * can be determined.
+     */
+    @Nullable
+    private TerminalSession startupDisplayedSession(@Nullable TerminalSession fallbackSession) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return fallbackSession;
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return fallbackSession;
+        int fallbackSessionIndex = fallbackSession == null ? -1 : service.getIndexOfSession(fallbackSession);
+        int sessionIndexToDisplay = StartupDisplayedSessionDecision.sessionIndexToDisplay(
+            listViewController.getTopmostNonHiddenSessionIndex(), fallbackSessionIndex);
+        if (sessionIndexToDisplay < 0) return fallbackSession;
+        List<TermuxSession> termuxSessions = service.getTermuxSessions();
+        if (sessionIndexToDisplay >= termuxSessions.size()) return fallbackSession;
+        TerminalSession sessionToDisplay = termuxSessions.get(sessionIndexToDisplay).getTerminalSession();
+        return sessionToDisplay == null ? fallbackSession : sessionToDisplay;
+    }
+
+    private void setStartupDisplayedSession(@Nullable TerminalSession fallbackSession) {
+        setCurrentSession(startupDisplayedSession(fallbackSession));
+        mStartupDisplayedSessionSelectionPending = true;
+    }
+
+    /**
+     * Re-run the startup selection once the session definition entries have arrived. Until they do,
+     * the row builder returns plain service order instead of the grouped display order, so the
+     * session picked by a restore path on a cold start can be the wrong one. Any explicit selection
+     * made in between clears the pending state, so the user is never moved off a session they chose.
+     */
+    public void reapplyStartupDisplayedSessionAfterEntriesLoaded() {
+        if (!mStartupDisplayedSessionSelectionPending) return;
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        TerminalSession sessionToDisplay = startupDisplayedSession(currentSession);
+        if (sessionToDisplay == null || sessionToDisplay == currentSession) return;
+        setCurrentSession(sessionToDisplay);
+        mStartupDisplayedSessionSelectionPending = true;
     }
 
     /**
@@ -2531,7 +2576,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         savePersistedSessions();
         service.pruneSessionNewActivityStoreToLiveSessions();
         if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
-            setCurrentSession(firstRestoredSession);
+            setStartupDisplayedSession(firstRestoredSession);
         mActivity.getDrawer().closeDrawers();
         return true;
     }
@@ -2596,7 +2641,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (firstCreatedSession == null) return false;
 
         if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
-            setCurrentSession(firstCreatedSession);
+            setStartupDisplayedSession(firstCreatedSession);
         mActivity.getDrawer().closeDrawers();
         return true;
     }

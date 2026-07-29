@@ -40,6 +40,7 @@ import com.termux.app.apkupdate.ApkUpdateForegroundCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.apkupdate.UpdateTagUpdateRunner;
+import com.termux.app.terminal.HiddenSessionEagerLoadExclusion;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
@@ -880,15 +881,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mTermuxSessionListViewController == null) return;
         List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionRepository.getCachedEntries();
         if (!cachedEntries.isEmpty()) {
-            mTermuxSessionListViewController.setEntries(cachedEntries);
-            applyPendingExpandedProjectsAllowlist();
+            refreshDisplayedSessionDefinitionEntries(cachedEntries);
             return;
         }
         String baseUrl = getPreferences().getSessionDefinitionUrl().trim();
         mSessionDefinitionRepository.load(baseUrl, () -> {
             if (mTermuxSessionListViewController != null) {
-                mTermuxSessionListViewController.setEntries(mSessionDefinitionRepository.getCachedEntries());
-                applyPendingExpandedProjectsAllowlist();
+                refreshDisplayedSessionDefinitionEntries(mSessionDefinitionRepository.getCachedEntries());
             }
         });
     }
@@ -1037,10 +1036,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         List<TerminalSession> sessions = new ArrayList<>();
         if (mTermuxService == null) return sessions;
 
+        Set<String> hiddenSessionNames = getPreferences() == null
+            ? Collections.emptySet() : getPreferences().getDisabledSessionNames();
         TerminalSession displayedSession = getCurrentSession();
         for (TermuxSession termuxSession : mTermuxService.getTermuxSessions()) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == displayedSession) continue;
+            if (terminalSession != null && !HiddenSessionEagerLoadExclusion.shouldEagerLoadSession(
+                    terminalSession.mSessionName, hiddenSessionNames)) continue;
             sessions.add(terminalSession);
         }
         return sessions;
@@ -1059,10 +1062,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void onSessionDefinitionDocumentPrewarmed() {
-        if (mTermuxSessionListViewController != null) {
-            mTermuxSessionListViewController.setEntries(mSessionDefinitionRepository.getCachedEntries());
-            applyPendingExpandedProjectsAllowlist();
-        }
+        refreshDisplayedSessionDefinitionEntries(mSessionDefinitionRepository.getCachedEntries());
     }
 
     public void refreshDisplayedSessionDefinitionEntries(@NonNull List<SessionDefinitionEntry> entries) {
@@ -1070,6 +1070,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTermuxSessionListViewController.setEntries(entries);
             applyPendingExpandedProjectsAllowlist();
         }
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.reapplyStartupDisplayedSessionAfterEntriesLoaded();
     }
 
     public void promptAndCreateNewSession() {

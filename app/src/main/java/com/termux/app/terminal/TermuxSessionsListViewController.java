@@ -481,6 +481,17 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return SessionHierarchyBuilder.firstSessionIndex(buildCountedRows());
     }
 
+    /**
+     * The session index of the topmost row that is not a hidden session, in the ordering the user
+     * sees in the session list. The hidden set applies unconditionally, independent of the
+     * hide-hidden-sessions display toggle, and collapsed project groups are not applied because a
+     * session inside a collapsed group is still a selectable non-hidden session.
+     */
+    public int getTopmostNonHiddenSessionIndex() {
+        return SessionHierarchyBuilder.firstSessionIndex(SessionHierarchyBuilder.filterHiddenSessions(
+            buildAllRows(), sessionNamesByIndex(), disabledSessionNames()));
+    }
+
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
         return VisibleSessionNavigator.nextSessionIndex(
             getOrderedSessionIndexes(), getNavigationCandidateSessionIndexes(), currentSessionIndex, forward);
