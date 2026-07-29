@@ -1,5 +1,6 @@
 package com.termux.app.terminal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -94,7 +95,7 @@ public class TermuxTerminalSessionReconnectBackgroundEmulatorLazyInitTest {
     }
 
     @Test
-    public void reconnectingHiddenBackgroundDeadSessionLeavesReplacementEmulatorUninitialized() throws Exception {
+    public void reconnectingAHiddenBackgroundDeadSessionCreatesNothingAtAll() throws Exception {
         TermuxSession displayedDeadSession = deadSession("displayed-session");
         TermuxSession hiddenBackgroundDeadSession = deadSession("hidden-background-session");
         shellManager.mTermuxSessions.add(displayedDeadSession);
@@ -102,17 +103,23 @@ public class TermuxTerminalSessionReconnectBackgroundEmulatorLazyInitTest {
         activity.getTerminalView().mTermSession = displayedDeadSession.getTerminalSession();
         preferences.setDisabledSessionNames(TermuxAppSharedPreferences.serializeDisabledSessionNames(
             Collections.singleton("hidden-background-session")));
+        int liveSessionCountBeforeTheReconnect = shellManager.mTermuxSessions.size();
 
         TerminalSession reconnectedBackgroundSession =
             invokeReconnect(hiddenBackgroundDeadSession.getTerminalSession());
 
-        assertNotNull("hidden background dead session must still be reconnected (replaced with a live session)",
-            reconnectedBackgroundSession);
         assertNull(
-            "a reconnected background session that is hidden (show-hide toggle OFF) must stay "
-                + "uninitialized until the user actually switches to it, otherwise reconnecting many "
-                + "dead sessions spawns every subprocess synchronously on the main thread and freezes the app",
-            reconnectedBackgroundSession.getEmulator());
+            "a hidden session holds no runtime resource at all, so a reconnect must not replace it with a "
+                + "live session. This assertion previously required the opposite, that a hidden session is "
+                + "reconnected with its emulator left uninitialized, and that contract is superseded: a "
+                + "session that is never reconnected cannot spawn a subprocess on the main thread either, "
+                + "so the freeze this test was written to prevent is prevented more strongly than before",
+            reconnectedBackgroundSession);
+        assertEquals(
+            "a refused reconnect must add no live session object to the service session list, otherwise "
+                + "the hidden session still occupies a slot in the session cap and is still walked by "
+                + "every selection that reads that list",
+            liveSessionCountBeforeTheReconnect, shellManager.mTermuxSessions.size());
     }
 
     @Test
