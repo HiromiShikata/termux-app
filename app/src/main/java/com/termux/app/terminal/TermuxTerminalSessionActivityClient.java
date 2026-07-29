@@ -2307,7 +2307,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (displayedSession == deadSession) {
             setCurrentSession(newTerminalSession);
         } else {
-            eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
+            if (displayedSessionNames().contains(sessionName)) {
+                eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
+            }
             termuxSessionListNotifyUpdated();
         }
         return newTerminalSession;
