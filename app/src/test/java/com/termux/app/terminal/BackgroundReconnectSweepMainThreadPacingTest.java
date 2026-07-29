@@ -65,6 +65,8 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
 
     private TerminalSession displayedSession;
 
+    private TermuxAppSharedPreferences preferences;
+
     private final List<TerminalSession> visibleSessions = new ArrayList<>();
 
     private final List<TerminalSession> hiddenSessions = new ArrayList<>();
@@ -93,7 +95,7 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         set(activity, TermuxActivity.class, "mIsVisible", true);
         service.setTermuxTerminalSessionClient(sessionActivityClient);
 
-        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(appContext, true);
+        preferences = TermuxAppSharedPreferences.build(appContext, true);
         set(activity, TermuxActivity.class, "mPreferences", preferences);
         preferences.setAutosshCommand("ssh {name}");
         set(activity, TermuxActivity.class, "mProperties", TermuxAppSharedProperties.init(appContext));
@@ -285,6 +287,49 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
             expectedReconnectedSessionNames, reconnectedSessionNames());
     }
 
+    @Test
+    public void theBackgroundReconnectSweepDoesNotCreateASessionHiddenWhileItsUnitWasStillQueued() {
+        runBackgroundReconnectSweep();
+        TerminalSession sessionHiddenMidFlight = visibleSessions.get(0);
+        String nameOfTheSessionHiddenMidFlight = sessionHiddenMidFlight.mSessionName;
+        hideSessionTheWayTheHideControlDoes(nameOfTheSessionHiddenMidFlight);
+
+        drainMainThreadQueueToTheSweepHorizon();
+
+        Set<String> reconnectedSessionNames = reconnectedSessionNames();
+        assertTrue("the owner's specification is that a hidden session must not connect at all and must "
+                + "consume no resources at all, so a session the owner hid while it still sat in the "
+                + "pacer's queue must not have a replacement shell forked for it once its turn comes; "
+                + "the session named " + nameOfTheSessionHiddenMidFlight + " was hidden through the same "
+                + "state change the hide control writes before its unit ran, yet the sessions reconnected "
+                + "by the time the queue drained were " + reconnectedSessionNames,
+            !reconnectedSessionNames.contains(nameOfTheSessionHiddenMidFlight));
+    }
+
+    @Test
+    public void theBackgroundReconnectSweepNeverCreatesAnyOfTheHiddenSessions() {
+        runBackgroundReconnectSweep();
+        drainMainThreadQueueToTheSweepHorizon();
+
+        Set<String> reconnectedSessionNames = reconnectedSessionNames();
+        List<String> hiddenSessionNamesCreated = new ArrayList<>();
+        for (TerminalSession hiddenSession : hiddenSessions) {
+            if (reconnectedSessionNames.contains(hiddenSession.mSessionName)) {
+                hiddenSessionNamesCreated.add(hiddenSession.mSessionName);
+            }
+        }
+
+        assertTrue("a hidden session must not connect at all and must consume no resources at all, so "
+                + "over the " + HIDDEN_SESSION_COUNT + " sessions hidden from the start the sweep must "
+                + "never create a replacement shell for any of them, yet these hidden sessions were "
+                + "created: " + hiddenSessionNamesCreated,
+            hiddenSessionNamesCreated.isEmpty());
+    }
+
+    private void hideSessionTheWayTheHideControlDoes(String sessionName) {
+        preferences.setSessionDisabled(sessionName, true);
+    }
+
     private void removeFromTheServiceWithoutReconnecting(TerminalSession session) {
         for (TermuxSession termuxSession : new ArrayList<>(shellManager.mTermuxSessions)) {
             if (termuxSession.getTerminalSession() == session) {
@@ -323,7 +368,7 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
             try {
                 shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(remainingMillis));
                 return;
-            } catch (Throwable nativeSubprocessUnavailableOffDevice) {
+            } catch (LinkageError nativeSubprocessUnavailableOffDevice) {
                 throwablesSurfacedByTheSweep.add(nativeSubprocessUnavailableOffDevice);
                 recordSessionCreationInstants();
             }
@@ -335,7 +380,7 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
             try {
                 shadowOf(Looper.getMainLooper()).idle();
                 return;
-            } catch (Throwable nativeSubprocessUnavailableOffDevice) {
+            } catch (LinkageError nativeSubprocessUnavailableOffDevice) {
                 throwablesSurfacedByTheSweep.add(nativeSubprocessUnavailableOffDevice);
                 recordSessionCreationInstants();
             }
