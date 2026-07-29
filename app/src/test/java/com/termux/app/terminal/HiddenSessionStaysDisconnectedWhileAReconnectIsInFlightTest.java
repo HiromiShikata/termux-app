@@ -26,6 +26,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -389,9 +390,10 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     private void drainMainThreadTasksToleratingTheDeviceOnlyNativeLibrary() {
         ShadowLooper mainLooper = Shadows.shadowOf(Looper.getMainLooper());
-        for (int task = 0; task < MAIN_THREAD_TASK_DRAIN_LIMIT && !mainLooper.isIdle(); task++) {
+        for (int task = 0; task < MAIN_THREAD_TASK_DRAIN_LIMIT; task++) {
             try {
-                mainLooper.runOneTask();
+                mainLooper.idleFor(Duration.ofMillis(
+                    SessionEagerLoadPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS));
             } catch (Throwable missingNativeLibrary) {
                 assertTrue("the only failure this may raise in a Java virtual machine test is the "
                         + "absent device-only native library reached from the shell process fork, but "

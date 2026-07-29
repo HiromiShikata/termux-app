@@ -31,7 +31,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
 public class ForcedStatuslineRescanBatchTest {
@@ -67,6 +69,20 @@ public class ForcedStatuslineRescanBatchTest {
         @Override
         public List<String> getOnScreenSessionNames() {
             return onScreenSessionNames;
+        }
+    }
+
+    private static final class SessionListTreatingEveryProjectRowAsCollapsed
+            extends TermuxSessionsListViewController {
+
+        SessionListTreatingEveryProjectRowAsCollapsed(@NonNull TermuxActivity activity) {
+            super(activity, new ArrayList<>());
+        }
+
+        @NonNull
+        @Override
+        public Set<String> getExpandedProjectSessionNames() {
+            return Collections.emptySet();
         }
     }
 
@@ -107,8 +123,7 @@ public class ForcedStatuslineRescanBatchTest {
             onScreenSessions.add(session);
             onScreenSessionNames.add(session.mSessionName);
         }
-        excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(
-            preferences, onScreenSessionNames);
+        excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(activity);
 
         set(activity, TermuxActivity.class, "mIsVisible", true);
         set(activity, TermuxActivity.class, "mSessionListBottomSheetController",
@@ -175,8 +190,9 @@ public class ForcedStatuslineRescanBatchTest {
     }
 
     private void excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(
-            TermuxAppSharedPreferences preferences, List<String> sessionNames) {
-        preferences.setDisabledSessionNames(String.join("\n", sessionNames));
+            TermuxActivity activity) throws Exception {
+        set(activity, TermuxActivity.class, "mTermuxSessionListViewController",
+            new SessionListTreatingEveryProjectRowAsCollapsed(activity));
     }
 
     private long lastMainThreadTaskDelayMillis() {
