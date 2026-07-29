@@ -35,8 +35,8 @@ import java.util.Collections;
 @RunWith(RobolectricTestRunner.class)
 public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
 
-    private static final String DISPLAYED_SESSION = "displayed-session";
-    private static final String OTHER_LIVE_SESSION = "other-live-session";
+    private static final String TOPMOST_SESSION = "topmost-session";
+    private static final String WORKING_SESSION = "working-session";
 
     private TermuxActivity activity;
     private TermuxService service;
@@ -72,11 +72,20 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
         terminalView = new TerminalView(appContext, null);
         set(activity, TermuxActivity.class, "mTerminalView", terminalView);
 
-        shellManager.mTermuxSessions.add(liveSession(DISPLAYED_SESSION));
-        shellManager.mTermuxSessions.add(liveSession(OTHER_LIVE_SESSION));
+        shellManager.mTermuxSessions.add(liveSession(TOPMOST_SESSION));
+        shellManager.mTermuxSessions.add(liveSession(WORKING_SESSION));
         set(activity, TermuxActivity.class, "mTermuxSessionListViewController",
             new TermuxSessionsListViewController(activity, service.getTermuxSessions()));
-        terminalView.mTermSession = terminalSession(DISPLAYED_SESSION);
+        terminalView.mTermSession = terminalSession(WORKING_SESSION);
+    }
+
+    @Test
+    public void theFixtureGivesTheStartupSelectionADifferentAnswerFromTheDisplayedSession() {
+        assertEquals("the startup selection must want a different session than the displayed one, "
+                + "otherwise none of the guard tests below can fail when the guard is removed",
+            0, activity.getTermuxSessionListViewController().getTopmostNonHiddenSessionIndex());
+        assertEquals(TOPMOST_SESSION, service.getTermuxSessions().get(0).getTerminalSession().mSessionName);
+        assertEquals(WORKING_SESSION, currentSessionName());
     }
 
     @Test
@@ -84,7 +93,7 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
         activity.getTermuxTerminalSessionClient().setCurrentSessionOnReconnectIfNoneDisplayed();
 
         assertEquals("the reconnect switch must only happen when no session is displayed",
-            DISPLAYED_SESSION, currentSessionName());
+            WORKING_SESSION, currentSessionName());
     }
 
     @Test
@@ -96,7 +105,7 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
         assertTrue(activity.getTermuxTerminalSessionClient().restorePersistedSessions());
 
         assertEquals("restoring sessions must not change the displayed session when one is already displayed",
-            DISPLAYED_SESSION, currentSessionName());
+            WORKING_SESSION, currentSessionName());
     }
 
     @Test
@@ -106,7 +115,7 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
 
         assertEquals("creating always-present sessions must not change the displayed session when one is "
                 + "already displayed",
-            DISPLAYED_SESSION, currentSessionName());
+            WORKING_SESSION, currentSessionName());
     }
 
     @Test
@@ -115,7 +124,7 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
 
         assertEquals("returning to the foreground must never yank the user away from the session they "
                 + "are working in",
-            DISPLAYED_SESSION, currentSessionName());
+            WORKING_SESSION, currentSessionName());
     }
 
     @Test
@@ -131,14 +140,14 @@ public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
     @Test
     public void reconnectHelperFallsBackToTheStoredSessionRatherThanTheLastOneWhenEverySessionIsHidden() {
         terminalView.mTermSession = null;
-        preferences.setCurrentSession(terminalSession(DISPLAYED_SESSION).mHandle);
-        preferences.setDisabledSessionNames(String.join("\n", DISPLAYED_SESSION, OTHER_LIVE_SESSION));
+        preferences.setCurrentSession(terminalSession(TOPMOST_SESSION).mHandle);
+        preferences.setDisabledSessionNames(String.join("\n", TOPMOST_SESSION, WORKING_SESSION));
 
         activity.getTermuxTerminalSessionClient().setCurrentSessionOnReconnectIfNoneDisplayed();
 
         assertEquals("with no non-hidden session left, the fallback must still be the stored session in "
                 + "preference to the last running one",
-            DISPLAYED_SESSION, currentSessionName());
+            TOPMOST_SESSION, currentSessionName());
     }
 
     private String currentSessionName() {

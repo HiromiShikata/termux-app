@@ -1935,13 +1935,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mStartupDisplayedSessionSelectionPending = true;
     }
 
-    public void reapplyStartupDisplayedSessionAfterEntriesLoaded() {
+    public void reapplyStartupDisplayedSessionAfterEntriesLoaded(boolean sessionDefinitionEntriesLoaded) {
         if (!mStartupDisplayedSessionSelectionPending) return;
         TerminalSession currentSession = mActivity.getCurrentSession();
         TerminalSession sessionToDisplay = startupDisplayedSession(currentSession);
+        mStartupDisplayedSessionSelectionPending = !sessionDefinitionEntriesLoaded;
         if (sessionToDisplay == null || sessionToDisplay == currentSession) return;
         setCurrentSession(sessionToDisplay);
-        mStartupDisplayedSessionSelectionPending = true;
     }
 
     /**

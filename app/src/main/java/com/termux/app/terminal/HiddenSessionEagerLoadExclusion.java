@@ -10,8 +10,8 @@ public final class HiddenSessionEagerLoadExclusion {
     private HiddenSessionEagerLoadExclusion() {
     }
 
-    public static boolean shouldEagerLoadSession(@Nullable String sessionName,
-                                                 @NonNull Set<String> hiddenSessionNames) {
-        return sessionName == null || !hiddenSessionNames.contains(sessionName);
+    public static boolean isExcludedFromEagerLoad(@Nullable String sessionName,
+                                                  @NonNull Set<String> hiddenSessionNames) {
+        return sessionName != null && hiddenSessionNames.contains(sessionName);
     }
 }

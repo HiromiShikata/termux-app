@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import android.content.Context;
@@ -129,6 +130,8 @@ public class StartupDisplayedSessionSelectionTest {
     @Test
     public void startupSelectsANonHiddenSessionThatSitsInsideACollapsedProjectGroup() {
         buildSessionListWithCollapsedProjects(Collections.singleton(BETA_PROJECT));
+        assertFalse("the beta project group must actually be collapsed for this test to mean anything",
+            orderedDisplaySessionNames().contains(BETA_ONE));
         hideSessions(ALPHA_ONE, ALPHA_TWO);
 
         selectStartupSession();

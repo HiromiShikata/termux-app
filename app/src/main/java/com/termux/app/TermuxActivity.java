@@ -1036,13 +1036,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         List<TerminalSession> sessions = new ArrayList<>();
         if (mTermuxService == null) return sessions;
 
-        Set<String> hiddenSessionNames = getPreferences() == null
-            ? Collections.emptySet() : getPreferences().getDisabledSessionNames();
+        TermuxAppSharedPreferences preferences = getPreferences();
+        if (preferences == null) return sessions;
+
+        Set<String> hiddenSessionNames = preferences.getDisabledSessionNames();
         TerminalSession displayedSession = getCurrentSession();
         for (TermuxSession termuxSession : mTermuxService.getTermuxSessions()) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == displayedSession) continue;
-            if (terminalSession != null && !HiddenSessionEagerLoadExclusion.shouldEagerLoadSession(
+            if (terminalSession != null && HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(
                     terminalSession.mSessionName, hiddenSessionNames)) continue;
             sessions.add(terminalSession);
         }
@@ -1071,7 +1073,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             applyPendingExpandedProjectsAllowlist();
         }
         if (mTermuxTerminalSessionActivityClient != null)
-            mTermuxTerminalSessionActivityClient.reapplyStartupDisplayedSessionAfterEntriesLoaded();
+            mTermuxTerminalSessionActivityClient.reapplyStartupDisplayedSessionAfterEntriesLoaded(!entries.isEmpty());
     }
 
     public void promptAndCreateNewSession() {

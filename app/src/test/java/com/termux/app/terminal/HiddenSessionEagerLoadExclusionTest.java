@@ -16,24 +16,24 @@ public class HiddenSessionEagerLoadExclusionTest {
 
     @Test
     public void hiddenSessionIsExcludedFromTheStartupEagerLoadPass() {
-        assertFalse(HiddenSessionEagerLoadExclusion.shouldEagerLoadSession(
+        assertTrue(HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(
             "hidden-session", HIDDEN_SESSION_NAMES));
     }
 
     @Test
     public void ordinarySessionIsStillEagerLoaded() {
-        assertTrue(HiddenSessionEagerLoadExclusion.shouldEagerLoadSession(
+        assertFalse(HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(
             "ordinary-session", HIDDEN_SESSION_NAMES));
     }
 
     @Test
     public void unnamedSessionIsStillEagerLoaded() {
-        assertTrue(HiddenSessionEagerLoadExclusion.shouldEagerLoadSession(null, HIDDEN_SESSION_NAMES));
+        assertFalse(HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(null, HIDDEN_SESSION_NAMES));
     }
 
     @Test
     public void everySessionIsEagerLoadedWhenNothingIsHidden() {
-        assertTrue(HiddenSessionEagerLoadExclusion.shouldEagerLoadSession(
+        assertFalse(HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(
             "hidden-session", Collections.emptySet()));
     }
 }

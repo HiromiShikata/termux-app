@@ -114,6 +114,44 @@ public class HiddenSessionStartupProcessStartTest {
             HIDDEN_SESSION, terminalView.getCurrentSession().mSessionName);
     }
 
+    @Test
+    public void startupStartsOnlyTheVisibleSessionsInARealisticallySizedSessionPopulation() throws Exception {
+        List<String> visibleSessionNames = new ArrayList<>();
+        List<String> hiddenSessionNames = new ArrayList<>();
+        shellManager.mTermuxSessions.clear();
+        startedSessionNames.clear();
+        for (int sessionNumber = 0; sessionNumber < 16; sessionNumber++) {
+            String sessionName = "visible-" + sessionNumber;
+            visibleSessionNames.add(sessionName);
+            shellManager.mTermuxSessions.add(liveSession(sessionName));
+        }
+        for (int sessionNumber = 0; sessionNumber < 15; sessionNumber++) {
+            String sessionName = "hidden-" + sessionNumber;
+            hiddenSessionNames.add(sessionName);
+            shellManager.mTermuxSessions.add(liveSession(sessionName));
+        }
+        preferences.setDisabledSessionNames(String.join("\n", hiddenSessionNames));
+        String displayedSessionName = visibleSessionNames.get(0);
+        terminalView.mTermSession = terminalSession(displayedSessionName);
+
+        assertEquals("the fixture must hold the reported population of 31 rows",
+            31, service.getTermuxSessionsSize());
+
+        giveTheTerminalViewMeasurableDimensions();
+        activity.eagerLoadAllSessions();
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+
+        List<String> expectedStartedSessionNames = new ArrayList<>(visibleSessionNames);
+        expectedStartedSessionNames.remove(displayedSessionName);
+        assertEquals("the startup pass must start every visible session except the displayed one, which "
+                + "is started by being attached to the terminal view, and no hidden session at all",
+            expectedStartedSessionNames, startedSessionNames);
+        for (String hiddenSessionName : hiddenSessionNames) {
+            assertFalse("no hidden session may be started at startup, however many of them there are",
+                startedSessionNames.contains(hiddenSessionName));
+        }
+    }
+
     private void giveTheTerminalViewMeasurableDimensions() throws Exception {
         set(terminalView, View.class, "mLeft", 0);
         set(terminalView, View.class, "mTop", 0);

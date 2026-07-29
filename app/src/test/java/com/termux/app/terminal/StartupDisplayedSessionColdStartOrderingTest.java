@@ -100,6 +100,24 @@ public class StartupDisplayedSessionColdStartOrderingTest {
     }
 
     @Test
+    public void aLaterSessionDefinitionReloadDoesNotMoveTheDisplayedSessionAgain() throws Exception {
+        addSessions(BETA_ONE, ALPHA_ONE, ALPHA_TWO);
+        attachSessionListWithEntries(Collections.emptyList());
+
+        activity.getTermuxTerminalSessionClient().setCurrentSessionOnReconnectIfNoneDisplayed();
+        activity.refreshDisplayedSessionDefinitionEntries(ENTRIES);
+        assertEquals(ALPHA_ONE, currentSessionName());
+
+        activity.refreshDisplayedSessionDefinitionEntries(Arrays.asList(
+            new SessionDefinitionEntry(BETA_PROJECT, "betaStory", Collections.singletonList(BETA_ONE)),
+            new SessionDefinitionEntry(ALPHA_PROJECT, "alphaStory", Arrays.asList(ALPHA_ONE, ALPHA_TWO))));
+
+        assertEquals("a later authoritative reload must not move the user off the session they are on, "
+                + "because the cold-start correction is spent once the entries have arrived",
+            ALPHA_ONE, currentSessionName());
+    }
+
+    @Test
     public void aSessionTheUserSelectedBeforeTheEntriesArriveIsNotTakenAway() throws Exception {
         addSessions(BETA_ONE, ALPHA_ONE, ALPHA_TWO);
         attachSessionListWithEntries(Collections.emptyList());
