@@ -11,6 +11,10 @@ import android.util.Pair;
 import android.view.WindowManager;
 
 import com.termux.R;
+import com.termux.app.bootstrap.BootstrapArchive;
+import com.termux.app.bootstrap.BootstrapDirectoryCreator;
+import com.termux.app.bootstrap.BootstrapInstallationRunner;
+import com.termux.app.bootstrap.FileUtilsBootstrapDirectoryCreator;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.file.TermuxFileUtils;
@@ -24,10 +28,12 @@ import com.termux.shared.termux.TermuxUtils;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -119,113 +125,9 @@ final class TermuxInstaller {
             @Override
             public void run() {
                 try {
-                    Logger.logInfo(LOG_TAG, "Installing " + TermuxConstants.TERMUX_APP_NAME + " bootstrap packages.");
-
-                    Error error;
-
-                    // Delete prefix staging directory or any file at its destination
-                    error = FileUtils.deleteFile("termux prefix staging directory", TERMUX_STAGING_PREFIX_DIR_PATH, true);
-                    if (error != null) {
-                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
-                        return;
-                    }
-
-                    // Delete prefix directory or any file at its destination
-                    error = FileUtils.deleteFile("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true);
-                    if (error != null) {
-                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
-                        return;
-                    }
-
-                    // Create prefix staging directory if it does not already exist and set required permissions
-                    error = TermuxFileUtils.isTermuxPrefixStagingDirectoryAccessible(true, true);
-                    if (error != null) {
-                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
-                        return;
-                    }
-
-                    // Create prefix directory if it does not already exist and set required permissions
-                    error = TermuxFileUtils.isTermuxPrefixDirectoryAccessible(true, true);
-                    if (error != null) {
-                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
-                        return;
-                    }
-
-                    Logger.logInfo(LOG_TAG, "Extracting bootstrap zip to prefix staging directory \"" + TERMUX_STAGING_PREFIX_DIR_PATH + "\".");
-
-                    final byte[] buffer = new byte[8096];
-                    final List<Pair<String, String>> symlinks = new ArrayList<>(50);
-
-                    final byte[] zipBytes = loadZipBytes();
-                    try (ZipInputStream zipInput = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
-                        ZipEntry zipEntry;
-                        while ((zipEntry = zipInput.getNextEntry()) != null) {
-                            if (zipEntry.getName().equals("SYMLINKS.txt")) {
-                                BufferedReader symlinksReader = new BufferedReader(new InputStreamReader(zipInput));
-                                String line;
-                                while ((line = symlinksReader.readLine()) != null) {
-                                    String[] parts = line.split("←");
-                                    if (parts.length != 2)
-                                        throw new RuntimeException("Malformed symlink line: " + line);
-                                    String oldPath = parts[0];
-                                    String newPath = TERMUX_STAGING_PREFIX_DIR_PATH + "/" + parts[1];
-                                    symlinks.add(Pair.create(oldPath, newPath));
-
-                                    error = ensureDirectoryExists(new File(newPath).getParentFile());
-                                    if (error != null) {
-                                        showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
-                                        return;
-                                    }
-                                }
-                            } else {
-                                String zipEntryName = zipEntry.getName();
-                                File targetFile = new File(TERMUX_STAGING_PREFIX_DIR_PATH, zipEntryName);
-                                boolean isDirectory = zipEntry.isDirectory();
-
-                                error = ensureDirectoryExists(isDirectory ? targetFile : targetFile.getParentFile());
-                                if (error != null) {
-                                    showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
-                                    return;
-                                }
-
-                                if (!isDirectory) {
-                                    try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
-                                        int readBytes;
-                                        while ((readBytes = zipInput.read(buffer)) != -1)
-                                            outStream.write(buffer, 0, readBytes);
-                                    }
-                                    if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
-                                        zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods")) {
-                                        //noinspection OctalInteger
-                                        Os.chmod(targetFile.getAbsolutePath(), 0700);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (symlinks.isEmpty())
-                        throw new RuntimeException("No SYMLINKS.txt encountered");
-                    for (Pair<String, String> symlink : symlinks) {
-                        Os.symlink(symlink.first, symlink.second);
-                    }
-
-                    Logger.logInfo(LOG_TAG, "Moving termux prefix staging to prefix directory.");
-
-                    if (!TERMUX_STAGING_PREFIX_DIR.renameTo(TERMUX_PREFIX_DIR)) {
-                        throw new RuntimeException("Moving termux prefix staging to prefix directory failed");
-                    }
-
-                    Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
-
-                    // Recreate env file since termux prefix was wiped earlier
-                    TermuxShellEnvironment.writeEnvironmentToFile(activity);
-
-                    activity.runOnUiThread(whenDone);
-
-                } catch (final Exception e) {
-                    showBootstrapErrorDialog(activity, whenDone, Logger.getStackTracesMarkdownString(null, Logger.getStackTracesStringArray(e)));
-
+                    new BootstrapInstallationRunner(failure -> showBootstrapErrorDialog(activity, whenDone,
+                        Logger.getStackTracesMarkdownString(null, Logger.getStackTracesStringArray(failure))))
+                        .run(() -> installBootstrap(activity, whenDone));
                 } finally {
                     activity.runOnUiThread(() -> {
                         try {
@@ -237,6 +139,62 @@ final class TermuxInstaller {
                 }
             }
         }.start();
+    }
+
+    private static void installBootstrap(final Activity activity, final Runnable whenDone) throws Exception {
+        Logger.logInfo(LOG_TAG, "Installing " + TermuxConstants.TERMUX_APP_NAME + " bootstrap packages.");
+
+        Error error;
+
+        // Delete prefix staging directory or any file at its destination
+        error = FileUtils.deleteFile("termux prefix staging directory", TERMUX_STAGING_PREFIX_DIR_PATH, true);
+        if (error != null) {
+            showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
+            return;
+        }
+
+        // Delete prefix directory or any file at its destination
+        error = FileUtils.deleteFile("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true);
+        if (error != null) {
+            showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
+            return;
+        }
+
+        // Create prefix staging directory if it does not already exist and set required permissions
+        error = TermuxFileUtils.isTermuxPrefixStagingDirectoryAccessible(true, true);
+        if (error != null) {
+            showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
+            return;
+        }
+
+        // Create prefix directory if it does not already exist and set required permissions
+        error = TermuxFileUtils.isTermuxPrefixDirectoryAccessible(true, true);
+        if (error != null) {
+            showBootstrapErrorDialog(activity, whenDone, Error.getErrorMarkdownString(error));
+            return;
+        }
+
+        final BootstrapArchive bootstrapArchive = loadBootstrapArchive();
+
+        Logger.logInfo(LOG_TAG, "Extracting bootstrap zip of " + bootstrapArchive.sizeInBytes()
+            + " bytes to prefix staging directory \"" + TERMUX_STAGING_PREFIX_DIR_PATH + "\".");
+
+        try (InputStream bootstrapArchiveStream = bootstrapArchive.openStream()) {
+            extractBootstrapArchive(bootstrapArchiveStream, TERMUX_STAGING_PREFIX_DIR);
+        }
+
+        Logger.logInfo(LOG_TAG, "Moving termux prefix staging to prefix directory.");
+
+        if (!TERMUX_STAGING_PREFIX_DIR.renameTo(TERMUX_PREFIX_DIR)) {
+            throw new RuntimeException("Moving termux prefix staging to prefix directory failed");
+        }
+
+        Logger.logInfo(LOG_TAG, "Bootstrap packages installed successfully.");
+
+        // Recreate env file since termux prefix was wiped earlier
+        TermuxShellEnvironment.writeEnvironmentToFile(activity);
+
+        activity.runOnUiThread(whenDone);
     }
 
     public static void showBootstrapErrorDialog(Activity activity, Runnable whenDone, String message) {
@@ -371,16 +329,83 @@ final class TermuxInstaller {
         }.start();
     }
 
-    private static Error ensureDirectoryExists(File directory) {
-        return FileUtils.createDirectoryFile(directory.getAbsolutePath());
+    static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory) throws Exception {
+        extractBootstrapArchive(bootstrapArchiveStream, targetDirectory, new FileUtilsBootstrapDirectoryCreator());
     }
 
-    public static byte[] loadZipBytes() {
+    static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory,
+                                        BootstrapDirectoryCreator bootstrapDirectoryCreator) throws Exception {
+        final String targetDirectoryPath = targetDirectory.getAbsolutePath();
+        final byte[] buffer = new byte[8096];
+        final List<Pair<String, String>> symlinks = new ArrayList<>(50);
+
+        try (ZipInputStream zipInput = new ZipInputStream(bootstrapArchiveStream)) {
+            ZipEntry zipEntry;
+            while ((zipEntry = zipInput.getNextEntry()) != null) {
+                if (zipEntry.getName().equals("SYMLINKS.txt")) {
+                    BufferedReader symlinksReader = new BufferedReader(new InputStreamReader(zipInput));
+                    String line;
+                    while ((line = symlinksReader.readLine()) != null) {
+                        String[] parts = line.split("←");
+                        if (parts.length != 2)
+                            throw new RuntimeException("Malformed symlink line: " + line);
+                        String oldPath = parts[0];
+                        String newPath = targetDirectoryPath + "/" + parts[1];
+                        symlinks.add(Pair.create(oldPath, newPath));
+
+                        createBootstrapEntryDirectory(bootstrapDirectoryCreator,
+                            new File(newPath).getParentFile(), parts[1]);
+                    }
+                } else {
+                    String zipEntryName = zipEntry.getName();
+                    File targetFile = new File(targetDirectoryPath, zipEntryName);
+                    boolean isDirectory = zipEntry.isDirectory();
+
+                    createBootstrapEntryDirectory(bootstrapDirectoryCreator,
+                        isDirectory ? targetFile : targetFile.getParentFile(), zipEntryName);
+
+                    if (!isDirectory) {
+                        try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
+                            int readBytes;
+                            while ((readBytes = zipInput.read(buffer)) != -1)
+                                outStream.write(buffer, 0, readBytes);
+                        }
+                        if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
+                            zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods")) {
+                            //noinspection OctalInteger
+                            Os.chmod(targetFile.getAbsolutePath(), 0700);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (symlinks.isEmpty())
+            throw new RuntimeException("No SYMLINKS.txt encountered");
+        for (Pair<String, String> symlink : symlinks) {
+            Os.symlink(symlink.first, symlink.second);
+        }
+    }
+
+    private static void createBootstrapEntryDirectory(BootstrapDirectoryCreator bootstrapDirectoryCreator,
+                                                      File directory, String archiveEntryName) throws IOException {
+        if (directory == null) {
+            throw new IOException("Bootstrap archive entry \"" + archiveEntryName
+                + "\" names no directory that can be created");
+        }
+        bootstrapDirectoryCreator.createBootstrapDirectory(directory);
+    }
+
+    public static BootstrapArchive loadBootstrapArchive() {
         // Only load the shared library when necessary to save memory usage.
         System.loadLibrary("termux-bootstrap");
-        return getZip();
+        ByteBuffer bootstrapArchiveBuffer = getZipBuffer();
+        if (bootstrapArchiveBuffer == null) {
+            throw new IllegalStateException("The native bootstrap library did not hand out the bootstrap archive buffer");
+        }
+        return new BootstrapArchive(bootstrapArchiveBuffer);
     }
 
-    public static native byte[] getZip();
+    public static native ByteBuffer getZipBuffer();
 
 }
