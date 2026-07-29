@@ -1,7 +1,6 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -9,7 +8,6 @@ import android.content.Context;
 import android.os.Looper;
 import android.os.SystemClock;
 
-import androidx.annotation.NonNull;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.termux.R;
@@ -29,48 +27,53 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.shadows.ShadowLooper;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
 public class BackgroundReconnectSweepMainThreadPacingTest {
 
-    private static final int DEAD_SESSION_COUNT = 24;
+    private static final int VISIBLE_SESSION_COUNT = 16;
 
-    private static final int SESSION_CREATIONS_ALLOWED_PER_UNINTERRUPTED_MAIN_THREAD_PASS = 1;
+    private static final int HIDDEN_SESSION_COUNT = 15;
 
-    private static final long DRAIN_WINDOW_MILLIS = 20_000L;
+    private static final int SESSION_CREATION_BOUND_PER_UNINTERRUPTED_MAIN_THREAD_PASS = 1;
 
-    private static final long FIRST_UNIT_OBSERVATION_WINDOW_MILLIS = 64L;
+    private static final int SESSION_CREATION_BOUND_PER_DUE_INSTANT = 1;
 
-    private static final int DRAIN_ITERATION_CAP = 4 * DEAD_SESSION_COUNT + 64;
+    private static final long DRAIN_HORIZON_MILLIS_BEFORE_THE_FIRST_RECONNECT_TIMEOUT = 20_000L;
+
+    private static final int DRAIN_STEP_LIMIT = 500;
+
+    private static final int DRAIN_ATTEMPT_LIMIT = 2_000;
+
+    private static final int DEAD_SHELL_PROCESS_ID = -1;
 
     private TermuxActivity activity;
 
-    private TermuxService service;
+    private TermuxTerminalSessionActivityClient sessionActivityClient;
 
     private TermuxShellManager shellManager;
 
     private TerminalView terminalView;
 
-    private final Set<TerminalSession> sessionsPresentBeforeTheSweep =
-        Collections.newSetFromMap(new IdentityHashMap<>());
+    private TerminalSession displayedSession;
 
-    private final List<TerminalSession> deadSessions = new ArrayList<>();
+    private final List<TerminalSession> visibleSessions = new ArrayList<>();
 
-    private final Map<Long, Integer> sessionCreationCountByDueUptimeMillis = new LinkedHashMap<>();
+    private final List<TerminalSession> hiddenSessions = new ArrayList<>();
 
-    private int recordedSessionCreationCount;
+    private final Set<TerminalSession> sessionsPresentBeforeTheSweep = new LinkedHashSet<>();
+
+    private final List<Throwable> throwablesSurfacedByTheSweep = new ArrayList<>();
+
+    private final List<Long> sessionCreationInstantsSinceTheSweepStarted = new ArrayList<>();
 
     private long sweepStartUptimeMillis;
 
@@ -79,21 +82,21 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         activity = Robolectric.buildActivity(TermuxActivity.class).get();
         Context appContext = RuntimeEnvironment.getApplication();
 
-        service = Robolectric.buildService(TermuxService.class).get();
+        TermuxService service = Robolectric.buildService(TermuxService.class).get();
         shellManager = new TermuxShellManager(appContext);
         set(service, TermuxService.class, "mShellManager", shellManager);
         set(service, TermuxService.class, "mProperties", TermuxAppSharedProperties.init(appContext));
 
+        sessionActivityClient = new TermuxTerminalSessionActivityClient(activity);
         set(activity, TermuxActivity.class, "mTermuxService", service);
-        set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
-            new TermuxTerminalSessionActivityClient(activity));
-        service.setTermuxTerminalSessionClient(activity.getTermuxTerminalSessionClient());
+        set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient", sessionActivityClient);
+        set(activity, TermuxActivity.class, "mIsVisible", true);
+        service.setTermuxTerminalSessionClient(sessionActivityClient);
 
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(appContext, true);
         set(activity, TermuxActivity.class, "mPreferences", preferences);
         preferences.setAutosshCommand("ssh {name}");
         set(activity, TermuxActivity.class, "mProperties", TermuxAppSharedProperties.init(appContext));
-        set(activity, TermuxActivity.class, "mIsVisible", true);
 
         DrawerLayout drawerLayout = new DrawerLayout(appContext);
         drawerLayout.setId(R.id.drawer_layout);
@@ -103,199 +106,186 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         terminalView.setTextSize(12);
         set(activity, TermuxActivity.class, "mTerminalView", terminalView);
 
-        TerminalSession foregroundSession = addLiveSession("session-foreground");
-        terminalView.mTermSession = foregroundSession;
+        displayedSession = addSession("session-displayed");
+        terminalView.mTermSession = displayedSession;
 
-        for (int sessionNumber = 1; sessionNumber <= DEAD_SESSION_COUNT; sessionNumber++) {
-            deadSessions.add(addDeadSession(String.format("session-dead-%02d", sessionNumber)));
+        List<String> hiddenSessionNames = new ArrayList<>();
+        for (int index = 1; index <= VISIBLE_SESSION_COUNT; index++) {
+            visibleSessions.add(addDeadSession(String.format("session-visible-%02d", index)));
         }
+        for (int index = 1; index <= HIDDEN_SESSION_COUNT; index++) {
+            String sessionName = String.format("session-hidden-%02d", index);
+            hiddenSessions.add(addDeadSession(sessionName));
+            hiddenSessionNames.add(sessionName);
+        }
+        preferences.setDisabledSessionNames(String.join("\n", hiddenSessionNames));
+
         for (TermuxSession termuxSession : shellManager.mTermuxSessions) {
             sessionsPresentBeforeTheSweep.add(termuxSession.getTerminalSession());
         }
+        idleMainThreadTasksDueNow();
     }
 
     @Test
-    public void theBackgroundReconnectSweepCreatesAtMostOneSessionInOneUninterruptedMainThreadPass() {
-        startTheBackgroundReconnectSweep();
+    public void backgroundReconnectSweepCreatesAtMostOneSessionInOneUninterruptedMainThreadPass() {
+        runBackgroundReconnectSweep();
+        int sessionsCreatedInsideTheSchedulingPass = sessionCreationCount();
 
-        int sessionsCreatedInOneUninterruptedPass = runEveryMainThreadTaskDueNow();
+        idleMainThreadTasksDueNow();
+        recordSessionCreationInstants();
+        int sessionsCreatedInOneUninterruptedMainThreadPass = sessionCreationCount();
 
-        assertTrue("the background reconnect sweep runs on the main thread and is the only thing the "
-                + "drawing thread can do while it runs; every session it creates constructs a terminal "
-                + "emulator with a 2000-row transcript buffer, forks and executes a shell through the "
-                + "native subprocess call and starts three threads for it, so the terminal screen stays "
-                + "on its previous frame or blank until the whole pass finishes; over a population of "
-                + DEAD_SESSION_COUNT + " dead sessions the sweep must create no more than "
-                + SESSION_CREATIONS_ALLOWED_PER_UNINTERRUPTED_MAIN_THREAD_PASS
+        drainMainThreadQueueToTheSweepHorizon();
+        int sessionsCreatedOverTheWholeSweep = sessionCreationCount();
+
+        assertTrue("the background reconnect sweep runs on the main thread while the owner is looking at "
+                + "the terminal, and every session it creates constructs a terminal emulator with a "
+                + "2000-row transcript buffer, forks and execs a shell through the native subprocess "
+                + "call and starts three threads for it, so the drawing thread cannot render a frame "
+                + "until the whole pass finishes and the screen stays on its previous frame or blank for "
+                + "the whole duration; over a population of " + VISIBLE_SESSION_COUNT + " visible and "
+                + HIDDEN_SESSION_COUNT + " hidden sessions the sweep must keep at most "
+                + SESSION_CREATION_BOUND_PER_UNINTERRUPTED_MAIN_THREAD_PASS
+                + " session creation in flight and must therefore create no more than "
+                + SESSION_CREATION_BOUND_PER_UNINTERRUPTED_MAIN_THREAD_PASS
                 + " session in one uninterrupted main-thread pass, yet it created "
-                + sessionsCreatedInOneUninterruptedPass
-                + "; a pass that creates nothing at all would satisfy this bound trivially, which is why "
-                + "theBackgroundReconnectSweepStillReconnectsEverySelectedSessionOnceTheQueueDrains "
-                + "separately requires every selected session to be reconnected",
-            sessionsCreatedInOneUninterruptedPass
-                <= SESSION_CREATIONS_ALLOWED_PER_UNINTERRUPTED_MAIN_THREAD_PASS);
+                + sessionsCreatedInsideTheSchedulingPass
+                + " inline inside its own scheduling pass and "
+                + sessionsCreatedInOneUninterruptedMainThreadPass
+                + " by the end of that pass once the main-thread tasks already due had run",
+            sessionsCreatedInOneUninterruptedMainThreadPass
+                <= SESSION_CREATION_BOUND_PER_UNINTERRUPTED_MAIN_THREAD_PASS);
+
+        assertTrue("a sweep that creates nothing at all satisfies the bound above without pacing "
+                + "anything, so the same run must also show the sweep really did the work it was asked "
+                + "to do; over a population of " + VISIBLE_SESSION_COUNT + " visible and "
+                + HIDDEN_SESSION_COUNT + " hidden sessions the sweep must create at least one session "
+                + "by the time the main-thread queue drains, yet it created "
+                + sessionsCreatedOverTheWholeSweep,
+            sessionsCreatedOverTheWholeSweep >= 1);
     }
 
     @Test
-    public void theBackgroundReconnectSweepMakesNoTwoSessionCreationsDueAtTheSameInstant() {
-        startTheBackgroundReconnectSweep();
-        drainEveryPacedUnitWithinTheDrainWindow();
+    public void backgroundReconnectSweepDoesNotMakeSeveralSessionCreationsDueAtTheSameInstant() {
+        runBackgroundReconnectSweep();
+        drainMainThreadQueueToTheSweepHorizon();
 
-        int largestNumberOfSessionCreationsSharingOneInstant =
-            largestNumberOfSessionCreationsSharingOneInstant();
+        long instantCarryingTheMostCreations = 0L;
+        int mostCreationsCarriedByOneInstant = 0;
+        for (Long creationInstant : sessionCreationInstantsSinceTheSweepStarted) {
+            int creationsAtThisInstant = 0;
+            for (Long otherCreationInstant : sessionCreationInstantsSinceTheSweepStarted) {
+                if (otherCreationInstant.equals(creationInstant)) creationsAtThisInstant++;
+            }
+            if (creationsAtThisInstant > mostCreationsCarriedByOneInstant) {
+                mostCreationsCarriedByOneInstant = creationsAtThisInstant;
+                instantCarryingTheMostCreations = creationInstant;
+            }
+        }
+        long lastSessionCreationInstant = sessionCreationInstantsSinceTheSweepStarted.isEmpty()
+            ? 0L
+            : sessionCreationInstantsSinceTheSweepStarted
+                .get(sessionCreationInstantsSinceTheSweepStarted.size() - 1);
 
-        assertEquals("the sweep stamps every unit's delay against the same instant before any unit has "
-                + "run, so a whole slot of units becomes due together and the looper drains them back to "
-                + "back with no frame in between; for the drawing thread to render between two session "
-                + "creations the sweep must schedule each one only after the previous returned, so no "
-                + "instant may carry more than one creation, yet the creations became due as "
-                + describeSessionCreationsByDueInstant() + " and the last one was due "
-                + lastSessionCreationDueMillisAfterTheSweepStarted()
-                + " milliseconds after the sweep started",
-            1, largestNumberOfSessionCreationsSharingOneInstant);
+        assertTrue("the sweep computes every start delay up front against one single instant before any "
+                + "creation has run, so its first creations share the instant the sweep itself runs on "
+                + "and each later slot releases a whole group that becomes due together, which the "
+                + "looper then drains back to back with no yield for the drawing thread; the next "
+                + "creation must instead be scheduled only after the previous one has returned, behind a "
+                + "yield that lets the drawing thread render a frame, so no instant may carry more than "
+                + SESSION_CREATION_BOUND_PER_DUE_INSTANT + " creation; over a population of "
+                + VISIBLE_SESSION_COUNT + " visible and " + HIDDEN_SESSION_COUNT + " hidden sessions the "
+                + "sweep made " + sessionCreationInstantsSinceTheSweepStarted.size()
+                + " creations whose last one was due " + lastSessionCreationInstant
+                + " milliseconds after the sweep began, and " + mostCreationsCarriedByOneInstant
+                + " of them were due together at the single instant " + instantCarryingTheMostCreations
+                + " milliseconds after the sweep began; the creation instants were "
+                + sessionCreationInstantsSinceTheSweepStarted,
+            mostCreationsCarriedByOneInstant <= SESSION_CREATION_BOUND_PER_DUE_INSTANT);
+
+        assertTrue("a sweep that creates nothing at all leaves no instant carrying a creation and "
+                + "satisfies the bound above without pacing anything, so the same run must also show the "
+                + "sweep really did the work it was asked to do; over a population of "
+                + VISIBLE_SESSION_COUNT + " visible and " + HIDDEN_SESSION_COUNT + " hidden sessions the "
+                + "sweep must create at least one session by the time the main-thread queue drains, yet "
+                + "it created " + sessionCreationInstantsSinceTheSweepStarted.size(),
+            !sessionCreationInstantsSinceTheSweepStarted.isEmpty());
     }
 
     @Test
-    public void theBackgroundReconnectSweepStillReconnectsEverySelectedSessionOnceTheQueueDrains() {
-        List<String> selectedSessionNames = everySelectedSessionName();
-        startTheBackgroundReconnectSweep();
-        drainEveryPacedUnitWithinTheDrainWindow();
+    public void backgroundReconnectSweepReconnectsEverySelectedSessionOnceTheMainThreadQueueDrains() {
+        runBackgroundReconnectSweep();
+        drainMainThreadQueueToTheSweepHorizon();
 
-        assertEquals("pacing the sweep has to spread the session creations over time rather than shed "
-                + "them, because a per-pass bound is equally satisfied by a sweep that reconnects nothing "
-                + "at all and the owner would then be left looking at dead sessions that never come back",
-            selectedSessionNames, createdReplacementSessionNames());
+        Set<String> reconnectedSessionNames = reconnectedSessionNames();
+        List<String> selectedSessionNamesNotReconnected =
+            selectedSessionNamesNotIn(reconnectedSessionNames);
+
+        assertTrue("pacing the sweep must change only when each session is reconnected, never whether it "
+                + "is reconnected at all, otherwise the pacing would be satisfied by silently doing less "
+                + "work and the owner would be left with dead sessions that never come back; every one "
+                + "of the " + VISIBLE_SESSION_COUNT + " dead visible sessions the sweep selects must be "
+                + "reconnected once the main-thread queue drains, yet " + reconnectedSessionNames.size()
+                + " were reconnected and these were not: " + selectedSessionNamesNotReconnected,
+            selectedSessionNamesNotReconnected.isEmpty());
     }
 
     @Test
-    public void theBackgroundReconnectSweepKeepsDrainingAfterOneSessionCreationThrowsAndLetsTheThrowReachTheCaller() {
-        layOutTheTerminalViewSoSessionCreationReachesTheDeviceOnlyNativeSubprocessCall();
-        List<String> selectedSessionNames = everySelectedSessionName();
+    public void backgroundReconnectSweepKeepsTheSessionsBehindAThrowingCreationScheduledAndLetsTheThrowReachTheCaller()
+            throws Exception {
+        layOutTheTerminalViewSoEveryBackgroundCreationInitializesAnEmulator();
 
-        LinkageError throwReachingTheCaller = assertThrows(LinkageError.class,
-            this::startTheSweepAndRunItsFirstUnitWithoutAbsorbingFailures);
-        assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(throwReachingTheCaller);
+        runBackgroundReconnectSweep();
+        drainMainThreadQueueToTheSweepHorizon();
 
-        drainEveryPacedUnitWithinTheDrainWindow();
+        Set<String> reconnectedSessionNames = reconnectedSessionNames();
+        List<String> selectedSessionNamesNotReconnected =
+            selectedSessionNamesNotIn(reconnectedSessionNames);
 
-        assertEquals("a session whose process creation fails must not strand every session queued behind "
-                + "it, because the owner's device is exactly the population where a process creation can "
-                + "fail and a stalled queue leaves every remaining dead session unreconnected until some "
-                + "later sweep happens to revive it",
-            selectedSessionNames, createdReplacementSessionNames());
+        assertTrue("a session creation that throws must not strand the sessions queued behind it, "
+                + "because the owner would otherwise be left with the rest of the population dead until "
+                + "some later sweep; the sweep runs its first creations inline inside its own scheduling "
+                + "loop, so a throw unwinds that loop and the remainder is never scheduled at all; over "
+                + "a population of " + VISIBLE_SESSION_COUNT + " visible and " + HIDDEN_SESSION_COUNT
+                + " hidden sessions, with the terminal view laid out so every background creation "
+                + "initializes an emulator and then fails on the native subprocess call, all "
+                + VISIBLE_SESSION_COUNT + " selected sessions must still be reconnected once the queue "
+                + "drains, yet " + reconnectedSessionNames.size() + " were reconnected and these were "
+                + "not: " + selectedSessionNamesNotReconnected,
+            selectedSessionNamesNotReconnected.isEmpty());
+
+        assertTrue("a session creation that throws must not have its failure swallowed, because a "
+                + "swallowed failure hides a session that never came back behind a sweep that looks "
+                + "successful; the throw must reach the caller of the creation, yet over the whole sweep "
+                + throwablesSurfacedByTheSweep.size() + " throwables reached the caller",
+            !throwablesSurfacedByTheSweep.isEmpty());
     }
 
     @Test
     public void theBackgroundReconnectSweepDoesNotCreateASessionThatLeftTheListBeforeItsUnitRan() {
-        List<String> selectedSessionNames = everySelectedSessionName();
-        startTheBackgroundReconnectSweep();
-        TerminalSession sessionLeavingTheList = deadSessions.get(deadSessions.size() - 1);
+        Set<String> selectedSessionNames = new LinkedHashSet<>();
+        for (TerminalSession visibleSession : visibleSessions) {
+            selectedSessionNames.add(visibleSession.mSessionName);
+        }
+
+        runBackgroundReconnectSweep();
+        TerminalSession sessionLeavingTheList = visibleSessions.get(visibleSessions.size() - 1);
         String nameOfTheSessionLeavingTheList = sessionLeavingTheList.mSessionName;
         removeFromTheServiceWithoutReconnecting(sessionLeavingTheList);
 
-        drainEveryPacedUnitWithinTheDrainWindow();
+        drainMainThreadQueueToTheSweepHorizon();
 
-        List<String> expectedReplacementSessionNames = new ArrayList<>(selectedSessionNames);
-        expectedReplacementSessionNames.remove(nameOfTheSessionLeavingTheList);
+        Set<String> expectedReconnectedSessionNames = new LinkedHashSet<>(selectedSessionNames);
+        expectedReconnectedSessionNames.remove(nameOfTheSessionLeavingTheList);
+
         assertEquals("pacing the sweep opens a window in which the session list changes under it, so a "
                 + "session the owner closed after the sweep enqueued it must not have a replacement shell "
                 + "forked for it; creating one resurrects a session the owner deliberately closed and "
                 + "leaves a process that no close path will ever terminate",
-            expectedReplacementSessionNames, createdReplacementSessionNames());
+            expectedReconnectedSessionNames, reconnectedSessionNames());
     }
 
-    @NonNull
-    private List<String> everySelectedSessionName() {
-        List<String> selectedSessionNames = new ArrayList<>();
-        for (TerminalSession deadSession : deadSessions) selectedSessionNames.add(deadSession.mSessionName);
-        return selectedSessionNames;
-    }
-
-    private void startTheBackgroundReconnectSweep() {
-        sweepStartUptimeMillis = SystemClock.uptimeMillis();
-        activity.getTermuxTerminalSessionClient().startDisplayedSessionCallScanTick();
-        recordSessionCreationsBecomingDueNow();
-    }
-
-    private int runEveryMainThreadTaskDueNow() {
-        advanceTheMainThreadTo(SystemClock.uptimeMillis());
-        recordSessionCreationsBecomingDueNow();
-        return recordedSessionCreationCount;
-    }
-
-    private void startTheSweepAndRunItsFirstUnitWithoutAbsorbingFailures() {
-        startTheBackgroundReconnectSweep();
-        shadowOf(Looper.getMainLooper())
-            .idleFor(Duration.ofMillis(FIRST_UNIT_OBSERVATION_WINDOW_MILLIS));
-    }
-
-    private void drainEveryPacedUnitWithinTheDrainWindow() {
-        ShadowLooper mainLooper = shadowOf(Looper.getMainLooper());
-        long drainDeadlineUptimeMillis = SystemClock.uptimeMillis() + DRAIN_WINDOW_MILLIS;
-        for (int iteration = 0; iteration < DRAIN_ITERATION_CAP; iteration++) {
-            long nextDueUptimeMillis = mainLooper.getNextScheduledTaskTime().toMillis();
-            if (nextDueUptimeMillis == 0L) return;
-            if (nextDueUptimeMillis > drainDeadlineUptimeMillis) return;
-            advanceTheMainThreadTo(nextDueUptimeMillis);
-            recordSessionCreationsBecomingDueNow();
-        }
-    }
-
-    private void advanceTheMainThreadTo(long targetUptimeMillis) {
-        long advanceMillis = Math.max(0L, targetUptimeMillis - SystemClock.uptimeMillis());
-        try {
-            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(advanceMillis));
-        } catch (LinkageError deviceOnlyNativeSubprocessLibraryAbsent) {
-            assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(deviceOnlyNativeSubprocessLibraryAbsent);
-        }
-    }
-
-    private void recordSessionCreationsBecomingDueNow() {
-        int createdSessionCount = createdReplacementSessionNames().size();
-        int newlyCreatedSessionCount = createdSessionCount - recordedSessionCreationCount;
-        if (newlyCreatedSessionCount <= 0) return;
-        recordedSessionCreationCount = createdSessionCount;
-        sessionCreationCountByDueUptimeMillis.merge(
-            SystemClock.uptimeMillis() - sweepStartUptimeMillis, newlyCreatedSessionCount, Integer::sum);
-    }
-
-    private int largestNumberOfSessionCreationsSharingOneInstant() {
-        int largest = 0;
-        for (int creationsAtOneInstant : sessionCreationCountByDueUptimeMillis.values()) {
-            largest = Math.max(largest, creationsAtOneInstant);
-        }
-        return largest;
-    }
-
-    @NonNull
-    private String describeSessionCreationsByDueInstant() {
-        StringBuilder description = new StringBuilder();
-        for (Map.Entry<Long, Integer> entry : sessionCreationCountByDueUptimeMillis.entrySet()) {
-            if (description.length() > 0) description.append(", ");
-            description.append(entry.getValue()).append(" at ").append(entry.getKey()).append("ms");
-        }
-        return description.length() == 0 ? "no creations at all" : description.toString();
-    }
-
-    private long lastSessionCreationDueMillisAfterTheSweepStarted() {
-        long lastDueMillis = -1L;
-        for (Long dueMillis : sessionCreationCountByDueUptimeMillis.keySet()) lastDueMillis = dueMillis;
-        return lastDueMillis;
-    }
-
-    @NonNull
-    private List<String> createdReplacementSessionNames() {
-        List<String> createdReplacementSessionNames = new ArrayList<>();
-        for (TermuxSession termuxSession : new ArrayList<>(shellManager.mTermuxSessions)) {
-            TerminalSession terminalSession = termuxSession.getTerminalSession();
-            if (terminalSession == null) continue;
-            if (sessionsPresentBeforeTheSweep.contains(terminalSession)) continue;
-            createdReplacementSessionNames.add(terminalSession.mSessionName);
-        }
-        return createdReplacementSessionNames;
-    }
-
-    private void removeFromTheServiceWithoutReconnecting(@NonNull TerminalSession session) {
+    private void removeFromTheServiceWithoutReconnecting(TerminalSession session) {
         for (TermuxSession termuxSession : new ArrayList<>(shellManager.mTermuxSessions)) {
             if (termuxSession.getTerminalSession() == session) {
                 shellManager.mTermuxSessions.remove(termuxSession);
@@ -304,54 +294,126 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         }
     }
 
-    private void layOutTheTerminalViewSoSessionCreationReachesTheDeviceOnlyNativeSubprocessCall()
-            throws RuntimeException {
+    private void runBackgroundReconnectSweep() {
+        sweepStartUptimeMillis = SystemClock.uptimeMillis();
         try {
-            Field rendererField = TerminalView.class.getDeclaredField("mRenderer");
-            rendererField.setAccessible(true);
-            Object renderer = rendererField.get(terminalView);
-            setFinalField(renderer, "mFontWidth", 10.0f);
-            setFinalField(renderer, "mFontLineSpacing", 20);
-            setFinalField(renderer, "mFontLineSpacingAndAscent", 15);
-            TerminalSession sessionAttachedToTheView = terminalView.mTermSession;
-            terminalView.mTermSession = null;
-            terminalView.layout(0, 0, 1080, 1920);
-            terminalView.mTermSession = sessionAttachedToTheView;
-        } catch (Exception reflectionFailure) {
-            throw new RuntimeException(reflectionFailure);
+            sessionActivityClient.startDisplayedSessionCallScanTick();
+        } catch (Throwable surfacedByTheSweep) {
+            throwablesSurfacedByTheSweep.add(surfacedByTheSweep);
+        }
+        sessionActivityClient.stopDisplayedSessionCallScanTick();
+        recordSessionCreationInstants();
+    }
+
+    private void drainMainThreadQueueToTheSweepHorizon() {
+        for (int step = 0; step < DRAIN_STEP_LIMIT; step++) {
+            long nextTaskDueUptimeMillis =
+                shadowOf(Looper.getMainLooper()).getNextScheduledTaskTime().toMillis();
+            if (nextTaskDueUptimeMillis <= 0L) return;
+            if (nextTaskDueUptimeMillis - sweepStartUptimeMillis
+                    > DRAIN_HORIZON_MILLIS_BEFORE_THE_FIRST_RECONNECT_TIMEOUT) return;
+            advanceMainThreadClockTo(nextTaskDueUptimeMillis);
+            recordSessionCreationInstants();
         }
     }
 
-    private void assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(@NonNull LinkageError error) {
-        Throwable rootCause = error;
-        while (rootCause.getCause() != null) rootCause = rootCause.getCause();
-        String absorbedFailure = rootCause.getClass().getName() + ": " + rootCause.getMessage();
-        assertTrue("a Java virtual machine run can only absorb the absence of the device-only native "
-                + "subprocess library that TerminalSession.initializeEmulator loads after it has already "
-                + "constructed the terminal emulator; every other failure is a real one and must surface "
-                + "instead of being discarded, yet this run absorbed " + absorbedFailure,
-            absorbedFailure.contains("UnsatisfiedLinkError")
-                || absorbedFailure.contains("com.termux.terminal.JNI"));
+    private void advanceMainThreadClockTo(long targetUptimeMillis) {
+        for (int attempt = 0; attempt < DRAIN_ATTEMPT_LIMIT; attempt++) {
+            long remainingMillis = Math.max(0L, targetUptimeMillis - SystemClock.uptimeMillis());
+            try {
+                shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(remainingMillis));
+                return;
+            } catch (Throwable nativeSubprocessUnavailableOffDevice) {
+                throwablesSurfacedByTheSweep.add(nativeSubprocessUnavailableOffDevice);
+                recordSessionCreationInstants();
+            }
+        }
     }
 
-    @NonNull
-    private TerminalSession addLiveSession(@NonNull String sessionName) throws Exception {
-        return addSession(sessionName, 1);
+    private void idleMainThreadTasksDueNow() {
+        for (int attempt = 0; attempt < DRAIN_ATTEMPT_LIMIT; attempt++) {
+            try {
+                shadowOf(Looper.getMainLooper()).idle();
+                return;
+            } catch (Throwable nativeSubprocessUnavailableOffDevice) {
+                throwablesSurfacedByTheSweep.add(nativeSubprocessUnavailableOffDevice);
+                recordSessionCreationInstants();
+            }
+        }
     }
 
-    @NonNull
-    private TerminalSession addDeadSession(@NonNull String sessionName) throws Exception {
-        return addSession(sessionName, -1);
+    private void recordSessionCreationInstants() {
+        long instantSinceTheSweepStarted = SystemClock.uptimeMillis() - sweepStartUptimeMillis;
+        int sessionCreationCount = sessionCreationCount();
+        while (sessionCreationInstantsSinceTheSweepStarted.size() < sessionCreationCount) {
+            sessionCreationInstantsSinceTheSweepStarted.add(instantSinceTheSweepStarted);
+        }
     }
 
-    @NonNull
-    private TerminalSession addSession(@NonNull String sessionName, int shellPid) throws Exception {
-        TerminalSession terminalSession = new TerminalSession("/system/bin/sh", "/", new String[0],
-            new String[0], 2000, activity.getTermuxTerminalSessionClient());
+    private int sessionCreationCount() {
+        int sessionCreationCount = 0;
+        for (TermuxSession termuxSession : new ArrayList<>(shellManager.mTermuxSessions)) {
+            if (!sessionsPresentBeforeTheSweep.contains(termuxSession.getTerminalSession())) {
+                sessionCreationCount++;
+            }
+        }
+        return sessionCreationCount;
+    }
+
+    private Set<String> reconnectedSessionNames() {
+        Set<String> reconnectedSessionNames = new LinkedHashSet<>();
+        for (TermuxSession termuxSession : new ArrayList<>(shellManager.mTermuxSessions)) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (sessionsPresentBeforeTheSweep.contains(terminalSession)) continue;
+            if (terminalSession.mSessionName == null) continue;
+            reconnectedSessionNames.add(terminalSession.mSessionName);
+        }
+        return reconnectedSessionNames;
+    }
+
+    private List<String> selectedSessionNamesNotIn(Set<String> reconnectedSessionNames) {
+        List<String> selectedSessionNamesNotReconnected = new ArrayList<>();
+        for (TerminalSession visibleSession : visibleSessions) {
+            if (!reconnectedSessionNames.contains(visibleSession.mSessionName)) {
+                selectedSessionNamesNotReconnected.add(visibleSession.mSessionName);
+            }
+        }
+        return selectedSessionNamesNotReconnected;
+    }
+
+    private void layOutTheTerminalViewSoEveryBackgroundCreationInitializesAnEmulator() throws Exception {
+        giveTheViewDeviceLikeFontMetrics(terminalView);
+        terminalView.mTermSession = null;
+        terminalView.layout(0, 0, 1080, 1920);
+        terminalView.mTermSession = displayedSession;
+    }
+
+    private void giveTheViewDeviceLikeFontMetrics(TerminalView terminalView) throws Exception {
+        Field rendererField = TerminalView.class.getDeclaredField("mRenderer");
+        rendererField.setAccessible(true);
+        Object renderer = rendererField.get(terminalView);
+        setFinalField(renderer, "mFontWidth", 10.0f);
+        setFinalField(renderer, "mFontLineSpacing", 20);
+        setFinalField(renderer, "mFontLineSpacingAndAscent", 15);
+    }
+
+    private void setFinalField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+
+    private TerminalSession addDeadSession(String sessionName) throws Exception {
+        TerminalSession terminalSession = addSession(sessionName);
+        set(terminalSession, TerminalSession.class, "mShellPid", DEAD_SHELL_PROCESS_ID);
+        return terminalSession;
+    }
+
+    private TerminalSession addSession(String sessionName) throws Exception {
+        TerminalSession terminalSession =
+            new TerminalSession("/system/bin/sh", "/", new String[0], new String[0], 2000,
+                sessionActivityClient);
         terminalSession.mSessionName = sessionName;
-        Field shellPidField = TerminalSession.class.getDeclaredField("mShellPid");
-        shellPidField.setAccessible(true);
-        shellPidField.setInt(terminalSession, shellPid);
         Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
             TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class,
             boolean.class);
@@ -359,12 +421,6 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         shellManager.mTermuxSessions.add(
             constructor.newInstance(terminalSession, new ExecutionCommand(), null, false));
         return terminalSession;
-    }
-
-    private void setFinalField(Object target, String fieldName, Object value) throws Exception {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
     }
 
     private void set(Object target, Class<?> declaringClass, String fieldName, Object value)
