@@ -43,8 +43,7 @@ public class ForegroundTransitionEagerLoadMainThreadBatchTest {
 
     private static final int HIDDEN_SESSION_COUNT = 15;
 
-    private static final int MAIN_THREAD_SESSION_INITIALIZATION_BOUND_PER_PASS =
-        TermuxTerminalSessionActivityClient.STAGGERED_RECONNECT_CONCURRENT_WINDOW;
+    private static final int MAIN_THREAD_SESSION_INITIALIZATION_BOUND_PER_PASS = 3;
 
     private TermuxActivity activity;
 
