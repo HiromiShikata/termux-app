@@ -183,7 +183,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
         hideWhileTheReconnectIsStillPending();
 
-        Set<String> scanSessionNames = visibleSessionNames();
+        Set<?> scanSessionNames = visibleSessionNames();
         assertFalse("a hidden session must never be included in the set that drives statusline "
                 + "re-parsing and reconnect selection, including after a reconnect that was already in "
                 + "flight when it was hidden; the set contained " + scanSessionNames,
@@ -366,12 +366,11 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private Set<String> queuedReconnectTimeoutSessionNames() throws Exception {
+    private Set<?> queuedReconnectTimeoutSessionNames() throws Exception {
         Field runnablesByName = TermuxTerminalSessionActivityClient.class
             .getDeclaredField("mReconnectTimeoutRunnableByName");
         runnablesByName.setAccessible(true);
-        return ((Map<String, Runnable>) runnablesByName.get(activity.getTermuxTerminalSessionClient()))
+        return ((Map<?, ?>) runnablesByName.get(activity.getTermuxTerminalSessionClient()))
             .keySet();
     }
 
@@ -478,12 +477,11 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
             .countSessionsTowardCap(countedSessions, Collections.emptySet());
     }
 
-    @SuppressWarnings("unchecked")
-    private Set<String> visibleSessionNames() throws Exception {
+    private Set<?> visibleSessionNames() throws Exception {
         Method visibleSessionNames =
             TermuxTerminalSessionActivityClient.class.getDeclaredMethod("visibleSessionNames");
         visibleSessionNames.setAccessible(true);
-        return (Set<String>) visibleSessionNames.invoke(activity.getTermuxTerminalSessionClient());
+        return (Set<?>) visibleSessionNames.invoke(activity.getTermuxTerminalSessionClient());
     }
 
     private void openSessionListWithOnScreenRows(String... onScreenSessionNames) throws Exception {

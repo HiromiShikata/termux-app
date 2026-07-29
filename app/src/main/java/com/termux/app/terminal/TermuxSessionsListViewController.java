@@ -1363,13 +1363,13 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
     }
 
-    @SuppressLint("SetTextI18n")
     private void bindDefinitionBackedSessionView(@NonNull SessionHierarchyRow row,
                                                  @NonNull View sessionRowView,
                                                  @NonNull TextView sessionTitleView) {
         String sessionName = row.getSessionName();
         if (sessionName == null || sessionName.isEmpty()) {
-            sessionTitleView.setText("null session");
+            sessionTitleView.setText(
+                mActivity.getString(R.string.label_definition_backed_session_row_without_a_name));
             return;
         }
         sessionRowView.setBackground(ContextCompat.getDrawable(mActivity, sessionRowBackgroundRes(false)));

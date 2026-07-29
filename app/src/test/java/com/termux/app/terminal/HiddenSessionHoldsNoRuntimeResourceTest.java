@@ -218,7 +218,7 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         markSessionNamesHidden(HIDDEN_SESSION_NAME);
         openSessionListWithOnScreenRows(CURRENT_SESSION_NAME, HIDDEN_SESSION_NAME);
 
-        Set<String> statuslineReparseSessionNames = visibleSessionNames();
+        Set<?> statuslineReparseSessionNames = visibleSessionNames();
 
         assertFalse("a hidden session must never be included in the set that drives statusline "
                 + "re-parsing; that set is the same on-screen set the reconnect scheduler uses and it "
@@ -330,20 +330,21 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         return String.format("session-hidden-%02d", index);
     }
 
-    private static List<String> sessionNamesOf(List<TerminalSession> terminalSessions) {
+    private static List<String> sessionNamesOf(List<?> terminalSessions) {
         List<String> sessionNames = new ArrayList<>();
-        for (TerminalSession terminalSession : terminalSessions) {
-            sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
+        for (Object terminalSession : terminalSessions) {
+            sessionNames.add(terminalSession == null
+                ? null
+                : ((TerminalSession) terminalSession).mSessionName);
         }
         return sessionNames;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<TerminalSession> collectSessionsToEagerLoad() throws Exception {
+    private List<?> collectSessionsToEagerLoad() throws Exception {
         Method collectSessionsToEagerLoad =
             TermuxActivity.class.getDeclaredMethod("collectSessionsToEagerLoad");
         collectSessionsToEagerLoad.setAccessible(true);
-        return (List<TerminalSession>) collectSessionsToEagerLoad.invoke(activity);
+        return (List<?>) collectSessionsToEagerLoad.invoke(activity);
     }
 
     private void drainMainThreadTasksIgnoringMissingNativeLibrary() {
@@ -421,12 +422,11 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         return (int) cappedSessionCount.invoke(activity.getTermuxTerminalSessionClient(), service);
     }
 
-    @SuppressWarnings("unchecked")
-    private Set<String> visibleSessionNames() throws Exception {
+    private Set<?> visibleSessionNames() throws Exception {
         Method visibleSessionNames =
             TermuxTerminalSessionActivityClient.class.getDeclaredMethod("visibleSessionNames");
         visibleSessionNames.setAccessible(true);
-        return (Set<String>) visibleSessionNames.invoke(activity.getTermuxTerminalSessionClient());
+        return (Set<?>) visibleSessionNames.invoke(activity.getTermuxTerminalSessionClient());
     }
 
     private void markSessionNamesHidden(String... sessionNames) {
