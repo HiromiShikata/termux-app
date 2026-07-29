@@ -8,6 +8,8 @@ import android.content.res.XmlResourceParser;
 import android.widget.EditText;
 
 import com.termux.R;
+import com.termux.app.terminal.KillHostSessionPlan;
+import com.termux.app.terminal.KillHostSessionPlanner;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
 
@@ -94,8 +96,8 @@ public class KillSessionCommandConfigActivityTest {
             Robolectric.buildActivity(KillSessionCommandConfigActivity.class).create().start().resume().get();
         TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
         Assert.assertNotNull(prefs);
-        prefs.setKillSessionCommand("");
 
-        Assert.assertEquals("", prefs.getKillSessionCommand());
+        Assert.assertEquals(KillHostSessionPlan.Outcome.COMMAND_NOT_CONFIGURED,
+            KillHostSessionPlanner.plan(prefs.getKillSessionCommand(), "host-session").getOutcome());
     }
 }

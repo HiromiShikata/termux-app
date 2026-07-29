@@ -774,11 +774,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 mActivity.showToast(toToastTitle(finishedSession) + " - exited", true);
         }
 
-        if (TransientCommandSessionName.isTransient(finishedSession.mSessionName)) {
-            removeFinishedSession(finishedSession);
-            return;
-        }
-
         boolean isAndroidTV = mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
         if (shouldRemoveFinishedSession(isAndroidTV, service.getTermuxSessionsSize(), isPluginExecutionCommandWithPendingResult)) {
             removeFinishedSession(finishedSession);

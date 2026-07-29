@@ -7,6 +7,7 @@ import android.content.Context;
 
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.session.TransientCommandSessionName;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.terminal.TerminalSession;
@@ -24,6 +25,7 @@ import java.lang.reflect.Field;
 public class KillHostSessionDoesNotWriteToAttachedSessionTest {
 
     private TermuxActivity activity;
+    private TermuxService service;
     private TerminalSession attachedSession;
 
     @Before
@@ -44,6 +46,12 @@ public class KillHostSessionDoesNotWriteToAttachedSessionTest {
 
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(appContext, true);
         set(activity, TermuxActivity.class, "mPreferences", preferences);
+        preferences.setKillSessionCommand("ssh host tmux kill-session -t {name}");
+        preferences.setSessionDefinitionMaxSessions(10);
+
+        set(activity, TermuxActivity.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
+        this.service = service;
 
         attachedSession = new TerminalSession(null, null, null, null, null, null);
         attachedSession.mSessionName = "attached-host-session";
@@ -59,6 +67,10 @@ public class KillHostSessionDoesNotWriteToAttachedSessionTest {
 
         activity.getTermuxTerminalSessionClient().killHostSession(attachedSession);
 
+        assertNotNull("test premise: the configured template must actually start a command session, "
+                + "otherwise this test would pass vacuously",
+            service.getTermuxSessionForSessionName(
+                TransientCommandSessionName.forKillOfSession("attached-host-session")));
         assertEquals("Kill host session must route the composed command out-of-band as a new short-lived "
                 + "session instead of writing it into the pty of the currently attached session",
             0, storedByteCountInAttachedSessionIoQueue());
