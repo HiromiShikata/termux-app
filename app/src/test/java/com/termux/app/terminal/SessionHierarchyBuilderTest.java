@@ -368,7 +368,7 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
-    public void emitsDefinedProjectHeaderWithZeroSessionsWhenThereAreNoSessions() {
+    public void emitsDefinitionBackedSessionRowForADefinedSessionThatHasNoLiveSession() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
                 Collections.singletonList("https://example.test/a")));
@@ -376,15 +376,17 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.emptyList(), entries, NA);
 
-        Assert.assertEquals(1, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        Assert.assertEquals(0, SessionHierarchyBuilder.totalSessionCount(rows));
-        Assert.assertEquals(Integer.valueOf(0),
+        assertStoryHeader(rows.get(1), "storyA");
+        assertDefinitionBackedSession(rows.get(2), "https://example.test/a");
+        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(rows));
+        Assert.assertEquals(Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get("projectOne"));
     }
 
     @Test
-    public void emitsProjectHeaderForADefinedProjectThatHasNoMatchingLiveSession() {
+    public void emitsDefinitionBackedRowsForADefinedProjectThatHasNoMatchingLiveSession() {
         List<SessionDefinitionEntry> entries = Arrays.asList(
             new SessionDefinitionEntry("projectWithSession", "storyA",
                 Collections.singletonList("https://example.test/a")),
@@ -394,19 +396,21 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(6, rows.size());
         assertProjectHeader(rows.get(0), "projectWithSession");
         assertStoryHeader(rows.get(1), "storyA");
         assertSession(rows.get(2), 0);
         assertProjectHeader(rows.get(3), "projectWithoutSession");
-        Assert.assertEquals(Integer.valueOf(0),
+        assertStoryHeader(rows.get(4), "storyB");
+        assertDefinitionBackedSession(rows.get(5), "https://example.test/b");
+        Assert.assertEquals(Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get("projectWithoutSession"));
         Assert.assertEquals(Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get("projectWithSession"));
     }
 
     @Test
-    public void totalSessionCountExcludesEmptyProjectHeaders() {
+    public void totalSessionCountIncludesDefinitionBackedRowsThatHaveNoLiveSession() {
         List<SessionDefinitionEntry> entries = Arrays.asList(
             new SessionDefinitionEntry("projectWithSession", "storyA",
                 Collections.singletonList("https://example.test/a")),
@@ -416,15 +420,15 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(rows));
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(rows));
     }
 
     @Test
-    public void preservesDefinitionOrderWithAnEmptyProjectBetweenTwoNonEmptyProjects() {
+    public void preservesDefinitionOrderWithADefinitionBackedProjectBetweenTwoLiveProjects() {
         List<SessionDefinitionEntry> entries = Arrays.asList(
             new SessionDefinitionEntry("projectFirst", "storyA",
                 Collections.singletonList("https://example.test/a")),
-            new SessionDefinitionEntry("projectMiddleEmpty", "storyB",
+            new SessionDefinitionEntry("projectMiddleWithoutLiveSession", "storyB",
                 Collections.singletonList("https://example.test/b")),
             new SessionDefinitionEntry("projectLast", "storyC",
                 Collections.singletonList("https://example.test/c")));
@@ -432,14 +436,16 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "https://example.test/c"), entries, NA);
 
-        Assert.assertEquals(7, rows.size());
+        Assert.assertEquals(9, rows.size());
         assertProjectHeader(rows.get(0), "projectFirst");
         assertStoryHeader(rows.get(1), "storyA");
         assertSession(rows.get(2), 0);
-        assertProjectHeader(rows.get(3), "projectMiddleEmpty");
-        assertProjectHeader(rows.get(4), "projectLast");
-        assertStoryHeader(rows.get(5), "storyC");
-        assertSession(rows.get(6), 1);
+        assertProjectHeader(rows.get(3), "projectMiddleWithoutLiveSession");
+        assertStoryHeader(rows.get(4), "storyB");
+        assertDefinitionBackedSession(rows.get(5), "https://example.test/b");
+        assertProjectHeader(rows.get(6), "projectLast");
+        assertStoryHeader(rows.get(7), "storyC");
+        assertSession(rows.get(8), 1);
     }
 
     @Test
@@ -985,5 +991,12 @@ public class SessionHierarchyBuilderTest {
         Assert.assertEquals(SessionHierarchyRow.Type.SESSION, row.getType());
         Assert.assertFalse(row.isHeader());
         Assert.assertEquals(expectedSessionIndex, row.getSessionIndex());
+    }
+
+    private void assertDefinitionBackedSession(SessionHierarchyRow row, String expectedSessionName) {
+        Assert.assertEquals(SessionHierarchyRow.Type.SESSION, row.getType());
+        Assert.assertFalse(row.isHeader());
+        Assert.assertEquals(SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX, row.getSessionIndex());
+        Assert.assertEquals(expectedSessionName, row.getSessionName());
     }
 }

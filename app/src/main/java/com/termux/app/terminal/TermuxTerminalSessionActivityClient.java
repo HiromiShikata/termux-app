@@ -28,6 +28,7 @@ import androidx.annotation.VisibleForTesting;
 import com.termux.R;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
@@ -141,7 +142,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return mCapCountPlanner.countSessionsTowardCap(countedSessions);
+        return mCapCountPlanner.countSessionsTowardCap(countedSessions, hiddenSessionNames());
+    }
+
+    @NonNull
+    private Set<String> hiddenSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        return preferences == null ? Collections.emptySet() : preferences.getDisabledSessionNames();
+    }
+
+    private boolean isRecordedHidden(@Nullable String sessionName) {
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, hiddenSessionNames());
     }
 
     private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
@@ -923,7 +934,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             ? sessionListBottomSheetController.getOnScreenSessionNames()
             : Collections.emptyList();
         return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
-            activeSessionName(), sessionListOpen, onScreenListSessionNames);
+            activeSessionName(), sessionListOpen, onScreenListSessionNames, hiddenSessionNames());
     }
 
     @NonNull
@@ -1767,6 +1778,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void addNewSession(boolean isFailSafe, String sessionName, boolean closeDrawerAfter) {
+        addNewSession(isFailSafe, sessionName, closeDrawerAfter, true);
+    }
+
+    public void addNewSession(boolean isFailSafe, String sessionName, boolean closeDrawerAfter,
+                              boolean displayNewSession) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
@@ -1796,7 +1812,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (!isFailSafe)
                 recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, null, null, false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
-            setCurrentSession(newTerminalSession);
+            if (displayNewSession) {
+                setCurrentSession(newTerminalSession);
+            } else {
+                termuxSessionListNotifyUpdated();
+            }
 
             if (closeDrawerAfter)
                 mActivity.getDrawer().closeDrawers();
@@ -1808,13 +1828,19 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void addNewSessionApplyingAutosshConfig(String sessionName, boolean closeDrawerAfter) {
+        addNewSessionApplyingAutosshConfig(sessionName, closeDrawerAfter, true);
+    }
+
+    private void addNewSessionApplyingAutosshConfig(String sessionName, boolean closeDrawerAfter,
+                                                    boolean displayNewSession) {
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionDefinitionPlannedSession plannedSession =
             new SessionDefinitionPlanner().planNamedSession(sessionName, commandTemplate);
         if (plannedSession.hasCommand()) {
-            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), closeDrawerAfter);
+            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), closeDrawerAfter,
+                displayNewSession);
         } else {
-            addNewSession(false, plannedSession.getName(), closeDrawerAfter);
+            addNewSession(false, plannedSession.getName(), closeDrawerAfter, displayNewSession);
         }
     }
 
@@ -1831,6 +1857,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter) {
+        addNewAutosshSession(sessionName, command, closeDrawerAfter, true);
+    }
+
+    private void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter,
+                                      boolean displayNewSession) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
@@ -1861,11 +1892,68 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
-            setCurrentSession(newTerminalSession);
+            if (displayNewSession) {
+                setCurrentSession(newTerminalSession);
+            } else {
+                termuxSessionListNotifyUpdated();
+            }
 
             if (closeDrawerAfter)
                 mActivity.getDrawer().closeDrawers();
         }
+    }
+
+    public void recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        if (service.getTermuxSessionForSessionName(sessionName) != null) return;
+
+        addNewSessionApplyingAutosshConfig(sessionName, false, false);
+        mActivity.eagerLoadAllSessions();
+    }
+
+    public void releaseHiddenSessionRuntimeResources(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        TermuxSession hiddenTermuxSession = service.getTermuxSessionForSessionName(sessionName);
+        if (hiddenTermuxSession == null) return;
+        TerminalSession hiddenSession = hiddenTermuxSession.getTerminalSession();
+        if (hiddenSession == null) return;
+
+        cancelReconnectTimeout(sessionName);
+        boolean hiddenSessionWasDisplayed = mActivity.getCurrentSession() == hiddenSession;
+
+        purgeNewActivityForRemovedSession(sessionName);
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(hiddenSession);
+
+        if (mPersistedSessionBySession.remove(hiddenSession) != null)
+            savePersistedSessions();
+
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter != null)
+            toolbarAdapter.removeTextInputForSession(hiddenSession);
+
+        hiddenSession.releaseRuntimeResources();
+        service.removeTermuxSession(hiddenSession);
+
+        if (hiddenSessionWasDisplayed) {
+            TermuxSession nextSession = selectNextVisibleSession();
+            if (nextSession != null)
+                setCurrentSession(nextSession.getTerminalSession());
+        }
+        termuxSessionListNotifyUpdated();
+    }
+
+    public boolean hidingCanReleaseWhateverIsLiveForTheName(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return false;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+        TermuxSession liveTermuxSession = service.getTermuxSessionForSessionName(sessionName);
+        return liveTermuxSession == null || liveTermuxSession.getTerminalSession() != null;
     }
 
     private boolean revealExistingSessionByName(@Nullable String sessionName, boolean closeDrawerAfter) {
@@ -2072,10 +2160,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;
 
+        if (isRecordedHidden(finishedSession.mSessionName)) return false;
+
         FinishedSessionEnterAction action = decideFinishedSessionEnterAction(finishedSession);
         if (!action.isReconnect()) return false;
 
         String sessionName = action.getSessionName();
+        if (isRecordedHidden(sessionName)) return false;
         String command = action.getCommand();
         TerminalSession currentSession = mActivity.getCurrentSession();
         String currentSessionCwd = currentSession == null ? null : currentSession.getCwd();
@@ -2211,7 +2302,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return true;
         if (preferences.getUserRemovedSessionNames().contains(sessionName)) return false;
-        return !HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(sessionName,
+        return !HiddenSessionNameMatcher.matchesAHiddenSession(sessionName,
             preferences.getDisabledSessionNames());
     }
 
@@ -2302,10 +2393,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
+        if (isRecordedHidden(deadSession.mSessionName)) return null;
+
         FinishedSessionEnterAction action = decideFinishedSessionEnterAction(deadSession);
         if (!action.isReconnect()) return null;
 
         String sessionName = action.getSessionName();
+        if (isRecordedHidden(sessionName)) return null;
         String command = action.getCommand();
         TerminalSession displayedSession = mActivity.getCurrentSession();
         String deadSessionCwd = deadSession.getCwd();

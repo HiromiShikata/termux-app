@@ -31,12 +31,16 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
 public class ForcedStatuslineRescanBatchTest {
 
     private static final int ON_SCREEN_SESSION_COUNT = 12;
+
+    private static final int LIVE_SHELL_PROCESS_ID = 4242;
 
     private static final int MAX_TRANSCRIPT_READS_PER_UNINTERRUPTED_MAIN_THREAD_PASS = 4;
 
@@ -67,6 +71,20 @@ public class ForcedStatuslineRescanBatchTest {
         @Override
         public List<String> getOnScreenSessionNames() {
             return onScreenSessionNames;
+        }
+    }
+
+    private static final class SessionListTreatingEveryProjectRowAsCollapsed
+            extends TermuxSessionsListViewController {
+
+        SessionListTreatingEveryProjectRowAsCollapsed(@NonNull TermuxActivity activity) {
+            super(activity, new ArrayList<>());
+        }
+
+        @NonNull
+        @Override
+        public Set<String> getExpandedProjectSessionNames() {
+            return Collections.emptySet();
         }
     }
 
@@ -107,8 +125,7 @@ public class ForcedStatuslineRescanBatchTest {
             onScreenSessions.add(session);
             onScreenSessionNames.add(session.mSessionName);
         }
-        excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(
-            preferences, onScreenSessionNames);
+        excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(activity);
 
         set(activity, TermuxActivity.class, "mIsVisible", true);
         set(activity, TermuxActivity.class, "mSessionListBottomSheetController",
@@ -175,8 +192,9 @@ public class ForcedStatuslineRescanBatchTest {
     }
 
     private void excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(
-            TermuxAppSharedPreferences preferences, List<String> sessionNames) {
-        preferences.setDisabledSessionNames(String.join("\n", sessionNames));
+            TermuxActivity activity) throws Exception {
+        set(activity, TermuxActivity.class, "mTermuxSessionListViewController",
+            new SessionListTreatingEveryProjectRowAsCollapsed(activity));
     }
 
     private long lastMainThreadTaskDelayMillis() {
@@ -220,6 +238,9 @@ public class ForcedStatuslineRescanBatchTest {
             constructor.newInstance(terminalSession, new ExecutionCommand(), null, false));
         OffDeviceNativeSubprocessLibrary.tolerateItsAbsence(
             () -> terminalSession.initializeEmulator(80, 24, 10, 20));
+        Field shellProcessId = TerminalSession.class.getDeclaredField("mShellPid");
+        shellProcessId.setAccessible(true);
+        shellProcessId.setInt(terminalSession, LIVE_SHELL_PROCESS_ID);
         return terminalSession;
     }
 

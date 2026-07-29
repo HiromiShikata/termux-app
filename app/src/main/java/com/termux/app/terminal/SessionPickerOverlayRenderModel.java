@@ -69,7 +69,8 @@ public final class SessionPickerOverlayRenderModel {
         List<SessionHierarchyRow> sessionFilteredRows = new ArrayList<>(visibleRows.size());
         for (SessionHierarchyRow row : visibleRows) {
             if (row.getType() == SessionHierarchyRow.Type.SESSION
-                && SessionRow.rowOrEmpty(sessionRowsByIndex, row.getSessionIndex()).isDisabled()) {
+                && (row.getSessionIndex() == SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX
+                    || SessionRow.rowOrEmpty(sessionRowsByIndex, row.getSessionIndex()).isDisabled())) {
                 continue;
             }
             sessionFilteredRows.add(row);

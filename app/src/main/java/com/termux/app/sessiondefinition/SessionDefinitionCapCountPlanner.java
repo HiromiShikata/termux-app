@@ -3,7 +3,10 @@ package com.termux.app.sessiondefinition;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
+
 import java.util.List;
+import java.util.Set;
 
 public final class SessionDefinitionCapCountPlanner {
 
@@ -26,18 +29,19 @@ public final class SessionDefinitionCapCountPlanner {
             return running;
         }
 
-        boolean countsTowardCap() {
-            return running;
+        boolean countsTowardCap(@NonNull Set<String> hiddenSessionNames) {
+            return running && !HiddenSessionNameMatcher.matchesAHiddenSession(name, hiddenSessionNames);
         }
     }
 
-    public int countSessionsTowardCap(@NonNull List<CountedSession> countedSessions) {
+    public int countSessionsTowardCap(@NonNull List<CountedSession> countedSessions,
+                                      @NonNull Set<String> hiddenSessionNames) {
         int count = 0;
         for (CountedSession countedSession : countedSessions) {
             if (countedSession == null) {
                 continue;
             }
-            if (countedSession.countsTowardCap()) {
+            if (countedSession.countsTowardCap(hiddenSessionNames)) {
                 count++;
             }
         }

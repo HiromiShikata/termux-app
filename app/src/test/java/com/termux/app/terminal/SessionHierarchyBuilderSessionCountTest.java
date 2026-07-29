@@ -103,15 +103,15 @@ public class SessionHierarchyBuilderSessionCountTest {
     }
 
     @Test
-    public void countsReflectAddedSessionWhenSessionSetGrows() {
+    public void countsKeepEveryDefinedSessionWhenOnlySomeOfThemAreLive() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
                 Arrays.asList("https://example.test/a1", "https://example.test/a2")));
 
         List<SessionHierarchyRow> before = builder.build(
             Collections.singletonList("https://example.test/a1"), entries, NA);
-        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(before));
-        Assert.assertEquals(Integer.valueOf(1),
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(before));
+        Assert.assertEquals(Integer.valueOf(2),
             SessionHierarchyBuilder.sessionCountByProjectLabel(before).get("projectOne"));
 
         List<SessionHierarchyRow> after = builder.build(
@@ -122,7 +122,7 @@ public class SessionHierarchyBuilderSessionCountTest {
     }
 
     @Test
-    public void countsReflectRemovedSessionWhenSessionSetShrinks() {
+    public void countsKeepADefinedSessionAfterItsLiveSessionObjectIsReleased() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
                 Arrays.asList("https://example.test/a1", "https://example.test/a2")));
@@ -133,8 +133,8 @@ public class SessionHierarchyBuilderSessionCountTest {
 
         List<SessionHierarchyRow> after = builder.build(
             Collections.singletonList("https://example.test/a1"), entries, NA);
-        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(after));
-        Assert.assertEquals(Integer.valueOf(1),
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(after));
+        Assert.assertEquals(Integer.valueOf(2),
             SessionHierarchyBuilder.sessionCountByProjectLabel(after).get("projectOne"));
     }
 
