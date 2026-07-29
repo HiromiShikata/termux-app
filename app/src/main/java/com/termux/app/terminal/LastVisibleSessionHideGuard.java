@@ -3,7 +3,7 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 
 import java.util.List;
 import java.util.Set;

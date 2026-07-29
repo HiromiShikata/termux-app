@@ -1,4 +1,4 @@
-package com.termux.app.sessiondefinition;
+package com.termux.shared.termux.settings.preferences;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
