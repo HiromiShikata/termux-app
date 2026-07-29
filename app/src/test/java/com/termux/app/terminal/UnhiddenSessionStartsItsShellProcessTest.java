@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -227,6 +228,29 @@ public class UnhiddenSessionStartsItsShellProcessTest {
     }
 
     @Test
+    public void unhidingASessionThatHasNoAutosshCommandLeavesTheDisplayedSessionUntouched()
+            throws Exception {
+        preferences.setAutosshCommand("");
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        TerminalSession displayedSession = activity.getCurrentSession();
+        assertNotNull("the arrangement must start with a displayed session for the unhide to be able "
+            + "to take the owner off", displayedSession);
+
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        unhideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        drainMainThreadTasksIgnoringMissingNativeLibrary();
+
+        assertNotNull("unhiding must recreate the session through the branch that runs when no autossh "
+                + "command is configured, otherwise this test would not be exercising that branch",
+            service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME));
+        assertSame("unhiding must never take the owner off the session he is working in, and that must "
+                + "hold on the branch that runs when no autossh command is configured just as it does "
+                + "on the autossh branch; a session revealed in the background must not steal the "
+                + "screen from the session being worked in",
+            displayedSession, activity.getCurrentSession());
+    }
+
+    @Test
     public void openingADefinitionBackedRowWhileTheServiceIsUnboundLeavesTheStoredHiddenStateAlone()
             throws Exception {
         shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
@@ -342,7 +366,14 @@ public class UnhiddenSessionStartsItsShellProcessTest {
         Method toggleSessionDisabled = TermuxSessionsListViewController.class
             .getDeclaredMethod("toggleSessionDisabled", String.class);
         toggleSessionDisabled.setAccessible(true);
-        toggleSessionDisabled.invoke(listViewController, sessionName);
+        try {
+            toggleSessionDisabled.invoke(listViewController, sessionName);
+        } catch (Throwable missingNativeLibrary) {
+            assertTrue("the only failure the unhide may raise in a Java virtual machine test is the "
+                    + "absent device-only native library reached from the shell process fork, but it "
+                    + "raised " + missingNativeLibrary,
+                causeChainDescription(missingNativeLibrary).contains("com.termux.terminal.JNI"));
+        }
     }
 
     private static View bottomSheetStubContentView(Context appContext) {
