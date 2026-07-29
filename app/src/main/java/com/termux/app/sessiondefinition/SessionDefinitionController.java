@@ -183,7 +183,12 @@ public final class SessionDefinitionController {
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return capCountPlanner.countSessionsTowardCap(countedSessions);
+        return capCountPlanner.countSessionsTowardCap(countedSessions, hiddenSessionNames());
+    }
+
+    private Set<String> hiddenSessionNames() {
+        return activity.getPreferences() == null
+            ? Collections.emptySet() : activity.getPreferences().getDisabledSessionNames();
     }
 
     private void reconcileDuplicateLiveSessions() {

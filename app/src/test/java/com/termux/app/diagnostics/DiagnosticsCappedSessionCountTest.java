@@ -34,7 +34,7 @@ public class DiagnosticsCappedSessionCountTest {
             snapshots.add(new SessionDefinitionCapCountPlanner.CountedSession(name, false));
         }
 
-        int countedTowardCap = planner.countSessionsTowardCap(snapshots);
+        int countedTowardCap = planner.countSessionsTowardCap(snapshots, Collections.emptySet());
 
         // Must equal the live-only cap count, never the total (alive + dead) session count.
         Assert.assertEquals(aliveCount, countedTowardCap);
@@ -48,7 +48,7 @@ public class DiagnosticsCappedSessionCountTest {
             new SessionDefinitionCapCountPlanner.CountedSession("host-a", false),
             new SessionDefinitionCapCountPlanner.CountedSession("autossh-host-b", false));
 
-        Assert.assertEquals(0, planner.countSessionsTowardCap(snapshots));
+        Assert.assertEquals(0, planner.countSessionsTowardCap(snapshots, Collections.emptySet()));
     }
 
     @Test
@@ -64,7 +64,7 @@ public class DiagnosticsCappedSessionCountTest {
             snapshots.add(new SessionDefinitionCapCountPlanner.CountedSession(null, false));
         }
 
-        int countedTowardCap = planner.countSessionsTowardCap(snapshots);
+        int countedTowardCap = planner.countSessionsTowardCap(snapshots, Collections.emptySet());
         int displayedCount = 7; // fewer than live because some live sessions are hidden/collapsed
 
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, 0L,

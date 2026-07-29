@@ -3,21 +3,11 @@ package com.termux.app.sessiondefinition;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
 public final class VisibleSessionSelector {
-
-    @NonNull
-    public Set<String> selectVisibleSessionNames(boolean activityVisible,
-                                                 @Nullable String currentSessionName,
-                                                 boolean sessionListOpen,
-                                                 @NonNull List<String> onScreenListSessionNames) {
-        return selectVisibleSessionNames(activityVisible, currentSessionName, sessionListOpen,
-            onScreenListSessionNames, Collections.emptySet());
-    }
 
     /**
      * The displayed session is always selected, so nothing here can make a displayed session less
