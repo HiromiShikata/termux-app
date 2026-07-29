@@ -40,7 +40,7 @@ import com.termux.app.apkupdate.ApkUpdateForegroundCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.apkupdate.UpdateTagUpdateRunner;
-import com.termux.app.terminal.HiddenSessionEagerLoadExclusion;
+import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
@@ -1050,7 +1050,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         for (TermuxSession termuxSession : mTermuxService.getTermuxSessions()) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == displayedSession) continue;
-            if (terminalSession != null && HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(
+            if (terminalSession != null && HiddenSessionNameMatcher.matchesAHiddenSession(
                     terminalSession.mSessionName, hiddenSessionNames)) continue;
             sessions.add(terminalSession);
         }

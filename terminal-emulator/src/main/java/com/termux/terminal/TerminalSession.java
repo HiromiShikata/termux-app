@@ -340,14 +340,6 @@ public final class TerminalSession extends TerminalOutput {
         mTerminalFileDescriptor = NO_TERMINAL_FILE_DESCRIPTOR;
     }
 
-    /**
-     * Releases every runtime resource this session holds: the local shell process group, the
-     * pseudo-teletype streams, the terminal emulator and the scrollback buffer it owns. The shell is
-     * ended by the same local {@code kill(2)} on the started shell's own process group that {@link
-     * #finishIfRunning()} uses, so nothing is written to the session and no remote host is contacted.
-     * After this call the session reports no running shell and no emulator, and holds no memory
-     * proportional to the transcript rows setting.
-     */
     public void releaseRuntimeResources() {
         finishIfRunning();
         closeShellStreams();
@@ -448,38 +440,38 @@ public final class TerminalSession extends TerminalOutput {
 
         @Override
         public void handleMessage(Message msg) {
-            if (mEmulator == null) return;
+            if (mEmulator != null) renderPendingShellOutput();
+
+            if (msg.what != MSG_PROCESS_EXITED) return;
+
+            int exitCode = (Integer) msg.obj;
+            cleanupResources(exitCode);
+            if (mEmulator != null) renderShellCompletionNotice(exitCode);
+            mClient.onSessionFinished(TerminalSession.this);
+        }
+
+        private void renderPendingShellOutput() {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
-            if (bytesRead > 0) {
-                mTotalBytesProcessed += bytesRead;
-                int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
-                if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
-                int genuineByteCount = bytesRead - genuineOffset;
-                mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
-                notifyScreenUpdate();
-                if (genuineByteCount > 0) notifyGenuineOutput();
-            }
+            if (bytesRead <= 0) return;
+            mTotalBytesProcessed += bytesRead;
+            int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
+            if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
+            int genuineByteCount = bytesRead - genuineOffset;
+            mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
+            notifyScreenUpdate();
+            if (genuineByteCount > 0) notifyGenuineOutput();
+        }
 
-            if (msg.what == MSG_PROCESS_EXITED) {
-                int exitCode = (Integer) msg.obj;
-                cleanupResources(exitCode);
+        private void renderShellCompletionNotice(int exitCode) {
+            byte[] bytesToWrite = shellCompletionNotice(exitCode).getBytes(StandardCharsets.UTF_8);
+            mEmulator.append(bytesToWrite, bytesToWrite.length);
+            notifyScreenUpdate();
+        }
 
-                String exitDescription = "\r\n[Process completed";
-                if (exitCode > 0) {
-                    // Non-zero process exit.
-                    exitDescription += " (code " + exitCode + ")";
-                } else if (exitCode < 0) {
-                    // Negated signal.
-                    exitDescription += " (signal " + (-exitCode) + ")";
-                }
-                exitDescription += " - press Enter]";
-
-                byte[] bytesToWrite = exitDescription.getBytes(StandardCharsets.UTF_8);
-                mEmulator.append(bytesToWrite, bytesToWrite.length);
-                notifyScreenUpdate();
-
-                mClient.onSessionFinished(TerminalSession.this);
-            }
+        private String shellCompletionNotice(int exitCode) {
+            if (exitCode > 0) return "\r\n[Process completed (code " + exitCode + ") - press Enter]";
+            if (exitCode < 0) return "\r\n[Process completed (signal " + (-exitCode) + ") - press Enter]";
+            return "\r\n[Process completed - press Enter]";
         }
 
     }

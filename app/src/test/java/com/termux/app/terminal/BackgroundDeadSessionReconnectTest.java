@@ -34,7 +34,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 
 @RunWith(RobolectricTestRunner.class)
-public class TermuxTerminalSessionReconnectBackgroundEmulatorLazyInitTest {
+public class BackgroundDeadSessionReconnectTest {
 
     private TermuxActivity activity;
     private TermuxService service;

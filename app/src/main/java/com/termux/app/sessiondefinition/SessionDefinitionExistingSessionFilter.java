@@ -1,5 +1,7 @@
 package com.termux.app.sessiondefinition;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -11,10 +13,15 @@ public final class SessionDefinitionExistingSessionFilter {
     }
 
     public static List<SessionDefinitionPlannedSession> selectSessionsToCreate(
-        List<SessionDefinitionPlannedSession> plannedSessions, Set<String> existingSessionNames) {
+        @NonNull List<SessionDefinitionPlannedSession> plannedSessions,
+        @NonNull Set<String> existingSessionNames,
+        @NonNull Set<String> hiddenSessionNames) {
         Set<String> seenNames = new HashSet<>(existingSessionNames);
         List<SessionDefinitionPlannedSession> sessionsToCreate = new ArrayList<>();
         for (SessionDefinitionPlannedSession plannedSession : plannedSessions) {
+            if (HiddenSessionNameMatcher.matchesAHiddenSession(plannedSession.getName(), hiddenSessionNames)) {
+                continue;
+            }
             if (seenNames.add(plannedSession.getName())) {
                 sessionsToCreate.add(plannedSession);
             }

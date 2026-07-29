@@ -111,7 +111,8 @@ public final class SessionDefinitionController {
         Set<String> liveSessionNames = collectLiveSessionNames();
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, liveSessionNames);
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, liveSessionNames, hiddenSessionNames());
 
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 

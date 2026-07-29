@@ -9,11 +9,6 @@ import java.util.Set;
 
 public final class VisibleSessionSelector {
 
-    /**
-     * The displayed session is always selected, so nothing here can make a displayed session less
-     * fresh. A hidden session is never selected, because a hidden session holds no runtime resource
-     * to scan or reconnect, even while the show-hidden toggle renders it as an on-screen row.
-     */
     @NonNull
     public Set<String> selectVisibleSessionNames(boolean activityVisible,
                                                  @Nullable String currentSessionName,
