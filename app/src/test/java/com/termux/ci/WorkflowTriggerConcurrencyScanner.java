@@ -1,11 +1,14 @@
 package com.termux.ci;
 
+import org.yaml.snakeyaml.Yaml;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,11 +16,46 @@ import java.util.Map;
 public final class WorkflowTriggerConcurrencyScanner {
 
     private static final String EVENT_NAME_EXPRESSION = "github.event_name";
+    private static final String REFERENCE_EXPRESSION = "github.ref";
+    private static final String HEAD_REFERENCE_EXPRESSION = "github.head_ref";
     private static final String PUSH_EVENT = "push";
     private static final String PULL_REQUEST_EVENT = "pull_request";
     private static final String BRANCHES_FILTER = "branches";
+    private static final String TRIGGER_KEY = "on";
+    private static final String TRIGGER_KEY_PARSED_AS_YAML_BOOLEAN = "true";
+    private static final String CONCURRENCY_KEY = "concurrency";
+    private static final String GROUP_KEY = "group";
+    private static final List<String> WILDCARD_CHARACTERS = Arrays.asList("*", "?", "[");
 
     private WorkflowTriggerConcurrencyScanner() {
+    }
+
+    public static final class Scan {
+
+        private final Map<String, List<String>> triggerEventsByWorkflow;
+        private final List<String> violations;
+
+        private Scan(Map<String, List<String>> triggerEventsByWorkflow, List<String> violations) {
+            this.triggerEventsByWorkflow = triggerEventsByWorkflow;
+            this.violations = violations;
+        }
+
+        public List<String> getScannedWorkflows() {
+            return new ArrayList<>(triggerEventsByWorkflow.keySet());
+        }
+
+        public List<String> getTriggerEvents(String workflowFileName) {
+            List<String> triggerEvents = triggerEventsByWorkflow.get(workflowFileName);
+            return triggerEvents == null ? Collections.<String>emptyList() : triggerEvents;
+        }
+
+        public List<String> getViolations() {
+            return violations;
+        }
+
+        public String describeViolations() {
+            return String.join("\n", violations);
+        }
     }
 
     public static File findWorkflowDirectory(File startDirectory) {
@@ -33,31 +71,38 @@ public final class WorkflowTriggerConcurrencyScanner {
             + startDirectory.getAbsolutePath());
     }
 
-    public static List<String> findViolations(File workflowDirectory) throws IOException {
+    public static Scan scan(File workflowDirectory) throws IOException {
+        Map<String, List<String>> triggerEventsByWorkflow = new LinkedHashMap<>();
         List<String> violations = new ArrayList<>();
         for (File workflowFile : listWorkflowFiles(workflowDirectory)) {
-            List<String> lines = Files.readAllLines(workflowFile.toPath(), StandardCharsets.UTF_8);
-            Map<String, Map<String, List<String>>> triggers = readTriggers(lines);
-            String concurrencyGroup = readConcurrencyGroup(lines);
-            if (triggers.size() > 1 && concurrencyGroup != null
-                && !concurrencyGroup.contains(EVENT_NAME_EXPRESSION)) {
+            Map<String, Object> document = readDocument(workflowFile);
+            Map<String, Object> triggers = readTriggers(document);
+            triggerEventsByWorkflow.put(workflowFile.getName(), new ArrayList<>(triggers.keySet()));
+            String concurrencyGroup = readConcurrencyGroup(document);
+            if (triggers.size() > 1 && concurrencyGroup != null && !distinguishesEvents(concurrencyGroup)) {
                 violations.add(workflowFile.getName() + " triggers on " + triggers.keySet()
-                    + " and its concurrency group '" + concurrencyGroup + "' does not contain "
-                    + EVENT_NAME_EXPRESSION
-                    + ", so runs raised by different events for one branch cancel each other");
+                    + " and its concurrency group '" + concurrencyGroup
+                    + "' resolves to the same value for those events, so a run raised by one event"
+                    + " cancels the run raised by another for the same branch; key the group on "
+                    + EVENT_NAME_EXPRESSION + ", or on " + REFERENCE_EXPRESSION + " without "
+                    + HEAD_REFERENCE_EXPRESSION);
             }
             if (triggers.containsKey(PUSH_EVENT) && triggers.containsKey(PULL_REQUEST_EVENT)) {
-                List<String> pushBranches = triggers.get(PUSH_EVENT).get(BRANCHES_FILTER);
-                if (pushBranches == null || pushBranches.isEmpty() || containsWildcard(pushBranches)) {
+                List<String> pushBranches = readBranchFilter(triggers.get(PUSH_EVENT));
+                if (pushBranches.isEmpty() || containsWildcard(pushBranches)) {
                     violations.add(workflowFile.getName()
                         + " triggers on both push and pull_request while its push branch filter is "
-                        + (pushBranches == null || pushBranches.isEmpty() ? "unrestricted" : pushBranches)
+                        + (pushBranches.isEmpty() ? "unrestricted" : pushBranches)
                         + ", so a pull request head commit is built by two runs that report check runs"
                         + " of the same name");
                 }
             }
         }
-        return violations;
+        return new Scan(triggerEventsByWorkflow, violations);
+    }
+
+    public static List<String> findViolations(File workflowDirectory) throws IOException {
+        return scan(workflowDirectory).getViolations();
     }
 
     private static List<File> listWorkflowFiles(File workflowDirectory) {
@@ -75,115 +120,82 @@ public final class WorkflowTriggerConcurrencyScanner {
         return workflowFiles;
     }
 
-    private static Map<String, Map<String, List<String>>> readTriggers(List<String> lines) {
-        Map<String, Map<String, List<String>>> triggers = new LinkedHashMap<>();
-        boolean insideTriggerBlock = false;
-        String currentEvent = null;
-        String currentFilter = null;
-        for (String line : lines) {
-            if (isIgnorable(line)) {
-                continue;
+    private static Map<String, Object> readDocument(File workflowFile) throws IOException {
+        try (InputStream workflowStream = new FileInputStream(workflowFile)) {
+            Object document = new Yaml().load(workflowStream);
+            if (!(document instanceof Map)) {
+                throw new IllegalStateException(workflowFile.getName() + " does not parse as a YAML mapping");
             }
-            if (isTopLevelKey(line)) {
-                insideTriggerBlock = line.startsWith("on:");
-                currentEvent = null;
-                currentFilter = null;
-                continue;
+            return keyedByString((Map<?, ?>) document);
+        }
+    }
+
+    private static Map<String, Object> keyedByString(Map<?, ?> mapping) {
+        Map<String, Object> keyed = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : mapping.entrySet()) {
+            keyed.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return keyed;
+    }
+
+    private static Map<String, Object> readTriggers(Map<String, Object> document) {
+        Object triggerNode = document.containsKey(TRIGGER_KEY)
+            ? document.get(TRIGGER_KEY)
+            : document.get(TRIGGER_KEY_PARSED_AS_YAML_BOOLEAN);
+        Map<String, Object> triggers = new LinkedHashMap<>();
+        if (triggerNode instanceof Map) {
+            triggers.putAll(keyedByString((Map<?, ?>) triggerNode));
+        } else if (triggerNode instanceof List) {
+            for (Object triggerEvent : (List<?>) triggerNode) {
+                triggers.put(String.valueOf(triggerEvent), null);
             }
-            if (!insideTriggerBlock) {
-                continue;
-            }
-            int indent = indentOf(line);
-            if (indent == 2 && keyOf(line) != null) {
-                currentEvent = keyOf(line);
-                currentFilter = null;
-                triggers.put(currentEvent, new LinkedHashMap<>());
-            } else if (indent == 4 && currentEvent != null && keyOf(line) != null) {
-                currentFilter = keyOf(line);
-                triggers.get(currentEvent).put(currentFilter, inlineListOf(valueOf(line)));
-            } else if (indent == 6 && currentFilter != null && line.trim().startsWith("- ")) {
-                triggers.get(currentEvent).get(currentFilter).add(unquote(line.trim().substring(2)));
-            }
+        } else if (triggerNode != null) {
+            triggers.put(String.valueOf(triggerNode), null);
         }
         return triggers;
     }
 
-    private static String readConcurrencyGroup(List<String> lines) {
-        boolean insideConcurrencyBlock = false;
-        for (String line : lines) {
-            if (isIgnorable(line)) {
-                continue;
-            }
-            if (isTopLevelKey(line)) {
-                insideConcurrencyBlock = line.startsWith("concurrency:");
-                continue;
-            }
-            if (insideConcurrencyBlock && indentOf(line) == 2 && "group".equals(keyOf(line))) {
-                return valueOf(line);
-            }
+    private static String readConcurrencyGroup(Map<String, Object> document) {
+        Object concurrencyNode = document.get(CONCURRENCY_KEY);
+        if (concurrencyNode instanceof Map) {
+            Object concurrencyGroup = keyedByString((Map<?, ?>) concurrencyNode).get(GROUP_KEY);
+            return concurrencyGroup == null ? null : String.valueOf(concurrencyGroup);
         }
-        return null;
+        return concurrencyNode == null ? null : String.valueOf(concurrencyNode);
     }
 
-    private static List<String> inlineListOf(String value) {
-        List<String> values = new ArrayList<>();
-        if (value.startsWith("[") && value.endsWith("]")) {
-            for (String element : value.substring(1, value.length() - 1).split(",")) {
-                if (!element.trim().isEmpty()) {
-                    values.add(unquote(element));
-                }
-            }
+    private static List<String> readBranchFilter(Object triggerEventNode) {
+        List<String> branchPatterns = new ArrayList<>();
+        if (!(triggerEventNode instanceof Map)) {
+            return branchPatterns;
         }
-        return values;
+        Object branchNode = keyedByString((Map<?, ?>) triggerEventNode).get(BRANCHES_FILTER);
+        if (branchNode instanceof List) {
+            for (Object branchPattern : (List<?>) branchNode) {
+                branchPatterns.add(String.valueOf(branchPattern));
+            }
+        } else if (branchNode != null) {
+            branchPatterns.add(String.valueOf(branchNode));
+        }
+        return branchPatterns;
+    }
+
+    private static boolean distinguishesEvents(String concurrencyGroup) {
+        if (concurrencyGroup.contains(EVENT_NAME_EXPRESSION)) {
+            return true;
+        }
+        return concurrencyGroup.contains(REFERENCE_EXPRESSION)
+            && !concurrencyGroup.contains(HEAD_REFERENCE_EXPRESSION);
     }
 
     private static boolean containsWildcard(List<String> branchPatterns) {
         for (String branchPattern : branchPatterns) {
-            if (branchPattern.contains("*") || branchPattern.contains("?") || branchPattern.contains("[")) {
-                return true;
+            for (String wildcardCharacter : WILDCARD_CHARACTERS) {
+                if (branchPattern.contains(wildcardCharacter)) {
+                    return true;
+                }
             }
         }
         return false;
-    }
-
-    private static boolean isIgnorable(String line) {
-        return line.trim().isEmpty() || line.trim().startsWith("#");
-    }
-
-    private static boolean isTopLevelKey(String line) {
-        return !line.startsWith(" ") && !line.startsWith("-") && line.contains(":");
-    }
-
-    private static int indentOf(String line) {
-        int indent = 0;
-        while (indent < line.length() && line.charAt(indent) == ' ') {
-            indent++;
-        }
-        return indent;
-    }
-
-    private static String keyOf(String line) {
-        String trimmed = line.trim();
-        int separator = trimmed.indexOf(':');
-        if (separator <= 0) {
-            return null;
-        }
-        String key = trimmed.substring(0, separator);
-        return key.matches("[A-Za-z_][A-Za-z0-9_-]*") ? key : null;
-    }
-
-    private static String valueOf(String line) {
-        String trimmed = line.trim();
-        return trimmed.substring(trimmed.indexOf(':') + 1).trim();
-    }
-
-    private static String unquote(String value) {
-        String trimmed = value.trim();
-        for (String quote : Arrays.asList("'", "\"")) {
-            if (trimmed.length() >= 2 && trimmed.startsWith(quote) && trimmed.endsWith(quote)) {
-                return trimmed.substring(1, trimmed.length() - 1);
-            }
-        }
-        return trimmed;
     }
 }
