@@ -161,6 +161,39 @@ public class DeadSessionRetentionAcrossBackgroundScansTest {
                 .getTerminalSession().getEmulator());
     }
 
+    @Test
+    public void aRowTheSweepReleasedInPlaceMustStillBuildATerminalWhenTheOwnerOpensIt() throws Exception {
+        String outOfSightDeadSessionName = "session-out-of-sight-alpha";
+        TermuxSession outOfSightDeadSession = deadSessionHoldingAnEmulator(outOfSightDeadSessionName);
+        shellManager.mTermuxSessions.add(outOfSightDeadSession);
+
+        activity.getTermuxTerminalSessionClient().startDisplayedSessionCallScanTick();
+
+        TerminalSession releasedSession =
+            service.getTermuxSessionForSessionName(outOfSightDeadSessionName).getTerminalSession();
+        assertNull("this case only means something once the sweep has actually released the row, "
+            + "otherwise the reopen below would be exercising a session that never lost its emulator",
+            releasedSession.getEmulator());
+
+        openTheRowToleratingTheDeviceOnlyNativeLibrary(releasedSession);
+
+        assertNotNull("a row released in place is kept in the list precisely so the owner can open it "
+                + "again, so opening it must build a terminal emulator and start a shell. A release that "
+                + "refuses every later size update leaves the owner tapping a row that stays blank "
+                + "forever, with nothing logged and nothing thrown, and no other assertion in this suite "
+                + "distinguishes that from a working reopen",
+            releasedSession.getEmulator());
+    }
+
+    private void openTheRowToleratingTheDeviceOnlyNativeLibrary(TerminalSession releasedSession) {
+        try {
+            releasedSession.updateSize(TERMINAL_COLUMNS, TERMINAL_ROWS, TERMINAL_CELL_WIDTH_PIXELS,
+                TERMINAL_CELL_HEIGHT_PIXELS);
+        } catch (LinkageError absence) {
+            OffDeviceNativeSubprocessLibrary.assertItIsTheOnlyAbsence(absence);
+        }
+    }
+
     private int deadOutOfSightSessionsHoldingAnEmulator() {
         int sessionsHoldingAnEmulator = 0;
         for (int outOfSightIndex = 1; outOfSightIndex <= DEAD_OUT_OF_SIGHT_SESSION_COUNT; outOfSightIndex++) {

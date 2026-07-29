@@ -43,6 +43,10 @@ public final class TerminalSession extends TerminalOutput {
 
     TerminalEmulator mEmulator;
 
+    private volatile boolean mRuntimeResourcesReleased;
+
+    private volatile int mSigkilledShellProcessGroupTarget = NO_SHELL_PROCESS_GROUP_TARGET;
+
     /**
      * A queue written to from a separate thread when the process outputs, and read by main thread to process by
      * terminal emulator.
@@ -112,6 +116,9 @@ public final class TerminalSession extends TerminalOutput {
 
     /** Inform the attached pty of the new size and reflow or initialize the emulator. */
     public void updateSize(int columns, int rows, int cellWidthPixels, int cellHeightPixels) {
+        if (mRuntimeResourcesReleased) {
+            return;
+        }
         if (mEmulator == null) {
             initializeEmulator(columns, rows, cellWidthPixels, cellHeightPixels);
         } else {
@@ -295,6 +302,9 @@ public final class TerminalSession extends TerminalOutput {
 
     /** Reset state for terminal emulator state. */
     public void reset() {
+        if (mRuntimeResourcesReleased || mEmulator == null) {
+            return;
+        }
         mEmulator.reset();
         notifyScreenUpdate();
     }
@@ -326,6 +336,7 @@ public final class TerminalSession extends TerminalOutput {
         int shellProcessGroupTarget = shellProcessGroupKillTarget(mShellPid);
         try {
             Os.kill(shellProcessGroupTarget, OsConstants.SIGKILL);
+            mSigkilledShellProcessGroupTarget = shellProcessGroupTarget;
         } catch (ErrnoException e) {
             Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL to process group: " + e.getMessage());
         }
@@ -355,6 +366,11 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     public void releaseRuntimeResources() {
+        mRuntimeResourcesReleased = true;
+        releaseRuntimeResourcesKeepingTheRowReopenable();
+    }
+
+    public void releaseRuntimeResourcesKeepingTheRowReopenable() {
         finishIfRunning();
         closeShellStreams();
         supersedeTheShellProcessInstanceTheSessionOwns();

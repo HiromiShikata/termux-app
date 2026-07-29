@@ -626,15 +626,22 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         boolean wasDisabled = isSessionDisabled(sessionName);
         if (!wasDisabled && hidingWouldLeaveNoVisibleSession(sessionName)) {
+            tellTheOwnerTheLastVisibleSessionCannotBeHidden();
             return;
         }
-        preferences.toggleSessionDisabled(sessionName);
         if (wasDisabled) {
+            preferences.setSessionDisabled(sessionName, false);
             mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
             mActivity.reconnectDeadDefinitionBackedSessions();
-        } else {
-            releaseHiddenSessionRuntimeResources(sessionName);
+            refreshSessionList();
+            return;
         }
+        if (!hidingCanReleaseWhateverIsLiveForTheName(sessionName)) {
+            tellTheOwnerTheSessionCannotBeHiddenRightNow();
+            return;
+        }
+        preferences.setSessionDisabled(sessionName, true);
+        releaseHiddenSessionRuntimeResources(sessionName);
         refreshSessionList();
     }
 
@@ -647,6 +654,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         if (hidingWouldLeaveNoVisibleSession(sessionName)) {
+            tellTheOwnerTheLastVisibleSessionCannotBeHidden();
+            return;
+        }
+        if (!hidingCanReleaseWhateverIsLiveForTheName(sessionName)) {
+            tellTheOwnerTheSessionCannotBeHiddenRightNow();
             return;
         }
         preferences.setSessionDisabled(sessionName, true);
@@ -654,9 +666,22 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         refreshSessionList();
     }
 
+    private void tellTheOwnerTheLastVisibleSessionCannotBeHidden() {
+        mActivity.showToast(mActivity.getString(R.string.msg_cannot_hide_the_last_visible_session), true);
+    }
+
     private boolean hidingWouldLeaveNoVisibleSession(@NonNull String sessionName) {
         return !LastVisibleSessionHideGuard.hidingLeavesAVisibleSession(
             sessionName, sessionNamesByIndex(), disabledSessionNames());
+    }
+
+    private void tellTheOwnerTheSessionCannotBeHiddenRightNow() {
+        mActivity.showToast(mActivity.getString(R.string.msg_cannot_hide_the_session_right_now), true);
+    }
+
+    private boolean hidingCanReleaseWhateverIsLiveForTheName(@NonNull String sessionName) {
+        return mActivity.getTermuxTerminalSessionClient()
+            .hidingCanReleaseWhateverIsLiveForTheName(sessionName);
     }
 
     private void releaseHiddenSessionRuntimeResources(@NonNull String sessionName) {
@@ -1359,13 +1384,13 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
     }
 
-    @SuppressLint("SetTextI18n")
     private void bindDefinitionBackedSessionView(@NonNull SessionHierarchyRow row,
                                                  @NonNull View sessionRowView,
                                                  @NonNull TextView sessionTitleView) {
         String sessionName = row.getSessionName();
         if (sessionName == null || sessionName.isEmpty()) {
-            sessionTitleView.setText("null session");
+            sessionTitleView.setText(
+                mActivity.getString(R.string.label_definition_backed_session_row_without_a_name));
             return;
         }
         sessionRowView.setBackground(ContextCompat.getDrawable(mActivity, sessionRowBackgroundRes(false)));

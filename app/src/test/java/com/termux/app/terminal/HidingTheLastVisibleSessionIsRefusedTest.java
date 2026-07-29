@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowToast;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -46,6 +47,8 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
     private static final String LAST_VISIBLE_SESSION_NAME = "session-current";
 
     private static final String SECOND_VISIBLE_SESSION_NAME = "session-other";
+
+    private static final String DEFINITION_BACKED_ROW_WITH_NO_LIVE_SESSION = "session-dead-row";
 
     private static final int TERMINAL_COLUMNS = 80;
 
@@ -182,6 +185,94 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
                 + "the released one", secondSession.getTerminalSession(), activity.getCurrentSession());
         assertNotNull("the remaining visible session must be untouched by the hide of another session",
             secondSession.getTerminalSession().getEmulator());
+    }
+
+    @Test
+    public void theRefusedHideTellsTheOwnerWhyNothingHappened() throws Exception {
+        hideThroughLongPressEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertEquals("a hide the guard refuses must say so; the owner taps hide, the row stays exactly "
+                + "as it was, and with no message at all the only reading available is that the control "
+                + "is broken",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_last_visible_session),
+            ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void theRefusedHideThroughTheRowToggleTellsTheOwnerToo() throws Exception {
+        hideThroughRowToggleEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertEquals("both hide entry points refuse on the same guard, so both must explain the refusal; "
+                + "otherwise the row toggle is the silent one",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_last_visible_session),
+            ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void anAcceptedHideShowsNoRefusalMessage() throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+
+        hideThroughLongPressEntryPoint(SECOND_VISIBLE_SESSION_NAME);
+
+        assertNull("a hide that succeeds must stay quiet, otherwise the message means nothing and the "
+                + "owner learns to ignore it", ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void aHideThatCannotReleaseTheLiveSessionIsNotRecordedAtAll() throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+        set(activity, TermuxActivity.class, "mTermuxService", null);
+
+        hideThroughLongPressEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertFalse("the stored hidden mark is what every selector reads, so recording it while the "
+                + "release could not run leaves a session that is still displayed and still holding its "
+                + "shell recorded as hidden; the displayed session then drops out of the statusline "
+                + "re-parse set and out of the reconnect selection, and stops being refreshed while the "
+                + "owner is looking at it",
+            preferences.getDisabledSessionNames().contains(LAST_VISIBLE_SESSION_NAME));
+        assertEquals("this refusal must explain itself for the same reason the last-visible refusal "
+                + "does: the owner taps hide, the row stays exactly as it was, and with no message the "
+                + "only reading available is that the control is broken",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_session_right_now),
+            ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void aHideThatCannotReleaseTheLiveSessionIsNotRecordedThroughTheRowToggleEither()
+            throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+        set(activity, TermuxActivity.class, "mTermuxService", null);
+
+        hideThroughRowToggleEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertFalse("both hide entry points write the same stored mark, so both must refuse when the "
+                + "release cannot run", preferences.getDisabledSessionNames()
+                .contains(LAST_VISIBLE_SESSION_NAME));
+        assertEquals("both entry points must explain this refusal too, otherwise the row toggle is the "
+                + "silent one",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_session_right_now),
+            ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void aHideOfANameWithNoLiveSessionIsStillRecorded() throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+
+        hideThroughLongPressEntryPoint(DEFINITION_BACKED_ROW_WITH_NO_LIVE_SESSION);
+
+        assertTrue("requiring that the release can run must not stop the owner hiding a row that has no "
+                + "live session to release; a definition-backed row whose session is dead is exactly "
+                + "such a row, and refusing it would make those rows unhideable",
+            preferences.getDisabledSessionNames().contains(DEFINITION_BACKED_ROW_WITH_NO_LIVE_SESSION));
     }
 
     private void hideThroughLongPressEntryPoint(String sessionName) throws Exception {

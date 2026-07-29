@@ -153,6 +153,24 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
     }
 
     @Test
+    public void hidingASessionSignalsTheShellProcessGroupRatherThanOnlyForgettingTheProcessId()
+            throws Exception {
+        TermuxSession hiddenSession = liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME);
+        shellManager.mTermuxSessions.add(hiddenSession);
+
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        assertEquals("reporting no running shell is satisfied by forgetting the process id alone, so it "
+                + "cannot show that the shell was terminated. The kill must be addressed at the shell's "
+                + "own process group, which is the negated process id, otherwise the process survives "
+                + "the hide and keeps the device resource this change exists to free. The target is "
+                + "recorded only after the signal call returns, so this value cannot exist unless the "
+                + "signal was delivered",
+            -UNREACHABLE_SHELL_PROCESS_ID,
+            sigkilledShellProcessGroupTarget(hiddenSession.getTerminalSession()));
+    }
+
+    @Test
     public void hidingASessionRemovesItsLiveSessionObjectFromTheServiceSessionList() throws Exception {
         shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
 
@@ -200,7 +218,7 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         markSessionNamesHidden(HIDDEN_SESSION_NAME);
         openSessionListWithOnScreenRows(CURRENT_SESSION_NAME, HIDDEN_SESSION_NAME);
 
-        Set<String> statuslineReparseSessionNames = visibleSessionNames();
+        Set<?> statuslineReparseSessionNames = visibleSessionNames();
 
         assertFalse("a hidden session must never be included in the set that drives statusline "
                 + "re-parsing; that set is the same on-screen set the reconnect scheduler uses and it "
@@ -312,20 +330,21 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         return String.format("session-hidden-%02d", index);
     }
 
-    private static List<String> sessionNamesOf(List<TerminalSession> terminalSessions) {
+    private static List<String> sessionNamesOf(List<?> terminalSessions) {
         List<String> sessionNames = new ArrayList<>();
-        for (TerminalSession terminalSession : terminalSessions) {
-            sessionNames.add(terminalSession == null ? null : terminalSession.mSessionName);
+        for (Object terminalSession : terminalSessions) {
+            sessionNames.add(terminalSession == null
+                ? null
+                : ((TerminalSession) terminalSession).mSessionName);
         }
         return sessionNames;
     }
 
-    @SuppressWarnings("unchecked")
-    private List<TerminalSession> collectSessionsToEagerLoad() throws Exception {
+    private List<?> collectSessionsToEagerLoad() throws Exception {
         Method collectSessionsToEagerLoad =
             TermuxActivity.class.getDeclaredMethod("collectSessionsToEagerLoad");
         collectSessionsToEagerLoad.setAccessible(true);
-        return (List<TerminalSession>) collectSessionsToEagerLoad.invoke(activity);
+        return (List<?>) collectSessionsToEagerLoad.invoke(activity);
     }
 
     private void drainMainThreadTasksIgnoringMissingNativeLibrary() {
@@ -403,12 +422,11 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         return (int) cappedSessionCount.invoke(activity.getTermuxTerminalSessionClient(), service);
     }
 
-    @SuppressWarnings("unchecked")
-    private Set<String> visibleSessionNames() throws Exception {
+    private Set<?> visibleSessionNames() throws Exception {
         Method visibleSessionNames =
             TermuxTerminalSessionActivityClient.class.getDeclaredMethod("visibleSessionNames");
         visibleSessionNames.setAccessible(true);
-        return (Set<String>) visibleSessionNames.invoke(activity.getTermuxTerminalSessionClient());
+        return (Set<?>) visibleSessionNames.invoke(activity.getTermuxTerminalSessionClient());
     }
 
     private void markSessionNamesHidden(String... sessionNames) {
@@ -469,6 +487,12 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         View view = new View(appContext);
         view.setId(viewId);
         return view;
+    }
+
+    private int sigkilledShellProcessGroupTarget(TerminalSession terminalSession) throws Exception {
+        Field target = TerminalSession.class.getDeclaredField("mSigkilledShellProcessGroupTarget");
+        target.setAccessible(true);
+        return target.getInt(terminalSession);
     }
 
     private TermuxSession liveSessionHoldingAnEmulator(String sessionName) throws Exception {

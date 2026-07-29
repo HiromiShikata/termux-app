@@ -270,6 +270,82 @@ public class UnhiddenSessionStartsItsShellProcessTest {
             preferences.getDisabledSessionNames().contains(HIDDEN_SESSION_NAME));
     }
 
+    @Test
+    public void tappingADefinitionBackedRowClearsTheStoredHiddenMark() throws Exception {
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        assertTrue("the hide must record the session as hidden before this assertion means anything",
+            preferences.getDisabledSessionNames().contains(HIDDEN_SESSION_NAME));
+
+        tapDefinitionBackedRowThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        assertFalse("tapping a hidden session's row is the owner's way of opening it again, so it must "
+                + "clear the stored hidden mark; leaving the mark set would keep the session out of the "
+                + "reconnect selection and out of the statusline re-parse set while the owner is looking "
+                + "at it, and the row's own toggle would still claim the session is hidden; the stored "
+                + "set was " + preferences.getDisabledSessionNames(),
+            preferences.getDisabledSessionNames().contains(HIDDEN_SESSION_NAME));
+    }
+
+    @Test
+    public void tappingADefinitionBackedRowRecreatesTheSession() throws Exception {
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        assertNull("the hide must leave no live session object behind, otherwise this test would be "
+                + "measuring the session that was alive before the hide rather than a recreated one",
+            service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME));
+
+        tapDefinitionBackedRowThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        drainMainThreadTasksIgnoringMissingNativeLibrary();
+
+        assertNotNull("a hidden session holds no live session object at all, so tapping its row must "
+                + "recreate the session; clearing the hidden mark without recreating anything would "
+                + "record the session as shown while the owner is left with a row that opens nothing",
+            service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME));
+    }
+
+    @Test
+    public void tappingADefinitionBackedRowSelectsTheSession() throws Exception {
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        RecordingSessionClickHost clickHost = new RecordingSessionClickHost();
+        listViewController.setSessionClickHost(clickHost);
+
+        tapDefinitionBackedRowThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        assertEquals("tapping a row is a request to open that session, so the tap must tell the host "
+                + "the session was selected exactly as a tap on a live session's row does; without it "
+                + "the session list stays open over a session the owner asked to be taken to",
+            1, clickHost.selectionCount());
+    }
+
+    private static final class RecordingSessionClickHost
+            implements TermuxSessionsListViewController.SessionClickHost {
+
+        private int selectionCount;
+
+        @Override
+        public void onSessionSelected() {
+            selectionCount++;
+        }
+
+        private int selectionCount() {
+            return selectionCount;
+        }
+    }
+
+    private void tapDefinitionBackedRowThroughProductionEntryPoint(String sessionName)
+            throws Exception {
+        try {
+            openDefinitionBackedRowThroughProductionEntryPoint(sessionName);
+        } catch (Throwable missingNativeLibrary) {
+            assertTrue("the only failure the tap may raise in a Java virtual machine test is the "
+                    + "absent device-only native library reached from the shell process fork, but it "
+                    + "raised " + missingNativeLibrary,
+                causeChainDescription(missingNativeLibrary).contains("com.termux.terminal.JNI"));
+        }
+    }
+
     private void openDefinitionBackedRowThroughProductionEntryPoint(String sessionName)
             throws Exception {
         Method openDefinitionBackedSession = TermuxSessionsListViewController.class

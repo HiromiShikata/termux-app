@@ -930,24 +930,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @NonNull
     private Set<String> visibleSessionNames() {
+        SessionListBottomSheetController sessionListBottomSheetController =
+            mActivity.getSessionListBottomSheetController();
+        boolean sessionListOpen =
+            sessionListBottomSheetController != null && sessionListBottomSheetController.isOpen();
+        List<String> onScreenListSessionNames = sessionListOpen
+            ? sessionListBottomSheetController.getOnScreenSessionNames()
+            : Collections.emptyList();
         return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
-            activeSessionName(), isSessionListOpen(), onScreenSessionListRowNames(), hiddenSessionNames());
-    }
-
-    private boolean isSessionListOpen() {
-        SessionListBottomSheetController sessionListBottomSheetController =
-            mActivity.getSessionListBottomSheetController();
-        return sessionListBottomSheetController != null && sessionListBottomSheetController.isOpen();
-    }
-
-    @NonNull
-    private List<String> onScreenSessionListRowNames() {
-        SessionListBottomSheetController sessionListBottomSheetController =
-            mActivity.getSessionListBottomSheetController();
-        if (!isSessionListOpen()) {
-            return Collections.emptyList();
-        }
-        return sessionListBottomSheetController.getOnScreenSessionNames();
+            activeSessionName(), sessionListOpen, onScreenListSessionNames, hiddenSessionNames());
     }
 
     @NonNull
@@ -1960,6 +1951,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
+    public boolean hidingCanReleaseWhateverIsLiveForTheName(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return false;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+        TermuxSession liveTermuxSession = service.getTermuxSessionForSessionName(sessionName);
+        return liveTermuxSession == null || liveTermuxSession.getTerminalSession() != null;
+    }
+
     private boolean revealExistingSessionByName(@Nullable String sessionName, boolean closeDrawerAfter) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;
@@ -2336,7 +2335,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (store != null) {
             store.clearReconnecting(sessionName);
         }
-        terminalSession.releaseRuntimeResources();
+        terminalSession.releaseRuntimeResourcesKeepingTheRowReopenable();
         mSessionOutputProgressTracker.forget(sessionName);
         termuxSessionListNotifyUpdated();
     }
