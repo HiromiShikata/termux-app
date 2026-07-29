@@ -50,6 +50,7 @@ import com.termux.app.terminal.session.AlwaysPresentSessionStartup;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
 import com.termux.app.terminal.session.DuplicateSessionNameResolution;
 import com.termux.app.terminal.session.FinishedSessionEnterAction;
+import com.termux.app.terminal.session.TransientCommandSessionName;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.session.UserRemovedSessionReconnectSuppressionPlanner;
@@ -766,6 +767,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             // Verify that session was not removed before we got told about it finishing:
             if (index >= 0)
                 mActivity.showToast(toToastTitle(finishedSession) + " - exited", true);
+        }
+
+        if (TransientCommandSessionName.isTransient(finishedSession.mSessionName)) {
+            removeFinishedSession(finishedSession);
+            return;
         }
 
         boolean isAndroidTV = mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
@@ -1638,6 +1644,56 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 deleteSession(sessionToKill);
             }
         }, sessionToKill.mSessionName, mMainThreadHandler::postDelayed);
+    }
+
+    public void resetHostSession(final TerminalSession sessionToReset) {
+        if (sessionToReset == null) return;
+
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        ResetSessionPlan plan = ResetSessionPlanner.plan(
+            mActivity.getPreferences().getResetSessionCommand(), sessionToReset.mSessionName);
+        if (!plan.shouldStart()) {
+            showResetSessionUnavailableDialog(plan.getOutcome());
+            return;
+        }
+
+        String resetSessionName = plan.getSessionName();
+        if (revealExistingSessionByName(resetSessionName, true)) return;
+
+        int liveSessionCount = cappedSessionCount(service);
+        if (liveSessionCount >= maxSessions()) {
+            DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+                "cap=" + maxSessions());
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.title_max_terminals_reached)
+                .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
+                .setPositiveButton(android.R.string.ok, null));
+            return;
+        }
+
+        String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+        String[] arguments = new String[]{"-c", plan.getCommand()};
+        TermuxSession resetTermuxSession = service.createTermuxSession(shellPath, arguments, null,
+            mActivity.getProperties().getDefaultWorkingDirectory(), false, resetSessionName);
+        if (resetTermuxSession == null) return;
+
+        setCurrentSession(resetTermuxSession.getTerminalSession());
+        mActivity.getDrawer().closeDrawers();
+    }
+
+    private void showResetSessionUnavailableDialog(@NonNull ResetSessionPlan.Outcome outcome) {
+        int titleResId = outcome == ResetSessionPlan.Outcome.SESSION_NAME_MISSING
+            ? R.string.title_reset_session_name_missing
+            : R.string.title_reset_session_command_not_configured;
+        int messageResId = outcome == ResetSessionPlan.Outcome.SESSION_NAME_MISSING
+            ? R.string.msg_reset_session_name_missing
+            : R.string.msg_reset_session_command_not_configured;
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(titleResId)
+            .setMessage(messageResId)
+            .setPositiveButton(android.R.string.ok, null));
     }
 
     private void renameSession(TerminalSession sessionToRename, String text) {

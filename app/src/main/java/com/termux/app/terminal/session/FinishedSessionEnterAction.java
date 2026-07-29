@@ -61,6 +61,9 @@ public final class FinishedSessionEnterAction {
         if (sessionName == null || sessionName.trim().isEmpty()) {
             return new FinishedSessionEnterAction(Kind.REMOVE, sessionName, null);
         }
+        if (TransientCommandSessionName.isTransient(sessionName)) {
+            return new FinishedSessionEnterAction(Kind.REMOVE, sessionName, null);
+        }
         if (userRemovedSessionNames.contains(sessionName)) {
             return new FinishedSessionEnterAction(Kind.REMOVE, sessionName, null);
         }

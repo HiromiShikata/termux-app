@@ -55,6 +55,7 @@
     <string name="action_rename_session">Rename</string>
     <string name="action_hide_session">Hide</string>
     <string name="action_kill_host_session">Kill host session</string>
+    <string name="action_reset_session">Reset session</string>
     <string name="action_delete_session">Delete</string>
     <string name="action_create_named_session_confirm">Create</string>
     <string name="action_toggle_session_navigation_disabled">Skip this session when switching with volume keys</string>
@@ -146,6 +147,15 @@
     <string name="title_autossh_config">AutoSSH Config</string>
     <string name="hint_autossh_command">Command template (use {name} as the session-name placeholder)</string>
     <string name="action_autossh_config_save">Save</string>
+
+    <string name="action_open_reset_session_config">Reset Session Config</string>
+    <string name="title_reset_session_config">Reset Session Config</string>
+    <string name="hint_reset_session_command">Command template (use {name} as the session-name placeholder)</string>
+    <string name="action_reset_session_config_save">Save</string>
+    <string name="title_reset_session_command_not_configured">Reset session command not configured</string>
+    <string name="msg_reset_session_command_not_configured">Set a reset session command template in Settings before using this action.</string>
+    <string name="title_reset_session_name_missing">Session has no name</string>
+    <string name="msg_reset_session_name_missing">This session has no name, so there is no host session name to reset. Rename the session first.</string>
 
     <string name="action_open_session_definition_config">Session Definition Config</string>
     <string name="title_session_definition_config">Session Definition Config</string>
