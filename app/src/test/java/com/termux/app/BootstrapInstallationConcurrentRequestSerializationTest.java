@@ -131,7 +131,9 @@ public class BootstrapInstallationConcurrentRequestSerializationTest {
         File secondRequestArchive = writeBootstrapArchive(SECOND_REQUEST_CONTENT_MARKER);
 
         Thread firstRequestThread = new Thread(() -> new BootstrapInstallationRunner(firstRequestReportedFailures::add)
-            .run(() -> installBootstrapArchiveIntoTheStagingDirectory(FIRST_REQUEST_NAME, firstRequestArchive)),
+            .run(() -> installBootstrapArchiveIntoTheStagingDirectory(FIRST_REQUEST_NAME, firstRequestArchive),
+                () -> {
+                }),
             FIRST_REQUEST_NAME);
         firstRequestThread.start();
 
@@ -141,7 +143,9 @@ public class BootstrapInstallationConcurrentRequestSerializationTest {
             try {
                 new BootstrapInstallationRunner(secondRequestReportedFailures::add)
                     .run(() -> installBootstrapArchiveIntoTheStagingDirectory(SECOND_REQUEST_NAME,
-                        secondRequestArchive));
+                        secondRequestArchive),
+                        () -> {
+                        });
             } finally {
                 secondRequestClearedTheStagingDirectoryOrSettled.countDown();
             }

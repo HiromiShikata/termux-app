@@ -29,11 +29,6 @@ public final class BootstrapInstallationRunner {
         this.failureReporter = failureReporter;
     }
 
-    public void run(InstallationStep installationStep) {
-        run(installationStep, () -> {
-        });
-    }
-
     public void run(InstallationStep installationStep, AwaitedInstallationCompletion awaitedInstallationCompletion) {
         boolean thisRequestStartsTheInstallation;
         Throwable awaitedInstallationFailure = null;

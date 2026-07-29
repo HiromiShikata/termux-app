@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BootstrapInstallationRunnerAwaitedInstallationTest {
 
@@ -28,7 +29,11 @@ public class BootstrapInstallationRunnerAwaitedInstallationTest {
 
     private final List<Throwable> firstRequestReportedFailures = new CopyOnWriteArrayList<>();
 
+    private final List<Throwable> firstRequestEscapedFailures = new CopyOnWriteArrayList<>();
+
     private final List<Throwable> secondRequestReportedFailures = new CopyOnWriteArrayList<>();
+
+    private final AtomicBoolean secondRequestKeptItsInterruptedState = new AtomicBoolean();
 
     private final CountDownLatch inFlightInstallationStarted = new CountDownLatch(1);
 
@@ -37,7 +42,8 @@ public class BootstrapInstallationRunnerAwaitedInstallationTest {
     @Test
     public void secondRequestRunsItsCompletionWithoutInstallingAfterTheAwaitedInstallationSucceeded()
         throws Exception {
-        requestASecondInstallationWhileTheFirstOneIsInFlight(null);
+        requestASecondInstallationWhileTheFirstOneIsInFlight(() -> {
+        }, recordedCompletionOfTheSecondRequest());
 
         Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its own installation instead of awaiting the "
                 + FIRST_REQUEST_NAME,
@@ -55,7 +61,9 @@ public class BootstrapInstallationRunnerAwaitedInstallationTest {
         throws Exception {
         IOException awaitedInstallationFailure = new IOException("Truncated bootstrap archive entry");
 
-        requestASecondInstallationWhileTheFirstOneIsInFlight(awaitedInstallationFailure);
+        requestASecondInstallationWhileTheFirstOneIsInFlight(() -> {
+            throw awaitedInstallationFailure;
+        }, recordedCompletionOfTheSecondRequest());
 
         Assert.assertEquals("the " + SECOND_REQUEST_NAME + " did not report the failure of the " + FIRST_REQUEST_NAME
                 + " it awaited, but reported " + secondRequestReportedFailures,
@@ -70,26 +78,102 @@ public class BootstrapInstallationRunnerAwaitedInstallationTest {
             Collections.singletonList(awaitedInstallationFailure), firstRequestReportedFailures);
     }
 
-    private void requestASecondInstallationWhileTheFirstOneIsInFlight(Exception inFlightInstallationFailure)
-        throws Exception {
-        Thread firstRequestThread = new Thread(() -> new BootstrapInstallationRunner(firstRequestReportedFailures::add)
-            .run(() -> {
-                performedInstallations.add(FIRST_REQUEST_NAME);
-                inFlightInstallationStarted.countDown();
-                awaitHandoff(inFlightInstallationMayFinish);
-                if (inFlightInstallationFailure != null) {
-                    throw inFlightInstallationFailure;
-                }
-            }, () -> performedCompletions.add(FIRST_REQUEST_NAME)), FIRST_REQUEST_NAME);
-        firstRequestThread.start();
+    @Test
+    public void secondRequestWakesAndTerminatesAfterTheAwaitedInstallationThrewARuntimeFailure() throws Exception {
+        RuntimeException awaitedInstallationFailure = new RuntimeException("No SYMLINKS.txt encountered");
 
+        requestASecondInstallationWhileTheFirstOneIsInFlight(() -> {
+            throw awaitedInstallationFailure;
+        }, recordedCompletionOfTheSecondRequest());
+
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " kept waiting for the " + FIRST_REQUEST_NAME
+                + " after it threw a runtime failure, instead of being woken and reporting that failure",
+            Collections.singletonList(awaitedInstallationFailure), secondRequestReportedFailures);
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its completion although the " + FIRST_REQUEST_NAME
+                + " it awaited threw a runtime failure",
+            Collections.emptyList(), performedCompletions);
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its own installation instead of awaiting the "
+                + FIRST_REQUEST_NAME,
+            Collections.singletonList(FIRST_REQUEST_NAME), performedInstallations);
+    }
+
+    @Test
+    public void secondRequestWakesAndTerminatesAfterAnErrorEscapedTheAwaitedInstallationThread() throws Exception {
+        Error abnormalInstallationTermination = new Error("The bootstrap installation thread died abnormally");
+
+        requestASecondInstallationWhileTheFirstOneIsInFlight(() -> {
+            throw abnormalInstallationTermination;
+        }, recordedCompletionOfTheSecondRequest());
+
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " kept waiting for the " + FIRST_REQUEST_NAME
+                + " after an error escaped it, so bootstrap installation requests block forever during startup",
+            Collections.singletonList(abnormalInstallationTermination), secondRequestReportedFailures);
+        Assert.assertEquals("the error was swallowed instead of escaping the " + FIRST_REQUEST_NAME + " thread",
+            Collections.singletonList(abnormalInstallationTermination), firstRequestEscapedFailures);
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its completion although an error escaped the "
+                + FIRST_REQUEST_NAME + " it awaited",
+            Collections.emptyList(), performedCompletions);
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its own installation instead of awaiting the "
+                + FIRST_REQUEST_NAME,
+            Collections.singletonList(FIRST_REQUEST_NAME), performedInstallations);
+    }
+
+    @Test
+    public void secondRequestReportsAFailureThrownByItsOwnCompletionInsteadOfLettingItEscapeItsThread()
+        throws Exception {
+        RuntimeException completionFailure = new RuntimeException("Recreating the environment file failed");
+
+        requestASecondInstallationWhileTheFirstOneIsInFlight(() -> {
+        }, () -> {
+            throw completionFailure;
+        });
+
+        Assert.assertEquals("the failure thrown by the completion of the " + SECOND_REQUEST_NAME
+                + " was not reported through its failure reporter",
+            Collections.singletonList(completionFailure), secondRequestReportedFailures);
+    }
+
+    @Test
+    public void secondRequestReportsTheInterruptionOfItsWaitInsteadOfCompletingAsIfTheInstallationSucceeded()
+        throws Exception {
+        Thread firstRequestThread = startTheFirstRequest(() -> {
+        });
         awaitHandoff(inFlightInstallationStarted);
 
-        Thread secondRequestThread = new Thread(() -> new BootstrapInstallationRunner(secondRequestReportedFailures::add)
-            .run(() -> performedInstallations.add(SECOND_REQUEST_NAME),
-                () -> performedCompletions.add(SECOND_REQUEST_NAME)), SECOND_REQUEST_NAME);
-        secondRequestThread.start();
+        Thread secondRequestThread = startTheSecondRequest(recordedCompletionOfTheSecondRequest());
+        awaitTheSecondRequestLeavingItsInstallationUnstarted(secondRequestThread);
+        secondRequestThread.interrupt();
+        secondRequestThread.join(REQUEST_TERMINATION_BOUND_MILLIS);
 
+        Assert.assertFalse("the " + SECOND_REQUEST_NAME + " never terminated after its wait was interrupted",
+            secondRequestThread.isAlive());
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " reported " + secondRequestReportedFailures
+                + " instead of the interruption of its wait",
+            1, secondRequestReportedFailures.size());
+        Assert.assertTrue("the " + SECOND_REQUEST_NAME + " reported "
+                + secondRequestReportedFailures.get(0).getClass().getName()
+                + " instead of the interruption of its wait",
+            secondRequestReportedFailures.get(0) instanceof InterruptedException);
+        Assert.assertTrue("the " + SECOND_REQUEST_NAME + " lost its interrupted state instead of restoring it",
+            secondRequestKeptItsInterruptedState.get());
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its completion although its wait was interrupted",
+            Collections.emptyList(), performedCompletions);
+        Assert.assertEquals("the " + SECOND_REQUEST_NAME + " ran its own installation although its wait was"
+                + " interrupted",
+            Collections.singletonList(FIRST_REQUEST_NAME), performedInstallations);
+
+        inFlightInstallationMayFinish.countDown();
+        firstRequestThread.join(REQUEST_TERMINATION_BOUND_MILLIS);
+        Assert.assertFalse("the " + FIRST_REQUEST_NAME + " never terminated", firstRequestThread.isAlive());
+    }
+
+    private void requestASecondInstallationWhileTheFirstOneIsInFlight(
+        BootstrapInstallationRunner.InstallationStep inFlightInstallationOutcome,
+        BootstrapInstallationRunner.AwaitedInstallationCompletion secondRequestCompletion) throws Exception {
+        Thread firstRequestThread = startTheFirstRequest(inFlightInstallationOutcome);
+        awaitHandoff(inFlightInstallationStarted);
+
+        Thread secondRequestThread = startTheSecondRequest(secondRequestCompletion);
         awaitTheSecondRequestLeavingItsInstallationUnstarted(secondRequestThread);
         inFlightInstallationMayFinish.countDown();
 
@@ -97,7 +181,38 @@ public class BootstrapInstallationRunnerAwaitedInstallationTest {
         secondRequestThread.join(REQUEST_TERMINATION_BOUND_MILLIS);
 
         Assert.assertFalse("the " + FIRST_REQUEST_NAME + " never terminated", firstRequestThread.isAlive());
-        Assert.assertFalse("the " + SECOND_REQUEST_NAME + " never terminated", secondRequestThread.isAlive());
+        Assert.assertFalse("the " + SECOND_REQUEST_NAME + " never terminated, so it is still waiting for the "
+                + FIRST_REQUEST_NAME + " that already left the installation",
+            secondRequestThread.isAlive());
+    }
+
+    private Thread startTheFirstRequest(BootstrapInstallationRunner.InstallationStep inFlightInstallationOutcome) {
+        Thread firstRequestThread = new Thread(() -> new BootstrapInstallationRunner(firstRequestReportedFailures::add)
+            .run(() -> {
+                performedInstallations.add(FIRST_REQUEST_NAME);
+                inFlightInstallationStarted.countDown();
+                awaitHandoff(inFlightInstallationMayFinish);
+                inFlightInstallationOutcome.install();
+            }, () -> performedCompletions.add(FIRST_REQUEST_NAME)), FIRST_REQUEST_NAME);
+        firstRequestThread.setDaemon(true);
+        firstRequestThread.setUncaughtExceptionHandler((thread, failure) -> firstRequestEscapedFailures.add(failure));
+        firstRequestThread.start();
+        return firstRequestThread;
+    }
+
+    private Thread startTheSecondRequest(
+        BootstrapInstallationRunner.AwaitedInstallationCompletion secondRequestCompletion) {
+        Thread secondRequestThread = new Thread(() -> new BootstrapInstallationRunner(failure -> {
+            secondRequestKeptItsInterruptedState.set(Thread.currentThread().isInterrupted());
+            secondRequestReportedFailures.add(failure);
+        }).run(() -> performedInstallations.add(SECOND_REQUEST_NAME), secondRequestCompletion), SECOND_REQUEST_NAME);
+        secondRequestThread.setDaemon(true);
+        secondRequestThread.start();
+        return secondRequestThread;
+    }
+
+    private BootstrapInstallationRunner.AwaitedInstallationCompletion recordedCompletionOfTheSecondRequest() {
+        return () -> performedCompletions.add(SECOND_REQUEST_NAME);
     }
 
     private static void awaitTheSecondRequestLeavingItsInstallationUnstarted(Thread secondRequestThread)
