@@ -608,13 +608,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             tellTheOwnerTheLastVisibleSessionCannotBeHidden();
             return;
         }
-        preferences.toggleSessionDisabled(sessionName);
         if (wasDisabled) {
+            preferences.setSessionDisabled(sessionName, false);
             mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
             mActivity.reconnectDeadDefinitionBackedSessions();
-        } else {
-            releaseHiddenSessionRuntimeResources(sessionName);
+            refreshSessionList();
+            return;
         }
+        if (!hidingCanReleaseWhateverIsLiveForTheName(sessionName)) {
+            return;
+        }
+        preferences.setSessionDisabled(sessionName, true);
+        releaseHiddenSessionRuntimeResources(sessionName);
         refreshSessionList();
     }
 
@@ -630,6 +635,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             tellTheOwnerTheLastVisibleSessionCannotBeHidden();
             return;
         }
+        if (!hidingCanReleaseWhateverIsLiveForTheName(sessionName)) {
+            return;
+        }
         preferences.setSessionDisabled(sessionName, true);
         releaseHiddenSessionRuntimeResources(sessionName);
         refreshSessionList();
@@ -642,6 +650,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private boolean hidingWouldLeaveNoVisibleSession(@NonNull String sessionName) {
         return !LastVisibleSessionHideGuard.hidingLeavesAVisibleSession(
             sessionName, sessionNamesByIndex(), disabledSessionNames());
+    }
+
+    private boolean hidingCanReleaseWhateverIsLiveForTheName(@NonNull String sessionName) {
+        return mActivity.getTermuxTerminalSessionClient()
+            .hidingCanReleaseWhateverIsLiveForTheName(sessionName);
     }
 
     private void releaseHiddenSessionRuntimeResources(@NonNull String sessionName) {

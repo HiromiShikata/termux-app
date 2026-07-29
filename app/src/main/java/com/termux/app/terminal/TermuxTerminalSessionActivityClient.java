@@ -1948,6 +1948,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
+    public boolean hidingCanReleaseWhateverIsLiveForTheName(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return false;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+        TermuxSession liveTermuxSession = service.getTermuxSessionForSessionName(sessionName);
+        return liveTermuxSession == null || liveTermuxSession.getTerminalSession() != null;
+    }
+
     private boolean revealExistingSessionByName(@Nullable String sessionName, boolean closeDrawerAfter) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;

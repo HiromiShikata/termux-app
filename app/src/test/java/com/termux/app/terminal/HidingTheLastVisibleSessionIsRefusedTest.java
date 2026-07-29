@@ -48,6 +48,8 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
 
     private static final String SECOND_VISIBLE_SESSION_NAME = "session-other";
 
+    private static final String DEFINITION_BACKED_ROW_WITH_NO_LIVE_SESSION = "session-dead-row";
+
     private static final int TERMINAL_COLUMNS = 80;
 
     private static final int TERMINAL_ROWS = 40;
@@ -217,6 +219,49 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
 
         assertNull("a hide that succeeds must stay quiet, otherwise the message means nothing and the "
                 + "owner learns to ignore it", ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void aHideThatCannotReleaseTheLiveSessionIsNotRecordedAtAll() throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+        set(activity, TermuxActivity.class, "mTermuxService", null);
+
+        hideThroughLongPressEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertFalse("the stored hidden mark is what every selector reads, so recording it while the "
+                + "release could not run leaves a session that is still displayed and still holding its "
+                + "shell recorded as hidden; the displayed session then drops out of the statusline "
+                + "re-parse set and out of the reconnect selection, and stops being refreshed while the "
+                + "owner is looking at it",
+            preferences.getDisabledSessionNames().contains(LAST_VISIBLE_SESSION_NAME));
+    }
+
+    @Test
+    public void aHideThatCannotReleaseTheLiveSessionIsNotRecordedThroughTheRowToggleEither()
+            throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+        set(activity, TermuxActivity.class, "mTermuxService", null);
+
+        hideThroughRowToggleEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertFalse("both hide entry points write the same stored mark, so both must refuse when the "
+                + "release cannot run", preferences.getDisabledSessionNames()
+                .contains(LAST_VISIBLE_SESSION_NAME));
+    }
+
+    @Test
+    public void aHideOfANameWithNoLiveSessionIsStillRecorded() throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+
+        hideThroughLongPressEntryPoint(DEFINITION_BACKED_ROW_WITH_NO_LIVE_SESSION);
+
+        assertTrue("requiring that the release can run must not stop the owner hiding a row that has no "
+                + "live session to release; a definition-backed row whose session is dead is exactly "
+                + "such a row, and refusing it would make those rows unhideable",
+            preferences.getDisabledSessionNames().contains(DEFINITION_BACKED_ROW_WITH_NO_LIVE_SESSION));
     }
 
     private void hideThroughLongPressEntryPoint(String sessionName) throws Exception {

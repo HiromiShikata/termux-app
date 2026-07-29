@@ -153,6 +153,22 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
     }
 
     @Test
+    public void hidingASessionSignalsTheShellProcessGroupRatherThanOnlyForgettingTheProcessId()
+            throws Exception {
+        TermuxSession hiddenSession = liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME);
+        shellManager.mTermuxSessions.add(hiddenSession);
+
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        assertEquals("reporting no running shell is satisfied by forgetting the process id alone, so it "
+                + "cannot show that the shell was terminated. The kill must be addressed at the shell's "
+                + "own process group, which is the negated process id, otherwise the process survives "
+                + "the hide and keeps the device resource this change exists to free",
+            -UNREACHABLE_SHELL_PROCESS_ID,
+            sigkilledShellProcessGroupTarget(hiddenSession.getTerminalSession()));
+    }
+
+    @Test
     public void hidingASessionRemovesItsLiveSessionObjectFromTheServiceSessionList() throws Exception {
         shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
 
@@ -469,6 +485,12 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         View view = new View(appContext);
         view.setId(viewId);
         return view;
+    }
+
+    private int sigkilledShellProcessGroupTarget(TerminalSession terminalSession) throws Exception {
+        Field target = TerminalSession.class.getDeclaredField("mSigkilledShellProcessGroupTarget");
+        target.setAccessible(true);
+        return target.getInt(terminalSession);
     }
 
     private TermuxSession liveSessionHoldingAnEmulator(String sessionName) throws Exception {
