@@ -360,6 +360,26 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
     }
 
     @Test
+    public void reconnectThenMarkSessionReconnectingMarksReconnectingWhenTheReconnectSucceeds()
+            throws Exception {
+        TerminalSession sessionToReconnect = visibleSessions.get(0);
+        String sessionName = sessionToReconnect.mSessionName;
+
+        invokeReconnectThenMarkSessionReconnecting(sessionToReconnect);
+
+        boolean reconnected = reconnectedSessionNames().contains(sessionName);
+        SessionNewActivityStore store = activity.getSessionNewActivityStore();
+        boolean markedReconnecting = store != null && store.isReconnecting(sessionName);
+        assertTrue("a reconnect that really succeeds and creates a replacement session must still be "
+                + "marked reconnecting, otherwise the spinner never arms and the timeout that would "
+                + "resolve it once the replacement's shell comes up is never scheduled; the session named "
+                + sessionName + " must show a genuine replacement in the live session list and must be "
+                + "marked reconnecting, yet reconnected=" + reconnected + " markedReconnecting="
+                + markedReconnecting,
+            reconnected && markedReconnecting);
+    }
+
+    @Test
     public void theDisplayedSessionSelectorExcludesEveryHiddenSessionNameFromTheReconnectableSet() {
         DisplayedSessionSelector displayedSessionSelector = new DisplayedSessionSelector();
         List<String> allLiveSessionNames = new ArrayList<>();
