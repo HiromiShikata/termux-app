@@ -233,6 +233,14 @@ public class TermuxTerminalSessionActivityClientKillHostSessionTest {
         return termuxSession(name, true);
     }
 
+    private static final int RUNNING_SHELL_PROCESS_PID = 1;
+
+    private void markProcessRunning(TerminalSession terminalSession) throws Exception {
+        Field shellPid = TerminalSession.class.getDeclaredField("mShellPid");
+        shellPid.setAccessible(true);
+        shellPid.setInt(terminalSession, RUNNING_SHELL_PROCESS_PID);
+    }
+
     private void markProcessExited(TerminalSession terminalSession) throws Exception {
         Field shellPid = TerminalSession.class.getDeclaredField("mShellPid");
         shellPid.setAccessible(true);
@@ -244,6 +252,8 @@ public class TermuxTerminalSessionActivityClientKillHostSessionTest {
         terminalSession.mSessionName = name;
         if (exited) {
             markProcessExited(terminalSession);
+        } else {
+            markProcessRunning(terminalSession);
         }
         Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
             TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class, boolean.class);
