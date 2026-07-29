@@ -2247,6 +2247,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void releaseSessionRuntimeResources(@Nullable TerminalSession terminalSession,
                                                 @NonNull String sessionName) {
         if (terminalSession == null) return;
+        if (terminalSession == mActivity.getCurrentSession()) return;
         if (!terminalSession.isRunning() && terminalSession.getEmulator() == null) return;
         cancelReconnectTimeout(sessionName);
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
@@ -2265,6 +2266,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * session costs nothing while it stays hidden; the row remains in the list and remains reopenable.
      * Unhiding reconnects it so it resumes normally. Tearing the local process down does not touch the
      * session on the remote host, which is the separate kill-host-session action.
+     * <p>
+     * The hide action is bound on every row, including the row of the session the terminal view is
+     * rendering, so hiding that session first moves the terminal view onto the topmost session that
+     * is not hidden and only then releases it. Releasing the session the view is still rendering
+     * would leave the owner looking at content with no session behind it and typing keystrokes that
+     * reach no process, which is why the move happens first rather than as an exclusion of the
+     * current session from the release, and why
+     * {@link #releaseSessionRuntimeResources(TerminalSession, String)} refuses that session outright.
+     * <p>
+     * When the session being hidden is the one the view renders and no other session is left to move
+     * to, the hide does not take effect at all: the stored hidden mark is restored and nothing is
+     * released, so the last visible session is simply not hideable. The alternative outcomes are both
+     * unusable — a released session with the view still bound to it renders stale content and
+     * silently swallows every keystroke, and there is no other session to show instead.
      */
     @NonNull
     public List<String> onSessionHiddenStateChanged(@Nullable String sessionName, boolean hidden) {
@@ -2273,8 +2288,44 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             return reconnectDeadDefinitionBackedSessionsInBackground(
                 Collections.singleton(sessionName));
         }
-        releaseSessionRuntimeResources(findTerminalSessionByName(sessionName), sessionName);
+        TerminalSession sessionBeingHidden = findTerminalSessionByName(sessionName);
+        if (sessionBeingHidden != null && sessionBeingHidden == mActivity.getCurrentSession()) {
+            TerminalSession sessionToRenderInstead = topmostSessionThatIsNotHidden(sessionBeingHidden);
+            if (sessionToRenderInstead == null) {
+                restoreHiddenMarkOfTheLastVisibleSession(sessionName);
+                return Collections.emptyList();
+            }
+            setCurrentSession(sessionToRenderInstead);
+        }
+        releaseSessionRuntimeResources(sessionBeingHidden, sessionName);
         return Collections.emptyList();
+    }
+
+    @Nullable
+    private TerminalSession topmostSessionThatIsNotHidden(@NonNull TerminalSession sessionBeingHidden) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return null;
+
+        int topmostNonHiddenSessionIndex = listViewController.getTopmostNonHiddenSessionIndex();
+        if (topmostNonHiddenSessionIndex < 0) return null;
+
+        TermuxSession topmostSession = service.getTermuxSession(topmostNonHiddenSessionIndex);
+        if (topmostSession == null) return null;
+
+        TerminalSession topmostTerminalSession = topmostSession.getTerminalSession();
+        if (topmostTerminalSession == sessionBeingHidden) return null;
+
+        return topmostTerminalSession;
+    }
+
+    private void restoreHiddenMarkOfTheLastVisibleSession(@NonNull String sessionName) {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return;
+        preferences.setSessionDisabled(sessionName, false);
+        termuxSessionListNotifyUpdated();
     }
 
     private void scheduleStaggeredReconnect(@NonNull TerminalSession deadSession,

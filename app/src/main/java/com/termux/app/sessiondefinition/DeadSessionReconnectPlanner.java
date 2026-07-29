@@ -73,15 +73,9 @@ public final class DeadSessionReconnectPlanner {
          * reconnect that is still running and repeats without end. The bounded reconnect timeout and
          * retry ladder owns that session until it settles, and clears the in-flight state on both the
          * success and the exhausted-retry path, so the exclusion always ends.
-         *
-         * <p>Hung means alive but no longer producing output, so it describes a running session only.
-         * A candidate that is at once not running and hung carries a recorded output time that cannot
-         * belong to it — the signature of a replacement that inherited the time of the session it
-         * replaced and can never refresh it — and reconnecting on that basis is what leaves the
-         * selection without a reachable exit, so such a candidate is not selected either.
          */
         boolean isDeadProcessReconnectCandidate() {
-            return !current && !running && !hung && !reconnecting;
+            return !current && !running && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {

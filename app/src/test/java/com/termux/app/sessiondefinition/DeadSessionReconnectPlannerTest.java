@@ -279,15 +279,4 @@ public class DeadSessionReconnectPlannerTest {
 
         Assert.assertEquals(Collections.singletonList("https://example.test/settled"), namesToReconnect);
     }
-
-    @Test
-    public void doesNotReconnectACandidateThatIsAtOnceNotRunningAndHung() {
-        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
-            new DeadSessionReconnectPlanner.CandidateSession(
-                "https://example.test/inherited-stale-time", false, false, true, 1L));
-
-        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
-
-        Assert.assertEquals(Collections.emptyList(), namesToReconnect);
-    }
 }

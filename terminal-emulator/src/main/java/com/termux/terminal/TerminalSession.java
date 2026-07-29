@@ -78,7 +78,7 @@ public final class TerminalSession extends TerminalOutput {
      * advances it, so the process-exited report of a released instance is recognised as belonging to
      * an instance the session no longer owns and cannot tear down the instance that replaced it.
      */
-    private int mShellProcessGeneration;
+    int mShellProcessGeneration;
 
     /** Set by the application for user identification of session, not by terminal. */
     public String mSessionName;
@@ -460,6 +460,10 @@ public final class TerminalSession extends TerminalOutput {
         return result;
     }
 
+    static boolean shouldCloseOnlyTheReportedFileDescriptor(int reportingShellProcessGeneration, int ownedShellProcessGeneration) {
+        return reportingShellProcessGeneration != ownedShellProcessGeneration;
+    }
+
     @SuppressLint("HandlerLeak")
     class MainThreadHandler extends Handler {
 
@@ -483,7 +487,7 @@ public final class TerminalSession extends TerminalOutput {
 
             if (msg.what == MSG_PROCESS_EXITED) {
                 int exitCode = (Integer) msg.obj;
-                if (msg.arg1 != mShellProcessGeneration) {
+                if (shouldCloseOnlyTheReportedFileDescriptor(msg.arg1, mShellProcessGeneration)) {
                     JNI.close(msg.arg2);
                     return;
                 }

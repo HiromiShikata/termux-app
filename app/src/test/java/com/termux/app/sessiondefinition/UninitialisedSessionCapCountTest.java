@@ -3,6 +3,7 @@ package com.termux.app.sessiondefinition;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import com.termux.app.terminal.HungSessionDetector;
 import com.termux.terminal.TerminalSession;
 
 import org.junit.Test;
@@ -14,6 +15,11 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 public class UninitialisedSessionCapCountTest {
+
+    private static final long INHERITED_STATUSLINE_OUT_TIME_MILLIS = 1L;
+
+    private static final long NOW_MILLIS =
+        INHERITED_STATUSLINE_OUT_TIME_MILLIS + HungSessionDetector.STALE_OUT_MAX_AGE_MILLIS + 1L;
 
     private static TerminalSession sessionWithoutEmulatorInitialisation(String sessionName) {
         TerminalSession terminalSession = new TerminalSession(null, null, null, null, null, null);
@@ -45,19 +51,25 @@ public class UninitialisedSessionCapCountTest {
     }
 
     @Test
-    public void aReplacementSessionThatNeverReceivedAnEmulatorMustNotBeTreatedAsAHungAliveCandidate() {
+    public void aReplacementSessionThatNeverReceivedAnEmulatorMustNotBeSelectedAgainWhileItsReconnectIsStillInFlight() {
         TerminalSession neverInitialisedSession = sessionWithoutEmulatorInitialisation("session-alpha");
+        boolean running = neverInitialisedSession.isRunning();
+        Long inheritedStatuslineOutTimeMillis = INHERITED_STATUSLINE_OUT_TIME_MILLIS;
+        boolean hung = running && new HungSessionDetector()
+            .isHung(inheritedStatuslineOutTimeMillis, NOW_MILLIS);
 
         List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions = new ArrayList<>();
         candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
-            neverInitialisedSession.mSessionName, neverInitialisedSession.isRunning(), false, true,
-            1L));
+            neverInitialisedSession.mSessionName, running, false, hung,
+            inheritedStatuslineOutTimeMillis, true));
 
         List<String> plannedSessionNames = new DeadSessionReconnectPlanner()
             .planSessionNamesToReconnect(candidateSessions, "ssh {name}");
 
-        assertEquals("a replacement session that never received an emulator reports itself as running "
-                + "and therefore lands in the permanently-hung reconnect branch",
+        assertEquals("a replacement session that never received an emulator owns no shell process, so "
+                + "it is neither running nor hung, and the store still records its reconnect as in "
+                + "flight; selecting it again would tear down the reconnect that is still running and "
+                + "repeat on every following scan",
             new ArrayList<String>(), plannedSessionNames);
     }
 }
