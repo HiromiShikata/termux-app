@@ -603,6 +603,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         boolean wasDisabled = isSessionDisabled(sessionName);
+        if (!wasDisabled && hidingWouldLeaveNoVisibleSession(sessionName)) {
+            return;
+        }
         preferences.toggleSessionDisabled(sessionName);
         if (wasDisabled) {
             mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSession(sessionName);
@@ -621,9 +624,17 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (preferences == null) {
             return;
         }
+        if (hidingWouldLeaveNoVisibleSession(sessionName)) {
+            return;
+        }
         preferences.setSessionDisabled(sessionName, true);
         releaseHiddenSessionRuntimeResources(sessionName);
         refreshSessionList();
+    }
+
+    private boolean hidingWouldLeaveNoVisibleSession(@NonNull String sessionName) {
+        return !LastVisibleSessionHideGuard.hidingLeavesAVisibleSession(
+            sessionName, sessionNamesByIndex(), disabledSessionNames());
     }
 
     private void releaseHiddenSessionRuntimeResources(@NonNull String sessionName) {
