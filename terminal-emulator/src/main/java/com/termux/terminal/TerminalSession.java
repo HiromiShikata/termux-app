@@ -35,20 +35,26 @@ public final class TerminalSession extends TerminalOutput {
 
     public static final int NO_SHELL_PROCESS_PID = -1;
 
+    static final int PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES = 64 * 1024;
+
+    static final int TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES = 4096;
+
     public final String mHandle = UUID.randomUUID().toString();
 
     TerminalEmulator mEmulator;
 
     /**
      * A queue written to from a separate thread when the process outputs, and read by main thread to process by
-     * terminal emulator.
+     * terminal emulator. It is replaced by {@link #releaseEmulator()}, because {@link ByteQueue#close()} is
+     * permanent and a session that keeps a closed queue discards every byte its next shell process produces.
      */
-    final ByteQueue mProcessToTerminalIOQueue = new ByteQueue(64 * 1024);
+    ByteQueue mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
     /**
      * A queue written to from the main thread due to user interaction, and read by another thread which forwards by
-     * writing to the {@link #mTerminalFileDescriptor}.
+     * writing to the {@link #mTerminalFileDescriptor}. It is replaced by {@link #releaseEmulator()} on the same
+     * grounds as {@link #mProcessToTerminalIOQueue}.
      */
-    final ByteQueue mTerminalToProcessIOQueue = new ByteQueue(4096);
+    ByteQueue mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
     /** Buffer to write translate code points into utf8 before writing to mTerminalToProcessIOQueue */
     private final byte[] mUtf8InputBuffer = new byte[5];
 
@@ -66,6 +72,13 @@ public final class TerminalSession extends TerminalOutput {
      * {@link JNI#createSubprocess(String, String, String[], String[], int[], int, int, int, int)}.
      */
     private int mTerminalFileDescriptor;
+
+    /**
+     * Identifies the shell process instance the session currently owns. {@link #releaseEmulator()}
+     * advances it, so the process-exited report of a released instance is recognised as belonging to
+     * an instance the session no longer owns and cannot tear down the instance that replaced it.
+     */
+    private int mShellProcessGeneration;
 
     /** Set by the application for user identification of session, not by terminal. */
     public String mSessionName;
@@ -141,12 +154,17 @@ public final class TerminalSession extends TerminalOutput {
     public void initializeEmulator(int columns, int rows, int cellWidthPixels, int cellHeightPixels) {
         mEmulator = new TerminalEmulator(this, columns, rows, cellWidthPixels, cellHeightPixels, mTranscriptRows, mClient);
 
+        final ByteQueue processToTerminalIOQueue = mProcessToTerminalIOQueue;
+        final ByteQueue terminalToProcessIOQueue = mTerminalToProcessIOQueue;
+        final int shellProcessGeneration = mShellProcessGeneration;
+
         int[] processId = new int[1];
-        mTerminalFileDescriptor = JNI.createSubprocess(mShellPath, mCwd, mArgs, mEnv, processId, rows, columns, cellWidthPixels, cellHeightPixels);
+        final int terminalFileDescriptor = JNI.createSubprocess(mShellPath, mCwd, mArgs, mEnv, processId, rows, columns, cellWidthPixels, cellHeightPixels);
+        mTerminalFileDescriptor = terminalFileDescriptor;
         mShellPid = processId[0];
         mClient.setTerminalShellPid(this, mShellPid);
 
-        final FileDescriptor terminalFileDescriptorWrapped = wrapFileDescriptor(mTerminalFileDescriptor, mClient);
+        final FileDescriptor terminalFileDescriptorWrapped = wrapFileDescriptor(terminalFileDescriptor, mClient);
 
         new Thread("TermSessionInputReader[pid=" + mShellPid + "]") {
             @Override
@@ -156,7 +174,7 @@ public final class TerminalSession extends TerminalOutput {
                     while (true) {
                         int read = termIn.read(buffer);
                         if (read == -1) return;
-                        if (!mProcessToTerminalIOQueue.write(buffer, 0, read)) return;
+                        if (!processToTerminalIOQueue.write(buffer, 0, read)) return;
                         mMainThreadHandler.sendEmptyMessage(MSG_NEW_INPUT);
                     }
                 } catch (Exception e) {
@@ -171,7 +189,7 @@ public final class TerminalSession extends TerminalOutput {
                 final byte[] buffer = new byte[4096];
                 try (FileOutputStream termOut = new FileOutputStream(terminalFileDescriptorWrapped)) {
                     while (true) {
-                        int bytesToWrite = mTerminalToProcessIOQueue.read(buffer, true);
+                        int bytesToWrite = terminalToProcessIOQueue.read(buffer, true);
                         if (bytesToWrite == -1) return;
                         termOut.write(buffer, 0, bytesToWrite);
                     }
@@ -185,7 +203,8 @@ public final class TerminalSession extends TerminalOutput {
             @Override
             public void run() {
                 int processExitCode = JNI.waitFor(mShellPid);
-                mMainThreadHandler.sendMessage(mMainThreadHandler.obtainMessage(MSG_PROCESS_EXITED, processExitCode));
+                mMainThreadHandler.sendMessage(mMainThreadHandler.obtainMessage(MSG_PROCESS_EXITED,
+                    shellProcessGeneration, terminalFileDescriptor, processExitCode));
             }
         }.start();
 
@@ -247,9 +266,24 @@ public final class TerminalSession extends TerminalOutput {
      * object itself stays alive as the entry the session list renders its row from, and a later
      * {@link #updateSize(int, int, int, int)} recreates the emulator and starts the shell process
      * again, so the release is reversible.
+     * <p>
+     * The release also ends the session's ownership of its shell process instance. The byte queues
+     * that instance reads and writes are closed, which lets its reader and writer threads exit, and
+     * are replaced by open ones, because {@link ByteQueue#close()} is permanent: a session that
+     * reopened onto closed queues would start a real shell process whose every output byte and every
+     * keystroke is discarded with no record. The shell process identifier is cleared in the same
+     * step, so a released session never reports itself running while holding no emulator.
      */
     public void releaseEmulator() {
         mEmulator = null;
+        mShellProcessGeneration++;
+        mTerminalToProcessIOQueue.close();
+        mProcessToTerminalIOQueue.close();
+        mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
+        mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
+        synchronized (this) {
+            mShellPid = NO_SHELL_PROCESS_PID;
+        }
     }
 
     public long getNeverResetScrolledLineCount() {
@@ -442,10 +476,17 @@ public final class TerminalSession extends TerminalOutput {
                 mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
                 notifyScreenUpdate();
                 if (genuineByteCount > 0) notifyGenuineOutput();
+            } else if (bytesRead > 0) {
+                Logger.logDebug(mClient, LOG_TAG, "Discarded " + bytesRead + " bytes of output of session \""
+                    + mSessionName + "\" because its terminal emulator was released");
             }
 
             if (msg.what == MSG_PROCESS_EXITED) {
                 int exitCode = (Integer) msg.obj;
+                if (msg.arg1 != mShellProcessGeneration) {
+                    JNI.close(msg.arg2);
+                    return;
+                }
                 cleanupResources(exitCode);
 
                 String exitDescription = "\r\n[Process completed";
