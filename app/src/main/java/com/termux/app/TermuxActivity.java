@@ -81,6 +81,7 @@ import com.termux.app.terminal.SessionActivityDirection;
 import com.termux.app.terminal.SessionNavigationButtonsBinder;
 import com.termux.app.terminal.SessionSwitchPickerController;
 import com.termux.app.terminal.session.SessionDefinitionPrewarm;
+import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.app.terminal.session.SessionEagerLoader;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -239,10 +240,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private final SessionReconnectScheduler mSessionReconnectScheduler =
         new SessionReconnectScheduler(this::reconnectDeadDefinitionBackedSessions);
 
+    private final SessionEagerLoadPacer mSessionEagerLoadPacer = new SessionEagerLoadPacer(
+        this::collectSessionsToEagerLoad,
+        mMainThreadHandler::postDelayed,
+        this::eagerLoadSessionEmulator);
+
     private final SessionEagerLoader mSessionEagerLoader = new SessionEagerLoader(
         this::collectSessionsToEagerLoad,
         session -> session.getEmulator() != null,
-        this::eagerLoadSessionEmulatorStaged);
+        mSessionEagerLoadPacer::enqueueSession);
 
     /**
      * The in-app browser controller managing the {@link android.webkit.WebView} and per-session tabs.
@@ -1051,16 +1057,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return sessions;
     }
 
-    private void eagerLoadSessionEmulatorStaged(@NonNull TerminalSession session) {
-        mMainThreadHandler.post(() -> {
-            if (session.getEmulator() != null) return;
+    private void eagerLoadSessionEmulator(@NonNull TerminalSession session) {
+        if (session.getEmulator() != null) return;
 
-            int[] dimensions = mTerminalView.computeSessionEmulatorDimensions();
-            if (dimensions == null) return;
+        int[] dimensions = mTerminalView.computeSessionEmulatorDimensions();
+        if (dimensions == null) return;
 
-            session.updateSize(dimensions[0], dimensions[1], dimensions[2], dimensions[3]);
-            mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
-        });
+        session.updateSize(dimensions[0], dimensions[1], dimensions[2], dimensions[3]);
+        mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
     }
 
     private void onSessionDefinitionDocumentPrewarmed() {

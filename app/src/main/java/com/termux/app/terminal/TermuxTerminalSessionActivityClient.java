@@ -522,6 +522,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         long nowMillis = System.currentTimeMillis();
         Set<String> visibleSessionNames = visibleSessionNames();
+        if (forceRescan) {
+            visibleSessionNames =
+                firstForcedRescanBatchAfterDeferringTheRest(new ArrayList<>(visibleSessionNames));
+        }
         List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts = new ArrayList<>();
         for (TermuxSession termuxSession : service.getTermuxSessions()) {
             TerminalSession session = termuxSession.getTerminalSession();
@@ -568,13 +572,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void repopulateStatuslineTimesForDisplayedSessions(boolean forceRescan) {
         List<String> displayedSessionNames = new ArrayList<>(displayedSessionNames());
         if (displayedSessionNames.isEmpty()) return;
-        int batchIndex = 0;
-        for (int start = 0; start < displayedSessionNames.size();
-                start += STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE) {
-            int end = Math.min(start + STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, displayedSessionNames.size());
-            Set<String> batchSessionNames =
-                new LinkedHashSet<>(displayedSessionNames.subList(start, end));
-            long batchDelayMillis = batchIndex * STAGGERED_RECONNECT_INTERVAL_MILLIS;
+        for (StaggeredStatuslineRescanBatchPlanner.Batch batch
+                : StaggeredStatuslineRescanBatchPlanner.plan(displayedSessionNames,
+                    STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, STAGGERED_RECONNECT_INTERVAL_MILLIS)) {
+            Set<String> batchSessionNames = batch.getSessionNames();
+            long batchDelayMillis = batch.getDelayMillis();
             if (batchDelayMillis <= 0L) {
                 repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan);
             } else {
@@ -582,8 +584,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                     () -> repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan),
                     batchDelayMillis);
             }
-            batchIndex++;
         }
+    }
+
+    @NonNull
+    private Set<String> firstForcedRescanBatchAfterDeferringTheRest(
+            @NonNull List<String> sessionNames) {
+        List<StaggeredStatuslineRescanBatchPlanner.Batch> batches =
+            StaggeredStatuslineRescanBatchPlanner.plan(sessionNames,
+                STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, STAGGERED_RECONNECT_INTERVAL_MILLIS);
+        if (batches.isEmpty()) return Collections.emptySet();
+        for (int batchIndex = 1; batchIndex < batches.size(); batchIndex++) {
+            StaggeredStatuslineRescanBatchPlanner.Batch batch = batches.get(batchIndex);
+            mMainThreadHandler.postDelayed(
+                () -> repopulateStatuslineTimesForSessionNames(batch.getSessionNames(), true),
+                batch.getDelayMillis());
+        }
+        return batches.get(0).getSessionNames();
     }
 
     /**
