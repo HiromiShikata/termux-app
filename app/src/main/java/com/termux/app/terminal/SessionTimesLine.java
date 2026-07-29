@@ -31,7 +31,7 @@ public final class SessionTimesLine {
                                       long nowMillis) {
         String text = "call: " + relativeAgeOrMoreThanOneDay(callTimeMillis, nowMillis)
             + "  out: " + relativeAgeOrMoreThanOneDay(outTimeMillis, nowMillis)
-            + "  reply: " + relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis)
+            + "  reply: " + replyRelativeAgeOrUnknown(replyTimeMillis, nowMillis)
             + "  sub: " + subagentCount;
         return new SessionTimesLine(true, text);
     }
@@ -44,7 +44,7 @@ public final class SessionTimesLine {
                                                    long nowMillis) {
         String text = "call: " + padColumn(relativeAgeOrMoreThanOneDay(callTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
             + " out: " + padColumn(relativeAgeOrMoreThanOneDay(outTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
-            + " reply: " + padColumn(relativeAgeOrMoreThanOneDay(replyTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
+            + " reply: " + padColumn(replyRelativeAgeOrUnknown(replyTimeMillis, nowMillis), TIME_VALUE_COLUMN_WIDTH)
             + " sub: " + padColumn(Integer.toString(subagentCount), SUBAGENT_COUNT_COLUMN_WIDTH);
         return new SessionTimesLine(true, text);
     }
@@ -76,4 +76,12 @@ public final class SessionTimesLine {
         return timeMillis == null ? SessionNewActivityStore.MORE_THAN_ONE_DAY_LABEL
             : SessionNewActivityStore.formatRelativeAge(timeMillis, nowMillis);
     }
+
+    @NonNull
+    private static String replyRelativeAgeOrUnknown(@Nullable Long timeMillis, long nowMillis) {
+        return timeMillis == null ? UNKNOWN_REPLY_TIME_LABEL
+            : SessionNewActivityStore.formatRelativeAge(timeMillis, nowMillis);
+    }
+
+    private static final String UNKNOWN_REPLY_TIME_LABEL = "-";
 }

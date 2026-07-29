@@ -5,25 +5,20 @@ import androidx.annotation.Nullable;
 
 public final class BrowserRenderedFrame {
 
-    public static final BrowserRenderedFrame BLANK = new BrowserRenderedFrame(null, null, null);
+    public static final BrowserRenderedFrame BLANK = new BrowserRenderedFrame(null, null);
 
     private final BrowserTab mTab;
 
     private final String mCommittedUrl;
 
-    private final BrowserWebViewNavigation mInFlightNavigation;
-
-    private BrowserRenderedFrame(@Nullable BrowserTab tab,
-                                 @Nullable String committedUrl,
-                                 @Nullable BrowserWebViewNavigation inFlightNavigation) {
+    private BrowserRenderedFrame(@Nullable BrowserTab tab, @Nullable String committedUrl) {
         this.mTab = tab;
         this.mCommittedUrl = committedUrl;
-        this.mInFlightNavigation = inFlightNavigation;
     }
 
     @NonNull
     public static BrowserRenderedFrame renderingTab(@NonNull BrowserTab tab) {
-        return new BrowserRenderedFrame(tab, null, BrowserWebViewNavigation.startedBy(tab));
+        return new BrowserRenderedFrame(tab, null);
     }
 
     @Nullable
@@ -41,11 +36,6 @@ public final class BrowserRenderedFrame {
         return mCommittedUrl;
     }
 
-    @Nullable
-    public BrowserWebViewNavigation getInFlightNavigation() {
-        return mInFlightNavigation;
-    }
-
     public boolean isBlank() {
         return mTab == null;
     }
@@ -56,12 +46,6 @@ public final class BrowserRenderedFrame {
 
     @NonNull
     public BrowserRenderedFrame withCommittedUrl(@Nullable String committedUrl) {
-        return new BrowserRenderedFrame(mTab, committedUrl, mInFlightNavigation);
-    }
-
-    @NonNull
-    public BrowserRenderedFrame withRestampedNavigation() {
-        if (mTab == null) return this;
-        return new BrowserRenderedFrame(mTab, mCommittedUrl, BrowserWebViewNavigation.startedBy(mTab));
+        return new BrowserRenderedFrame(mTab, committedUrl);
     }
 }

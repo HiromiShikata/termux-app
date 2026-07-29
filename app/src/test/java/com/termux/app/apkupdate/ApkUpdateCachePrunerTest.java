@@ -58,6 +58,21 @@ public class ApkUpdateCachePrunerTest {
     }
 
     @Test
+    public void keepsThePartialFileForTheFileToKeepWhileDeletingOtherPartialFiles() throws IOException {
+        File cacheDirectory = temporaryFolder.newFolder("apkupdate");
+        File currentApkPartial = new File(cacheDirectory, "termux-app_v0.119.0+new.apk.part");
+        File staleApkPartial = new File(cacheDirectory, "termux-app_v0.118.0+old.apk.part");
+        Assert.assertTrue(currentApkPartial.createNewFile());
+        Assert.assertTrue(staleApkPartial.createNewFile());
+
+        pruner.pruneExcept(cacheDirectory, "termux-app_v0.119.0+new.apk");
+
+        Assert.assertTrue("an in-flight partial download for the file being kept must not be pruned",
+            currentApkPartial.exists());
+        Assert.assertFalse(staleApkPartial.exists());
+    }
+
+    @Test
     public void doesNothingWhenDirectoryDoesNotExist() {
         File missingDirectory = new File(temporaryFolder.getRoot(), "missing");
 

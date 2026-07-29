@@ -32,6 +32,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.BrowserSessionRemovalReason;
+import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
@@ -49,6 +50,7 @@ import com.termux.app.terminal.session.AlwaysPresentSessionStartup;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
 import com.termux.app.terminal.session.DuplicateSessionNameResolution;
 import com.termux.app.terminal.session.FinishedSessionEnterAction;
+import com.termux.app.terminal.session.TransientCommandSessionName;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
 import com.termux.app.terminal.session.UserRemovedSessionReconnectSuppressionPlanner;
@@ -399,7 +401,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
-        openTagBrowserController.onSessionTextChanged(session.mHandle, screen.getTranscriptText());
+        String transcriptText = screen.getTranscriptText();
+        openTagBrowserController.onSessionTextChanged(session.mHandle, transcriptText);
+
+        AppOpenTagController appOpenTagController = mActivity.getAppOpenTagController();
+        if (appOpenTagController != null && appOpenTagController.isAutoOpenEnabled())
+            appOpenTagController.onSessionTextChanged(session.mHandle, transcriptText);
     }
 
     private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {
@@ -728,6 +735,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mActivity.getOpenTagBrowserController() != null)
             mActivity.getOpenTagBrowserController().forgetSession(finishedSession.mHandle);
 
+        if (mActivity.getAppOpenTagController() != null)
+            mActivity.getAppOpenTagController().forgetSession(finishedSession.mHandle);
+
         if (mActivity.getUpdateTagUpdateController() != null)
             mActivity.getUpdateTagUpdateController().forgetSession(finishedSession.mHandle);
 
@@ -737,6 +747,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (finishedSession.mHandle != null) {
             mBackgroundOutputScanGate.forget(finishedSession.mHandle);
             mAllSessionsStatuslineScanGate.forget(finishedSession.mHandle);
+        }
+
+        if (TransientCommandSessionName.isTransient(finishedSession.mSessionName)) {
+            removeFinishedSession(finishedSession);
+            return;
         }
 
         int index = service.getIndexOfSession(finishedSession);
@@ -1620,15 +1635,105 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         HostTmuxSessionKiller.kill(new HostTmuxSessionKiller.Target() {
             @Override
-            public void writeKillCommand(String killCommand) {
-                sessionToKill.write(killCommand);
+            public boolean executeHostKillCommand(String commandSessionName, String hostKillCommand) {
+                TermuxService service = mActivity.getTermuxService();
+                if (service == null) return false;
+
+                if (revealExistingSessionByName(commandSessionName, true)) return false;
+
+                int liveSessionCount = cappedSessionCount(service);
+                if (liveSessionCount >= maxSessions()) {
+                    notifyMaxTerminalsReached(liveSessionCount);
+                    return false;
+                }
+
+                String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+                String[] arguments = new String[]{"-c", hostKillCommand};
+                return service.createTermuxSession(shellPath, arguments, null,
+                    workingDirectoryForNewSession(), false, commandSessionName) != null;
+            }
+
+            @Override
+            public void notifyUnavailable(KillHostSessionPlan.Outcome outcome) {
+                mActivity.showToast(mActivity.getString(
+                    outcome == KillHostSessionPlan.Outcome.SESSION_NAME_MISSING
+                        ? R.string.msg_kill_host_session_name_missing
+                        : R.string.msg_kill_session_command_not_configured), true);
             }
 
             @Override
             public void finishLocalSession() {
                 deleteSession(sessionToKill);
             }
-        }, sessionToKill.mSessionName, mMainThreadHandler::postDelayed);
+        }, mActivity.getPreferences().getKillSessionCommand(), sessionToKill.mSessionName,
+            mMainThreadHandler::postDelayed);
+    }
+
+    private String workingDirectoryForNewSession() {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionCwd = currentSession == null ? null : currentSession.getCwd();
+        return currentSessionCwd == null || currentSessionCwd.isEmpty()
+            ? mActivity.getProperties().getDefaultWorkingDirectory()
+            : currentSessionCwd;
+    }
+
+    private void notifyMaxTerminalsReached(int liveSessionCount) {
+        DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+            "cap=" + maxSessions());
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_max_terminals_reached)
+            .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
+            .setPositiveButton(android.R.string.ok, null));
+    }
+
+    public void resetHostSession(final TerminalSession sessionToReset) {
+        if (sessionToReset == null) return;
+
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        ResetSessionPlan plan = ResetSessionPlanner.plan(
+            mActivity.getPreferences().getResetSessionCommand(), sessionToReset.mSessionName);
+        if (!plan.shouldStart()) {
+            showResetSessionUnavailableDialog(plan.getOutcome());
+            return;
+        }
+
+        String resetSessionName = plan.getSessionName();
+        if (revealExistingSessionByName(resetSessionName, true)) return;
+
+        int liveSessionCount = cappedSessionCount(service);
+        if (liveSessionCount >= maxSessions()) {
+            DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+                "cap=" + maxSessions());
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.title_max_terminals_reached)
+                .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
+                .setPositiveButton(android.R.string.ok, null));
+            return;
+        }
+
+        String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+        String[] arguments = new String[]{"-c", plan.getCommand()};
+        TermuxSession resetTermuxSession = service.createTermuxSession(shellPath, arguments, null,
+            mActivity.getProperties().getDefaultWorkingDirectory(), false, resetSessionName);
+        if (resetTermuxSession == null) return;
+
+        setCurrentSession(resetTermuxSession.getTerminalSession());
+        mActivity.getDrawer().closeDrawers();
+    }
+
+    private void showResetSessionUnavailableDialog(@NonNull ResetSessionPlan.Outcome outcome) {
+        int titleResId = outcome == ResetSessionPlan.Outcome.SESSION_NAME_MISSING
+            ? R.string.title_reset_session_name_missing
+            : R.string.title_reset_session_command_not_configured;
+        int messageResId = outcome == ResetSessionPlan.Outcome.SESSION_NAME_MISSING
+            ? R.string.msg_reset_session_name_missing
+            : R.string.msg_reset_session_command_not_configured;
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(titleResId)
+            .setMessage(messageResId)
+            .setPositiveButton(android.R.string.ok, null));
     }
 
     private void renameSession(TerminalSession sessionToRename, String text) {
@@ -2168,7 +2273,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (toolbarAdapter != null)
             toolbarAdapter.removeTextInputForSession(deadSession);
 
-        service.removeTermuxSession(deadSession);
+        service.removeTermuxSessionBeingReplaced(deadSession);
 
         List<String> currentLiveSessionNames = new ArrayList<>();
         for (TermuxSession liveSession : service.getTermuxSessions()) {
@@ -2202,9 +2307,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (displayedSession == deadSession) {
             setCurrentSession(newTerminalSession);
         } else {
+            if (displayedSessionNames().contains(sessionName)) {
+                eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
+            }
             termuxSessionListNotifyUpdated();
         }
         return newTerminalSession;
+    }
+
+    private void eagerInitializeReconnectedBackgroundSessionEmulator(@NonNull TerminalSession session) {
+        if (session.getEmulator() != null) return;
+        TerminalView terminalView = mActivity.getTerminalView();
+        if (terminalView == null) return;
+        int[] dimensions = terminalView.computeSessionEmulatorDimensions();
+        if (dimensions == null) return;
+        session.updateSize(dimensions[0], dimensions[1], dimensions[2], dimensions[3]);
+        session.forceRemoteRepaint();
     }
 
     private static final class ReconnectedSessionInputReplay implements Runnable {
@@ -2387,7 +2505,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         for (PersistedSessionRestoreData persistedSession : persistedSessions) {
             String name = persistedSession.getName();
             if (name != null && !restoredNames.add(name)) continue;
-            if (service.getTermuxSessionsSize() >= configuredLimit) {
+            if (cappedSessionCount(service) >= configuredLimit) {
                 droppedSessionCount++;
                 continue;
             }
@@ -2454,7 +2572,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TerminalSession firstCreatedSession = null;
         for (String sessionName : missingSessionNames) {
-            if (service.getTermuxSessionsSize() >= configuredLimit) {
+            if (cappedSessionCount(service) >= configuredLimit) {
                 droppedSessionCount++;
                 continue;
             }

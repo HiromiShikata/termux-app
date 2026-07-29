@@ -111,6 +111,12 @@ package com.termux.shared.termux.settings.preferences;
  *          `KEY_BROWSER_SESSION_SPLIT_RATIOS` and `DEFAULT_VALUE_KEY_BROWSER_SESSION_SPLIT_RATIOS`,
  *          which persist the in-app browser split height keyed by session name so each session
  *          restores its own browser height when returning to it and after an app restart.
+ *
+ * - 0.26.0 (2026-07-29)
+ *      - Added following to `TERMUX_APP`:
+ *          `KEY_RESET_SESSION_COMMAND` and `DEFAULT_VALUE_KEY_RESET_SESSION_COMMAND`, which hold the
+ *          user-configurable command template run to reset a host session, with `{name}` substituted
+ *          by the shell-quoted host session name.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -225,6 +231,12 @@ public final class TermuxPreferenceConstants {
 
         public static final String KEY_AUTOSSH_COMMAND = "autossh_command";
         public static final String DEFAULT_VALUE_KEY_AUTOSSH_COMMAND = "";
+
+        public static final String KEY_RESET_SESSION_COMMAND = "reset_session_command";
+        public static final String DEFAULT_VALUE_KEY_RESET_SESSION_COMMAND = "";
+
+        public static final String KEY_KILL_SESSION_COMMAND = "kill_session_command";
+        public static final String DEFAULT_VALUE_KEY_KILL_SESSION_COMMAND = "";
 
         public static final String KEY_SESSION_DEFINITION_URL = "session_definition_url";
         public static final String DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL = "";

@@ -1384,6 +1384,14 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             sessionRowView.findViewById(R.id.session_reconnect_failed_indicator);
         boolean showFailedIndicator = reconnectFailed(sessionName);
         reconnectFailedIndicatorView.setVisibility(showFailedIndicator ? View.VISIBLE : View.INVISIBLE);
+        reconnectFailedIndicatorView.setOnClickListener(v -> retryReconnectFailedSession(sessionName));
+    }
+
+    private void retryReconnectFailedSession(@Nullable String sessionName) {
+        if (sessionName == null) {
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient().retryReconnectAfterFailure(sessionName);
     }
 
     private int sessionTitleTextStartPaddingPx() {
@@ -1534,12 +1542,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         TerminalSession clickedTerminalSession = clickedSession.getTerminalSession();
-        String clickedSessionName =
-            clickedTerminalSession == null ? null : clickedTerminalSession.mSessionName;
-        if (clickedSessionName != null && reconnectFailed(clickedSessionName)) {
-            mActivity.getTermuxTerminalSessionClient().retryReconnectAfterFailure(clickedSessionName);
-            return;
-        }
         mActivity.getTermuxTerminalSessionClient()
             .switchToSessionReconnectingIfDead(clickedTerminalSession);
         if (mSessionClickHost != null) {
@@ -1578,6 +1580,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         RENAME(R.string.action_rename_session),
         HIDE(R.string.action_hide_session),
         KILL_HOST_SESSION(R.string.action_kill_host_session),
+        RESET_SESSION(R.string.action_reset_session),
         DELETE(R.string.action_delete_session);
 
         final int labelResId;
@@ -1623,6 +1626,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                 break;
             case KILL_HOST_SESSION:
                 mActivity.getTermuxTerminalSessionClient().killHostSession(session);
+                break;
+            case RESET_SESSION:
+                mActivity.getTermuxTerminalSessionClient().resetHostSession(session);
                 break;
             case DELETE:
                 mActivity.getTermuxTerminalSessionClient().deleteSession(session);

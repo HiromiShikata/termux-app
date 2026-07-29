@@ -43,6 +43,8 @@ import com.termux.app.apkupdate.UpdateTagUpdateRunner;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
+import com.termux.app.appopen.AppOpenTagController;
+import com.termux.app.appopen.InstalledAppLauncher;
 import com.termux.app.browser.BrowserInboundViewUrl;
 import com.termux.app.link.GoogleAppLink;
 import com.termux.app.browser.OpenTagBrowserController;
@@ -254,6 +256,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * and spawn duplicate tabs when this activity is recreated.
      */
     OpenTagBrowserController.UrlOpener mOpenTagUrlOpener;
+
+    AppOpenTagController.AppLauncher mAppLauncher;
 
     /**
      * The foreground update-flow trigger. When an update tag is detected it auto-downloads the APK in
@@ -669,6 +673,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             // Do not leave service and session clients with references to activity.
             mTermuxService.setUpdateTagReasonTrigger(null);
             mTermuxService.setOpenTagUrlOpener(null);
+            mTermuxService.setAppLauncher(null);
             mTermuxService.unsetTermuxTerminalSessionClient();
             mTermuxService = null;
         }
@@ -763,6 +768,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // in the foreground; the deduplication state stays in the service-owned controller.
         if (mOpenTagUrlOpener != null)
             mTermuxService.setOpenTagUrlOpener(mOpenTagUrlOpener);
+
+        if (mAppLauncher != null)
+            mTermuxService.setAppLauncher(mAppLauncher);
 
         eagerLoadAllSessions();
 
@@ -1079,6 +1087,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
         mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession;
+        mAppLauncher = new InstalledAppLauncher(
+            getPackageManager()::getLaunchIntentForPackage, this::startActivity);
         // The update-flow trigger only needs the activity for its UI; it is registered with the
         // service-owned controller in onServiceConnected once the service is bound.
         mUpdateTagUpdateRunner = new UpdateTagUpdateRunner(this, new ApkUpdateFloatingIndicatorView());
@@ -1527,6 +1537,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxBrowserController getTermuxBrowserController() {
         return mTermuxBrowserController;
+    }
+
+    @Nullable
+    public AppOpenTagController getAppOpenTagController() {
+        return mTermuxService == null ? null : mTermuxService.getAppOpenTagController();
     }
 
     @Nullable

@@ -9,13 +9,12 @@ public class BrowserRenderedFrameTest {
     private static final String URL = "https://example.com/";
 
     @Test
-    public void blankFrameHasNoTabOwnerUrlOrNavigation() {
+    public void blankFrameHasNoTabOwnerOrUrl() {
         BrowserRenderedFrame frame = BrowserRenderedFrame.BLANK;
         Assert.assertTrue(frame.isBlank());
         Assert.assertNull(frame.getTab());
         Assert.assertNull(frame.getOwnerSessionHandle());
         Assert.assertNull(frame.getCommittedUrl());
-        Assert.assertNull(frame.getInFlightNavigation());
     }
 
     @Test
@@ -28,11 +27,9 @@ public class BrowserRenderedFrameTest {
     }
 
     @Test
-    public void renderingTabStartsAnInFlightNavigationForThatTab() {
+    public void renderingTabStartsWithNullCommittedUrl() {
         BrowserTab tab = new BrowserTab(SESSION, URL);
         BrowserRenderedFrame frame = BrowserRenderedFrame.renderingTab(tab);
-        Assert.assertNotNull(frame.getInFlightNavigation());
-        Assert.assertSame(tab, frame.getInFlightNavigation().getTab());
         Assert.assertNull(frame.getCommittedUrl());
     }
 
@@ -48,32 +45,12 @@ public class BrowserRenderedFrameTest {
     }
 
     @Test
-    public void withCommittedUrlPreservesTabAndNavigation() {
+    public void withCommittedUrlPreservesTab() {
         BrowserTab tab = new BrowserTab(SESSION, URL);
         BrowserRenderedFrame frame = BrowserRenderedFrame.renderingTab(tab);
         BrowserRenderedFrame committed = frame.withCommittedUrl("https://example.com/page");
         Assert.assertEquals("https://example.com/page", committed.getCommittedUrl());
         Assert.assertSame(tab, committed.getTab());
-        Assert.assertSame(frame.getInFlightNavigation(), committed.getInFlightNavigation());
         Assert.assertNull(frame.getCommittedUrl());
-    }
-
-    @Test
-    public void withRestampedNavigationKeepsTabAndCommittedUrlButRenewsNavigation() {
-        BrowserTab tab = new BrowserTab(SESSION, URL);
-        BrowserRenderedFrame committed =
-            BrowserRenderedFrame.renderingTab(tab).withCommittedUrl(URL);
-        BrowserRenderedFrame restamped = committed.withRestampedNavigation();
-        Assert.assertSame(tab, restamped.getTab());
-        Assert.assertEquals(URL, restamped.getCommittedUrl());
-        Assert.assertNotSame(committed.getInFlightNavigation(), restamped.getInFlightNavigation());
-        Assert.assertSame(tab, restamped.getInFlightNavigation().getTab());
-    }
-
-    @Test
-    public void withRestampedNavigationOnBlankFrameStaysBlank() {
-        BrowserRenderedFrame restamped = BrowserRenderedFrame.BLANK.withRestampedNavigation();
-        Assert.assertTrue(restamped.isBlank());
-        Assert.assertNull(restamped.getInFlightNavigation());
     }
 }

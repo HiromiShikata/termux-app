@@ -175,6 +175,10 @@ public final class ApkUpdateUiController {
             return;
         }
 
+        if (!DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
+            return;
+        }
+
         Context applicationContext = activity.getApplicationContext();
         Logger.showToast(activity, activity.getString(R.string.apk_update_downloading), false);
         updateManager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
@@ -182,12 +186,14 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
+                    DOWNLOAD_IN_PROGRESS.set(false);
                     pendingState.clear();
                     launchInstall(availability, apkFile);
                 }
 
                 @Override
                 public void onDownloadFailed(String message) {
+                    DOWNLOAD_IN_PROGRESS.set(false);
                     Logger.logError(LOG_TAG, "APK update download failed: " + message);
                     Logger.showToast(applicationContext,
                         applicationContext.getString(R.string.apk_update_download_failed, message), true);
