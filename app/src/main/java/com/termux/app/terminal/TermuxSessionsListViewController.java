@@ -605,6 +605,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         boolean wasDisabled = isSessionDisabled(sessionName);
         if (!wasDisabled && hidingWouldLeaveNoVisibleSession(sessionName)) {
+            tellTheOwnerTheLastVisibleSessionCannotBeHidden();
             return;
         }
         preferences.toggleSessionDisabled(sessionName);
@@ -626,11 +627,16 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         if (hidingWouldLeaveNoVisibleSession(sessionName)) {
+            tellTheOwnerTheLastVisibleSessionCannotBeHidden();
             return;
         }
         preferences.setSessionDisabled(sessionName, true);
         releaseHiddenSessionRuntimeResources(sessionName);
         refreshSessionList();
+    }
+
+    private void tellTheOwnerTheLastVisibleSessionCannotBeHidden() {
+        mActivity.showToast(mActivity.getString(R.string.msg_cannot_hide_the_last_visible_session), true);
     }
 
     private boolean hidingWouldLeaveNoVisibleSession(@NonNull String sessionName) {

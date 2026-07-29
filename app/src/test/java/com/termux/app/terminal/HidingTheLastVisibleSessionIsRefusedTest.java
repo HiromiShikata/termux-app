@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowToast;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -182,6 +183,40 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
                 + "the released one", secondSession.getTerminalSession(), activity.getCurrentSession());
         assertNotNull("the remaining visible session must be untouched by the hide of another session",
             secondSession.getTerminalSession().getEmulator());
+    }
+
+    @Test
+    public void theRefusedHideTellsTheOwnerWhyNothingHappened() throws Exception {
+        hideThroughLongPressEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertEquals("a hide the guard refuses must say so; the owner taps hide, the row stays exactly "
+                + "as it was, and with no message at all the only reading available is that the control "
+                + "is broken",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_last_visible_session),
+            ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void theRefusedHideThroughTheRowToggleTellsTheOwnerToo() throws Exception {
+        hideThroughRowToggleEntryPoint(LAST_VISIBLE_SESSION_NAME);
+
+        assertEquals("both hide entry points refuse on the same guard, so both must explain the refusal; "
+                + "otherwise the row toggle is the silent one",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_last_visible_session),
+            ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    public void anAcceptedHideShowsNoRefusalMessage() throws Exception {
+        TermuxSession secondSession = liveSessionHoldingAnEmulator(SECOND_VISIBLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(secondSession);
+
+        hideThroughLongPressEntryPoint(SECOND_VISIBLE_SESSION_NAME);
+
+        assertNull("a hide that succeeds must stay quiet, otherwise the message means nothing and the "
+                + "owner learns to ignore it", ShadowToast.getTextOfLatestToast());
     }
 
     private void hideThroughLongPressEntryPoint(String sessionName) throws Exception {
