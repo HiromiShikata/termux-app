@@ -1,10 +1,14 @@
 package com.termux.app.terminal;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -37,6 +41,7 @@ import org.robolectric.shadows.ShadowLooper;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 
 @RunWith(RobolectricTestRunner.class)
 public class UnhiddenSessionStartsItsShellProcessTest {
@@ -58,6 +63,18 @@ public class UnhiddenSessionStartsItsShellProcessTest {
     private static final int UNREACHABLE_SHELL_PROCESS_ID = 2000000000;
 
     private static final int MAIN_THREAD_TASK_DRAIN_LIMIT = 500;
+
+    private static final String KEYSTROKE_PROBE = "unhidden-keystroke-probe";
+
+    private static final String SHELL_OUTPUT_PROBE = "unhidden-shell-output-probe";
+
+    private static final String TERMINAL_TO_PROCESS_QUEUE = "mTerminalToProcessIOQueue";
+
+    private static final String PROCESS_TO_TERMINAL_QUEUE = "mProcessToTerminalIOQueue";
+
+    private static final int QUEUE_CLOSED = -1;
+
+    private static final int PROBE_READ_BUFFER_BYTES = 4096;
 
     private TermuxActivity activity;
     private TermuxService service;
@@ -126,6 +143,119 @@ public class UnhiddenSessionStartsItsShellProcessTest {
                 + "session; the recreated emulator was sized " + recreatedEmulator.mColumns + "x"
                 + recreatedEmulator.mRows,
             recreatedEmulator.mColumns > 0 && recreatedEmulator.mRows > 0);
+    }
+
+    @Test
+    public void unhidingASessionRestoresAChannelThatCarriesBothKeystrokesAndShellOutput()
+            throws Exception {
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        TerminalSession releasedSession =
+            service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME).getTerminalSession();
+
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        assertFalse("hiding closes both byte queues of the released session, and a closed queue never "
+                + "becomes open again, so a session revived from the released object would spawn a "
+                + "shell whose keystrokes are dropped and whose output is silently discarded; this "
+                + "assertion pins that the released object really is unusable, which is what makes the "
+                + "assertions below about the recreated object meaningful rather than vacuous",
+            queueAcceptsBytes(queueOf(releasedSession, TERMINAL_TO_PROCESS_QUEUE), KEYSTROKE_PROBE));
+
+        unhideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        drainMainThreadTasksIgnoringMissingNativeLibrary();
+
+        TermuxSession recreatedTermuxSession = service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME);
+        assertNotNull("unhiding must recreate the session, so a live session object for it must exist "
+            + "again after the unhide", recreatedTermuxSession);
+        TerminalSession recreatedSession = recreatedTermuxSession.getTerminalSession();
+        assertNotSame("unhiding must build a new session object rather than revive the released one, "
+                + "because the released one's byte queues can never be reopened",
+            releasedSession, recreatedSession);
+
+        Object keystrokeQueue = queueOf(recreatedSession, TERMINAL_TO_PROCESS_QUEUE);
+        assertTrue("a keystroke typed into the unhidden session must be accepted by the queue the "
+                + "writer thread drains into the shell process; a permanently closed queue accepts "
+                + "nothing and reports false while the terminal still looks alive",
+            queueAcceptsBytes(keystrokeQueue, KEYSTROKE_PROBE));
+        assertEquals("the keystroke must come back off the queue byte for byte, because that is "
+                + "exactly what the writer thread hands to the shell process",
+            KEYSTROKE_PROBE, drainQueueAsText(keystrokeQueue));
+
+        Object shellOutputQueue = queueOf(recreatedSession, PROCESS_TO_TERMINAL_QUEUE);
+        assertTrue("shell output arriving for the unhidden session must be accepted by the queue the "
+                + "reader thread fills; a permanently closed queue discards it and reports false",
+            queueAcceptsBytes(shellOutputQueue, SHELL_OUTPUT_PROBE));
+
+        deliverPendingShellOutputOnMainThread(recreatedSession);
+
+        TerminalEmulator recreatedEmulator = recreatedSession.getEmulator();
+        assertNotNull("the recreated session must hold a terminal emulator for its output to land in",
+            recreatedEmulator);
+        String transcript = recreatedEmulator.getScreen().getTranscriptText();
+        assertTrue("the accepted output must actually reach the recreated terminal emulator screen, "
+                + "otherwise the owner unhides a session that looks alive and swallows every byte the "
+                + "shell writes; the transcript was " + transcript.trim(),
+            transcript.contains(SHELL_OUTPUT_PROBE));
+    }
+
+    @Test
+    public void hidingASessionLeavesTheDisplayedSessionChannelUntouched() throws Exception {
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        TerminalSession displayedSession =
+            service.getTermuxSessionForSessionName(CURRENT_SESSION_NAME).getTerminalSession();
+
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        Object displayedKeystrokeQueue = queueOf(displayedSession, TERMINAL_TO_PROCESS_QUEUE);
+        assertTrue("hiding one session must not close the byte queues of the session the owner is "
+                + "looking at, because a displayed session must stay connected and current",
+            queueAcceptsBytes(displayedKeystrokeQueue, KEYSTROKE_PROBE));
+        assertEquals("the displayed session's keystrokes must still be readable back off its queue "
+                + "after another session was hidden", KEYSTROKE_PROBE,
+            drainQueueAsText(displayedKeystrokeQueue));
+
+        Object displayedShellOutputQueue = queueOf(displayedSession, PROCESS_TO_TERMINAL_QUEUE);
+        assertTrue("hiding one session must not stop shell output reaching the displayed session",
+            queueAcceptsBytes(displayedShellOutputQueue, SHELL_OUTPUT_PROBE));
+
+        deliverPendingShellOutputOnMainThread(displayedSession);
+
+        String transcript = displayedSession.getEmulator().getScreen().getTranscriptText();
+        assertTrue("output written for the displayed session must still land on its emulator screen "
+                + "after another session was hidden; the transcript was " + transcript.trim(),
+            transcript.contains(SHELL_OUTPUT_PROBE));
+    }
+
+    private static Object queueOf(TerminalSession session, String queueFieldName) throws Exception {
+        Field queueField = TerminalSession.class.getDeclaredField(queueFieldName);
+        queueField.setAccessible(true);
+        return queueField.get(session);
+    }
+
+    private static boolean queueAcceptsBytes(Object queue, String text) throws Exception {
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        Method write = queue.getClass().getDeclaredMethod("write", byte[].class, int.class, int.class);
+        write.setAccessible(true);
+        return (Boolean) write.invoke(queue, bytes, 0, bytes.length);
+    }
+
+    private static String drainQueueAsText(Object queue) throws Exception {
+        Method read = queue.getClass().getDeclaredMethod("read", byte[].class, boolean.class);
+        read.setAccessible(true);
+        byte[] buffer = new byte[PROBE_READ_BUFFER_BYTES];
+        int readBytes = (Integer) read.invoke(queue, buffer, false);
+        if (readBytes == QUEUE_CLOSED) return "<the queue is closed>";
+        return new String(buffer, 0, readBytes, StandardCharsets.UTF_8);
+    }
+
+    private void deliverPendingShellOutputOnMainThread(TerminalSession session) throws Exception {
+        Field handlerField = TerminalSession.class.getDeclaredField("mMainThreadHandler");
+        handlerField.setAccessible(true);
+        Handler mainThreadHandler = (Handler) handlerField.get(session);
+        Field newInputMessage = TerminalSession.class.getDeclaredField("MSG_NEW_INPUT");
+        newInputMessage.setAccessible(true);
+        mainThreadHandler.sendEmptyMessage(newInputMessage.getInt(null));
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
     }
 
     private void drainMainThreadTasksIgnoringMissingNativeLibrary() {
