@@ -15,6 +15,8 @@ public final class SessionEagerLoadPacer {
         void postToMainThreadDelayed(@NonNull Runnable runnable, long delayMillis);
     }
 
+    private final SessionEagerLoader.SessionListSupplier sessionListSupplier;
+
     private final MainThreadMessagePoster mainThreadMessagePoster;
 
     private final SessionEagerLoader.SessionInitializationAction sessionInitializationAction;
@@ -24,8 +26,10 @@ public final class SessionEagerLoadPacer {
     private boolean unitMessagePosted;
 
     public SessionEagerLoadPacer(
+        @NonNull SessionEagerLoader.SessionListSupplier sessionListSupplier,
         @NonNull MainThreadMessagePoster mainThreadMessagePoster,
         @NonNull SessionEagerLoader.SessionInitializationAction sessionInitializationAction) {
+        this.sessionListSupplier = sessionListSupplier;
         this.mainThreadMessagePoster = mainThreadMessagePoster;
         this.sessionInitializationAction = sessionInitializationAction;
     }
@@ -47,7 +51,8 @@ public final class SessionEagerLoadPacer {
         unitMessagePosted = false;
         try {
             TerminalSession session = pollNextPendingSession();
-            if (session != null) sessionInitializationAction.initializeSession(session);
+            if (session != null && sessionListSupplier.getSessionsToEagerLoad().contains(session))
+                sessionInitializationAction.initializeSession(session);
         } finally {
             postNextUnitMessageIfIdle();
         }

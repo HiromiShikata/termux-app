@@ -20,6 +20,17 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 public class SessionEagerLoadPacerTest {
 
+    private static final class MutableEagerLoadList
+            implements SessionEagerLoader.SessionListSupplier {
+        private final List<TerminalSession> sessions = new ArrayList<>();
+
+        @NonNull
+        @Override
+        public List<TerminalSession> getSessionsToEagerLoad() {
+            return sessions;
+        }
+    }
+
     private static final class PendingMainThreadMessages
             implements SessionEagerLoadPacer.MainThreadMessagePoster {
         private final Deque<Runnable> messages = new ArrayDeque<>();
@@ -59,17 +70,22 @@ public class SessionEagerLoadPacerTest {
         }
     }
 
+    private final MutableEagerLoadList eagerLoadList = new MutableEagerLoadList();
+
     private final PendingMainThreadMessages mainThreadMessages = new PendingMainThreadMessages();
 
     private final RecordingInitializationAction initializationAction =
         new RecordingInitializationAction();
 
     private TerminalSession newSessionToEagerLoad() {
-        return new TerminalSession("/bin/sh", "/", new String[0], new String[0], null, null);
+        TerminalSession session =
+            new TerminalSession("/bin/sh", "/", new String[0], new String[0], null, null);
+        eagerLoadList.sessions.add(session);
+        return session;
     }
 
     private SessionEagerLoadPacer newPacer() {
-        return new SessionEagerLoadPacer(mainThreadMessages, initializationAction);
+        return new SessionEagerLoadPacer(eagerLoadList, mainThreadMessages, initializationAction);
     }
 
     @Test
@@ -165,7 +181,7 @@ public class SessionEagerLoadPacerTest {
         TerminalSession enqueuedDuringFirstUnit = newSessionToEagerLoad();
         List<TerminalSession> initializedSessions = new ArrayList<>();
         SessionEagerLoadPacer[] pacerHolder = new SessionEagerLoadPacer[1];
-        pacerHolder[0] = new SessionEagerLoadPacer(mainThreadMessages, session -> {
+        pacerHolder[0] = new SessionEagerLoadPacer(eagerLoadList, mainThreadMessages, session -> {
             initializedSessions.add(session);
             if (session == first) pacerHolder[0].enqueueSession(enqueuedDuringFirstUnit);
         });
@@ -185,7 +201,7 @@ public class SessionEagerLoadPacerTest {
         TerminalSession secondSession = newSessionToEagerLoad();
         TerminalSession thirdSession = newSessionToEagerLoad();
         List<TerminalSession> initializedSessions = new ArrayList<>();
-        SessionEagerLoadPacer pacer = new SessionEagerLoadPacer(mainThreadMessages, session -> {
+        SessionEagerLoadPacer pacer = new SessionEagerLoadPacer(eagerLoadList, mainThreadMessages, session -> {
             initializedSessions.add(session);
             if (session == failingSession) {
                 throw new IllegalStateException("session initialization failed");
@@ -210,6 +226,29 @@ public class SessionEagerLoadPacerTest {
                 + "behind it, which would leave the owner with a single initialized session and the rest "
                 + "pending until some later enqueue happens to revive the pacer",
             List.of(failingSession, secondSession, thirdSession), initializedSessions);
+    }
+
+    @Test
+    public void doesNotInitializeASessionThatLeftTheEagerLoadListAfterItWasEnqueued() {
+        TerminalSession goneBeforeItsTurn = newSessionToEagerLoad();
+        TerminalSession stillListed = newSessionToEagerLoad();
+        TerminalSession alsoStillListed = newSessionToEagerLoad();
+        SessionEagerLoadPacer pacer = newPacer();
+
+        pacer.enqueueSession(goneBeforeItsTurn);
+        pacer.enqueueSession(stillListed);
+        pacer.enqueueSession(alsoStillListed);
+        eagerLoadList.sessions.remove(goneBeforeItsTurn);
+
+        mainThreadMessages.runUntilNoMessagesRemain();
+
+        assertEquals("pacing spreads the units over one main-thread message each, which deliberately "
+                + "opens a window in which a session can be closed, removed from the service or hidden "
+                + "before its own message runs; the eager load itself guards only on the emulator being "
+                + "absent, so a unit that did not re-check membership would construct a 2000-row terminal "
+                + "emulator, fork and exec an operating system process and start three threads for a "
+                + "session nothing owns any more",
+            List.of(stillListed, alsoStillListed), initializationAction.initializedSessions);
     }
 
     @Test

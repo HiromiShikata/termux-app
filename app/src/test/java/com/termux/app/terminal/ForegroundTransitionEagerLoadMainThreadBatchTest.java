@@ -161,7 +161,23 @@ public class ForegroundTransitionEagerLoadMainThreadBatchTest {
     }
 
     private int drainMainThreadTasksDueNowAndCountInitializedSessions() {
-        shadowOf(Looper.getMainLooper()).idle();
+        ShadowLooper mainLooper = shadowOf(Looper.getMainLooper());
+        int attemptBound = VISIBLE_SESSION_COUNT + HIDDEN_SESSION_COUNT + 2;
+        boolean drained = false;
+        for (int attempt = 0; attempt < attemptBound && !drained; attempt++) {
+            try {
+                mainLooper.idle();
+                drained = true;
+            } catch (LinkageError deviceOnlyNativeSubprocessLibraryAbsent) {
+                OffDeviceNativeSubprocessLibrary.assertItIsTheOnlyAbsence(
+                    deviceOnlyNativeSubprocessLibraryAbsent);
+            }
+        }
+        assertTrue("every main-thread task due at this instant must have been dispatched before the "
+                + "count is taken, otherwise the count understates the uninterrupted pass and the bound "
+                + "below is met by a drain that stopped early rather than by pacing; the drain gave up "
+                + "after " + attemptBound + " attempts",
+            drained);
         return countSessionsHoldingATerminalEmulator(visibleSessions)
             + countSessionsHoldingATerminalEmulator(hiddenSessions);
     }
@@ -173,22 +189,10 @@ public class ForegroundTransitionEagerLoadMainThreadBatchTest {
                 mainLooper.idleFor(Duration.ofMillis(
                     SessionEagerLoadPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS));
             } catch (LinkageError deviceOnlyNativeSubprocessLibraryAbsent) {
-                assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(
+                OffDeviceNativeSubprocessLibrary.assertItIsTheOnlyAbsence(
                     deviceOnlyNativeSubprocessLibraryAbsent);
             }
         }
-    }
-
-    private void assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(@NonNull LinkageError error) {
-        Throwable rootCause = error;
-        while (rootCause.getCause() != null) rootCause = rootCause.getCause();
-        String absorbedFailure = rootCause.getClass().getName() + ": " + rootCause.getMessage();
-        assertTrue("a Java virtual machine run can only absorb the absence of the device-only native "
-                + "subprocess library that TerminalSession.initializeEmulator loads after it has already "
-                + "constructed the terminal emulator; every other failure is a real one and must surface "
-                + "instead of being discarded, yet this run absorbed " + absorbedFailure,
-            absorbedFailure.contains("UnsatisfiedLinkError")
-                || absorbedFailure.contains("com.termux.terminal.JNI"));
     }
 
     private int countSessionsHoldingATerminalEmulator(@NonNull List<TerminalSession> sessions) {
