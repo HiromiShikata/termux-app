@@ -1,4 +1,4 @@
-package com.termux.app.sessiondefinition;
+package com.termux.shared.termux.settings.preferences;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

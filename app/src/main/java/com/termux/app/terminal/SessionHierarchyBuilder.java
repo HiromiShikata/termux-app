@@ -4,9 +4,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
-import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 
 import java.util.ArrayList;
 import java.util.Collections;

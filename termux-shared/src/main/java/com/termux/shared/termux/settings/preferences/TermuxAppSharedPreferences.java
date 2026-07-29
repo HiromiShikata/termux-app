@@ -518,7 +518,7 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
     public boolean isSessionDisabled(@Nullable String sessionName) {
-        return sessionName != null && getDisabledSessionNames().contains(sessionName);
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, getDisabledSessionNames());
     }
 
     public boolean toggleSessionDisabled(@Nullable String sessionName) {
