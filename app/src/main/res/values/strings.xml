@@ -179,7 +179,7 @@
     <string name="msg_session_definition_load_failed">Failed to load session definition.</string>
     <string name="msg_session_definition_load_partial">Some session groups failed to load (%1$d of %2$d). Showing the rest.</string>
     <string name="msg_session_definition_no_entries">No sessions found in the session definition.</string>
-    <string name="msg_cannot_hide_the_last_visible_session">Cannot hide the last visible session; hide it and no session would be left on screen.</string>
+    <string name="msg_cannot_hide_the_last_visible_session">At least one session must stay visible.</string>
     <string name="msg_session_limit_exceeded">Session limit of %1$d reached; %2$d session(s) were not loaded. Increase it in Session Definition Config.</string>
 
     <string name="action_open_always_na_session_names_config">Always N/A Session Names</string>
