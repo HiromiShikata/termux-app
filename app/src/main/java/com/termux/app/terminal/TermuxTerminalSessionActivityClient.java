@@ -141,7 +141,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return mCapCountPlanner.countSessionsTowardCap(countedSessions);
+        return mCapCountPlanner.countSessionsTowardCap(countedSessions, hiddenSessionNames());
+    }
+
+    @NonNull
+    private Set<String> hiddenSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        return preferences == null ? Collections.emptySet() : preferences.getDisabledSessionNames();
     }
 
     private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
@@ -923,7 +929,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             ? sessionListBottomSheetController.getOnScreenSessionNames()
             : Collections.emptyList();
         return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
-            activeSessionName(), sessionListOpen, onScreenListSessionNames);
+            activeSessionName(), sessionListOpen, onScreenListSessionNames, hiddenSessionNames());
     }
 
     @NonNull
@@ -1831,6 +1837,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter) {
+        addNewAutosshSession(sessionName, command, closeDrawerAfter, true);
+    }
+
+    private void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter,
+                                      boolean displayNewSession) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
@@ -1861,11 +1872,80 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
             recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle, shellPath, arguments, false, workingDirectory));
             attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
-            setCurrentSession(newTerminalSession);
+            if (displayNewSession) {
+                setCurrentSession(newTerminalSession);
+            } else {
+                termuxSessionListNotifyUpdated();
+            }
 
             if (closeDrawerAfter)
                 mActivity.getDrawer().closeDrawers();
         }
+    }
+
+    /**
+     * Recreates a session that has just been unhidden and connects it exactly as a first open does:
+     * the session object is created from the stored session definition and the shell is started by the
+     * same staged eager session load that starts every other non-displayed session. The displayed
+     * session is left untouched, so unhiding never takes the owner off the session he is working in.
+     */
+    public void recreateUnhiddenSession(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        if (service.getTermuxSessionForSessionName(sessionName) != null) return;
+
+        SessionDefinitionPlannedSession plannedSession = new SessionDefinitionPlanner()
+            .planNamedSession(sessionName, mActivity.getPreferences().getAutosshCommand());
+        if (plannedSession.hasCommand()) {
+            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), false, false);
+        } else {
+            addNewSession(false, plannedSession.getName(), false);
+        }
+        mActivity.eagerLoadAllSessions();
+    }
+
+    /**
+     * Releases every runtime resource a session holds once it is hidden and drops its live session
+     * object, so a hidden session holds no shell process, no terminal emulator and no scrollback
+     * buffer, and is absent from the service session list that every statusline scan, every reconnect
+     * selection and every session cap count iterates. Only the local shell process group is signalled,
+     * by the same guarded local {@code kill(2)} the delete-session path uses; no command text is sent
+     * and no remote host is contacted, so unhiding restores the session locally.
+     */
+    public void releaseHiddenSessionRuntimeResources(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return;
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        TermuxSession hiddenTermuxSession = service.getTermuxSessionForSessionName(sessionName);
+        if (hiddenTermuxSession == null) return;
+        TerminalSession hiddenSession = hiddenTermuxSession.getTerminalSession();
+        if (hiddenSession == null) return;
+
+        cancelReconnectTimeout(sessionName);
+        boolean hiddenSessionWasDisplayed = mActivity.getCurrentSession() == hiddenSession;
+
+        purgeNewActivityForRemovedSession(sessionName);
+
+        if (mActivity.getTermuxBrowserController() != null)
+            mActivity.getTermuxBrowserController().onSessionRemoved(hiddenSession);
+
+        if (mPersistedSessionBySession.remove(hiddenSession) != null)
+            savePersistedSessions();
+
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter != null)
+            toolbarAdapter.removeTextInputForSession(hiddenSession);
+
+        hiddenSession.releaseRuntimeResources();
+        service.removeTermuxSession(hiddenSession);
+
+        if (hiddenSessionWasDisplayed) {
+            TermuxSession nextSession = selectNextVisibleSession();
+            if (nextSession != null)
+                setCurrentSession(nextSession.getTerminalSession());
+        }
+        termuxSessionListNotifyUpdated();
     }
 
     private boolean revealExistingSessionByName(@Nullable String sessionName, boolean closeDrawerAfter) {
