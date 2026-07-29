@@ -6,14 +6,16 @@ import org.junit.Test;
 public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
 
     @Test
-    public void preservingPurgeKeepsTheDisplayedCallOutAndReplyTimes() {
+    public void preservingPurgeKeepsTheDisplayedCallAndReplyTimesAndDropsTheOutTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("session-one", 1_000L, 2_000L, 3_000L, 1);
 
         store.purgeSessionPreservingStatuslineTimes("session-one");
 
         Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineCallTimeMillis("session-one"));
-        Assert.assertEquals(Long.valueOf(2_000L), store.getStatuslineOutTimeMillis("session-one"));
+        Assert.assertNull("the out time is what the hung judgement reads and the replacement has "
+                + "produced no output yet, so an in-place reconnect must not hand it over",
+            store.getStatuslineOutTimeMillis("session-one"));
         Assert.assertEquals(Long.valueOf(3_000L), store.getStatuslineReplyTimeMillis("session-one"));
         Assert.assertEquals(1, store.getSubagentCount("session-one"));
     }
@@ -26,8 +28,11 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
 
         store.purgeSessionPreservingStatuslineTimes("session-one");
 
-        Long dotTierSource = store.outActivityTimeMillisForDotTier("session-one");
-        Assert.assertEquals(Long.valueOf(4_900L), dotTierSource);
+        Assert.assertNull("the replacement has produced no output yet, so the dot tier must not age "
+                + "off the output time of the session it replaced",
+            store.outActivityTimeMillisForDotTier("session-one"));
+        Long dotTierSource = store.replyActivityTimeMillisForDotTier("session-one");
+        Assert.assertEquals(Long.valueOf(1_000L), dotTierSource);
         Assert.assertNotEquals(SessionNewActivityStore.MORE_THAN_ONE_DAY_LABEL,
             SessionNewActivityStore.formatRelativeAge(dotTierSource, now));
     }

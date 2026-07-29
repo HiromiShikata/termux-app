@@ -935,7 +935,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (terminalSession == null || terminalSession.mSessionName == null) continue;
             allLiveSessionNames.add(terminalSession.mSessionName);
         }
-        Set<String> hiddenSessionNames = hiddenSessionNames();
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        Set<String> hiddenSessionNames = preferences != null
+            ? preferences.getDisabledSessionNames()
+            : Collections.emptySet();
         TermuxSessionsListViewController listViewController =
             mActivity.getTermuxSessionListViewController();
         Set<String> expandedProjectSessionNames = listViewController != null
