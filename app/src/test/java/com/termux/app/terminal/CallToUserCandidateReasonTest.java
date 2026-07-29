@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -190,6 +191,65 @@ public class CallToUserCandidateReasonTest {
         assertEquals(2, trigger.reasons.size());
         assertEquals("older ask: confirm the plan", trigger.reasons.get(0));
         assertEquals("newer ask: confirm the release", trigger.reasons.get(1));
+    }
+
+    /**
+     * The statusline is redrawn in place at the bottom of the window and its output is refreshed on
+     * an interval rather than on every frame, so a message printed between two refreshes appears
+     * ABOVE a statusline row that still carries the previous call's trigger value. The already-fired
+     * trigger must not consume the candidate printed after it: doing so destroys that candidate's
+     * reason, because the store discards the repeated trigger value as an already-known call.
+     */
+    @Test
+    public void anAlreadyFiredTriggerRepeatedByTheCachedStatuslineDoesNotConsumeALaterCandidate() {
+        RecordingTrigger trigger = new RecordingTrigger();
+        CallToUserTagController controller = new CallToUserTagController(trigger);
+
+        controller.onSessionTextChanged(SESSION,
+            "<call-to-user-pending>first ask: approve the rollout</call-to-user-pending>\n"
+                + "<call-to-user>2026-07-28T09:40:00.000Z</call-to-user>\n");
+
+        controller.onSessionTextChanged(SESSION,
+            "<call-to-user-pending>first ask: approve the rollout</call-to-user-pending>\n"
+                + "<call-to-user-pending>second ask: approve the hotfix</call-to-user-pending>\n"
+                + "<call-to-user>2026-07-28T09:40:00.000Z</call-to-user>\n");
+
+        assertEquals(List.of("2026-07-28T09:40:00.000Z"), trigger.triggerValues);
+        assertEquals(List.of("first ask: approve the rollout"), trigger.reasons);
+    }
+
+    /**
+     * End to end over the three renders the cached statusline produces: the first call fires, the
+     * second candidate is printed while the statusline still shows the first call's trigger value,
+     * and the second call's own trigger value arrives on the next refresh. The second call must
+     * carry its own reason; falling back to the trigger value would put a raw ISO-8601 timestamp in
+     * the pending-call footer, which is the defect this change exists to remove.
+     */
+    @Test
+    public void secondCallKeepsItsOwnReasonAfterTheCachedStatuslineRepeatedTheEarlierTrigger() {
+        SessionNewActivityStore store = new SessionNewActivityStore();
+        CallToUserTagController controller = controllerInto(store, 5_000L);
+
+        controller.onSessionTextChanged(SESSION,
+            "<call-to-user-pending>first ask: approve the rollout</call-to-user-pending>\n"
+                + "<call-to-user>2026-07-28T09:40:00.000Z</call-to-user>\n");
+
+        controller.onSessionTextChanged(SESSION,
+            "<call-to-user-pending>first ask: approve the rollout</call-to-user-pending>\n"
+                + "<call-to-user-pending>second ask: approve the hotfix</call-to-user-pending>\n"
+                + "<call-to-user>2026-07-28T09:40:00.000Z</call-to-user>\n");
+
+        controller.onSessionTextChanged(SESSION,
+            "<call-to-user-pending>first ask: approve the rollout</call-to-user-pending>\n"
+                + "<call-to-user-pending>second ask: approve the hotfix</call-to-user-pending>\n"
+                + "<call-to-user>2026-07-28T09:55:00.000Z</call-to-user>\n");
+
+        assertEquals(List.of("first ask: approve the rollout", "second ask: approve the hotfix"),
+            store.getUnacknowledgedCallReasons(SESSION));
+        for (String reason : store.getUnacknowledgedCallReasons(SESSION)) {
+            assertFalse("the footer fell back to a raw trigger value: " + reason,
+                reason.startsWith("2026-"));
+        }
     }
 
     @Test

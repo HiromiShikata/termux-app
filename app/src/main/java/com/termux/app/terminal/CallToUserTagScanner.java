@@ -3,6 +3,8 @@ package com.termux.app.terminal;
 import com.termux.app.outputtag.OutputTagScanner;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +33,19 @@ import java.util.regex.Pattern;
  * reason on use is what keeps a suppressed candidate from leaking: once a call has taken it, a later
  * unrelated call cannot display it again and falls back to its own trigger value, which keeps the
  * call recorded instead of silently dropping it.
+ *
+ * <p>Document order alone is not enough to bind correctly, because the statusline is redrawn in
+ * place at the bottom of the window and its output is refreshed on an interval rather than on every
+ * frame. A message printed between two refreshes therefore appears ABOVE a statusline row that still
+ * carries the previous call's trigger value, which puts an already-fired trigger after a candidate
+ * that became visible later. The stream deduplication cannot absorb that on its own: it reports the
+ * genuinely new candidate and everything following it as new, so the repeated trigger is handed back
+ * as well. This scanner therefore also remembers which trigger values have already fired, and
+ * guarantees that a trigger value which has already fired can never consume a candidate that first
+ * became visible after that trigger fired, so a genuine new trigger always consumes the most recent
+ * candidate not yet consumed by an earlier trigger. Without it the repeated trigger takes the new
+ * candidate's reason and the store then discards the call as an already-known trigger value, so the
+ * reason is destroyed and the next genuine call falls back to rendering its raw trigger value.
  */
 public final class CallToUserTagScanner {
 
@@ -51,8 +66,19 @@ public final class CallToUserTagScanner {
 
     private static final String TRIGGER_EVENT_PREFIX = "trigger ";
 
+    /**
+     * How many already-fired trigger values one session remembers. A trigger value identifies one
+     * call, and {@link com.termux.app.terminal.session.SessionNewActivityStateCaps#MAX_CALL_TRIGGER_VALUES_PER_SESSION}
+     * is how many the store keeps, so a bound well above it means this scanner never forgets a call
+     * the store would still recognize, while a long-lived session cannot grow without limit.
+     */
+    private static final int MAX_REMEMBERED_TRIGGER_VALUES = 64;
+
     private final OutputTagScanner outputTagScanner =
         new OutputTagScanner(CallToUserTagScanner::extractOrderedEvents);
+
+    /** Trigger values that have already fired in this session, oldest first. */
+    private final LinkedHashSet<String> mFiredTriggerValues = new LinkedHashSet<>();
 
     private String mRememberedCandidateReason;
 
@@ -79,12 +105,33 @@ public final class CallToUserTagScanner {
                 continue;
             }
             String triggerValue = event.substring(TRIGGER_EVENT_PREFIX.length());
+            if (!rememberFiredTriggerValue(triggerValue)) {
+                continue;
+            }
             String displayReason =
                 mRememberedCandidateReason == null ? triggerValue : mRememberedCandidateReason;
             mRememberedCandidateReason = null;
             calls.add(new ApprovedCallToUser(triggerValue, displayReason));
         }
         return calls;
+    }
+
+    /**
+     * Records {@code triggerValue} as fired and reports whether it is the first time it fired.
+     * Returning false marks a repeat, which is the same call rendered again rather than a new one:
+     * the store keys deduplication on this value and would discard the resulting call, so letting it
+     * through would consume a candidate reason and destroy it.
+     */
+    private boolean rememberFiredTriggerValue(String triggerValue) {
+        if (!mFiredTriggerValues.add(triggerValue)) {
+            return false;
+        }
+        Iterator<String> oldestFirst = mFiredTriggerValues.iterator();
+        while (mFiredTriggerValues.size() > MAX_REMEMBERED_TRIGGER_VALUES && oldestFirst.hasNext()) {
+            oldestFirst.next();
+            oldestFirst.remove();
+        }
+        return true;
     }
 
     private static List<String> valuesWithPrefix(String output, String eventPrefix) {
