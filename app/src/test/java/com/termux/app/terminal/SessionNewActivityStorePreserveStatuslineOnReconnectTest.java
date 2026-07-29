@@ -10,7 +10,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("session-one", 1_000L, 2_000L, 3_000L, 1);
 
-        store.purgeSessionPreservingStatuslineTimes("session-one");
+        store.purgeSessionKeepingTheCallAndReplyTimes("session-one");
 
         Assert.assertEquals(Long.valueOf(1_000L), store.getStatuslineCallTimeMillis("session-one"));
         Assert.assertNull("the out time is what the hung judgement reads and the replacement has "
@@ -26,7 +26,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("session-one", 1_000L, 4_900L, 1_000L, 0);
 
-        store.purgeSessionPreservingStatuslineTimes("session-one");
+        store.purgeSessionKeepingTheCallAndReplyTimes("session-one");
 
         Assert.assertNull("the replacement has produced no output yet, so the dot tier must not age "
                 + "off the output time of the session it replaced",
@@ -44,7 +44,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         store.recordSeen("session-one", 2_500L);
         store.recordUserInput("session-one", 2_600L);
 
-        store.purgeSessionPreservingStatuslineTimes("session-one");
+        store.purgeSessionKeepingTheCallAndReplyTimes("session-one");
 
         Assert.assertNull(store.getLastSeenTimeMillis("session-one"));
         Assert.assertEquals(Long.valueOf(2_600L), store.getLastUserInputTimeMillis("session-one"));
@@ -60,7 +60,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         Assert.assertEquals("the on-send input must overwrite the displayed reply before reconnect",
             Long.valueOf(ownerSendTime), store.effectiveReplyTimeMillis("session-one"));
 
-        store.purgeSessionPreservingStatuslineTimes("session-one");
+        store.purgeSessionKeepingTheCallAndReplyTimes("session-one");
 
         Assert.assertEquals("an in-place reconnect must keep the on-send reply overwrite rather than "
                 + "reverting to the minutes-old statusline reply",
@@ -73,7 +73,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         store.recordExplicitCall("session-one", 1_000L, "please review");
         Assert.assertFalse(store.getUnacknowledgedCallReasons("session-one").isEmpty());
 
-        store.purgeSessionPreservingStatuslineTimes("session-one");
+        store.purgeSessionKeepingTheCallAndReplyTimes("session-one");
 
         Assert.assertTrue(store.getUnacknowledgedCallReasons("session-one").isEmpty());
         Assert.assertNull(store.currentPendingCallToUserReason("session-one"));

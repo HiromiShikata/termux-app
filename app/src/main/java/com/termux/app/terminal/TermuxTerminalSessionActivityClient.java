@@ -985,20 +985,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
-    /**
-     * The reconnect-in-place counterpart of {@link #purgeNewActivityForRemovedSession}. A reconnect
-     * tears down the dead session and immediately re-creates one reusing the same session name, so the
-     * displayed statusline {@code call:}/{@code out:}/{@code reply:} times are kept (via {@link
-     * SessionNewActivityStore#purgeSessionPreservingStatuslineTimes}) instead of cleared. Keeping them
-     * stops the row from jumping to {@code >1d} until the reconnected session re-renders; the next
-     * parsed statusline replaces the kept times with fresher values.
-     */
     private void purgeNewActivityForReconnectedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
         mSessionOutputProgressTracker.forget(sessionName);
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
-        store.purgeSessionPreservingStatuslineTimes(sessionName);
+        store.purgeSessionKeepingTheCallAndReplyTimes(sessionName);
         termuxSessionListNotifyUpdated();
     }
 
@@ -1007,7 +999,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * as long as the real reconnect/fetch is in flight: the flag is cleared when the next parsed
      * statusline for the session arrives ({@link #applyStatuslineUpdates}), with no timer. It is set
      * after {@link #reconnectDeadSessionPreservingDisplayedSession} returns, because that call clears
-     * the flag via {@link SessionNewActivityStore#purgeSessionPreservingStatuslineTimes} while tearing
+     * the flag via {@link SessionNewActivityStore#purgeSessionKeepingTheCallAndReplyTimes} while tearing
      * the dead session down; setting after the teardown leaves the fresh flag in place for the
      * just-recreated session.
      */

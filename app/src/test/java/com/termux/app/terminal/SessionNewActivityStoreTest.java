@@ -1248,11 +1248,11 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void purgeSessionPreservingStatuslineTimesClearsReconnectingFlag() {
+    public void purgeSessionKeepingTheCallAndReplyTimesClearsReconnectingFlag() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.setReconnecting("worker", 5_000L);
 
-        store.purgeSessionPreservingStatuslineTimes("worker");
+        store.purgeSessionKeepingTheCallAndReplyTimes("worker");
 
         Assert.assertFalse(store.isReconnecting("worker"));
     }

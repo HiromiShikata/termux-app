@@ -28,7 +28,7 @@ public class ReconnectPurgeStatuslineOutTimeTest {
                 + "exercise the reconnect purge at all",
             backgroundHungSessionDetector.isHung(store.getStatuslineOutTimeMillis(SESSION_NAME), nowMillis));
 
-        store.purgeSessionPreservingStatuslineTimes(SESSION_NAME);
+        store.purgeSessionKeepingTheCallAndReplyTimes(SESSION_NAME);
 
         assertNull("the reconnect purge tears down the old session and hands the same session name to a "
                 + "replacement, so the recorded statusline output time of the torn-down session must not "
@@ -42,7 +42,7 @@ public class ReconnectPurgeStatuslineOutTimeTest {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes(SESSION_NAME, null, nowMillis - ELEVEN_MINUTES_MILLIS, null);
 
-        store.purgeSessionPreservingStatuslineTimes(SESSION_NAME);
+        store.purgeSessionKeepingTheCallAndReplyTimes(SESSION_NAME);
 
         assertFalse("a session that has just been reconnected has had no opportunity to render a "
                 + "statusline yet, so the inherited output time must not keep it judged hung and "
