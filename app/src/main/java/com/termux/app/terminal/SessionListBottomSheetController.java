@@ -561,7 +561,7 @@ public class SessionListBottomSheetController {
         if (preferences == null) {
             return;
         }
-        ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, terminalSession.mSessionName);
+        OpenedSessionUnhider.unhideOpenedSession(preferences, terminalSession.mSessionName);
     }
 
     private void expandNavigatedShortcutSessionProject(@NonNull TermuxSession targetSession) {

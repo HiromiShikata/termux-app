@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 
 @RunWith(RobolectricTestRunner.class)
-public class ShortcutNavigationSessionUnhiderTest {
+public class OpenedSessionUnhiderTest {
 
     private TermuxAppSharedPreferences buildPreferences() {
         Activity activity = Robolectric.buildActivity(Activity.class).create().get();
@@ -28,7 +28,7 @@ public class ShortcutNavigationSessionUnhiderTest {
         TermuxAppSharedPreferences preferences = buildPreferences();
         preferences.setDisabledSessionNames("alpha\nbeta");
 
-        boolean unhid = ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, "alpha");
+        boolean unhid = OpenedSessionUnhider.unhideOpenedSession(preferences, "alpha");
 
         Assert.assertTrue(unhid);
         Assert.assertFalse(preferences.isSessionDisabled("alpha"));
@@ -40,7 +40,7 @@ public class ShortcutNavigationSessionUnhiderTest {
         TermuxAppSharedPreferences preferences = buildPreferences();
         preferences.setDisabledSessionNames("beta");
 
-        boolean unhid = ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, "alpha");
+        boolean unhid = OpenedSessionUnhider.unhideOpenedSession(preferences, "alpha");
 
         Assert.assertFalse(unhid);
         Assert.assertEquals(new LinkedHashSet<>(Collections.singletonList("beta")),
@@ -54,7 +54,7 @@ public class ShortcutNavigationSessionUnhiderTest {
         Assert.assertNotNull(preferences);
         preferences.setDisabledSessionNames("alpha");
 
-        ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, "alpha");
+        OpenedSessionUnhider.unhideOpenedSession(preferences, "alpha");
 
         TermuxAppSharedPreferences reloaded = TermuxAppSharedPreferences.build(activity, true);
         Assert.assertNotNull(reloaded);
@@ -66,8 +66,8 @@ public class ShortcutNavigationSessionUnhiderTest {
         TermuxAppSharedPreferences preferences = buildPreferences();
         preferences.setDisabledSessionNames("alpha");
 
-        Assert.assertFalse(ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, null));
-        Assert.assertFalse(ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, ""));
+        Assert.assertFalse(OpenedSessionUnhider.unhideOpenedSession(preferences, null));
+        Assert.assertFalse(OpenedSessionUnhider.unhideOpenedSession(preferences, ""));
         Assert.assertTrue(preferences.isSessionDisabled("alpha"));
     }
 }

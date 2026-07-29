@@ -44,6 +44,6 @@ public class ShortcutNavigationUnhideWiringTest {
 
         Assert.assertTrue("the unhide must persist through the same disabled-session preference the filter reads",
             unhideMethodBody.contains(
-                "ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, terminalSession.mSessionName)"));
+                "OpenedSessionUnhider.unhideOpenedSession(preferences, terminalSession.mSessionName)"));
     }
 }

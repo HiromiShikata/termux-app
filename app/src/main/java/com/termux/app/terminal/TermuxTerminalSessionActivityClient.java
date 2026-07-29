@@ -1392,7 +1392,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void unhideOpenedSession(@Nullable String sessionName) {
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return;
-        ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, sessionName);
+        OpenedSessionUnhider.unhideOpenedSession(preferences, sessionName);
     }
 
     private boolean shouldReconnectOnSwitch(@NonNull TerminalSession session) {
