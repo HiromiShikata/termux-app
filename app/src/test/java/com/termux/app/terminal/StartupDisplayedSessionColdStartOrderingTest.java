@@ -172,8 +172,8 @@ public class StartupDisplayedSessionColdStartOrderingTest {
         String attachedHiddenSessionName = terminalView.getCurrentSession().mSessionName;
 
         assertEquals(ALPHA_TWO, attachedNonHiddenSessionName);
-        assertEquals("the hidden set must gate only the automatic startup pass, never the path that runs "
-                + "when the user opens a session",
+        assertEquals("the hidden set must not keep a session out of the terminal view when the user opens "
+                + "it, because it gates only the automatic startup pass",
             ALPHA_ONE, attachedHiddenSessionName);
     }
 

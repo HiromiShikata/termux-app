@@ -3,6 +3,7 @@ package com.termux.app.terminal;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -20,6 +21,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
@@ -103,15 +105,40 @@ public class HiddenSessionStartupProcessStartTest {
     }
 
     @Test
-    public void openingAHiddenSessionAttachesItToTheTerminalViewThatStartsIt() {
+    public void openingAHiddenSessionDisplaysItAndAttachesItToTheTerminalView() {
         activity.getTermuxTerminalSessionClient().setCurrentSession(terminalSession(HIDDEN_SESSION));
         Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         assertEquals("opening a hidden session must display it like any other session",
             HIDDEN_SESSION, activity.getCurrentSession().mSessionName);
-        assertEquals("the hidden session must be attached to the terminal view, which sizes and so starts "
-                + "the session it is attached to",
+        assertEquals("opening a hidden session must attach it to the terminal view, because the hidden set "
+                + "gates only the automatic startup pass",
             HIDDEN_SESSION, terminalView.getCurrentSession().mSessionName);
+    }
+
+    @Test
+    public void openingAHiddenSessionStartsItWithTheDimensionsOfTheLaidOutTerminalView() throws Exception {
+        giveTheTerminalViewMeasurableDimensions();
+        int[] laidOutDimensions = terminalView.computeSessionEmulatorDimensions();
+        TerminalSession hiddenSession = terminalSession(HIDDEN_SESSION);
+        assertNull("the hidden session must still be unstarted before the user opens it, otherwise this "
+                + "test cannot tell the opening apart from the startup pass", hiddenSession.getEmulator());
+
+        Throwable deviceOnlySubprocessFailure = openUntilTheDeviceOnlySubprocessCall(hiddenSession);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+
+        assertNotNull("opening a hidden session must run the session start path as far as the native "
+                + "subprocess creation, which is the last step a Java virtual machine can reach",
+            deviceOnlySubprocessFailure);
+        TerminalEmulator startedEmulator = hiddenSession.getEmulator();
+        assertNotNull("opening a hidden session must reach the session size update that creates the "
+                + "emulator; attachment on its own leaves the emulator null", startedEmulator);
+        assertEquals("the session must be started with the columns computed from the laid out terminal "
+                + "view, not left unstarted by the zero dimension guard",
+            laidOutDimensions[0], startedEmulator.mColumns);
+        assertEquals("the session must be started with the rows computed from the laid out terminal "
+                + "view, not left unstarted by the zero dimension guard",
+            laidOutDimensions[1], startedEmulator.mRows);
     }
 
     @Test
@@ -152,6 +179,15 @@ public class HiddenSessionStartupProcessStartTest {
         }
     }
 
+    private Throwable openUntilTheDeviceOnlySubprocessCall(TerminalSession session) {
+        try {
+            activity.getTermuxTerminalSessionClient().setCurrentSession(session);
+            return null;
+        } catch (Throwable deviceOnlySubprocessFailure) {
+            return deviceOnlySubprocessFailure;
+        }
+    }
+
     private void giveTheTerminalViewMeasurableDimensions() throws Exception {
         set(terminalView, View.class, "mLeft", 0);
         set(terminalView, View.class, "mTop", 0);
@@ -188,7 +224,8 @@ public class HiddenSessionStartupProcessStartTest {
     }
 
     private TermuxSession liveSession(String sessionName) throws Exception {
-        TerminalSession terminalSession = new TerminalSession(null, null, null, null, null, null);
+        TerminalSession terminalSession = new TerminalSession("/system/bin/sh", "/", new String[0],
+            new String[0], null, activity.getTermuxTerminalSessionClient());
         terminalSession.mSessionName = sessionName;
         Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
             TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class, boolean.class);
