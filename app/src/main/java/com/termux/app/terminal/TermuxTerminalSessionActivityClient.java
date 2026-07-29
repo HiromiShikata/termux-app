@@ -2275,8 +2275,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * session on the remote host, which is the separate kill-host-session action.
      * <p>
      * The hide action is bound on every row, including the row of the session the terminal view is
-     * rendering, so hiding that session first moves the terminal view onto the topmost session that
-     * is not hidden and only then releases it. Releasing the session the view is still rendering
+     * rendering, so hiding that session first moves the terminal view onto the topmost session the
+     * owner can currently see and only then releases it. That candidate survives both the hidden
+     * filter and the collapsed-project filter, so the view never lands in a group the owner
+     * collapsed, and a candidate that still holds its terminal emulator or its shell process is
+     * preferred, so the view never lands on a session the reclamation sweep already released and
+     * silently starts a fresh shell process in it. Releasing the session the view is still rendering
      * would leave the owner looking at content with no session behind it and typing keystrokes that
      * reach no process, which is why the move happens first rather than as an exclusion of the
      * current session from the release, and why
@@ -2297,7 +2301,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
         TerminalSession sessionBeingHidden = findTerminalSessionByName(sessionName);
         if (sessionBeingHidden != null && sessionBeingHidden == mActivity.getCurrentSession()) {
-            TerminalSession sessionToRenderInstead = topmostSessionThatIsNotHidden(sessionBeingHidden);
+            TerminalSession sessionToRenderInstead = topmostSessionTheOwnerCanSeeInsteadOf(sessionBeingHidden);
             if (sessionToRenderInstead == null) {
                 restoreHiddenMarkOfTheLastVisibleSession(sessionName);
                 return Collections.emptyList();
@@ -2309,23 +2313,29 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Nullable
-    private TerminalSession topmostSessionThatIsNotHidden(@NonNull TerminalSession sessionBeingHidden) {
+    private TerminalSession topmostSessionTheOwnerCanSeeInsteadOf(@NonNull TerminalSession sessionBeingHidden) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
         TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
         if (listViewController == null) return null;
 
-        int topmostNonHiddenSessionIndex = listViewController.getTopmostNonHiddenSessionIndex();
-        if (topmostNonHiddenSessionIndex < 0) return null;
+        TerminalSession topmostSessionHoldingNoRuntime = null;
+        for (int sessionIndex : listViewController.getSessionIndexesOfRowsTheOwnerCanSee()) {
+            TermuxSession termuxSession = service.getTermuxSession(sessionIndex);
+            if (termuxSession == null) continue;
 
-        TermuxSession topmostSession = service.getTermuxSession(topmostNonHiddenSessionIndex);
-        if (topmostSession == null) return null;
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null || terminalSession == sessionBeingHidden) continue;
 
-        TerminalSession topmostTerminalSession = topmostSession.getTerminalSession();
-        if (topmostTerminalSession == sessionBeingHidden) return null;
-
-        return topmostTerminalSession;
+            if (terminalSession.getEmulator() != null || terminalSession.isRunning()) {
+                return terminalSession;
+            }
+            if (topmostSessionHoldingNoRuntime == null) {
+                topmostSessionHoldingNoRuntime = terminalSession;
+            }
+        }
+        return topmostSessionHoldingNoRuntime;
     }
 
     private void restoreHiddenMarkOfTheLastVisibleSession(@NonNull String sessionName) {

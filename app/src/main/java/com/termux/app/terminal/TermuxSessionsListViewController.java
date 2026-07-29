@@ -486,6 +486,21 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             buildAllRows(), sessionNamesByIndex(), disabledSessionNames()));
     }
 
+    @NonNull
+    public List<Integer> getSessionIndexesOfRowsTheOwnerCanSee() {
+        List<SessionHierarchyRow> rowsTheOwnerCanSee = SessionHierarchyBuilder.filterCollapsedProjectSessions(
+            SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex(),
+                disabledSessionNames()), mCollapsedProjectKeys);
+        List<Integer> sessionIndexes = new ArrayList<>();
+        for (SessionHierarchyRow row : rowsTheOwnerCanSee) {
+            if (row.isHeader()) {
+                continue;
+            }
+            sessionIndexes.add(row.getSessionIndex());
+        }
+        return sessionIndexes;
+    }
+
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
         return VisibleSessionNavigator.nextSessionIndex(
             getOrderedSessionIndexes(), getNavigationCandidateSessionIndexes(), currentSessionIndex, forward);
