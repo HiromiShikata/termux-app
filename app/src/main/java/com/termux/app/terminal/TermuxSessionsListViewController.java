@@ -564,7 +564,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         for (int sessionIndex : visibleSessionIndexes) {
             String sessionName = sessionIndex >= 0 && sessionIndex < sessionNamesByIndex.size()
                 ? sessionNamesByIndex.get(sessionIndex) : null;
-            if (sessionName != null && disabledSessionNames.contains(sessionName)) {
+            if (HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames)) {
                 continue;
             }
             navigableSessionIndexes.add(sessionIndex);
@@ -657,7 +657,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         for (int sessionIndex : getVisibleSessionIndexes()) {
             String sessionName = sessionIndex >= 0 && sessionIndex < sessionNames.size()
                 ? sessionNames.get(sessionIndex) : null;
-            if (sessionName != null && disabledSessionNames.contains(sessionName)) {
+            if (HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames)) {
                 disabledSessionIndexes.add(sessionIndex);
             }
         }
@@ -786,7 +786,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     static boolean isExcludedFromActivityIndicators(@Nullable String sessionName,
                                                     @NonNull Set<String> disabledSessionNames) {
-        return sessionName != null && disabledSessionNames.contains(sessionName);
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames);
     }
 
     @NonNull

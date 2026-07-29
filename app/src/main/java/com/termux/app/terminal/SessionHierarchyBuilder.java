@@ -4,6 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
+import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 
@@ -384,7 +385,7 @@ public final class SessionHierarchyBuilder {
                                            @NonNull List<String> sessionNamesByIndex,
                                            @NonNull Set<String> hiddenSessionNames) {
         String sessionName = resolveRowSessionName(sessionRow, sessionNamesByIndex);
-        return sessionName != null && hiddenSessionNames.contains(sessionName);
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, hiddenSessionNames);
     }
 
     @Nullable

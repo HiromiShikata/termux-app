@@ -19,13 +19,13 @@ public final class VisibleSessionSelector {
         if (!activityVisible) {
             return visibleSessionNames;
         }
-        if (currentSessionName != null && !hiddenSessionNames.contains(currentSessionName)) {
+        if (currentSessionName != null && !HiddenSessionNameMatcher.matchesAHiddenSession(currentSessionName, hiddenSessionNames)) {
             visibleSessionNames.add(currentSessionName);
         }
         if (sessionListOpen) {
             for (String onScreenListSessionName : onScreenListSessionNames) {
                 if (onScreenListSessionName == null
-                        || hiddenSessionNames.contains(onScreenListSessionName)) {
+                        || HiddenSessionNameMatcher.matchesAHiddenSession(onScreenListSessionName, hiddenSessionNames)) {
                     continue;
                 }
                 visibleSessionNames.add(onScreenListSessionName);
