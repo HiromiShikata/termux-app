@@ -5,6 +5,8 @@ import org.junit.Test;
 
 public class HostTmuxSessionNameTest {
 
+    private static final String KILL_TEMPLATE = "ssh host tmux kill-session -t {name}";
+
     @Test
     public void dotsBecomeUnderscoresBecauseTmuxRewritesThem() {
         Assert.assertEquals("host_example_com", HostTmuxSessionName.normalize("host.example.com"));
@@ -26,12 +28,19 @@ public class HostTmuxSessionNameTest {
     }
 
     @Test
-    public void killCommandAndResetCommandNormalizeTheSameSessionNameIdentically() {
+    public void killCommandTargetsExactlyTheNameProducedBySharedNormalization() {
         String sessionName = "host.example.com:8080";
         String normalized = HostTmuxSessionName.normalize(sessionName);
 
-        Assert.assertEquals("\u0002:kill-session -t '" + normalized + "'\n",
-            HostTmuxSessionKillCommand.forSessionName(sessionName));
+        Assert.assertTrue(HostTmuxSessionKillCommand.forSessionName(sessionName, KILL_TEMPLATE)
+            .contains("'" + normalized + "'"));
+    }
+
+    @Test
+    public void resetCommandTargetsExactlyTheNameProducedBySharedNormalization() {
+        String sessionName = "host.example.com:8080";
+        String normalized = HostTmuxSessionName.normalize(sessionName);
+
         Assert.assertEquals("reset.sh '" + normalized + "'",
             ResetSessionPlanner.plan("reset.sh {name}", sessionName).getCommand());
     }

@@ -749,6 +749,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mAllSessionsStatuslineScanGate.forget(finishedSession.mHandle);
         }
 
+        if (TransientCommandSessionName.isTransient(finishedSession.mSessionName)) {
+            removeFinishedSession(finishedSession);
+            return;
+        }
+
         int index = service.getIndexOfSession(finishedSession);
 
         // For plugin commands that expect the result back, we should immediately close the session
@@ -767,11 +772,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             // Verify that session was not removed before we got told about it finishing:
             if (index >= 0)
                 mActivity.showToast(toToastTitle(finishedSession) + " - exited", true);
-        }
-
-        if (TransientCommandSessionName.isTransient(finishedSession.mSessionName)) {
-            removeFinishedSession(finishedSession);
-            return;
         }
 
         boolean isAndroidTV = mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
@@ -1635,15 +1635,55 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         HostTmuxSessionKiller.kill(new HostTmuxSessionKiller.Target() {
             @Override
-            public void writeKillCommand(String killCommand) {
-                sessionToKill.write(killCommand);
+            public boolean executeHostKillCommand(String commandSessionName, String hostKillCommand) {
+                TermuxService service = mActivity.getTermuxService();
+                if (service == null) return false;
+
+                if (revealExistingSessionByName(commandSessionName, true)) return false;
+
+                int liveSessionCount = cappedSessionCount(service);
+                if (liveSessionCount >= maxSessions()) {
+                    notifyMaxTerminalsReached(liveSessionCount);
+                    return false;
+                }
+
+                String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+                String[] arguments = new String[]{"-c", hostKillCommand};
+                return service.createTermuxSession(shellPath, arguments, null,
+                    workingDirectoryForNewSession(), false, commandSessionName) != null;
+            }
+
+            @Override
+            public void notifyUnavailable(KillHostSessionPlan.Outcome outcome) {
+                mActivity.showToast(mActivity.getString(
+                    outcome == KillHostSessionPlan.Outcome.SESSION_NAME_MISSING
+                        ? R.string.msg_kill_host_session_name_missing
+                        : R.string.msg_kill_session_command_not_configured), true);
             }
 
             @Override
             public void finishLocalSession() {
                 deleteSession(sessionToKill);
             }
-        }, sessionToKill.mSessionName, mMainThreadHandler::postDelayed);
+        }, mActivity.getPreferences().getKillSessionCommand(), sessionToKill.mSessionName,
+            mMainThreadHandler::postDelayed);
+    }
+
+    private String workingDirectoryForNewSession() {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionCwd = currentSession == null ? null : currentSession.getCwd();
+        return currentSessionCwd == null || currentSessionCwd.isEmpty()
+            ? mActivity.getProperties().getDefaultWorkingDirectory()
+            : currentSessionCwd;
+    }
+
+    private void notifyMaxTerminalsReached(int liveSessionCount) {
+        DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+            "cap=" + maxSessions());
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_max_terminals_reached)
+            .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
+            .setPositiveButton(android.R.string.ok, null));
     }
 
     public void resetHostSession(final TerminalSession sessionToReset) {

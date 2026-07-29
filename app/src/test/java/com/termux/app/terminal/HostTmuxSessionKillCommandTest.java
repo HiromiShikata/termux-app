@@ -5,50 +5,98 @@ import org.junit.Test;
 
 public class HostTmuxSessionKillCommandTest {
 
+    private static final String KILL_TEMPLATE = "ssh host tmux kill-session -t {name}";
+
     @Test
-    public void sendsTmuxPrefixThenCommandPromptKillForSelectedSessionName() {
-        Assert.assertEquals(":kill-session -t 'host-session'\n",
-            HostTmuxSessionKillCommand.forSessionName("host-session"));
+    public void substitutesShellQuotedSessionNameIntoStoredTemplate() {
+        Assert.assertEquals("ssh host tmux kill-session -t 'host-session'",
+            HostTmuxSessionKillCommand.forSessionName("host-session", KILL_TEMPLATE));
     }
 
     @Test
-    public void prefixesWithControlBByDefaultSoTmuxInterceptsRegardlessOfForegroundProgram() {
-        String command = HostTmuxSessionKillCommand.forSessionName("host-session");
-        Assert.assertEquals(0x02, command.charAt(0));
-        Assert.assertTrue(command.startsWith(":"));
+    public void normalizesDotsInSessionNameToUnderscoresLikeTmuxDoesAtSessionCreation() {
+        Assert.assertEquals("ssh host tmux kill-session -t 'github_com'",
+            HostTmuxSessionKillCommand.forSessionName("github.com", KILL_TEMPLATE));
     }
 
     @Test
-    public void usesProvidedPrefixKeyWhenHostCustomizedTheTmuxPrefix() {
-        Assert.assertEquals(":kill-session -t 'host-session'\n",
-            HostTmuxSessionKillCommand.forSessionName("host-session", (char) 0x01));
+    public void normalizesColonsInSessionNameToUnderscoresLikeTmuxDoesAtSessionCreation() {
+        Assert.assertEquals("ssh host tmux kill-session -t 'https_//github_com/owner/repo/issues/123'",
+            HostTmuxSessionKillCommand.forSessionName("https://github.com/owner/repo/issues/123", KILL_TEMPLATE));
     }
 
     @Test
-    public void shellQuotesSessionNameWithSingleQuote() {
-        Assert.assertEquals(":kill-session -t 'it'\\''s'\n",
-            HostTmuxSessionKillCommand.forSessionName("it's"));
+    public void posixQuotesSessionNameContainingASingleQuote() {
+        Assert.assertEquals("ssh host tmux kill-session -t 'it'\\''s'",
+            HostTmuxSessionKillCommand.forSessionName("it's", KILL_TEMPLATE));
     }
 
     @Test
-    public void quotesSessionNameContainingShellMetacharacters() {
-        Assert.assertEquals(":kill-session -t 'a;b c$d'\n",
-            HostTmuxSessionKillCommand.forSessionName("a;b c$d"));
+    public void posixQuotesSessionNameContainingShellMetacharacters() {
+        Assert.assertEquals("ssh host tmux kill-session -t 'a;b c$d'",
+            HostTmuxSessionKillCommand.forSessionName("a;b c$d", KILL_TEMPLATE));
     }
 
     @Test
-    public void returnsNullForNullSessionName() {
-        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName(null));
+    public void substitutesEveryOccurrenceOfThePlaceholder() {
+        Assert.assertEquals("tmux has-session -t 'host-session' && tmux kill-session -t 'host-session'",
+            HostTmuxSessionKillCommand.forSessionName("host-session",
+                "tmux has-session -t {name} && tmux kill-session -t {name}"));
     }
 
     @Test
-    public void returnsNullForEmptySessionName() {
-        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName(""));
+    public void trimsSurroundingWhitespaceOfTheStoredTemplate() {
+        Assert.assertEquals("ssh host tmux kill-session -t 'host-session'",
+            HostTmuxSessionKillCommand.forSessionName("host-session", "  " + KILL_TEMPLATE + "\n"));
     }
 
     @Test
-    public void targetsNormalizedHostSessionNameForRawUrlContainingDotsAndColons() {
-        Assert.assertEquals((char) 0x02 + ":kill-session -t 'https_//github_com/owner/repo/issues/123'\n",
-            HostTmuxSessionKillCommand.forSessionName("https://github.com/owner/repo/issues/123", (char) 0x02));
+    public void producesNoCommandWhenTemplateIsNull() {
+        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName("host-session", null));
+    }
+
+    @Test
+    public void producesNoCommandWhenTemplateIsEmpty() {
+        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName("host-session", ""));
+    }
+
+    @Test
+    public void producesNoCommandWhenTemplateIsOnlyWhitespace() {
+        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName("host-session", "   \n"));
+    }
+
+    @Test
+    public void producesNoCommandWhenSessionNameIsNull() {
+        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName(null, KILL_TEMPLATE));
+    }
+
+    @Test
+    public void producesNoCommandWhenSessionNameIsEmpty() {
+        Assert.assertNull(HostTmuxSessionKillCommand.forSessionName("", KILL_TEMPLATE));
+    }
+
+    @Test
+    public void reportsWhetherAStoredTemplateIsConfigured() {
+        Assert.assertFalse(HostTmuxSessionKillCommand.hasCommandTemplate(null));
+        Assert.assertFalse(HostTmuxSessionKillCommand.hasCommandTemplate(""));
+        Assert.assertFalse(HostTmuxSessionKillCommand.hasCommandTemplate("  \n "));
+        Assert.assertTrue(HostTmuxSessionKillCommand.hasCommandTemplate(KILL_TEMPLATE));
+    }
+
+    @Test
+    public void targetsExactlyTheNameProducedBySharedHostTmuxSessionNameNormalization() {
+        String sessionName = "host.example.com:8080";
+
+        Assert.assertTrue(HostTmuxSessionKillCommand.forSessionName(sessionName, KILL_TEMPLATE)
+            .contains("'" + HostTmuxSessionName.normalize(sessionName) + "'"));
+    }
+
+    @Test
+    public void neverEmitsATmuxPrefixKeyBecauseTheCommandIsNotTypedIntoTheAttachedSession() {
+        String command = HostTmuxSessionKillCommand.forSessionName("host-session", KILL_TEMPLATE);
+        Assert.assertFalse("a tmux prefix byte would only be meaningful when typed into the attached pty",
+            command.indexOf(0x02) >= 0);
+        Assert.assertFalse("a trailing terminator would only be meaningful when typed into the attached pty",
+            command.endsWith("\n") || command.endsWith("\r"));
     }
 }

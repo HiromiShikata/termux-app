@@ -7,6 +7,8 @@ import java.util.Collections;
 
 public class TransientCommandSessionNameTest {
 
+    private static final String CONNECT_TEMPLATE = "autossh -M 0 {name}";
+
     @Test
     public void resetSessionNameIsDistinctFromTheSessionBeingReset() {
         Assert.assertEquals("[reset] work-session",
@@ -26,18 +28,54 @@ public class TransientCommandSessionNameTest {
     }
 
     @Test
+    public void killSessionNameIsDistinctFromTheSessionBeingKilled() {
+        Assert.assertEquals("[kill] work-session",
+            TransientCommandSessionName.forKillOfSession("work-session"));
+    }
+
+    @Test
+    public void unnamedSessionHasNoKillSessionName() {
+        Assert.assertNull(TransientCommandSessionName.forKillOfSession(null));
+        Assert.assertNull(TransientCommandSessionName.forKillOfSession(""));
+    }
+
+    @Test
+    public void killAndResetOfTheSameSessionAreDistinctSessions() {
+        Assert.assertNotEquals(TransientCommandSessionName.forKillOfSession("work-session"),
+            TransientCommandSessionName.forResetOfSession("work-session"));
+    }
+
+    @Test
+    public void killSessionNamesAreRecognizedAsTransient() {
+        Assert.assertTrue(TransientCommandSessionName.isTransient(
+            TransientCommandSessionName.forKillOfSession("work-session")));
+    }
+
+    @Test
     public void ordinarySessionNamesAreNotTransient() {
         Assert.assertFalse(TransientCommandSessionName.isTransient("work-session"));
         Assert.assertFalse(TransientCommandSessionName.isTransient("reset work-session"));
+        Assert.assertFalse(TransientCommandSessionName.isTransient("kill work-session"));
         Assert.assertFalse(TransientCommandSessionName.isTransient(null));
         Assert.assertFalse(TransientCommandSessionName.isTransient(""));
     }
 
     @Test
-    public void finishedTransientSessionIsRemovedInsteadOfReconnectedEvenWhenAConnectTemplateIsConfigured() {
+    public void finishedResetSessionIsRemovedInsteadOfReconnectedEvenWhenAConnectTemplateIsConfigured() {
         FinishedSessionEnterAction action = FinishedSessionEnterAction.decide(
             TransientCommandSessionName.forResetOfSession("work-session"),
-            "autossh -M 0 {name}", Collections.emptySet());
+            CONNECT_TEMPLATE, Collections.emptySet());
+
+        Assert.assertEquals(FinishedSessionEnterAction.Kind.REMOVE, action.getKind());
+        Assert.assertFalse(action.isReconnect());
+        Assert.assertNull(action.getCommand());
+    }
+
+    @Test
+    public void finishedKillSessionIsRemovedInsteadOfReconnectedEvenWhenAConnectTemplateIsConfigured() {
+        FinishedSessionEnterAction action = FinishedSessionEnterAction.decide(
+            TransientCommandSessionName.forKillOfSession("work-session"),
+            CONNECT_TEMPLATE, Collections.emptySet());
 
         Assert.assertEquals(FinishedSessionEnterAction.Kind.REMOVE, action.getKind());
         Assert.assertFalse(action.isReconnect());
@@ -47,7 +85,7 @@ public class TransientCommandSessionNameTest {
     @Test
     public void finishedOrdinarySessionIsStillReconnectedWhenAConnectTemplateIsConfigured() {
         FinishedSessionEnterAction action = FinishedSessionEnterAction.decide(
-            "work-session", "autossh -M 0 {name}", Collections.emptySet());
+            "work-session", CONNECT_TEMPLATE, Collections.emptySet());
 
         Assert.assertTrue(action.isReconnect());
     }

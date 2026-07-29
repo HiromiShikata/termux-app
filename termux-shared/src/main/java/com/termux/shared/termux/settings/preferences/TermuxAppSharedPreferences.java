@@ -312,6 +312,15 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     }
 
 
+    public String getKillSessionCommand() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_KILL_SESSION_COMMAND, TERMUX_APP.DEFAULT_VALUE_KEY_KILL_SESSION_COMMAND, false);
+    }
+
+    public void setKillSessionCommand(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_KILL_SESSION_COMMAND, value, false);
+    }
+
+
     public String getSessionDefinitionUrl() {
         return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_SESSION_DEFINITION_URL, TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL, false);
     }

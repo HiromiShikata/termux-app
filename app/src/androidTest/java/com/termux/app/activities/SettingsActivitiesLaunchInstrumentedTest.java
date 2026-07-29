@@ -54,6 +54,11 @@ public class SettingsActivitiesLaunchInstrumentedTest {
     }
 
     @Test
+    public void killSessionCommandConfigActivityReachesResumed() {
+        assertReachesResumed(KillSessionCommandConfigActivity.class);
+    }
+
+    @Test
     public void sessionDefinitionConfigActivityReachesResumed() {
         assertReachesResumed(SessionDefinitionConfigActivity.class);
     }
