@@ -46,6 +46,16 @@ import java.util.regex.Pattern;
  * candidate not yet consumed by an earlier trigger. Without it the repeated trigger takes the new
  * candidate's reason and the store then discards the call as an already-known trigger value, so the
  * reason is destroyed and the next genuine call falls back to rendering its raw trigger value.
+ *
+ * <p>A repeat withholds the remembered candidate reason and nothing else: the call is still handed
+ * on, carrying its own trigger value as the display reason. Suppressing the whole call here would
+ * make this scanner a second, disagreeing authority on which calls are already known. The store keeps
+ * {@link com.termux.app.terminal.session.SessionNewActivityStateCaps#MAX_CALL_TRIGGER_VALUES_PER_SESSION}
+ * keys, evicts from the head, and drops the whole key set when a session reconnects in place, so a
+ * value this scanner still remembers can be one the store has already forgotten and would have
+ * accepted as a new call. Handing the call on leaves the store as the only authority that decides
+ * whether a call is already known: a repeat it still recognizes is discarded exactly as before, and
+ * one it no longer recognizes reaches the owner instead of disappearing unnoticed.
  */
 public final class CallToUserTagScanner {
 
@@ -67,12 +77,15 @@ public final class CallToUserTagScanner {
     private static final String TRIGGER_EVENT_PREFIX = "trigger ";
 
     /**
-     * How many already-fired trigger values one session remembers. A trigger value identifies one
-     * call, and {@link com.termux.app.terminal.session.SessionNewActivityStateCaps#MAX_CALL_TRIGGER_VALUES_PER_SESSION}
-     * is how many the store keeps, so a bound well above it means this scanner never forgets a call
-     * the store would still recognize, while a long-lived session cannot grow without limit.
+     * How many already-fired trigger values one session remembers, oldest evicted first, so a
+     * long-lived session cannot grow without limit. The bound is well above
+     * {@link com.termux.app.terminal.session.SessionNewActivityStateCaps#MAX_CALL_TRIGGER_VALUES_PER_SESSION}
+     * because a value forgotten here is a repeat that consumes the remembered candidate reason again,
+     * which is the cached-statusline defect returning; a value remembered here that the store no
+     * longer knows costs only the display reason of that one repeat, which falls back to its trigger
+     * value. Overflowing is therefore the more expensive direction and the bound sits far from it.
      */
-    private static final int MAX_REMEMBERED_TRIGGER_VALUES = 64;
+    static final int MAX_REMEMBERED_TRIGGER_VALUES = 64;
 
     private final OutputTagScanner outputTagScanner =
         new OutputTagScanner(CallToUserTagScanner::extractOrderedEvents);
@@ -105,22 +118,34 @@ public final class CallToUserTagScanner {
                 continue;
             }
             String triggerValue = event.substring(TRIGGER_EVENT_PREFIX.length());
-            if (!rememberFiredTriggerValue(triggerValue)) {
-                continue;
-            }
-            String displayReason =
-                mRememberedCandidateReason == null ? triggerValue : mRememberedCandidateReason;
-            mRememberedCandidateReason = null;
-            calls.add(new ApprovedCallToUser(triggerValue, displayReason));
+            calls.add(new ApprovedCallToUser(triggerValue, displayReasonFor(triggerValue)));
         }
         return calls;
     }
 
     /**
+     * The reason a call fired by {@code triggerValue} displays. A trigger value firing for the first
+     * time consumes the remembered candidate reason, which arms exactly one call. A repeat is the same
+     * call rendered again by the cached statusline rather than a new one, so it leaves the remembered
+     * reason for the genuine trigger still to come and displays its own trigger value instead.
+     */
+    private String displayReasonFor(String triggerValue) {
+        if (!rememberFiredTriggerValue(triggerValue)) {
+            return triggerValue;
+        }
+        if (mRememberedCandidateReason == null) {
+            return triggerValue;
+        }
+        String displayReason = mRememberedCandidateReason;
+        mRememberedCandidateReason = null;
+        return displayReason;
+    }
+
+    /**
      * Records {@code triggerValue} as fired and reports whether it is the first time it fired.
-     * Returning false marks a repeat, which is the same call rendered again rather than a new one:
-     * the store keys deduplication on this value and would discard the resulting call, so letting it
-     * through would consume a candidate reason and destroy it.
+     * Returning false marks a repeat. The bound below is what makes the answer reliable only for a
+     * recent window of trigger values: once a value is evicted, a later repeat of it is reported as a
+     * first firing and consumes the remembered candidate reason.
      */
     private boolean rememberFiredTriggerValue(String triggerValue) {
         if (!mFiredTriggerValues.add(triggerValue)) {

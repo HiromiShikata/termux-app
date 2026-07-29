@@ -198,7 +198,9 @@ public class CallToUserCandidateReasonTest {
      * an interval rather than on every frame, so a message printed between two refreshes appears
      * ABOVE a statusline row that still carries the previous call's trigger value. The already-fired
      * trigger must not consume the candidate printed after it: doing so destroys that candidate's
-     * reason, because the store discards the repeated trigger value as an already-known call.
+     * reason, because the store discards the repeated trigger value as an already-known call. The
+     * repeat is still handed on, carrying its own trigger value as the display reason, so the store
+     * rather than the scanner decides whether the call is already known.
      */
     @Test
     public void anAlreadyFiredTriggerRepeatedByTheCachedStatuslineDoesNotConsumeALaterCandidate() {
@@ -214,8 +216,10 @@ public class CallToUserCandidateReasonTest {
                 + "<call-to-user-pending>second ask: approve the hotfix</call-to-user-pending>\n"
                 + "<call-to-user>2026-07-28T09:40:00.000Z</call-to-user>\n");
 
-        assertEquals(List.of("2026-07-28T09:40:00.000Z"), trigger.triggerValues);
-        assertEquals(List.of("first ask: approve the rollout"), trigger.reasons);
+        assertEquals(List.of("2026-07-28T09:40:00.000Z", "2026-07-28T09:40:00.000Z"),
+            trigger.triggerValues);
+        assertEquals(List.of("first ask: approve the rollout", "2026-07-28T09:40:00.000Z"),
+            trigger.reasons);
     }
 
     /**
