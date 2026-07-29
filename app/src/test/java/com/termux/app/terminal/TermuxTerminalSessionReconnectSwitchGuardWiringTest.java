@@ -1,79 +1,179 @@
 package com.termux.app.terminal;
 
-import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import android.content.Context;
+
+import androidx.drawerlayout.widget.DrawerLayout;
+
+import com.termux.R;
+import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
+import com.termux.app.terminal.session.PersistedSessionRestoreData;
+import com.termux.app.terminal.session.PersistedSessionSerializer;
+import com.termux.shared.shell.command.ExecutionCommand;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import com.termux.shared.termux.shell.TermuxShellManager;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalSession;
+import com.termux.view.TerminalView;
+
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.Collections;
 
+@RunWith(RobolectricTestRunner.class)
 public class TermuxTerminalSessionReconnectSwitchGuardWiringTest {
 
-    private static final String CLIENT_RELATIVE_PATH =
-        "src/main/java/com/termux/app/terminal/TermuxTerminalSessionActivityClient.java";
+    private static final String TOPMOST_SESSION = "topmost-session";
+    private static final String WORKING_SESSION = "working-session";
 
-    private String readClientSource() throws IOException {
-        Path moduleRelative = Paths.get(CLIENT_RELATIVE_PATH);
-        if (Files.exists(moduleRelative)) {
-            return new String(Files.readAllBytes(moduleRelative), StandardCharsets.UTF_8);
-        }
-        Path repoRelative = Paths.get("app").resolve(CLIENT_RELATIVE_PATH);
-        return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
-    }
+    private TermuxActivity activity;
+    private TermuxService service;
+    private TermuxShellManager shellManager;
+    private TermuxAppSharedPreferences preferences;
+    private TerminalView terminalView;
 
-    private String bodyBetween(String source, String startMarker, String endMarker) {
-        int startIndex = source.indexOf(startMarker);
-        Assert.assertTrue(startMarker + " not found", startIndex >= 0);
-        int endIndex = source.indexOf(endMarker, startIndex + startMarker.length());
-        Assert.assertTrue(endMarker + " not found after " + startMarker, endIndex > startIndex);
-        return source.substring(startIndex, endIndex);
-    }
+    @Before
+    public void setUp() throws Exception {
+        activity = Robolectric.buildActivity(TermuxActivity.class).get();
+        Context appContext = RuntimeEnvironment.getApplication();
 
-    @Test
-    public void onStartGuardsReconnectSwitchWithValidCurrentSessionCheck() throws IOException {
-        String source = readClientSource();
-        String onStartBody = bodyBetween(source, "public void onStart()", "public void onResume()");
-        Assert.assertTrue(
-            "onStart must only switch the displayed session on reconnect when none is displayed",
-            onStartBody.contains(
-                "shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession())"));
-        int guardIndex = onStartBody.indexOf("shouldSwitchSessionOnReconnect(");
-        int switchIndex = onStartBody.indexOf("setCurrentSession(getCurrentStoredSessionOrLast())");
-        Assert.assertTrue(guardIndex >= 0);
-        Assert.assertTrue("the reconnect switch must be guarded", switchIndex > guardIndex);
-    }
+        service = Robolectric.buildService(TermuxService.class).get();
+        shellManager = new TermuxShellManager(appContext);
+        set(service, TermuxService.class, "mShellManager", shellManager);
+        set(service, TermuxService.class, "mProperties", TermuxAppSharedProperties.init(appContext));
 
-    @Test
-    public void restorePersistedSessionsGuardsSwitchWithValidCurrentSessionCheck() throws IOException {
-        String source = readClientSource();
-        String body = bodyBetween(source,
-            "public boolean restorePersistedSessions()", "public boolean restoreAlwaysPresentSessions()");
-        Assert.assertTrue(
-            "restorePersistedSessions must not change the displayed session when one is already displayed",
-            body.contains("shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession())"));
-    }
+        set(activity, TermuxActivity.class, "mTermuxService", service);
+        set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
+            new TermuxTerminalSessionActivityClient(activity));
+        service.setTermuxTerminalSessionClient(activity.getTermuxTerminalSessionClient());
 
-    @Test
-    public void restoreAlwaysPresentSessionsGuardsSwitchWithValidCurrentSessionCheck() throws IOException {
-        String source = readClientSource();
-        String body = bodyBetween(source,
-            "public boolean restoreAlwaysPresentSessions()",
-            "public void syncPersistedSessionsWithLiveSessions()");
-        Assert.assertTrue(
-            "restoreAlwaysPresentSessions must not change the displayed session when one is already displayed",
-            body.contains("shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession())"));
+        preferences = TermuxAppSharedPreferences.build(appContext, true);
+        set(activity, TermuxActivity.class, "mPreferences", preferences);
+        set(activity, TermuxActivity.class, "mProperties", TermuxAppSharedProperties.init(appContext));
+        preferences.setSessionDefinitionMaxSessions(10);
+        preferences.setAutosshCommand("ssh {name}");
+
+        DrawerLayout drawerLayout = new DrawerLayout(appContext);
+        drawerLayout.setId(R.id.drawer_layout);
+        activity.setContentView(drawerLayout);
+
+        terminalView = new TerminalView(appContext, null);
+        set(activity, TermuxActivity.class, "mTerminalView", terminalView);
+
+        shellManager.mTermuxSessions.add(liveSession(TOPMOST_SESSION));
+        shellManager.mTermuxSessions.add(liveSession(WORKING_SESSION));
+        set(activity, TermuxActivity.class, "mTermuxSessionListViewController",
+            new TermuxSessionsListViewController(activity, service.getTermuxSessions()));
+        terminalView.mTermSession = terminalSession(WORKING_SESSION);
     }
 
     @Test
-    public void reconnectHelperGuardsStoredOrLastSwitchWithValidCurrentSessionCheck() throws IOException {
-        String source = readClientSource();
-        String body = bodyBetween(source,
-            "public void setCurrentSessionOnReconnectIfNoneDisplayed()", "public void setCurrentStoredSession()");
-        Assert.assertTrue(
-            "the reconnect helper must guard the stored-or-last switch",
-            body.contains("shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession())"));
-        Assert.assertTrue(body.contains("setCurrentSession(getCurrentStoredSessionOrLast())"));
+    public void theFixtureGivesTheStartupSelectionADifferentAnswerFromTheDisplayedSession() {
+        assertEquals("the startup selection must want a different session than the displayed one, "
+                + "otherwise none of the guard tests below can fail when the guard is removed",
+            0, activity.getTermuxSessionListViewController().getTopmostNonHiddenSessionIndex());
+        assertEquals(TOPMOST_SESSION, service.getTermuxSessions().get(0).getTerminalSession().mSessionName);
+        assertEquals(WORKING_SESSION, currentSessionName());
+    }
+
+    @Test
+    public void reconnectHelperKeepsTheAlreadyDisplayedSession() {
+        activity.getTermuxTerminalSessionClient().setCurrentSessionOnReconnectIfNoneDisplayed();
+
+        assertEquals("the reconnect switch must only happen when no session is displayed",
+            WORKING_SESSION, currentSessionName());
+    }
+
+    @Test
+    public void restorePersistedSessionsKeepsTheAlreadyDisplayedSession() throws Exception {
+        preferences.setPersistedSessions(new PersistedSessionSerializer().serialize(
+            Collections.singletonList(new PersistedSessionRestoreData(
+                null, "restored-session", "/system/bin/sh", new String[0], false, "/"))));
+
+        assertTrue(activity.getTermuxTerminalSessionClient().restorePersistedSessions());
+
+        assertEquals("restoring sessions must not change the displayed session when one is already displayed",
+            WORKING_SESSION, currentSessionName());
+    }
+
+    @Test
+    public void restoreAlwaysPresentSessionsKeepsTheAlreadyDisplayedSession() {
+        assertTrue(activity.getTermuxTerminalSessionClient()
+            .restoreAlwaysPresentSessions(Collections.singletonList("always-present-session")));
+
+        assertEquals("creating always-present sessions must not change the displayed session when one is "
+                + "already displayed",
+            WORKING_SESSION, currentSessionName());
+    }
+
+    @Test
+    public void onStartKeepsTheAlreadyDisplayedSession() {
+        activity.getTermuxTerminalSessionClient().onStart();
+
+        assertEquals("returning to the foreground must never yank the user away from the session they "
+                + "are working in",
+            WORKING_SESSION, currentSessionName());
+    }
+
+    @Test
+    public void reconnectHelperSelectsASessionWhenNoneIsDisplayed() {
+        terminalView.mTermSession = null;
+
+        activity.getTermuxTerminalSessionClient().setCurrentSessionOnReconnectIfNoneDisplayed();
+
+        assertNotNull("with no session displayed the reconnect helper must select one",
+            activity.getCurrentSession());
+    }
+
+    @Test
+    public void reconnectHelperFallsBackToTheStoredSessionRatherThanTheLastOneWhenEverySessionIsHidden() {
+        terminalView.mTermSession = null;
+        preferences.setCurrentSession(terminalSession(TOPMOST_SESSION).mHandle);
+        preferences.setDisabledSessionNames(String.join("\n", TOPMOST_SESSION, WORKING_SESSION));
+
+        activity.getTermuxTerminalSessionClient().setCurrentSessionOnReconnectIfNoneDisplayed();
+
+        assertEquals("with no non-hidden session left, the fallback must still be the stored session in "
+                + "preference to the last running one",
+            TOPMOST_SESSION, currentSessionName());
+    }
+
+    private String currentSessionName() {
+        TerminalSession currentSession = activity.getCurrentSession();
+        assertNotNull(currentSession);
+        return currentSession.mSessionName;
+    }
+
+    private TerminalSession terminalSession(String sessionName) {
+        TermuxSession termuxSession = service.getTermuxSessionForSessionName(sessionName);
+        assertNotNull(termuxSession);
+        return termuxSession.getTerminalSession();
+    }
+
+    private TermuxSession liveSession(String sessionName) throws Exception {
+        TerminalSession terminalSession = new TerminalSession(null, null, null, null, null, null);
+        terminalSession.mSessionName = sessionName;
+        Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
+            TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class, boolean.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(terminalSession, new ExecutionCommand(), null, false);
+    }
+
+    private void set(Object target, Class<?> declaringClass, String fieldName, Object value) throws Exception {
+        Field field = declaringClass.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 }

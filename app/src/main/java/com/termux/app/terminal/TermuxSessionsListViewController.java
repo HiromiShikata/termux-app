@@ -481,6 +481,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return SessionHierarchyBuilder.firstSessionIndex(buildCountedRows());
     }
 
+    public int getTopmostNonHiddenSessionIndex() {
+        return SessionHierarchyBuilder.firstSessionIndex(SessionHierarchyBuilder.filterHiddenSessions(
+            buildAllRows(), sessionNamesByIndex(), disabledSessionNames()));
+    }
+
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
         return VisibleSessionNavigator.nextSessionIndex(
             getOrderedSessionIndexes(), getNavigationCandidateSessionIndexes(), currentSessionIndex, forward);
