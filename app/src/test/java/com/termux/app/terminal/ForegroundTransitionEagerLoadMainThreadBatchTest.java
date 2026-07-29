@@ -111,9 +111,9 @@ public class ForegroundTransitionEagerLoadMainThreadBatchTest {
                 + "screen cannot be redrawn until the whole pass finishes and the owner sees a black or "
                 + "frozen screen for the whole duration; every one of these initializations is posted to "
                 + "the main thread handler with a zero delay, so they all become due at the same instant "
-                + "and no pacing separates them, unlike the reconnect path which releases at most "
-                + MAIN_THREAD_SESSION_INITIALIZATION_BOUND_PER_PASS + " process creations before its "
-                + "one-second spacing begins; over a population of " + VISIBLE_SESSION_COUNT
+                + "and no pacing separates them, unlike the reconnect path, which keeps at most one "
+                + "session creation in flight at a time and posts the next only after the previous one "
+                + "returns, behind a one-frame yield; over a population of " + VISIBLE_SESSION_COUNT
                 + " visible and " + HIDDEN_SESSION_COUNT + " hidden sessions the eager load must not "
                 + "initialize more than " + MAIN_THREAD_SESSION_INITIALIZATION_BOUND_PER_PASS
                 + " sessions in one uninterrupted main-thread pass, yet it initialized "
