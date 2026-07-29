@@ -36,7 +36,7 @@ public final class DeadSessionReconnectPlanner {
             this.name = name;
             this.running = running;
             this.current = current;
-            this.hung = hung;
+            this.hung = running && hung;
             this.lastOutTimeMillis = lastOutTimeMillis;
             this.reconnecting = reconnecting;
         }
@@ -66,20 +66,12 @@ public final class DeadSessionReconnectPlanner {
             return reconnecting;
         }
 
-        /**
-         * A session whose reconnect is still in flight is not selected again: its replacement was
-         * created moments ago, owns no shell process until its emulator is initialised and has had no
-         * opportunity to render a statusline, so selecting it again on the next scan tears down the
-         * reconnect that is still running and repeats without end. The bounded reconnect timeout and
-         * retry ladder owns that session until it settles, and clears the in-flight state on both the
-         * success and the exhausted-retry path, so the exclusion always ends.
-         */
         boolean isDeadProcessReconnectCandidate() {
             return !current && !running && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {
-            return !current && running && hung && !reconnecting;
+            return !current && hung && !reconnecting;
         }
     }
 

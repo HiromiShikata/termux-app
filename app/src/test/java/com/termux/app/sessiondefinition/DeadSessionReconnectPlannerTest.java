@@ -279,4 +279,16 @@ public class DeadSessionReconnectPlannerTest {
 
         Assert.assertEquals(Collections.singletonList("https://example.test/settled"), namesToReconnect);
     }
+
+    @Test
+    public void aCandidateThatIsNotRunningIsNeverCarriedAsHung() {
+        DeadSessionReconnectPlanner.CandidateSession candidate =
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/dead", false, false, true, 1L, false);
+
+        Assert.assertFalse("hung means alive but no longer producing output, so a candidate whose "
+                + "shell process has exited must not carry the hung flag whatever its caller passes, "
+                + "otherwise a state the running system cannot produce becomes constructible here",
+            candidate.isHung());
+    }
 }

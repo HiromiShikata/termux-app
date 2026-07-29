@@ -353,11 +353,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     private List<SessionHierarchyRow> buildCountedRows() {
-        List<String> sessionNamesByIndex = sessionNamesByIndex();
-        Set<String> hiddenSessionNames = shouldHideHiddenSessions() ? disabledSessionNames() : Collections.emptySet();
-        List<SessionHierarchyRow> renderedRows =
-            SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex, hiddenSessionNames);
-        return SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, mCollapsedProjectKeys);
+        return rowsOutsideCollapsedProjects(
+            shouldHideHiddenSessions() ? disabledSessionNames() : Collections.emptySet());
+    }
+
+    @NonNull
+    private List<SessionHierarchyRow> rowsOutsideCollapsedProjects(@NonNull Set<String> hiddenSessionNames) {
+        return SessionHierarchyBuilder.filterCollapsedProjectSessions(
+            SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex(),
+                hiddenSessionNames), mCollapsedProjectKeys);
     }
 
     private void rebuildRows() {
@@ -366,8 +370,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         Set<String> hiddenSessionNames = shouldHideHiddenSessions() ? disabledSessionNames() : Collections.emptySet();
         List<SessionHierarchyRow> renderedRows =
             SessionHierarchyBuilder.filterHiddenSessions(allRows, sessionNamesByIndex, hiddenSessionNames);
-        List<SessionHierarchyRow> countedRows =
-            SessionHierarchyBuilder.filterCollapsedProjectSessions(renderedRows, mCollapsedProjectKeys);
+        List<SessionHierarchyRow> countedRows = buildCountedRows();
         mRows = Collections.unmodifiableList(
             mHierarchyBuilder.filterCollapsedProjects(renderedRows, mCollapsedProjectKeys));
         mRowItemIds = assignUniqueRowItemIds(mRows);
@@ -488,11 +491,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     public List<Integer> getSessionIndexesOfRowsTheOwnerCanSee() {
-        List<SessionHierarchyRow> rowsTheOwnerCanSee = SessionHierarchyBuilder.filterCollapsedProjectSessions(
-            SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex(),
-                disabledSessionNames()), mCollapsedProjectKeys);
         List<Integer> sessionIndexes = new ArrayList<>();
-        for (SessionHierarchyRow row : rowsTheOwnerCanSee) {
+        for (SessionHierarchyRow row : rowsOutsideCollapsedProjects(disabledSessionNames())) {
             if (row.isHeader()) {
                 continue;
             }
@@ -526,7 +526,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     @NonNull
     public Set<String> getExpandedProjectSessionNames() {
         List<SessionHierarchyRow> expandedProjectRows =
-            SessionHierarchyBuilder.filterCollapsedProjectSessions(buildAllRows(), mCollapsedProjectKeys);
+            rowsOutsideCollapsedProjects(Collections.emptySet());
         Set<String> expandedProjectSessionNames = new LinkedHashSet<>();
         for (SessionHierarchyRow row : expandedProjectRows) {
             if (row.isHeader()) {

@@ -1,8 +1,10 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
@@ -33,6 +35,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
 public class HiddenCurrentSessionReplacementSelectionTest {
@@ -141,6 +145,68 @@ public class HiddenCurrentSessionReplacementSelectionTest {
             terminalView.getCurrentSession().getEmulator());
         assertEquals("the terminal view must move onto the session the owner can see that still holds "
                 + "its runtime", ON_SCREEN_SESSION_NAME, terminalView.getCurrentSession().mSessionName);
+    }
+
+    @Test
+    public void hidingTheDisplayedSessionMustPreferAVisibleRowThatStillHoldsItsRuntimeOverAReleasedOne()
+        throws Exception {
+        buildSessionList(false);
+        collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
+
+        activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+
+        collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
+
+        assertNull("test premise: the released session must be back on screen after the owner expands "
+                + "its project group, otherwise this test is not exercising the released-but-visible "
+                + "case", terminalSessionNamed(COLLAPSED_GROUP_SESSION_NAME).getEmulator());
+        assertEquals("test premise: the released session must be the first row the owner can see, "
+                + "otherwise the preference for a row that still holds its runtime is never consulted",
+            COLLAPSED_GROUP_SESSION_NAME,
+            sessionNameAtIndex(listViewController.getSessionIndexesOfRowsTheOwnerCanSee().get(0)));
+
+        hideThroughTheSessionListHideAction(CURRENT_SESSION_NAME);
+
+        assertEquals("hiding the displayed session must move the terminal view onto a row that still "
+                + "holds its runtime rather than the first visible row, because attaching to a released "
+                + "row starts a fresh shell process in it as an invisible side effect of the hide",
+            ON_SCREEN_SESSION_NAME, terminalView.getCurrentSession().mSessionName);
+        assertNotNull("the session the terminal view moved to must still hold its terminal emulator",
+            terminalView.getCurrentSession().getEmulator());
+    }
+
+    @Test
+    public void everyRowTheOwnerCanSeeMustAlsoCountAsDisplayedSoTheSweepCannotReleaseAReplacementCandidate()
+        throws Exception {
+        buildSessionList(false);
+        collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
+        preferences.setSessionDisabled(ON_SCREEN_SESSION_NAME, true);
+
+        Set<String> displayedSessionNames = displayedSessionNamesOfTheClient();
+        List<Integer> candidateIndexes = listViewController.getSessionIndexesOfRowsTheOwnerCanSee();
+
+        assertFalse("test premise: at least one row must survive both filters, otherwise the contract "
+            + "is asserted over nothing", candidateIndexes.isEmpty());
+        for (int candidateIndex : candidateIndexes) {
+            String candidateSessionName = sessionNameAtIndex(candidateIndex);
+            assertTrue("every row the owner can see must also be counted as displayed, because the "
+                    + "reclamation sweep releases a session that is not displayed and the hide moves "
+                    + "the terminal view onto exactly these rows: " + candidateSessionName,
+                displayedSessionNames.contains(candidateSessionName));
+        }
+    }
+
+    private Set<String> displayedSessionNamesOfTheClient() throws Exception {
+        Method displayedSessionNames = TermuxTerminalSessionActivityClient.class.getDeclaredMethod(
+            "displayedSessionNames");
+        displayedSessionNames.setAccessible(true);
+        return castToSessionNameSet(
+            displayedSessionNames.invoke(activity.getTermuxTerminalSessionClient()));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Set<String> castToSessionNameSet(Object value) {
+        return (Set<String>) value;
     }
 
     private void buildSessionList(boolean collapsedGroupSessionIsRunning) throws Exception {

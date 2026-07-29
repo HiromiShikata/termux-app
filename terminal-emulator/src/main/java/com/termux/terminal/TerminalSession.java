@@ -45,14 +45,12 @@ public final class TerminalSession extends TerminalOutput {
 
     /**
      * A queue written to from a separate thread when the process outputs, and read by main thread to process by
-     * terminal emulator. It is replaced by {@link #releaseEmulator()}, because {@link ByteQueue#close()} is
-     * permanent and a session that keeps a closed queue discards every byte its next shell process produces.
+     * terminal emulator.
      */
     ByteQueue mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
     /**
      * A queue written to from the main thread due to user interaction, and read by another thread which forwards by
-     * writing to the {@link #mTerminalFileDescriptor}. It is replaced by {@link #releaseEmulator()} on the same
-     * grounds as {@link #mProcessToTerminalIOQueue}.
+     * writing to the {@link #mTerminalFileDescriptor}.
      */
     ByteQueue mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
     /** Buffer to write translate code points into utf8 before writing to mTerminalToProcessIOQueue */
@@ -61,7 +59,6 @@ public final class TerminalSession extends TerminalOutput {
     /** Callback which gets notified when a session finishes or changes title. */
     TerminalSessionClient mClient;
 
-    /** The pid of the shell process, and -1 while no shell process of this session is running. */
     int mShellPid = NO_SHELL_PROCESS_PID;
 
     /** The exit status of the shell process. Only valid if ${@link #mShellPid} is -1. */
@@ -73,11 +70,6 @@ public final class TerminalSession extends TerminalOutput {
      */
     private int mTerminalFileDescriptor;
 
-    /**
-     * Identifies the shell process instance the session currently owns. {@link #releaseEmulator()}
-     * advances it, so the process-exited report of a released instance is recognised as belonging to
-     * an instance the session no longer owns and cannot tear down the instance that replaced it.
-     */
     int mShellProcessGeneration;
 
     /** Set by the application for user identification of session, not by terminal. */
@@ -260,27 +252,25 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator;
     }
 
-    /**
-     * Drops the terminal emulator and the scrollback buffer it owns, whose size is governed by the
-     * transcript rows setting, so a session that must consume no resources holds none. The session
-     * object itself stays alive as the entry the session list renders its row from, and a later
-     * {@link #updateSize(int, int, int, int)} recreates the emulator and starts the shell process
-     * again, so the release is reversible.
-     * <p>
-     * The release also ends the session's ownership of its shell process instance. The byte queues
-     * that instance reads and writes are closed, which lets its reader and writer threads exit, and
-     * are replaced by open ones, because {@link ByteQueue#close()} is permanent: a session that
-     * reopened onto closed queues would start a real shell process whose every output byte and every
-     * keystroke is discarded with no record. The shell process identifier is cleared in the same
-     * step, so a released session never reports itself running while holding no emulator.
-     */
     public void releaseEmulator() {
         mEmulator = null;
+        supersedeTheShellProcessInstanceTheSessionOwns();
+        replacePermanentlyClosedIOQueuesWithOpenOnes();
+        disownTheShellProcessIdentifier();
+    }
+
+    private void supersedeTheShellProcessInstanceTheSessionOwns() {
         mShellProcessGeneration++;
+    }
+
+    private void replacePermanentlyClosedIOQueuesWithOpenOnes() {
         mTerminalToProcessIOQueue.close();
         mProcessToTerminalIOQueue.close();
         mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
         mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
+    }
+
+    private void disownTheShellProcessIdentifier() {
         synchronized (this) {
             mShellPid = NO_SHELL_PROCESS_PID;
         }

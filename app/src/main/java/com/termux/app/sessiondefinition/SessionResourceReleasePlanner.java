@@ -6,15 +6,6 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Selects the sessions that must hold no runtime resources. A hidden session is reconnected by no
- * scan, is rendered for nobody and is not counted anywhere, so it must own neither a shell process
- * nor a terminal emulator nor the scrollback buffer the emulator carries, whatever its process
- * state. A session whose process has exited and which is neither the current session nor displayed
- * is in the same position for as long as it stays undisplayed. Both keep their row in the session
- * list, and unhiding or reopening the row recreates the runtime, so the selection is reversible and
- * is driven only by the current hidden and displayed state.
- */
 public final class SessionResourceReleasePlanner {
 
     public static final class CandidateSession {
@@ -65,6 +56,10 @@ public final class SessionResourceReleasePlanner {
             if (hidden) {
                 return true;
             }
+            return hasExitedWhileOutOfSight();
+        }
+
+        private boolean hasExitedWhileOutOfSight() {
             return !running && !displayed;
         }
     }

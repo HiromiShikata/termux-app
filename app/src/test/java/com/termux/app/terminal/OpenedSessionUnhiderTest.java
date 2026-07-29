@@ -24,7 +24,7 @@ public class OpenedSessionUnhiderTest {
     }
 
     @Test
-    public void navigatingToAHiddenSessionRemovesItFromTheDisabledSetTheFilterReads() {
+    public void openingAHiddenSessionRemovesItFromTheDisabledSetTheFilterReads() {
         TermuxAppSharedPreferences preferences = buildPreferences();
         preferences.setDisabledSessionNames("alpha\nbeta");
 
@@ -36,7 +36,7 @@ public class OpenedSessionUnhiderTest {
     }
 
     @Test
-    public void navigatingToAVisibleSessionLeavesTheDisabledSetUnchanged() {
+    public void openingAVisibleSessionLeavesTheDisabledSetUnchanged() {
         TermuxAppSharedPreferences preferences = buildPreferences();
         preferences.setDisabledSessionNames("beta");
 

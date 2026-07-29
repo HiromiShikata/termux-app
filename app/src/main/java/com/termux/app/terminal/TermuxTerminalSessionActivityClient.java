@@ -2183,7 +2183,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             boolean current = sessionName.equals(currentSessionName);
             boolean running = terminalSession.isRunning();
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
-            boolean hung = running && mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
+            boolean hung = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
             boolean reconnecting = store != null && store.isReconnecting(sessionName);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
                 sessionName, running, current, hung, lastOutTimeMillis, reconnecting));
@@ -2208,21 +2208,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return reconnectedSessionNames;
     }
 
-    /**
-     * Releases the runtime resources of every session that must hold none: a hidden session, whatever
-     * its process state, and a session whose process has exited while it is neither the current
-     * session nor displayed. The row of each released session stays in the list so the owner still
-     * sees it and can reopen it, and unhiding or reopening recreates the process and the emulator, so
-     * the release is reversible and is driven only by the current hidden and displayed state. No
-     * displayed session is ever released, so nothing here makes a displayed session less fresh.
-     * <p>
-     * The sweep decides with {@link #displayedSessionNames()}, which is empty while the activity is
-     * not visible, so it does not run at all in that state: running it would count every session as
-     * undisplayed, release the scrollback of every row the owner is looking at on the first
-     * background scan, and leave the next return to the foreground rebuilding all of them at once.
-     * A session that must hold no runtime resources is released by the next scan the activity is
-     * visible for, which is the state the release is decided from.
-     */
     private void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
         if (!mActivity.isVisible()) return;
 
@@ -2267,31 +2252,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         termuxSessionListNotifyUpdated();
     }
 
-    /**
-     * The production entry point for a session becoming hidden or visible again. Hiding tears the
-     * local process down and releases the terminal emulator and its scrollback buffer, so the hidden
-     * session costs nothing while it stays hidden; the row remains in the list and remains reopenable.
-     * Unhiding reconnects it so it resumes normally. Tearing the local process down does not touch the
-     * session on the remote host, which is the separate kill-host-session action.
-     * <p>
-     * The hide action is bound on every row, including the row of the session the terminal view is
-     * rendering, so hiding that session first moves the terminal view onto the topmost session the
-     * owner can currently see and only then releases it. That candidate survives both the hidden
-     * filter and the collapsed-project filter, so the view never lands in a group the owner
-     * collapsed, and a candidate that still holds its terminal emulator or its shell process is
-     * preferred, so the view never lands on a session the reclamation sweep already released and
-     * silently starts a fresh shell process in it. Releasing the session the view is still rendering
-     * would leave the owner looking at content with no session behind it and typing keystrokes that
-     * reach no process, which is why the move happens first rather than as an exclusion of the
-     * current session from the release, and why
-     * {@link #releaseSessionRuntimeResources(TerminalSession, String)} refuses that session outright.
-     * <p>
-     * When the session being hidden is the one the view renders and no other session is left to move
-     * to, the hide does not take effect at all: the stored hidden mark is restored and nothing is
-     * released, so the last visible session is simply not hideable. The alternative outcomes are both
-     * unusable — a released session with the view still bound to it renders stale content and
-     * silently swallows every keystroke, and there is no other session to show instead.
-     */
     @NonNull
     public List<String> onSessionHiddenStateChanged(@Nullable String sessionName, boolean hidden) {
         if (sessionName == null || sessionName.isEmpty()) return Collections.emptyList();
@@ -2301,7 +2261,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
         TerminalSession sessionBeingHidden = findTerminalSessionByName(sessionName);
         if (sessionBeingHidden != null && sessionBeingHidden == mActivity.getCurrentSession()) {
-            TerminalSession sessionToRenderInstead = topmostSessionTheOwnerCanSeeInsteadOf(sessionBeingHidden);
+            TerminalSession sessionToRenderInstead = topmostSessionTheOwnerCanSee();
             if (sessionToRenderInstead == null) {
                 restoreHiddenMarkOfTheLastVisibleSession(sessionName);
                 return Collections.emptyList();
@@ -2313,7 +2273,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Nullable
-    private TerminalSession topmostSessionTheOwnerCanSeeInsteadOf(@NonNull TerminalSession sessionBeingHidden) {
+    private TerminalSession topmostSessionTheOwnerCanSee() {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
@@ -2326,7 +2286,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (termuxSession == null) continue;
 
             TerminalSession terminalSession = termuxSession.getTerminalSession();
-            if (terminalSession == null || terminalSession == sessionBeingHidden) continue;
+            if (terminalSession == null) continue;
 
             if (terminalSession.getEmulator() != null || terminalSession.isRunning()) {
                 return terminalSession;
