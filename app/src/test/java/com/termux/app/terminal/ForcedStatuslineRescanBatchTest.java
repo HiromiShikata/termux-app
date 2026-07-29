@@ -120,7 +120,7 @@ public class ForcedStatuslineRescanBatchTest {
 
         List<String> onScreenSessionNames = new ArrayList<>();
         for (int index = 1; index <= ON_SCREEN_SESSION_COUNT; index++) {
-            TerminalSession session = addRunningSessionHoldingARenderedEmulator(
+            TerminalSession session = addSessionHoldingARenderedEmulator(
                 String.format("session-on-screen-%02d", index));
             onScreenSessions.add(session);
             onScreenSessionNames.add(session.mSessionName);
@@ -225,7 +225,7 @@ public class ForcedStatuslineRescanBatchTest {
         }
     }
 
-    private TerminalSession addRunningSessionHoldingARenderedEmulator(String sessionName) throws Exception {
+    private TerminalSession addSessionHoldingARenderedEmulator(String sessionName) throws Exception {
         TerminalSession terminalSession =
             new TerminalSession("/system/bin/sh", "/", new String[0], new String[0], 2000,
                 activity.getTermuxTerminalSessionClient());

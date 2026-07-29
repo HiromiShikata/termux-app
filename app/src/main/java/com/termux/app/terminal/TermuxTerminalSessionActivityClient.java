@@ -55,6 +55,7 @@ import com.termux.app.terminal.session.FinishedSessionEnterAction;
 import com.termux.app.terminal.session.TransientCommandSessionName;
 import com.termux.app.terminal.session.DuplicateSessionNameResolver;
 import com.termux.app.terminal.session.PersistedSession;
+import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.app.terminal.session.UserRemovedSessionReconnectSuppressionPlanner;
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
 import com.termux.app.terminal.tts.TtsManager;
@@ -179,17 +180,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /**
      * Spacing between successive proactive background reconnects. Each background tick reconnects every
      * currently-stale non-current session, but spaced roughly one second apart so a large backlog never
-     * opens all its file descriptors and ssh/tmux reattaches at the same instant. Combined with {@link
-     * #STAGGERED_RECONNECT_CONCURRENT_WINDOW}, at most a few reconnects are ever in flight together.
+     * opens all its file descriptors and ssh/tmux reattaches at the same instant.
      */
     static final long STAGGERED_RECONNECT_INTERVAL_MILLIS = 1000L;
-
-    /**
-     * How many staggered background reconnects start immediately before the one-second spacing begins,
-     * and how many additional reconnects each subsequent spacing slot releases. A small window of a few
-     * keeps the whole stale backlog draining quickly without a simultaneous resource spike.
-     */
-    static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
 
     /**
      * How many displayed sessions' statuslines are read and reparsed in one main-thread batch of the
@@ -256,9 +249,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final SessionResourceReleasePlanner mSessionResourceReleasePlanner =
         new SessionResourceReleasePlanner();
 
-    private final StaggeredReconnectSchedule mStaggeredReconnectSchedule =
-        new StaggeredReconnectSchedule(STAGGERED_RECONNECT_INTERVAL_MILLIS,
-            STAGGERED_RECONNECT_CONCURRENT_WINDOW);
+    private final SessionReconnectPacer mSessionReconnectPacer = new SessionReconnectPacer(
+        mMainThreadHandler::postDelayed,
+        this::isSessionStillInTheReconnectList,
+        this::reconnectThenMarkSessionReconnecting);
 
     private final HungSessionDetector mHungSessionDetector =
         new HungSessionDetector(BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS);
@@ -2297,16 +2291,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 DeadSessionReconnectPlanner.UNLIMITED,
                 mActivity.getPreferences().getUserRemovedSessionNames());
         List<String> reconnectedSessionNames = new ArrayList<>();
-        int reconnectIndex = 0;
         for (String sessionName : sessionNamesToReconnect) {
             TerminalSession deadSession = sessionByName.get(sessionName);
             if (deadSession == null) {
                 continue;
             }
-            long startDelayMillis = mStaggeredReconnectSchedule.startDelayMillisForIndex(reconnectIndex);
-            scheduleStaggeredReconnect(deadSession, sessionName, startDelayMillis);
+            mSessionReconnectPacer.enqueueSession(deadSession);
             reconnectedSessionNames.add(sessionName);
-            reconnectIndex++;
         }
         return reconnectedSessionNames;
     }
@@ -2384,17 +2375,30 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return topmostSessionHoldingNoRuntime;
     }
 
-    private void scheduleStaggeredReconnect(@NonNull TerminalSession deadSession,
-                                            @NonNull String sessionName, long startDelayMillis) {
-        Runnable reconnectRunnable = () -> {
-            if (reconnectDeadSessionPreservingDisplayedSession(deadSession) == null) return;
-            markSessionReconnecting(sessionName);
-        };
-        if (startDelayMillis <= 0L) {
-            reconnectRunnable.run();
-        } else {
-            mMainThreadHandler.postDelayed(reconnectRunnable, startDelayMillis);
+    private boolean isSessionStillInTheReconnectList(@NonNull TerminalSession session) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return false;
+        boolean stillLive = false;
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            if (termuxSession.getTerminalSession() == session) {
+                stillLive = true;
+                break;
+            }
         }
+        if (!stillLive) return false;
+        String sessionName = session.mSessionName;
+        if (sessionName == null) return false;
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return true;
+        if (preferences.getUserRemovedSessionNames().contains(sessionName)) return false;
+        return !HiddenSessionNameMatcher.matchesAHiddenSession(sessionName,
+            preferences.getDisabledSessionNames());
+    }
+
+    private void reconnectThenMarkSessionReconnecting(@NonNull TerminalSession deadSession) {
+        TerminalSession reconnectedSession = reconnectDeadSessionPreservingDisplayedSession(deadSession);
+        if (reconnectedSession == null) return;
+        markSessionReconnecting(deadSession.mSessionName);
     }
 
     /**

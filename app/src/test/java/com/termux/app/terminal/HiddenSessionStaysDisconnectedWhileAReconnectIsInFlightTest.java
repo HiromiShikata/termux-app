@@ -28,6 +28,7 @@ import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.terminal.TerminalEmulator;
+import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
@@ -74,8 +75,6 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
     private static final int UNREACHABLE_SHELL_PROCESS_ID = 2000000000;
 
     private static final int RELEASED_SHELL_PROCESS_ID = -1;
-
-    private static final long STAGGER_INTERVAL_MILLIS = 1000L;
 
     private static final long IDLE_PAST_STAGGER_MILLIS = 2000L;
 
@@ -269,8 +268,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         TermuxSession deadSession = deadSessionAwaitingReconnect(RECONNECTABLE_SESSION_NAME);
         shellManager.mTermuxSessions.add(deadSession);
 
-        scheduleStaggeredReconnectThroughProductionPath(
-            deadSession.getTerminalSession(), RECONNECTABLE_SESSION_NAME);
+        scheduleStaggeredReconnectThroughProductionPath(deadSession.getTerminalSession());
         idlePastTheStaggerWindow();
 
         assertNotNull("this assertion only means something if the reconnect genuinely produced a live "
@@ -355,8 +353,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         TermuxSession deadSession = deadSessionAwaitingReconnect(HIDDEN_SESSION_NAME);
         shellManager.mTermuxSessions.add(deadSession);
 
-        scheduleStaggeredReconnectThroughProductionPath(
-            deadSession.getTerminalSession(), HIDDEN_SESSION_NAME);
+        scheduleStaggeredReconnectThroughProductionPath(deadSession.getTerminalSession());
 
         hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
         assertTrue("the hide must be recorded before the reconnect fires, otherwise this test would be "
@@ -366,14 +363,14 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         idlePastTheStaggerWindow();
     }
 
-    private void scheduleStaggeredReconnectThroughProductionPath(TerminalSession deadSession,
-                                                                 String sessionName) throws Exception {
-        Method scheduleStaggeredReconnect = TermuxTerminalSessionActivityClient.class
-            .getDeclaredMethod("scheduleStaggeredReconnect", TerminalSession.class, String.class,
-                long.class);
-        scheduleStaggeredReconnect.setAccessible(true);
-        scheduleStaggeredReconnect.invoke(activity.getTermuxTerminalSessionClient(), deadSession,
-            sessionName, STAGGER_INTERVAL_MILLIS);
+    private void scheduleStaggeredReconnectThroughProductionPath(TerminalSession deadSession)
+            throws Exception {
+        Field pacerField = TermuxTerminalSessionActivityClient.class
+            .getDeclaredField("mSessionReconnectPacer");
+        pacerField.setAccessible(true);
+        SessionReconnectPacer pacer =
+            (SessionReconnectPacer) pacerField.get(activity.getTermuxTerminalSessionClient());
+        pacer.enqueueSession(deadSession);
     }
 
     private void idlePastTheStaggerWindow() {

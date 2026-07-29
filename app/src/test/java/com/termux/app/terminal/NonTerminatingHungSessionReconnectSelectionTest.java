@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 
 import android.content.Context;
+import android.os.Looper;
 
 import androidx.drawerlayout.widget.DrawerLayout;
 
@@ -25,12 +26,16 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 
+import java.time.Duration;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 
 @RunWith(RobolectricTestRunner.class)
 public class NonTerminatingHungSessionReconnectSelectionTest {
+
+    private static final long PACED_RECONNECT_DRAIN_MILLIS = 1000L;
 
     private static final String CURRENT_SESSION_NAME = "session-current";
 
@@ -117,6 +122,8 @@ public class NonTerminatingHungSessionReconnectSelectionTest {
 
     private void runOneBackgroundScanCycle() {
         activity.getTermuxTerminalSessionClient().startDisplayedSessionCallScanTick();
+        Shadows.shadowOf(Looper.getMainLooper())
+            .idleFor(Duration.ofMillis(PACED_RECONNECT_DRAIN_MILLIS));
     }
 
     private String currentSessionName() {
