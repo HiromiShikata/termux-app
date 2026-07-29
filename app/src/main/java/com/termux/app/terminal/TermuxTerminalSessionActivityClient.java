@@ -1378,6 +1378,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     public void switchToSessionReconnectingIfDead(@Nullable TerminalSession session) {
         if (session == null) return;
+        unhideOpenedSession(session.mSessionName);
         if (shouldReconnectOnSwitch(session)) {
             TerminalSession reconnectedSession = reconnectDeadSessionPreservingDisplayedSession(session);
             if (reconnectedSession != null) {
@@ -1386,6 +1387,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             }
         }
         setCurrentSession(session);
+    }
+
+    private void unhideOpenedSession(@Nullable String sessionName) {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return;
+        ShortcutNavigationSessionUnhider.unhideNavigatedSession(preferences, sessionName);
     }
 
     private boolean shouldReconnectOnSwitch(@NonNull TerminalSession session) {
