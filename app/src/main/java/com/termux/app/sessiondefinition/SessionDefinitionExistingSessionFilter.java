@@ -2,6 +2,8 @@ package com.termux.app.sessiondefinition;
 
 import androidx.annotation.NonNull;
 
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;

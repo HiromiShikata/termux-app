@@ -31,7 +31,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
 import com.termux.app.browser.TermuxBrowserController;
-import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;

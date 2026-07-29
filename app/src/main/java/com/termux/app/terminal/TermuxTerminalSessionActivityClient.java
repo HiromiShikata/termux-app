@@ -39,7 +39,7 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
-import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;

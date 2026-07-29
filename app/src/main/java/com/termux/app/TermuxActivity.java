@@ -40,7 +40,7 @@ import com.termux.app.apkupdate.ApkUpdateForegroundCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.apkupdate.UpdateTagUpdateRunner;
-import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
