@@ -13,16 +13,12 @@ on:
     types:
       - opened
       - reopened
-      - assigned
-      - unassigned
       - labeled
   pull_request:
     types:
       - opened
       - reopened
       - review_requested
-      - assigned
-      - unassigned
       - labeled
       - opened
       - edited
@@ -116,8 +112,7 @@ jobs:
         if: >-
           ((github.event_name == 'issues' && github.event.issue.state == 'open') ||
           (github.event_name == 'pull_request' && github.event.pull_request.state == 'open')) &&
-          (github.event.action == 'opened' || github.event.action == 'reopened' ||
-          github.event.action == 'assigned' || github.event.action == 'unassigned')
+          (github.event.action == 'opened' || github.event.action == 'reopened')
       - run: |
           OWNER=$(echo ${{ github.repository }} | cut -d '/' -f 1)
           REPO=$(echo ${{ github.repository }} | cut -d '/' -f 2)
@@ -161,8 +156,7 @@ jobs:
         if: >-
           ((github.event_name == 'issues' && github.event.issue.state == 'open') ||
           (github.event_name == 'pull_request' && github.event.pull_request.state == 'open')) &&
-          (github.event.action == 'opened' || github.event.action == 'reopened' ||
-          github.event.action == 'assigned' || github.event.action == 'unassigned')
+          (github.event.action == 'opened' || github.event.action == 'reopened')
 
       - name: Create Issue
         if: ${{ github.event_name == 'issue_comment' && github.event.action == 'created' && github.event.comment.user.login == 'HiromiShikata' && contains(github.event.comment.body, '/createissue') }}
