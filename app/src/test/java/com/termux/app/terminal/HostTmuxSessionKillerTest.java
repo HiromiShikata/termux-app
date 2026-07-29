@@ -1,5 +1,7 @@
 package com.termux.app.terminal;
 
+import com.termux.app.terminal.session.TransientCommandSessionName;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -12,24 +14,21 @@ public class HostTmuxSessionKillerTest {
 
     private static final class RecordingTarget implements HostTmuxSessionKiller.Target {
         final List<String> events = new ArrayList<>();
+        String executedCommandSessionName;
         String executedHostKillCommand;
         boolean executionSucceeds = true;
 
         @Override
-        public boolean executeHostKillCommand(String hostKillCommand) {
+        public boolean executeHostKillCommand(String commandSessionName, String hostKillCommand) {
+            executedCommandSessionName = commandSessionName;
             executedHostKillCommand = hostKillCommand;
             events.add("execute");
             return executionSucceeds;
         }
 
         @Override
-        public void notifyKillCommandNotConfigured() {
-            events.add("notify-not-configured");
-        }
-
-        @Override
-        public void notifyHostSessionNameMissing() {
-            events.add("notify-name-missing");
+        public void notifyUnavailable(KillHostSessionPlan.Outcome outcome) {
+            events.add("notify-" + outcome);
         }
 
         @Override
@@ -80,6 +79,19 @@ public class HostTmuxSessionKillerTest {
     }
 
     @Test
+    public void dispatchesUnderATransientCommandSessionNameDerivedFromTheHostSession() {
+        RecordingTarget target = new RecordingTarget();
+        DeferredScheduler scheduler = new DeferredScheduler();
+
+        HostTmuxSessionKiller.kill(target, KILL_TEMPLATE, "host-session", scheduler);
+
+        Assert.assertEquals("the command session must be named after the host session it kills, so a second "
+                + "kill collides with the running one instead of starting another identical session",
+            TransientCommandSessionName.forKillOfSession("host-session"), target.executedCommandSessionName);
+        Assert.assertTrue(TransientCommandSessionName.isTransient(target.executedCommandSessionName));
+    }
+
+    @Test
     public void doesNotFinishLocalSessionUntilSchedulerFires() {
         RecordingTarget target = new RecordingTarget();
         DeferredScheduler scheduler = new DeferredScheduler();
@@ -112,7 +124,7 @@ public class HostTmuxSessionKillerTest {
         HostTmuxSessionKiller.kill(target, "", "host-session", scheduler);
 
         Assert.assertEquals("an unconfigured template must not look like a successful host kill",
-            List.of("notify-not-configured"), target.events);
+            List.of("notify-" + KillHostSessionPlan.Outcome.COMMAND_NOT_CONFIGURED), target.events);
         Assert.assertNull(target.executedHostKillCommand);
         Assert.assertNull(scheduler.scheduledTask);
     }
@@ -124,7 +136,7 @@ public class HostTmuxSessionKillerTest {
 
         HostTmuxSessionKiller.kill(target, null, "host-session", scheduler);
 
-        Assert.assertEquals(List.of("notify-not-configured"), target.events);
+        Assert.assertEquals(List.of("notify-" + KillHostSessionPlan.Outcome.COMMAND_NOT_CONFIGURED), target.events);
         Assert.assertNull(target.executedHostKillCommand);
         Assert.assertNull(scheduler.scheduledTask);
     }
@@ -136,7 +148,7 @@ public class HostTmuxSessionKillerTest {
 
         HostTmuxSessionKiller.kill(target, "   \n", "host-session", scheduler);
 
-        Assert.assertEquals(List.of("notify-not-configured"), target.events);
+        Assert.assertEquals(List.of("notify-" + KillHostSessionPlan.Outcome.COMMAND_NOT_CONFIGURED), target.events);
         Assert.assertNull(target.executedHostKillCommand);
     }
 
@@ -148,7 +160,7 @@ public class HostTmuxSessionKillerTest {
         HostTmuxSessionKiller.kill(target, KILL_TEMPLATE, "", scheduler);
 
         Assert.assertEquals("a user who configured a template must never be told it is not configured",
-            List.of("notify-name-missing"), target.events);
+            List.of("notify-" + KillHostSessionPlan.Outcome.SESSION_NAME_MISSING), target.events);
         Assert.assertNull(target.executedHostKillCommand);
         Assert.assertNull(scheduler.scheduledTask);
     }
@@ -160,7 +172,7 @@ public class HostTmuxSessionKillerTest {
 
         HostTmuxSessionKiller.kill(target, KILL_TEMPLATE, null, scheduler);
 
-        Assert.assertEquals(List.of("notify-name-missing"), target.events);
+        Assert.assertEquals(List.of("notify-" + KillHostSessionPlan.Outcome.SESSION_NAME_MISSING), target.events);
         Assert.assertNull(scheduler.scheduledTask);
     }
 }

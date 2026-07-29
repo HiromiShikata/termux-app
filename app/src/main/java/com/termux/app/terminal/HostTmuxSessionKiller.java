@@ -3,11 +3,9 @@ package com.termux.app.terminal;
 public final class HostTmuxSessionKiller {
 
     public interface Target {
-        boolean executeHostKillCommand(String hostKillCommand);
+        boolean executeHostKillCommand(String commandSessionName, String hostKillCommand);
 
-        void notifyKillCommandNotConfigured();
-
-        void notifyHostSessionNameMissing();
+        void notifyUnavailable(KillHostSessionPlan.Outcome outcome);
 
         void finishLocalSession();
     }
@@ -24,18 +22,13 @@ public final class HostTmuxSessionKiller {
     public static void kill(Target target, String commandTemplate, String sessionName, DelayScheduler scheduler) {
         if (target == null) return;
 
-        if (!HostTmuxSessionKillCommand.hasCommandTemplate(commandTemplate)) {
-            target.notifyKillCommandNotConfigured();
+        KillHostSessionPlan plan = KillHostSessionPlanner.plan(commandTemplate, sessionName);
+        if (!plan.shouldStart()) {
+            target.notifyUnavailable(plan.getOutcome());
             return;
         }
 
-        String hostKillCommand = HostTmuxSessionKillCommand.forSessionName(sessionName, commandTemplate);
-        if (hostKillCommand == null) {
-            target.notifyHostSessionNameMissing();
-            return;
-        }
-
-        if (!target.executeHostKillCommand(hostKillCommand)) return;
+        if (!target.executeHostKillCommand(plan.getSessionName(), plan.getCommand())) return;
 
         scheduler.scheduleAfterDelay(target::finishLocalSession, HOST_KILL_TRANSIT_GRACE_MILLIS);
     }

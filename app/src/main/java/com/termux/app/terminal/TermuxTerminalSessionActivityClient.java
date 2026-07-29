@@ -126,9 +126,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
 
-    private final HostKillCommandSessionRegistry mHostKillCommandSessionRegistry =
-        new HostKillCommandSessionRegistry();
-
     private int maxSessions() {
         return mActivity.getPreferences().getSessionDefinitionMaxSessions();
     }
@@ -752,7 +749,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mAllSessionsStatuslineScanGate.forget(finishedSession.mHandle);
         }
 
-        if (mHostKillCommandSessionRegistry.forgetFinishedCommandSession(finishedSession.mHandle)) {
+        if (TransientCommandSessionName.isTransient(finishedSession.mSessionName)) {
             removeFinishedSession(finishedSession);
             return;
         }
@@ -1643,11 +1640,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         HostTmuxSessionKiller.kill(new HostTmuxSessionKiller.Target() {
             @Override
-            public boolean executeHostKillCommand(String hostKillCommand) {
+            public boolean executeHostKillCommand(String commandSessionName, String hostKillCommand) {
                 TermuxService service = mActivity.getTermuxService();
                 if (service == null) return false;
 
-                if (mHostKillCommandSessionRegistry.isDispatchedFor(sessionToKill.mSessionName)) return false;
+                if (revealExistingSessionByName(commandSessionName, true)) return false;
 
                 int liveSessionCount = cappedSessionCount(service);
                 if (liveSessionCount >= maxSessions()) {
@@ -1657,23 +1654,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
                 String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
                 String[] arguments = new String[]{"-c", hostKillCommand};
-                TermuxSession commandSession = service.createTermuxSession(shellPath, arguments, null,
-                    workingDirectoryForNewSession(), false, null);
-                if (commandSession == null) return false;
-
-                mHostKillCommandSessionRegistry.record(commandSession.getTerminalSession().mHandle,
-                    sessionToKill.mSessionName);
-                return true;
+                return service.createTermuxSession(shellPath, arguments, null,
+                    workingDirectoryForNewSession(), false, commandSessionName) != null;
             }
 
             @Override
-            public void notifyKillCommandNotConfigured() {
-                mActivity.showToast(mActivity.getString(R.string.msg_kill_session_command_not_configured), true);
-            }
-
-            @Override
-            public void notifyHostSessionNameMissing() {
-                mActivity.showToast(mActivity.getString(R.string.msg_kill_host_session_name_missing), true);
+            public void notifyUnavailable(KillHostSessionPlan.Outcome outcome) {
+                mActivity.showToast(mActivity.getString(
+                    outcome == KillHostSessionPlan.Outcome.SESSION_NAME_MISSING
+                        ? R.string.msg_kill_host_session_name_missing
+                        : R.string.msg_kill_session_command_not_configured), true);
             }
 
             @Override
