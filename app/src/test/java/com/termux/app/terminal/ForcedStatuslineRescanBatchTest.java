@@ -40,6 +40,8 @@ public class ForcedStatuslineRescanBatchTest {
 
     private static final int ON_SCREEN_SESSION_COUNT = 12;
 
+    private static final int LIVE_SHELL_PROCESS_ID = 4242;
+
     private static final int MAX_TRANSCRIPT_READS_PER_UNINTERRUPTED_MAIN_THREAD_PASS = 4;
 
     private static final long STATUSLINE_RESCAN_BATCH_INTERVAL_MILLIS =
@@ -236,6 +238,9 @@ public class ForcedStatuslineRescanBatchTest {
             constructor.newInstance(terminalSession, new ExecutionCommand(), null, false));
         OffDeviceNativeSubprocessLibrary.tolerateItsAbsence(
             () -> terminalSession.initializeEmulator(80, 24, 10, 20));
+        Field shellProcessId = TerminalSession.class.getDeclaredField("mShellPid");
+        shellProcessId.setAccessible(true);
+        shellProcessId.setInt(terminalSession, LIVE_SHELL_PROCESS_ID);
         return terminalSession;
     }
 
