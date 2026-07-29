@@ -927,6 +927,24 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @NonNull
     private Set<String> displayedSessionNames() {
+        return displayedSessionNames(mActivity.isVisible());
+    }
+
+    /**
+     * The rows the owner is looking at when the session list is on screen, computed independently of
+     * whether the activity happens to be in the foreground right now. The release sweep decides with
+     * this set rather than with {@link #displayedSessionNames()}, because that set is empty while the
+     * activity is not visible and would make the sweep treat the entire population as undisplayed,
+     * releasing the scrollback of every displayed row on the first background scan and forcing the
+     * next return to the foreground to rebuild all of them at once.
+     */
+    @NonNull
+    private Set<String> sessionNamesDisplayedWhenActivityIsShown() {
+        return displayedSessionNames(true);
+    }
+
+    @NonNull
+    private Set<String> displayedSessionNames(boolean activityVisible) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) {
             return Collections.emptySet();
@@ -946,7 +964,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         Set<String> expandedProjectSessionNames = listViewController != null
             ? listViewController.getExpandedProjectSessionNames()
             : null;
-        return mDisplayedSessionSelector.selectDisplayedSessionNames(mActivity.isVisible(),
+        return mDisplayedSessionSelector.selectDisplayedSessionNames(activityVisible,
             activeSessionName(), allLiveSessionNames, true, hiddenSessionNames,
             expandedProjectSessionNames);
     }
@@ -2207,14 +2225,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * session nor displayed. The row of each released session stays in the list so the owner still
      * sees it and can reopen it, and unhiding or reopening recreates the process and the emulator, so
      * the release is reversible and is driven only by the current hidden and displayed state. No
-     * displayed session is ever released, so nothing here makes a displayed session less fresh.
+     * displayed session is ever released, so nothing here makes a displayed session less fresh, and
+     * that holds in the background as well as in the foreground because the displayed set used here
+     * is {@link #sessionNamesDisplayedWhenActivityIsShown()} rather than the live one.
      */
     private void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
         String currentSessionName = activeSessionName();
-        Set<String> displayedSessionNames = displayedSessionNames();
+        Set<String> displayedSessionNames = sessionNamesDisplayedWhenActivityIsShown();
         Set<String> hiddenSessionNames = hiddenSessionNames();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
