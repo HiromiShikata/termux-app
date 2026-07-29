@@ -1914,11 +1914,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             setStartupDisplayedSession(getCurrentStoredSessionOrLast());
     }
 
-    /**
-     * The session a startup path displays: the topmost non-hidden session in the ordering the user
-     * sees in the session list, falling back to the caller's own choice when no non-hidden session
-     * can be determined.
-     */
     @Nullable
     private TerminalSession startupDisplayedSession(@Nullable TerminalSession fallbackSession) {
         TermuxService service = mActivity.getTermuxService();
@@ -1940,12 +1935,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mStartupDisplayedSessionSelectionPending = true;
     }
 
-    /**
-     * Re-run the startup selection once the session definition entries have arrived. Until they do,
-     * the row builder returns plain service order instead of the grouped display order, so the
-     * session picked by a restore path on a cold start can be the wrong one. Any explicit selection
-     * made in between clears the pending state, so the user is never moved off a session they chose.
-     */
     public void reapplyStartupDisplayedSessionAfterEntriesLoaded() {
         if (!mStartupDisplayedSessionSelectionPending) return;
         TerminalSession currentSession = mActivity.getCurrentSession();
