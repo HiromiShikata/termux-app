@@ -2,6 +2,7 @@ package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.content.Context;
@@ -13,6 +14,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
@@ -30,6 +32,7 @@ import org.robolectric.RuntimeEnvironment;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -233,8 +236,7 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
     }
 
     @Test
-    public void backgroundReconnectSweepKeepsTheSessionsBehindAThrowingCreationScheduledAndLetsTheThrowReachTheCaller()
-            throws Exception {
+    public void backgroundReconnectSweepKeepsTheSessionsBehindAThrowingCreationScheduled() throws Exception {
         layOutTheTerminalViewSoEveryBackgroundCreationInitializesAnEmulator();
 
         runBackgroundReconnectSweep();
@@ -255,12 +257,22 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
                 + "drains, yet " + reconnectedSessionNames.size() + " were reconnected and these were "
                 + "not: " + selectedSessionNamesNotReconnected,
             selectedSessionNamesNotReconnected.isEmpty());
+    }
+
+    @Test
+    public void backgroundReconnectSweepLetsAThrowingCreationsFailureReachTheCaller() throws Exception {
+        layOutTheTerminalViewSoEveryBackgroundCreationInitializesAnEmulator();
+
+        runBackgroundReconnectSweep();
+        drainMainThreadQueueToTheSweepHorizon();
 
         assertTrue("a session creation that throws must not have its failure swallowed, because a "
                 + "swallowed failure hides a session that never came back behind a sweep that looks "
                 + "successful; the throw must reach the caller of the creation, yet over the whole sweep "
                 + throwablesSurfacedByTheSweep.size() + " throwables reached the caller",
             !throwablesSurfacedByTheSweep.isEmpty());
+
+        assertEveryThrowableSurfacedByTheSweepIsTheNativeSubprocessLinkageFailure();
     }
 
     @Test
@@ -326,6 +338,93 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
             hiddenSessionNamesCreated.isEmpty());
     }
 
+    @Test
+    public void reconnectThenMarkSessionReconnectingDoesNotMarkReconnectingWhenTheReconnectRefuses()
+            throws Exception {
+        TerminalSession sessionWhoseReconnectWillBeRefused = visibleSessions.get(0);
+        String sessionName = sessionWhoseReconnectWillBeRefused.mSessionName;
+        addSession(sessionName);
+
+        invokeReconnectThenMarkSessionReconnecting(sessionWhoseReconnectWillBeRefused);
+
+        SessionNewActivityStore store = activity.getSessionNewActivityStore();
+        boolean markedReconnecting = store != null && store.isReconnecting(sessionName);
+        assertTrue("a reconnect that a name-collision refuses tears the dead session down and creates no "
+                + "replacement, so marking the session reconnecting afterwards arms a spinner and "
+                + "schedules a timeout runnable for a session that will never arrive; the timeout then "
+                + "retries and repeats the same refusal on every later sweep tick, leaking stored "
+                + "reconnecting state and a timer forever; the session named " + sessionName + " must "
+                + "not be marked reconnecting once its reconnect is refused, yet isReconnecting reported "
+                + markedReconnecting,
+            !markedReconnecting);
+    }
+
+    @Test
+    public void theDisplayedSessionSelectorExcludesEveryHiddenSessionNameFromTheReconnectableSet() {
+        DisplayedSessionSelector displayedSessionSelector = new DisplayedSessionSelector();
+        List<String> allLiveSessionNames = new ArrayList<>();
+        Set<String> hiddenSessionNames = new LinkedHashSet<>();
+        for (TerminalSession hiddenSession : hiddenSessions) {
+            allLiveSessionNames.add(hiddenSession.mSessionName);
+            hiddenSessionNames.add(hiddenSession.mSessionName);
+        }
+        for (TerminalSession visibleSession : visibleSessions) {
+            allLiveSessionNames.add(visibleSession.mSessionName);
+        }
+
+        Set<String> displayedSessionNames = displayedSessionSelector.selectDisplayedSessionNames(
+            true, displayedSession.mSessionName, allLiveSessionNames, true, hiddenSessionNames);
+
+        List<String> hiddenSessionNamesStillSelected = new ArrayList<>();
+        for (String hiddenSessionName : hiddenSessionNames) {
+            if (displayedSessionNames.contains(hiddenSessionName)) {
+                hiddenSessionNamesStillSelected.add(hiddenSessionName);
+            }
+        }
+
+        assertTrue("the background reconnect sweep's reconnectable name pool comes from this selector "
+                + "before the pacer ever sees a single session, so a hidden session name must never reach "
+                + "it on its own, independently of the pacer's separate mid-flight filter; pinning this "
+                + "layer alone catches a regression here even when the pacer filter happens to also catch "
+                + "the same name; over " + HIDDEN_SESSION_COUNT + " hidden session names, these were "
+                + "still selected into the reconnectable/displayed set: " + hiddenSessionNamesStillSelected,
+            hiddenSessionNamesStillSelected.isEmpty());
+    }
+
+    private void invokeReconnectThenMarkSessionReconnecting(TerminalSession deadSession) throws Exception {
+        Method method = TermuxTerminalSessionActivityClient.class.getDeclaredMethod(
+            "reconnectThenMarkSessionReconnecting", TerminalSession.class);
+        method.setAccessible(true);
+        method.invoke(sessionActivityClient, deadSession);
+    }
+
+    private void assertEveryThrowableSurfacedByTheSweepIsTheNativeSubprocessLinkageFailure() {
+        for (Throwable surfacedByTheSweep : throwablesSurfacedByTheSweep) {
+            assertContainsJniEvidence(causeChainDescription(surfacedByTheSweep));
+        }
+    }
+
+    private String causeChainDescription(Throwable throwable) {
+        StringBuilder description = new StringBuilder();
+        Throwable current = throwable;
+        while (current != null) {
+            description.append(current.getClass().getName()).append('\n');
+            for (StackTraceElement element : current.getStackTrace()) {
+                description.append("    at ").append(element).append('\n');
+            }
+            current = current.getCause();
+        }
+        return description.toString();
+    }
+
+    private void assertContainsJniEvidence(String causeChainDescription) {
+        if (!causeChainDescription.contains("com.termux.terminal.JNI")) {
+            fail("expected every throwable the sweep surfaced to originate from com.termux.terminal.JNI "
+                + "(proving eager initialization attempted a real subprocess spawn rather than failing "
+                + "for some unrelated, off-device reason), but got:\n" + causeChainDescription);
+        }
+    }
+
     private void hideSessionTheWayTheHideControlDoes(String sessionName) {
         preferences.setSessionDisabled(sessionName, true);
     }
@@ -343,8 +442,8 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         sweepStartUptimeMillis = SystemClock.uptimeMillis();
         try {
             sessionActivityClient.startDisplayedSessionCallScanTick();
-        } catch (Throwable surfacedByTheSweep) {
-            throwablesSurfacedByTheSweep.add(surfacedByTheSweep);
+        } catch (LinkageError nativeSubprocessUnavailableOffDevice) {
+            throwablesSurfacedByTheSweep.add(nativeSubprocessUnavailableOffDevice);
         }
         sessionActivityClient.stopDisplayedSessionCallScanTick();
         recordSessionCreationInstants();

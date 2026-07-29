@@ -2194,13 +2194,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return true;
         if (preferences.getUserRemovedSessionNames().contains(sessionName)) return false;
-        return !preferences.getDisabledSessionNames().contains(sessionName);
+        return !HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(sessionName,
+            preferences.getDisabledSessionNames());
     }
 
     private void reconnectThenMarkSessionReconnecting(@NonNull TerminalSession deadSession) {
-        String sessionName = deadSession.mSessionName;
-        reconnectDeadSessionPreservingDisplayedSession(deadSession);
-        markSessionReconnecting(sessionName);
+        TerminalSession reconnectedSession = reconnectDeadSessionPreservingDisplayedSession(deadSession);
+        if (reconnectedSession == null) return;
+        markSessionReconnecting(deadSession.mSessionName);
     }
 
     /**
