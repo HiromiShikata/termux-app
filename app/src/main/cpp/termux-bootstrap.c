@@ -3,9 +3,7 @@
 extern jbyte blob[];
 extern int blob_size;
 
-JNIEXPORT jbyteArray JNICALL Java_com_termux_app_TermuxInstaller_getZip(JNIEnv *env, __attribute__((__unused__)) jobject This)
+JNIEXPORT jobject JNICALL Java_com_termux_app_TermuxInstaller_getZipBuffer(JNIEnv *env, __attribute__((__unused__)) jobject This)
 {
-    jbyteArray ret = (*env)->NewByteArray(env, blob_size);
-    (*env)->SetByteArrayRegion(env, ret, 0, blob_size, blob);
-    return ret;
+    return (*env)->NewDirectByteBuffer(env, blob, blob_size);
 }
