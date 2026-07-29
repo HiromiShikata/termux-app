@@ -325,9 +325,37 @@ public final class TerminalSession extends TerminalOutput {
         }
 
         // Stop the reader and writer threads, and close the I/O streams
+        closeShellStreams();
+    }
+
+    static final int NO_TERMINAL_FILE_DESCRIPTOR = 0;
+
+    private void closeShellStreams() {
         mTerminalToProcessIOQueue.close();
         mProcessToTerminalIOQueue.close();
+        if (mTerminalFileDescriptor == NO_TERMINAL_FILE_DESCRIPTOR) {
+            return;
+        }
         JNI.close(mTerminalFileDescriptor);
+        mTerminalFileDescriptor = NO_TERMINAL_FILE_DESCRIPTOR;
+    }
+
+    /**
+     * Releases every runtime resource this session holds: the local shell process group, the
+     * pseudo-teletype streams, the terminal emulator and the scrollback buffer it owns. The shell is
+     * ended by the same local {@code kill(2)} on the started shell's own process group that {@link
+     * #finishIfRunning()} uses, so nothing is written to the session and no remote host is contacted.
+     * After this call the session reports no running shell and no emulator, and holds no memory
+     * proportional to the transcript rows setting.
+     */
+    public void releaseRuntimeResources() {
+        finishIfRunning();
+        closeShellStreams();
+        synchronized (this) {
+            mShellPid = -1;
+        }
+        mMainThreadHandler.removeCallbacksAndMessages(null);
+        mEmulator = null;
     }
 
     @Override
@@ -420,6 +448,7 @@ public final class TerminalSession extends TerminalOutput {
 
         @Override
         public void handleMessage(Message msg) {
+            if (mEmulator == null) return;
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
             if (bytesRead > 0) {
                 mTotalBytesProcessed += bytesRead;
