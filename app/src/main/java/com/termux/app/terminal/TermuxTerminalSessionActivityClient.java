@@ -42,6 +42,7 @@ import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
+import com.termux.app.sessiondefinition.SessionResourceReleasePlanner;
 import com.termux.app.sessiondefinition.VisibleSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -240,6 +241,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final VisibleSessionSelector mVisibleSessionSelector = new VisibleSessionSelector();
 
     private final DisplayedSessionSelector mDisplayedSessionSelector = new DisplayedSessionSelector();
+
+    private final SessionResourceReleasePlanner mSessionResourceReleasePlanner =
+        new SessionResourceReleasePlanner();
 
     private final StaggeredReconnectSchedule mStaggeredReconnectSchedule =
         new StaggeredReconnectSchedule(STAGGERED_RECONNECT_INTERVAL_MILLIS,
@@ -912,7 +916,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             ? sessionListBottomSheetController.getOnScreenSessionNames()
             : Collections.emptyList();
         return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
-            activeSessionName(), sessionListOpen, onScreenListSessionNames);
+            activeSessionName(), sessionListOpen, onScreenListSessionNames, hiddenSessionNames());
+    }
+
+    @NonNull
+    private Set<String> hiddenSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        return preferences != null ? preferences.getDisabledSessionNames() : Collections.emptySet();
     }
 
     @NonNull
@@ -927,10 +937,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (terminalSession == null || terminalSession.mSessionName == null) continue;
             allLiveSessionNames.add(terminalSession.mSessionName);
         }
-        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
-        Set<String> hiddenSessionNames = preferences != null
-            ? preferences.getDisabledSessionNames()
-            : Collections.emptySet();
+        Set<String> hiddenSessionNames = hiddenSessionNames();
         TermuxSessionsListViewController listViewController =
             mActivity.getTermuxSessionListViewController();
         Set<String> expandedProjectSessionNames = listViewController != null
@@ -2147,6 +2154,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return Collections.emptyList();
 
+        releaseRuntimeResourcesOfSessionsThatMustHoldNone();
+
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         String currentSessionName = activeSessionName();
@@ -2162,10 +2171,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             if (!reconnectableSessionNames.contains(sessionName)) continue;
             sessionByName.put(sessionName, terminalSession);
             boolean current = sessionName.equals(currentSessionName);
+            boolean running = terminalSession.isRunning();
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
-            boolean hung = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
+            boolean hung = running && mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
+            boolean reconnecting = store != null && store.isReconnecting(sessionName);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
-                sessionName, terminalSession.isRunning(), current, hung, lastOutTimeMillis));
+                sessionName, running, current, hung, lastOutTimeMillis, reconnecting));
         }
 
         List<String> sessionNamesToReconnect =
@@ -2185,6 +2196,73 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             reconnectIndex++;
         }
         return reconnectedSessionNames;
+    }
+
+    /**
+     * Releases the runtime resources of every session that must hold none: a hidden session, whatever
+     * its process state, and a session whose process has exited while it is neither the current
+     * session nor displayed. The row of each released session stays in the list so the owner still
+     * sees it and can reopen it, and unhiding or reopening recreates the process and the emulator, so
+     * the release is reversible and is driven only by the current hidden and displayed state. No
+     * displayed session is ever released, so nothing here makes a displayed session less fresh.
+     */
+    private void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        String currentSessionName = activeSessionName();
+        Set<String> displayedSessionNames = displayedSessionNames();
+        Set<String> hiddenSessionNames = hiddenSessionNames();
+
+        Map<String, TerminalSession> sessionByName = new HashMap<>();
+        List<SessionResourceReleasePlanner.CandidateSession> candidateSessions = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null) continue;
+            String sessionName = terminalSession.mSessionName;
+            if (sessionName == null) continue;
+            sessionByName.put(sessionName, terminalSession);
+            candidateSessions.add(new SessionResourceReleasePlanner.CandidateSession(sessionName,
+                terminalSession.isRunning(), sessionName.equals(currentSessionName),
+                displayedSessionNames.contains(sessionName), hiddenSessionNames.contains(sessionName)));
+        }
+
+        for (String sessionName : mSessionResourceReleasePlanner.planSessionNamesToRelease(candidateSessions)) {
+            releaseSessionRuntimeResources(sessionByName.get(sessionName), sessionName);
+        }
+    }
+
+    private void releaseSessionRuntimeResources(@Nullable TerminalSession terminalSession,
+                                                @NonNull String sessionName) {
+        if (terminalSession == null) return;
+        if (!terminalSession.isRunning() && terminalSession.getEmulator() == null) return;
+        cancelReconnectTimeout(sessionName);
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store != null) {
+            store.clearReconnecting(sessionName);
+        }
+        terminalSession.finishIfRunning();
+        terminalSession.releaseEmulator();
+        mSessionOutputProgressTracker.forget(sessionName);
+        termuxSessionListNotifyUpdated();
+    }
+
+    /**
+     * The production entry point for a session becoming hidden or visible again. Hiding tears the
+     * local process down and releases the terminal emulator and its scrollback buffer, so the hidden
+     * session costs nothing while it stays hidden; the row remains in the list and remains reopenable.
+     * Unhiding reconnects it so it resumes normally. Tearing the local process down does not touch the
+     * session on the remote host, which is the separate kill-host-session action.
+     */
+    @NonNull
+    public List<String> onSessionHiddenStateChanged(@Nullable String sessionName, boolean hidden) {
+        if (sessionName == null || sessionName.isEmpty()) return Collections.emptyList();
+        if (!hidden) {
+            return reconnectDeadDefinitionBackedSessionsInBackground(
+                Collections.singleton(sessionName));
+        }
+        releaseSessionRuntimeResources(findTerminalSessionByName(sessionName), sessionName);
+        return Collections.emptyList();
     }
 
     private void scheduleStaggeredReconnect(@NonNull TerminalSession deadSession,

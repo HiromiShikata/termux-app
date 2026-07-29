@@ -20,6 +20,7 @@ public final class DeadSessionReconnectPlanner {
         private final boolean current;
         private final boolean hung;
         private final Long lastOutTimeMillis;
+        private final boolean reconnecting;
 
         public CandidateSession(String name, boolean running) {
             this(name, running, false, false, null);
@@ -27,11 +28,17 @@ public final class DeadSessionReconnectPlanner {
 
         public CandidateSession(String name, boolean running, boolean current, boolean hung,
                                 @Nullable Long lastOutTimeMillis) {
+            this(name, running, current, hung, lastOutTimeMillis, false);
+        }
+
+        public CandidateSession(String name, boolean running, boolean current, boolean hung,
+                                @Nullable Long lastOutTimeMillis, boolean reconnecting) {
             this.name = name;
             this.running = running;
             this.current = current;
             this.hung = hung;
             this.lastOutTimeMillis = lastOutTimeMillis;
+            this.reconnecting = reconnecting;
         }
 
         public String getName() {
@@ -55,12 +62,30 @@ public final class DeadSessionReconnectPlanner {
             return lastOutTimeMillis;
         }
 
+        public boolean isReconnecting() {
+            return reconnecting;
+        }
+
+        /**
+         * A session whose reconnect is still in flight is not selected again: its replacement was
+         * created moments ago, owns no shell process until its emulator is initialised and has had no
+         * opportunity to render a statusline, so selecting it again on the next scan tears down the
+         * reconnect that is still running and repeats without end. The bounded reconnect timeout and
+         * retry ladder owns that session until it settles, and clears the in-flight state on both the
+         * success and the exhausted-retry path, so the exclusion always ends.
+         *
+         * <p>Hung means alive but no longer producing output, so it describes a running session only.
+         * A candidate that is at once not running and hung carries a recorded output time that cannot
+         * belong to it — the signature of a replacement that inherited the time of the session it
+         * replaced and can never refresh it — and reconnecting on that basis is what leaves the
+         * selection without a reachable exit, so such a candidate is not selected either.
+         */
         boolean isDeadProcessReconnectCandidate() {
-            return !current && !running;
+            return !current && !running && !hung && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {
-            return !current && running && hung;
+            return !current && running && hung && !reconnecting;
         }
     }
 

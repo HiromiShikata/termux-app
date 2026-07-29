@@ -33,6 +33,8 @@ public final class TerminalSession extends TerminalOutput {
     private static final int MSG_NEW_INPUT = 1;
     private static final int MSG_PROCESS_EXITED = 4;
 
+    public static final int NO_SHELL_PROCESS_PID = -1;
+
     public final String mHandle = UUID.randomUUID().toString();
 
     TerminalEmulator mEmulator;
@@ -53,8 +55,8 @@ public final class TerminalSession extends TerminalOutput {
     /** Callback which gets notified when a session finishes or changes title. */
     TerminalSessionClient mClient;
 
-    /** The pid of the shell process. 0 if not started and -1 if finished running. */
-    int mShellPid;
+    /** The pid of the shell process, and -1 while no shell process of this session is running. */
+    int mShellPid = NO_SHELL_PROCESS_PID;
 
     /** The exit status of the shell process. Only valid if ${@link #mShellPid} is -1. */
     int mShellExitStatus;
@@ -239,6 +241,17 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator;
     }
 
+    /**
+     * Drops the terminal emulator and the scrollback buffer it owns, whose size is governed by the
+     * transcript rows setting, so a session that must consume no resources holds none. The session
+     * object itself stays alive as the entry the session list renders its row from, and a later
+     * {@link #updateSize(int, int, int, int)} recreates the emulator and starts the shell process
+     * again, so the release is reversible.
+     */
+    public void releaseEmulator() {
+        mEmulator = null;
+    }
+
     public long getNeverResetScrolledLineCount() {
         return mEmulator == null ? 0L : mEmulator.getNeverResetScrolledLineCount();
     }
@@ -320,7 +333,7 @@ public final class TerminalSession extends TerminalOutput {
     /** Cleanup resources when the process exits. */
     void cleanupResources(int exitStatus) {
         synchronized (this) {
-            mShellPid = -1;
+            mShellPid = NO_SHELL_PROCESS_PID;
             mShellExitStatus = exitStatus;
         }
 
@@ -336,7 +349,7 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     public synchronized boolean isRunning() {
-        return mShellPid != -1;
+        return mShellPid != NO_SHELL_PROCESS_PID;
     }
 
     /** Only valid if not {@link #isRunning()}. */
@@ -421,7 +434,7 @@ public final class TerminalSession extends TerminalOutput {
         @Override
         public void handleMessage(Message msg) {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
-            if (bytesRead > 0) {
+            if (bytesRead > 0 && mEmulator != null) {
                 mTotalBytesProcessed += bytesRead;
                 int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
                 if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
@@ -446,8 +459,10 @@ public final class TerminalSession extends TerminalOutput {
                 exitDescription += " - press Enter]";
 
                 byte[] bytesToWrite = exitDescription.getBytes(StandardCharsets.UTF_8);
-                mEmulator.append(bytesToWrite, bytesToWrite.length);
-                notifyScreenUpdate();
+                if (mEmulator != null) {
+                    mEmulator.append(bytesToWrite, bytesToWrite.length);
+                    notifyScreenUpdate();
+                }
 
                 mClient.onSessionFinished(TerminalSession.this);
             }

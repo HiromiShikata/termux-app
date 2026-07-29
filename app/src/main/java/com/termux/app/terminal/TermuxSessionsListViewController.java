@@ -605,9 +605,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         boolean wasDisabled = isSessionDisabled(sessionName);
         preferences.toggleSessionDisabled(sessionName);
-        if (wasDisabled) {
-            mActivity.reconnectDeadDefinitionBackedSessions();
-        }
+        mActivity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(sessionName, !wasDisabled);
         refreshSessionList();
     }
 
@@ -620,11 +618,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         preferences.setSessionDisabled(sessionName, true);
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store != null) {
-            store.clearReconnecting(sessionName);
-        }
-        mActivity.getTermuxTerminalSessionClient().cancelReconnectTimeout(sessionName);
+        mActivity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(sessionName, true);
         refreshSessionList();
     }
 
