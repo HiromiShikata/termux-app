@@ -525,7 +525,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (store == null) return;
 
         long nowMillis = System.currentTimeMillis();
-        Set<String> visibleSessionNames = visibleSessionNames();
+        Set<String> visibleSessionNames = sessionNamesRenderedOnScreen();
         if (forceRescan) {
             visibleSessionNames =
                 firstForcedRescanBatchAfterDeferringTheRest(new ArrayList<>(visibleSessionNames));
@@ -559,7 +559,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * Refreshes the displayed content (call/out/reply statusline tier) of every DISPLAYED session under
      * the normal applied filter — visible (not hidden) AND under an expanded (non-collapsed) project,
      * plus the current session unconditionally — the same set the fast displayed-session call-scan cycle
-     * uses — rather than only the narrow foreground/on-screen {@link #visibleSessionNames()} set the
+     * uses — rather than only the narrow foreground/on-screen {@link #sessionNamesRenderedOnScreen()} set the
      * ordinary rescan
      * covers. This is the on-launch and on-reload counterpart to the manual per-session refresh the
      * owner otherwise triggers by switching to each session: it reproduces only the statusline
@@ -924,16 +924,39 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @NonNull
-    private Set<String> visibleSessionNames() {
+    private Set<String> sessionNamesRenderedOnScreen() {
+        return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
+            activeSessionName(), isSessionListOpen(), onScreenSessionListRowNames(),
+            Collections.emptySet());
+    }
+
+    @NonNull
+    private Set<String> reconnectableSessionNames() {
+        return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
+            activeSessionName(), isSessionListOpen(), onScreenSessionListRowNames(), hiddenSessionNames());
+    }
+
+    private boolean isSessionListOpen() {
         SessionListBottomSheetController sessionListBottomSheetController =
             mActivity.getSessionListBottomSheetController();
-        boolean sessionListOpen =
-            sessionListBottomSheetController != null && sessionListBottomSheetController.isOpen();
-        List<String> onScreenListSessionNames = sessionListOpen
-            ? sessionListBottomSheetController.getOnScreenSessionNames()
-            : Collections.emptyList();
-        return mVisibleSessionSelector.selectVisibleSessionNames(mActivity.isVisible(),
-            activeSessionName(), sessionListOpen, onScreenListSessionNames, hiddenSessionNames());
+        return sessionListBottomSheetController != null && sessionListBottomSheetController.isOpen();
+    }
+
+    @NonNull
+    private List<String> onScreenSessionListRowNames() {
+        SessionListBottomSheetController sessionListBottomSheetController =
+            mActivity.getSessionListBottomSheetController();
+        if (!isSessionListOpen()) {
+            return Collections.emptyList();
+        }
+        return sessionListBottomSheetController.getOnScreenSessionNames();
+    }
+
+    @NonNull
+    private Set<String> sessionNamesTheOwnerIsLookingAt() {
+        Set<String> sessionNames = new HashSet<>(displayedSessionNames());
+        sessionNames.addAll(onScreenSessionListRowNames());
+        return sessionNames;
     }
 
     @NonNull
@@ -2170,7 +2193,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @NonNull
     public List<String> reconnectDeadDefinitionBackedSessionsInBackground() {
-        return reconnectDeadDefinitionBackedSessionsInBackground(visibleSessionNames());
+        return reconnectDeadDefinitionBackedSessionsInBackground(reconnectableSessionNames());
     }
 
     private List<String> reconnectDeadDisplayedSessionsInBackground(@NonNull Set<String> displayedSessionNames) {
@@ -2232,7 +2255,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (service == null) return;
 
         String currentSessionName = activeSessionName();
-        Set<String> displayedSessionNames = displayedSessionNames();
+        Set<String> displayedSessionNames = sessionNamesTheOwnerIsLookingAt();
         Set<String> hiddenSessionNames = hiddenSessionNames();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
