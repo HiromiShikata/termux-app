@@ -38,14 +38,14 @@ public class SessionResourceReleasePlannerTest {
     }
 
     @Test
-    public void keepsTheResourcesOfAHiddenSessionWhoseRowTheOwnerIsLookingAt() {
+    public void releasesAHiddenSessionEvenWhileItsRowIsOnScreen() {
         List<String> released = planner.planSessionNamesToRelease(Collections.singletonList(
             candidate("session-hidden-on-screen", true, false, true, true)));
 
-        Assert.assertEquals("a hidden row the owner has on screen still renders its call, out and reply "
-                + "times from its own transcript, so releasing its emulator blanks a row the owner is "
-                + "looking at",
-            new ArrayList<String>(), released);
+        Assert.assertEquals("a hidden session holds no runtime resources whatever the owner has on "
+                + "screen, so a hidden row that is on screen with hidden rows shown is released like "
+                + "any other",
+            Collections.singletonList("session-hidden-on-screen"), released);
     }
 
     @Test

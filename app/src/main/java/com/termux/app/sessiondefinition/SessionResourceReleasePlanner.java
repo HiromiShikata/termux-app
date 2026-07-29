@@ -53,13 +53,14 @@ public final class SessionResourceReleasePlanner {
             if (current) {
                 return false;
             }
-            if (displayed) {
-                return false;
-            }
             if (hidden) {
                 return true;
             }
-            return !running;
+            return hasExitedWhileOutOfSight();
+        }
+
+        private boolean hasExitedWhileOutOfSight() {
+            return !running && !displayed;
         }
     }
 
