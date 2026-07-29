@@ -39,6 +39,7 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
+import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
@@ -149,15 +150,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return preferences == null ? Collections.emptySet() : preferences.getDisabledSessionNames();
     }
 
-    /**
-     * Whether {@code sessionName} is recorded as hidden and must therefore hold no runtime resource.
-     * Checked at the moment a reconnect actually runs rather than only when one is scheduled, because
-     * the staggered reconnect runnable is posted with a delay and is not retained anywhere, so a
-     * session hidden inside the stagger window would otherwise be brought back by a reconnect that
-     * nothing can cancel.
-     */
-    private boolean isHiddenSession(@Nullable String sessionName) {
-        return HiddenSessionEagerLoadExclusion.isExcludedFromEagerLoad(sessionName, hiddenSessionNames());
+    private boolean isRecordedHidden(@Nullable String sessionName) {
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, hiddenSessionNames());
     }
 
     private void notifySessionLimitExceeded(int configuredLimit, int droppedSessionCount) {
@@ -1840,13 +1834,19 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void addNewSessionApplyingAutosshConfig(String sessionName, boolean closeDrawerAfter) {
+        addNewSessionApplyingAutosshConfig(sessionName, closeDrawerAfter, true);
+    }
+
+    private void addNewSessionApplyingAutosshConfig(String sessionName, boolean closeDrawerAfter,
+                                                    boolean displayNewSession) {
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionDefinitionPlannedSession plannedSession =
             new SessionDefinitionPlanner().planNamedSession(sessionName, commandTemplate);
         if (plannedSession.hasCommand()) {
-            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), closeDrawerAfter);
+            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), closeDrawerAfter,
+                displayNewSession);
         } else {
-            addNewSession(false, plannedSession.getName(), closeDrawerAfter);
+            addNewSession(false, plannedSession.getName(), closeDrawerAfter, displayNewSession);
         }
     }
 
@@ -1909,36 +1909,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
     }
 
-    /**
-     * Recreates a session that has just been unhidden and connects it exactly as a first open does:
-     * the session object is created from the stored session definition and the shell is started by the
-     * same staged eager session load that starts every other non-displayed session. The displayed
-     * session is left untouched, so unhiding never takes the owner off the session he is working in.
-     */
-    public void recreateUnhiddenSession(@Nullable String sessionName) {
+    public void recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) return;
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
         if (service.getTermuxSessionForSessionName(sessionName) != null) return;
 
-        SessionDefinitionPlannedSession plannedSession = new SessionDefinitionPlanner()
-            .planNamedSession(sessionName, mActivity.getPreferences().getAutosshCommand());
-        if (plannedSession.hasCommand()) {
-            addNewAutosshSession(plannedSession.getName(), plannedSession.getCommand(), false, false);
-        } else {
-            addNewSession(false, plannedSession.getName(), false, false);
-        }
+        addNewSessionApplyingAutosshConfig(sessionName, false, false);
         mActivity.eagerLoadAllSessions();
     }
 
-    /**
-     * Releases every runtime resource a session holds once it is hidden and drops its live session
-     * object, so a hidden session holds no shell process, no terminal emulator and no scrollback
-     * buffer, and is absent from the service session list that every statusline scan, every reconnect
-     * selection and every session cap count iterates. Only the local shell process group is signalled,
-     * by the same guarded local {@code kill(2)} the delete-session path uses; no command text is sent
-     * and no remote host is contacted, so unhiding restores the session locally.
-     */
     public void releaseHiddenSessionRuntimeResources(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) return;
         TermuxService service = mActivity.getTermuxService();
@@ -2178,10 +2158,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;
 
+        if (isRecordedHidden(finishedSession.mSessionName)) return false;
+
         FinishedSessionEnterAction action = decideFinishedSessionEnterAction(finishedSession);
         if (!action.isReconnect()) return false;
 
         String sessionName = action.getSessionName();
+        if (isRecordedHidden(sessionName)) return false;
         String command = action.getCommand();
         TerminalSession currentSession = mActivity.getCurrentSession();
         String currentSessionCwd = currentSession == null ? null : currentSession.getCwd();
@@ -2307,7 +2290,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void scheduleStaggeredReconnect(@NonNull TerminalSession deadSession,
                                             @NonNull String sessionName, long startDelayMillis) {
         Runnable reconnectRunnable = () -> {
-            reconnectDeadSessionPreservingDisplayedSession(deadSession);
+            if (reconnectDeadSessionPreservingDisplayedSession(deadSession) == null) return;
             markSessionReconnecting(sessionName);
         };
         if (startDelayMillis <= 0L) {
@@ -2398,13 +2381,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
-        if (isHiddenSession(deadSession.mSessionName)) return null;
+        if (isRecordedHidden(deadSession.mSessionName)) return null;
 
         FinishedSessionEnterAction action = decideFinishedSessionEnterAction(deadSession);
         if (!action.isReconnect()) return null;
 
         String sessionName = action.getSessionName();
-        if (isHiddenSession(sessionName)) return null;
+        if (isRecordedHidden(sessionName)) return null;
         String command = action.getCommand();
         TerminalSession displayedSession = mActivity.getCurrentSession();
         String deadSessionCwd = deadSession.getCwd();

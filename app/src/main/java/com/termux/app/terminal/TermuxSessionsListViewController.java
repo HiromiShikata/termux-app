@@ -31,6 +31,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;
@@ -591,7 +592,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     private boolean isSessionDisabled(@Nullable String sessionName) {
-        return sessionName != null && disabledSessionNames().contains(sessionName);
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames());
     }
 
     private void toggleSessionDisabled(@Nullable String sessionName) {
@@ -608,7 +609,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         preferences.toggleSessionDisabled(sessionName);
         if (wasDisabled) {
-            mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSession(sessionName);
+            mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
             mActivity.reconnectDeadDefinitionBackedSessions();
         } else {
             releaseHiddenSessionRuntimeResources(sessionName);
@@ -1337,12 +1338,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
     }
 
-    /**
-     * Renders the row of a session that exists only in the stored session definition and holds no
-     * live session object, which is every hidden session once its runtime resources have been
-     * released. The owner still sees the row, its project and story grouping and its definition
-     * title, and the row's toggle unhides and recreates the session.
-     */
     @SuppressLint("SetTextI18n")
     private void bindDefinitionBackedSessionView(@NonNull SessionHierarchyRow row,
                                                  @NonNull View sessionRowView,
@@ -1621,13 +1616,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
     }
 
-    /**
-     * Opens a row that exists only in the stored session definition by unhiding its session and
-     * recreating it. The stored hidden state is only cleared once the service that owns the session
-     * list is bound, because the recreation cannot run without it: clearing it first would leave the
-     * session recorded as shown while nothing had been created for it, and the owner would be looking
-     * at a row whose toggle no longer describes its state.
-     */
     private void openDefinitionBackedSession(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) {
             return;
@@ -1639,7 +1627,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (preferences != null && isSessionDisabled(sessionName)) {
             preferences.setSessionDisabled(sessionName, false);
         }
-        mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSession(sessionName);
+        mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
         refreshSessionList();
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();

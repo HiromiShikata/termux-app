@@ -18,7 +18,8 @@ public class SessionDefinitionExistingSessionFilterTest {
             new SessionDefinitionPlannedSession("beta", "command-beta"));
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, Collections.emptySet());
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, Collections.emptySet(), Collections.emptySet());
 
         Assert.assertEquals(2, sessionsToCreate.size());
         Assert.assertEquals("alpha", sessionsToCreate.get(0).getName());
@@ -34,7 +35,8 @@ public class SessionDefinitionExistingSessionFilterTest {
         Set<String> existingSessionNames = new HashSet<>(Arrays.asList("alpha", "gamma"));
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, existingSessionNames);
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, existingSessionNames, Collections.emptySet());
 
         Assert.assertEquals(1, sessionsToCreate.size());
         Assert.assertEquals("beta", sessionsToCreate.get(0).getName());
@@ -48,11 +50,40 @@ public class SessionDefinitionExistingSessionFilterTest {
             new SessionDefinitionPlannedSession("beta", null));
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, Collections.emptySet());
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, Collections.emptySet(), Collections.emptySet());
 
         Assert.assertEquals(2, sessionsToCreate.size());
         Assert.assertEquals("alpha", sessionsToCreate.get(0).getName());
         Assert.assertNull(sessionsToCreate.get(0).getCommand());
         Assert.assertEquals("beta", sessionsToCreate.get(1).getName());
+    }
+
+    @Test
+    public void selectSessionsToCreateSkipsSessionsTheOwnerHasHidden() {
+        List<SessionDefinitionPlannedSession> plannedSessions = Arrays.asList(
+            new SessionDefinitionPlannedSession("alpha", null),
+            new SessionDefinitionPlannedSession("beta", "command-beta"));
+        Set<String> hiddenSessionNames = Collections.singleton("beta");
+
+        List<SessionDefinitionPlannedSession> sessionsToCreate =
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, Collections.emptySet(), hiddenSessionNames);
+
+        Assert.assertEquals(1, sessionsToCreate.size());
+        Assert.assertEquals("alpha", sessionsToCreate.get(0).getName());
+    }
+
+    @Test
+    public void selectSessionsToCreateStillReturnsANameThatIsAbsentAndNotHidden() {
+        List<SessionDefinitionPlannedSession> plannedSessions = Collections.singletonList(
+            new SessionDefinitionPlannedSession("alpha", null));
+
+        List<SessionDefinitionPlannedSession> sessionsToCreate =
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, Collections.emptySet(), Collections.singleton("beta"));
+
+        Assert.assertEquals(1, sessionsToCreate.size());
+        Assert.assertEquals("alpha", sessionsToCreate.get(0).getName());
     }
 }
