@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
@@ -56,6 +57,8 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
     private static final String CURRENT_SESSION_NAME = "session-current";
 
     private static final String HIDDEN_SESSION_NAME = "session-hidden";
+
+    private static final String RECONNECTABLE_SESSION_NAME = "session-reconnectable";
 
     private static final int TERMINAL_COLUMNS = 80;
 
@@ -74,6 +77,8 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
     private static final long STAGGER_INTERVAL_MILLIS = 1000L;
 
     private static final long IDLE_PAST_STAGGER_MILLIS = 2000L;
+
+    private static final long IDLE_PAST_RECONNECT_TIMEOUT_MILLIS = 600000L;
 
     private static final int MAIN_THREAD_TASK_DRAIN_LIMIT = 500;
 
@@ -235,6 +240,114 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
                 + "byte the shell writes; the transcript was " + transcript.trim() + " and the "
                 + "keystroke queue object was " + keystrokeQueue,
             transcript.contains(SHELL_OUTPUT_PROBE));
+    }
+
+    @Test
+    public void aRefusedReconnectLeavesTheHiddenRowNoSpinnerAndNoQueuedTimeout() throws Exception {
+        hideDuringTheStaggerWindow();
+
+        assertFalse("a refused reconnect must leave no reconnecting mark behind; the mark draws a "
+                + "spinner on the row, and a hidden session consumes nothing, so a row the owner hid "
+                + "must not acquire one from a reconnect that never happened",
+            activity.getSessionNewActivityStore().isReconnecting(HIDDEN_SESSION_NAME));
+        assertTrue("the reconnect timeout runnable posted alongside the mark must not be queued for a "
+                + "session that was never reconnected; it fires later and flips the row into a "
+                + "reconnect-failed state for a session that does not exist",
+            queuedReconnectTimeoutSessionNames().isEmpty());
+
+        idlePastTheReconnectTimeout();
+
+        assertFalse("with no queued timeout the hidden row must never reach the reconnect-failed state "
+                + "either, which is what the owner would otherwise see minutes after hiding a session",
+            activity.getSessionNewActivityStore().isReconnectFailed(HIDDEN_SESSION_NAME));
+    }
+
+    @Test
+    public void aSessionThatIsActuallyReconnectedStillAcquiresItsReconnectingMark() throws Exception {
+        set(activity, TermuxActivity.class, "mIsVisible", false);
+        TermuxSession deadSession = deadSessionAwaitingReconnect(RECONNECTABLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deadSession);
+
+        scheduleStaggeredReconnectThroughProductionPath(
+            deadSession.getTerminalSession(), RECONNECTABLE_SESSION_NAME);
+        idlePastTheStaggerWindow();
+
+        assertNotNull("this assertion only means something if the reconnect genuinely produced a live "
+                + "session object, otherwise it would pass for the same reason the hidden case does. The "
+                + "reconnect is driven with the activity not in the foreground, which is the arrangement "
+                + "in which the replacement session is created without eagerly building its emulator, so "
+                + "the decision under test is reachable without the device-only native library",
+            service.getTermuxSessionForSessionName(RECONNECTABLE_SESSION_NAME));
+        assertTrue("suppressing the reconnecting mark for a refused reconnect must not suppress it for "
+                + "a reconnect that actually happened; the owner relies on that mark to see which "
+                + "sessions are coming back",
+            activity.getSessionNewActivityStore().isReconnecting(RECONNECTABLE_SESSION_NAME));
+        assertFalse("the reconnect timeout that accompanies the mark must be queued for a session that "
+                + "really is reconnecting", queuedReconnectTimeoutSessionNames().isEmpty());
+    }
+
+    @Test
+    public void theInPlaceReconnectOfAFinishedSessionRefusesAHiddenName() throws Exception {
+        TermuxSession deadSession = deadSessionAwaitingReconnect(HIDDEN_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deadSession);
+        TerminalSession finishedSession = deadSession.getTerminalSession();
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        boolean reconnected = reconnectFinishedSessionInPlaceThroughProductionPath(finishedSession);
+
+        assertFalse("the in-place reconnect of a finished session must refuse a hidden name like every "
+                + "other reconnect path; its callers reach only the on-screen session today, so the "
+                + "requirement would otherwise be resting on an invariant kept in another component "
+                + "rather than on a check at the point of effect",
+            reconnected);
+        assertNull("a refused in-place reconnect must create no live session object for the hidden "
+                + "name", service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME));
+        assertNotSame("a refused in-place reconnect must not take the owner off the session he is "
+                + "working in, because that call sets the current session unconditionally once it "
+                + "proceeds", finishedSession, activity.getCurrentSession());
+    }
+
+    @Test
+    public void theInPlaceReconnectStillReconnectsAFinishedSessionThatIsNotHidden() throws Exception {
+        TermuxSession deadSession = deadSessionAwaitingReconnect(RECONNECTABLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deadSession);
+
+        reconnectFinishedSessionInPlaceThroughProductionPath(deadSession.getTerminalSession());
+
+        assertNotNull("refusing the in-place reconnect for hidden names must not refuse it for a "
+                + "finished session the owner can see; pressing Enter on such a session is how it comes "
+                + "back, and it must exist as a live session object again afterwards",
+            service.getTermuxSessionForSessionName(RECONNECTABLE_SESSION_NAME));
+    }
+
+    private boolean reconnectFinishedSessionInPlaceThroughProductionPath(TerminalSession finishedSession)
+            throws Exception {
+        Method reconnectFinishedSessionInPlace = TermuxTerminalSessionActivityClient.class
+            .getDeclaredMethod("reconnectFinishedSessionInPlace", TerminalSession.class, String.class);
+        reconnectFinishedSessionInPlace.setAccessible(true);
+        try {
+            return (Boolean) reconnectFinishedSessionInPlace.invoke(
+                activity.getTermuxTerminalSessionClient(), finishedSession, null);
+        } catch (Throwable missingNativeLibrary) {
+            assertTrue("the only failure an in-place reconnect may raise in a Java virtual machine test "
+                    + "is the absent device-only native library reached once the replacement session is "
+                    + "displayed, but it raised " + causeChainDescription(missingNativeLibrary),
+                causeChainDescription(missingNativeLibrary).contains(DEVICE_ONLY_NATIVE_LIBRARY_OWNER));
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Set<String> queuedReconnectTimeoutSessionNames() throws Exception {
+        Field runnablesByName = TermuxTerminalSessionActivityClient.class
+            .getDeclaredField("mReconnectTimeoutRunnableByName");
+        runnablesByName.setAccessible(true);
+        return ((Map<String, Runnable>) runnablesByName.get(activity.getTermuxTerminalSessionClient()))
+            .keySet();
+    }
+
+    private void idlePastTheReconnectTimeout() {
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(IDLE_PAST_RECONNECT_TIMEOUT_MILLIS));
     }
 
     private void hideDuringTheStaggerWindow() throws Exception {
