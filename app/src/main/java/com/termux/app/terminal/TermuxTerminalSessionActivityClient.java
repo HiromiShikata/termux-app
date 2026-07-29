@@ -177,7 +177,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * and how many additional reconnects each subsequent spacing slot releases. A small window of a few
      * keeps the whole stale backlog draining quickly without a simultaneous resource spike.
      */
-    static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
+    public static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
 
     /**
      * How many displayed sessions' statuslines are read and reparsed in one main-thread batch of the
