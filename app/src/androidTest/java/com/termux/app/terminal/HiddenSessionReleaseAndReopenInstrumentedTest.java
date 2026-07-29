@@ -9,6 +9,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.core.app.ActivityScenario;
@@ -34,6 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(AndroidJUnit4.class)
 public class HiddenSessionReleaseAndReopenInstrumentedTest {
+
+    private static final String LOG_TAG = "HiddenSessionReleaseAndReopen";
 
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 60_000L;
 
@@ -101,7 +105,6 @@ public class HiddenSessionReleaseAndReopenInstrumentedTest {
             removeSession(service, mSessionUnderTest);
             removeSession(service, mSessionTheViewMovesTo);
         });
-        mScenario.close();
     }
 
     @Test
@@ -160,6 +163,10 @@ public class HiddenSessionReleaseAndReopenInstrumentedTest {
             transcriptOf(sessionUnderTest).contains(MARKER_ONLY_THE_SHELL_ITSELF_CAN_PRINT_BEFORE_RELEASE));
         assertTrue("the reopened session must report itself as running",
             readOnMainThread(activity -> sessionUnderTest.isRunning()));
+
+        Log.w(LOG_TAG, "released shell process " + shellProcessIdBeforeRelease + " is gone, reopened shell process "
+            + shellProcessIdAfterReopen + " printed " + MARKER_ONLY_THE_SHELL_ITSELF_CAN_PRINT_AFTER_REOPEN
+            + " through the byte queues that replaced the closed ones");
     }
 
     @NonNull
