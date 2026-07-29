@@ -9,10 +9,10 @@ import org.junit.Test;
 public class SessionActionChooserKillHostWiringTest {
 
     @Test
-    public void killHostSessionActionSitsBetweenHideAndDelete() {
+    public void killHostSessionActionSitsBetweenHideAndResetSession() {
         Assert.assertEquals(SessionAction.HIDE, SessionAction.atIndex(2));
         Assert.assertEquals(SessionAction.KILL_HOST_SESSION, SessionAction.atIndex(3));
-        Assert.assertEquals(SessionAction.DELETE, SessionAction.atIndex(4));
+        Assert.assertEquals(SessionAction.RESET_SESSION, SessionAction.atIndex(4));
     }
 
     @Test

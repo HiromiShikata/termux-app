@@ -1580,6 +1580,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         RENAME(R.string.action_rename_session),
         HIDE(R.string.action_hide_session),
         KILL_HOST_SESSION(R.string.action_kill_host_session),
+        RESET_SESSION(R.string.action_reset_session),
         DELETE(R.string.action_delete_session);
 
         final int labelResId;
@@ -1625,6 +1626,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                 break;
             case KILL_HOST_SESSION:
                 mActivity.getTermuxTerminalSessionClient().killHostSession(session);
+                break;
+            case RESET_SESSION:
+                mActivity.getTermuxTerminalSessionClient().resetHostSession(session);
                 break;
             case DELETE:
                 mActivity.getTermuxTerminalSessionClient().deleteSession(session);

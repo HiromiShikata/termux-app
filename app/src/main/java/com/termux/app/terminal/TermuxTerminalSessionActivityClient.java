@@ -1640,6 +1640,33 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }, sessionToKill.mSessionName, mMainThreadHandler::postDelayed);
     }
 
+    public void resetHostSession(final TerminalSession sessionToReset) {
+        if (sessionToReset == null) return;
+
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+
+        String resetCommand = ResetSessionCommand.forTemplateAndSessionName(
+            mActivity.getPreferences().getResetSessionCommand(), sessionToReset.mSessionName);
+        if (resetCommand == null) {
+            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+                .setTitle(R.string.title_reset_session_command_not_configured)
+                .setMessage(R.string.msg_reset_session_command_not_configured)
+                .setPositiveButton(android.R.string.ok, null));
+            return;
+        }
+
+        String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+        String[] arguments = new String[]{"-c", resetCommand};
+        TermuxSession resetTermuxSession = service.createTermuxSession(shellPath, arguments, null,
+            mActivity.getProperties().getDefaultWorkingDirectory(), false,
+            ResetSessionCommand.sessionNameFor(sessionToReset.mSessionName));
+        if (resetTermuxSession == null) return;
+
+        setCurrentSession(resetTermuxSession.getTerminalSession());
+        mActivity.getDrawer().closeDrawers();
+    }
+
     private void renameSession(TerminalSession sessionToRename, String text) {
         if (sessionToRename == null) return;
         sessionToRename.mSessionName = text;

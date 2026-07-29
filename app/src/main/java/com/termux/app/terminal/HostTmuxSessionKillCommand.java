@@ -17,7 +17,7 @@ public final class HostTmuxSessionKillCommand {
         if (sessionName == null || sessionName.isEmpty()) {
             return null;
         }
-        String normalizedHostSessionName = sessionName.replace('.', '_').replace(':', '_');
+        String normalizedHostSessionName = HostTmuxSessionName.normalize(sessionName);
         return tmuxPrefixKey + ":kill-session -t " + SessionDefinitionPlanner.shellQuote(normalizedHostSessionName) + "\n";
     }
 }
