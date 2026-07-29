@@ -235,6 +235,12 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
                 + "re-parse set and out of the reconnect selection, and stops being refreshed while the "
                 + "owner is looking at it",
             preferences.getDisabledSessionNames().contains(LAST_VISIBLE_SESSION_NAME));
+        assertEquals("this refusal must explain itself for the same reason the last-visible refusal "
+                + "does: the owner taps hide, the row stays exactly as it was, and with no message the "
+                + "only reading available is that the control is broken",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_session_right_now),
+            ShadowToast.getTextOfLatestToast());
     }
 
     @Test
@@ -249,6 +255,11 @@ public class HidingTheLastVisibleSessionIsRefusedTest {
         assertFalse("both hide entry points write the same stored mark, so both must refuse when the "
                 + "release cannot run", preferences.getDisabledSessionNames()
                 .contains(LAST_VISIBLE_SESSION_NAME));
+        assertEquals("both entry points must explain this refusal too, otherwise the row toggle is the "
+                + "silent one",
+            RuntimeEnvironment.getApplication().getString(
+                R.string.msg_cannot_hide_the_session_right_now),
+            ShadowToast.getTextOfLatestToast());
     }
 
     @Test

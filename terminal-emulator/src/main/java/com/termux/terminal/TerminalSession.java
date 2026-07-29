@@ -41,8 +41,6 @@ public final class TerminalSession extends TerminalOutput {
 
     private volatile int mSigkilledShellProcessGroupTarget = NO_SHELL_PROCESS_GROUP_TARGET;
 
-    private volatile boolean mSigkillReachedTheShellProcessGroup;
-
     /**
      * A queue written to from a separate thread when the process outputs, and read by main thread to process by
      * terminal emulator.
@@ -322,12 +320,10 @@ public final class TerminalSession extends TerminalOutput {
             return;
         }
         int shellProcessGroupTarget = shellProcessGroupKillTarget(mShellPid);
-        mSigkilledShellProcessGroupTarget = shellProcessGroupTarget;
         try {
             Os.kill(shellProcessGroupTarget, OsConstants.SIGKILL);
-            mSigkillReachedTheShellProcessGroup = true;
+            mSigkilledShellProcessGroupTarget = shellProcessGroupTarget;
         } catch (ErrnoException e) {
-            mSigkillReachedTheShellProcessGroup = false;
             Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL to process group: " + e.getMessage());
         }
     }

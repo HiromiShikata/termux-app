@@ -163,7 +163,9 @@ public class HiddenSessionHoldsNoRuntimeResourceTest {
         assertEquals("reporting no running shell is satisfied by forgetting the process id alone, so it "
                 + "cannot show that the shell was terminated. The kill must be addressed at the shell's "
                 + "own process group, which is the negated process id, otherwise the process survives "
-                + "the hide and keeps the device resource this change exists to free",
+                + "the hide and keeps the device resource this change exists to free. The target is "
+                + "recorded only after the signal call returns, so this value cannot exist unless the "
+                + "signal was delivered",
             -UNREACHABLE_SHELL_PROCESS_ID,
             sigkilledShellProcessGroupTarget(hiddenSession.getTerminalSession()));
     }

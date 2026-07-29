@@ -62,35 +62,10 @@ public class DisabledSessionNamesPersistenceTest {
         Assert.assertFalse(reloaded.isSessionDisabled("beta"));
     }
 
-    @Test
-    public void toggleAddsThenRemovesASessionNameAndReportsTheNewState() {
-        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
-        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
-        Assert.assertNotNull(prefs);
 
-        boolean disabledAfterFirstToggle = prefs.toggleSessionDisabled("alpha");
-        Assert.assertTrue(disabledAfterFirstToggle);
-        Assert.assertEquals(new HashSet<>(java.util.Collections.singletonList("alpha")),
-            prefs.getDisabledSessionNames());
-
-        boolean disabledAfterSecondToggle = prefs.toggleSessionDisabled("alpha");
-        Assert.assertFalse(disabledAfterSecondToggle);
-        Assert.assertTrue(prefs.getDisabledSessionNames().isEmpty());
-    }
 
     @Test
-    public void toggleIsANoOpForNullOrEmptyName() {
-        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
-        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
-        Assert.assertNotNull(prefs);
-
-        Assert.assertFalse(prefs.toggleSessionDisabled(null));
-        Assert.assertFalse(prefs.toggleSessionDisabled(""));
-        Assert.assertTrue(prefs.getDisabledSessionNames().isEmpty());
-    }
-
-    @Test
-    public void setSessionDisabledTrueAddsTheNameToTheSameDisabledSetUsedByTheToggle() {
+    public void setSessionDisabledTrueAddsTheNameToTheDisabledSet() {
         Activity activity = Robolectric.buildActivity(Activity.class).create().get();
         TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
         Assert.assertNotNull(prefs);
@@ -130,18 +105,6 @@ public class DisabledSessionNamesPersistenceTest {
         Assert.assertTrue(prefs.getDisabledSessionNames().isEmpty());
     }
 
-    @Test
-    public void aSessionHiddenViaSetSessionDisabledIsRestorableByTheExistingToggle() {
-        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
-        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
-        Assert.assertNotNull(prefs);
-
-        prefs.setSessionDisabled("alpha", true);
-        boolean disabledAfterToggle = prefs.toggleSessionDisabled("alpha");
-
-        Assert.assertFalse(disabledAfterToggle);
-        Assert.assertTrue(prefs.getDisabledSessionNames().isEmpty());
-    }
 
     @Test
     public void setSessionDisabledIsANoOpForNullOrEmptyName() {
