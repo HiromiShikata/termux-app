@@ -360,8 +360,14 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     @NonNull
     private List<SessionHierarchyRow> rowsOutsideCollapsedProjects(@NonNull Set<String> hiddenSessionNames) {
         return SessionHierarchyBuilder.filterCollapsedProjectSessions(
-            SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex(),
-                hiddenSessionNames), mCollapsedProjectKeys);
+            rowsIncludingThoseInsideCollapsedProjects(hiddenSessionNames), mCollapsedProjectKeys);
+    }
+
+    @NonNull
+    private List<SessionHierarchyRow> rowsIncludingThoseInsideCollapsedProjects(
+        @NonNull Set<String> hiddenSessionNames) {
+        return SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex(),
+            hiddenSessionNames);
     }
 
     private void rebuildRows() {
@@ -485,8 +491,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     public int getTopmostNonHiddenSessionIndex() {
-        return SessionHierarchyBuilder.firstSessionIndex(SessionHierarchyBuilder.filterHiddenSessions(
-            buildAllRows(), sessionNamesByIndex(), disabledSessionNames()));
+        return SessionHierarchyBuilder.firstSessionIndex(
+            rowsIncludingThoseInsideCollapsedProjects(disabledSessionNames()));
     }
 
     @NonNull

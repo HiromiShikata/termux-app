@@ -410,8 +410,10 @@ public class SessionNewActivityStore {
      * displayed {@code reply:} value ({@link #effectiveReplyTimeMillis} takes the later of it and the
      * laggy statusline {@code reply:} token), so clearing it on reconnect would revert a reply the
      * owner just sent back to the minutes-old statusline value until the next statusline scan lands.
-     * Only the per-session bookkeeping that genuinely belongs to the torn-down session (seen and the
-     * call-to-user reason cycle) is cleared.
+     * Only the per-session bookkeeping that genuinely belongs to the torn-down session is cleared: the
+     * statusline {@code out:} time, which measures output the torn-down process itself produced and so
+     * cannot describe its replacement, the seen time, the reconnecting start time, and the
+     * call-to-user reason cycle.
      */
     public void purgeSessionPreservingStatuslineTimes(@NonNull String sessionName) {
         mStatuslineOutTimeMillisByName.remove(sessionName);
