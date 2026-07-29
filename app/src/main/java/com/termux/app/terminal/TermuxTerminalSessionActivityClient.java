@@ -177,7 +177,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * and how many additional reconnects each subsequent spacing slot releases. A small window of a few
      * keeps the whole stale backlog draining quickly without a simultaneous resource spike.
      */
-    public static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
+    static final int STAGGERED_RECONNECT_CONCURRENT_WINDOW = 3;
 
     /**
      * How many displayed sessions' statuslines are read and reparsed in one main-thread batch of the
@@ -522,6 +522,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         long nowMillis = System.currentTimeMillis();
         Set<String> visibleSessionNames = visibleSessionNames();
+        if (forceRescan) {
+            visibleSessionNames =
+                firstForcedRescanBatchAfterDeferringTheRest(new ArrayList<>(visibleSessionNames));
+        }
         List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts = new ArrayList<>();
         for (TermuxSession termuxSession : service.getTermuxSessions()) {
             TerminalSession session = termuxSession.getTerminalSession();
@@ -568,13 +572,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void repopulateStatuslineTimesForDisplayedSessions(boolean forceRescan) {
         List<String> displayedSessionNames = new ArrayList<>(displayedSessionNames());
         if (displayedSessionNames.isEmpty()) return;
-        int batchIndex = 0;
-        for (int start = 0; start < displayedSessionNames.size();
-                start += STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE) {
-            int end = Math.min(start + STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, displayedSessionNames.size());
-            Set<String> batchSessionNames =
-                new LinkedHashSet<>(displayedSessionNames.subList(start, end));
-            long batchDelayMillis = batchIndex * STAGGERED_RECONNECT_INTERVAL_MILLIS;
+        for (StaggeredStatuslineRescanBatchPlanner.Batch batch
+                : StaggeredStatuslineRescanBatchPlanner.plan(displayedSessionNames,
+                    STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, STAGGERED_RECONNECT_INTERVAL_MILLIS)) {
+            Set<String> batchSessionNames = batch.getSessionNames();
+            long batchDelayMillis = batch.getDelayMillis();
             if (batchDelayMillis <= 0L) {
                 repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan);
             } else {
@@ -582,8 +584,31 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                     () -> repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan),
                     batchDelayMillis);
             }
-            batchIndex++;
         }
+    }
+
+    /**
+     * The forced rescan variant of {@link #repopulateStatuslineTimesForAllSessions(boolean)} reads the
+     * whole visible set's transcripts regardless of the skip-gate, and the retry ladder repeats it once
+     * per backoff rung, so the same {@link #STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE} bound the displayed
+     * refresh applies is applied here: only the first batch is read in the current main-thread pass and
+     * every later batch is posted a further {@link #STAGGERED_RECONNECT_INTERVAL_MILLIS} apart, so no
+     * pass ever materializes more than one batch of transcripts uninterrupted.
+     */
+    @NonNull
+    private Set<String> firstForcedRescanBatchAfterDeferringTheRest(
+            @NonNull List<String> sessionNames) {
+        List<StaggeredStatuslineRescanBatchPlanner.Batch> batches =
+            StaggeredStatuslineRescanBatchPlanner.plan(sessionNames,
+                STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, STAGGERED_RECONNECT_INTERVAL_MILLIS);
+        if (batches.isEmpty()) return Collections.emptySet();
+        for (int batchIndex = 1; batchIndex < batches.size(); batchIndex++) {
+            StaggeredStatuslineRescanBatchPlanner.Batch batch = batches.get(batchIndex);
+            mMainThreadHandler.postDelayed(
+                () -> repopulateStatuslineTimesForSessionNames(batch.getSessionNames(), true),
+                batch.getDelayMillis());
+        }
+        return batches.get(0).getSessionNames();
     }
 
     /**

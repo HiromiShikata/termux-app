@@ -15,8 +15,6 @@ public final class SessionEagerLoadPacer {
         void postToMainThreadDelayed(@NonNull Runnable runnable, long delayMillis);
     }
 
-    private final SessionEagerLoader.SessionListSupplier sessionListSupplier;
-
     private final MainThreadMessagePoster mainThreadMessagePoster;
 
     private final SessionEagerLoader.SessionInitializationAction sessionInitializationAction;
@@ -26,10 +24,8 @@ public final class SessionEagerLoadPacer {
     private boolean unitMessagePosted;
 
     public SessionEagerLoadPacer(
-        @NonNull SessionEagerLoader.SessionListSupplier sessionListSupplier,
         @NonNull MainThreadMessagePoster mainThreadMessagePoster,
         @NonNull SessionEagerLoader.SessionInitializationAction sessionInitializationAction) {
-        this.sessionListSupplier = sessionListSupplier;
         this.mainThreadMessagePoster = mainThreadMessagePoster;
         this.sessionInitializationAction = sessionInitializationAction;
     }
@@ -37,10 +33,6 @@ public final class SessionEagerLoadPacer {
     public void enqueueSession(@NonNull TerminalSession session) {
         if (!pendingSessions.add(session)) return;
         postNextUnitMessageIfIdle();
-    }
-
-    public int getPendingSessionCount() {
-        return pendingSessions.size();
     }
 
     private void postNextUnitMessageIfIdle() {
@@ -53,10 +45,12 @@ public final class SessionEagerLoadPacer {
 
     private void runNextUnit() {
         unitMessagePosted = false;
-        TerminalSession session = pollNextPendingSession();
-        if (session != null && sessionListSupplier.getSessionsToEagerLoad().contains(session))
-            sessionInitializationAction.initializeSession(session);
-        postNextUnitMessageIfIdle();
+        try {
+            TerminalSession session = pollNextPendingSession();
+            if (session != null) sessionInitializationAction.initializeSession(session);
+        } finally {
+            postNextUnitMessageIfIdle();
+        }
     }
 
     private TerminalSession pollNextPendingSession() {

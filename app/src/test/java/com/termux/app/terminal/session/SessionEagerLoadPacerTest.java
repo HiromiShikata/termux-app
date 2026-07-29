@@ -1,6 +1,7 @@
 package com.termux.app.terminal.session;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
@@ -18,17 +19,6 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 public class SessionEagerLoadPacerTest {
-
-    private static final class MutableEagerLoadList
-            implements SessionEagerLoader.SessionListSupplier {
-        private final List<TerminalSession> sessions = new ArrayList<>();
-
-        @NonNull
-        @Override
-        public List<TerminalSession> getSessionsToEagerLoad() {
-            return sessions;
-        }
-    }
 
     private static final class PendingMainThreadMessages
             implements SessionEagerLoadPacer.MainThreadMessagePoster {
@@ -69,22 +59,17 @@ public class SessionEagerLoadPacerTest {
         }
     }
 
-    private final MutableEagerLoadList eagerLoadList = new MutableEagerLoadList();
-
     private final PendingMainThreadMessages mainThreadMessages = new PendingMainThreadMessages();
 
     private final RecordingInitializationAction initializationAction =
         new RecordingInitializationAction();
 
     private TerminalSession newSessionToEagerLoad() {
-        TerminalSession session =
-            new TerminalSession("/bin/sh", "/", new String[0], new String[0], null, null);
-        eagerLoadList.sessions.add(session);
-        return session;
+        return new TerminalSession("/bin/sh", "/", new String[0], new String[0], null, null);
     }
 
     private SessionEagerLoadPacer newPacer() {
-        return new SessionEagerLoadPacer(eagerLoadList, mainThreadMessages, initializationAction);
+        return new SessionEagerLoadPacer(mainThreadMessages, initializationAction);
     }
 
     @Test
@@ -158,7 +143,7 @@ public class SessionEagerLoadPacerTest {
 
         assertEquals(3, mainThreadMessages.runUntilNoMessagesRemain());
         assertEquals(List.of(first, second, third), initializationAction.initializedSessions);
-        assertEquals(0, pacer.getPendingSessionCount());
+        assertEquals(0, mainThreadMessages.getPendingMessageCount());
     }
 
     @Test
@@ -175,27 +160,12 @@ public class SessionEagerLoadPacerTest {
     }
 
     @Test
-    public void skipsASessionThatLeftTheEagerLoadListBeforeItsMessageRan() {
-        TerminalSession removedBeforeItsTurn = newSessionToEagerLoad();
-        TerminalSession stillPresent = newSessionToEagerLoad();
-        SessionEagerLoadPacer pacer = newPacer();
-
-        pacer.enqueueSession(removedBeforeItsTurn);
-        pacer.enqueueSession(stillPresent);
-        eagerLoadList.sessions.remove(removedBeforeItsTurn);
-
-        mainThreadMessages.runUntilNoMessagesRemain();
-
-        assertEquals(List.of(stillPresent), initializationAction.initializedSessions);
-    }
-
-    @Test
     public void initializesASessionEnqueuedWhileAUnitIsRunningInALaterMessage() {
         TerminalSession first = newSessionToEagerLoad();
         TerminalSession enqueuedDuringFirstUnit = newSessionToEagerLoad();
         List<TerminalSession> initializedSessions = new ArrayList<>();
         SessionEagerLoadPacer[] pacerHolder = new SessionEagerLoadPacer[1];
-        pacerHolder[0] = new SessionEagerLoadPacer(eagerLoadList, mainThreadMessages, session -> {
+        pacerHolder[0] = new SessionEagerLoadPacer(mainThreadMessages, session -> {
             initializedSessions.add(session);
             if (session == first) pacerHolder[0].enqueueSession(enqueuedDuringFirstUnit);
         });
@@ -207,6 +177,39 @@ public class SessionEagerLoadPacerTest {
 
         mainThreadMessages.runNextMessage();
         assertEquals(List.of(first, enqueuedDuringFirstUnit), initializedSessions);
+    }
+
+    @Test
+    public void initializesEveryRemainingSessionAfterOneSessionInitializationThrows() {
+        TerminalSession failingSession = newSessionToEagerLoad();
+        TerminalSession secondSession = newSessionToEagerLoad();
+        TerminalSession thirdSession = newSessionToEagerLoad();
+        List<TerminalSession> initializedSessions = new ArrayList<>();
+        SessionEagerLoadPacer pacer = new SessionEagerLoadPacer(mainThreadMessages, session -> {
+            initializedSessions.add(session);
+            if (session == failingSession) {
+                throw new IllegalStateException("session initialization failed");
+            }
+        });
+
+        pacer.enqueueSession(failingSession);
+        pacer.enqueueSession(secondSession);
+        pacer.enqueueSession(thirdSession);
+
+        IllegalStateException thrownByTheFailingUnit =
+            assertThrows(IllegalStateException.class, mainThreadMessages::runNextMessage);
+
+        assertEquals("a session initialization failure must stay visible to the caller rather than being "
+                + "swallowed by the pacer",
+            "session initialization failed", thrownByTheFailingUnit.getMessage());
+        assertEquals("the unit that follows a throwing unit must already be scheduled when the throw "
+                + "leaves the pacer, so the queue keeps draining without waiting for another foreground "
+                + "transition to revive it",
+            2, mainThreadMessages.runUntilNoMessagesRemain());
+        assertEquals("one session whose process creation fails must not strand every session queued "
+                + "behind it, which would leave the owner with a single initialized session and the rest "
+                + "pending until some later enqueue happens to revive the pacer",
+            List.of(failingSession, secondSession, thirdSession), initializedSessions);
     }
 
     @Test

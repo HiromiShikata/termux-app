@@ -241,7 +241,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionReconnectScheduler(this::reconnectDeadDefinitionBackedSessions);
 
     private final SessionEagerLoadPacer mSessionEagerLoadPacer = new SessionEagerLoadPacer(
-        this::collectSessionsToEagerLoad,
         mMainThreadHandler::postDelayed,
         this::eagerLoadSessionEmulator);
 

@@ -1,17 +1,19 @@
-package com.termux.app.terminal.session;
+package com.termux.app.terminal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.content.Context;
 import android.os.Looper;
 
+import androidx.annotation.NonNull;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
-import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
@@ -26,9 +28,11 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowLooper;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -138,20 +142,58 @@ public class ForegroundTransitionEagerLoadMainThreadBatchTest {
             lastScheduledTaskDelayMillis > 0L);
     }
 
+    @Test
+    public void foregroundTransitionEagerLoadStillInitializesEveryEagerLoadedSessionOncePacedUnitsHaveDrained() {
+        activity.eagerLoadAllSessions();
+
+        drainEveryPacedUnit();
+
+        assertEquals("bounding the uninterrupted pass has to spread the work over time rather than shed "
+                + "it, and a count that stays under the per-pass bound is equally satisfied by an eager "
+                + "load that initializes nothing at all, so every one of the " + VISIBLE_SESSION_COUNT
+                + " eager-loaded sessions must still hold a freshly constructed terminal emulator once "
+                + "the paced main-thread units have drained, otherwise a session the owner switches to "
+                + "would open uninitialized",
+            VISIBLE_SESSION_COUNT, countSessionsHoldingATerminalEmulator(visibleSessions));
+        assertEquals("a hidden session's process must stay unstarted, so pacing the eager load must not "
+                + "pull any hidden session back into it",
+            0, countSessionsHoldingATerminalEmulator(hiddenSessions));
+    }
+
     private int drainMainThreadTasksDueNowAndCountInitializedSessions() {
-        for (int attempt = 0; attempt < 1000; attempt++) {
+        shadowOf(Looper.getMainLooper()).idle();
+        return countSessionsHoldingATerminalEmulator(visibleSessions)
+            + countSessionsHoldingATerminalEmulator(hiddenSessions);
+    }
+
+    private void drainEveryPacedUnit() {
+        ShadowLooper mainLooper = shadowOf(Looper.getMainLooper());
+        for (int unit = 0; unit < VISIBLE_SESSION_COUNT + HIDDEN_SESSION_COUNT; unit++) {
             try {
-                shadowOf(Looper.getMainLooper()).idle();
-                break;
-            } catch (Throwable nativeSubprocessUnavailableOffDevice) {
-                continue;
+                mainLooper.idleFor(Duration.ofMillis(
+                    SessionEagerLoadPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS));
+            } catch (LinkageError deviceOnlyNativeSubprocessLibraryAbsent) {
+                assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(
+                    deviceOnlyNativeSubprocessLibraryAbsent);
             }
         }
+    }
+
+    private void assertOnlyTheDeviceOnlyNativeSubprocessLibraryIsAbsent(@NonNull LinkageError error) {
+        Throwable rootCause = error;
+        while (rootCause.getCause() != null) rootCause = rootCause.getCause();
+        String absorbedFailure = rootCause.getClass().getName() + ": " + rootCause.getMessage();
+        assertTrue("a Java virtual machine run can only absorb the absence of the device-only native "
+                + "subprocess library that TerminalSession.initializeEmulator loads after it has already "
+                + "constructed the terminal emulator; every other failure is a real one and must surface "
+                + "instead of being discarded, yet this run absorbed " + absorbedFailure,
+            absorbedFailure.contains("UnsatisfiedLinkError")
+                || absorbedFailure.contains("com.termux.terminal.JNI"));
+    }
+
+    private int countSessionsHoldingATerminalEmulator(@NonNull List<TerminalSession> sessions) {
         int initialized = 0;
-        for (TerminalSession session : visibleSessions) {
-            if (session.getEmulator() != null) initialized++;
-        }
-        for (TerminalSession session : hiddenSessions) {
+        for (TerminalSession session : sessions) {
             if (session.getEmulator() != null) initialized++;
         }
         return initialized;
