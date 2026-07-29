@@ -235,6 +235,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_RESET_SESSION_COMMAND = "reset_session_command";
         public static final String DEFAULT_VALUE_KEY_RESET_SESSION_COMMAND = "";
 
+        public static final String KEY_KILL_SESSION_COMMAND = "kill_session_command";
+        public static final String DEFAULT_VALUE_KEY_KILL_SESSION_COMMAND = "";
+
         public static final String KEY_SESSION_DEFINITION_URL = "session_definition_url";
         public static final String DEFAULT_VALUE_KEY_SESSION_DEFINITION_URL = "";
 

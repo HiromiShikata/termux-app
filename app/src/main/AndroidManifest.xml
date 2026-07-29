@@ -138,6 +138,12 @@
             android:parentActivityName=".app.TermuxActivity" />
 
         <activity
+            android:name=".app.activities.KillSessionCommandConfigActivity"
+            android:exported="false"
+            android:label="@string/title_kill_session_command_config"
+            android:parentActivityName=".app.TermuxActivity" />
+
+        <activity
             android:name=".app.activities.SessionDefinitionConfigActivity"
             android:exported="false"
             android:label="@string/title_session_definition_config"

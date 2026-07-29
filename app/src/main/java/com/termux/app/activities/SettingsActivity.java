@@ -91,6 +91,7 @@ public class SettingsActivity extends AppCompatActivity {
             configureStylePreference(context);
             configureAutosshConfigPreference(context);
             configureResetSessionConfigPreference(context);
+            configureKillSessionCommandConfigPreference(context);
             configureSessionDefinitionConfigPreference(context);
             configureAlwaysNaSessionNamesPreference(context);
             configureShareDiagnosticsPreference(context);
@@ -157,6 +158,16 @@ public class SettingsActivity extends AppCompatActivity {
             if (resetSessionConfigPreference != null) {
                 resetSessionConfigPreference.setOnPreferenceClickListener(preference -> {
                     ActivityUtils.startActivity(context, new Intent(context, ResetSessionConfigActivity.class));
+                    return true;
+                });
+            }
+        }
+
+        private void configureKillSessionCommandConfigPreference(@NonNull Context context) {
+            Preference killSessionCommandConfigPreference = findPreference("kill_session_command_config");
+            if (killSessionCommandConfigPreference != null) {
+                killSessionCommandConfigPreference.setOnPreferenceClickListener(preference -> {
+                    ActivityUtils.startActivity(context, new Intent(context, KillSessionCommandConfigActivity.class));
                     return true;
                 });
             }

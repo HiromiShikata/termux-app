@@ -157,6 +157,13 @@
     <string name="title_reset_session_name_missing">Session has no name</string>
     <string name="msg_reset_session_name_missing">This session has no name, so there is no host session name to reset. Rename the session first.</string>
 
+    <string name="action_open_kill_session_command_config">Kill Session Command Config</string>
+    <string name="title_kill_session_command_config">Kill Session Command Config</string>
+    <string name="hint_kill_session_command">Command template run on the host to kill a session (use {name} as the session-name placeholder)</string>
+    <string name="action_kill_session_command_config_save">Save</string>
+    <string name="msg_kill_session_command_not_configured">Set the kill session command in Kill Session Command Config first.</string>
+    <string name="msg_kill_host_session_name_missing">This session has no name, so no host session can be targeted.</string>
+
     <string name="action_open_session_definition_config">Session Definition Config</string>
     <string name="title_session_definition_config">Session Definition Config</string>
     <string name="hint_session_definition_url">Session definition index URL</string>

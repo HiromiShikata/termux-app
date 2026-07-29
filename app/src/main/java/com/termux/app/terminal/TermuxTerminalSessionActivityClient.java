@@ -126,6 +126,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
 
+    private final HostKillCommandSessionRegistry mHostKillCommandSessionRegistry =
+        new HostKillCommandSessionRegistry();
+
     private int maxSessions() {
         return mActivity.getPreferences().getSessionDefinitionMaxSessions();
     }
@@ -747,6 +750,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (finishedSession.mHandle != null) {
             mBackgroundOutputScanGate.forget(finishedSession.mHandle);
             mAllSessionsStatuslineScanGate.forget(finishedSession.mHandle);
+        }
+
+        if (mHostKillCommandSessionRegistry.forgetFinishedCommandSession(finishedSession.mHandle)) {
+            removeFinishedSession(finishedSession);
+            return;
         }
 
         int index = service.getIndexOfSession(finishedSession);
@@ -1635,15 +1643,62 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         HostTmuxSessionKiller.kill(new HostTmuxSessionKiller.Target() {
             @Override
-            public void writeKillCommand(String killCommand) {
-                sessionToKill.write(killCommand);
+            public boolean executeHostKillCommand(String hostKillCommand) {
+                TermuxService service = mActivity.getTermuxService();
+                if (service == null) return false;
+
+                if (mHostKillCommandSessionRegistry.isDispatchedFor(sessionToKill.mSessionName)) return false;
+
+                int liveSessionCount = cappedSessionCount(service);
+                if (liveSessionCount >= maxSessions()) {
+                    notifyMaxTerminalsReached(liveSessionCount);
+                    return false;
+                }
+
+                String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+                String[] arguments = new String[]{"-c", hostKillCommand};
+                TermuxSession commandSession = service.createTermuxSession(shellPath, arguments, null,
+                    workingDirectoryForNewSession(), false, null);
+                if (commandSession == null) return false;
+
+                mHostKillCommandSessionRegistry.record(commandSession.getTerminalSession().mHandle,
+                    sessionToKill.mSessionName);
+                return true;
+            }
+
+            @Override
+            public void notifyKillCommandNotConfigured() {
+                mActivity.showToast(mActivity.getString(R.string.msg_kill_session_command_not_configured), true);
+            }
+
+            @Override
+            public void notifyHostSessionNameMissing() {
+                mActivity.showToast(mActivity.getString(R.string.msg_kill_host_session_name_missing), true);
             }
 
             @Override
             public void finishLocalSession() {
                 deleteSession(sessionToKill);
             }
-        }, sessionToKill.mSessionName, mMainThreadHandler::postDelayed);
+        }, mActivity.getPreferences().getKillSessionCommand(), sessionToKill.mSessionName,
+            mMainThreadHandler::postDelayed);
+    }
+
+    private String workingDirectoryForNewSession() {
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        String currentSessionCwd = currentSession == null ? null : currentSession.getCwd();
+        return currentSessionCwd == null || currentSessionCwd.isEmpty()
+            ? mActivity.getProperties().getDefaultWorkingDirectory()
+            : currentSessionCwd;
+    }
+
+    private void notifyMaxTerminalsReached(int liveSessionCount) {
+        DiagnosticEventLogHolder.record(DiagnosticEventType.MAX_SESSIONS_REACHED,
+            "cap=" + maxSessions());
+        DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+            .setTitle(R.string.title_max_terminals_reached)
+            .setMessage(mActivity.getString(R.string.msg_max_terminals_reached, liveSessionCount, maxSessions()))
+            .setPositiveButton(android.R.string.ok, null));
     }
 
     public void resetHostSession(final TerminalSession sessionToReset) {
