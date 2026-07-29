@@ -31,6 +31,7 @@ import org.robolectric.RuntimeEnvironment;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -108,7 +109,7 @@ public class TermuxTerminalSessionActivityClientResetHostSessionTest {
 
     @Test
     public void backgroundReconnectPlanningSkipsTheExitedResetCommandSessionButKeepsOrdinarySessions() {
-        List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions = java.util.Arrays.asList(
+        List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions = Arrays.asList(
             new DeadSessionReconnectPlanner.CandidateSession(resetSessionName(), false),
             new DeadSessionReconnectPlanner.CandidateSession("dead-ordinary-session", false));
 
@@ -120,14 +121,29 @@ public class TermuxTerminalSessionActivityClientResetHostSessionTest {
 
     @Test
     public void exitedResetCommandSessionIsNotPersistedAndSoCannotSurviveAnAppRestart() throws Exception {
-        TermuxSession exitedResetSession = deadSession(resetSessionName());
-        shellManager.mTermuxSessions.add(exitedResetSession);
+        int sessionCountBeforeReset = service.getTermuxSessionsSize();
 
-        activity.getTermuxTerminalSessionClient()
-            .onSessionFinished(exitedResetSession.getTerminalSession());
+        activity.getTermuxTerminalSessionClient().resetHostSession(targetTerminalSession());
 
-        assertFalse("the reset command session must never reach the persisted session store",
+        TermuxSession resetSession = service.getTermuxSessionForSessionName(resetSessionName());
+        assertNotNull("the reset command session must actually be created by resetHostSession", resetSession);
+        assertEquals(sessionCountBeforeReset + 1, service.getTermuxSessionsSize());
+        assertTrue("the created session must run the composed reset command",
+            Arrays.asList(resetSession.getExecutionCommand().arguments)
+                .contains("ssh gateway /opt/reset.sh 'work-session'"));
+
+        TerminalSession resetTerminalSession = resetSession.getTerminalSession();
+        markProcessExited(resetTerminalSession);
+        activity.getTermuxTerminalSessionClient().onSessionFinished(resetTerminalSession);
+
+        boolean reconnected = activity.getTermuxTerminalSessionClient()
+            .reconnectFinishedSessionInPlace(resetTerminalSession, null);
+
+        assertFalse("the reset command session must never reach the persisted session store, "
+                + "because a persisted record would resurrect it on the next app start",
             preferences.getPersistedSessions().contains(TransientCommandSessionName.RESET_PREFIX));
+        assertFalse("the exited reset command session must never be reconnected into a live ssh session",
+            reconnected);
     }
 
     @Test
@@ -197,13 +213,17 @@ public class TermuxTerminalSessionActivityClientResetHostSessionTest {
         return termuxSession(name, true);
     }
 
+    private void markProcessExited(TerminalSession terminalSession) throws Exception {
+        Field shellPid = TerminalSession.class.getDeclaredField("mShellPid");
+        shellPid.setAccessible(true);
+        shellPid.setInt(terminalSession, -1);
+    }
+
     private TermuxSession termuxSession(String name, boolean exited) throws Exception {
         TerminalSession terminalSession = new TerminalSession(null, null, null, null, null, null);
         terminalSession.mSessionName = name;
         if (exited) {
-            Field shellPid = TerminalSession.class.getDeclaredField("mShellPid");
-            shellPid.setAccessible(true);
-            shellPid.setInt(terminalSession, -1);
+            markProcessExited(terminalSession);
         }
         Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
             TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class, boolean.class);
