@@ -587,14 +587,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
     }
 
-    /**
-     * The forced rescan variant of {@link #repopulateStatuslineTimesForAllSessions(boolean)} reads the
-     * whole visible set's transcripts regardless of the skip-gate, and the retry ladder repeats it once
-     * per backoff rung, so the same {@link #STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE} bound the displayed
-     * refresh applies is applied here: only the first batch is read in the current main-thread pass and
-     * every later batch is posted a further {@link #STAGGERED_RECONNECT_INTERVAL_MILLIS} apart, so no
-     * pass ever materializes more than one batch of transcripts uninterrupted.
-     */
     @NonNull
     private Set<String> firstForcedRescanBatchAfterDeferringTheRest(
             @NonNull List<String> sessionNames) {

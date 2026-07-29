@@ -33,24 +33,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The forced statusline rescan reads every visible session's whole transcript regardless of the
- * content-version skip gate, and the post-reconnect retry ladder repeats it once per backoff rung, so
- * it has to be batched the way the displayed-session refresh already is. These are behavioral tests:
- * they stand up a real activity, service, session activity client and real terminal sessions, drive
- * the production reconnect-then-force-rescan entry point, and then observe which sessions actually had
- * their transcript read and which batches were actually scheduled on the main looper.
- */
 @RunWith(RobolectricTestRunner.class)
 public class ForcedStatuslineRescanBatchTest {
 
     private static final int ON_SCREEN_SESSION_COUNT = 12;
 
-    /**
-     * The bound the batching has to respect, written out here rather than read from production so
-     * widening the production constant fails this test instead of being tracked by it.
-     */
-    private static final int MAIN_THREAD_TRANSCRIPT_READ_BOUND_PER_PASS = 4;
+    private static final int MAX_TRANSCRIPT_READS_PER_UNINTERRUPTED_MAIN_THREAD_PASS = 4;
 
     private static final long STATUSLINE_RESCAN_BATCH_INTERVAL_MILLIS =
         TermuxTerminalSessionActivityClient.STAGGERED_RECONNECT_INTERVAL_MILLIS;
@@ -59,17 +47,13 @@ public class ForcedStatuslineRescanBatchTest {
         (ON_SCREEN_SESSION_COUNT + TermuxTerminalSessionActivityClient.STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE - 1)
             / TermuxTerminalSessionActivityClient.STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE;
 
-    /**
-     * The session list bottom sheet is what widens the visible set beyond the single foreground
-     * session, and {@link TermuxTerminalSessionActivityClient} reads it through the two overridable
-     * methods below, so an open sheet showing every session row is reproduced by overriding them.
-     */
-    private static final class OpenSessionListBottomSheet extends SessionListBottomSheetController {
+    private static final class OpenSessionListBottomSheetShowingEveryOnScreenSessionRow
+            extends SessionListBottomSheetController {
 
         private final List<String> onScreenSessionNames;
 
-        OpenSessionListBottomSheet(@NonNull TermuxActivity activity,
-                                   @NonNull List<String> onScreenSessionNames) {
+        OpenSessionListBottomSheetShowingEveryOnScreenSessionRow(@NonNull TermuxActivity activity,
+                @NonNull List<String> onScreenSessionNames) {
             super(activity);
             this.onScreenSessionNames = onScreenSessionNames;
         }
@@ -123,14 +107,12 @@ public class ForcedStatuslineRescanBatchTest {
             onScreenSessions.add(session);
             onScreenSessionNames.add(session.mSessionName);
         }
-        // The displayed-session refresh that runs alongside the forced rescan does its own batching,
-        // so every session is kept out of the displayed set and only the forced rescan under test
-        // schedules anything.
-        preferences.setDisabledSessionNames(String.join("\n", onScreenSessionNames));
+        excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(
+            preferences, onScreenSessionNames);
 
         set(activity, TermuxActivity.class, "mIsVisible", true);
         set(activity, TermuxActivity.class, "mSessionListBottomSheetController",
-            new OpenSessionListBottomSheet(activity, onScreenSessionNames));
+            new OpenSessionListBottomSheetShowingEveryOnScreenSessionRow(activity, onScreenSessionNames));
 
         OffDeviceNativeSubprocessLibrary.tolerateItsAbsence(
             () -> shadowOf(Looper.getMainLooper()).idle());
@@ -146,10 +128,10 @@ public class ForcedStatuslineRescanBatchTest {
                 + "2000-row transcript of every session it covers, and the retry ladder repeats that once "
                 + "immediately and once per backoff rung; the drawing thread cannot redraw while a pass "
                 + "runs, so no pass may read more than "
-                + MAIN_THREAD_TRANSCRIPT_READ_BOUND_PER_PASS + " transcripts uninterrupted, the same "
+                + MAX_TRANSCRIPT_READS_PER_UNINTERRUPTED_MAIN_THREAD_PASS + " transcripts uninterrupted, the same "
                 + "bound the displayed-session refresh already respects, yet over " + ON_SCREEN_SESSION_COUNT
                 + " on-screen sessions this pass read " + readInOneUninterruptedPass,
-            readInOneUninterruptedPass <= MAIN_THREAD_TRANSCRIPT_READ_BOUND_PER_PASS);
+            readInOneUninterruptedPass <= MAX_TRANSCRIPT_READS_PER_UNINTERRUPTED_MAIN_THREAD_PASS);
         assertTrue("some transcripts must be deferred out of the first pass, otherwise the visible set "
                 + "was read whole and nothing was batched at all",
             readInOneUninterruptedPass < ON_SCREEN_SESSION_COUNT);
@@ -192,25 +174,26 @@ public class ForcedStatuslineRescanBatchTest {
             ON_SCREEN_SESSION_COUNT, countSessionsWhoseTranscriptWasRead());
     }
 
+    private void excludeFromDisplayedSetSoOnlyTheForcedRescanUnderTestSchedulesAnything(
+            TermuxAppSharedPreferences preferences, List<String> sessionNames) {
+        preferences.setDisabledSessionNames(String.join("\n", sessionNames));
+    }
+
     private long lastMainThreadTaskDelayMillis() {
         Duration lastScheduledTaskTime = shadowOf(Looper.getMainLooper()).getLastScheduledTaskTime();
         return lastScheduledTaskTime.toMillis() - SystemClock.uptimeMillis();
     }
 
-    /**
-     * A session whose transcript was read had its screen content version recorded on the scan gate, so
-     * asking the gate whether that same unchanged version still needs scanning answers false for
-     * exactly the sessions the rescan covered. The query records the version itself, so each test takes
-     * this observation once.
-     */
     private int countSessionsWhoseTranscriptWasRead() {
         AllSessionsStatuslineScanGate scanGate = statuslineScanGate();
-        int read = 0;
+        int sessionsWhoseTranscriptWasRead = 0;
         for (TerminalSession session : onScreenSessions) {
             long screenContentVersion = session.getEmulator().getScreenContentVersion();
-            if (!scanGate.shouldScan(session.mHandle, screenContentVersion, true)) read++;
+            boolean scanGateRecordedThisVersionAsScanned =
+                !scanGate.shouldScan(session.mHandle, screenContentVersion, true);
+            if (scanGateRecordedThisVersionAsScanned) sessionsWhoseTranscriptWasRead++;
         }
-        return read;
+        return sessionsWhoseTranscriptWasRead;
     }
 
     private AllSessionsStatuslineScanGate statuslineScanGate() {
