@@ -38,7 +38,7 @@ public final class DisplayedSessionSelector {
                 displayedSessionNames.add(sessionName);
                 continue;
             }
-            if (hideHiddenSessions && hiddenSessionNames.contains(sessionName)) {
+            if (hideHiddenSessions && HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, hiddenSessionNames)) {
                 continue;
             }
             if (expandedProjectSessionNames != null

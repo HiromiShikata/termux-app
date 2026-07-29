@@ -28,7 +28,7 @@ public final class SessionDefinitionCapCountPlanner {
         }
 
         boolean countsTowardCap(@NonNull Set<String> hiddenSessionNames) {
-            return running && !(name != null && hiddenSessionNames.contains(name));
+            return running && !HiddenSessionNameMatcher.matchesAHiddenSession(name, hiddenSessionNames);
         }
     }
 

@@ -3,6 +3,8 @@ package com.termux.app.terminal.session;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.app.sessiondefinition.HiddenSessionNameMatcher;
+
 import java.util.List;
 import java.util.Set;
 
@@ -21,7 +23,7 @@ public final class DuplicateSessionNameResolver {
         for (String existingSessionName : existingSessionNames) {
             if (candidateName.equals(existingSessionName)) {
                 return DuplicateSessionNameResolution.reveal(existingSessionName,
-                    hiddenSessionNames.contains(existingSessionName));
+                    HiddenSessionNameMatcher.matchesAHiddenSession(existingSessionName, hiddenSessionNames));
             }
         }
         return DuplicateSessionNameResolution.create();
