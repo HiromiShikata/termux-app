@@ -246,4 +246,48 @@ public class DeadSessionReconnectPlannerTest {
                 "https://example.test/hung-newer"),
             namesToReconnect);
     }
+
+    @Test
+    public void doesNotReselectASessionWhoseReconnectIsStillInFlight() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/reconnecting", false, false, false, null, true));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.emptyList(), namesToReconnect);
+    }
+
+    @Test
+    public void doesNotReselectAHungSessionWhoseReconnectIsStillInFlight() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/reconnecting", true, false, true, 1L, true));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.emptyList(), namesToReconnect);
+    }
+
+    @Test
+    public void reselectsASessionOnceItsReconnectHasSettled() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/settled", false, false, false, null, false));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/settled"), namesToReconnect);
+    }
+
+    @Test
+    public void doesNotReconnectACandidateThatIsAtOnceNotRunningAndHung() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/inherited-stale-time", false, false, true, 1L));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.emptyList(), namesToReconnect);
+    }
 }

@@ -15,7 +15,7 @@ public class VisibleSessionSelectorTest {
     public void selectsOnlyCurrentSessionWhenListClosed() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
             "https://example.test/current", false,
-            Arrays.asList("https://example.test/current", "https://example.test/hidden"));
+            Arrays.asList("https://example.test/current", "https://example.test/hidden"), Collections.emptySet());
 
         Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
     }
@@ -23,7 +23,7 @@ public class VisibleSessionSelectorTest {
     @Test
     public void excludesHiddenSessionsWhenListClosed() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
-            "https://example.test/current", false, Collections.emptyList());
+            "https://example.test/current", false, Collections.emptyList(), Collections.emptySet());
 
         Assert.assertFalse(visible.contains("https://example.test/hidden"));
     }
@@ -32,7 +32,7 @@ public class VisibleSessionSelectorTest {
     public void includesOnScreenListRowsWhenListOpen() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
             "https://example.test/current", true,
-            Arrays.asList("https://example.test/current", "https://example.test/on-screen"));
+            Arrays.asList("https://example.test/current", "https://example.test/on-screen"), Collections.emptySet());
 
         Assert.assertTrue(visible.contains("https://example.test/current"));
         Assert.assertTrue(visible.contains("https://example.test/on-screen"));
@@ -43,7 +43,7 @@ public class VisibleSessionSelectorTest {
     public void excludesOffScreenListRowsWhenListOpen() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
             "https://example.test/current", true,
-            Arrays.asList("https://example.test/current", "https://example.test/on-screen"));
+            Arrays.asList("https://example.test/current", "https://example.test/on-screen"), Collections.emptySet());
 
         Assert.assertFalse(visible.contains("https://example.test/off-screen"));
     }
@@ -51,11 +51,11 @@ public class VisibleSessionSelectorTest {
     @Test
     public void becomingVisibleSessionIsSelectedForReconnectAndScan() {
         Set<String> hidden = selector.selectVisibleSessionNames(true,
-            "https://example.test/current", false, Collections.emptyList());
+            "https://example.test/current", false, Collections.emptyList(), Collections.emptySet());
         Assert.assertFalse(hidden.contains("https://example.test/becoming-visible"));
 
         Set<String> afterBecomingCurrent = selector.selectVisibleSessionNames(true,
-            "https://example.test/becoming-visible", false, Collections.emptyList());
+            "https://example.test/becoming-visible", false, Collections.emptyList(), Collections.emptySet());
         Assert.assertTrue(afterBecomingCurrent.contains("https://example.test/becoming-visible"));
     }
 
@@ -63,12 +63,12 @@ public class VisibleSessionSelectorTest {
     public void becomingVisibleByScrollingIntoOpenListIsSelected() {
         Set<String> beforeScroll = selector.selectVisibleSessionNames(true,
             "https://example.test/current", true,
-            Collections.singletonList("https://example.test/current"));
+            Collections.singletonList("https://example.test/current"), Collections.emptySet());
         Assert.assertFalse(beforeScroll.contains("https://example.test/scrolled-in"));
 
         Set<String> afterScroll = selector.selectVisibleSessionNames(true,
             "https://example.test/current", true,
-            Arrays.asList("https://example.test/current", "https://example.test/scrolled-in"));
+            Arrays.asList("https://example.test/current", "https://example.test/scrolled-in"), Collections.emptySet());
         Assert.assertTrue(afterScroll.contains("https://example.test/scrolled-in"));
     }
 
@@ -76,7 +76,7 @@ public class VisibleSessionSelectorTest {
     public void selectsNoSessionsWhenActivityNotVisible() {
         Set<String> visible = selector.selectVisibleSessionNames(false,
             "https://example.test/current", true,
-            Arrays.asList("https://example.test/current", "https://example.test/on-screen"));
+            Arrays.asList("https://example.test/current", "https://example.test/on-screen"), Collections.emptySet());
 
         Assert.assertTrue(visible.isEmpty());
     }
@@ -84,7 +84,7 @@ public class VisibleSessionSelectorTest {
     @Test
     public void toleratesNullCurrentSession() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
-            null, true, Collections.singletonList("https://example.test/on-screen"));
+            null, true, Collections.singletonList("https://example.test/on-screen"), Collections.emptySet());
 
         Assert.assertEquals(Collections.singleton("https://example.test/on-screen"), visible);
     }
@@ -93,7 +93,27 @@ public class VisibleSessionSelectorTest {
     public void ignoresNullOnScreenNames() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
             "https://example.test/current", true,
-            Arrays.asList("https://example.test/current", null));
+            Arrays.asList("https://example.test/current", null), Collections.emptySet());
+
+        Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
+    }
+
+    @Test
+    public void excludesHiddenOnScreenListRowsFromReconnectAndScan() {
+        Set<String> visible = selector.selectVisibleSessionNames(true,
+            "https://example.test/current", true,
+            Arrays.asList("https://example.test/current", "https://example.test/hidden-row"),
+            Collections.singleton("https://example.test/hidden-row"));
+
+        Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
+    }
+
+    @Test
+    public void keepsTheCurrentSessionEvenWhenItIsMarkedHidden() {
+        Set<String> visible = selector.selectVisibleSessionNames(true,
+            "https://example.test/current", true,
+            Collections.singletonList("https://example.test/current"),
+            Collections.singleton("https://example.test/current"));
 
         Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
     }

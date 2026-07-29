@@ -412,8 +412,16 @@ public class SessionNewActivityStore {
      * owner just sent back to the minutes-old statusline value until the next statusline scan lands.
      * Only the per-session bookkeeping that genuinely belongs to the torn-down session (seen and the
      * call-to-user reason cycle) is cleared.
+     *
+     * <p>The {@code out:} time is the one displayed time that is not kept. It is what the hung
+     * judgement reads, and the replacement has produced no output yet, so handing it the torn-down
+     * session's value leaves it judged hung from the instant it is created; a replacement that has
+     * not yet rendered a statusline can never refresh the value, so it is selected for reconnect on
+     * every following scan and the selection never terminates. Dropping it here is the earliest point
+     * at which the value is known to belong to a session that no longer exists.
      */
     public void purgeSessionPreservingStatuslineTimes(@NonNull String sessionName) {
+        mStatuslineOutTimeMillisByName.remove(sessionName);
         mLastExplicitCallReasonByName.remove(sessionName);
         mUnacknowledgedCallReasonsByName.remove(sessionName);
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
