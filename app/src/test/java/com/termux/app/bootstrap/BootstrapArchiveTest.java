@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -63,6 +64,28 @@ public class BootstrapArchiveTest {
 
         Assert.assertArrayEquals(archiveEntries.get("bin/login"), firstExtraction.get("bin/login"));
         Assert.assertArrayEquals(archiveEntries.get("bin/login"), secondExtraction.get("bin/login"));
+    }
+
+    @Test
+    public void holdsTheArchiveContentReadOnlySoTheMappedLibraryMemoryCannotBeWrittenThrough() throws Exception {
+        BootstrapArchive archive = new BootstrapArchive(toDirectBuffer(buildContent(1024)));
+
+        int inspectedBufferCount = 0;
+        for (Field field : BootstrapArchive.class.getDeclaredFields()) {
+            if (!ByteBuffer.class.isAssignableFrom(field.getType())) continue;
+
+            field.setAccessible(true);
+            ByteBuffer heldContent = (ByteBuffer) field.get(archive);
+            Assert.assertNotNull(field.getName(), heldContent);
+            Assert.assertTrue("BootstrapArchive holds the archive in the writable buffer \"" + field.getName()
+                    + "\". The archive memory is a non-writable mapping inside the loaded bootstrap library, so a write"
+                    + " through it faults the process natively instead of raising a Java exception.",
+                heldContent.isReadOnly());
+            inspectedBufferCount++;
+        }
+
+        Assert.assertEquals("BootstrapArchive must hold the archive content in a buffer field that can be inspected.",
+            1, inspectedBufferCount);
     }
 
     @Test

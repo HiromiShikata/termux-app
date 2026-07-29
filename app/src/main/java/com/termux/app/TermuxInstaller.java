@@ -12,7 +12,10 @@ import android.view.WindowManager;
 
 import com.termux.R;
 import com.termux.app.bootstrap.BootstrapArchive;
+import com.termux.app.bootstrap.BootstrapDirectoryCreator;
 import com.termux.app.bootstrap.BootstrapInstallationRunner;
+import com.termux.app.bootstrap.CanonicalPathBootstrapDirectoryCreator;
+import com.termux.app.bootstrap.FileUtilsBootstrapDirectoryCreator;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.file.TermuxFileUtils;
@@ -178,7 +181,8 @@ final class TermuxInstaller {
             + " bytes to prefix staging directory \"" + TERMUX_STAGING_PREFIX_DIR_PATH + "\".");
 
         try (InputStream bootstrapArchiveStream = bootstrapArchive.openStream()) {
-            extractBootstrapArchive(bootstrapArchiveStream, TERMUX_STAGING_PREFIX_DIR);
+            extractBootstrapArchive(bootstrapArchiveStream, TERMUX_STAGING_PREFIX_DIR,
+                new FileUtilsBootstrapDirectoryCreator());
         }
 
         Logger.logInfo(LOG_TAG, "Moving termux prefix staging to prefix directory.");
@@ -328,6 +332,11 @@ final class TermuxInstaller {
     }
 
     public static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory) throws Exception {
+        extractBootstrapArchive(bootstrapArchiveStream, targetDirectory, new CanonicalPathBootstrapDirectoryCreator());
+    }
+
+    static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory,
+                                        BootstrapDirectoryCreator bootstrapDirectoryCreator) throws Exception {
         final String targetDirectoryPath = targetDirectory.getAbsolutePath();
         final byte[] buffer = new byte[8096];
         final List<Pair<String, String>> symlinks = new ArrayList<>(50);
@@ -346,14 +355,16 @@ final class TermuxInstaller {
                         String newPath = targetDirectoryPath + "/" + parts[1];
                         symlinks.add(Pair.create(oldPath, newPath));
 
-                        createDirectoryOrThrow(new File(newPath).getParentFile());
+                        createBootstrapEntryDirectory(bootstrapDirectoryCreator,
+                            new File(newPath).getParentFile(), parts[1]);
                     }
                 } else {
                     String zipEntryName = zipEntry.getName();
                     File targetFile = new File(targetDirectoryPath, zipEntryName);
                     boolean isDirectory = zipEntry.isDirectory();
 
-                    createDirectoryOrThrow(isDirectory ? targetFile : targetFile.getParentFile());
+                    createBootstrapEntryDirectory(bootstrapDirectoryCreator,
+                        isDirectory ? targetFile : targetFile.getParentFile(), zipEntryName);
 
                     if (!isDirectory) {
                         try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
@@ -378,17 +389,13 @@ final class TermuxInstaller {
         }
     }
 
-    private static void createDirectoryOrThrow(File directory) throws IOException {
-        if (directory.isDirectory()) {
-            return;
+    private static void createBootstrapEntryDirectory(BootstrapDirectoryCreator bootstrapDirectoryCreator,
+                                                      File directory, String archiveEntryName) throws IOException {
+        if (directory == null) {
+            throw new IOException("Bootstrap archive entry \"" + archiveEntryName
+                + "\" names no directory that can be created");
         }
-        if (directory.exists()) {
-            throw new IOException("Non-directory file found where bootstrap directory \""
-                + directory.getAbsolutePath() + "\" has to be created");
-        }
-        if (!directory.mkdirs() && !directory.isDirectory()) {
-            throw new IOException("Creating bootstrap directory \"" + directory.getAbsolutePath() + "\" failed");
-        }
+        bootstrapDirectoryCreator.createBootstrapDirectory(directory);
     }
 
     public static BootstrapArchive loadBootstrapArchive() {
