@@ -329,7 +329,7 @@ final class TermuxInstaller {
         }.start();
     }
 
-    public static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory) throws Exception {
+    static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory) throws Exception {
         extractBootstrapArchive(bootstrapArchiveStream, targetDirectory, new FileUtilsBootstrapDirectoryCreator());
     }
 
