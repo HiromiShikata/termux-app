@@ -226,6 +226,32 @@ public class UnhiddenSessionStartsItsShellProcessTest {
             transcript.contains(SHELL_OUTPUT_PROBE));
     }
 
+    @Test
+    public void openingADefinitionBackedRowWhileTheServiceIsUnboundLeavesTheStoredHiddenStateAlone()
+            throws Exception {
+        shellManager.mTermuxSessions.add(liveSessionHoldingAnEmulator(HIDDEN_SESSION_NAME));
+        hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+        assertTrue("the hide must record the session as hidden before this assertion means anything",
+            preferences.getDisabledSessionNames().contains(HIDDEN_SESSION_NAME));
+
+        set(activity, TermuxActivity.class, "mTermuxService", null);
+        openDefinitionBackedRowThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
+
+        assertTrue("recreating a session needs the service that owns the session list, so with the "
+                + "service unbound the stored hidden state must be left alone; clearing it would "
+                + "record the session as shown while nothing had been created for it, and the owner "
+                + "would be looking at a row whose toggle no longer describes its state",
+            preferences.getDisabledSessionNames().contains(HIDDEN_SESSION_NAME));
+    }
+
+    private void openDefinitionBackedRowThroughProductionEntryPoint(String sessionName)
+            throws Exception {
+        Method openDefinitionBackedSession = TermuxSessionsListViewController.class
+            .getDeclaredMethod("openDefinitionBackedSession", String.class);
+        openDefinitionBackedSession.setAccessible(true);
+        openDefinitionBackedSession.invoke(listViewController, sessionName);
+    }
+
     private static Object queueOf(TerminalSession session, String queueFieldName) throws Exception {
         Field queueField = TerminalSession.class.getDeclaredField(queueFieldName);
         queueField.setAccessible(true);

@@ -1610,8 +1610,18 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
     }
 
+    /**
+     * Opens a row that exists only in the stored session definition by unhiding its session and
+     * recreating it. The stored hidden state is only cleared once the service that owns the session
+     * list is bound, because the recreation cannot run without it: clearing it first would leave the
+     * session recorded as shown while nothing had been created for it, and the owner would be looking
+     * at a row whose toggle no longer describes its state.
+     */
     private void openDefinitionBackedSession(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        if (mActivity.getTermuxService() == null) {
             return;
         }
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
