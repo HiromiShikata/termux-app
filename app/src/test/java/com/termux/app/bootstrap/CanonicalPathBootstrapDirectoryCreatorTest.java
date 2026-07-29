@@ -67,6 +67,29 @@ public class CanonicalPathBootstrapDirectoryCreatorTest {
     }
 
     @Test
+    public void rejectsAChainOfSymbolicLinksEndingAtADirectory() throws IOException {
+        File linkTargetDirectory = temporaryFolder.newFolder("chain-target-directory");
+        File innerLink = new File(temporaryFolder.getRoot(), "inner-link");
+        Files.createSymbolicLink(innerLink.toPath(), linkTargetDirectory.toPath());
+        File outerLink = new File(temporaryFolder.getRoot(), "outer-link");
+        Files.createSymbolicLink(outerLink.toPath(), innerLink.toPath());
+
+        assertRejectsAsNonDirectory(outerLink);
+    }
+
+    @Test
+    public void createsADirectoryUnderASymbolicLinkParentAsTheSharedValidatorDoes() throws IOException {
+        File parentTargetDirectory = temporaryFolder.newFolder("parent-target-directory");
+        File linkParent = new File(temporaryFolder.getRoot(), "link-parent");
+        Files.createSymbolicLink(linkParent.toPath(), parentTargetDirectory.toPath());
+
+        directoryCreator.createBootstrapDirectory(new File(linkParent, "child"));
+
+        Assert.assertTrue(parentTargetDirectory.getAbsolutePath(),
+            new File(parentTargetDirectory, "child").isDirectory());
+    }
+
+    @Test
     public void reportsThePathWhenTheDirectoryCannotBeCreated() throws IOException {
         File regularFile = temporaryFolder.newFile("prefix-staging-blocking-parent");
         try (FileOutputStream regularFileOutput = new FileOutputStream(regularFile)) {

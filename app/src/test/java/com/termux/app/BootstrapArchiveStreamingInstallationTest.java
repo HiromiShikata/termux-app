@@ -5,6 +5,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.termux.app.bootstrap.BootstrapDirectoryCreator;
+import com.termux.app.bootstrap.CanonicalPathBootstrapDirectoryCreator;
 import com.termux.shared.errors.Error;
 
 import org.junit.Rule;
@@ -164,6 +166,8 @@ public class BootstrapArchiveStreamingInstallationTest {
                 arguments[index] = archive;
             } else if (File.class.equals(parameterTypes[index])) {
                 arguments[index] = targetDirectory;
+            } else if (BootstrapDirectoryCreator.class.equals(parameterTypes[index])) {
+                arguments[index] = new CanonicalPathBootstrapDirectoryCreator();
             } else {
                 arguments[index] = targetDirectory.getAbsolutePath();
             }
@@ -185,18 +189,21 @@ public class BootstrapArchiveStreamingInstallationTest {
             if (method.isSynthetic()) continue;
 
             Class<?>[] parameterTypes = method.getParameterTypes();
-            if (parameterTypes.length != 2) continue;
+            if (parameterTypes.length != 3) continue;
 
             int archiveParameters = 0;
             int targetDirectoryParameters = 0;
+            int directoryCreatorParameters = 0;
             for (Class<?> parameterType : parameterTypes) {
                 if (InputStream.class.isAssignableFrom(parameterType)) {
                     archiveParameters++;
                 } else if (File.class.equals(parameterType) || String.class.equals(parameterType)) {
                     targetDirectoryParameters++;
+                } else if (BootstrapDirectoryCreator.class.equals(parameterType)) {
+                    directoryCreatorParameters++;
                 }
             }
-            if (archiveParameters != 1 || targetDirectoryParameters != 1) continue;
+            if (archiveParameters != 1 || targetDirectoryParameters != 1 || directoryCreatorParameters != 1) continue;
 
             method.setAccessible(true);
             anyVisibility.add(method);

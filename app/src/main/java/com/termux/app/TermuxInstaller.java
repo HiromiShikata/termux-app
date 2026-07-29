@@ -14,7 +14,6 @@ import com.termux.R;
 import com.termux.app.bootstrap.BootstrapArchive;
 import com.termux.app.bootstrap.BootstrapDirectoryCreator;
 import com.termux.app.bootstrap.BootstrapInstallationRunner;
-import com.termux.app.bootstrap.CanonicalPathBootstrapDirectoryCreator;
 import com.termux.app.bootstrap.FileUtilsBootstrapDirectoryCreator;
 import com.termux.shared.file.FileUtils;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
@@ -181,8 +180,7 @@ final class TermuxInstaller {
             + " bytes to prefix staging directory \"" + TERMUX_STAGING_PREFIX_DIR_PATH + "\".");
 
         try (InputStream bootstrapArchiveStream = bootstrapArchive.openStream()) {
-            extractBootstrapArchive(bootstrapArchiveStream, TERMUX_STAGING_PREFIX_DIR,
-                new FileUtilsBootstrapDirectoryCreator());
+            extractBootstrapArchive(bootstrapArchiveStream, TERMUX_STAGING_PREFIX_DIR);
         }
 
         Logger.logInfo(LOG_TAG, "Moving termux prefix staging to prefix directory.");
@@ -332,7 +330,7 @@ final class TermuxInstaller {
     }
 
     public static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory) throws Exception {
-        extractBootstrapArchive(bootstrapArchiveStream, targetDirectory, new CanonicalPathBootstrapDirectoryCreator());
+        extractBootstrapArchive(bootstrapArchiveStream, targetDirectory, new FileUtilsBootstrapDirectoryCreator());
     }
 
     static void extractBootstrapArchive(InputStream bootstrapArchiveStream, File targetDirectory,

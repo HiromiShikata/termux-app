@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.system.Os;
+import android.system.OsConstants;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -72,6 +73,39 @@ public class BootstrapDirectoryCreatorEquivalenceInstrumentedTest {
                 danglingLink.getAbsolutePath());
             return danglingLink;
         }, false);
+    }
+
+    @Test
+    public void bothCreatorsRejectAFirstInFirstOutNode() throws Exception {
+        assertBothCreatorsAgree("first-in-first-out-node", caseRoot -> {
+            File firstInFirstOutNode = new File(caseRoot, "first-in-first-out-node");
+            Os.mkfifo(firstInFirstOutNode.getAbsolutePath(), OsConstants.S_IRUSR | OsConstants.S_IWUSR);
+            return firstInFirstOutNode;
+        }, false);
+    }
+
+    @Test
+    public void bothCreatorsRejectAChainOfSymbolicLinksEndingAtADirectory() throws Exception {
+        assertBothCreatorsAgree("symbolic-link-chain", caseRoot -> {
+            File linkTargetDirectory = new File(caseRoot, "link-target-directory");
+            assertTrue(linkTargetDirectory.getAbsolutePath(), linkTargetDirectory.mkdirs());
+            File innerLink = new File(caseRoot, "inner-link");
+            Os.symlink(linkTargetDirectory.getAbsolutePath(), innerLink.getAbsolutePath());
+            File outerLink = new File(caseRoot, "outer-link");
+            Os.symlink(innerLink.getAbsolutePath(), outerLink.getAbsolutePath());
+            return outerLink;
+        }, false);
+    }
+
+    @Test
+    public void bothCreatorsCreateADirectoryUnderASymbolicLinkParent() throws Exception {
+        assertBothCreatorsAgree("symbolic-link-parent", caseRoot -> {
+            File parentTargetDirectory = new File(caseRoot, "parent-target-directory");
+            assertTrue(parentTargetDirectory.getAbsolutePath(), parentTargetDirectory.mkdirs());
+            File linkParent = new File(caseRoot, "link-parent");
+            Os.symlink(parentTargetDirectory.getAbsolutePath(), linkParent.getAbsolutePath());
+            return new File(linkParent, "child");
+        }, true);
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.termux.app;
 
+import com.termux.app.bootstrap.CanonicalPathBootstrapDirectoryCreator;
+
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,7 +35,8 @@ public class BootstrapArchiveExtractionTargetDirectoryTest {
 
         try {
             TermuxInstaller.extractBootstrapArchive(
-                new ByteArrayInputStream(buildArchiveWithSingleExecutableEntry()), targetDirectory);
+                new ByteArrayInputStream(buildArchiveWithSingleExecutableEntry()), targetDirectory,
+                new CanonicalPathBootstrapDirectoryCreator());
             Assert.fail("A non-directory file blocking an entry directory must surface as a reported failure.");
         } catch (IOException expected) {
             Assert.assertTrue(expected.getMessage(), expected.getMessage().contains("Non-directory file found"));
@@ -51,7 +54,8 @@ public class BootstrapArchiveExtractionTargetDirectoryTest {
 
         try {
             TermuxInstaller.extractBootstrapArchive(
-                new ByteArrayInputStream(buildArchiveWithSymlinkListAndSingleExecutableEntry()), targetDirectory);
+                new ByteArrayInputStream(buildArchiveWithSymlinkListAndSingleExecutableEntry()), targetDirectory,
+                new CanonicalPathBootstrapDirectoryCreator());
             Assert.fail("A symbolic link standing where a bootstrap directory has to be created must surface as a"
                 + " reported failure instead of being written through.");
         } catch (IOException expected) {
@@ -74,7 +78,8 @@ public class BootstrapArchiveExtractionTargetDirectoryTest {
 
         try {
             TermuxInstaller.extractBootstrapArchive(
-                new ByteArrayInputStream(buildArchiveWithSingleExecutableEntry()), targetDirectory);
+                new ByteArrayInputStream(buildArchiveWithSingleExecutableEntry()), targetDirectory,
+                new CanonicalPathBootstrapDirectoryCreator());
             Assert.fail("An archive without a symlink list must surface as a reported failure.");
         } catch (RuntimeException expected) {
             Assert.assertEquals("No SYMLINKS.txt encountered", expected.getMessage());
