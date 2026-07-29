@@ -103,6 +103,7 @@ public class HiddenCurrentSessionRuntimeReleaseTest {
     public void hidingTheDisplayedSessionMovesTheTerminalViewToTheNextVisibleSessionAndReleasesOnlyTheHiddenOne()
         throws Exception {
         shellManager.mTermuxSessions.add(runningSessionHoldingAnEmulator(OTHER_SESSION_NAME));
+        TerminalSession sessionBeingHidden = terminalSessionNamed(CURRENT_SESSION_NAME);
 
         assertEquals("test premise: the session about to be hidden must be the one the terminal view "
                 + "renders, otherwise this test is not exercising the hide of the displayed session",
@@ -115,10 +116,10 @@ public class HiddenCurrentSessionRuntimeReleaseTest {
                 + "longer has a session behind it",
             OTHER_SESSION_NAME, terminalView.getCurrentSession().mSessionName);
         assertNull("the session the owner hid must release its terminal emulator and the scrollback "
-                + "buffer it owns", terminalSessionNamed(CURRENT_SESSION_NAME).getEmulator());
+                + "buffer it owns", sessionBeingHidden.getEmulator());
         assertFalse("the session the owner hid must hold no shell process",
-            terminalSessionNamed(CURRENT_SESSION_NAME).isRunning());
-        assertNotNull("the row of the hidden session must stay in the list so the owner can reopen it",
+            sessionBeingHidden.isRunning());
+        assertNull("the session the owner hid must hold no live session object either",
             service.getTermuxSessionForSessionName(CURRENT_SESSION_NAME));
         assertNotNull("the session the terminal view moved to must keep its terminal emulator",
             terminalSessionNamed(OTHER_SESSION_NAME).getEmulator());

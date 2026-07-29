@@ -13,7 +13,9 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public final class DiagnosticsReportCollector {
 
@@ -35,7 +37,7 @@ public final class DiagnosticsReportCollector {
     public DiagnosticsReport collect(@NonNull TermuxActivity activity, long nowMillis) {
         TermuxService service = activity.getTermuxService();
 
-        int countedTowardCap = cappedSessionCount(service);
+        int countedTowardCap = cappedSessionCount(service, activity);
         int displayedCount = displayedSessionCount(activity);
         int maxSessionsCap = activity.getPreferences().getSessionDefinitionMaxSessions();
 
@@ -59,7 +61,7 @@ public final class DiagnosticsReportCollector {
      * — orphans and dead-but-reconnectable rows — are excluded, so the diagnostics "counted toward cap"
      * figure matches the number the cap uses rather than {@code getTermuxSessionsSize()} (all sessions).
      */
-    private int cappedSessionCount(TermuxService service) {
+    private int cappedSessionCount(TermuxService service, @NonNull TermuxActivity activity) {
         if (service == null) return 0;
         List<SessionDefinitionCapCountPlanner.CountedSession> countedSessions = new ArrayList<>();
         for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
@@ -68,7 +70,13 @@ public final class DiagnosticsReportCollector {
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return mCapCountPlanner.countSessionsTowardCap(countedSessions);
+        return mCapCountPlanner.countSessionsTowardCap(countedSessions, hiddenSessionNames(activity));
+    }
+
+    @NonNull
+    private Set<String> hiddenSessionNames(@NonNull TermuxActivity activity) {
+        return activity.getPreferences() == null
+            ? Collections.emptySet() : activity.getPreferences().getDisabledSessionNames();
     }
 
     private int displayedSessionCount(@NonNull TermuxActivity activity) {

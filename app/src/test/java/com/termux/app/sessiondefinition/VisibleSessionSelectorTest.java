@@ -109,12 +109,13 @@ public class VisibleSessionSelectorTest {
     }
 
     @Test
-    public void keepsTheCurrentSessionEvenWhenItIsMarkedHidden() {
+    public void excludesTheCurrentSessionWhileItIsMarkedHidden() {
         Set<String> visible = selector.selectVisibleSessionNames(true,
             "https://example.test/current", true,
             Collections.singletonList("https://example.test/current"),
             Collections.singleton("https://example.test/current"));
 
-        Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
+        Assert.assertEquals("a hidden session is scanned and reconnected by nothing, whatever the "
+                + "terminal view still happens to hold", Collections.emptySet(), visible);
     }
 }

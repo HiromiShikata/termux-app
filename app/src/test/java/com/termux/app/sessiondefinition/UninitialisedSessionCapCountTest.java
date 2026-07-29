@@ -11,6 +11,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
@@ -47,7 +48,7 @@ public class UninitialisedSessionCapCountTest {
 
         assertEquals("a session that never initialised an emulator owns no shell process and must not "
                 + "occupy a slot in the session cap",
-            0, new SessionDefinitionCapCountPlanner().countSessionsTowardCap(countedSessions));
+            0, new SessionDefinitionCapCountPlanner().countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test

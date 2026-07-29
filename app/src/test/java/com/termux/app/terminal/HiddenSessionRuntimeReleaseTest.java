@@ -92,40 +92,21 @@ public class HiddenSessionRuntimeReleaseTest {
     }
 
     @Test
-    public void hidingASessionReleasesItsTerminalEmulatorWhileItsRowStaysInTheList() throws Exception {
+    public void hidingASessionReleasesItsTerminalEmulatorAndItsShellProcess() throws Exception {
         TermuxSession hiddenSession = sessionHoldingAnEmulator(HIDDEN_SESSION_NAME);
         shellManager.mTermuxSessions.add(hiddenSession);
-        int sessionCountBeforeHiding = service.getTermuxSessionsSize();
+        TerminalSession hiddenTerminalSession = hiddenSession.getTerminalSession();
 
         hide(HIDDEN_SESSION_NAME);
-        activity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(HIDDEN_SESSION_NAME, true);
+        activity.getTermuxTerminalSessionClient().releaseHiddenSessionRuntimeResources(HIDDEN_SESSION_NAME);
 
-        assertEquals("hiding a session must not remove its row from the session list",
-            sessionCountBeforeHiding, service.getTermuxSessionsSize());
-        assertNotNull("the row of the hidden session must stay reachable by name so the owner can "
-                + "reopen it", service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME));
         assertNull("hiding a session must release its terminal emulator and the scrollback buffer the "
                 + "emulator owns, so the hidden session holds nothing at runtime",
-            service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME).getTerminalSession()
-                .getEmulator());
+            hiddenTerminalSession.getEmulator());
         assertFalse("hiding a session must tear its local shell process down",
-            service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME).getTerminalSession()
-                .isRunning());
-    }
-
-    @Test
-    public void unhidingASessionSelectsItForReconnect() throws Exception {
-        TermuxSession hiddenSession = sessionHoldingAnEmulator(HIDDEN_SESSION_NAME);
-        shellManager.mTermuxSessions.add(hiddenSession);
-        hide(HIDDEN_SESSION_NAME);
-        activity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(HIDDEN_SESSION_NAME, true);
-
-        hide();
-        List<String> reconnectedSessionNames = activity.getTermuxTerminalSessionClient()
-            .onSessionHiddenStateChanged(HIDDEN_SESSION_NAME, false);
-
-        assertTrue("unhiding a released session must reconnect it so it resumes normally",
-            reconnectedSessionNames.contains(HIDDEN_SESSION_NAME));
+            hiddenTerminalSession.isRunning());
+        assertNull("a hidden session holds no live session object, so nothing answers to its name in "
+                + "the service any more", service.getTermuxSessionForSessionName(HIDDEN_SESSION_NAME));
     }
 
     @Test
@@ -136,7 +117,7 @@ public class HiddenSessionRuntimeReleaseTest {
         shellManager.mTermuxSessions.add(displayedSession);
 
         hide(HIDDEN_SESSION_NAME);
-        activity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(HIDDEN_SESSION_NAME, true);
+        activity.getTermuxTerminalSessionClient().releaseHiddenSessionRuntimeResources(HIDDEN_SESSION_NAME);
 
         assertNotNull("a displayed session must keep its terminal emulator when another session is "
                 + "hidden", service.getTermuxSessionForSessionName("session-displayed")

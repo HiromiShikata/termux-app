@@ -17,6 +17,50 @@ public class SessionPickerOverlayRenderModelTest {
     private static final Map<Integer, String> NO_MARKS = Collections.emptyMap();
     private static final Set<Integer> NO_DISABLED = Collections.emptySet();
 
+    private static final int NO_HIGHLIGHT = SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX;
+
+    @Test
+    public void omitsRowsThatHaveNoLiveSessionBecauseThePickerCanOnlySwitchToALiveSession() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("DEMOPROJECT"),
+            SessionHierarchyRow.storyHeader("DemoStory"),
+            SessionHierarchyRow.session(0),
+            SessionHierarchyRow.session(SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX, "hidden-alpha"),
+            SessionHierarchyRow.session(SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX, "hidden-beta"));
+        List<String> names = Collections.singletonList("alpha");
+
+        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(rows,
+            sessionRows(names, NO_TITLES, NO_MARKS, NO_DISABLED), NO_HIGHLIGHT);
+
+        Assert.assertEquals("a row produced from the stored session definition holds no live session,"
+                + " so the picker must not offer it as something to switch to", 3, lines.size());
+        assertLine(lines.get(0), SessionPickerOverlayLine.Kind.PROJECT, "DEMOPROJECT", false);
+        assertLine(lines.get(1), SessionPickerOverlayLine.Kind.STORY, "DemoStory", false);
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
+    }
+
+    @Test
+    public void neverRendersADefinitionBackedRowAsHighlightedWhenNothingIsHighlighted() {
+        List<SessionHierarchyRow> rows = Arrays.asList(
+            SessionHierarchyRow.projectHeader("DEMOPROJECT"),
+            SessionHierarchyRow.storyHeader("DemoStory"),
+            SessionHierarchyRow.session(SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX, "hidden-alpha"),
+            SessionHierarchyRow.session(0));
+        List<String> names = Collections.singletonList("alpha");
+
+        List<SessionPickerOverlayLine> lines = SessionPickerOverlayRenderModel.build(rows,
+            sessionRows(names, NO_TITLES, NO_MARKS, NO_DISABLED), NO_HIGHLIGHT);
+
+        for (SessionPickerOverlayLine line : lines) {
+            Assert.assertFalse("the no-highlight value and the no-live-session value are the same"
+                    + " number, so a definition backed row must never be matched as the highlighted"
+                    + " row; the line rendered as " + line.getText(),
+                line.isHighlighted());
+        }
+        Assert.assertEquals("only the one live session may be offered", 3, lines.size());
+        assertLine(lines.get(2), SessionPickerOverlayLine.Kind.SESSION, "alpha", false);
+    }
+
     @Test
     public void groupsStoryDirectlyUnderItsProjectWithoutASpacerBetweenThem() {
         List<SessionHierarchyRow> rows = Arrays.asList(

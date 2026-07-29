@@ -5,6 +5,7 @@ import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +29,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSessions.add(countedSession("alive-" + i, true));
         }
 
-        Assert.assertEquals(aliveCount, planner.countSessionsTowardCap(countedSessions));
+        Assert.assertEquals(aliveCount, planner.countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test
@@ -54,7 +55,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSession("host-b", true),
             countedSession(null, true));
 
-        Assert.assertEquals(3, planner.countSessionsTowardCap(countedSessions));
+        Assert.assertEquals(3, planner.countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test
@@ -63,7 +64,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSession(null, false),
             countedSession("   ", false));
 
-        Assert.assertEquals(0, planner.countSessionsTowardCap(countedSessions));
+        Assert.assertEquals(0, planner.countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test
@@ -72,7 +73,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSession("host-a", false),
             countedSession("host-b", false));
 
-        Assert.assertEquals(0, planner.countSessionsTowardCap(countedSessions));
+        Assert.assertEquals(0, planner.countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test
@@ -81,7 +82,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSession("autossh-host-a", false),
             countedSession("autossh-host-b", false));
 
-        Assert.assertEquals(0, planner.countSessionsTowardCap(countedSessions));
+        Assert.assertEquals(0, planner.countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test
@@ -92,7 +93,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSession(null, false),
             countedSession("   ", false));
 
-        Assert.assertEquals(1, planner.countSessionsTowardCap(countedSessions));
+        Assert.assertEquals(1, planner.countSessionsTowardCap(countedSessions, Collections.emptySet()));
     }
 
     @Test
@@ -108,7 +109,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSessions.add(countedSession(null, false));
         }
 
-        int capCount = planner.countSessionsTowardCap(countedSessions);
+        int capCount = planner.countSessionsTowardCap(countedSessions, Collections.emptySet());
 
         Assert.assertEquals(aliveCount, capCount);
     }
@@ -130,7 +131,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSessions.add(countedSession("autossh-dead-" + i, false));
         }
 
-        int capCount = planner.countSessionsTowardCap(countedSessions);
+        int capCount = planner.countSessionsTowardCap(countedSessions, Collections.emptySet());
 
         Assert.assertEquals(aliveCount, capCount);
         Assert.assertTrue(capCount < configuredLimit);
@@ -145,7 +146,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSessions.add(countedSession("alive-" + i, true));
         }
 
-        int capCount = planner.countSessionsTowardCap(countedSessions);
+        int capCount = planner.countSessionsTowardCap(countedSessions, Collections.emptySet());
 
         Assert.assertEquals(configuredLimit, capCount);
         Assert.assertTrue(capCount >= configuredLimit);
@@ -166,7 +167,7 @@ public class SessionDefinitionCapCountPlannerTest {
             countedSessions.add(countedSession(null, false));
         }
 
-        int cappedCountExcludingOrphans = planner.countSessionsTowardCap(countedSessions);
+        int cappedCountExcludingOrphans = planner.countSessionsTowardCap(countedSessions, Collections.emptySet());
         SessionDefinitionLimitPlan planExcludingOrphans = SessionDefinitionLimitPlan.forCapacity(
             requestedShownSessions, cappedCountExcludingOrphans, configuredLimit);
         Assert.assertFalse(planExcludingOrphans.exceedsLimit());

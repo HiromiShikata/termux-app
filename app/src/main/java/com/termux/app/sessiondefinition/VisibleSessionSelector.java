@@ -3,6 +3,8 @@ package com.termux.app.sessiondefinition;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
+
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,15 +21,13 @@ public final class VisibleSessionSelector {
         if (!activityVisible) {
             return visibleSessionNames;
         }
-        if (currentSessionName != null) {
+        if (currentSessionName != null && !HiddenSessionNameMatcher.matchesAHiddenSession(currentSessionName, hiddenSessionNames)) {
             visibleSessionNames.add(currentSessionName);
         }
         if (sessionListOpen) {
             for (String onScreenListSessionName : onScreenListSessionNames) {
-                if (onScreenListSessionName == null) {
-                    continue;
-                }
-                if (hiddenSessionNames.contains(onScreenListSessionName)) {
+                if (onScreenListSessionName == null
+                        || HiddenSessionNameMatcher.matchesAHiddenSession(onScreenListSessionName, hiddenSessionNames)) {
                     continue;
                 }
                 visibleSessionNames.add(onScreenListSessionName);

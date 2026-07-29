@@ -145,6 +145,7 @@ public final class TerminalSession extends TerminalOutput {
      */
     public void initializeEmulator(int columns, int rows, int cellWidthPixels, int cellHeightPixels) {
         mEmulator = new TerminalEmulator(this, columns, rows, cellWidthPixels, cellHeightPixels, mTranscriptRows, mClient);
+        replaceEachIOQueueAPreviousShellProcessClosed();
 
         final ByteQueue processToTerminalIOQueue = mProcessToTerminalIOQueue;
         final ByteQueue terminalToProcessIOQueue = mTerminalToProcessIOQueue;
@@ -252,30 +253,6 @@ public final class TerminalSession extends TerminalOutput {
         return mEmulator;
     }
 
-    public void releaseEmulator() {
-        mEmulator = null;
-        supersedeTheShellProcessInstanceTheSessionOwns();
-        replacePermanentlyClosedIOQueuesWithOpenOnes();
-        disownTheShellProcessIdentifier();
-    }
-
-    private void supersedeTheShellProcessInstanceTheSessionOwns() {
-        mShellProcessGeneration++;
-    }
-
-    private void replacePermanentlyClosedIOQueuesWithOpenOnes() {
-        mTerminalToProcessIOQueue.close();
-        mProcessToTerminalIOQueue.close();
-        mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
-        mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
-    }
-
-    private void disownTheShellProcessIdentifier() {
-        synchronized (this) {
-            mShellPid = NO_SHELL_PROCESS_PID;
-        }
-    }
-
     public long getNeverResetScrolledLineCount() {
         return mEmulator == null ? 0L : mEmulator.getNeverResetScrolledLineCount();
     }
@@ -362,9 +339,47 @@ public final class TerminalSession extends TerminalOutput {
         }
 
         // Stop the reader and writer threads, and close the I/O streams
+        closeShellStreams();
+    }
+
+    static final int NO_TERMINAL_FILE_DESCRIPTOR = 0;
+
+    private void closeShellStreams() {
         mTerminalToProcessIOQueue.close();
         mProcessToTerminalIOQueue.close();
+        if (mTerminalFileDescriptor == NO_TERMINAL_FILE_DESCRIPTOR) {
+            return;
+        }
         JNI.close(mTerminalFileDescriptor);
+        mTerminalFileDescriptor = NO_TERMINAL_FILE_DESCRIPTOR;
+    }
+
+    public void releaseRuntimeResources() {
+        finishIfRunning();
+        closeShellStreams();
+        supersedeTheShellProcessInstanceTheSessionOwns();
+        disownTheShellProcessIdentifier();
+        mMainThreadHandler.removeCallbacksAndMessages(null);
+        mEmulator = null;
+    }
+
+    private void supersedeTheShellProcessInstanceTheSessionOwns() {
+        mShellProcessGeneration++;
+    }
+
+    private void replaceEachIOQueueAPreviousShellProcessClosed() {
+        if (!mTerminalToProcessIOQueue.isOpen()) {
+            mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
+        }
+        if (!mProcessToTerminalIOQueue.isOpen()) {
+            mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
+        }
+    }
+
+    private void disownTheShellProcessIdentifier() {
+        synchronized (this) {
+            mShellPid = NO_SHELL_PROCESS_PID;
+        }
     }
 
     @Override
@@ -450,7 +465,8 @@ public final class TerminalSession extends TerminalOutput {
         return result;
     }
 
-    static boolean shouldCloseOnlyTheReportedFileDescriptor(int reportingShellProcessGeneration, int ownedShellProcessGeneration) {
+    static boolean exitReportBelongsToASupersededShellProcess(int reportingShellProcessGeneration,
+                                                              int ownedShellProcessGeneration) {
         return reportingShellProcessGeneration != ownedShellProcessGeneration;
     }
 
@@ -461,46 +477,45 @@ public final class TerminalSession extends TerminalOutput {
 
         @Override
         public void handleMessage(Message msg) {
+            renderPendingShellOutput();
+
+            if (msg.what != MSG_PROCESS_EXITED) return;
+
+            if (exitReportBelongsToASupersededShellProcess(msg.arg1, mShellProcessGeneration)) return;
+
+            int exitCode = (Integer) msg.obj;
+            cleanupResources(exitCode);
+            if (mEmulator != null) renderShellCompletionNotice(exitCode);
+            mClient.onSessionFinished(TerminalSession.this);
+        }
+
+        private void renderPendingShellOutput() {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
-            if (bytesRead > 0 && mEmulator != null) {
-                mTotalBytesProcessed += bytesRead;
-                int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
-                if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
-                int genuineByteCount = bytesRead - genuineOffset;
-                mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
-                notifyScreenUpdate();
-                if (genuineByteCount > 0) notifyGenuineOutput();
-            } else if (bytesRead > 0) {
+            if (bytesRead <= 0) return;
+            if (mEmulator == null) {
                 Logger.logDebug(mClient, LOG_TAG, "Discarded " + bytesRead + " bytes of output of session \""
                     + mSessionName + "\" because its terminal emulator was released");
+                return;
             }
+            mTotalBytesProcessed += bytesRead;
+            int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
+            if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
+            int genuineByteCount = bytesRead - genuineOffset;
+            mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
+            notifyScreenUpdate();
+            if (genuineByteCount > 0) notifyGenuineOutput();
+        }
 
-            if (msg.what == MSG_PROCESS_EXITED) {
-                int exitCode = (Integer) msg.obj;
-                if (shouldCloseOnlyTheReportedFileDescriptor(msg.arg1, mShellProcessGeneration)) {
-                    JNI.close(msg.arg2);
-                    return;
-                }
-                cleanupResources(exitCode);
+        private void renderShellCompletionNotice(int exitCode) {
+            byte[] bytesToWrite = shellCompletionNotice(exitCode).getBytes(StandardCharsets.UTF_8);
+            mEmulator.append(bytesToWrite, bytesToWrite.length);
+            notifyScreenUpdate();
+        }
 
-                String exitDescription = "\r\n[Process completed";
-                if (exitCode > 0) {
-                    // Non-zero process exit.
-                    exitDescription += " (code " + exitCode + ")";
-                } else if (exitCode < 0) {
-                    // Negated signal.
-                    exitDescription += " (signal " + (-exitCode) + ")";
-                }
-                exitDescription += " - press Enter]";
-
-                byte[] bytesToWrite = exitDescription.getBytes(StandardCharsets.UTF_8);
-                if (mEmulator != null) {
-                    mEmulator.append(bytesToWrite, bytesToWrite.length);
-                    notifyScreenUpdate();
-                }
-
-                mClient.onSessionFinished(TerminalSession.this);
-            }
+        private String shellCompletionNotice(int exitCode) {
+            if (exitCode > 0) return "\r\n[Process completed (code " + exitCode + ") - press Enter]";
+            if (exitCode < 0) return "\r\n[Process completed (signal " + (-exitCode) + ") - press Enter]";
+            return "\r\n[Process completed - press Enter]";
         }
 
     }

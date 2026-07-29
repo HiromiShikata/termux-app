@@ -111,7 +111,8 @@ public final class SessionDefinitionController {
         Set<String> liveSessionNames = collectLiveSessionNames();
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
-            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(plannedSessions, liveSessionNames);
+            SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
+                plannedSessions, liveSessionNames, hiddenSessionNames());
 
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 
@@ -183,7 +184,12 @@ public final class SessionDefinitionController {
                 terminalSession == null ? null : terminalSession.mSessionName,
                 terminalSession != null && terminalSession.isRunning()));
         }
-        return capCountPlanner.countSessionsTowardCap(countedSessions);
+        return capCountPlanner.countSessionsTowardCap(countedSessions, hiddenSessionNames());
+    }
+
+    private Set<String> hiddenSessionNames() {
+        return activity.getPreferences() == null
+            ? Collections.emptySet() : activity.getPreferences().getDisabledSessionNames();
     }
 
     private void reconcileDuplicateLiveSessions() {

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.termux.R;
@@ -29,19 +30,34 @@ import org.robolectric.RuntimeEnvironment;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
 public class DeadSessionRetentionAcrossBackgroundScansTest {
 
+    private static final class SessionListTreatingEveryProjectRowAsCollapsed
+            extends TermuxSessionsListViewController {
+
+        SessionListTreatingEveryProjectRowAsCollapsed(@NonNull TermuxActivity activity) {
+            super(activity, new ArrayList<>());
+        }
+
+        @NonNull
+        @Override
+        public Set<String> getExpandedProjectSessionNames() {
+            return Collections.emptySet();
+        }
+    }
+
     private static final String CURRENT_SESSION_NAME = "session-current";
 
     private static final int VISIBLE_SESSION_COUNT = 16;
 
-    private static final int HIDDEN_SESSION_COUNT = 15;
+    private static final int OUT_OF_SIGHT_SESSION_COUNT = 15;
 
-    private static final int DEAD_HIDDEN_SESSION_COUNT = 14;
+    private static final int DEAD_OUT_OF_SIGHT_SESSION_COUNT = 14;
 
     private static final int BACKGROUND_SCAN_CYCLE_COUNT = 3;
 
@@ -89,21 +105,24 @@ public class DeadSessionRetentionAcrossBackgroundScansTest {
         TerminalView terminalView = new TerminalView(appContext, null);
         set(activity, TermuxActivity.class, "mTerminalView", terminalView);
 
+        set(activity, TermuxActivity.class, "mTermuxSessionListViewController",
+            new SessionListTreatingEveryProjectRowAsCollapsed(activity));
+
         TermuxSession currentSession = liveSession(CURRENT_SESSION_NAME);
         shellManager.mTermuxSessions.add(currentSession);
         terminalView.mTermSession = currentSession.getTerminalSession();
     }
 
     @Test
-    public void deadHiddenSessionsMustNotKeepTheirTerminalEmulatorAcrossRepeatedScanCycles()
+    public void deadOutOfSightSessionsMustNotKeepTheirTerminalEmulatorAcrossRepeatedScanCycles()
         throws Exception {
         seedRealisticSessionPopulation();
 
         assertEquals("the seeded population must match the reported device state before any scan runs",
-            VISIBLE_SESSION_COUNT + HIDDEN_SESSION_COUNT, service.getTermuxSessionsSize());
-        assertEquals("every seeded dead hidden session must start out holding a terminal emulator and "
+            VISIBLE_SESSION_COUNT + OUT_OF_SIGHT_SESSION_COUNT, service.getTermuxSessionsSize());
+        assertEquals("every seeded dead out of sight session must start out holding a terminal emulator and "
                 + "its scrollback buffer, otherwise this test would not be measuring the retention at all",
-            DEAD_HIDDEN_SESSION_COUNT, deadHiddenSessionsHoldingAnEmulator());
+            DEAD_OUT_OF_SIGHT_SESSION_COUNT, deadOutOfSightSessionsHoldingAnEmulator());
 
         for (int scanCycle = 0; scanCycle < BACKGROUND_SCAN_CYCLE_COUNT; scanCycle++) {
             activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
@@ -112,42 +131,41 @@ public class DeadSessionRetentionAcrossBackgroundScansTest {
 
         assertEquals("the rows of dead sessions stay in the list on purpose so the owner can still see "
                 + "and reopen them, so the scan cycles must not remove them",
-            VISIBLE_SESSION_COUNT + HIDDEN_SESSION_COUNT, service.getTermuxSessionsSize());
+            VISIBLE_SESSION_COUNT + OUT_OF_SIGHT_SESSION_COUNT, service.getTermuxSessionsSize());
         assertEquals("a session whose process has exited and which is neither current nor displayed must "
                 + "release its terminal emulator and its scrollback buffer, whose size is governed by the "
                 + "transcript rows setting, instead of holding them for the lifetime of the process",
-            0, deadHiddenSessionsHoldingAnEmulator());
+            0, deadOutOfSightSessionsHoldingAnEmulator());
     }
 
     @Test
-    public void aDeadHiddenSessionMustReleaseItsEmulatorWhileItsRowStaysInTheList() throws Exception {
-        String hiddenDeadSessionName = "session-hidden-alpha";
-        TermuxSession hiddenDeadSession = deadSessionHoldingAnEmulator(hiddenDeadSessionName);
-        shellManager.mTermuxSessions.add(hiddenDeadSession);
-        hideSessionNames(hiddenDeadSessionName);
+    public void aDeadOutOfSightSessionMustReleaseItsEmulatorWhileItsRowStaysInTheList() throws Exception {
+        String outOfSightDeadSessionName = "session-out-of-sight-alpha";
+        TermuxSession outOfSightDeadSession = deadSessionHoldingAnEmulator(outOfSightDeadSessionName);
+        shellManager.mTermuxSessions.add(outOfSightDeadSession);
 
-        assertNotNull("the hidden dead session must hold a terminal emulator before the scan runs",
-            hiddenDeadSession.getTerminalSession().getEmulator());
+        assertNotNull("the dead out of sight session must hold a terminal emulator before the scan runs",
+            outOfSightDeadSession.getTerminalSession().getEmulator());
 
         for (int scanCycle = 0; scanCycle < BACKGROUND_SCAN_CYCLE_COUNT; scanCycle++) {
             activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
             activity.getTermuxTerminalSessionClient().startDisplayedSessionCallScanTick();
         }
 
-        assertNotNull("the row of the dead hidden session must stay in the list so the owner can still "
+        assertNotNull("the row of the dead out of sight session must stay in the list so the owner can still "
                 + "see it and reopen it without any manual action",
-            service.getTermuxSessionForSessionName(hiddenDeadSessionName));
-        assertNull("a hidden session that has died is reconnected by no scan and rendered for nobody, so "
+            service.getTermuxSessionForSessionName(outOfSightDeadSessionName));
+        assertNull("a session that has died out of sight is reconnected by no scan and rendered for nobody, so "
                 + "the scan must release its terminal emulator and scrollback buffer while keeping its row",
-            service.getTermuxSessionForSessionName(hiddenDeadSessionName)
+            service.getTermuxSessionForSessionName(outOfSightDeadSessionName)
                 .getTerminalSession().getEmulator());
     }
 
-    private int deadHiddenSessionsHoldingAnEmulator() {
+    private int deadOutOfSightSessionsHoldingAnEmulator() {
         int sessionsHoldingAnEmulator = 0;
-        for (int hiddenIndex = 1; hiddenIndex <= DEAD_HIDDEN_SESSION_COUNT; hiddenIndex++) {
+        for (int outOfSightIndex = 1; outOfSightIndex <= DEAD_OUT_OF_SIGHT_SESSION_COUNT; outOfSightIndex++) {
             TermuxSession termuxSession =
-                service.getTermuxSessionForSessionName(hiddenSessionName(hiddenIndex));
+                service.getTermuxSessionForSessionName(outOfSightSessionName(outOfSightIndex));
             if (termuxSession == null || termuxSession.getTerminalSession() == null) {
                 continue;
             }
@@ -162,32 +180,20 @@ public class DeadSessionRetentionAcrossBackgroundScansTest {
         for (int visibleIndex = 1; visibleIndex < VISIBLE_SESSION_COUNT; visibleIndex++) {
             shellManager.mTermuxSessions.add(liveSession(visibleSessionName(visibleIndex)));
         }
-        Set<String> hiddenSessionNames = new LinkedHashSet<>();
-        for (int hiddenIndex = 1; hiddenIndex <= HIDDEN_SESSION_COUNT; hiddenIndex++) {
-            String hiddenSessionName = hiddenSessionName(hiddenIndex);
-            hiddenSessionNames.add(hiddenSessionName);
-            shellManager.mTermuxSessions.add(hiddenIndex <= DEAD_HIDDEN_SESSION_COUNT
-                ? deadSessionHoldingAnEmulator(hiddenSessionName)
-                : liveSession(hiddenSessionName));
+        for (int outOfSightIndex = 1; outOfSightIndex <= OUT_OF_SIGHT_SESSION_COUNT; outOfSightIndex++) {
+            String outOfSightSessionName = outOfSightSessionName(outOfSightIndex);
+            shellManager.mTermuxSessions.add(outOfSightIndex <= DEAD_OUT_OF_SIGHT_SESSION_COUNT
+                ? deadSessionHoldingAnEmulator(outOfSightSessionName)
+                : liveSession(outOfSightSessionName));
         }
-        hideSessionNames(hiddenSessionNames.toArray(new String[0]));
-    }
-
-    private void hideSessionNames(String... sessionNames) {
-        Set<String> hiddenSessionNames = new LinkedHashSet<>();
-        for (String sessionName : sessionNames) {
-            hiddenSessionNames.add(sessionName);
-        }
-        preferences.setDisabledSessionNames(
-            TermuxAppSharedPreferences.serializeDisabledSessionNames(hiddenSessionNames));
     }
 
     private static String visibleSessionName(int index) {
         return String.format("session-visible-%02d", index);
     }
 
-    private static String hiddenSessionName(int index) {
-        return String.format("session-hidden-%02d", index);
+    private static String outOfSightSessionName(int index) {
+        return String.format("session-out-of-sight-%02d", index);
     }
 
     private TermuxSession liveSession(String sessionName) throws Exception {

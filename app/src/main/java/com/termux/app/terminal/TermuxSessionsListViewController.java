@@ -31,6 +31,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.interact.DialogUtils;
@@ -425,13 +426,12 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                                          @Nullable SessionHierarchyRow.Type previousRowType) {
         int sessionIndex = row.getSessionIndex();
         boolean showDivider = shouldShowSessionRowGroupDivider(previousRowType);
-        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
-            return joinContentFields("X", String.valueOf(sessionIndex));
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())
+                || mSessionList.get(sessionIndex).getTerminalSession() == null) {
+            return joinContentFields("D", nullToEmpty(row.getSessionName()),
+                String.valueOf(isSessionDisabled(row.getSessionName())), String.valueOf(showDivider));
         }
         TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
-        if (sessionAtRow == null) {
-            return joinContentFields("X", String.valueOf(sessionIndex));
-        }
         SessionRow sessionRow = SessionRow.rowOrEmpty(mSessionRowsByIndex, sessionIndex);
         return joinContentFields("R",
             String.valueOf(sessionIndex),
@@ -585,7 +585,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         for (int sessionIndex : visibleSessionIndexes) {
             String sessionName = sessionIndex >= 0 && sessionIndex < sessionNamesByIndex.size()
                 ? sessionNamesByIndex.get(sessionIndex) : null;
-            if (sessionName != null && disabledSessionNames.contains(sessionName)) {
+            if (HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames)) {
                 continue;
             }
             navigableSessionIndexes.add(sessionIndex);
@@ -613,7 +613,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     private boolean isSessionDisabled(@Nullable String sessionName) {
-        return sessionName != null && disabledSessionNames().contains(sessionName);
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames());
     }
 
     private void toggleSessionDisabled(@Nullable String sessionName) {
@@ -625,8 +625,16 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return;
         }
         boolean wasDisabled = isSessionDisabled(sessionName);
+        if (!wasDisabled && hidingWouldLeaveNoVisibleSession(sessionName)) {
+            return;
+        }
         preferences.toggleSessionDisabled(sessionName);
-        mActivity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(sessionName, !wasDisabled);
+        if (wasDisabled) {
+            mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
+            mActivity.reconnectDeadDefinitionBackedSessions();
+        } else {
+            releaseHiddenSessionRuntimeResources(sessionName);
+        }
         refreshSessionList();
     }
 
@@ -638,9 +646,25 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (preferences == null) {
             return;
         }
+        if (hidingWouldLeaveNoVisibleSession(sessionName)) {
+            return;
+        }
         preferences.setSessionDisabled(sessionName, true);
-        mActivity.getTermuxTerminalSessionClient().onSessionHiddenStateChanged(sessionName, true);
+        releaseHiddenSessionRuntimeResources(sessionName);
         refreshSessionList();
+    }
+
+    private boolean hidingWouldLeaveNoVisibleSession(@NonNull String sessionName) {
+        return !LastVisibleSessionHideGuard.hidingLeavesAVisibleSession(
+            sessionName, sessionNamesByIndex(), disabledSessionNames());
+    }
+
+    private void releaseHiddenSessionRuntimeResources(@NonNull String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store != null) {
+            store.clearReconnecting(sessionName);
+        }
+        mActivity.getTermuxTerminalSessionClient().releaseHiddenSessionRuntimeResources(sessionName);
     }
 
     @NonNull
@@ -654,7 +678,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         for (int sessionIndex : getVisibleSessionIndexes()) {
             String sessionName = sessionIndex >= 0 && sessionIndex < sessionNames.size()
                 ? sessionNames.get(sessionIndex) : null;
-            if (sessionName != null && disabledSessionNames.contains(sessionName)) {
+            if (HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames)) {
                 disabledSessionIndexes.add(sessionIndex);
             }
         }
@@ -783,7 +807,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     static boolean isExcludedFromActivityIndicators(@Nullable String sessionName,
                                                     @NonNull Set<String> disabledSessionNames) {
-        return sessionName != null && disabledSessionNames.contains(sessionName);
+        return HiddenSessionNameMatcher.matchesAHiddenSession(sessionName, disabledSessionNames);
     }
 
     @NonNull
@@ -1256,15 +1280,12 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         sessionTitleView.setPadding(startPadding, verticalPadding, verticalPadding, verticalPadding);
 
         int sessionIndex = row.getSessionIndex();
-        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())) {
-            sessionTitleView.setText("null session");
+        if (!isSessionIndexInRange(sessionIndex, mSessionList.size())
+                || mSessionList.get(sessionIndex).getTerminalSession() == null) {
+            bindDefinitionBackedSessionView(row, sessionRowView, sessionTitleView);
             return;
         }
         TerminalSession sessionAtRow = mSessionList.get(sessionIndex).getTerminalSession();
-        if (sessionAtRow == null) {
-            sessionTitleView.setText("null session");
-            return;
-        }
 
         SessionRow sessionRow = SessionRow.rowOrEmpty(mSessionRowsByIndex, sessionIndex);
 
@@ -1338,6 +1359,48 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         bindSessionDisableToggle(sessionRowView, sessionRow, sessionAtRow.mSessionName);
     }
 
+    @SuppressLint("SetTextI18n")
+    private void bindDefinitionBackedSessionView(@NonNull SessionHierarchyRow row,
+                                                 @NonNull View sessionRowView,
+                                                 @NonNull TextView sessionTitleView) {
+        String sessionName = row.getSessionName();
+        if (sessionName == null || sessionName.isEmpty()) {
+            sessionTitleView.setText("null session");
+            return;
+        }
+        sessionRowView.setBackground(ContextCompat.getDrawable(mActivity, sessionRowBackgroundRes(false)));
+        applyActiveIndicatorBarVisibility(sessionRowView.findViewById(R.id.session_active_indicator_bar),
+            false, ContextCompat.getColor(mActivity, R.color.session_active_indicator));
+
+        SessionInfoBlock sessionInfoBlock = SessionInfoBlock.compose("", sessionName, "",
+            definitionTitleOrEmpty(sessionName), "", "");
+        SpannableString styledSessionInfo = new SpannableString(sessionInfoBlock.text());
+        int sessionNameStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_NAME);
+        if (sessionNameStart >= 0) {
+            applySessionNameStyling(styledSessionInfo, sessionNameStart,
+                sessionNameStart + sessionName.length(), boldSpan);
+        }
+        int definitionTitleStart = sessionInfoBlock.startOf(SessionInfoLine.DEFINITION_TITLE);
+        int definitionTitleEnd = sessionInfoBlock.endOf(SessionInfoLine.DEFINITION_TITLE);
+        if (definitionTitleStart >= 0) {
+            int definitionTitleColor = (DEFINITION_TITLE_ALPHA << 24)
+                | (surfacePrimaryTextColor() & 0x00FFFFFF);
+            styledSessionInfo.setSpan(new RelativeSizeSpan(DEFINITION_TITLE_RELATIVE_SIZE),
+                definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            styledSessionInfo.setSpan(new ForegroundColorSpan(definitionTitleColor),
+                definitionTitleStart, definitionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        sessionTitleView.setText(styledSessionInfo);
+        sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
+        sessionTitleView.setTextColor(surfacePrimaryTextColor());
+        applyBellNotificationIcon(sessionTitleView,
+            SessionRow.rowOrEmpty(mSessionRowsByIndex, SessionHierarchyBuilder.NO_LIVE_SESSION_INDEX));
+        bindSessionRowTimes(sessionRowView, "");
+        bindSessionRowReconnectingIndicator(sessionRowView, sessionName);
+        applySessionTitleBottomPadding(sessionTitleView, false);
+        bindSessionDisableToggle(sessionRowView, isSessionDisabled(sessionName), sessionName);
+    }
+
     private void applySessionRowGroupDividerVisibility(@NonNull View sessionRowView, int position) {
         View groupDividerView = sessionRowView.findViewById(R.id.session_row_group_divider);
         SessionHierarchyRow.Type previousRowType = position > 0
@@ -1353,8 +1416,12 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     private void bindSessionDisableToggle(@NonNull View sessionRowView, @NonNull SessionRow sessionRow,
                                           @Nullable String sessionName) {
+        bindSessionDisableToggle(sessionRowView, sessionRow.isDisabled(), sessionName);
+    }
+
+    private void bindSessionDisableToggle(@NonNull View sessionRowView, boolean disabled,
+                                          @Nullable String sessionName) {
         ImageView disableToggleView = sessionRowView.findViewById(R.id.session_disable_toggle);
-        boolean disabled = sessionRow.isDisabled();
         disableToggleView.setImageResource(sessionDisableToggleIconRes(disabled));
         disableToggleView.setActivated(disabled);
         disableToggleView.setOnClickListener(v -> toggleSessionDisabled(sessionName));
@@ -1559,11 +1626,30 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         TermuxSession clickedSession = sessionAtRowOrNull(row);
         if (clickedSession == null) {
+            openDefinitionBackedSession(row.getSessionName());
             return;
         }
         TerminalSession clickedTerminalSession = clickedSession.getTerminalSession();
         mActivity.getTermuxTerminalSessionClient()
             .switchToSessionReconnectingIfDead(clickedTerminalSession);
+        if (mSessionClickHost != null) {
+            mSessionClickHost.onSessionSelected();
+        }
+    }
+
+    private void openDefinitionBackedSession(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        if (mActivity.getTermuxService() == null) {
+            return;
+        }
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences != null && isSessionDisabled(sessionName)) {
+            preferences.setSessionDisabled(sessionName, false);
+        }
+        mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
+        refreshSessionList();
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }

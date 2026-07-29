@@ -12,6 +12,10 @@ final class ByteQueue {
         mBuffer = new byte[size];
     }
 
+    public synchronized boolean isOpen() {
+        return mOpen;
+    }
+
     public synchronized void close() {
         mOpen = false;
         notify();

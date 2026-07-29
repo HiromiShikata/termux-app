@@ -126,15 +126,17 @@ public class OpenedHiddenSessionUnhideTest {
     @Test
     public void aSessionThatIsMarkedHiddenAndWasNotOpenedIsStillReleasedByTheReclamationSweep()
         throws Exception {
-        addHiddenSession(UNOPENED_HIDDEN_SESSION_NAME);
+        TerminalSession hiddenSession = addHiddenSession(UNOPENED_HIDDEN_SESSION_NAME);
 
         activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
 
         assertNull("a session that is still marked hidden must hold no terminal emulator and no "
-                + "scrollback buffer after a reclamation sweep tick",
-            terminalSessionNamed(UNOPENED_HIDDEN_SESSION_NAME).getEmulator());
+                + "scrollback buffer after a reclamation sweep tick", hiddenSession.getEmulator());
         assertFalse("a session that is still marked hidden must hold no shell process after a "
-            + "reclamation sweep tick", terminalSessionNamed(UNOPENED_HIDDEN_SESSION_NAME).isRunning());
+            + "reclamation sweep tick", hiddenSession.isRunning());
+        assertNull("a session that is still marked hidden must hold no live session object either, so "
+                + "the sweep hands it to the same removal the hide control uses",
+            service.getTermuxSessionForSessionName(UNOPENED_HIDDEN_SESSION_NAME));
     }
 
     private void open(TerminalSession terminalSession) {
