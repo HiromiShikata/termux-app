@@ -27,6 +27,7 @@ import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.app.terminal.session.SessionEagerLoadPacer;
+import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -75,9 +76,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     private static final int RELEASED_SHELL_PROCESS_ID = -1;
 
-    private static final long STAGGER_INTERVAL_MILLIS = 1000L;
-
-    private static final long IDLE_PAST_STAGGER_MILLIS = 2000L;
+    private static final long IDLE_PAST_PACED_RECONNECT_MILLIS = 2000L;
 
     private static final long IDLE_PAST_RECONNECT_TIMEOUT_MILLIS = 600000L;
 
@@ -139,7 +138,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     @Test
     public void reconnectAlreadyInFlightCreatesNoLiveSessionObjectForAHiddenSession() throws Exception {
-        hideDuringTheStaggerWindow();
+        hideWhileTheReconnectIsStillPending();
 
         assertNull("a hidden session must not connect at all, so a staggered reconnect that was "
                 + "already in flight when the session was hidden must not create a live session object "
@@ -150,7 +149,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     @Test
     public void reconnectAlreadyInFlightGivesAHiddenSessionNoTerminalEmulator() throws Exception {
-        hideDuringTheStaggerWindow();
+        hideWhileTheReconnectIsStillPending();
 
         assertEquals("the reconnect must add no session to the service session list, because a session "
                 + "object created there is what the size update is then driven against; asserting only "
@@ -166,7 +165,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     @Test
     public void reconnectAlreadyInFlightPutsAHiddenSessionBackInNoSessionCapSlot() throws Exception {
-        hideDuringTheStaggerWindow();
+        hideWhileTheReconnectIsStillPending();
 
         assertEquals("a hidden session must occupy no slot in the session cap count even when a "
                 + "reconnect was already in flight when it was hidden, so only the displayed session "
@@ -182,7 +181,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
     public void reconnectAlreadyInFlightPutsAHiddenSessionBackInNoScanSet() throws Exception {
         openSessionListWithOnScreenRows(CURRENT_SESSION_NAME, HIDDEN_SESSION_NAME);
 
-        hideDuringTheStaggerWindow();
+        hideWhileTheReconnectIsStillPending();
 
         Set<String> scanSessionNames = visibleSessionNames();
         assertFalse("a hidden session must never be included in the set that drives statusline "
@@ -245,7 +244,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     @Test
     public void aRefusedReconnectLeavesTheHiddenRowNoSpinnerAndNoQueuedTimeout() throws Exception {
-        hideDuringTheStaggerWindow();
+        hideWhileTheReconnectIsStillPending();
 
         assertFalse("a refused reconnect must leave no reconnecting mark behind; the mark draws a "
                 + "spinner on the row, and a hidden session consumes nothing, so a row the owner hid "
@@ -269,9 +268,8 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         TermuxSession deadSession = deadSessionAwaitingReconnect(RECONNECTABLE_SESSION_NAME);
         shellManager.mTermuxSessions.add(deadSession);
 
-        scheduleStaggeredReconnectThroughProductionPath(
-            deadSession.getTerminalSession(), RECONNECTABLE_SESSION_NAME);
-        idlePastTheStaggerWindow();
+        enqueueReconnectThroughProductionPath(deadSession.getTerminalSession());
+        idlePastThePacedReconnectWindow();
 
         assertNotNull("this assertion only means something if the reconnect genuinely produced a live "
                 + "session object, otherwise it would pass for the same reason the hidden case does. The "
@@ -285,6 +283,36 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
             activity.getSessionNewActivityStore().isReconnecting(RECONNECTABLE_SESSION_NAME));
         assertFalse("the reconnect timeout that accompanies the mark must be queued for a session that "
                 + "really is reconnecting", queuedReconnectTimeoutSessionNames().isEmpty());
+    }
+
+    @Test
+    public void aHiddenNameLeavesTheReconnectListEvenWhileItsSessionObjectIsStillLive()
+            throws Exception {
+        TermuxSession stillLiveSession = deadSessionAwaitingReconnect(HIDDEN_SESSION_NAME);
+        shellManager.mTermuxSessions.add(stillLiveSession);
+        preferences.setDisabledSessionNames(HIDDEN_SESSION_NAME);
+
+        assertFalse("the paced reconnect asks, at the moment each queued session comes up, whether that "
+                + "session is still one the reconnect list covers, and a name the owner hid must answer "
+                + "no. The hidden name is written straight to storage here rather than through the hide "
+                + "entry point, because that entry point also tears the live session down, and the state "
+                + "under test is the one where the session object is still live and the name is already "
+                + "hidden",
+            isSessionStillInTheReconnectListThroughProductionPath(
+                stillLiveSession.getTerminalSession()));
+    }
+
+    @Test
+    public void aNameThatIsNotHiddenStaysInTheReconnectListWhileItsSessionObjectIsLive()
+            throws Exception {
+        TermuxSession stillLiveSession = deadSessionAwaitingReconnect(RECONNECTABLE_SESSION_NAME);
+        shellManager.mTermuxSessions.add(stillLiveSession);
+
+        assertTrue("refusing hidden names must not refuse every name, otherwise the paced reconnect "
+                + "would never reconnect anything and the previous assertion would hold for the wrong "
+                + "reason",
+            isSessionStillInTheReconnectListThroughProductionPath(
+                stillLiveSession.getTerminalSession()));
     }
 
     @Test
@@ -351,35 +379,42 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(IDLE_PAST_RECONNECT_TIMEOUT_MILLIS));
     }
 
-    private void hideDuringTheStaggerWindow() throws Exception {
+    private void hideWhileTheReconnectIsStillPending() throws Exception {
         TermuxSession deadSession = deadSessionAwaitingReconnect(HIDDEN_SESSION_NAME);
         shellManager.mTermuxSessions.add(deadSession);
 
-        scheduleStaggeredReconnectThroughProductionPath(
-            deadSession.getTerminalSession(), HIDDEN_SESSION_NAME);
+        enqueueReconnectThroughProductionPath(deadSession.getTerminalSession());
 
         hideSessionThroughProductionEntryPoint(HIDDEN_SESSION_NAME);
         assertTrue("the hide must be recorded before the reconnect fires, otherwise this test would be "
                 + "measuring a reconnect of a session that was never hidden",
             preferences.getDisabledSessionNames().contains(HIDDEN_SESSION_NAME));
 
-        idlePastTheStaggerWindow();
+        idlePastThePacedReconnectWindow();
     }
 
-    private void scheduleStaggeredReconnectThroughProductionPath(TerminalSession deadSession,
-                                                                 String sessionName) throws Exception {
-        Method scheduleStaggeredReconnect = TermuxTerminalSessionActivityClient.class
-            .getDeclaredMethod("scheduleStaggeredReconnect", TerminalSession.class, String.class,
-                long.class);
-        scheduleStaggeredReconnect.setAccessible(true);
-        scheduleStaggeredReconnect.invoke(activity.getTermuxTerminalSessionClient(), deadSession,
-            sessionName, STAGGER_INTERVAL_MILLIS);
+    private boolean isSessionStillInTheReconnectListThroughProductionPath(TerminalSession session)
+            throws Exception {
+        Method isSessionStillInTheReconnectList = TermuxTerminalSessionActivityClient.class
+            .getDeclaredMethod("isSessionStillInTheReconnectList", TerminalSession.class);
+        isSessionStillInTheReconnectList.setAccessible(true);
+        return (Boolean) isSessionStillInTheReconnectList.invoke(
+            activity.getTermuxTerminalSessionClient(), session);
     }
 
-    private void idlePastTheStaggerWindow() {
+    private void enqueueReconnectThroughProductionPath(TerminalSession deadSession) throws Exception {
+        Field pacerField = TermuxTerminalSessionActivityClient.class
+            .getDeclaredField("mSessionReconnectPacer");
+        pacerField.setAccessible(true);
+        SessionReconnectPacer pacer =
+            (SessionReconnectPacer) pacerField.get(activity.getTermuxTerminalSessionClient());
+        pacer.enqueueSession(deadSession);
+    }
+
+    private void idlePastThePacedReconnectWindow() {
         ShadowLooper mainLooper = Shadows.shadowOf(Looper.getMainLooper());
         try {
-            mainLooper.idleFor(Duration.ofMillis(IDLE_PAST_STAGGER_MILLIS));
+            mainLooper.idleFor(Duration.ofMillis(IDLE_PAST_PACED_RECONNECT_MILLIS));
         } catch (Throwable missingNativeLibrary) {
             assertTrue("the only failure the reconnect may raise in a Java virtual machine test is the "
                     + "absent device-only native library reached from the shell process fork, but it "
