@@ -44,21 +44,4 @@ public final class GithubDisappearedSessionPlanner {
         }
         return sessionNamesToRemove;
     }
-
-    @NonNull
-    public List<String> planGithubHiddenSessionNamesToPrune(@NonNull List<SessionDefinitionEntry> currentEntries,
-                                                           @NonNull Set<String> persistedHiddenSessionNames) {
-        Set<String> namesInList = collectSessionNamesInList(currentEntries);
-        List<String> hiddenSessionNamesToPrune = new ArrayList<>();
-        for (String sessionName : persistedHiddenSessionNames) {
-            if (!GithubSessionName.isGithubSessionName(sessionName)) {
-                continue;
-            }
-            if (namesInList.contains(sessionName)) {
-                continue;
-            }
-            hiddenSessionNamesToPrune.add(sessionName);
-        }
-        return hiddenSessionNamesToPrune;
-    }
 }

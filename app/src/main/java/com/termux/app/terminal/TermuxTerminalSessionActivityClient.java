@@ -2803,7 +2803,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         alwaysPresentSessionNames.addAll(mActivity.getPreferences().getAlwaysNaSessionNames());
 
         List<String> missingSessionNames = mAlwaysPresentSessionPlanner.planMissingSessionNames(
-            alwaysPresentSessionNames, liveSessionNames);
+            alwaysPresentSessionNames, liveSessionNames,
+            mActivity.getPreferences().getDisabledSessionNames());
         if (missingSessionNames.isEmpty()) return false;
 
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();
