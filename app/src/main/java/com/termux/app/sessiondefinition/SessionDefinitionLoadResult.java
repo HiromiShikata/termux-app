@@ -40,4 +40,8 @@ public final class SessionDefinitionLoadResult {
     public boolean hasFailedGroups() {
         return !failedGroupLabels.isEmpty();
     }
+
+    public boolean isAuthoritative() {
+        return !entries.isEmpty() && failedGroupLabels.isEmpty();
+    }
 }

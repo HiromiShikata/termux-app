@@ -64,6 +64,7 @@ public final class SessionDefinitionController {
         repository.loadForRebuild(baseUrl, forceRefresh, result -> {
             try {
                 notifyPartialLoad(result);
+                notifyEmptyLoadNotTrustedAsAuthoritative(result);
                 buildSessions(result);
             } finally {
                 setLoadingProgressVisible(false);
@@ -86,6 +87,13 @@ public final class SessionDefinitionController {
             result.getFailedGroupCount(), result.getTotalGroupCount()), true);
     }
 
+    private void notifyEmptyLoadNotTrustedAsAuthoritative(SessionDefinitionLoadResult result) {
+        if (result.isAuthoritative() || result.hasFailedGroups()) {
+            return;
+        }
+        activity.showToast(activity.getString(R.string.msg_session_definition_empty_load_not_authoritative), true);
+    }
+
     private void setLoadingProgressVisible(boolean visible) {
         ProgressBar progressBar = activity.getSessionDefinitionLoadingProgressBar();
         if (progressBar != null) {
@@ -95,7 +103,7 @@ public final class SessionDefinitionController {
 
     private void buildSessions(SessionDefinitionLoadResult result) {
         List<SessionDefinitionEntry> entries = result.getEntries();
-        boolean authoritativeLoad = !result.hasFailedGroups();
+        boolean authoritativeLoad = result.isAuthoritative();
         String commandTemplate = activity.getPreferences().getAutosshCommand();
         List<SessionDefinitionPlannedSession> definitionSessions = planner.plan(entries, commandTemplate);
         List<SessionDefinitionPlannedSession> plannedSessions =

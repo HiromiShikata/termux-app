@@ -2,7 +2,6 @@ package com.termux.app.sessiondefinition;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
@@ -13,6 +12,8 @@ import com.termux.app.terminal.SessionShortcutBarPlanner;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.session.PersistedSession;
+import com.termux.app.terminal.session.PersistedSessionRestoreData;
+import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -102,15 +103,13 @@ public class SessionDefinitionEmptyLoadRetentionTest {
         attachCurrentSession(firstSession.getTerminalSession());
         persistSession(firstSession.getTerminalSession());
         persistSession(secondSession.getTerminalSession());
-        String persistedStoreBeforeLoad = activity.getPreferences().getPersistedSessions();
-        assertTrue(persistedStoreBeforeLoad.contains(FIRST_GITHUB_SESSION_NAME));
-        assertTrue(persistedStoreBeforeLoad.contains(SECOND_GITHUB_SESSION_NAME));
+        assertEquals(Arrays.asList(FIRST_GITHUB_SESSION_NAME, SECOND_GITHUB_SESSION_NAME),
+            persistedSessionNames());
 
         invokeBuildSessions(emptyButParseableDocumentResult);
 
-        String persistedStoreAfterLoad = activity.getPreferences().getPersistedSessions();
-        assertTrue(persistedStoreAfterLoad.contains(FIRST_GITHUB_SESSION_NAME));
-        assertTrue(persistedStoreAfterLoad.contains(SECOND_GITHUB_SESSION_NAME));
+        assertEquals(Arrays.asList(FIRST_GITHUB_SESSION_NAME, SECOND_GITHUB_SESSION_NAME),
+            persistedSessionNames());
     }
 
     @Test
@@ -164,6 +163,14 @@ public class SessionDefinitionEmptyLoadRetentionTest {
             .getDeclaredMethod("savePersistedSessions");
         saveMethod.setAccessible(true);
         saveMethod.invoke(client);
+    }
+
+    private List<String> persistedSessionNames() throws Exception {
+        List<String> names = new ArrayList<>();
+        for (PersistedSessionRestoreData restoreData : new PersistedSessionSerializer()
+                .deserialize(activity.getPreferences().getPersistedSessions()))
+            names.add(restoreData.getName());
+        return names;
     }
 
     private List<String> remainingSessionNames() {

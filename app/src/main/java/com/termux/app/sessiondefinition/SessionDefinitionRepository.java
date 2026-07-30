@@ -94,8 +94,10 @@ public final class SessionDefinitionRepository {
             try {
                 SessionDefinitionLoadResult loadResult = loader.load(baseUrl);
                 mainThreadHandler.post(() -> {
-                    result = loadResult;
-                    loaded = true;
+                    if (loadResult.isAuthoritative()) {
+                        result = loadResult;
+                        loaded = true;
+                    }
                     onEntriesReady.onEntriesReady(loadResult);
                 });
             } catch (Exception exception) {
