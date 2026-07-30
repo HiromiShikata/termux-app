@@ -339,11 +339,20 @@ public final class TerminalView extends View {
         if (session == mTermSession) return false;
         mTopRow = 0;
 
+        TerminalSession previouslyDisplayedSession = mTermSession;
+        TerminalEmulator previouslyDisplayedEmulator = mEmulator;
+
         mTermSession = session;
         mEmulator = null;
         mCombiningAccent = 0;
 
         updateSize();
+
+        if (mEmulator == null && isLaidOutForSizeComputation()) {
+            mTermSession = previouslyDisplayedSession;
+            displayEmulator(previouslyDisplayedEmulator);
+            return false;
+        }
 
         // Wait with enabling the scrollbar until we have a terminal to get scroll position from.
         setVerticalScrollBarEnabled(true);
@@ -510,6 +519,7 @@ public final class TerminalView extends View {
     }
 
     public void onScreenUpdated(boolean skipScrolling) {
+        if (mEmulator == null) displayEmulatorOfAttachedSession();
         if (mEmulator == null) return;
 
         int rowsInHistory = mEmulator.getScreen().getActiveTranscriptRows();
@@ -1083,17 +1093,30 @@ public final class TerminalView extends View {
 
         if (mEmulator == null || (newColumns != mEmulator.mColumns || newRows != mEmulator.mRows)) {
             mTermSession.updateSize(newColumns, newRows, (int) mRenderer.getFontWidth(), mRenderer.getFontLineSpacing());
-            mEmulator = mTermSession.getEmulator();
-            mClient.onEmulatorSet();
-
-            // Update mTerminalCursorBlinkerRunnable inner class mEmulator on session change
-            if (mTerminalCursorBlinkerRunnable != null)
-                mTerminalCursorBlinkerRunnable.setEmulator(mEmulator);
+            displayEmulator(mTermSession.getEmulator());
 
             mTopRow = 0;
             scrollTo(0, 0);
             invalidate();
         }
+    }
+
+    private void displayEmulator(TerminalEmulator emulator) {
+        mEmulator = emulator;
+
+        if (mClient != null) mClient.onEmulatorSet();
+
+        if (mTerminalCursorBlinkerRunnable != null)
+            mTerminalCursorBlinkerRunnable.setEmulator(mEmulator);
+    }
+
+    private void displayEmulatorOfAttachedSession() {
+        if (mTermSession == null) return;
+
+        TerminalEmulator attachedSessionEmulator = mTermSession.getEmulator();
+        if (attachedSessionEmulator == null) return;
+
+        displayEmulator(attachedSessionEmulator);
     }
 
     public boolean isLaidOutForSizeComputation() {
