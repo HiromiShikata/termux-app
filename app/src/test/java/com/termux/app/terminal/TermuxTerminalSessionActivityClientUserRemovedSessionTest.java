@@ -73,20 +73,23 @@ public class TermuxTerminalSessionActivityClientUserRemovedSessionTest {
     }
 
     @Test
-    public void deletingAlwaysPresentSessionDoesNotSuppressReconnect() throws Exception {
+    public void deletingAlwaysPresentSessionSuppressesItsReconnect() throws Exception {
         preferences.setAlwaysNaSessionNames("secretary");
         TermuxSession secretary = session("secretary");
         shellManager.mTermuxSessions.add(secretary);
 
         activity.getTermuxTerminalSessionClient().deleteSession(secretary.getTerminalSession());
 
-        assertFalse(preferences.isSessionUserRemoved("secretary"));
+        assertTrue("a deletion is a deletion: an always-present session the owner deleted must be "
+                + "recorded as removed, so that no restore path creates it again on its own",
+            preferences.isSessionUserRemoved("secretary"));
 
         TerminalSession recreatedCandidate = new TerminalSession(null, null, null, null, null, null);
         recreatedCandidate.mSessionName = "secretary";
         FinishedSessionEnterAction action = activity.getTermuxTerminalSessionClient()
             .decideFinishedSessionEnterAction(recreatedCandidate);
-        assertTrue(action.isReconnect());
+        assertFalse("an always-present session the owner deleted must not be reconnected on its own",
+            action.isReconnect());
     }
 
     private TermuxSession session(String name) throws Exception {
