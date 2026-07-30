@@ -337,11 +337,13 @@ public final class TerminalView extends View {
      */
     public boolean attachSession(TerminalSession session) {
         if (session == mTermSession) return false;
-        mTopRow = 0;
 
         TerminalSession previouslyDisplayedSession = mTermSession;
         TerminalEmulator previouslyDisplayedEmulator = mEmulator;
+        int previouslyDisplayedTopRow = mTopRow;
+        int previouslyPendingCombiningAccent = mCombiningAccent;
 
+        mTopRow = 0;
         mTermSession = session;
         mEmulator = null;
         mCombiningAccent = 0;
@@ -351,6 +353,8 @@ public final class TerminalView extends View {
         if (mEmulator == null && isLaidOutForSizeComputation()) {
             mTermSession = previouslyDisplayedSession;
             displayEmulator(previouslyDisplayedEmulator);
+            mTopRow = previouslyDisplayedTopRow;
+            mCombiningAccent = previouslyPendingCombiningAccent;
             return false;
         }
 
