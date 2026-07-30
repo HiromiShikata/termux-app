@@ -18,108 +18,139 @@ import java.util.regex.Pattern;
  * one — that assumption collapses under front-trimming and reflow and causes already-fired tags that
  * are still visible in the window to re-fire on every subsequent scan, producing an endless loop.
  *
- * <p>Deduplication is therefore anchored to the monotonic sequence of normalized tag VALUES that
- * have streamed through, not to positions in the rendered string. Whitespace, line wrapping, and how
- * much of the front has scrolled away do not change that value sequence, so a still-visible tag is
- * recognized as already fired and does not re-fire. The tags visible in the rendered window are a
- * SUBSEQUENCE of the full fired-value stream: leading values have scrolled off the front, interior
- * values may have scrolled off so that values still visible are no longer contiguous in the stream,
- * and trailing values can also drop off the tail when the viewport is re-fed from a fixed scrollback
- * window (for example when the session-list bottom sheet is opened or the session is switched). After
- * the already-fired subsequence come the genuinely new values appended since the last scan.
+ * <p>Deduplication is therefore anchored to the monotonic sequence of DEDUPLICATION KEYS that have
+ * streamed through, not to positions in the rendered string. Whitespace, line wrapping, and how much
+ * of the front has scrolled away do not change that key sequence, so a still-visible tag is
+ * recognized as already fired and does not re-fire. The keys of the occurrences visible in the
+ * rendered window are a SUBSEQUENCE of the full fired-key stream: leading keys have scrolled off the
+ * front, interior keys may have scrolled off so that occurrences still visible are no longer
+ * contiguous in the stream, and trailing keys can also drop off the tail when the viewport is re-fed
+ * from a fixed scrollback window (for example when the session-list bottom sheet is opened or the
+ * session is switched). After the already-fired subsequence come the genuinely new occurrences
+ * appended since the last scan.
  *
  * <p>The already-fired leading portion of the current window is found by walking both forward: each
- * current value is matched against the fired stream at or after a monotonically advancing cursor,
- * skipping over interior values that scrolled out of the window. The first current value that cannot
+ * current key is matched against the fired stream at or after a monotonically advancing cursor,
+ * skipping over keys whose occurrences scrolled out of the window. The first current key that cannot
  * be located in the remaining fired stream begins the genuinely new suffix; everything from there on
  * is reported as new and appended to the fired stream. Advancing a cursor (rather than requiring the
  * fired TAIL to prefix the window) is what makes re-feeding the same transcript safe: when more than
- * one value has fired and a re-fed window shows an older already-fired value at the front while the
- * newest fired value is no longer a clean suffix anchor, the forward walk still recognizes every
- * visible value as already fired, so the re-scan fires nothing while a genuinely new appended value
- * still fires. Because the cursor only moves forward, a repeated value matches a distinct earlier
- * occurrence, so a genuinely new occurrence of an already-seen value is still reported.
+ * one occurrence has fired and a re-fed window shows an older already-fired occurrence at the front
+ * while the newest fired key is no longer a clean suffix anchor, the forward walk still recognizes
+ * every visible occurrence as already fired, so the re-scan fires nothing while a genuinely new
+ * appended occurrence still fires.
  */
 public final class OutputTagScanner {
 
-    private final ValueExtractor valueExtractor;
+    private final OccurrenceExtractor occurrenceExtractor;
 
-    /** The full ordered sequence of normalized values that have already fired, oldest first. This is
+    /** The full ordered sequence of deduplication keys that have already fired, oldest first. This is
      * the monotonic stream prefix; it never shrinks even when the rendered window trims its front. */
-    private final List<String> firedValues = new ArrayList<>();
+    private final List<String> firedDeduplicationKeys = new ArrayList<>();
 
     public interface ValueNormalizer {
         String normalize(String innerText);
     }
 
-    public interface ValueExtractor {
-        List<String> extractValues(String output);
+    public interface DeduplicationKeyResolver {
+        String resolveDeduplicationKey(String value, String output, int occurrenceStartIndex);
+    }
+
+    public interface OccurrenceExtractor {
+        List<OutputTagOccurrence> extractOccurrences(String output);
     }
 
     public OutputTagScanner(String tagName, ValueNormalizer valueNormalizer) {
-        this(new TagBlockValueExtractor(tagName, valueNormalizer));
+        this(tagName, valueNormalizer, (value, output, occurrenceStartIndex) -> value);
     }
 
-    public OutputTagScanner(ValueExtractor valueExtractor) {
-        this.valueExtractor = valueExtractor;
+    public OutputTagScanner(String tagName, ValueNormalizer valueNormalizer,
+                            DeduplicationKeyResolver deduplicationKeyResolver) {
+        this(new TagBlockOccurrenceExtractor(tagName, valueNormalizer, deduplicationKeyResolver));
+    }
+
+    public OutputTagScanner(OccurrenceExtractor occurrenceExtractor) {
+        this.occurrenceExtractor = occurrenceExtractor;
     }
 
     public List<String> extractValues(String output) {
-        return valueExtractor.extractValues(output);
+        List<String> values = new ArrayList<>();
+        for (OutputTagOccurrence occurrence : occurrenceExtractor.extractOccurrences(output)) {
+            values.add(occurrence.getValue());
+        }
+        return values;
     }
 
-    private static final class TagBlockValueExtractor implements ValueExtractor {
+    private static final class TagBlockOccurrenceExtractor implements OccurrenceExtractor {
 
         private final Pattern blockPattern;
 
         private final ValueNormalizer valueNormalizer;
 
-        TagBlockValueExtractor(String tagName, ValueNormalizer valueNormalizer) {
+        private final DeduplicationKeyResolver deduplicationKeyResolver;
+
+        TagBlockOccurrenceExtractor(String tagName, ValueNormalizer valueNormalizer,
+                                    DeduplicationKeyResolver deduplicationKeyResolver) {
             this.blockPattern = Pattern.compile("<" + tagName + ">([\\s\\S]*?)</" + tagName + ">");
             this.valueNormalizer = valueNormalizer;
+            this.deduplicationKeyResolver = deduplicationKeyResolver;
         }
 
         @Override
-        public List<String> extractValues(String output) {
-            List<String> values = new ArrayList<>();
-            if (output == null) return values;
+        public List<OutputTagOccurrence> extractOccurrences(String output) {
+            List<OutputTagOccurrence> occurrences = new ArrayList<>();
+            if (output == null) return occurrences;
 
             Matcher matcher = blockPattern.matcher(output);
             while (matcher.find()) {
                 String value = valueNormalizer.normalize(matcher.group(1));
-                if (value != null) values.add(value);
+                if (value == null) continue;
+                occurrences.add(new OutputTagOccurrence(value,
+                    deduplicationKeyResolver.resolveDeduplicationKey(value, output, matcher.start())));
             }
-            return values;
+            return occurrences;
         }
     }
 
-    public List<String> newValues(String currentText) {
+    public List<OutputTagOccurrence> newOccurrences(String currentText) {
         if (currentText == null) {
             return new ArrayList<>();
         }
 
-        List<String> currentValues = extractValues(currentText);
+        List<OutputTagOccurrence> currentOccurrences = occurrenceExtractor.extractOccurrences(currentText);
 
-        int alreadyFiredInWindow = alreadyFiredPrefixLength(currentValues);
+        int alreadyFiredInWindow = alreadyFiredPrefixLength(currentOccurrences);
 
-        List<String> newValues = new ArrayList<>(
-            currentValues.subList(alreadyFiredInWindow, currentValues.size()));
-        firedValues.addAll(newValues);
+        List<OutputTagOccurrence> newOccurrences = new ArrayList<>(
+            currentOccurrences.subList(alreadyFiredInWindow, currentOccurrences.size()));
+        for (OutputTagOccurrence occurrence : newOccurrences) {
+            firedDeduplicationKeys.add(occurrence.getDeduplicationKey());
+        }
+        return newOccurrences;
+    }
+
+    public List<String> newValues(String currentText) {
+        List<String> newValues = new ArrayList<>();
+        for (OutputTagOccurrence occurrence : newOccurrences(currentText)) {
+            newValues.add(occurrence.getValue());
+        }
         return newValues;
     }
 
     /**
-     * Returns the length of the leading portion of {@code currentValues} that has already fired. The
-     * visible tags are a subsequence of {@link #firedValues}: a forward cursor over the fired stream
-     * matches each current value at or after the last match, skipping interior values that scrolled
-     * out of the rendered window. The first current value that cannot be located in the remaining
-     * fired stream begins the genuinely new suffix, so every value from that index on is new.
+     * Returns the length of the leading portion of {@code currentOccurrences} that has already fired.
+     * The visible occurrences' keys are a subsequence of {@link #firedDeduplicationKeys}: a forward
+     * cursor over the fired stream matches each current key at or after the last match, skipping
+     * keys whose occurrences scrolled out of the rendered window. The first current key that cannot
+     * be located in the remaining fired stream begins the genuinely new suffix, so every occurrence
+     * from that index on is new.
      */
-    private int alreadyFiredPrefixLength(List<String> currentValues) {
+    private int alreadyFiredPrefixLength(List<OutputTagOccurrence> currentOccurrences) {
         int firedCursor = 0;
         int currentIndex = 0;
-        for (; currentIndex < currentValues.size(); currentIndex++) {
-            int matchIndex = indexOfValueFrom(currentValues.get(currentIndex), firedCursor);
+        for (; currentIndex < currentOccurrences.size(); currentIndex++) {
+            int matchIndex = indexOfKeyFrom(
+                currentOccurrences.get(currentIndex).getDeduplicationKey(), firedCursor);
             if (matchIndex < 0) {
                 break;
             }
@@ -128,9 +159,9 @@ public final class OutputTagScanner {
         return currentIndex;
     }
 
-    private int indexOfValueFrom(String value, int firedStart) {
-        for (int firedIndex = firedStart; firedIndex < firedValues.size(); firedIndex++) {
-            if (firedValues.get(firedIndex).equals(value)) {
+    private int indexOfKeyFrom(String deduplicationKey, int firedStart) {
+        for (int firedIndex = firedStart; firedIndex < firedDeduplicationKeys.size(); firedIndex++) {
+            if (firedDeduplicationKeys.get(firedIndex).equals(deduplicationKey)) {
                 return firedIndex;
             }
         }

@@ -14,10 +14,13 @@ public class CallToUserTagControllerTest {
         final List<String> sessionKeys = new ArrayList<>();
         final List<String> reasons = new ArrayList<>();
 
+        final List<String> callCycleKeys = new ArrayList<>();
+
         @Override
-        public void onCallToUser(String sessionKey, String reason) {
+        public void onCallToUser(String sessionKey, String reason, String callCycleKey) {
             sessionKeys.add(sessionKey);
             reasons.add(reason);
+            callCycleKeys.add(callCycleKey);
         }
     }
 
