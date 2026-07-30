@@ -578,6 +578,7 @@ public class DisplayedSessionCallScanMainThreadCostTest {
             }
             OffDeviceNativeSubprocessLibrary.tolerateItsAbsence(
                 () -> shadowOf(Looper.getMainLooper()).idle());
+            if (!everyLooperTheClientOwnsIsIdle()) continue;
             long nextTaskDueUptimeMillis =
                 shadowOf(Looper.getMainLooper()).getNextScheduledTaskTime().toMillis();
             if (nextTaskDueUptimeMillis <= 0L) return;
@@ -587,6 +588,13 @@ public class DisplayedSessionCallScanMainThreadCostTest {
             OffDeviceNativeSubprocessLibrary.tolerateItsAbsence(() -> shadowOf(Looper.getMainLooper())
                 .idleFor(Duration.ofMillis(millisToAdvance)));
         }
+    }
+
+    private boolean everyLooperTheClientOwnsIsIdle() {
+        for (Looper looper : loopersTheClientOwnsBesidesTheMainOne()) {
+            if (!shadowOf(looper).isIdle()) return false;
+        }
+        return shadowOf(Looper.getMainLooper()).isIdle();
     }
 
     @NonNull

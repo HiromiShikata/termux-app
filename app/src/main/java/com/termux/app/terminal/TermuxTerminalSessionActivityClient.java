@@ -459,7 +459,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             ? Collections.emptyList()
             : Collections.singletonList(new AllSessionsStatuslineParser.SessionScreenText(
                 sessionName, scanText.getStatuslineScanText()));
-        boolean shouldScanCallToUserTag = shouldScanCallToUserTagForSessionName(sessionName);
         String sessionHandle = scanText.getSessionHandle();
         String transcriptText = scanText.getTranscriptText();
         BackgroundOutputTagScanner scanner = new BackgroundOutputTagScanner(
@@ -469,14 +468,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         statuslineParseHandler().post(() -> {
             List<ParsedStatuslineUpdate> updates =
                 mAllSessionsStatuslineParser.parse(sessionScreenTexts, nowMillis, timeZone);
-            scanner.scan(sessionHandle, transcriptText, shouldScanCallToUserTag);
             mMainThreadHandler.post(() -> {
                 if (!updates.isEmpty()) {
                     applyStatuslineUpdates(updates);
                 }
+                boolean shouldScanCallToUserTag = shouldScanCallToUserTagForSessionName(sessionName);
                 if (shouldScanCallToUserTag) {
                     recordCallToUserTagScanPerformedForSessionName(sessionName);
                 }
+                statuslineParseHandler().post(
+                    () -> scanner.scan(sessionHandle, transcriptText, shouldScanCallToUserTag));
             });
         });
     }
@@ -627,11 +628,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void repopulateStatuslineTimesForDisplayedSessions(boolean forceRescan) {
         List<String> displayedSessionNames = new ArrayList<>(displayedSessionNames());
         if (displayedSessionNames.isEmpty()) return;
-        List<StaggeredStatuslineRescanBatchPlanner.Batch> batches =
-            StaggeredStatuslineRescanBatchPlanner.plan(displayedSessionNames,
-                STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS);
+        List<Set<String>> batches = StaggeredStatuslineRescanBatchPlanner.sessionNameBatches(
+            displayedSessionNames, STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE);
         for (int batchIndex = 0; batchIndex < batches.size(); batchIndex++) {
-            Set<String> batchSessionNames = batches.get(batchIndex).getSessionNames();
+            Set<String> batchSessionNames = batches.get(batchIndex);
             if (batchIndex == 0) {
                 repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan);
             } else {
