@@ -67,7 +67,7 @@ public final class DeadSessionReconnectPlanner {
         }
 
         boolean isDeadProcessReconnectCandidate() {
-            return !current && !running && !reconnecting;
+            return !running && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {

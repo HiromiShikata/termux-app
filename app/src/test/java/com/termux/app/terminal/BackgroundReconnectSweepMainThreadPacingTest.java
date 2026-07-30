@@ -58,6 +58,8 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
 
     private static final int DEAD_SHELL_PROCESS_ID = -1;
 
+    private static final int RUNNING_SHELL_PROCESS_ID = 4242;
+
     private TermuxActivity activity;
 
     private TermuxTerminalSessionActivityClient sessionActivityClient;
@@ -111,7 +113,7 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
         terminalView.setTextSize(12);
         set(activity, TermuxActivity.class, "mTerminalView", terminalView);
 
-        displayedSession = addSession("session-displayed");
+        displayedSession = addRunningSession("session-displayed");
         terminalView.mTermSession = displayedSession;
 
         List<String> hiddenSessionNames = new ArrayList<>();
@@ -570,6 +572,12 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
     private TerminalSession addDeadSession(String sessionName) throws Exception {
         TerminalSession terminalSession = addSession(sessionName);
         set(terminalSession, TerminalSession.class, "mShellPid", DEAD_SHELL_PROCESS_ID);
+        return terminalSession;
+    }
+
+    private TerminalSession addRunningSession(String sessionName) throws Exception {
+        TerminalSession terminalSession = addSession(sessionName);
+        set(terminalSession, TerminalSession.class, "mShellPid", RUNNING_SHELL_PROCESS_ID);
         return terminalSession;
     }
 
