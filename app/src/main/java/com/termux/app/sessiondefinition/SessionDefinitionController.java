@@ -3,6 +3,8 @@ package com.termux.app.sessiondefinition;
 import android.view.View;
 import android.widget.ProgressBar;
 
+import androidx.annotation.NonNull;
+
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
@@ -76,6 +78,24 @@ public final class SessionDefinitionController {
                 setLoadingProgressVisible(false);
             }
         });
+    }
+
+    public void restoreProjectManagerSessionsOnColdStart() {
+        List<SessionDefinitionEntry> cachedEntries = repository.getCachedEntries();
+        if (!cachedEntries.isEmpty()) {
+            restoreProjectManagerSessions(cachedEntries);
+            return;
+        }
+        repository.load(activity.getPreferences().getSessionDefinitionUrl().trim(),
+            () -> restoreProjectManagerSessions(repository.getCachedEntries()));
+    }
+
+    private void restoreProjectManagerSessions(@NonNull List<SessionDefinitionEntry> entries) {
+        List<String> projectManagerSessionNames = defaultProjectManagerSessionPlanner.planSessionNames(entries);
+        if (projectManagerSessionNames.isEmpty()) {
+            return;
+        }
+        activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions(projectManagerSessionNames);
     }
 
     private void notifyPartialLoad(SessionDefinitionLoadResult result) {

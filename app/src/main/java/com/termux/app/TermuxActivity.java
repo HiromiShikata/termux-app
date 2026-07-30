@@ -734,11 +734,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                         if (intent != null && intent.getExtras() != null) {
                             launchFailsafe = intent.getExtras().getBoolean(TERMUX_ACTIVITY.EXTRA_FAILSAFE_SESSION, false);
                         }
-                        if (launchFailsafe
-                                || (!mTermuxTerminalSessionActivityClient.restorePersistedSessions()
-                                    && !mTermuxTerminalSessionActivityClient.restoreAlwaysPresentSessions())) {
-                            mTermuxTerminalSessionActivityClient.addNewSession(launchFailsafe, null);
-                        }
+                        createStartupSessions(launchFailsafe);
                         eagerLoadAllSessions();
                     } catch (WindowManager.BadTokenException e) {
                         // Activity finished - ignore.
@@ -782,6 +778,26 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         eagerLoadAllSessions();
 
         routePendingInboundBrowserUrl();
+    }
+
+    private void createStartupSessions(boolean launchFailsafe) {
+        if (launchFailsafe) {
+            mTermuxTerminalSessionActivityClient.addNewSession(true, null);
+            return;
+        }
+
+        boolean restoredPersistedSessions = mTermuxTerminalSessionActivityClient.restorePersistedSessions();
+        boolean createdAlwaysPresentSessions = mTermuxTerminalSessionActivityClient.restoreAlwaysPresentSessions();
+        restoreProjectManagerSessionsOnColdStart();
+
+        if (restoredPersistedSessions || createdAlwaysPresentSessions) return;
+        if (mTermuxService != null && !mTermuxService.isTermuxSessionsEmpty()) return;
+        mTermuxTerminalSessionActivityClient.addNewSession(false, null);
+    }
+
+    private void restoreProjectManagerSessionsOnColdStart() {
+        new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner())
+            .restoreProjectManagerSessionsOnColdStart();
     }
 
     @Override
