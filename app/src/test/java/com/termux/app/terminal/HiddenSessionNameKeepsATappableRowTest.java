@@ -95,6 +95,27 @@ public class HiddenSessionNameKeepsATappableRowTest {
             Collections.singletonList(0), SessionHierarchyBuilder.visibleSessionIndexes(rows));
     }
 
+    @Test
+    public void theRowDrawnForAHiddenNameIsCountedInTheDisplayedSessionCountAndInItsGroupCount() {
+        List<SessionHierarchyRow> rows = builder.build(
+            Collections.singletonList(STORY_SESSION_URL), storyEntries(), NA_PROJECT_LABEL,
+            Collections.emptySet(), namesInOrder(ALWAYS_NOT_APPLICABLE_SESSION_NAME));
+
+        assertEquals("the row drawn for a hidden name is a session row, so the displayed session count "
+                + "shown in the session list title counts it alongside the live session, exactly as the "
+                + "count already treats a row for a definition-backed name with no live session; the "
+                + "rows were " + sessionRowNames(rows),
+            2, SessionHierarchyBuilder.totalSessionCount(rows));
+        assertEquals("the row drawn for a hidden name is placed in the not-applicable group, so the "
+                + "count rendered on that group header counts it",
+            Integer.valueOf(1),
+            SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get(NA_PROJECT_LABEL));
+        assertEquals("drawing a row for a hidden name must not change the count rendered on the header "
+                + "of any other group",
+            Integer.valueOf(1),
+            SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get(PROJECT_LABEL));
+    }
+
     private static List<SessionDefinitionEntry> storyEntries() {
         return Collections.singletonList(
             new SessionDefinitionEntry(PROJECT_LABEL, STORY_LABEL,
