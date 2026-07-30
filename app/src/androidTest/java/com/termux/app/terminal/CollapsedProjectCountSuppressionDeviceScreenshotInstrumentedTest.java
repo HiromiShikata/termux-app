@@ -97,13 +97,14 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
         int headerPending = SessionHierarchyBuilder.pendingCallSessionCount(
             countedRows, sessionNames, pendingCallSessionNames);
 
-        assertEquals("header total must count only the expanded project's session", 1, headerTotal);
+        assertEquals("header total must count only the expanded project's rows, which are its story"
+            + " session and the project-manager row it draws", 2, headerTotal);
         assertEquals("header numerator must count only the expanded project's pending call", 1, headerPending);
 
         String headerTitleText = SessionListBottomSheetController.sessionCountTitle(
             "Sessions", headerPending, headerTotal);
         String collapsedHeaderText = TermuxSessionsListViewController.projectHeaderTitle(
-            "collapsedProject", 0, 2, true);
+            "collapsedProject", 0, 3, true);
         String expandedHeaderText = TermuxSessionsListViewController.projectHeaderTitle(
             "expandedProject", headerPending, headerTotal, false);
 
@@ -112,7 +113,7 @@ public class CollapsedProjectCountSuppressionDeviceScreenshotInstrumentedTest {
         assertTrue("expanded project header must show its count fraction",
             expandedHeaderText.contains("(" + headerPending + "/" + headerTotal + ")"));
         assertTrue("bottom-sheet header total must reflect only expanded sessions",
-            headerTitleText.endsWith("(1/1)"));
+            headerTitleText.endsWith("(1/2)"));
 
         TextView headerTitle = inflateHeaderTitle(context, headerTitleText);
         View collapsedRow = inflateProjectHeaderRow(context, collapsedHeaderText, true);
