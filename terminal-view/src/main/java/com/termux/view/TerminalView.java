@@ -233,6 +233,11 @@ public final class TerminalView extends View {
             }
 
             @Override
+            public void onScaleEnd() {
+                mClient.onScaleEnd();
+            }
+
+            @Override
             public boolean onFling(final MotionEvent e2, float velocityX, float velocityY) {
                 if (mEmulator == null) return true;
                 // Do not start scrolling until last fling has been taken care of:
