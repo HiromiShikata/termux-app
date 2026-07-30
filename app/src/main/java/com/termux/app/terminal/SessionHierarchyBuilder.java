@@ -39,20 +39,8 @@ public final class SessionHierarchyBuilder {
                                            @NonNull List<SessionDefinitionEntry> entries,
                                            @NonNull String naProjectLabel,
                                            @NonNull Set<String> alwaysNaSessionNames) {
-        return build(sessionNames, entries, naProjectLabel, alwaysNaSessionNames, Collections.emptySet());
-    }
-
-    @NonNull
-    public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
-                                           @NonNull List<SessionDefinitionEntry> entries,
-                                           @NonNull String naProjectLabel,
-                                           @NonNull Set<String> alwaysNaSessionNames,
-                                           @NonNull Set<String> hiddenSessionNames) {
         if (entries.isEmpty()) {
-            List<SessionHierarchyRow> flatRows = flatten(sessionNames);
-            flatRows.addAll(hiddenSessionRowsWithoutALiveSession(hiddenSessionNames,
-                new LinkedHashSet<>(sessionNames)));
-            return flatRows;
+            return flatten(sessionNames);
         }
 
         Map<String, String> projectLabelByManagerSessionName = projectLabelByManagerSessionName(entries);
@@ -136,19 +124,12 @@ public final class SessionHierarchyBuilder {
         }
         Collections.sort(unmatchedSessionIndexes);
 
-        Set<String> namesAlreadyCarryingARow = new LinkedHashSet<>(liveSessionIndexByName.keySet());
-        namesAlreadyCarryingARow.addAll(placedNames);
-        namesAlreadyCarryingARow.addAll(definedManagerSessionNameByProjectLabel.values());
-        List<SessionHierarchyRow> hiddenSessionRows =
-            hiddenSessionRowsWithoutALiveSession(hiddenSessionNames, namesAlreadyCarryingARow);
-
         List<SessionHierarchyRow> rows = new ArrayList<>();
-        if (!unmatchedSessionIndexes.isEmpty() || !hiddenSessionRows.isEmpty()) {
+        if (!unmatchedSessionIndexes.isEmpty()) {
             rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
             for (int sessionIndex : unmatchedSessionIndexes) {
                 rows.add(sessionRow(sessionNames, sessionIndex));
             }
-            rows.addAll(hiddenSessionRows);
         }
         Set<String> definedProjectLabels = new LinkedHashSet<>();
         for (SessionDefinitionEntry entry : entries) {
@@ -182,21 +163,6 @@ public final class SessionHierarchyBuilder {
     }
 
     public static final int NO_LIVE_SESSION_INDEX = -1;
-
-    @NonNull
-    private static List<SessionHierarchyRow> hiddenSessionRowsWithoutALiveSession(
-            @NonNull Set<String> hiddenSessionNames,
-            @NonNull Set<String> sessionNamesAlreadyCarryingARow) {
-        List<SessionHierarchyRow> hiddenSessionRows = new ArrayList<>();
-        for (String hiddenSessionName : hiddenSessionNames) {
-            if (hiddenSessionName == null || hiddenSessionName.isEmpty()
-                    || sessionNamesAlreadyCarryingARow.contains(hiddenSessionName)) {
-                continue;
-            }
-            hiddenSessionRows.add(SessionHierarchyRow.session(NO_LIVE_SESSION_INDEX, hiddenSessionName));
-        }
-        return hiddenSessionRows;
-    }
 
     @NonNull
     private static SessionHierarchyRow definitionBackedSessionRow(
