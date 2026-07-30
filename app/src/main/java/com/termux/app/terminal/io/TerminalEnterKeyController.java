@@ -4,6 +4,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -21,16 +22,19 @@ public class TerminalEnterKeyController {
     public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
         this.mActivity = activity;
         this.mButton = button;
-        mButton.setOnClickListener(view -> send());
+        mButton.setOnClickListener(view -> submit(
+            mActivity.getTerminalToolbarTextInput(), mActivity.getTerminalToolbarViewPagerAdapter()));
     }
 
-    private void send() {
+    public boolean submit(@Nullable EditText editText,
+                          @Nullable TerminalToolbarViewPager.PageAdapter adapter) {
         finishComposingText();
-        boolean ownerContentSubmitted = commitToolbarTextInput();
+        boolean ownerContentSubmitted = commitToolbarTextInput(editText, adapter);
         sendEnter();
         if (SendButtonReplySubmitDecision.shouldRecordReply(ownerContentSubmitted)) {
             recordReplyOnSubmit();
         }
+        return ownerContentSubmitted;
     }
 
     private void finishComposingText() {
@@ -38,12 +42,9 @@ public class TerminalEnterKeyController {
         if (terminalView != null) terminalView.finishComposingTextToTerminal();
     }
 
-    private boolean commitToolbarTextInput() {
-        if (!mActivity.isTerminalToolbarTextInputViewSelected()) return false;
-        EditText editText = mActivity.getTerminalToolbarTextInput();
-        if (editText == null) return false;
-        TerminalToolbarViewPager.PageAdapter adapter = mActivity.getTerminalToolbarViewPagerAdapter();
-        if (adapter == null) return false;
+    private boolean commitToolbarTextInput(@Nullable EditText editText,
+                                           @Nullable TerminalToolbarViewPager.PageAdapter adapter) {
+        if (editText == null || adapter == null) return false;
         return adapter.commitTextInputToTerminal(editText);
     }
 
