@@ -1925,8 +1925,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalSession hiddenSession = hiddenTermuxSession.getTerminalSession();
         if (hiddenSession == null) return;
 
+        boolean hiddenSessionIsDisplayed = mActivity.getCurrentSession() == hiddenSession;
+        TerminalSession sessionToRenderInstead = hiddenSessionIsDisplayed
+            ? topmostSessionTheOwnerCanSee(sessionName)
+            : null;
+        if (hiddenSessionIsDisplayed && sessionToRenderInstead == null) {
+            return;
+        }
+
         cancelReconnectTimeout(sessionName);
-        boolean hiddenSessionWasDisplayed = mActivity.getCurrentSession() == hiddenSession;
 
         purgeNewActivityForRemovedSession(sessionName);
 
@@ -1943,12 +1950,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         hiddenSession.releaseRuntimeResources();
         service.removeTermuxSession(hiddenSession);
 
-        if (hiddenSessionWasDisplayed) {
-            TerminalSession sessionToRenderInstead = topmostSessionTheOwnerCanSee();
-            if (sessionToRenderInstead != null)
-                setCurrentSession(sessionToRenderInstead);
-        }
+        if (sessionToRenderInstead != null)
+            setCurrentSession(sessionToRenderInstead);
+
         termuxSessionListNotifyUpdated();
+    }
+
+    public boolean hidingLeavesTheViewOnASessionThatStillWorks(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return true;
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        if (currentSession == null || !sessionName.equals(currentSession.mSessionName)) return true;
+        return topmostSessionTheOwnerCanSee(sessionName) != null;
     }
 
     public boolean hidingCanReleaseWhateverIsLiveForTheName(@Nullable String sessionName) {
@@ -2341,7 +2353,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Nullable
-    private TerminalSession topmostSessionTheOwnerCanSee() {
+    private TerminalSession topmostSessionTheOwnerCanSee(@Nullable String sessionNameToLeaveOut) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
@@ -2355,6 +2367,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == null) continue;
+            if (terminalSession.mSessionName != null
+                && terminalSession.mSessionName.equals(sessionNameToLeaveOut)) continue;
 
             if (terminalSession.getEmulator() != null || terminalSession.isRunning()) {
                 return terminalSession;

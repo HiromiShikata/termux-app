@@ -33,6 +33,7 @@ import org.robolectric.RuntimeEnvironment;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -201,6 +202,73 @@ public class HiddenCurrentSessionReplacementSelectionTest {
             "displayedSessionNames");
         displayedSessionNames.setAccessible(true);
         return (Set<?>) displayedSessionNames.invoke(activity.getTermuxTerminalSessionClient());
+    }
+
+    @Test
+    public void hidingTheDisplayedSessionMustLeaveTheTerminalViewOnAWorkingSessionWhenEveryOtherVisibleRowIsInsideACollapsedProject()
+        throws Exception {
+        buildSessionList(true);
+        collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
+        preferences.setSessionDisabled(ON_SCREEN_SESSION_NAME, true);
+
+        assertEquals("test premise: the session being hidden must be the only row the owner can see, "
+                + "otherwise a replacement is available and this test is not exercising the case",
+            Collections.singletonList(CURRENT_SESSION_NAME),
+            sessionNamesAtIndexes(listViewController.getSessionIndexesOfRowsTheOwnerCanSee()));
+        assertNotNull("test premise: a live non-hidden session must exist inside the collapsed group, "
+                + "otherwise the upstream last-visible-session guard refuses the hide for its own reason "
+                + "and the replacement selection is never reached",
+            terminalSessionNamed(COLLAPSED_GROUP_SESSION_NAME).getEmulator());
+
+        hideThroughTheSessionListHideAction(CURRENT_SESSION_NAME);
+
+        TerminalSession displayedAfterTheHide = terminalView.getCurrentSession();
+        assertNotNull("hiding the displayed session must leave the terminal view attached to a session",
+            displayedAfterTheHide);
+        assertNotNull("the terminal view must be left on a session that still holds a terminal emulator: "
+                + "a released session refuses every later size update through its permanent released "
+                + "flag, so a view left attached to one is a terminal that is black and stays black with "
+                + "nothing the owner can do to bring it back",
+            displayedAfterTheHide.getEmulator());
+        assertTrue("the terminal view must be left on a session the service still owns, because a "
+                + "session removed from the list cannot be reopened from any row",
+            service.getIndexOfSession(displayedAfterTheHide) >= 0);
+        assertFalse("a hide that cannot be carried out must be refused rather than half applied: "
+                + "marking the row hidden while it stays the displayed session takes its row out of the "
+                + "list and leaves the owner looking at a session he can no longer find",
+            preferences.isSessionDisabled(CURRENT_SESSION_NAME));
+    }
+
+    @Test
+    public void releasingTheRuntimeOfTheDisplayedSessionMustNotDestroyItWhenNoReplacementRowCanBeSelected()
+        throws Exception {
+        buildSessionList(true);
+        collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
+        preferences.setSessionDisabled(ON_SCREEN_SESSION_NAME, true);
+        preferences.setSessionDisabled(CURRENT_SESSION_NAME, true);
+
+        assertTrue("test premise: the session being released must be the one the terminal view holds, "
+                + "otherwise the displayed-session branch of the release is never reached",
+            terminalView.getCurrentSession() == terminalSessionNamed(CURRENT_SESSION_NAME));
+
+        activity.getTermuxTerminalSessionClient()
+            .releaseHiddenSessionRuntimeResources(CURRENT_SESSION_NAME);
+
+        assertNotNull("the release must refuse to run at all rather than release the session the "
+                + "terminal view holds with no replacement to switch to, because the release is "
+                + "permanent: the released session refuses every later size update and is removed from "
+                + "the list, so the owner is left with a terminal that is black for good",
+            terminalView.getCurrentSession().getEmulator());
+        assertTrue("the session the terminal view holds must still be owned by the service",
+            service.getIndexOfSession(terminalView.getCurrentSession()) >= 0);
+    }
+
+    private List<String> sessionNamesAtIndexes(List<Integer> sessionIndexes) {
+        List<String> sessionNames = new ArrayList<>();
+        for (int sessionIndex : sessionIndexes) {
+            sessionNames.add(sessionNameAtIndex(sessionIndex));
+        }
+        return sessionNames;
     }
 
     private void buildSessionList(boolean collapsedGroupSessionIsRunning) throws Exception {
