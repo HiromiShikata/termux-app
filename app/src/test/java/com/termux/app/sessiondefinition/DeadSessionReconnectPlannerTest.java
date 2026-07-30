@@ -113,15 +113,32 @@ public class DeadSessionReconnectPlannerTest {
     }
 
     @Test
-    public void neverReconnectsCurrentSessionWhenDead() {
-        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+    public void plansTheCurrentSessionForReconnectWhenItIsDead() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Arrays.asList(
             new DeadSessionReconnectPlanner.CandidateSession(
-                "https://example.test/current", false, true, false, null));
+                "https://example.test/current", false, true, false, null),
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/dead1", false, false, false, null),
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/dead2", false, false, false, null));
 
         List<String> namesToReconnect =
             planner.planSessionNamesToReconnect(candidates, "ssh {name}");
 
-        Assert.assertTrue(namesToReconnect.isEmpty());
+        Assert.assertTrue("both automatic reconnect paths collect the currently displayed session's name "
+                + "and then hand it to this planner, which is the single place that discards it, so the "
+                + "one session the owner is looking at is the only visible session the application never "
+                + "revives by itself and the owner has to tap it back to life after every outage; a dead "
+                + "session has no screen state and no in-flight input to lose, so being the displayed one "
+                + "is no reason to leave it dead; the planned names were " + namesToReconnect,
+            namesToReconnect.contains("https://example.test/current"));
+        Assert.assertEquals("the displayed session must be added to the sessions this planner already "
+                + "reconnects, never substituted for them: a planner that returned the displayed session "
+                + "but dropped the other dead sessions, or that returned an empty plan, would leave the "
+                + "owner worse off than the defect being fixed",
+            Arrays.asList("https://example.test/current", "https://example.test/dead1",
+                "https://example.test/dead2"),
+            namesToReconnect);
     }
 
     @Test
