@@ -12,7 +12,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
-import com.termux.app.terminal.ShortcutNavigationSessionUnhider;
+import com.termux.app.terminal.OpenedSessionUnhider;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -147,7 +147,7 @@ public class OwnerHiddenMarkSurvivesTheDefinitionDocumentTest {
     public void theOwnerUnhideActionStillClearsTheHiddenMark() {
         recordAsHidden(HIDDEN_GITHUB_SESSION_NAME);
 
-        boolean unhid = ShortcutNavigationSessionUnhider.unhideNavigatedSession(
+        boolean unhid = OpenedSessionUnhider.unhideOpenedSession(
             preferences, HIDDEN_GITHUB_SESSION_NAME);
 
         assertTrue("navigating to a hidden session is the owner asking for it back, so it must still "
