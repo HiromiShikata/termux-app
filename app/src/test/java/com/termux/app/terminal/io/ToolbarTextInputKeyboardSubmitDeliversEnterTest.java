@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ImageButton;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -43,6 +44,7 @@ public class ToolbarTextInputKeyboardSubmitDeliversEnterTest {
     private TermuxActivity activity;
     private TerminalSession currentSession;
     private EditText toolbarTextInput;
+    private ImageButton toolbarSendButton;
 
     @Before
     public void setUp() throws Exception {
@@ -71,6 +73,8 @@ public class ToolbarTextInputKeyboardSubmitDeliversEnterTest {
         new TerminalToolbarViewPager.PageAdapter(activity, null).setupTextInputRow(textInputRow);
         toolbarTextInput = textInputRow.findViewById(R.id.terminal_toolbar_text_input);
         assertNotNull(toolbarTextInput);
+        toolbarSendButton = textInputRow.findViewById(R.id.terminal_toolbar_enter_button);
+        assertNotNull(toolbarSendButton);
     }
 
     @Test
@@ -102,6 +106,31 @@ public class ToolbarTextInputKeyboardSubmitDeliversEnterTest {
                 + "the typed text followed by the enter sequence, so the foreground program actually runs "
                 + "it instead of leaving it sitting at its prompt",
             TYPED_TEXT + expectedEnterSequence(), bytesDeliveredToSession());
+    }
+
+    @Test
+    public void imeSendActionOnAnEmptyFieldStillDeliversABareEnterSequence() throws Exception {
+        toolbarTextInput.setText("");
+        drainBytesDeliveredToSession();
+
+        toolbarTextInput.onEditorAction(EditorInfo.IME_ACTION_SEND);
+
+        assertEquals("confirming an empty toolbar field with the keyboard send action must still deliver a "
+                + "bare enter sequence, so the foreground program receives the blank line it received "
+                + "before the keyboard paths started going through the shared submit",
+            expectedEnterSequence(), bytesDeliveredToSession());
+    }
+
+    @Test
+    public void oneSendButtonClickDeliversExactlyOneEnterSequence() throws Exception {
+        drainBytesDeliveredToSession();
+
+        toolbarSendButton.performClick();
+
+        assertEquals("a single send button click must deliver exactly one enter sequence, otherwise "
+                + "routing the keyboard paths through the same submit would have made the button submit "
+                + "twice for one tap",
+            expectedEnterSequence(), bytesDeliveredToSession());
     }
 
     private String expectedEnterSequence() {
