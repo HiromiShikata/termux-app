@@ -2548,6 +2548,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
 
         if (displayedSession == deadSession) {
+            carryUnsubmittedToolbarInputToReconnectedSession(newTerminalSession);
             setCurrentSession(newTerminalSession);
         } else {
             if (displayedSessionNames().contains(sessionName)) {
@@ -2556,6 +2557,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             termuxSessionListNotifyUpdated();
         }
         return newTerminalSession;
+    }
+
+    private void carryUnsubmittedToolbarInputToReconnectedSession(@NonNull TerminalSession reconnectedSession) {
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter == null) return;
+        toolbarAdapter.saveTextInputForSession(reconnectedSession);
     }
 
     private void eagerInitializeReconnectedBackgroundSessionEmulator(@NonNull TerminalSession session) {
