@@ -13,6 +13,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 
 import androidx.annotation.NonNull;
@@ -111,14 +112,14 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * activity foreground/background transitions and both terminal session clients share the same
      * deduplication state. */
     private final CallToUserTagController mCallToUserTagController =
-        new CallToUserTagController(this::recordCallToUserForSessionHandle);
+        new CallToUserTagController(this::recordCallToUserForSessionHandleOnTheMainThread);
 
     /** Detects the app-update output tag for every session. Owned by the service so detection runs in
      * any session and survives activity transitions; the actual update flow (download and install
      * prompt) is dispatched to {@link #mUpdateTagReasonTrigger} which is only registered while the
      * activity is bound, so the install dialog appears only when the app is in the foreground. */
     private final UpdateTagUpdateController mUpdateTagUpdateController =
-        new UpdateTagUpdateController(this::dispatchUpdateTagReason);
+        new UpdateTagUpdateController(this::dispatchUpdateTagReasonOnTheMainThread);
 
     /** The foreground update-flow trigger registered by the bound activity, or null when no activity
      * is bound (app backgrounded). */
@@ -1166,10 +1167,22 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         mUpdateTagReasonTrigger = trigger;
     }
 
+    private void dispatchUpdateTagReasonOnTheMainThread(String reason) {
+        runOnTheMainThread(() -> dispatchUpdateTagReason(reason));
+    }
+
     private void dispatchUpdateTagReason(String reason) {
         UpdateTagUpdateController.ReasonTrigger trigger = mUpdateTagReasonTrigger;
         if (trigger == null) return;
         trigger.onUpdateRequested(reason);
+    }
+
+    private void runOnTheMainThread(Runnable action) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action.run();
+            return;
+        }
+        mHandler.post(action);
     }
 
     /** The shared open-URL tag controller. The activity client feeds the currently viewed session's
@@ -1211,6 +1224,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         AppOpenTagController.AppLauncher appLauncher = mAppLauncher;
         if (appLauncher == null) return;
         appLauncher.launchApp(packageId);
+    }
+
+    private void recordCallToUserForSessionHandleOnTheMainThread(String sessionHandle, String reason) {
+        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason));
     }
 
     private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {

@@ -107,9 +107,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final BackgroundOutputScanGate mBackgroundOutputScanGate = new BackgroundOutputScanGate();
 
-    private final SessionStatuslineReloadScanner mSessionStatuslineReloadScanner =
-        new SessionStatuslineReloadScanner();
-
     private final AllSessionsStatuslineScanGate mAllSessionsStatuslineScanGate =
         new AllSessionsStatuslineScanGate();
 
@@ -187,12 +184,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     /**
      * How many displayed sessions' statuslines are read and reparsed in one main-thread batch of the
      * on-launch / on-reload displayed-session refresh ({@link
-     * #repopulateStatuslineTimesForDisplayedSessions(boolean)}). The displayed set can be as large as
-     * the session cap, so the transcript reads are chunked into batches of this size, each posted a
-     * further {@link #STAGGERED_RECONNECT_INTERVAL_MILLIS} apart, so a launch or reload with many
-     * displayed sessions never blocks the UI thread reading every transcript at once.
+     * #repopulateStatuslineTimesForDisplayedSessions(boolean)}) and of the periodic displayed-session
+     * call scan ({@link #refreshDisplayedSessionsForCallToUser()}). The displayed set can be as large
+     * as the session cap, so the transcript reads are chunked into batches of this size, each
+     * subsequent batch posted as its own main-thread message, so a launch, reload or periodic scan
+     * with many displayed sessions never reads every transcript in one uninterrupted pass and never
+     * blocks the UI thread for the whole set.
      */
     static final int STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE = 4;
+
+    static final long MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS = 0L;
 
     /**
      * The staleness threshold used to decide which non-current sessions the background tick reconnects.
@@ -435,64 +436,108 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void backgroundOutputTagsForSession(TerminalSession session) {
         if (session == null) return;
+        SessionOutputScanText scanText = readOutputScanTextOnce(session);
+        if (scanText == null) return;
+        parseStatuslineAndScanOutputTagsOffThread(scanText, System.currentTimeMillis());
+    }
 
-        // The shared service-owned controllers are used so the explicit call is recorded into the
-        // shared activity store and the per-session scanner dedup state is the same instance the
-        // service client feeds, keeping each tag firing exactly once across activity
-        // foreground/background transitions.
+    @Nullable
+    private SessionOutputScanText readOutputScanTextOnce(@NonNull TerminalSession session) {
         TerminalEmulator emulator = session.getEmulator();
-        if (emulator == null) return;
-
+        if (emulator == null) return null;
         TerminalBuffer screen = emulator.getScreen();
-        if (screen == null) return;
+        if (screen == null) return null;
+        String transcriptText = screen.getTranscriptText();
+        return new SessionOutputScanText(session.mSessionName, session.mHandle, transcriptText,
+            statuslineScanText(emulator, screen, transcriptText));
+    }
 
-        // The statusline is parsed first so the call-to-user scan gate below reads fresh call:/reply:
-        // values from this same render. The expensive transcript reason/scene scan then runs only when
-        // the session has a pending call, has no statusline at all (the non-Claude fallback), or has an
-        // as-yet-unscanned statusline call (see SessionNewActivityStore#shouldScanCallToUserTag); the
-        // app-update tag scan always runs.
-        recordStatuslineTimesForSession(session, emulator, screen);
-
-        boolean shouldScanCallToUserTag = shouldScanCallToUserTagForSession(session);
-        new BackgroundOutputTagScanner(
+    private void parseStatuslineAndScanOutputTagsOffThread(@NonNull SessionOutputScanText scanText,
+                                                           long nowMillis) {
+        String sessionName = scanText.getSessionName();
+        List<AllSessionsStatuslineParser.SessionScreenText> sessionScreenTexts = sessionName == null
+            ? Collections.emptyList()
+            : Collections.singletonList(new AllSessionsStatuslineParser.SessionScreenText(
+                sessionName, scanText.getStatuslineScanText()));
+        boolean shouldScanCallToUserTag = shouldScanCallToUserTagForSessionName(sessionName);
+        String sessionHandle = scanText.getSessionHandle();
+        String transcriptText = scanText.getTranscriptText();
+        BackgroundOutputTagScanner scanner = new BackgroundOutputTagScanner(
             mActivity.getCallToUserTagController(),
-            mActivity.getUpdateTagUpdateController())
-            .scan(session.mHandle, screen.getTranscriptText(), shouldScanCallToUserTag);
+            mActivity.getUpdateTagUpdateController());
+        TimeZone timeZone = TimeZone.getDefault();
+        statuslineParseHandler().post(() -> {
+            List<ParsedStatuslineUpdate> updates =
+                mAllSessionsStatuslineParser.parse(sessionScreenTexts, nowMillis, timeZone);
+            scanner.scan(sessionHandle, transcriptText, shouldScanCallToUserTag);
+            mMainThreadHandler.post(() -> {
+                if (!updates.isEmpty()) {
+                    applyStatuslineUpdates(updates);
+                }
+                if (shouldScanCallToUserTag) {
+                    recordCallToUserTagScanPerformedForSessionName(sessionName);
+                }
+            });
+        });
+    }
 
-        if (shouldScanCallToUserTag) {
-            recordCallToUserTagScanPerformedForSession(session);
+    private static final class SessionOutputScanText {
+
+        @Nullable
+        private final String mSessionName;
+
+        @Nullable
+        private final String mSessionHandle;
+
+        @NonNull
+        private final String mTranscriptText;
+
+        @NonNull
+        private final String mStatuslineScanText;
+
+        private SessionOutputScanText(@Nullable String sessionName,
+                                      @Nullable String sessionHandle,
+                                      @NonNull String transcriptText,
+                                      @NonNull String statuslineScanText) {
+            mSessionName = sessionName;
+            mSessionHandle = sessionHandle;
+            mTranscriptText = transcriptText;
+            mStatuslineScanText = statuslineScanText;
+        }
+
+        @Nullable
+        String getSessionName() {
+            return mSessionName;
+        }
+
+        @Nullable
+        String getSessionHandle() {
+            return mSessionHandle;
+        }
+
+        @NonNull
+        String getTranscriptText() {
+            return mTranscriptText;
+        }
+
+        @NonNull
+        String getStatuslineScanText() {
+            return mStatuslineScanText;
         }
     }
 
-    private void recordCallToUserTagScanPerformedForSession(@NonNull TerminalSession session) {
-        if (session.mSessionName == null) return;
+    private void recordCallToUserTagScanPerformedForSessionName(@Nullable String sessionName) {
+        if (sessionName == null) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
-        store.recordCallToUserTagScanPerformed(session.mSessionName);
+        store.recordCallToUserTagScanPerformed(sessionName);
     }
 
-    private boolean shouldScanCallToUserTagForSession(@NonNull TerminalSession session) {
-        if (session.mSessionName == null) return true;
+    private boolean shouldScanCallToUserTagForSessionName(@Nullable String sessionName) {
+        if (sessionName == null) return true;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return true;
-        return store.shouldScanCallToUserTag(session.mSessionName);
-    }
-
-    private void recordStatuslineTimesForSession(@NonNull TerminalSession session,
-                                                 @NonNull TerminalEmulator emulator,
-                                                 @NonNull TerminalBuffer screen) {
-        if (session.mSessionName == null) return;
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) return;
-
-        String statuslineScanText = statuslineScanText(emulator, screen);
-        long nowMillis = System.currentTimeMillis();
-        mSessionStatuslineReloadScanner.repopulateFromCurrentStatusline(store, session.mSessionName,
-            statuslineScanText, nowMillis, TimeZone.getDefault());
-        if (!store.isReconnecting(session.mSessionName)) {
-            cancelReconnectTimeout(session.mSessionName);
-        }
-        termuxSessionListNotifyUpdated();
+        return store.shouldScanCallToUserTag(sessionName);
     }
 
     /**
@@ -571,9 +616,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * display-refresh effect (reading and reparsing each session's current screen through the same
      * {@link SessionNewActivityStore#recordStatuslineTimes} path), and never writes any input to any
      * session. The displayed set can be as large as the session cap, so the per-session transcript
-     * reads are split into small staggered batches posted to the main-thread {@link Handler} — spaced
-     * by {@link #STAGGERED_RECONNECT_INTERVAL_MILLIS} — so a launch or reload with many displayed
-     * sessions never reads all their transcripts in one main-thread pass and never blocks the UI. Each
+     * reads are split into small batches, each subsequent batch posted to the main-thread {@link
+     * Handler} with {@link #MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS} delay, so a launch or reload with
+     * many displayed sessions never reads all their transcripts in one main-thread pass, never blocks
+     * the UI, and never makes one displayed session wait behind another's batch. Each
      * batch forces the gate-bypassing rescan through {@link
      * #repopulateStatuslineTimesForSessionNames(Set, boolean)}, whose heavy transcript materialization
      * and regex parse still run off the main thread via {@link #parseAndApplyStatuslineUpdatesOffThread}.
@@ -581,17 +627,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void repopulateStatuslineTimesForDisplayedSessions(boolean forceRescan) {
         List<String> displayedSessionNames = new ArrayList<>(displayedSessionNames());
         if (displayedSessionNames.isEmpty()) return;
-        for (StaggeredStatuslineRescanBatchPlanner.Batch batch
-                : StaggeredStatuslineRescanBatchPlanner.plan(displayedSessionNames,
-                    STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, STAGGERED_RECONNECT_INTERVAL_MILLIS)) {
-            Set<String> batchSessionNames = batch.getSessionNames();
-            long batchDelayMillis = batch.getDelayMillis();
-            if (batchDelayMillis <= 0L) {
+        List<StaggeredStatuslineRescanBatchPlanner.Batch> batches =
+            StaggeredStatuslineRescanBatchPlanner.plan(displayedSessionNames,
+                STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE, MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS);
+        for (int batchIndex = 0; batchIndex < batches.size(); batchIndex++) {
+            Set<String> batchSessionNames = batches.get(batchIndex).getSessionNames();
+            if (batchIndex == 0) {
                 repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan);
             } else {
                 mMainThreadHandler.postDelayed(
                     () -> repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan),
-                    batchDelayMillis);
+                    MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS);
             }
         }
     }
@@ -716,7 +762,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     @NonNull
     private static String statuslineScanText(@NonNull TerminalEmulator emulator,
                                              @NonNull TerminalBuffer screen) {
-        StringBuilder builder = new StringBuilder(emulator.getMainBufferTranscriptText());
+        return statuslineScanText(emulator, screen, emulator.getMainBufferTranscriptText());
+    }
+
+    @NonNull
+    private static String statuslineScanText(@NonNull TerminalEmulator emulator,
+                                             @NonNull TerminalBuffer screen,
+                                             @NonNull String transcriptText) {
+        StringBuilder builder = new StringBuilder(transcriptText);
         builder.append('\n').append(visibleScreenText(emulator, screen));
         return builder.toString();
     }
@@ -1239,11 +1292,26 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         reconnectDeadDisplayedSessionsInBackground(displayedSessionNames);
 
-        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
-            TerminalSession session = termuxSession.getTerminalSession();
-            if (session == null || session.mSessionName == null) continue;
-            if (!displayedSessionNames.contains(session.mSessionName)) continue;
-            backgroundOutputTagsForSession(session);
+        List<StaggeredStatuslineRescanBatchPlanner.Batch> batches =
+            StaggeredStatuslineRescanBatchPlanner.plan(new ArrayList<>(displayedSessionNames),
+                STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE,
+                SessionReconnectPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS);
+        for (int batchIndex = 0; batchIndex < batches.size(); batchIndex++) {
+            StaggeredStatuslineRescanBatchPlanner.Batch batch = batches.get(batchIndex);
+            Set<String> batchSessionNames = batch.getSessionNames();
+            Runnable scanBatchOfDisplayedSessions = () -> {
+                for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+                    TerminalSession session = termuxSession.getTerminalSession();
+                    if (session == null || session.mSessionName == null) continue;
+                    if (!batchSessionNames.contains(session.mSessionName)) continue;
+                    backgroundOutputTagsForSession(session);
+                }
+            };
+            if (batchIndex == 0) {
+                scanBatchOfDisplayedSessions.run();
+            } else {
+                mMainThreadHandler.postDelayed(scanBatchOfDisplayedSessions, batch.getDelayMillis());
+            }
         }
     }
 
