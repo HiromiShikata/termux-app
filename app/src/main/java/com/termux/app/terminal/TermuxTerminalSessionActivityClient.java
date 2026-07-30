@@ -1436,11 +1436,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     public void updateSessionNameOverlay() {
+        TerminalSession session = mActivity.getCurrentSession();
+        String sessionName = (session == null) ? null : session.mSessionName;
+        updateSessionNameBar(sessionName);
+        updateSessionInfoBottomBars(sessionName);
+    }
+
+    private void updateSessionNameBar(@Nullable String sessionName) {
         TextView sessionNameBar = mActivity.findViewById(R.id.session_name_bar);
         if (sessionNameBar == null) return;
 
-        TerminalSession session = mActivity.getCurrentSession();
-        String sessionName = (session == null) ? null : session.mSessionName;
         SessionRow currentSessionRow = currentSessionRow();
         if (!SessionNameBarVisibility.isVisible(sessionName)) {
             sessionNameBar.setText("");
@@ -1458,7 +1463,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             sessionNameBar.setOnClickListener(view -> onSessionNameBarTapped());
             updateSessionProjectStoryBar(currentSessionRow);
         }
-        updateSessionInfoBottomBars(sessionName);
     }
 
     private void updateSessionInfoBottomBars(@Nullable String sessionName) {
