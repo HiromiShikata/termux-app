@@ -1642,7 +1642,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (sessionToDelete == null) return;
 
         suppressReconnectForUserRemovedSession(sessionToDelete.mSessionName);
+        finishAndRemoveSession(sessionToDelete);
+    }
 
+    /**
+     * Killing the host session tears the local session down so that it can be established again, so
+     * the session name is not recorded as removed when it is an always-present name.
+     */
+    private void deleteSessionAfterHostSessionKill(final TerminalSession sessionToDelete) {
+        if (sessionToDelete == null) return;
+
+        suppressReconnectAfterHostSessionKill(sessionToDelete.mSessionName);
+        finishAndRemoveSession(sessionToDelete);
+    }
+
+    private void finishAndRemoveSession(final TerminalSession sessionToDelete) {
         TerminalSession currentSession = mActivity.getCurrentSession();
         sessionToDelete.finishIfRunning();
         removeFinishedSession(sessionToDelete);
@@ -1655,6 +1669,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (preferences == null) return;
         if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterUserRemoval(
                 sessionName)) {
+            preferences.setSessionUserRemoved(sessionName, true);
+        }
+    }
+
+    private void suppressReconnectAfterHostSessionKill(@Nullable String sessionName) {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return;
+        if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterHostSessionKill(
+                sessionName, preferences.getAlwaysNaSessionNames())) {
             preferences.setSessionUserRemoved(sessionName, true);
         }
     }
@@ -1692,7 +1715,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             @Override
             public void finishLocalSession() {
-                deleteSession(sessionToKill);
+                deleteSessionAfterHostSessionKill(sessionToKill);
             }
         }, mActivity.getPreferences().getKillSessionCommand(), sessionToKill.mSessionName,
             mMainThreadHandler::postDelayed);

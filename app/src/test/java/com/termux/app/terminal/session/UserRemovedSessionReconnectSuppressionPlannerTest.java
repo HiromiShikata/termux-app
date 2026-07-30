@@ -3,6 +3,10 @@ package com.termux.app.terminal.session;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class UserRemovedSessionReconnectSuppressionPlannerTest {
 
     private final UserRemovedSessionReconnectSuppressionPlanner planner =
@@ -33,5 +37,27 @@ public class UserRemovedSessionReconnectSuppressionPlannerTest {
     @Test
     public void suppressesUsingTrimmedNameComparison() {
         Assert.assertTrue(planner.shouldSuppressReconnectAfterUserRemoval("  google logon  "));
+    }
+
+    @Test
+    public void aHostSessionKillLeavesAnAlwaysPresentSessionNameCreatedAutomaticallyAsBefore() {
+        Set<String> alwaysPresent = new HashSet<>();
+        alwaysPresent.add("secretary");
+        Assert.assertFalse("killing the host session tears the local session down so that it can be "
+                + "established again, so an always-present session name must keep being created "
+                + "automatically after a host session kill",
+            planner.shouldSuppressReconnectAfterHostSessionKill("secretary", alwaysPresent));
+    }
+
+    @Test
+    public void aHostSessionKillStillSuppressesASessionNameThatIsNotAlwaysPresent() {
+        Assert.assertTrue(planner.shouldSuppressReconnectAfterHostSessionKill(
+            "google logon", Collections.emptySet()));
+    }
+
+    @Test
+    public void aHostSessionKillSuppressesNothingForABlankSessionName() {
+        Assert.assertFalse(planner.shouldSuppressReconnectAfterHostSessionKill(
+            "   ", Collections.emptySet()));
     }
 }

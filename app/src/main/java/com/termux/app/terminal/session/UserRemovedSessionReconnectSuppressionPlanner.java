@@ -1,6 +1,9 @@
 package com.termux.app.terminal.session;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import java.util.Set;
 
 public final class UserRemovedSessionReconnectSuppressionPlanner {
 
@@ -11,9 +14,19 @@ public final class UserRemovedSessionReconnectSuppressionPlanner {
      * screen is never edited to achieve this; only the per-session removal record is written.
      */
     public boolean shouldSuppressReconnectAfterUserRemoval(@Nullable String sessionName) {
-        if (sessionName == null) {
+        return sessionName != null && !sessionName.trim().isEmpty();
+    }
+
+    /**
+     * Killing the host session tears the local session down so that it can be established again, so it
+     * is not a removal. An always-present session name therefore keeps being created automatically
+     * after a host session kill, exactly as it did before.
+     */
+    public boolean shouldSuppressReconnectAfterHostSessionKill(
+            @Nullable String sessionName, @NonNull Set<String> alwaysPresentSessionNames) {
+        if (!shouldSuppressReconnectAfterUserRemoval(sessionName)) {
             return false;
         }
-        return !sessionName.trim().isEmpty();
+        return !alwaysPresentSessionNames.contains(sessionName.trim());
     }
 }
