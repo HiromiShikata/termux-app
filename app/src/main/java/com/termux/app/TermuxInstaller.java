@@ -127,7 +127,8 @@ final class TermuxInstaller {
                 try {
                     new BootstrapInstallationRunner(failure -> showBootstrapErrorDialog(activity, whenDone,
                         Logger.getStackTracesMarkdownString(null, Logger.getStackTracesStringArray(failure))))
-                        .run(() -> installBootstrap(activity, whenDone));
+                        .run(() -> installBootstrap(activity, whenDone),
+                            () -> activity.runOnUiThread(whenDone));
                 } finally {
                     activity.runOnUiThread(() -> {
                         try {
