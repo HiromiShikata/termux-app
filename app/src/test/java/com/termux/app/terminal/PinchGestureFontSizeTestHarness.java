@@ -17,12 +17,16 @@ final class PinchGestureFontSizeTestHarness {
 
     final TermuxTerminalViewClient client;
 
+    /** The very {@link TerminalView} the client applies font sizes to, so a test may also drive it. */
+    final TerminalView terminalView;
+
     PinchGestureFontSizeTestHarness(Context context) throws Exception {
         TextSizeApplicationRecordingShadowTerminalView.forgetAppliedTextSizes();
         preferences = TermuxAppSharedPreferences.build(context, true);
         TermuxActivity activity = Robolectric.buildActivity(TermuxActivity.class).get();
+        terminalView = new TerminalView(context, null);
         setActivityField(activity, "mPreferences", preferences);
-        setActivityField(activity, "mTerminalView", new TerminalView(context, null));
+        setActivityField(activity, "mTerminalView", terminalView);
         client = new TermuxTerminalViewClient(activity, null);
     }
 
