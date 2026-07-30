@@ -21,7 +21,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
     }
 
     @Test
-    public void preservingPurgeKeepsTheDotTierSourceSoTheRowDoesNotJumpToMoreThanOneDay() {
+    public void preservingPurgeDropsTheOutDotTierAndKeepsTheReplyDotTierSourceSoTheRowDoesNotJumpToMoreThanOneDay() {
         long now = 5_000L;
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes("session-one", 1_000L, 4_900L, 1_000L, 0);

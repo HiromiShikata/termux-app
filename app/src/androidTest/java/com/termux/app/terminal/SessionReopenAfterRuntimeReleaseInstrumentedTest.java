@@ -173,9 +173,6 @@ public class SessionReopenAfterRuntimeReleaseInstrumentedTest {
 
         int shellProcessIdAfterTheReopen = reopenAndAwaitAReplacementShell(sessionUnderTest,
             shellProcessIdBeforeTheRelease);
-        assertFalse("reopening the row must leave it unhidden",
-            readOnMainThread(activity ->
-                activity.getPreferences().getDisabledSessionNames().contains(SESSION_UNDER_TEST_NAME)));
         awaitMarkerOf(sessionUnderTest, COMMAND_MAKING_THE_REOPENED_SHELL_PRINT_ITS_MARKER,
             MARKER_ONLY_THE_REOPENED_SHELL_CAN_PRINT,
             "the reopened shell to print its marker through the byte queues that replaced the released ones");

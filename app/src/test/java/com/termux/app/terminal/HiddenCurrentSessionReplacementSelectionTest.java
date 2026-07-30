@@ -182,7 +182,7 @@ public class HiddenCurrentSessionReplacementSelectionTest {
         collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
         preferences.setSessionDisabled(ON_SCREEN_SESSION_NAME, true);
 
-        Set<String> displayedSessionNames = displayedSessionNamesOfTheClient();
+        Set<?> displayedSessionNames = displayedSessionNamesOfTheClient();
         List<Integer> candidateIndexes = listViewController.getSessionIndexesOfRowsTheOwnerCanSee();
 
         assertFalse("test premise: at least one row must survive both filters, otherwise the contract "
@@ -196,17 +196,11 @@ public class HiddenCurrentSessionReplacementSelectionTest {
         }
     }
 
-    private Set<String> displayedSessionNamesOfTheClient() throws Exception {
+    private Set<?> displayedSessionNamesOfTheClient() throws Exception {
         Method displayedSessionNames = TermuxTerminalSessionActivityClient.class.getDeclaredMethod(
             "displayedSessionNames");
         displayedSessionNames.setAccessible(true);
-        return castToSessionNameSet(
-            displayedSessionNames.invoke(activity.getTermuxTerminalSessionClient()));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Set<String> castToSessionNameSet(Object value) {
-        return (Set<String>) value;
+        return (Set<?>) displayedSessionNames.invoke(activity.getTermuxTerminalSessionClient());
     }
 
     private void buildSessionList(boolean collapsedGroupSessionIsRunning) throws Exception {
