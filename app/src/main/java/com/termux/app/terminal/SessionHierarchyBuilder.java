@@ -136,14 +136,13 @@ public final class SessionHierarchyBuilder {
             rows.add(SessionHierarchyRow.projectHeader(projectLabel,
                 overviewUrlByProject.get(projectLabel), tdpmConsoleUrlByProject.get(projectLabel),
                 newIssueUrlByProject.get(projectLabel)));
-            Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
-            if (managerSessionIndex != null) {
-                rows.add(sessionRow(sessionNames, managerSessionIndex));
-            } else {
-                String managerSessionName = drawableManagerSessionName(projectLabel, alwaysNaSessionNames);
-                if (managerSessionName != null) {
-                    rows.add(definitionBackedSessionRow(liveSessionIndexByName, managerSessionName));
-                }
+            String managerSessionName = drawableManagerSessionNameOwnedByProject(projectLabel,
+                projectLabelByManagerSessionName, alwaysNaSessionNames);
+            if (managerSessionName != null) {
+                Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
+                rows.add(managerSessionIndex == null
+                    ? definitionBackedSessionRow(liveSessionIndexByName, managerSessionName)
+                    : sessionRow(sessionNames, managerSessionIndex));
             }
             Map<String, List<String>> storiesInProject = sessionNamesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
@@ -166,13 +165,21 @@ public final class SessionHierarchyBuilder {
      * entries do not have to carry it, and a project can be named by the definition while no live
      * session exists for its project-manager name. Such a project still owns a project-manager row,
      * drawn from the derived name the same way a story row is drawn from a name the definition lists.
+     * The derived name drops the surrounding whitespace of the project label, so two labels that
+     * differ only by whitespace derive one name and only the label that owns that name draws its row.
      * A name the owner pinned to the not-applicable group keeps its single row there instead.
      */
     @Nullable
-    private String drawableManagerSessionName(@NonNull String projectLabel,
-                                              @NonNull Set<String> alwaysNaSessionNames) {
+    private String drawableManagerSessionNameOwnedByProject(
+            @NonNull String projectLabel,
+            @NonNull Map<String, String> projectLabelByManagerSessionName,
+            @NonNull Set<String> alwaysNaSessionNames) {
         String managerSessionName =
             mDefaultProjectManagerSessionPlanner.sessionNameForProjectLabel(projectLabel);
+        if (managerSessionName == null
+                || !projectLabel.equals(projectLabelByManagerSessionName.get(managerSessionName))) {
+            return null;
+        }
         return isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)
             ? null : managerSessionName;
     }

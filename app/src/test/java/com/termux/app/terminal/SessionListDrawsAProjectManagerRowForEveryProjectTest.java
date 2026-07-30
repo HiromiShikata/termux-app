@@ -30,10 +30,16 @@ public class SessionListDrawsAProjectManagerRowForEveryProjectTest {
         + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX;
     private static final String SECOND_PROJECT_MANAGER_SESSION_NAME = SECOND_PROJECT_LABEL
         + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX;
+    private static final String FIRST_PROJECT_LABEL_WITH_SURROUNDING_WHITESPACE =
+        " " + FIRST_PROJECT_LABEL;
     private static final String FIRST_STORY_LABEL = "storyone";
     private static final String SECOND_STORY_LABEL = "storytwo";
     private static final String FIRST_STORY_SESSION_NAME = "https://example.test/story-one";
     private static final String SECOND_STORY_SESSION_NAME = "https://example.test/story-two";
+    private static final Set<String> HIDDEN_SESSION_NAMES =
+        Collections.singleton(FIRST_PROJECT_MANAGER_SESSION_NAME);
+    private static final boolean LIST_FILTER_ON = true;
+    private static final boolean LIST_FILTER_OFF = false;
 
     private final SessionHierarchyBuilder builder = new SessionHierarchyBuilder();
 
@@ -53,6 +59,32 @@ public class SessionListDrawsAProjectManagerRowForEveryProjectTest {
 
     private static List<SessionDefinitionEntry> definitionNamingBothProjects() {
         return Arrays.asList(firstProjectEntry(), secondProjectEntry());
+    }
+
+    private static List<SessionDefinitionEntry> definitionNamingTheFirstProjectTwiceWithWhitespace() {
+        return Arrays.asList(firstProjectEntry(),
+            new SessionDefinitionEntry(FIRST_PROJECT_LABEL_WITH_SURROUNDING_WHITESPACE,
+                SECOND_STORY_LABEL, Collections.singletonList(SECOND_STORY_SESSION_NAME)));
+    }
+
+    private static List<SessionHierarchyRow> rowsTheListShows(List<SessionHierarchyRow> allRows,
+                                                              List<String> liveSessionNames,
+                                                              Set<String> hiddenSessionNames,
+                                                              boolean listFilterOn) {
+        return SessionHierarchyBuilder.filterHiddenSessions(allRows, liveSessionNames,
+            listFilterOn ? hiddenSessionNames : Collections.emptySet());
+    }
+
+    private static List<Integer> sessionIndexesDrawnMoreThanOnce(List<SessionHierarchyRow> rows) {
+        List<Integer> drawnSessionIndexes = SessionHierarchyBuilder.visibleSessionIndexes(rows);
+        List<Integer> repeatedSessionIndexes = new ArrayList<>();
+        Set<Integer> seenSessionIndexes = new LinkedHashSet<>();
+        for (Integer sessionIndex : drawnSessionIndexes) {
+            if (!seenSessionIndexes.add(sessionIndex)) {
+                repeatedSessionIndexes.add(sessionIndex);
+            }
+        }
+        return repeatedSessionIndexes;
     }
 
     private static String dump(List<SessionHierarchyRow> rows) {
@@ -134,33 +166,62 @@ public class SessionListDrawsAProjectManagerRowForEveryProjectTest {
     @Test
     public void aProjectManagerRowWhoseNameIsHiddenIsDrawnWithTheListFilterOff() {
         List<String> liveSessionNames = Collections.singletonList(FIRST_STORY_SESSION_NAME);
+        Assert.assertTrue("the hidden-name set this test arranges must carry the derived project-manager"
+                + " name before the assertion below means anything. Actual hidden names: "
+                + HIDDEN_SESSION_NAMES,
+            HIDDEN_SESSION_NAMES.contains(FIRST_PROJECT_MANAGER_SESSION_NAME));
+        List<SessionHierarchyRow> unfilteredRows =
+            builder.build(liveSessionNames, definitionNamingOnlyTheFirstProject(), NA);
 
-        List<SessionHierarchyRow> rows = SessionHierarchyBuilder.filterHiddenSessions(
-            builder.build(liveSessionNames, definitionNamingOnlyTheFirstProject(), NA),
-            liveSessionNames, Collections.emptySet());
+        List<SessionHierarchyRow> rows = rowsTheListShows(unfilteredRows, liveSessionNames,
+            HIDDEN_SESSION_NAMES, LIST_FILTER_OFF);
 
-        Assert.assertEquals("with the list filter off no name is hidden, so a project-manager row whose"
-                + " name sits in the hidden-name set must still be drawn. Actual:\n" + dump(rows),
+        Assert.assertEquals("the list filter is the only thing that applies the hidden-name set, so a"
+                + " project-manager name sitting in that set must still be drawn while the filter is"
+                + " off. Actual:\n" + dump(rows),
             1, rowCountForSessionName(rows, FIRST_PROJECT_MANAGER_SESSION_NAME));
     }
 
     @Test
     public void aProjectManagerRowWhoseNameIsHiddenIsRemovedWithTheListFilterOn() {
         List<String> liveSessionNames = Collections.singletonList(FIRST_STORY_SESSION_NAME);
-        Set<String> hiddenSessionNames =
-            Collections.singleton(FIRST_PROJECT_MANAGER_SESSION_NAME);
+        Assert.assertTrue("the hidden-name set this test arranges must carry the derived project-manager"
+                + " name before the assertion below means anything. Actual hidden names: "
+                + HIDDEN_SESSION_NAMES,
+            HIDDEN_SESSION_NAMES.contains(FIRST_PROJECT_MANAGER_SESSION_NAME));
         List<SessionHierarchyRow> unfilteredRows =
             builder.build(liveSessionNames, definitionNamingOnlyTheFirstProject(), NA);
         Assert.assertEquals("the arrangement must draw the project-manager row before the assertion"
                 + " below means anything. Actual:\n" + dump(unfilteredRows),
             1, rowCountForSessionName(unfilteredRows, FIRST_PROJECT_MANAGER_SESSION_NAME));
 
-        List<SessionHierarchyRow> rows = SessionHierarchyBuilder.filterHiddenSessions(
-            unfilteredRows, liveSessionNames, hiddenSessionNames);
+        List<SessionHierarchyRow> rows = rowsTheListShows(unfilteredRows, liveSessionNames,
+            HIDDEN_SESSION_NAMES, LIST_FILTER_ON);
 
         Assert.assertEquals("a hidden project-manager row must behave like every other hidden row and be"
                 + " removed with the list filter on. Actual:\n" + dump(rows),
             0, rowCountForSessionName(rows, FIRST_PROJECT_MANAGER_SESSION_NAME));
+    }
+
+    @Test
+    public void twoProjectLabelsDifferingOnlyByWhitespaceDrawOneProjectManagerRowForTheirOneSession() {
+        List<String> liveSessionNames = Arrays.asList(FIRST_STORY_SESSION_NAME,
+            FIRST_PROJECT_MANAGER_SESSION_NAME, SECOND_STORY_SESSION_NAME);
+
+        List<SessionHierarchyRow> rows = builder.build(liveSessionNames,
+            definitionNamingTheFirstProjectTwiceWithWhitespace(), NA);
+
+        Assert.assertEquals("two project labels differing only by surrounding whitespace derive one"
+                + " project-manager name, so the live session behind it must be drawn in one row only;"
+                + " a repeated index makes next and previous session navigation visit it twice."
+                + " Actual:\n" + dump(rows),
+            Collections.emptyList(), sessionIndexesDrawnMoreThanOnce(rows));
+        Assert.assertEquals("every live session must be counted once, so the total session count must"
+                + " equal the number of live sessions. Actual:\n" + dump(rows),
+            liveSessionNames.size(), SessionHierarchyBuilder.totalSessionCount(rows));
+        Assert.assertEquals("the derived project-manager name must carry exactly one row across both"
+                + " labels. Actual:\n" + dump(rows),
+            1, rowCountForSessionName(rows, FIRST_PROJECT_MANAGER_SESSION_NAME));
     }
 
     @Test
