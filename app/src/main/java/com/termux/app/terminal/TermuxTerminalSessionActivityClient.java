@@ -1654,7 +1654,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return;
         if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterUserRemoval(
-                sessionName, preferences.getAlwaysNaSessionNames())) {
+                sessionName)) {
             preferences.setSessionUserRemoved(sessionName, true);
         }
     }
@@ -2804,7 +2804,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         List<String> missingSessionNames = mAlwaysPresentSessionPlanner.planMissingSessionNames(
             alwaysPresentSessionNames, liveSessionNames,
-            mActivity.getPreferences().getDisabledSessionNames());
+            mActivity.getPreferences().getDisabledSessionNames(),
+            mActivity.getPreferences().getUserRemovedSessionNames());
         if (missingSessionNames.isEmpty()) return false;
 
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();

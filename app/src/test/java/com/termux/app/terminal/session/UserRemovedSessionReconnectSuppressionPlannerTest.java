@@ -3,10 +3,6 @@ package com.termux.app.terminal.session;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 public class UserRemovedSessionReconnectSuppressionPlannerTest {
 
     private final UserRemovedSessionReconnectSuppressionPlanner planner =
@@ -14,30 +10,28 @@ public class UserRemovedSessionReconnectSuppressionPlannerTest {
 
     @Test
     public void suppressesBareLeftoverSessionThatIsNotAlwaysPresent() {
-        Assert.assertTrue(planner.shouldSuppressReconnectAfterUserRemoval(
-            "google logon", Collections.emptySet()));
+        Assert.assertTrue(planner.shouldSuppressReconnectAfterUserRemoval("google logon"));
     }
 
     @Test
-    public void doesNotSuppressAlwaysPresentSessionTheOwnerWantsToKeep() {
-        Set<String> alwaysPresent = new HashSet<>();
-        alwaysPresent.add("secretary");
-        Assert.assertFalse(planner.shouldSuppressReconnectAfterUserRemoval("secretary", alwaysPresent));
+    public void suppressesAnAlwaysPresentSessionTheOwnerDeleted() {
+        Assert.assertTrue("a deletion is a deletion: an always-present session the owner deleted must be"
+                + " recorded as removed, so that no restore path creates it again on its own",
+            planner.shouldSuppressReconnectAfterUserRemoval("secretary"));
     }
 
     @Test
     public void doesNotSuppressNullSessionName() {
-        Assert.assertFalse(planner.shouldSuppressReconnectAfterUserRemoval(null, Collections.emptySet()));
+        Assert.assertFalse(planner.shouldSuppressReconnectAfterUserRemoval(null));
     }
 
     @Test
     public void doesNotSuppressBlankSessionName() {
-        Assert.assertFalse(planner.shouldSuppressReconnectAfterUserRemoval("   ", Collections.emptySet()));
+        Assert.assertFalse(planner.shouldSuppressReconnectAfterUserRemoval("   "));
     }
 
     @Test
     public void suppressesUsingTrimmedNameComparison() {
-        Assert.assertTrue(planner.shouldSuppressReconnectAfterUserRemoval(
-            "  google logon  ", Collections.emptySet()));
+        Assert.assertTrue(planner.shouldSuppressReconnectAfterUserRemoval("  google logon  "));
     }
 }

@@ -1,21 +1,19 @@
 package com.termux.app.terminal.session;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
-import java.util.Set;
 
 public final class UserRemovedSessionReconnectSuppressionPlanner {
 
-    public boolean shouldSuppressReconnectAfterUserRemoval(@Nullable String sessionName,
-                                                           @NonNull Set<String> alwaysPresentSessionNames) {
+    /**
+     * A deletion is a deletion. The removal is recorded for every session name the owner deleted,
+     * including a name that appears in the always-present name list, so that no restore path creates
+     * that session again on its own. The always-present name list the owner typed in the settings
+     * screen is never edited to achieve this; only the per-session removal record is written.
+     */
+    public boolean shouldSuppressReconnectAfterUserRemoval(@Nullable String sessionName) {
         if (sessionName == null) {
             return false;
         }
-        String trimmedName = sessionName.trim();
-        if (trimmedName.isEmpty()) {
-            return false;
-        }
-        return !alwaysPresentSessionNames.contains(trimmedName);
+        return !sessionName.trim().isEmpty();
     }
 }
