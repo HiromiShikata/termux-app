@@ -60,6 +60,10 @@ public class AnAttachedSessionNeverLeavesTheViewPermanentlyBlankTest {
 
     private static final int OPAQUE_BLACK = 0xFF000000;
 
+    private static final int SCROLLED_BACK_TOP_ROW = -37;
+
+    private static final int PENDING_COMBINING_ACCENT_CODE_POINT = 0x0300;
+
     private TerminalView view;
 
     private TerminalSession session;
@@ -150,6 +154,45 @@ public class AnAttachedSessionNeverLeavesTheViewPermanentlyBlankTest {
 
         assertTheViewCanStillDisplaySomething("a later layout pass reached the view after the owner had "
             + "switched to a session whose runtime resources had already been released");
+    }
+
+    @Test
+    public void refusingToSwitchToSuchASessionLeavesTheScrollPositionAndPendingAccentUntouched()
+            throws Exception {
+        displayALiveSessionScrolledBackWithAPendingCombiningAccent();
+        TerminalSession releasedSession = aSessionWhoseRuntimeResourcesWereReleased();
+
+        boolean switched = view.attachSession(releasedSession);
+
+        assertFalse("the released session has no emulator the view can render, so the switch to it is "
+                + "refused and the view keeps displaying the session the owner never left", switched);
+        assertEquals("a refused switch must leave the owner in the session they were already working "
+                + "in", session, view.getCurrentSession());
+        assertEquals("a refused switch must leave that session's own emulator on screen",
+            session.getEmulator(), view.mEmulator);
+        assertEquals("the owner had scrolled back into the transcript of the session they never left, "
+                + "and a switch that is refused makes no visible change by definition, so the row the "
+                + "view renders from must be exactly the one it rendered from before the switch was "
+                + "attempted; attaching a session discards the scroll position before it discovers "
+                + "whether the session can be rendered at all, so a refusal that restores only the "
+                + "session and its emulator silently scrolls the owner back to the bottom of a "
+                + "transcript they were reading, which is the same terminal-changing-under-them "
+                + "complaint the refusal exists to prevent", SCROLLED_BACK_TOP_ROW, view.mTopRow);
+        assertEquals("a dead key the owner has already pressed is held on the view until the next code "
+                + "point completes it, and attaching a session clears that pending accent before it "
+                + "discovers whether the session can be rendered at all, so a refused switch that does "
+                + "not restore it discards a keystroke the owner made and the accent never reaches the "
+                + "character they were composing", PENDING_COMBINING_ACCENT_CODE_POINT,
+            view.mCombiningAccent);
+    }
+
+    private void displayALiveSessionScrolledBackWithAPendingCombiningAccent() {
+        displayALiveSessionAtAUsableSize();
+        view.setTopRow(SCROLLED_BACK_TOP_ROW);
+        view.mCombiningAccent = PENDING_COMBINING_ACCENT_CODE_POINT;
+        assertEquals("this scenario only exists while the owner is scrolled back into the transcript, "
+                + "so the view must render from the scrolled-back row before the switch is attempted",
+            SCROLLED_BACK_TOP_ROW, view.mTopRow);
     }
 
     private void assertTheViewCanStillDisplaySomething(@NonNull String situation) {
