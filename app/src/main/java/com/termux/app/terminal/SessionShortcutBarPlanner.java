@@ -31,8 +31,6 @@ public final class SessionShortcutBarPlanner {
                                                           @NonNull List<SessionDefinitionEntry> entries,
                                                           @NonNull List<String> liveSessionNames) {
         List<SessionShortcut> rightToLeftShortcuts = new ArrayList<>();
-        Set<String> liveConfiguredSessionNames =
-            liveConfiguredSessionNames(alwaysNaSessionNames, liveSessionNames);
         Set<String> seenAlwaysNaTargets = new LinkedHashSet<>();
         for (String alwaysNaSessionName : alwaysNaSessionNames) {
             String trimmedName = alwaysNaSessionName.trim();
@@ -41,10 +39,6 @@ public final class SessionShortcutBarPlanner {
             }
             String targetSessionName =
                 resolveAlwaysNaTargetSessionName(trimmedName, entries, liveSessionNames);
-            if (!targetSessionName.equals(trimmedName)
-                    && liveConfiguredSessionNames.contains(targetSessionName)) {
-                continue;
-            }
             if (!seenAlwaysNaTargets.add(targetSessionName)) {
                 continue;
             }
@@ -63,19 +57,6 @@ public final class SessionShortcutBarPlanner {
             rightToLeftShortcuts.add(new SessionShortcut(projectLabel.trim(), pmSessionName));
         }
         return rightToLeftShortcuts;
-    }
-
-    @NonNull
-    private static Set<String> liveConfiguredSessionNames(@NonNull Set<String> alwaysNaSessionNames,
-                                                          @NonNull List<String> liveSessionNames) {
-        Set<String> liveConfiguredSessionNames = new LinkedHashSet<>();
-        for (String alwaysNaSessionName : alwaysNaSessionNames) {
-            String trimmedName = alwaysNaSessionName.trim();
-            if (!trimmedName.isEmpty() && liveSessionNames.contains(trimmedName)) {
-                liveConfiguredSessionNames.add(trimmedName);
-            }
-        }
-        return liveConfiguredSessionNames;
     }
 
     @NonNull
