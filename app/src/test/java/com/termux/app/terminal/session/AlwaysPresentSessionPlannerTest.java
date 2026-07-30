@@ -14,7 +14,7 @@ public class AlwaysPresentSessionPlannerTest {
     @Test
     public void planMissingSessionNamesReturnsAllConfiguredNamesWhenNoSessionsAreLive() {
         List<String> missing = planner.planMissingSessionNames(
-            Arrays.asList("alpha", "beta"), Collections.emptyList());
+            Arrays.asList("alpha", "beta"), Collections.emptyList(), Collections.emptySet());
 
         Assert.assertEquals(Arrays.asList("alpha", "beta"), missing);
     }
@@ -22,7 +22,7 @@ public class AlwaysPresentSessionPlannerTest {
     @Test
     public void planMissingSessionNamesSkipsNamesAlreadyLive() {
         List<String> missing = planner.planMissingSessionNames(
-            Arrays.asList("alpha", "beta"), Collections.singletonList("alpha"));
+            Arrays.asList("alpha", "beta"), Collections.singletonList("alpha"), Collections.emptySet());
 
         Assert.assertEquals(Collections.singletonList("beta"), missing);
     }
@@ -30,7 +30,7 @@ public class AlwaysPresentSessionPlannerTest {
     @Test
     public void planMissingSessionNamesReturnsEmptyWhenAllConfiguredNamesAreLive() {
         List<String> missing = planner.planMissingSessionNames(
-            Arrays.asList("alpha", "beta"), Arrays.asList("alpha", "beta"));
+            Arrays.asList("alpha", "beta"), Arrays.asList("alpha", "beta"), Collections.emptySet());
 
         Assert.assertTrue(missing.isEmpty());
     }
@@ -38,7 +38,7 @@ public class AlwaysPresentSessionPlannerTest {
     @Test
     public void planMissingSessionNamesReturnsEmptyWhenNoNamesAreConfigured() {
         List<String> missing = planner.planMissingSessionNames(
-            Collections.emptyList(), Collections.singletonList("alpha"));
+            Collections.emptyList(), Collections.singletonList("alpha"), Collections.emptySet());
 
         Assert.assertTrue(missing.isEmpty());
     }
@@ -46,7 +46,7 @@ public class AlwaysPresentSessionPlannerTest {
     @Test
     public void planMissingSessionNamesDeduplicatesAndTrimsConfiguredNames() {
         List<String> missing = planner.planMissingSessionNames(
-            Arrays.asList(" alpha ", "alpha", "beta"), Collections.emptyList());
+            Arrays.asList(" alpha ", "alpha", "beta"), Collections.emptyList(), Collections.emptySet());
 
         Assert.assertEquals(Arrays.asList("alpha", "beta"), missing);
     }
@@ -54,7 +54,7 @@ public class AlwaysPresentSessionPlannerTest {
     @Test
     public void planMissingSessionNamesIgnoresNullAndBlankConfiguredNames() {
         List<String> missing = planner.planMissingSessionNames(
-            Arrays.asList(null, "   ", "alpha"), Collections.emptyList());
+            Arrays.asList(null, "   ", "alpha"), Collections.emptyList(), Collections.emptySet());
 
         Assert.assertEquals(Collections.singletonList("alpha"), missing);
     }
@@ -65,8 +65,16 @@ public class AlwaysPresentSessionPlannerTest {
             "https://example.test/a", "https://example.test/b");
 
         List<String> missing = planner.planMissingSessionNames(
-            Collections.singletonList("myalways"), liveSessionNamesAfterReload);
+            Collections.singletonList("myalways"), liveSessionNamesAfterReload, Collections.emptySet());
 
         Assert.assertEquals(Collections.singletonList("myalways"), missing);
+    }
+
+    @Test
+    public void planMissingSessionNamesSkipsNamesTheOwnerHasHidden() {
+        List<String> missing = planner.planMissingSessionNames(
+            Arrays.asList("alpha", "beta"), Collections.emptyList(), Collections.singleton("alpha"));
+
+        Assert.assertEquals(Collections.singletonList("beta"), missing);
     }
 }

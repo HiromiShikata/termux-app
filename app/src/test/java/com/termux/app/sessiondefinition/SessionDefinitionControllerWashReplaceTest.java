@@ -367,30 +367,6 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
-    public void authoritativeReloadPrunesHiddenStateOfDisappearedGithubNamedSessionSoReAddShowsVisible()
-        throws Exception {
-        activity.getPreferences().setRemoveGithubSessionsNotInList(false);
-        activity.getPreferences().setHideHiddenSessions(true);
-        activity.getPreferences().setSessionDisabled("https://github.com/owner/repo/issues/2", true);
-        assertTrue(activity.getPreferences().isSessionDisabled("https://github.com/owner/repo/issues/2"));
-
-        TermuxSession githubSession = session("https://github.com/owner/repo/issues/2");
-        shellManager.mTermuxSessions.add(githubSession);
-        attachCurrentSession(githubSession.getTerminalSession());
-
-        List<SessionDefinitionEntry> entriesWithoutGithubSession = Collections.singletonList(
-            new SessionDefinitionEntry("projectOne", "storyA",
-                Collections.singletonList("https://github.com/owner/repo/issues/1")));
-
-        SessionDefinitionLoadResult authoritativeResult = new SessionDefinitionLoadResult(
-            entriesWithoutGithubSession, 1, Collections.emptyList());
-
-        invokeBuildSessions(authoritativeResult);
-
-        assertFalse(activity.getPreferences().isSessionDisabled("https://github.com/owner/repo/issues/2"));
-    }
-
-    @Test
     public void partialReloadDoesNotPruneHiddenStateOfDisappearedGithubNamedSession() throws Exception {
         activity.getPreferences().setRemoveGithubSessionsNotInList(false);
         activity.getPreferences().setSessionDisabled("https://github.com/owner/repo/issues/2", true);

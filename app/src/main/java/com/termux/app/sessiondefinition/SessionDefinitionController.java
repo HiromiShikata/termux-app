@@ -117,7 +117,6 @@ public final class SessionDefinitionController {
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 
         if (authoritativeLoad) {
-            pruneHiddenStateForDisappearedGithubSessions(entries);
             removeSessionsWithDisappearedDefinition(entries);
         }
 
@@ -245,19 +244,6 @@ public final class SessionDefinitionController {
             if (terminalSession != null) {
                 activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
             }
-        }
-    }
-
-    private void pruneHiddenStateForDisappearedGithubSessions(List<SessionDefinitionEntry> currentEntries) {
-        if (activity.getPreferences() == null) {
-            return;
-        }
-        Set<String> persistedHiddenSessionNames = activity.getPreferences().getDisabledSessionNames();
-        List<String> hiddenSessionNamesToPrune =
-            githubDisappearedSessionPlanner.planGithubHiddenSessionNamesToPrune(
-                currentEntries, persistedHiddenSessionNames);
-        for (String sessionName : hiddenSessionNamesToPrune) {
-            activity.getPreferences().setSessionDisabled(sessionName, false);
         }
     }
 
