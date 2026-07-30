@@ -33,6 +33,12 @@ public final class TerminalSession extends TerminalOutput {
     private static final int MSG_NEW_INPUT = 1;
     private static final int MSG_PROCESS_EXITED = 4;
 
+    public static final int NO_SHELL_PROCESS_PID = -1;
+
+    static final int PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES = 64 * 1024;
+
+    static final int TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES = 4096;
+
     public final String mHandle = UUID.randomUUID().toString();
 
     TerminalEmulator mEmulator;
@@ -45,20 +51,19 @@ public final class TerminalSession extends TerminalOutput {
      * A queue written to from a separate thread when the process outputs, and read by main thread to process by
      * terminal emulator.
      */
-    final ByteQueue mProcessToTerminalIOQueue = new ByteQueue(64 * 1024);
+    ByteQueue mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
     /**
      * A queue written to from the main thread due to user interaction, and read by another thread which forwards by
      * writing to the {@link #mTerminalFileDescriptor}.
      */
-    final ByteQueue mTerminalToProcessIOQueue = new ByteQueue(4096);
+    ByteQueue mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
     /** Buffer to write translate code points into utf8 before writing to mTerminalToProcessIOQueue */
     private final byte[] mUtf8InputBuffer = new byte[5];
 
     /** Callback which gets notified when a session finishes or changes title. */
     TerminalSessionClient mClient;
 
-    /** The pid of the shell process. 0 if not started and -1 if finished running. */
-    int mShellPid;
+    int mShellPid = NO_SHELL_PROCESS_PID;
 
     /** The exit status of the shell process. Only valid if ${@link #mShellPid} is -1. */
     int mShellExitStatus;
@@ -68,6 +73,8 @@ public final class TerminalSession extends TerminalOutput {
      * {@link JNI#createSubprocess(String, String, String[], String[], int[], int, int, int, int)}.
      */
     private int mTerminalFileDescriptor;
+
+    int mShellProcessGeneration;
 
     /** Set by the application for user identification of session, not by terminal. */
     public String mSessionName;
@@ -145,13 +152,19 @@ public final class TerminalSession extends TerminalOutput {
      */
     public void initializeEmulator(int columns, int rows, int cellWidthPixels, int cellHeightPixels) {
         mEmulator = new TerminalEmulator(this, columns, rows, cellWidthPixels, cellHeightPixels, mTranscriptRows, mClient);
+        replaceEachIOQueueAPreviousShellProcessClosed();
+
+        final ByteQueue processToTerminalIOQueue = mProcessToTerminalIOQueue;
+        final ByteQueue terminalToProcessIOQueue = mTerminalToProcessIOQueue;
+        final int shellProcessGeneration = mShellProcessGeneration;
 
         int[] processId = new int[1];
-        mTerminalFileDescriptor = JNI.createSubprocess(mShellPath, mCwd, mArgs, mEnv, processId, rows, columns, cellWidthPixels, cellHeightPixels);
+        final int terminalFileDescriptor = JNI.createSubprocess(mShellPath, mCwd, mArgs, mEnv, processId, rows, columns, cellWidthPixels, cellHeightPixels);
+        mTerminalFileDescriptor = terminalFileDescriptor;
         mShellPid = processId[0];
         mClient.setTerminalShellPid(this, mShellPid);
 
-        final FileDescriptor terminalFileDescriptorWrapped = wrapFileDescriptor(mTerminalFileDescriptor, mClient);
+        final FileDescriptor terminalFileDescriptorWrapped = wrapFileDescriptor(terminalFileDescriptor, mClient);
 
         new Thread("TermSessionInputReader[pid=" + mShellPid + "]") {
             @Override
@@ -161,7 +174,7 @@ public final class TerminalSession extends TerminalOutput {
                     while (true) {
                         int read = termIn.read(buffer);
                         if (read == -1) return;
-                        if (!mProcessToTerminalIOQueue.write(buffer, 0, read)) return;
+                        if (!processToTerminalIOQueue.write(buffer, 0, read)) return;
                         mMainThreadHandler.sendEmptyMessage(MSG_NEW_INPUT);
                     }
                 } catch (Exception e) {
@@ -176,7 +189,7 @@ public final class TerminalSession extends TerminalOutput {
                 final byte[] buffer = new byte[4096];
                 try (FileOutputStream termOut = new FileOutputStream(terminalFileDescriptorWrapped)) {
                     while (true) {
-                        int bytesToWrite = mTerminalToProcessIOQueue.read(buffer, true);
+                        int bytesToWrite = terminalToProcessIOQueue.read(buffer, true);
                         if (bytesToWrite == -1) return;
                         termOut.write(buffer, 0, bytesToWrite);
                     }
@@ -190,7 +203,8 @@ public final class TerminalSession extends TerminalOutput {
             @Override
             public void run() {
                 int processExitCode = JNI.waitFor(mShellPid);
-                mMainThreadHandler.sendMessage(mMainThreadHandler.obtainMessage(MSG_PROCESS_EXITED, processExitCode));
+                mMainThreadHandler.sendMessage(mMainThreadHandler.obtainMessage(MSG_PROCESS_EXITED,
+                    shellProcessGeneration, terminalFileDescriptor, processExitCode));
             }
         }.start();
 
@@ -331,7 +345,7 @@ public final class TerminalSession extends TerminalOutput {
     /** Cleanup resources when the process exits. */
     void cleanupResources(int exitStatus) {
         synchronized (this) {
-            mShellPid = -1;
+            mShellPid = NO_SHELL_PROCESS_PID;
             mShellExitStatus = exitStatus;
         }
 
@@ -353,13 +367,35 @@ public final class TerminalSession extends TerminalOutput {
 
     public void releaseRuntimeResources() {
         mRuntimeResourcesReleased = true;
+        releaseRuntimeResourcesKeepingTheRowReopenable();
+    }
+
+    public void releaseRuntimeResourcesKeepingTheRowReopenable() {
         finishIfRunning();
         closeShellStreams();
-        synchronized (this) {
-            mShellPid = -1;
-        }
+        supersedeTheShellProcessInstanceTheSessionOwns();
+        disownTheShellProcessIdentifier();
         mMainThreadHandler.removeCallbacksAndMessages(null);
         mEmulator = null;
+    }
+
+    private void supersedeTheShellProcessInstanceTheSessionOwns() {
+        mShellProcessGeneration++;
+    }
+
+    private void replaceEachIOQueueAPreviousShellProcessClosed() {
+        if (!mTerminalToProcessIOQueue.isOpen()) {
+            mTerminalToProcessIOQueue = new ByteQueue(TERMINAL_TO_PROCESS_IO_QUEUE_CAPACITY_BYTES);
+        }
+        if (!mProcessToTerminalIOQueue.isOpen()) {
+            mProcessToTerminalIOQueue = new ByteQueue(PROCESS_TO_TERMINAL_IO_QUEUE_CAPACITY_BYTES);
+        }
+    }
+
+    private void disownTheShellProcessIdentifier() {
+        synchronized (this) {
+            mShellPid = NO_SHELL_PROCESS_PID;
+        }
     }
 
     @Override
@@ -368,7 +404,7 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     public synchronized boolean isRunning() {
-        return mShellPid != -1;
+        return mShellPid != NO_SHELL_PROCESS_PID;
     }
 
     /** Only valid if not {@link #isRunning()}. */
@@ -445,6 +481,11 @@ public final class TerminalSession extends TerminalOutput {
         return result;
     }
 
+    static boolean exitReportBelongsToASupersededShellProcess(int reportingShellProcessGeneration,
+                                                              int ownedShellProcessGeneration) {
+        return reportingShellProcessGeneration != ownedShellProcessGeneration;
+    }
+
     @SuppressLint("HandlerLeak")
     class MainThreadHandler extends Handler {
 
@@ -452,9 +493,11 @@ public final class TerminalSession extends TerminalOutput {
 
         @Override
         public void handleMessage(Message msg) {
-            if (mEmulator != null) renderPendingShellOutput();
+            renderPendingShellOutput();
 
             if (msg.what != MSG_PROCESS_EXITED) return;
+
+            if (exitReportBelongsToASupersededShellProcess(msg.arg1, mShellProcessGeneration)) return;
 
             int exitCode = (Integer) msg.obj;
             cleanupResources(exitCode);
@@ -465,6 +508,11 @@ public final class TerminalSession extends TerminalOutput {
         private void renderPendingShellOutput() {
             int bytesRead = mProcessToTerminalIOQueue.read(mReceiveBuffer, false);
             if (bytesRead <= 0) return;
+            if (mEmulator == null) {
+                Logger.logDebug(mClient, LOG_TAG, "Discarded " + bytesRead + " bytes of output of session \""
+                    + mSessionName + "\" because its terminal emulator was released");
+                return;
+            }
             mTotalBytesProcessed += bytesRead;
             int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
             if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);

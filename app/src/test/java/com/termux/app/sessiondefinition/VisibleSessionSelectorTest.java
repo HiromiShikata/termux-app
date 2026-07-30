@@ -97,4 +97,25 @@ public class VisibleSessionSelectorTest {
 
         Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
     }
+
+    @Test
+    public void excludesHiddenOnScreenListRowsFromReconnectAndScan() {
+        Set<String> visible = selector.selectVisibleSessionNames(true,
+            "https://example.test/current", true,
+            Arrays.asList("https://example.test/current", "https://example.test/hidden-row"),
+            Collections.singleton("https://example.test/hidden-row"));
+
+        Assert.assertEquals(Collections.singleton("https://example.test/current"), visible);
+    }
+
+    @Test
+    public void excludesTheCurrentSessionWhileItIsMarkedHidden() {
+        Set<String> visible = selector.selectVisibleSessionNames(true,
+            "https://example.test/current", true,
+            Collections.singletonList("https://example.test/current"),
+            Collections.singleton("https://example.test/current"));
+
+        Assert.assertEquals("a hidden session is scanned and reconnected by nothing, whatever the "
+                + "terminal view still happens to hold", Collections.emptySet(), visible);
+    }
 }

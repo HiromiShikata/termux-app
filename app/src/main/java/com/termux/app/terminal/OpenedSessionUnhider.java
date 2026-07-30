@@ -5,12 +5,12 @@ import androidx.annotation.Nullable;
 
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
-public final class ShortcutNavigationSessionUnhider {
+public final class OpenedSessionUnhider {
 
-    private ShortcutNavigationSessionUnhider() {
+    private OpenedSessionUnhider() {
     }
 
-    public static boolean unhideNavigatedSession(@NonNull TermuxAppSharedPreferences preferences,
+    public static boolean unhideOpenedSession(@NonNull TermuxAppSharedPreferences preferences,
                                                  @Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) {
             return false;

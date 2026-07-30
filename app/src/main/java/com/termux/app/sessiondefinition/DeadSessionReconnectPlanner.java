@@ -20,6 +20,7 @@ public final class DeadSessionReconnectPlanner {
         private final boolean current;
         private final boolean hung;
         private final Long lastOutTimeMillis;
+        private final boolean reconnecting;
 
         public CandidateSession(String name, boolean running) {
             this(name, running, false, false, null);
@@ -27,11 +28,17 @@ public final class DeadSessionReconnectPlanner {
 
         public CandidateSession(String name, boolean running, boolean current, boolean hung,
                                 @Nullable Long lastOutTimeMillis) {
+            this(name, running, current, hung, lastOutTimeMillis, false);
+        }
+
+        public CandidateSession(String name, boolean running, boolean current, boolean hung,
+                                @Nullable Long lastOutTimeMillis, boolean reconnecting) {
             this.name = name;
             this.running = running;
             this.current = current;
-            this.hung = hung;
+            this.hung = running && hung;
             this.lastOutTimeMillis = lastOutTimeMillis;
+            this.reconnecting = reconnecting;
         }
 
         public String getName() {
@@ -55,12 +62,16 @@ public final class DeadSessionReconnectPlanner {
             return lastOutTimeMillis;
         }
 
+        public boolean isReconnecting() {
+            return reconnecting;
+        }
+
         boolean isDeadProcessReconnectCandidate() {
-            return !current && !running;
+            return !current && !running && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {
-            return !current && running && hung;
+            return !current && hung && !reconnecting;
         }
     }
 

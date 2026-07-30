@@ -10,14 +10,26 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 public class TermuxServiceTest {
 
-    private static TerminalSession newTerminalSession() {
-        return new TerminalSession("/system/bin/sh", "/", new String[0], new String[0], 100, null);
+    private static TerminalSession newTerminalSession() throws Exception {
+        TerminalSession terminalSession =
+            new TerminalSession("/system/bin/sh", "/", new String[0], new String[0], 100, null);
+        markShellProcessAsRunning(terminalSession);
+        return terminalSession;
+    }
+
+    private static final int RUNNING_SHELL_PROCESS_PID = 1;
+
+    private static void markShellProcessAsRunning(TerminalSession terminalSession) throws Exception {
+        Field shellPidField = TerminalSession.class.getDeclaredField("mShellPid");
+        shellPidField.setAccessible(true);
+        shellPidField.setInt(terminalSession, RUNNING_SHELL_PROCESS_PID);
     }
 
     private static TermuxSession newTermuxSession(TerminalSession terminalSession) throws Exception {

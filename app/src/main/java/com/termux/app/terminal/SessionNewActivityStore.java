@@ -398,22 +398,8 @@ public class SessionNewActivityStore {
         save();
     }
 
-    /**
-     * The reconnect-in-place variant of {@link #purgeSession}. A reconnect tears down the old
-     * session and immediately re-creates a session reusing the same {@code sessionName}, so the row
-     * the owner sees is the same row. Clearing the displayed statusline {@code call:}/{@code
-     * out:}/{@code reply:} times here would make that row jump to {@code >1d} until the reconnected
-     * session re-renders and its statusline is reparsed. The displayed times are therefore kept and
-     * left to be replaced by the next parsed statusline ({@link #recordStatuslineTimes} already
-     * replaces them on a newer value). The app-captured owner input time ({@link
-     * #getLastUserInputTimeMillis}) is kept for the same reason: it is the optimistic half of the
-     * displayed {@code reply:} value ({@link #effectiveReplyTimeMillis} takes the later of it and the
-     * laggy statusline {@code reply:} token), so clearing it on reconnect would revert a reply the
-     * owner just sent back to the minutes-old statusline value until the next statusline scan lands.
-     * Only the per-session bookkeeping that genuinely belongs to the torn-down session (seen and the
-     * call-to-user reason cycle) is cleared.
-     */
-    public void purgeSessionPreservingStatuslineTimes(@NonNull String sessionName) {
+    public void purgeSessionKeepingTheCallAndReplyTimes(@NonNull String sessionName) {
+        mStatuslineOutTimeMillisByName.remove(sessionName);
         mLastExplicitCallReasonByName.remove(sessionName);
         mUnacknowledgedCallReasonsByName.remove(sessionName);
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);

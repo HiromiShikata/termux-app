@@ -246,4 +246,49 @@ public class DeadSessionReconnectPlannerTest {
                 "https://example.test/hung-newer"),
             namesToReconnect);
     }
+
+    @Test
+    public void doesNotReselectASessionWhoseReconnectIsStillInFlight() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/reconnecting", false, false, false, null, true));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.emptyList(), namesToReconnect);
+    }
+
+    @Test
+    public void doesNotReselectAHungSessionWhoseReconnectIsStillInFlight() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/reconnecting", true, false, true, 1L, true));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.emptyList(), namesToReconnect);
+    }
+
+    @Test
+    public void reselectsASessionOnceItsReconnectHasSettled() {
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/settled", false, false, false, null, false));
+
+        List<String> namesToReconnect = planner.planSessionNamesToReconnect(candidates, "ssh {name}");
+
+        Assert.assertEquals(Collections.singletonList("https://example.test/settled"), namesToReconnect);
+    }
+
+    @Test
+    public void aCandidateThatIsNotRunningIsNeverCarriedAsHung() {
+        DeadSessionReconnectPlanner.CandidateSession candidate =
+            new DeadSessionReconnectPlanner.CandidateSession(
+                "https://example.test/dead", false, false, true, 1L, false);
+
+        Assert.assertFalse("hung means alive but no longer producing output, so a candidate whose "
+                + "shell process has exited must not carry the hung flag whatever its caller passes, "
+                + "otherwise a state the running system cannot produce becomes constructible here",
+            candidate.isHung());
+    }
 }
