@@ -2,6 +2,7 @@ package com.termux.app;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
 import androidx.work.Configuration;
@@ -9,6 +10,7 @@ import androidx.work.Configuration;
 import com.termux.BuildConfig;
 import com.termux.app.apkupdate.ApkUpdateCheckWorker;
 import com.termux.app.diagnostics.CrashReportDiagnosticsSupplement;
+import com.termux.app.diagnostics.ProcessUptimeTracker;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.TermuxBootstrap;
@@ -35,6 +37,8 @@ public class TermuxApplication extends Application implements Configuration.Prov
 
     public void onCreate() {
         super.onCreate();
+
+        ProcessUptimeTracker.recordProcessStart(SystemClock.elapsedRealtime());
 
         Context context = getApplicationContext();
 

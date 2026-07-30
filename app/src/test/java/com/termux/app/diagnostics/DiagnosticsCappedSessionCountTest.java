@@ -69,7 +69,11 @@ public class DiagnosticsCappedSessionCountTest {
 
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, 0L,
             countedTowardCap, displayedCount, 64, Collections.<DiagnosticsSessionLine>emptyList(),
-            0, 0, false, true, Collections.<DiagnosticEvent>emptyList());
+            0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
+            new DiagnosticsMemoryUsage(0, 0, 0, 0),
+            new DiagnosticsWorkCostLine(0, 0, 0, 0),
+            new DiagnosticsWorkCostLine(0, 0, 0, 0),
+            0L);
 
         // Orphaned is derived from the corrected live count (10), not the total 23 sessions.
         Assert.assertEquals(aliveCount, report.getSessionsCountedTowardCap());

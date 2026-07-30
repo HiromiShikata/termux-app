@@ -13,14 +13,32 @@ public class DiagnosticsReportBuilderTest {
     private static final long REPORT_MILLIS = 1783216800000L;
     private static final long EVENT_MILLIS = 1783216770000L;
 
+    private static final DiagnosticsMemoryUsage NO_MEMORY_USAGE = new DiagnosticsMemoryUsage(0, 0, 0, 0);
+    private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
+
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
                                          int countedTowardCap, int displayedCount, int maxCap,
                                          int openTabCount, int tabHistoryEntryCount,
                                          boolean wakeLockHeld, boolean foreground,
                                          List<DiagnosticEvent> events) {
+        return reportWith(sessionLines, countedTowardCap, displayedCount, maxCap,
+            openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, 0L);
+    }
+
+    private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
+                                         int countedTowardCap, int displayedCount, int maxCap,
+                                         int openTabCount, int tabHistoryEntryCount,
+                                         boolean wakeLockHeld, boolean foreground,
+                                         List<DiagnosticEvent> events,
+                                         DiagnosticsMemoryUsage memoryUsage,
+                                         DiagnosticsWorkCostLine backgroundOutputScanCost,
+                                         DiagnosticsWorkCostLine bufferReflowCost,
+                                         long processUptimeMillis) {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             countedTowardCap, displayedCount, maxCap, sessionLines,
-            openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events);
+            openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
+            memoryUsage, backgroundOutputScanCost, bufferReflowCost, processUptimeMillis);
     }
 
     @Test
@@ -61,8 +79,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsNameAliveStateAndSecondsSinceActivity() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true));
-        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80));
+        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -142,5 +160,133 @@ public class DiagnosticsReportBuilderTest {
         String text = new DiagnosticsReportBuilder().build(report);
 
         Assert.assertTrue(text.contains("2026-07-05T01:59:30Z WAKE_LOCK_RELEASED\n"));
+    }
+
+    @Test
+    public void memorySectionShowsJavaAndNativeHeapInWholeMegabytes() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            new DiagnosticsMemoryUsage(187, 224, 512, 96), NO_WORK_COST, NO_WORK_COST, 0L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("Java heap used must be reported so a reader can see whether the live heap has grown"
+                + " large enough to make every garbage collection long: " + text,
+            text.contains("Java heap used: 187 MB"));
+        Assert.assertTrue("Java heap total must be reported so used can be read against the currently committed heap: "
+                + text,
+            text.contains("Java heap total: 224 MB"));
+        Assert.assertTrue("Java heap max must be reported so a reader can see how close the process is to the heap"
+                + " ceiling, which is when collections turn pathological: " + text,
+            text.contains("Java heap max: 512 MB"));
+        Assert.assertTrue("Native heap allocated must be reported because it is not covered by the Java heap figures"
+                + " and still counts against the process memory budget: " + text,
+            text.contains("Native heap allocated: 96 MB"));
+    }
+
+    @Test
+    public void sessionLineShowsTranscriptRowsAndColumns() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92));
+        DiagnosticsReport report = reportWith(lines, 1, 1, 32,
+            0, 0, false, true, Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("Per-session transcript rows and columns must be reported because the cost of the main-thread"
+                + " transcript scan is proportional to them, so they are what makes a slow scan attributable: " + text,
+            text.contains("- host-a | alive | last activity: 12s ago | transcript rows: 4213 | columns: 92"));
+    }
+
+    @Test
+    public void sessionsSectionShowsTotalTranscriptRowsAcrossAllSessions() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92));
+        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92));
+        DiagnosticsReport report = reportWith(lines, 2, 2, 32,
+            0, 0, false, true, Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("The total across sessions must be reported because the heap held by scrollback is a"
+                + " whole-process quantity, and a reader should not have to add the per-session rows by hand: " + text,
+            text.contains("Total transcript rows: 6000"));
+    }
+
+    @Test
+    public void mainThreadCostSectionShowsScanAndReflowCounters() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            NO_MEMORY_USAGE,
+            new DiagnosticsWorkCostLine(1204, 8600, 41, 4213),
+            new DiagnosticsWorkCostLine(9, 730, 213, 3980),
+            0L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("The scan counter must be labelled as the background output tag scan so the reader can tell"
+                + " which of the two candidate mechanisms the numbers below belong to: " + text,
+            text.contains("Background output tag scan"));
+        Assert.assertTrue("The scan count must be reported because a per-scan cost is only meaningful against how"
+                + " often the scan ran: " + text,
+            text.contains("Count: 1204"));
+        Assert.assertTrue("The accumulated scan time must be reported because it is the share of main-thread time the"
+                + " scan has taken away from drawing frames: " + text,
+            text.contains("Total: 8600 ms"));
+        Assert.assertTrue("The worst single scan must be reported because a single long main-thread block is what the"
+                + " user perceives as a stutter, which an average would hide: " + text,
+            text.contains("Max: 41 ms"));
+        Assert.assertTrue("The transcript row count at the worst scan must be reported because it is the evidence that"
+                + " links the cost to accumulated scrollback rather than to something else: " + text,
+            text.contains("Transcript rows at max: 4213"));
+
+        Assert.assertTrue("The reflow counter must be labelled as the column-changing resize reflow so it is not"
+                + " confused with the scan counter that precedes it: " + text,
+            text.contains("Buffer reflow on column-changing resize"));
+        Assert.assertTrue("The reflow count must be reported because a font size change is rare, and a large cost"
+                + " spread over few reflows means something different from the same cost spread over many: " + text,
+            text.contains("Count: 9"));
+        Assert.assertTrue("The accumulated reflow time must be reported so it can be compared with the scan total to"
+                + " decide which mechanism dominates: " + text,
+            text.contains("Total: 730 ms"));
+        Assert.assertTrue("The worst single reflow must be reported because a font size change that blocks the main"
+                + " thread for hundreds of milliseconds is exactly the reported symptom: " + text,
+            text.contains("Max: 213 ms"));
+        Assert.assertTrue("The transcript row count at the worst reflow must be reported because the reflow walks"
+                + " every transcript row, so the row count is what explains the duration: " + text,
+            text.contains("Transcript rows at max: 3980"));
+    }
+
+    @Test
+    public void workCostWithNoSamplesReportsMaxAsNotApplicable() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, 0L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("A counter that never ran must show its zero count rather than be omitted, because knowing"
+                + " a mechanism never fired is itself evidence that rules it out: " + text,
+            text.contains("Count: 0"));
+        Assert.assertTrue("With no samples the maximum must read n/a rather than 0 ms, because 0 ms would be read as a"
+                + " measured result showing the work is free: " + text,
+            text.contains("Max: n/a"));
+        Assert.assertFalse("The transcript row count at the maximum must be omitted when no maximum exists, because"
+                + " printing 0 rows would look like a real observation: " + text,
+            text.contains("Transcript rows at max"));
+    }
+
+    @Test
+    public void headerShowsProcessUptime() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, 45296000L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("Process uptime must be reported because every counter in this report accumulates over the"
+                + " process lifetime, so the totals cannot be interpreted without knowing how long that has been: "
+                + text,
+            text.contains("Process uptime: 12h 34m 56s"));
     }
 }

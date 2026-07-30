@@ -9,13 +9,17 @@ public final class DiagnosticsSessionLine {
     private final boolean mAlive;
     private final long mSecondsSinceLastActivity;
     private final boolean mHasLastActivity;
+    private final int mTranscriptRows;
+    private final int mColumns;
 
     public DiagnosticsSessionLine(@NonNull String name, boolean alive, long secondsSinceLastActivity,
-                                  boolean hasLastActivity) {
+                                  boolean hasLastActivity, int transcriptRows, int columns) {
         mName = name;
         mAlive = alive;
         mSecondsSinceLastActivity = secondsSinceLastActivity;
         mHasLastActivity = hasLastActivity;
+        mTranscriptRows = transcriptRows;
+        mColumns = columns;
     }
 
     @NonNull
@@ -33,5 +37,13 @@ public final class DiagnosticsSessionLine {
 
     public boolean hasLastActivity() {
         return mHasLastActivity;
+    }
+
+    public int getTranscriptRows() {
+        return mTranscriptRows;
+    }
+
+    public int getColumns() {
+        return mColumns;
     }
 }

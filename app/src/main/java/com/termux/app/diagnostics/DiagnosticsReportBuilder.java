@@ -21,8 +21,16 @@ public final class DiagnosticsReportBuilder {
         builder.append("App version: ").append(report.getVersionName())
             .append(" (").append(report.getVersionCode()).append(")\n");
 
+        builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
+
+        builder.append('\n');
+        appendMemorySection(builder, report);
+
         builder.append('\n');
         appendSessionsSection(builder, report);
+
+        builder.append('\n');
+        appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
         appendBrowserSection(builder, report);
@@ -36,6 +44,44 @@ public final class DiagnosticsReportBuilder {
         return builder.toString();
     }
 
+    @NonNull
+    private String formatUptime(long uptimeMillis) {
+        long totalSeconds = uptimeMillis / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        return hours + "h " + minutes + "m " + seconds + "s";
+    }
+
+    private void appendMemorySection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+        DiagnosticsMemoryUsage memoryUsage = report.getMemoryUsage();
+        builder.append("Memory\n");
+        builder.append("  Java heap used: ").append(memoryUsage.getJavaHeapUsedMegabytes()).append(" MB\n");
+        builder.append("  Java heap total: ").append(memoryUsage.getJavaHeapTotalMegabytes()).append(" MB\n");
+        builder.append("  Java heap max: ").append(memoryUsage.getJavaHeapMaxMegabytes()).append(" MB\n");
+        builder.append("  Native heap allocated: ")
+            .append(memoryUsage.getNativeHeapAllocatedMegabytes()).append(" MB\n");
+    }
+
+    private void appendMainThreadCostSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+        builder.append("Main-thread cost\n");
+        appendWorkCostLines(builder, "Background output tag scan", report.getBackgroundOutputScanCost());
+        appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
+    }
+
+    private void appendWorkCostLines(@NonNull StringBuilder builder, @NonNull String label,
+                                     @NonNull DiagnosticsWorkCostLine cost) {
+        builder.append("  ").append(label).append('\n');
+        builder.append("    Count: ").append(cost.getSampleCount()).append('\n');
+        builder.append("    Total: ").append(cost.getTotalElapsedMillis()).append(" ms\n");
+        if (cost.getSampleCount() == 0) {
+            builder.append("    Max: n/a\n");
+            return;
+        }
+        builder.append("    Max: ").append(cost.getMaxElapsedMillis()).append(" ms\n");
+        builder.append("    Transcript rows at max: ").append(cost.getTranscriptRowsAtMaxElapsed()).append('\n');
+    }
+
     private void appendSessionsSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
         builder.append("Sessions\n");
         builder.append("  Counted toward cap: ").append(report.getSessionsCountedTowardCap()).append('\n');
@@ -45,6 +91,7 @@ public final class DiagnosticsReportBuilder {
             builder.append("  Orphaned (counted but not displayed): ").append(orphaned).append('\n');
         }
         builder.append("  Max sessions cap: ").append(report.getMaxSessionsCap()).append('\n');
+        builder.append("  Total transcript rows: ").append(report.getTotalTranscriptRows()).append('\n');
         List<DiagnosticsSessionLine> lines = report.getSessionLines();
         if (lines.isEmpty()) {
             builder.append("  (no sessions)\n");
@@ -54,6 +101,8 @@ public final class DiagnosticsReportBuilder {
             builder.append("  - ").append(line.getName())
                 .append(" | ").append(line.isAlive() ? "alive" : "dead")
                 .append(" | last activity: ").append(formatSecondsSinceLastActivity(line))
+                .append(" | transcript rows: ").append(line.getTranscriptRows())
+                .append(" | columns: ").append(line.getColumns())
                 .append('\n');
         }
     }
