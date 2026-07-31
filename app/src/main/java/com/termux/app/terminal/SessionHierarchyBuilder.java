@@ -39,6 +39,16 @@ public final class SessionHierarchyBuilder {
                                            @NonNull List<SessionDefinitionEntry> entries,
                                            @NonNull String naProjectLabel,
                                            @NonNull Set<String> alwaysNaSessionNames) {
+        return build(sessionNames, entries, naProjectLabel, alwaysNaSessionNames,
+            Collections.emptySet());
+    }
+
+    @NonNull
+    public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
+                                           @NonNull List<SessionDefinitionEntry> entries,
+                                           @NonNull String naProjectLabel,
+                                           @NonNull Set<String> alwaysNaSessionNames,
+                                           @NonNull Set<String> deletedSessionNames) {
         if (entries.isEmpty()) {
             return flatten(sessionNames);
         }
