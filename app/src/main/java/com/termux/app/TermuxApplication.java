@@ -10,6 +10,7 @@ import androidx.work.Configuration;
 import com.termux.BuildConfig;
 import com.termux.app.apkupdate.ApkUpdateCheckWorker;
 import com.termux.app.diagnostics.CrashReportDiagnosticsSupplement;
+import com.termux.app.diagnostics.MainThreadStallWatchdog;
 import com.termux.app.diagnostics.ProcessUptimeTracker;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
@@ -39,6 +40,7 @@ public class TermuxApplication extends Application implements Configuration.Prov
         super.onCreate();
 
         ProcessUptimeTracker.recordProcessStart(SystemClock.elapsedRealtime());
+        MainThreadStallWatchdog.start();
 
         Context context = getApplicationContext();
 

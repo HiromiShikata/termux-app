@@ -73,6 +73,7 @@ public class DiagnosticsCappedSessionCountTest {
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, ""),
             0L);
 
         // Orphaned is derived from the corrected live count (10), not the total 23 sessions.
