@@ -98,16 +98,11 @@ public final class SessionShortcutBarPlanner {
     }
 
     @NonNull
-    public static List<SessionShortcut> renderOrderPresentShortcuts(
-            @NonNull List<SessionShortcut> rightToLeftShortcuts,
-            @NonNull Set<String> presentSessionNames) {
+    public static List<SessionShortcut> renderOrderShortcuts(
+            @NonNull List<SessionShortcut> rightToLeftShortcuts) {
         List<SessionShortcut> renderOrderShortcuts = new ArrayList<>();
         for (int index = rightToLeftShortcuts.size() - 1; index >= 0; index--) {
-            SessionShortcut shortcut = rightToLeftShortcuts.get(index);
-            if (!presentSessionNames.contains(shortcut.getTargetSessionName())) {
-                continue;
-            }
-            renderOrderShortcuts.add(shortcut);
+            renderOrderShortcuts.add(rightToLeftShortcuts.get(index));
         }
         return renderOrderShortcuts;
     }

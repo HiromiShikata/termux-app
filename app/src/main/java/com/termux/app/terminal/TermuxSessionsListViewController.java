@@ -1662,7 +1662,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
     }
 
-    private void openDefinitionBackedSession(@Nullable String sessionName) {
+    public void openDefinitionBackedSession(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) {
             return;
         }
