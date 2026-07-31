@@ -44,6 +44,15 @@ public class SessionExitDiagnosticEventTest {
     }
 
     @Test
+    public void theRecordedExitNamesTheSessionThatExited() throws IOException {
+        String body = exitCallbackBody();
+
+        Assert.assertTrue("An exit recorded without the session name cannot be matched against the create and remove"
+                + " entries of the same session, which is the whole point of recording it: " + body,
+            body.contains("diagnosticSessionName(termuxSession.getTerminalSession())"));
+    }
+
+    @Test
     public void theExitIsRecordedOnlyWhenTheSessionWasStillInTheSessionList() throws IOException {
         String body = exitCallbackBody();
 
