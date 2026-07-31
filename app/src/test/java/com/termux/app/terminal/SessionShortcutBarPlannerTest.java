@@ -112,28 +112,31 @@ public class SessionShortcutBarPlannerTest {
         Set<String> alwaysNaSessionNames = namesInOrder("na1", "na2");
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
-        Set<String> presentSessionNames = namesInOrder("na1", "na2", "uminopm", "xmilepm");
 
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
 
         Assert.assertEquals(Arrays.asList("xmilepm", "uminopm", "na2", "na1"),
             targetSessionNames(renderOrderShortcuts));
     }
 
     @Test
-    public void notPresentTargetSessionIsSkippedFromRenderedShortcuts() {
+    public void aTargetSessionThatDoesNotExistYetStillRendersItsShortcut() {
         List<SessionDefinitionEntry> entries = Arrays.asList(entry("umino"), entry("xmile"));
         Set<String> alwaysNaSessionNames = namesInOrder("na1", "na2");
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
-        Set<String> presentSessionNames = namesInOrder("na1", "xmilepm");
 
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
 
-        Assert.assertEquals(Arrays.asList("xmilepm", "na1"), targetSessionNames(renderOrderShortcuts));
-        Assert.assertEquals(Arrays.asList("xmile", "na1"), labels(renderOrderShortcuts));
+        Assert.assertEquals("every shortcut the session definition and the pinned-name configuration"
+                + " ask for must be rendered; whether its target session already exists decides only"
+                + " what tapping it does",
+            Arrays.asList("xmilepm", "uminopm", "na2", "na1"),
+            targetSessionNames(renderOrderShortcuts));
+        Assert.assertEquals(Arrays.asList("xmile", "umino", "na2", "na1"),
+            labels(renderOrderShortcuts));
     }
 
     private static SessionDefinitionEntry entry(String groupLabel, String entryLabel, String... urls) {
@@ -162,10 +165,9 @@ public class SessionShortcutBarPlannerTest {
         List<String> liveSessionNames = Arrays.asList("uminopm", url);
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
-        Set<String> presentSessionNames = namesInOrder("uminopm", url);
 
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
 
         Assert.assertEquals(Arrays.asList("umino", "umino/story"), labels(renderOrderShortcuts));
         Assert.assertEquals(Arrays.asList("uminopm", url), targetSessionNames(renderOrderShortcuts));
@@ -185,19 +187,22 @@ public class SessionShortcutBarPlannerTest {
     }
 
     @Test
-    public void alwaysNaCompositeWithNoLiveSessionKeepsTheConfiguredNameSoThePresentFilterDropsIt() {
+    public void alwaysNaCompositeWithNoLiveSessionKeepsTheConfiguredNameAndStillRendersIt() {
         String url = "https://github.com/HiromiShikata/secretary";
         List<SessionDefinitionEntry> entries = Collections.singletonList(entry("umino", "story", url));
         Set<String> alwaysNaSessionNames = namesInOrder("umino/story");
         List<String> liveSessionNames = Collections.singletonList("uminopm");
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
-        Set<String> presentSessionNames = namesInOrder("uminopm");
 
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
 
-        Assert.assertEquals(Collections.singletonList("umino"), labels(renderOrderShortcuts));
+        Assert.assertEquals("a pinned composite name with no live session keeps the configured name"
+                + " and still renders its shortcut",
+            Arrays.asList("umino", "umino/story"), labels(renderOrderShortcuts));
+        Assert.assertEquals(Arrays.asList("uminopm", "umino/story"),
+            targetSessionNames(renderOrderShortcuts));
     }
 
     @Test

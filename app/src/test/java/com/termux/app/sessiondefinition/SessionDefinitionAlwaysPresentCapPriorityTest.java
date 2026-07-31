@@ -140,7 +140,7 @@ public class SessionDefinitionAlwaysPresentCapPriorityTest {
             }
         }
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
         List<String> labels = new ArrayList<>();
         for (SessionShortcut shortcut : renderOrderShortcuts) {
             if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {

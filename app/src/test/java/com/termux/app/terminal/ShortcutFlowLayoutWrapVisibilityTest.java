@@ -151,8 +151,7 @@ public class ShortcutFlowLayoutWrapVisibilityTest {
             new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
-        return SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts,
-            presentSessionNames);
+        return SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
     }
 
     private static View fixedSizeChild(Context context) {

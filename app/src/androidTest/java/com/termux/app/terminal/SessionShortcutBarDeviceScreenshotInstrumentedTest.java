@@ -63,7 +63,7 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         Set<String> presentSessionNames = new LinkedHashSet<>(
             Arrays.asList("inbox", "review", "alphapm", "betapm"));
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
 
         assertEquals(Arrays.asList("betapm", "alphapm", "review", "inbox"),
             targetSessionNames(renderOrderShortcuts));

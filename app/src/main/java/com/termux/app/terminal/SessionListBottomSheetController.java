@@ -32,7 +32,6 @@ import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -474,15 +473,11 @@ public class SessionListBottomSheetController {
         List<SessionShortcut> rightToLeftShortcuts =
             mSessionShortcutBarPlanner.planRightToLeftShortcuts(alwaysNaSessionNames,
                 listController.getEntries(), liveSessionNames(service));
-        Set<String> presentSessionNames = presentSessionNames(service, rightToLeftShortcuts);
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
         for (SessionShortcut shortcut : renderOrderShortcuts) {
             TermuxSession targetSession = service.getTermuxSessionForSessionName(shortcut.getTargetSessionName());
-            if (targetSession == null) {
-                continue;
-            }
-            mShortcutsContainer.addView(createShortcutButton(shortcut, targetSession));
+            mShortcutsContainer.addView(createShortcutButton(shortcut, targetSession, listController));
         }
     }
 
@@ -499,22 +494,22 @@ public class SessionListBottomSheetController {
     }
 
     @NonNull
-    private Set<String> presentSessionNames(@NonNull TermuxService service,
-                                            @NonNull List<SessionShortcut> shortcuts) {
-        Set<String> presentSessionNames = new LinkedHashSet<>();
-        for (SessionShortcut shortcut : shortcuts) {
-            if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {
-                presentSessionNames.add(shortcut.getTargetSessionName());
-            }
-        }
-        return presentSessionNames;
+    private View createShortcutButton(@NonNull SessionShortcut shortcut,
+                                      @Nullable TermuxSession targetSession,
+                                      @NonNull TermuxSessionsListViewController listController) {
+        TextView shortcutButton = newShortcutButtonView(mActivity, shortcut.getLabel());
+        shortcutButton.setOnClickListener(targetSession == null
+            ? v -> openShortcutSessionFromDefinition(shortcut, listController)
+            : v -> switchToShortcutSession(targetSession));
+        return shortcutButton;
     }
 
-    @NonNull
-    private View createShortcutButton(@NonNull SessionShortcut shortcut, @NonNull TermuxSession targetSession) {
-        TextView shortcutButton = newShortcutButtonView(mActivity, shortcut.getLabel());
-        shortcutButton.setOnClickListener(v -> switchToShortcutSession(targetSession));
-        return shortcutButton;
+    private void openShortcutSessionFromDefinition(
+            @NonNull SessionShortcut shortcut,
+            @NonNull TermuxSessionsListViewController listController) {
+        listController.openDefinitionBackedSessionByName(shortcut.getTargetSessionName());
+        hideSoftKeyboard();
+        hide();
     }
 
     @NonNull

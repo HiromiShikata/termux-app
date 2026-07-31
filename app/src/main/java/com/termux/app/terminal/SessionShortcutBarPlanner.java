@@ -97,17 +97,18 @@ public final class SessionShortcutBarPlanner {
         return null;
     }
 
+    /**
+     * The planned shortcuts come from the session definition and from the names the owner pinned to
+     * the not-applicable group, so every planned shortcut is one the configuration asks for and every
+     * one of them is rendered. Whether a target session already exists decides only what tapping the
+     * shortcut does, never whether the shortcut is drawn.
+     */
     @NonNull
-    public static List<SessionShortcut> renderOrderPresentShortcuts(
-            @NonNull List<SessionShortcut> rightToLeftShortcuts,
-            @NonNull Set<String> presentSessionNames) {
+    public static List<SessionShortcut> renderOrderShortcuts(
+            @NonNull List<SessionShortcut> rightToLeftShortcuts) {
         List<SessionShortcut> renderOrderShortcuts = new ArrayList<>();
         for (int index = rightToLeftShortcuts.size() - 1; index >= 0; index--) {
-            SessionShortcut shortcut = rightToLeftShortcuts.get(index);
-            if (!presentSessionNames.contains(shortcut.getTargetSessionName())) {
-                continue;
-            }
-            renderOrderShortcuts.add(shortcut);
+            renderOrderShortcuts.add(rightToLeftShortcuts.get(index));
         }
         return renderOrderShortcuts;
     }
