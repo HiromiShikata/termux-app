@@ -42,6 +42,7 @@ public class DiagnosticsReportBuilderTest {
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
             memoryUsage, backgroundOutputScanCost, bufferReflowCost, mainThreadStalls,
+            DiagnosticsMainLooperQueue.parse(java.util.Collections.emptyList()),
             processUptimeMillis);
     }
 
