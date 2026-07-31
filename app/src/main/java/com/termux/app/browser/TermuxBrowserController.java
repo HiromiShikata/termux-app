@@ -1801,25 +1801,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         openTab(tab);
     }
 
+    @Nullable
+    private String resolveSessionHandleForNewTab() {
+        TerminalSession displayedSession = mActivity.getCurrentSession();
+        return BrowserNewTabSessionHandle.resolve(mCurrentSessionHandle,
+            displayedSession == null ? null : displayedSession.mHandle);
+    }
+
     public boolean openUrlInNewTab(@NonNull String url) {
-        String sessionHandle = mCurrentSessionHandle;
-        if (sessionHandle == null) {
-            TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return false;
-            sessionHandle = currentSession.mHandle;
-        }
+        String sessionHandle = resolveSessionHandleForNewTab();
+        if (sessionHandle == null) return false;
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         openTab(tab);
         return true;
     }
 
     public boolean openUrlInNewBackgroundTab(@NonNull String url) {
-        String sessionHandle = mCurrentSessionHandle;
-        if (sessionHandle == null) {
-            TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return false;
-            sessionHandle = currentSession.mHandle;
-        }
+        String sessionHandle = resolveSessionHandleForNewTab();
+        if (sessionHandle == null) return false;
         BrowserTab tab = mTabManager.addBackgroundTab(sessionHandle, normalizeUrl(url));
         recordTabInHistory(tab);
         notifyTabsUpdated();
@@ -1828,12 +1827,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void openUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
-        String sessionHandle = mCurrentSessionHandle;
-        if (sessionHandle == null) {
-            TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return;
-            sessionHandle = currentSession.mHandle;
-        }
+        String sessionHandle = resolveSessionHandleForNewTab();
+        if (sessionHandle == null) return;
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         tab.setViewMode(viewMode);
         openTab(tab);
