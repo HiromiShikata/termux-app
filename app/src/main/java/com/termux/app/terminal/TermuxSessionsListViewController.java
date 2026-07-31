@@ -1662,16 +1662,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
     }
 
-    /**
-     * The shortcut bar draws a button for every name the session definition and the pinned-name
-     * configuration carry, so a shortcut can name a session that does not exist yet. Tapping such a
-     * shortcut opens it through the same definition-backed path a session row already uses.
-     */
-    public void openDefinitionBackedSessionByName(@Nullable String sessionName) {
-        openDefinitionBackedSession(sessionName);
-    }
-
-    private void openDefinitionBackedSession(@Nullable String sessionName) {
+    public void openDefinitionBackedSession(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) {
             return;
         }

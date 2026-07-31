@@ -507,7 +507,7 @@ public class SessionListBottomSheetController {
     private void openShortcutSessionFromDefinition(
             @NonNull SessionShortcut shortcut,
             @NonNull TermuxSessionsListViewController listController) {
-        listController.openDefinitionBackedSessionByName(shortcut.getTargetSessionName());
+        listController.openDefinitionBackedSession(shortcut.getTargetSessionName());
         hideSoftKeyboard();
         hide();
     }

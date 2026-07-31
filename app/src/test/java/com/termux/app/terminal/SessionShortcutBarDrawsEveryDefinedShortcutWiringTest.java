@@ -63,6 +63,6 @@ public class SessionShortcutBarDrawsEveryDefinedShortcutWiringTest {
                 + " through the same definition-backed path a session row uses, so the owner reaches"
                 + " the session without opening it by another route first. Actual source lacked the"
                 + " call.",
-            source.contains("openDefinitionBackedSessionByName("));
+            source.contains("listController.openDefinitionBackedSession("));
     }
 }

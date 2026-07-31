@@ -97,12 +97,6 @@ public final class SessionShortcutBarPlanner {
         return null;
     }
 
-    /**
-     * The planned shortcuts come from the session definition and from the names the owner pinned to
-     * the not-applicable group, so every planned shortcut is one the configuration asks for and every
-     * one of them is rendered. Whether a target session already exists decides only what tapping the
-     * shortcut does, never whether the shortcut is drawn.
-     */
     @NonNull
     public static List<SessionShortcut> renderOrderShortcuts(
             @NonNull List<SessionShortcut> rightToLeftShortcuts) {
