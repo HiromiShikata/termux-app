@@ -68,6 +68,22 @@ public final class DiagnosticsReportBuilder {
         appendWorkCostLines(builder, "Background output tag scan", report.getBackgroundOutputScanCost());
         appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
+        appendMainLooperQueueLines(builder, report.getMainLooperQueue());
+    }
+
+    private void appendMainLooperQueueLines(@NonNull StringBuilder builder,
+                                            @NonNull DiagnosticsMainLooperQueue looperQueue) {
+        builder.append("  Main looper queue\n");
+        builder.append("    Pending messages: ").append(looperQueue.getPendingMessageCount()).append('\n');
+        if (looperQueue.getBusiestTargets().isEmpty()) {
+            builder.append("    Busiest targets: none\n");
+            return;
+        }
+        builder.append("    Busiest targets:\n");
+        for (DiagnosticsMainLooperQueueTarget target : looperQueue.getBusiestTargets()) {
+            builder.append("      ").append(target.getPendingMessageCount()).append(" x ")
+                .append(target.getDescription()).append('\n');
+        }
     }
 
     private void appendMainThreadStallLines(@NonNull StringBuilder builder,

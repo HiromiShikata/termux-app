@@ -42,7 +42,45 @@ public class DiagnosticsReportBuilderTest {
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
             memoryUsage, backgroundOutputScanCost, bufferReflowCost, mainThreadStalls,
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             processUptimeMillis);
+    }
+
+    private DiagnosticsReport reportWithMainLooperQueue(DiagnosticsMainLooperQueue mainLooperQueue) {
+        return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
+            0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
+            0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
+            mainLooperQueue, 0L);
+    }
+
+    @Test
+    public void mainLooperQueueSectionStatesHowManyMessagesAreWaitingAndWhoTheyBelongTo() {
+        DiagnosticsMainLooperQueue mainLooperQueue = DiagnosticsMainLooperQueue.parse(Arrays.asList(
+            "Looper (main, tid 2) {b1a2c3}",
+            "  Message 0: { when=+1ms callback=com.termux.app.SessionSweep target=android.os.Handler }",
+            "  Message 1: { when=+2ms callback=com.termux.app.SessionSweep target=android.os.Handler }",
+            "  Message 2: { when=+3ms what=0 target=android.view.Choreographer$FrameHandler }"));
+
+        String text = new DiagnosticsReportBuilder().build(reportWithMainLooperQueue(mainLooperQueue));
+
+        Assert.assertTrue("The pending count must be stated so a saturated queue is visible: " + text,
+            text.contains("Pending messages: 3"));
+        Assert.assertTrue("The busiest target must be named so the code filling the queue is identified: " + text,
+            text.contains("2 x android.os.Handler com.termux.app.SessionSweep"));
+        Assert.assertTrue("Every reported target must be listed with its own count: " + text,
+            text.contains("1 x android.view.Choreographer$FrameHandler"));
+    }
+
+    @Test
+    public void mainLooperQueueSectionStatesAnEmptyQueueExplicitly() {
+        String text = new DiagnosticsReportBuilder().build(
+            reportWithMainLooperQueue(DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList())));
+
+        Assert.assertTrue("An empty queue must still be stated rather than omitted: " + text,
+            text.contains("Pending messages: 0"));
+        Assert.assertTrue("An empty queue must say so instead of leaving the reader guessing: " + text,
+            text.contains("Busiest targets: none"));
     }
 
     @Test
