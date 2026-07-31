@@ -340,7 +340,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         return mHierarchyBuilder.build(sessionNames, mEntries,
             mActivity.getString(R.string.session_list_na_group_header),
-            alwaysNaSessionNames());
+            alwaysNaSessionNames(), userRemovedSessionNames());
     }
 
     @NonNull
@@ -350,6 +350,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return Collections.emptySet();
         }
         return preferences.getAlwaysNaSessionNames();
+    }
+
+    @NonNull
+    private Set<String> userRemovedSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return Collections.emptySet();
+        }
+        return preferences.getUserRemovedSessionNames();
     }
 
     @NonNull
