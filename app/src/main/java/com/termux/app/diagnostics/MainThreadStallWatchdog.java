@@ -30,30 +30,36 @@ public final class MainThreadStallWatchdog {
             return;
         }
         sStarted = true;
-        Thread watchdogThread = new Thread(MainThreadStallWatchdog::watch, "main-thread-stall-watchdog");
+        startWatching(RECORDER);
+    }
+
+    @NonNull
+    static Thread startWatching(@NonNull MainThreadStallRecorder recorder) {
+        Thread watchdogThread = new Thread(() -> watch(recorder), "main-thread-stall-watchdog");
         watchdogThread.setDaemon(true);
         watchdogThread.setPriority(Thread.MIN_PRIORITY);
         watchdogThread.start();
+        return watchdogThread;
     }
 
-    private static void watch() {
+    private static void watch(@NonNull MainThreadStallRecorder recorder) {
         Looper mainLooper = Looper.getMainLooper();
         Handler mainHandler = new Handler(mainLooper);
         Thread mainThread = mainLooper.getThread();
         while (true) {
             final boolean[] heartbeatAnswered = new boolean[1];
-            RECORDER.heartbeatPosted(SystemClock.uptimeMillis());
+            recorder.heartbeatPosted(SystemClock.uptimeMillis());
             mainHandler.post(() -> {
                 synchronized (heartbeatAnswered) {
                     heartbeatAnswered[0] = true;
                 }
-                RECORDER.heartbeatRan(SystemClock.uptimeMillis());
+                recorder.heartbeatRan(SystemClock.uptimeMillis());
             });
             while (!isAnswered(heartbeatAnswered)) {
                 if (!sleep(SAMPLE_INTERVAL_MILLIS)) {
                     return;
                 }
-                RECORDER.sampleWhileOutstanding(SystemClock.uptimeMillis(), mainThread.getStackTrace());
+                recorder.sampleWhileOutstanding(SystemClock.uptimeMillis(), mainThread.getStackTrace());
             }
             if (!sleep(HEARTBEAT_INTERVAL_MILLIS)) {
                 return;
