@@ -8,6 +8,7 @@ import android.util.Log;
 
 import java.util.Locale;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesizer {
@@ -16,20 +17,29 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     private final TtsEngineReadyPlanner mReadyPlanner = new TtsEngineReadyPlanner();
 
-    private final Executor mEngineWorkExecutor =
-        Executors.newSingleThreadExecutor(runnable -> {
-            Thread worker = new Thread(runnable, "termux-tts-engine-work");
-            worker.setDaemon(true);
-            return worker;
-        });
+    private final ExecutorService mEngineWorkExecutor;
 
-    private final Executor mSpeechQueueExecutor =
-        runnable -> new Handler(Looper.getMainLooper()).post(runnable);
+    private final Executor mSpeechQueueExecutor;
 
     private TextToSpeech mTextToSpeech;
 
     AndroidTextToSpeechSynthesizer(Context context) {
+        this(context, engineWorkExecutor(), runnable -> new Handler(Looper.getMainLooper()).post(runnable));
+    }
+
+    AndroidTextToSpeechSynthesizer(Context context, ExecutorService engineWorkExecutor,
+                                   Executor speechQueueExecutor) {
         mContext = context;
+        mEngineWorkExecutor = engineWorkExecutor;
+        mSpeechQueueExecutor = speechQueueExecutor;
+    }
+
+    private static ExecutorService engineWorkExecutor() {
+        return Executors.newSingleThreadExecutor(runnable -> {
+            Thread worker = new Thread(runnable, "termux-tts-engine-work");
+            worker.setDaemon(true);
+            return worker;
+        });
     }
 
     @Override
@@ -64,5 +74,6 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     @Override
     public void shutdown() {
         if (mTextToSpeech != null) mTextToSpeech.shutdown();
+        mEngineWorkExecutor.shutdown();
     }
 }
