@@ -41,7 +41,7 @@ public class DiagnosticsReportBuilderTest {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
-            memoryUsage, backgroundOutputScanCost, bufferReflowCost, mainThreadStalls,
+            memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             processUptimeMillis);
     }
@@ -50,8 +50,47 @@ public class DiagnosticsReportBuilderTest {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
-            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
             mainLooperQueue, 0L);
+    }
+
+    private DiagnosticsReport reportWithForegroundOpenTagScanCost(DiagnosticsWorkCostLine cost) {
+        return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
+            0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
+            0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L);
+    }
+
+    @Test
+    public void openTagScanOnTheViewedSessionIsReportedWithItsOwnCountTotalAndMaximum() {
+        String text = new DiagnosticsReportBuilder().build(
+            reportWithForegroundOpenTagScanCost(new DiagnosticsWorkCostLine(4200, 9100, 37, 1800)));
+
+        int sectionIndex = text.indexOf("Open-tag scan on the viewed session");
+        Assert.assertTrue("The viewed session's own scan must be reported, otherwise its cost is invisible"
+            + " and the reported main-thread total understates the work: " + text, sectionIndex >= 0);
+        String section = text.substring(sectionIndex);
+
+        Assert.assertTrue("How many times the scan ran must be stated: " + section,
+            section.contains("Count: 4200"));
+        Assert.assertTrue("The accumulated cost must be stated: " + section,
+            section.contains("Total: 9100 ms"));
+        Assert.assertTrue("The worst single scan must be stated: " + section,
+            section.contains("Max: 37 ms"));
+        Assert.assertTrue("The transcript size at the worst scan must be stated so the growth with the"
+                + " transcript is visible: " + section,
+            section.contains("Transcript rows at max: 1800"));
+    }
+
+    @Test
+    public void openTagScanOnTheViewedSessionIsReportedSeparatelyFromTheBackgroundScan() {
+        String text = new DiagnosticsReportBuilder().build(
+            reportWithForegroundOpenTagScanCost(new DiagnosticsWorkCostLine(1, 2, 3, 4)));
+
+        Assert.assertTrue("The two scans run on different code paths and must not be merged into one"
+                + " number: " + text,
+            text.indexOf("Background output tag scan") < text.indexOf("Open-tag scan on the viewed session"));
     }
 
     @Test

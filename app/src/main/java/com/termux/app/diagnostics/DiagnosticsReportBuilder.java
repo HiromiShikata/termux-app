@@ -66,6 +66,8 @@ public final class DiagnosticsReportBuilder {
     private void appendMainThreadCostSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
         builder.append("Main-thread cost\n");
         appendWorkCostLines(builder, "Background output tag scan", report.getBackgroundOutputScanCost());
+        appendWorkCostLines(builder, "Open-tag scan on the viewed session",
+            report.getForegroundOpenTagScanCost());
         appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());

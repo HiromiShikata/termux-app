@@ -73,6 +73,7 @@ public class DiagnosticsCappedSessionCountTest {
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
+            new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, ""),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             0L);

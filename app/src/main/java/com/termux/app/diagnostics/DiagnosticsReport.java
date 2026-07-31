@@ -33,6 +33,8 @@ public final class DiagnosticsReport {
     @NonNull
     private final DiagnosticsWorkCostLine mBackgroundOutputScanCost;
     @NonNull
+    private final DiagnosticsWorkCostLine mForegroundOpenTagScanCost;
+    @NonNull
     private final DiagnosticsWorkCostLine mBufferReflowCost;
     @NonNull
     private final DiagnosticsMainThreadStalls mMainThreadStalls;
@@ -48,6 +50,7 @@ public final class DiagnosticsReport {
                              @NonNull List<DiagnosticEvent> recentEvents,
                              @NonNull DiagnosticsMemoryUsage memoryUsage,
                              @NonNull DiagnosticsWorkCostLine backgroundOutputScanCost,
+                             @NonNull DiagnosticsWorkCostLine foregroundOpenTagScanCost,
                              @NonNull DiagnosticsWorkCostLine bufferReflowCost,
                              @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
@@ -66,6 +69,7 @@ public final class DiagnosticsReport {
         mRecentEvents = Collections.unmodifiableList(recentEvents);
         mMemoryUsage = memoryUsage;
         mBackgroundOutputScanCost = backgroundOutputScanCost;
+        mForegroundOpenTagScanCost = foregroundOpenTagScanCost;
         mBufferReflowCost = bufferReflowCost;
         mMainThreadStalls = mainThreadStalls;
         mMainLooperQueue = mainLooperQueue;
@@ -136,6 +140,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsWorkCostLine getBackgroundOutputScanCost() {
         return mBackgroundOutputScanCost;
+    }
+
+    @NonNull
+    public DiagnosticsWorkCostLine getForegroundOpenTagScanCost() {
+        return mForegroundOpenTagScanCost;
     }
 
     @NonNull
