@@ -27,7 +27,10 @@ public class TtsLanguageIsAppliedOffTheEngineCallbackThreadTest {
         int start = source.indexOf("public void initialize(");
         Assert.assertTrue("The engine initialization path must exist for this test to mean anything",
             start >= 0);
-        int end = source.indexOf("public void speak(", start);
+        int end = source.indexOf("private void applyDefaultLanguage(", start);
+        if (end < 0) {
+            end = source.indexOf("public void speak(", start);
+        }
         Assert.assertTrue("The end of the engine initialization path must be locatable", end > start);
         return source.substring(start, end);
     }
@@ -38,7 +41,7 @@ public class TtsLanguageIsAppliedOffTheEngineCallbackThreadTest {
 
         int callbackStart = body.indexOf("status ->");
         Assert.assertTrue("The engine initialization callback must exist: " + body, callbackStart >= 0);
-        int inlineLanguageApplication = body.indexOf("mTextToSpeech.setLanguage(", callbackStart);
+        int inlineLanguageApplication = body.indexOf("setLanguage(", callbackStart);
         int handOffToTheWorker = body.indexOf("mEngineWorkExecutor", callbackStart);
 
         Assert.assertTrue("The engine calls back on the main thread, and applying the language there makes"
