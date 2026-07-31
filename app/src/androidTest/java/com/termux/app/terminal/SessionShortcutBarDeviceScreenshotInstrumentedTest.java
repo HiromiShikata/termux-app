@@ -60,8 +60,6 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
             new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
-        Set<String> presentSessionNames = new LinkedHashSet<>(
-            Arrays.asList("inbox", "review", "alphapm", "betapm"));
         List<SessionShortcut> renderOrderShortcuts =
             SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
 
