@@ -38,6 +38,7 @@ import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.BackgroundOutputScanCostCounterHolder;
+import com.termux.app.diagnostics.ForegroundOpenTagScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
@@ -413,12 +414,18 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        long scanStartNanos = System.nanoTime();
+        int transcriptRows = screen.getActiveTranscriptRows();
+
         String transcriptText = screen.getTranscriptText();
         openTagBrowserController.onSessionTextChanged(session.mHandle, transcriptText);
 
         AppOpenTagController appOpenTagController = mActivity.getAppOpenTagController();
         if (appOpenTagController != null && appOpenTagController.isAutoOpenEnabled())
             appOpenTagController.onSessionTextChanged(session.mHandle, transcriptText);
+
+        ForegroundOpenTagScanCostCounterHolder.getInstance()
+            .record(System.nanoTime() - scanStartNanos, transcriptRows);
     }
 
     private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {

@@ -60,6 +60,7 @@ public final class DiagnosticsReportCollector {
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, recentEvents,
             collectMemoryUsage(),
             DiagnosticsWorkCostLine.of(BackgroundOutputScanCostCounterHolder.getInstance()),
+            DiagnosticsWorkCostLine.of(ForegroundOpenTagScanCostCounterHolder.getInstance()),
             DiagnosticsWorkCostLine.of(TerminalBufferReflowCostCounterHolder.getInstance()),
             DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder()),
             MainLooperQueueSnapshot.take(),
