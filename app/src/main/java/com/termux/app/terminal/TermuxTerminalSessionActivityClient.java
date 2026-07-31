@@ -37,6 +37,7 @@ import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.diagnostics.BackgroundOutputScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
@@ -446,6 +447,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        long scanStartNanos = System.nanoTime();
+        int transcriptRows = screen.getActiveTranscriptRows();
+
         // The statusline is parsed first so the call-to-user scan gate below reads fresh call:/reply:
         // values from this same render. The expensive transcript reason/scene scan then runs only when
         // the session has a pending call, has no statusline at all (the non-Claude fallback), or has an
@@ -462,6 +466,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (shouldScanCallToUserTag) {
             recordCallToUserTagScanPerformedForSession(session);
         }
+
+        BackgroundOutputScanCostCounterHolder.getInstance()
+            .record(System.nanoTime() - scanStartNanos, transcriptRows);
     }
 
     private void recordCallToUserTagScanPerformedForSession(@NonNull TerminalSession session) {
