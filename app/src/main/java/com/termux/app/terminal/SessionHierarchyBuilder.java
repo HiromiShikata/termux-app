@@ -39,6 +39,16 @@ public final class SessionHierarchyBuilder {
                                            @NonNull List<SessionDefinitionEntry> entries,
                                            @NonNull String naProjectLabel,
                                            @NonNull Set<String> alwaysNaSessionNames) {
+        return build(sessionNames, entries, naProjectLabel, alwaysNaSessionNames,
+            Collections.emptySet());
+    }
+
+    @NonNull
+    public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
+                                           @NonNull List<SessionDefinitionEntry> entries,
+                                           @NonNull String naProjectLabel,
+                                           @NonNull Set<String> alwaysNaSessionNames,
+                                           @NonNull Set<String> deletedSessionNames) {
         if (entries.isEmpty()) {
             return flatten(sessionNames);
         }
@@ -137,7 +147,9 @@ public final class SessionHierarchyBuilder {
             notApplicableRows.add(sessionRow(sessionNames, sessionIndex));
         }
         for (String notApplicableDefinitionName : notApplicableDefinitionNames) {
-            if (!liveSessionIndexByName.containsKey(notApplicableDefinitionName)) {
+            if (!liveSessionIndexByName.containsKey(notApplicableDefinitionName)
+                    && !isDeletedWithoutALiveSession(notApplicableDefinitionName,
+                        deletedSessionNames, liveSessionIndexByName)) {
                 notApplicableRows.add(
                     definitionBackedSessionRow(liveSessionIndexByName, notApplicableDefinitionName));
             }
@@ -156,7 +168,9 @@ public final class SessionHierarchyBuilder {
                 newIssueUrlByProject.get(projectLabel)));
             String managerSessionName = drawableManagerSessionNameOwnedByProject(projectLabel,
                 projectLabelByManagerSessionName, alwaysNaSessionNames);
-            if (managerSessionName != null) {
+            if (managerSessionName != null
+                    && !isDeletedWithoutALiveSession(managerSessionName, deletedSessionNames,
+                        liveSessionIndexByName)) {
                 Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
                 rows.add(managerSessionIndex == null
                     ? definitionBackedSessionRow(liveSessionIndexByName, managerSessionName)
@@ -167,10 +181,19 @@ public final class SessionHierarchyBuilder {
                 continue;
             }
             for (Map.Entry<String, List<String>> story : storiesInProject.entrySet()) {
-                rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
+                List<SessionHierarchyRow> storySessionRows = new ArrayList<>();
                 for (String storySessionName : story.getValue()) {
-                    rows.add(definitionBackedSessionRow(liveSessionIndexByName, storySessionName));
+                    if (!isDeletedWithoutALiveSession(storySessionName, deletedSessionNames,
+                            liveSessionIndexByName)) {
+                        storySessionRows.add(
+                            definitionBackedSessionRow(liveSessionIndexByName, storySessionName));
+                    }
                 }
+                if (storySessionRows.isEmpty()) {
+                    continue;
+                }
+                rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
+                rows.addAll(storySessionRows);
             }
         }
         return rows;
@@ -200,6 +223,20 @@ public final class SessionHierarchyBuilder {
         }
         return isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)
             ? null : managerSessionName;
+    }
+
+    /**
+     * The owner deleting a session records the name as removed and ends the session, so a name the
+     * session definition still carries must draw no row while that removal stands and no session is
+     * live for it. A live session always outranks the removal record: reopening the name draws its
+     * row again so the running session stays reachable from the list.
+     */
+    private static boolean isDeletedWithoutALiveSession(
+            @NonNull String sessionName,
+            @NonNull Set<String> deletedSessionNames,
+            @NonNull Map<String, Integer> liveSessionIndexByName) {
+        return deletedSessionNames.contains(sessionName)
+            && !liveSessionIndexByName.containsKey(sessionName);
     }
 
     @NonNull
