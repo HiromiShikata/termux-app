@@ -44,6 +44,12 @@ public final class SessionHierarchyBuilder {
         }
 
         Map<String, String> projectLabelByManagerSessionName = projectLabelByManagerSessionName(entries);
+        Set<String> notApplicableDefinitionNames = new LinkedHashSet<>();
+        for (String managerSessionName : projectLabelByManagerSessionName.keySet()) {
+            if (isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)) {
+                notApplicableDefinitionNames.add(managerSessionName);
+            }
+        }
 
         Map<String, Integer> sessionIndexByName = new LinkedHashMap<>();
         Map<String, Integer> liveSessionIndexByName = new LinkedHashMap<>();
@@ -95,8 +101,12 @@ public final class SessionHierarchyBuilder {
         Set<String> placedNames = new HashSet<>();
         for (SessionDefinitionEntry entry : entries) {
             for (String url : entry.getUrls()) {
-                if (url == null || url.isEmpty()
-                        || isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
+                if (url == null || url.isEmpty()) {
+                    continue;
+                }
+                if (isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
+                    placedNames.add(url);
+                    notApplicableDefinitionNames.add(url);
                     continue;
                 }
                 if (projectLabelByManagerSessionName.containsKey(url)) {
@@ -122,11 +132,19 @@ public final class SessionHierarchyBuilder {
         Collections.sort(unmatchedSessionIndexes);
 
         List<SessionHierarchyRow> rows = new ArrayList<>();
-        if (!unmatchedSessionIndexes.isEmpty()) {
-            rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
-            for (int sessionIndex : unmatchedSessionIndexes) {
-                rows.add(sessionRow(sessionNames, sessionIndex));
+        List<SessionHierarchyRow> notApplicableRows = new ArrayList<>();
+        for (int sessionIndex : unmatchedSessionIndexes) {
+            notApplicableRows.add(sessionRow(sessionNames, sessionIndex));
+        }
+        for (String notApplicableDefinitionName : notApplicableDefinitionNames) {
+            if (!liveSessionIndexByName.containsKey(notApplicableDefinitionName)) {
+                notApplicableRows.add(
+                    definitionBackedSessionRow(liveSessionIndexByName, notApplicableDefinitionName));
             }
+        }
+        if (!notApplicableRows.isEmpty()) {
+            rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
+            rows.addAll(notApplicableRows);
         }
         Set<String> definedProjectLabels = new LinkedHashSet<>();
         for (SessionDefinitionEntry entry : entries) {
