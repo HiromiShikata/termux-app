@@ -65,6 +65,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     private boolean mTerminalCursorBlinkerStateAlreadySet;
 
+    private boolean mFontSizeApplyPendingFromScaleGesture;
+
     private List<KeyboardShortcut> mSessionShortcuts;
 
     private String mLongPressedUrl;
@@ -176,15 +178,32 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     public float onScale(float scale) {
         switch (ScaleGestureFontSizeDecision.decide(scale)) {
             case INCREASE_FONT_SIZE:
-                changeFontSize(true);
+                stepFontSizeDuringScaleGesture(true);
                 return 1.0f;
             case DECREASE_FONT_SIZE:
-                changeFontSize(false);
+                stepFontSizeDuringScaleGesture(false);
                 return 1.0f;
             case NO_CHANGE:
             default:
                 return scale;
         }
+    }
+
+    /**
+     * Applying a font size rebuilds the renderer and reflows the whole terminal transcript, so the
+     * steps a single pinch gesture accumulates are applied together once the gesture ends instead
+     * of once per step.
+     */
+    @Override
+    public void onScaleEnd() {
+        if (!mFontSizeApplyPendingFromScaleGesture) return;
+        mFontSizeApplyPendingFromScaleGesture = false;
+        applyFontSizeToTerminalView();
+    }
+
+    private void stepFontSizeDuringScaleGesture(boolean increase) {
+        mActivity.getPreferences().changeFontSize(increase);
+        mFontSizeApplyPendingFromScaleGesture = true;
     }
 
 
@@ -616,6 +635,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     public void changeFontSize(boolean increase) {
         mActivity.getPreferences().changeFontSize(increase);
+        applyFontSizeToTerminalView();
+    }
+
+    private void applyFontSizeToTerminalView() {
         mActivity.getTerminalView().setTextSize(mActivity.getPreferences().getFontSize());
     }
 
