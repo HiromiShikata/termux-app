@@ -31,13 +31,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Applying a font size runs {@link TerminalView#setTextSize}, which builds a fresh
- * {@link TerminalRenderer} and recomputes the column count; whenever that count changes the
- * terminal buffer re-emits the whole accumulated scrollback character by character on the main
- * thread. That reflow is the most expensive thing a pinch can trigger, so one pinch gesture must
- * pay for it once, when the fingers leave the screen, carrying the size the gesture arrived at.
- */
 @RunWith(RobolectricTestRunner.class)
 public class PinchGestureAppliesFontSizeOnceTest {
 
@@ -61,16 +54,8 @@ public class PinchGestureAppliesFontSizeOnceTest {
 
     private static final long GESTURE_EVENT_INTERVAL_MILLIS = 20L;
 
-    /**
-     * Spans of a two finger pinch that spreads far enough for the accumulated scale to cross the
-     * ten percent threshold on every move, so the gesture asks for several font size steps.
-     */
     private static final float[] SPREADING_PINCH_SPANS = {300f, 360f, 432f, 518f, 622f, 746f, 895f};
 
-    /**
-     * Spans of a two finger pinch that spreads only slightly, so the accumulated scale stays inside
-     * the ten percent dead zone and no font size step is ever decided.
-     */
     private static final float[] BARELY_MOVING_PINCH_SPANS = {300f, 318f, 322f, 326f, 328f};
 
     private TerminalView terminalView;
