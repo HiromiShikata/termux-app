@@ -67,6 +67,22 @@ public final class DiagnosticsReportBuilder {
         builder.append("Main-thread cost\n");
         appendWorkCostLines(builder, "Background output tag scan", report.getBackgroundOutputScanCost());
         appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
+        appendMainThreadStallLines(builder, report.getMainThreadStalls());
+    }
+
+    private void appendMainThreadStallLines(@NonNull StringBuilder builder,
+                                            @NonNull DiagnosticsMainThreadStalls stalls) {
+        builder.append("  Stalls over ").append(stalls.getThresholdMillis()).append(" ms\n");
+        builder.append("    Count: ").append(stalls.getStallCount()).append('\n');
+        if (stalls.getStallCount() == 0) {
+            builder.append("    Longest: n/a\n");
+            return;
+        }
+        builder.append("    Longest: ").append(stalls.getMaxStallMillis()).append(" ms\n");
+        builder.append("    Longest stall main thread was running:\n");
+        for (String frame : stalls.getMaxStallStackTrace().split("\n")) {
+            builder.append("      ").append(frame).append('\n');
+        }
     }
 
     private void appendWorkCostLines(@NonNull StringBuilder builder, @NonNull String label,

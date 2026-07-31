@@ -34,6 +34,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsWorkCostLine mBackgroundOutputScanCost;
     @NonNull
     private final DiagnosticsWorkCostLine mBufferReflowCost;
+    @NonNull
+    private final DiagnosticsMainThreadStalls mMainThreadStalls;
     private final long mProcessUptimeMillis;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
@@ -45,6 +47,7 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsMemoryUsage memoryUsage,
                              @NonNull DiagnosticsWorkCostLine backgroundOutputScanCost,
                              @NonNull DiagnosticsWorkCostLine bufferReflowCost,
+                             @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              long processUptimeMillis) {
         mVersionName = versionName;
         mVersionCode = versionCode;
@@ -61,6 +64,7 @@ public final class DiagnosticsReport {
         mMemoryUsage = memoryUsage;
         mBackgroundOutputScanCost = backgroundOutputScanCost;
         mBufferReflowCost = bufferReflowCost;
+        mMainThreadStalls = mainThreadStalls;
         mProcessUptimeMillis = processUptimeMillis;
     }
 
@@ -133,6 +137,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsWorkCostLine getBufferReflowCost() {
         return mBufferReflowCost;
+    }
+
+    @NonNull
+    public DiagnosticsMainThreadStalls getMainThreadStalls() {
+        return mMainThreadStalls;
     }
 
     public long getProcessUptimeMillis() {

@@ -15,6 +15,8 @@ public class DiagnosticsReportBuilderTest {
 
     private static final DiagnosticsMemoryUsage NO_MEMORY_USAGE = new DiagnosticsMemoryUsage(0, 0, 0, 0);
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
+    private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
+        new DiagnosticsMainThreadStalls(250L, 0L, 0L, "");
 
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
                                          int countedTowardCap, int displayedCount, int maxCap,
@@ -23,7 +25,7 @@ public class DiagnosticsReportBuilderTest {
                                          List<DiagnosticEvent> events) {
         return reportWith(sessionLines, countedTowardCap, displayedCount, maxCap,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
-            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, 0L);
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS, 0L);
     }
 
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
@@ -34,11 +36,13 @@ public class DiagnosticsReportBuilderTest {
                                          DiagnosticsMemoryUsage memoryUsage,
                                          DiagnosticsWorkCostLine backgroundOutputScanCost,
                                          DiagnosticsWorkCostLine bufferReflowCost,
+                                         DiagnosticsMainThreadStalls mainThreadStalls,
                                          long processUptimeMillis) {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
-            memoryUsage, backgroundOutputScanCost, bufferReflowCost, processUptimeMillis);
+            memoryUsage, backgroundOutputScanCost, bufferReflowCost, mainThreadStalls,
+            processUptimeMillis);
     }
 
     @Test
@@ -166,7 +170,8 @@ public class DiagnosticsReportBuilderTest {
     public void memorySectionShowsJavaAndNativeHeapInWholeMegabytes() {
         DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
             0, 0, false, true, Collections.emptyList(),
-            new DiagnosticsMemoryUsage(187, 224, 512, 96), NO_WORK_COST, NO_WORK_COST, 0L);
+            new DiagnosticsMemoryUsage(187, 224, 512, 96), NO_WORK_COST, NO_WORK_COST,
+            NO_MAIN_THREAD_STALLS, 0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
 
@@ -220,6 +225,7 @@ public class DiagnosticsReportBuilderTest {
             NO_MEMORY_USAGE,
             new DiagnosticsWorkCostLine(1204, 8600, 41, 4213),
             new DiagnosticsWorkCostLine(9, 730, 213, 3980),
+            NO_MAIN_THREAD_STALLS,
             0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
@@ -261,7 +267,7 @@ public class DiagnosticsReportBuilderTest {
     public void workCostWithNoSamplesReportsMaxAsNotApplicable() {
         DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
             0, 0, false, true, Collections.emptyList(),
-            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, 0L);
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS, 0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
 
@@ -280,7 +286,7 @@ public class DiagnosticsReportBuilderTest {
     public void headerShowsProcessUptime() {
         DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
             0, 0, false, true, Collections.emptyList(),
-            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, 45296000L);
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS, 45296000L);
 
         String text = new DiagnosticsReportBuilder().build(report);
 
@@ -288,5 +294,49 @@ public class DiagnosticsReportBuilderTest {
                 + " process lifetime, so the totals cannot be interpreted without knowing how long that has been: "
                 + text,
             text.contains("Process uptime: 12h 34m 56s"));
+    }
+
+    @Test
+    public void mainThreadStallSectionNamesTheCodeTheLongestStallWasRunning() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            new DiagnosticsMainThreadStalls(250L, 12L, 4300L,
+                "com.termux.app.SlowThing.doWork(SlowThing.java:42)\nandroid.os.Looper.loop(Looper.java:223)"),
+            0L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("The stall threshold must be stated so the reader knows what duration was counted: " + text,
+            text.contains("Stalls over 250 ms"));
+        Assert.assertTrue("The stall count must be reported because a high count is what distinguishes a blocked main"
+                + " thread from an idle one: " + text,
+            text.contains("Count: 12"));
+        Assert.assertTrue("The longest stall duration must be reported because it bounds how long a single frame was"
+                + " blocked: " + text,
+            text.contains("Longest: 4300 ms"));
+        Assert.assertTrue("The captured stack must name the blocking code, which is the only way this report can"
+                + " identify the cause rather than restate that a stall happened: " + text,
+            text.contains("com.termux.app.SlowThing.doWork(SlowThing.java:42)"));
+        Assert.assertTrue("Every captured frame must be printed so the caller chain is readable: " + text,
+            text.contains("android.os.Looper.loop(Looper.java:223)"));
+    }
+
+    @Test
+    public void mainThreadStallSectionWithNoStallReportsNoLongestStall() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, ""),
+            0L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("A zero stall count must be printed, because knowing the main thread was never blocked"
+                + " rules out main thread blocking as the cause: " + text,
+            text.contains("Count: 0"));
+        Assert.assertTrue("With no stall the longest must read n/a rather than 0 ms, which would look like a measured"
+                + " result: " + text,
+            text.contains("Longest: n/a"));
     }
 }
