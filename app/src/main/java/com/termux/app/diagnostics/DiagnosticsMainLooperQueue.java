@@ -12,6 +12,8 @@ public final class DiagnosticsMainLooperQueue {
 
     public static final int MAX_REPORTED_TARGETS = 5;
 
+    public static final int MAX_REPORTED_MESSAGE_LINES = 40;
+
     private static final String MESSAGE_LINE_PREFIX = "Message ";
     private static final String MESSAGE_LINE_MARKER = "{ when=";
     private static final String TARGET_PREFIX = "target=";
@@ -22,28 +24,43 @@ public final class DiagnosticsMainLooperQueue {
     @NonNull
     private final List<DiagnosticsMainLooperQueueTarget> mBusiestTargets;
 
+    @NonNull
+    private final List<String> mPendingMessageLines;
+
     private DiagnosticsMainLooperQueue(int pendingMessageCount,
-                                       @NonNull List<DiagnosticsMainLooperQueueTarget> busiestTargets) {
+                                       @NonNull List<DiagnosticsMainLooperQueueTarget> busiestTargets,
+                                       @NonNull List<String> pendingMessageLines) {
         mPendingMessageCount = pendingMessageCount;
         mBusiestTargets = Collections.unmodifiableList(new ArrayList<>(busiestTargets));
+        mPendingMessageLines = Collections.unmodifiableList(new ArrayList<>(pendingMessageLines));
     }
 
     @NonNull
     public static DiagnosticsMainLooperQueue parse(@NonNull List<String> looperDumpLines) {
         Map<String, Integer> countsByTarget = new LinkedHashMap<>();
+        List<String> pendingMessageLines = new ArrayList<>();
         int pendingMessageCount = 0;
         for (String line : looperDumpLines) {
             if (!isMessageLine(line)) continue;
             pendingMessageCount++;
+            if (pendingMessageLines.size() < MAX_REPORTED_MESSAGE_LINES) {
+                pendingMessageLines.add(line.trim());
+            }
             String target = describeTarget(line);
             Integer previousCount = countsByTarget.get(target);
             countsByTarget.put(target, previousCount == null ? 1 : previousCount + 1);
         }
-        return new DiagnosticsMainLooperQueue(pendingMessageCount, busiestTargets(countsByTarget));
+        return new DiagnosticsMainLooperQueue(pendingMessageCount, busiestTargets(countsByTarget),
+            pendingMessageLines);
     }
 
     public int getPendingMessageCount() {
         return mPendingMessageCount;
+    }
+
+    @NonNull
+    public List<String> getPendingMessageLines() {
+        return mPendingMessageLines;
     }
 
     @NonNull

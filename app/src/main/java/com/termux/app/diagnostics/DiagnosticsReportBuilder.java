@@ -86,6 +86,19 @@ public final class DiagnosticsReportBuilder {
             builder.append("      ").append(target.getPendingMessageCount()).append(" x ")
                 .append(target.getDescription()).append('\n');
         }
+        appendPendingMessageLines(builder, looperQueue);
+    }
+
+    private void appendPendingMessageLines(@NonNull StringBuilder builder,
+                                           @NonNull DiagnosticsMainLooperQueue looperQueue) {
+        if (looperQueue.getPendingMessageLines().isEmpty()) {
+            return;
+        }
+        builder.append("    Pending messages, oldest first (up to ")
+            .append(DiagnosticsMainLooperQueue.MAX_REPORTED_MESSAGE_LINES).append("):\n");
+        for (String pendingMessageLine : looperQueue.getPendingMessageLines()) {
+            builder.append("      ").append(pendingMessageLine).append('\n');
+        }
     }
 
     private void appendMainThreadStallLines(@NonNull StringBuilder builder,
