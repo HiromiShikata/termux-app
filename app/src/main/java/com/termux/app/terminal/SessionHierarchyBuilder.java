@@ -93,16 +93,13 @@ public final class SessionHierarchyBuilder {
 
         Map<String, Map<String, List<String>>> sessionNamesByProjectAndStory = new LinkedHashMap<>();
         Set<String> placedNames = new HashSet<>();
-        Map<String, String> definedManagerSessionNameByProjectLabel = new LinkedHashMap<>();
         for (SessionDefinitionEntry entry : entries) {
             for (String url : entry.getUrls()) {
                 if (url == null || url.isEmpty()
                         || isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
                     continue;
                 }
-                String managedProjectLabel = projectLabelByManagerSessionName.get(url);
-                if (managedProjectLabel != null) {
-                    definedManagerSessionNameByProjectLabel.putIfAbsent(managedProjectLabel, url);
+                if (projectLabelByManagerSessionName.containsKey(url)) {
                     placedNames.add(url);
                     continue;
                 }
@@ -139,14 +136,13 @@ public final class SessionHierarchyBuilder {
             rows.add(SessionHierarchyRow.projectHeader(projectLabel,
                 overviewUrlByProject.get(projectLabel), tdpmConsoleUrlByProject.get(projectLabel),
                 newIssueUrlByProject.get(projectLabel)));
-            Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
-            if (managerSessionIndex != null) {
-                rows.add(sessionRow(sessionNames, managerSessionIndex));
-            } else {
-                String definedManagerSessionName = definedManagerSessionNameByProjectLabel.get(projectLabel);
-                if (definedManagerSessionName != null) {
-                    rows.add(definitionBackedSessionRow(liveSessionIndexByName, definedManagerSessionName));
-                }
+            String managerSessionName = drawableManagerSessionNameOwnedByProject(projectLabel,
+                projectLabelByManagerSessionName, alwaysNaSessionNames);
+            if (managerSessionName != null) {
+                Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
+                rows.add(managerSessionIndex == null
+                    ? definitionBackedSessionRow(liveSessionIndexByName, managerSessionName)
+                    : sessionRow(sessionNames, managerSessionIndex));
             }
             Map<String, List<String>> storiesInProject = sessionNamesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
@@ -163,6 +159,30 @@ public final class SessionHierarchyBuilder {
     }
 
     public static final int NO_LIVE_SESSION_INDEX = -1;
+
+    /**
+     * A project-manager session name is derived from a project label, so the session definition
+     * entries do not have to carry it, and a project can be named by the definition while no live
+     * session exists for its project-manager name. Such a project still owns a project-manager row,
+     * drawn from the derived name the same way a story row is drawn from a name the definition lists.
+     * The derived name drops the surrounding whitespace of the project label, so two labels that
+     * differ only by whitespace derive one name and only the label that owns that name draws its row.
+     * A name the owner pinned to the not-applicable group keeps its single row there instead.
+     */
+    @Nullable
+    private String drawableManagerSessionNameOwnedByProject(
+            @NonNull String projectLabel,
+            @NonNull Map<String, String> projectLabelByManagerSessionName,
+            @NonNull Set<String> alwaysNaSessionNames) {
+        String managerSessionName =
+            mDefaultProjectManagerSessionPlanner.sessionNameForProjectLabel(projectLabel);
+        if (managerSessionName == null
+                || !projectLabel.equals(projectLabelByManagerSessionName.get(managerSessionName))) {
+            return null;
+        }
+        return isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)
+            ? null : managerSessionName;
+    }
 
     @NonNull
     private static SessionHierarchyRow definitionBackedSessionRow(
