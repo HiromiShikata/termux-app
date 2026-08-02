@@ -1684,11 +1684,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             preferences.setSessionDisabled(sessionName, false);
         }
         mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
-        displayTheSessionTheOwnerOpened(sessionName);
         refreshSessionList();
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }
+        displayTheSessionTheOwnerOpened(sessionName);
     }
 
     private void displayTheSessionTheOwnerOpened(@NonNull String sessionName) {
