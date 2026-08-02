@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
 import com.termux.app.browser.TermuxBrowserController;
@@ -1683,10 +1684,24 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             preferences.setSessionDisabled(sessionName, false);
         }
         mActivity.getTermuxTerminalSessionClient().recreateUnhiddenSessionWithoutDisplacingTheDisplayedSession(sessionName);
+        displayTheSessionTheOwnerOpened(sessionName);
         refreshSessionList();
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }
+    }
+
+    private void displayTheSessionTheOwnerOpened(@NonNull String sessionName) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) {
+            return;
+        }
+        TermuxSession openedSession = service.getTermuxSessionForSessionName(sessionName);
+        if (openedSession == null) {
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient()
+            .switchToSessionReconnectingIfDead(openedSession.getTerminalSession());
     }
 
     private boolean reconnectFailed(@Nullable String sessionName) {
