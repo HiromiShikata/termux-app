@@ -103,10 +103,14 @@ public class TerminalToolbarViewPager {
                 if (text != null) editText.setText(text);
             }
 
+            ImageButton sendButton = textInputRow.findViewById(R.id.terminal_toolbar_enter_button);
+            final TerminalEnterKeyController enterKeyController =
+                new TerminalEnterKeyController(mActivity, sendButton);
+
             editText.setOnEditorActionListener((v, actionId, event) -> {
                 boolean shouldSubmit = ToolbarTextInputSubmitDecision.shouldSubmitForEditorAction(actionId, event != null);
                 if (shouldSubmit) {
-                    submitTextInput(editText);
+                    enterKeyController.submit(editText, this);
                 }
                 return shouldSubmit;
             });
@@ -115,7 +119,7 @@ public class TerminalToolbarViewPager {
                 if (keyCode == KeyEvent.KEYCODE_ENTER
                     && event.getAction() == KeyEvent.ACTION_DOWN
                     && event.hasNoModifiers()) {
-                    submitTextInput(editText);
+                    enterKeyController.submit(editText, this);
                     return true;
                 }
                 return false;
@@ -123,28 +127,17 @@ public class TerminalToolbarViewPager {
 
             ImageButton historyButton = textInputRow.findViewById(R.id.terminal_toolbar_text_input_history_button);
             historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
-
-            ImageButton sendButton = textInputRow.findViewById(R.id.terminal_toolbar_enter_button);
-            new TerminalEnterKeyController(mActivity, sendButton);
-        }
-
-        void submitTextInput(final EditText editText) {
-            writeTextInputToSession(editText, true);
         }
 
         public boolean commitTextInputToTerminal(final EditText editText) {
-            return writeTextInputToSession(editText, false);
-        }
-
-        private boolean writeTextInputToSession(final EditText editText, boolean submitWhenEmpty) {
             TerminalSession session = mActivity.getCurrentSession();
             boolean ownerContentSubmitted = false;
             if (session != null) {
                 String submittedTextInput = editText.getText().toString();
                 addSubmittedTextInputToHistory(submittedTextInput);
                 if (session.isRunning()) {
-                    if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput, submitWhenEmpty)) {
-                        session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
+                    if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput)) {
+                        session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput));
                         recordUserInputForSession(session);
                         ownerContentSubmitted = true;
                     }

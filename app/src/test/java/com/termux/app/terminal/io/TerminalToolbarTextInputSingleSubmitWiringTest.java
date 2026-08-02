@@ -42,6 +42,33 @@ public class TerminalToolbarTextInputSingleSubmitWiringTest {
     }
 
     @Test
+    public void imeSendActionSubmitsThroughTheSameSendPathAsTheSendButton() throws IOException {
+        String source = readViewPagerSource();
+        String body = methodBody(source, "public void setupTextInputRow(final View textInputRow) {");
+        int editorActionListenerStart = body.indexOf("editText.setOnEditorActionListener(");
+        int keyListenerStart = body.indexOf("editText.setOnKeyListener(");
+        Assert.assertTrue(editorActionListenerStart >= 0 && keyListenerStart > editorActionListenerStart);
+        String editorActionListener = body.substring(editorActionListenerStart, keyListenerStart);
+        Assert.assertTrue("the IME send action must run the shared send-button submit, which commits the "
+                + "composing text, writes the text and then writes the enter sequence, instead of only "
+                + "writing the text into the foreground program prompt",
+            editorActionListener.contains("enterKeyController.submit(editText, this)"));
+    }
+
+    @Test
+    public void enterKeySubmitsThroughTheSameSendPathAsTheSendButton() throws IOException {
+        String source = readViewPagerSource();
+        String body = methodBody(source, "public void setupTextInputRow(final View textInputRow) {");
+        int keyListenerStart = body.indexOf("editText.setOnKeyListener(");
+        Assert.assertTrue(keyListenerStart >= 0);
+        String keyListener = body.substring(keyListenerStart);
+        Assert.assertTrue("the KEYCODE_ENTER key listener must run the shared send-button submit, which "
+                + "commits the composing text, writes the text and then writes the enter sequence, instead "
+                + "of only writing the text into the foreground program prompt",
+            keyListener.contains("enterKeyController.submit(editText, this)"));
+    }
+
+    @Test
     public void editorActionListenerConsumesOnlyTheActionsItActuallySubmits() throws IOException {
         String source = readViewPagerSource();
         String body = methodBody(source, "public void setupTextInputRow(final View textInputRow) {");
