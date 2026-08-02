@@ -137,7 +137,7 @@ public class TerminalToolbarViewPager {
                 addSubmittedTextInputToHistory(submittedTextInput);
                 if (session.isRunning()) {
                     if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput)) {
-                        session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput));
+                        session.getEmulator().paste(ToolbarTextInputEncoder.textToSend(submittedTextInput));
                         recordUserInputForSession(session);
                         ownerContentSubmitted = true;
                     }
