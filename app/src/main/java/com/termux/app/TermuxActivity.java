@@ -47,6 +47,7 @@ import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.appopen.InstalledAppLauncher;
 import com.termux.app.browser.BrowserInboundViewUrl;
 import com.termux.app.link.GoogleAppLink;
+import com.termux.app.link.OpenTagUrlGoogleAppOpener;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.browser.TermuxBrowserController;
@@ -1110,7 +1111,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setBrowserView() {
         mTermuxBrowserController = new TermuxBrowserController(this);
-        mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession;
+        mOpenTagUrlOpener = new OpenTagUrlGoogleAppOpener(this,
+            mTermuxBrowserController::openUrlInTabForSession);
         mAppLauncher = new InstalledAppLauncher(
             getPackageManager()::getLaunchIntentForPackage, this::startActivity);
         // The update-flow trigger only needs the activity for its UI; it is registered with the
