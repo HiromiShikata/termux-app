@@ -54,6 +54,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.link.GoogleAppLink;
 import com.termux.app.terminal.SessionInfoHorizontalBounds;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
@@ -905,6 +906,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             @Override
             public void openInExternalBrowser(@NonNull String url) {
                 ShareUtils.openUrlInChrome(mActivity, url);
+            }
+
+            @Override
+            public boolean openInMatchingNativeApp(@NonNull String url) {
+                GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+                return target != null && GoogleAppLink.openInGoogleApp(mActivity, url, target);
             }
         }));
 
