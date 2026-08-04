@@ -161,6 +161,26 @@ public class WorkflowTriggerConcurrencyTest {
     }
 
     @Test
+    public void theViolationIsReportedWhenPushAndPrWorkflowHasNoConcurrencyGroup() throws IOException {
+        writeWorkflow("no_concurrency_group.yml",
+            "name: Build",
+            "on:",
+            "  push:",
+            "    branches:",
+            "      - main",
+            "  pull_request:",
+            "    branches:",
+            "      - main",
+            "jobs:",
+            "  build:",
+            "    runs-on: ubuntu-latest");
+
+        List<String> violations = WorkflowTriggerConcurrencyScanner.findViolations(fixtureDirectory.getRoot());
+        Assert.assertEquals(1, violations.size());
+        Assert.assertTrue(violations.get(0), violations.get(0).contains("without a concurrency group"));
+    }
+
+    @Test
     public void aWildcardPushFilterBesideAPullRequestTriggerIsReportedEvenWhenTheGroupIsSafe() throws IOException {
         writeWorkflow("wildcard_push_filter.yml",
             "name: Build",

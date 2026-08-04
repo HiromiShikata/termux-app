@@ -97,6 +97,12 @@ public final class WorkflowTriggerConcurrencyScanner {
                         + " of the same name");
                 }
             }
+            if (triggers.containsKey(PUSH_EVENT) && triggers.containsKey(PULL_REQUEST_EVENT)
+                && concurrencyGroup == null) {
+                violations.add(workflowFile.getName()
+                    + " triggers on both push and pull_request without a concurrency group,"
+                    + " so a superseded push run is never cancelled");
+            }
         }
         return new Scan(triggerEventsByWorkflow, violations);
     }
