@@ -108,6 +108,11 @@ public class BrowserCoreWebViewClientInstrumentedTest {
         @Override
         public void openInExternalBrowser(@NonNull String url) {
         }
+
+        @Override
+        public boolean openInNativeApp(@NonNull String url) {
+            return false;
+        }
     }
 
     @Test
