@@ -11,6 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
+import com.termux.app.link.GoogleAppLink;
+
 public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient {
 
     public interface Host {
@@ -38,6 +40,8 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash);
 
         void openInExternalBrowser(@NonNull String url);
+
+        boolean openInNativeApp(@NonNull String url);
     }
 
     private final Host mHost;
@@ -57,8 +61,17 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         return mCallbackGuard.runReturning("shouldOverrideUrlLoading", false, () -> {
             String url = request == null || request.getUrl() == null ? null : request.getUrl().toString();
-            return routeToExternalBrowserIfRequired(url);
+            if (routeToExternalBrowserIfRequired(url)) return true;
+            return routeToNativeAppIfRequired(request, url);
         });
+    }
+
+    private boolean routeToNativeAppIfRequired(@Nullable WebResourceRequest request,
+                                               @Nullable String url) {
+        if (request == null || url == null) return false;
+        if (!request.isForMainFrame() || !request.hasGesture()) return false;
+        if (GoogleAppLink.resolveTarget(url) == null) return false;
+        return mHost.openInNativeApp(url);
     }
 
     @Override

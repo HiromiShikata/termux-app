@@ -1,7 +1,9 @@
 package com.termux.app.browser;
 
 import android.content.Context;
+import android.net.Uri;
 import android.webkit.ValueCallback;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
@@ -14,7 +16,9 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RunWith(RobolectricTestRunner.class)
 public class BrowserCoreWebViewClientTest {
@@ -52,6 +56,8 @@ public class BrowserCoreWebViewClientTest {
         boolean renderProcessGoneHandled = true;
         final List<String> events = new ArrayList<>();
         final List<String> externalBrowserUrls = new ArrayList<>();
+        final List<String> nativeAppUrls = new ArrayList<>();
+        boolean nativeAppLaunchSucceeds = true;
 
         @NonNull
         @Override
@@ -99,6 +105,12 @@ public class BrowserCoreWebViewClientTest {
         @Override
         public void openInExternalBrowser(@NonNull String url) {
             externalBrowserUrls.add(url);
+        }
+
+        @Override
+        public boolean openInNativeApp(@NonNull String url) {
+            nativeAppUrls.add(url);
+            return nativeAppLaunchSucceeds;
         }
     }
 
@@ -148,6 +160,56 @@ public class BrowserCoreWebViewClientTest {
         @Override
         public void openInExternalBrowser(@NonNull String url) {
             throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public boolean openInNativeApp(@NonNull String url) {
+            throw new IllegalStateException("boom");
+        }
+    }
+
+    private static final class FakeResourceRequest implements WebResourceRequest {
+
+        private final Uri mUri;
+
+        private final boolean mIsForMainFrame;
+
+        private final boolean mHasGesture;
+
+        FakeResourceRequest(String url, boolean isForMainFrame, boolean hasGesture) {
+            this.mUri = Uri.parse(url);
+            this.mIsForMainFrame = isForMainFrame;
+            this.mHasGesture = hasGesture;
+        }
+
+        @Override
+        public Uri getUrl() {
+            return mUri;
+        }
+
+        @Override
+        public boolean isForMainFrame() {
+            return mIsForMainFrame;
+        }
+
+        @Override
+        public boolean isRedirect() {
+            return false;
+        }
+
+        @Override
+        public boolean hasGesture() {
+            return mHasGesture;
+        }
+
+        @Override
+        public String getMethod() {
+            return "GET";
+        }
+
+        @Override
+        public Map<String, String> getRequestHeaders() {
+            return new HashMap<>();
         }
     }
 
@@ -331,5 +393,60 @@ public class BrowserCoreWebViewClientTest {
     public void renderProcessGoneReturnsHandledTrueWhenHostThrows() {
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
         Assert.assertTrue(client.onRenderProcessGone(newWebView(), null));
+    }
+
+    private static final String DRIVE_FILE_URL =
+        "https://drive.google.com/file/d/abc123/view?usp=drivesdk";
+
+    @Test
+    public void tappedGoogleDriveLinkOpensTheNativeApplication() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeResourceRequest(DRIVE_FILE_URL, true, true));
+        Assert.assertTrue(overridden);
+        Assert.assertEquals(1, host.nativeAppUrls.size());
+        Assert.assertEquals(DRIVE_FILE_URL, host.nativeAppUrls.get(0));
+    }
+
+    @Test
+    public void googleDriveNavigationWithoutUserGestureStaysInWebView() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeResourceRequest(DRIVE_FILE_URL, true, false));
+        Assert.assertFalse(overridden);
+        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+    }
+
+    @Test
+    public void googleDriveNavigationInSubframeStaysInWebView() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeResourceRequest(DRIVE_FILE_URL, false, true));
+        Assert.assertFalse(overridden);
+        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+    }
+
+    @Test
+    public void tappedLinkWithoutMatchingApplicationStaysInWebView() {
+        RecordingHost host = new RecordingHost();
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeResourceRequest("https://example.com/page", true, true));
+        Assert.assertFalse(overridden);
+        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+    }
+
+    @Test
+    public void tappedGoogleDriveLinkStaysInWebViewWhenTheApplicationIsMissing() {
+        RecordingHost host = new RecordingHost();
+        host.nativeAppLaunchSucceeds = false;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeResourceRequest(DRIVE_FILE_URL, true, true));
+        Assert.assertFalse(overridden);
+        Assert.assertEquals(1, host.nativeAppUrls.size());
     }
 }
