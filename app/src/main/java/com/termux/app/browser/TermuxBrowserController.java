@@ -975,8 +975,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         });
 
-        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
-            mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype));
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            if (isDisplayedTab(tab)) restoreVisiblePageAfterTerminatedNavigation();
+            mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype);
+        });
 
         new BrowserLinkContextMenuController(mActivity, webView, new BrowserLinkContextMenuController.Actions() {
             @Override
@@ -1100,10 +1102,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
-    private void handleMainFrameError() {
+    private void restoreVisiblePageAfterTerminatedNavigation() {
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
+    }
+
+    private void handleMainFrameError() {
+        restoreVisiblePageAfterTerminatedNavigation();
     }
 
     private boolean recoverFromRenderProcessGone(@NonNull WebView deadWebView, boolean didCrash) {
