@@ -52,6 +52,26 @@ jobs:
         with:
           exclude-branches: 'release/**, dependabot/**, project-common/**'
           loose-matching: true
+      - name: Check PR title follows conventional commit format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            build
+            chore
+            ci
+            docs
+            feat
+            fix
+            perf
+            refactor
+            revert
+            style
+            test
+            autogen
+            prep
+            adapt
       - name: Install commitlint
         run: |
           mkdir -p /tmp/commitlint-run
