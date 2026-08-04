@@ -32,10 +32,13 @@ public class OpenTagPerSessionRoutingWiringTest {
     @Test
     public void termuxActivityWiresOpenTagOpenerToSessionTargetedMethod() throws IOException {
         String source = readModuleSource("src/main/java/com/termux/app/TermuxActivity.java");
-        Assert.assertTrue(source.contains(
-            "mOpenTagUrlOpener = mTermuxBrowserController::openUrlInTabForSession"));
-        Assert.assertFalse(source.contains(
-            "mOpenTagUrlOpener = mTermuxBrowserController::openUrlInNewTab"));
+        int assignmentIndex = source.indexOf("mOpenTagUrlOpener = ");
+        Assert.assertTrue("the open tag opener must be assigned", assignmentIndex >= 0);
+        String assignment = source.substring(assignmentIndex, source.indexOf(";", assignmentIndex));
+        Assert.assertTrue("the open tag opener must reach the browser through the session targeted method",
+            assignment.contains("mTermuxBrowserController::openUrlInTabForSession"));
+        Assert.assertFalse("the open tag opener must not open a tab on the currently shown session",
+            assignment.contains("openUrlInNewTab"));
     }
 
     @Test
