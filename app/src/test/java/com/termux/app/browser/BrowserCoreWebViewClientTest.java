@@ -1,7 +1,9 @@
 package com.termux.app.browser;
 
 import android.content.Context;
+import android.net.Uri;
 import android.webkit.ValueCallback;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 
 import androidx.annotation.NonNull;
@@ -14,7 +16,9 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @RunWith(RobolectricTestRunner.class)
 public class BrowserCoreWebViewClientTest {
@@ -52,6 +56,8 @@ public class BrowserCoreWebViewClientTest {
         boolean renderProcessGoneHandled = true;
         final List<String> events = new ArrayList<>();
         final List<String> externalBrowserUrls = new ArrayList<>();
+        final List<String> nativeAppUrls = new ArrayList<>();
+        boolean matchingNativeAppInstalled;
 
         @NonNull
         @Override
@@ -99,6 +105,12 @@ public class BrowserCoreWebViewClientTest {
         @Override
         public void openInExternalBrowser(@NonNull String url) {
             externalBrowserUrls.add(url);
+        }
+
+        @Override
+        public boolean openInMatchingNativeApp(@NonNull String url) {
+            nativeAppUrls.add(url);
+            return matchingNativeAppInstalled;
         }
     }
 
@@ -149,6 +161,58 @@ public class BrowserCoreWebViewClientTest {
         public void openInExternalBrowser(@NonNull String url) {
             throw new IllegalStateException("boom");
         }
+
+        @Override
+        public boolean openInMatchingNativeApp(@NonNull String url) {
+            throw new IllegalStateException("boom");
+        }
+    }
+
+    private static final class FakeWebResourceRequest implements WebResourceRequest {
+
+        private final Uri mUrl;
+        private final boolean mHasGesture;
+        private final boolean mIsForMainFrame;
+
+        FakeWebResourceRequest(String url, boolean hasGesture, boolean isForMainFrame) {
+            this.mUrl = Uri.parse(url);
+            this.mHasGesture = hasGesture;
+            this.mIsForMainFrame = isForMainFrame;
+        }
+
+        @Override
+        public Uri getUrl() {
+            return mUrl;
+        }
+
+        @Override
+        public boolean isForMainFrame() {
+            return mIsForMainFrame;
+        }
+
+        @Override
+        public boolean isRedirect() {
+            return false;
+        }
+
+        @Override
+        public boolean hasGesture() {
+            return mHasGesture;
+        }
+
+        @Override
+        public String getMethod() {
+            return "GET";
+        }
+
+        @Override
+        public Map<String, String> getRequestHeaders() {
+            return Collections.emptyMap();
+        }
+    }
+
+    private static FakeWebResourceRequest tappedLink(String url) {
+        return new FakeWebResourceRequest(url, true, true);
     }
 
     private WebView newWebView() {
@@ -236,6 +300,71 @@ public class BrowserCoreWebViewClientTest {
             "https://example.com/page");
         Assert.assertFalse(overridden);
         Assert.assertTrue(host.externalBrowserUrls.isEmpty());
+    }
+
+    @Test
+    public void aDriveLinkTheUserTappedOpensInTheMatchingNativeApp() {
+        RecordingHost host = new RecordingHost();
+        host.matchingNativeAppInstalled = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            tappedLink("https://drive.google.com/file/d/abc/view?usp=drivesdk"));
+        Assert.assertTrue("a tapped Drive link must leave the in-app browser", overridden);
+        Assert.assertTrue(host.nativeAppUrls.contains(
+            "https://drive.google.com/file/d/abc/view?usp=drivesdk"));
+    }
+
+    @Test
+    public void aTappedLinkStaysInTheBrowserWhenNoNativeAppTakesIt() {
+        RecordingHost host = new RecordingHost();
+        host.matchingNativeAppInstalled = false;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            tappedLink("https://drive.google.com/file/d/abc/view"));
+        Assert.assertFalse("without an application to take it the link must load in the browser",
+            overridden);
+    }
+
+    @Test
+    public void aNavigationTheUserDidNotStartStaysInTheBrowser() {
+        RecordingHost host = new RecordingHost();
+        host.matchingNativeAppInstalled = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeWebResourceRequest("https://drive.google.com/file/d/abc/view", false, true));
+        Assert.assertFalse("a page must not push the user out of the browser on its own", overridden);
+        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+    }
+
+    @Test
+    public void aSubframeNavigationStaysInTheBrowser() {
+        RecordingHost host = new RecordingHost();
+        host.matchingNativeAppInstalled = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            new FakeWebResourceRequest("https://drive.google.com/file/d/abc/view", true, false));
+        Assert.assertFalse("an embedded frame must not take over the whole screen", overridden);
+        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void aNavigationWithoutGestureInformationStaysInTheBrowser() {
+        RecordingHost host = new RecordingHost();
+        host.matchingNativeAppInstalled = true;
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
+        boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
+            "https://drive.google.com/file/d/abc/view");
+        Assert.assertFalse("a navigation that cannot be shown to be user initiated must stay in the browser",
+            overridden);
+        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+    }
+
+    @Test
+    public void aTappedLinkDoesNotPropagateHostException() {
+        BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(new ThrowingHost());
+        Assert.assertFalse(client.shouldOverrideUrlLoading(newWebView(),
+            tappedLink("https://drive.google.com/file/d/abc/view")));
     }
 
     @Test
