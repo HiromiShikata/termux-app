@@ -132,7 +132,8 @@ public final class SessionDefinitionController {
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
             SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
-                plannedSessions, liveSessionNames, hiddenSessionNames());
+                plannedSessions, liveSessionNames, hiddenSessionNames(),
+                userRemovedSessionTimes(), System.currentTimeMillis());
 
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 
@@ -209,6 +210,11 @@ public final class SessionDefinitionController {
     private Set<String> hiddenSessionNames() {
         return activity.getPreferences() == null
             ? Collections.emptySet() : activity.getPreferences().getDisabledSessionNames();
+    }
+
+    private Map<String, Long> userRemovedSessionTimes() {
+        return activity.getPreferences() == null
+            ? Collections.emptyMap() : activity.getPreferences().getUserRemovedSessionTimes();
     }
 
     private void reconcileDuplicateLiveSessions() {

@@ -15,7 +15,9 @@ import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxUtils;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_APP;
 
+import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class TermuxAppSharedPreferences extends AppSharedPreferences {
@@ -562,6 +564,46 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         if (changed) {
             setUserRemovedSessionNames(serializeDisabledSessionNames(names));
         }
+    }
+
+
+    public String getUserRemovedSessionTimesText() {
+        return SharedPreferenceUtils.getString(mSharedPreferences, TERMUX_APP.KEY_USER_REMOVED_SESSION_TIMES, TERMUX_APP.DEFAULT_VALUE_KEY_USER_REMOVED_SESSION_TIMES, false);
+    }
+
+    public void setUserRemovedSessionTimes(String value) {
+        SharedPreferenceUtils.setString(mSharedPreferences, TERMUX_APP.KEY_USER_REMOVED_SESSION_TIMES, value, false);
+    }
+
+    @NonNull
+    public Map<String, Long> getUserRemovedSessionTimes() {
+        return UserRemovedSessionTimeSerializer.parse(getUserRemovedSessionTimesText());
+    }
+
+    public void recordSessionUserRemovedAt(@Nullable String sessionName, long removedAtMillis) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        Map<String, Long> removalTimes = getUserRemovedSessionTimes();
+        Iterator<Map.Entry<String, Long>> removalRecords = removalTimes.entrySet().iterator();
+        while (removalRecords.hasNext()) {
+            if (!UserRemovedSessionHideWindow.hidesSession(removalRecords.next().getValue(), removedAtMillis)) {
+                removalRecords.remove();
+            }
+        }
+        removalTimes.put(sessionName, removedAtMillis);
+        setUserRemovedSessionTimes(UserRemovedSessionTimeSerializer.serialize(removalTimes));
+    }
+
+    public void clearSessionUserRemovedTime(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) {
+            return;
+        }
+        Map<String, Long> removalTimes = getUserRemovedSessionTimes();
+        if (removalTimes.remove(sessionName) == null) {
+            return;
+        }
+        setUserRemovedSessionTimes(UserRemovedSessionTimeSerializer.serialize(removalTimes));
     }
 
 
