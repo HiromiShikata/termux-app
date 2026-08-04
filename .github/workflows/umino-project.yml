@@ -46,6 +46,7 @@ env:
 jobs:
   umino-job:
     if: >-
+      github.repository != 'HiromiShikata/test-repository' &&
       github.actor != 'dependabot[bot]' &&
       github.actor != 'renovate[bot]' &&
       github.actor != 'app/dependabot' &&
@@ -272,6 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check linked issues in pull requests
     if: >-
+      github.repository != 'HiromiShikata/test-repository' &&
       (github.event_name == 'pull_request') &&
       (github.event.action == 'edited' ||
        github.event.action == 'synchronize' ||
