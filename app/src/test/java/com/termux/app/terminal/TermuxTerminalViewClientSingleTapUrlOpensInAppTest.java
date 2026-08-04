@@ -32,6 +32,24 @@ public class TermuxTerminalViewClientSingleTapUrlOpensInAppTest {
     }
 
     @Test
+    public void tapConsumedByTheTerminalViewRoutesThroughMatchingAppOrBrowserHelper() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public boolean onOpenSelectedUrlRequested(");
+
+        Assert.assertTrue("a URL the terminal view resolves under the tap must open in the matching native app before the browser",
+            methodBody.contains("openUrlInMatchingAppOrBrowser(url)"));
+    }
+
+    @Test
+    public void tapConsumedByTheTerminalViewDoesNotBypassNativeAppResolution() throws IOException {
+        String methodBody = methodBody(
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public boolean onOpenSelectedUrlRequested(");
+
+        Assert.assertFalse("a URL the terminal view resolves under the tap must not go straight to the in-app browser",
+            methodBody.contains("browserController.openUrlInNewTab(url)"));
+    }
+
+    @Test
     public void singleTapOnPlainTextUrlRoutesThroughMatchingAppOrBrowserHelper() throws IOException {
         String methodBody = methodBody(
             readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void onSingleTapUp(");

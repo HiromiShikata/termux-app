@@ -505,9 +505,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onOpenSelectedUrlRequested(String url) {
         if (DataUtils.isNullOrEmpty(url)) return false;
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-        if (browserController == null) return false;
-        browserController.openUrlInNewTab(url);
+        if (mActivity.getTermuxBrowserController() == null) return false;
+        openUrlInMatchingAppOrBrowser(url);
         return true;
     }
 
