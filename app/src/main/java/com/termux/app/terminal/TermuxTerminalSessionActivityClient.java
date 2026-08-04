@@ -1684,6 +1684,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterUserRemoval(
                 sessionName)) {
             preferences.setSessionUserRemoved(sessionName, true);
+            preferences.recordSessionUserRemovedAt(sessionName, System.currentTimeMillis());
         }
     }
 
@@ -2733,6 +2734,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (terminalSession == null) return;
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return;
+        preferences.clearSessionUserRemovedTime(terminalSession.mSessionName);
         if (preferences.isSessionUserRemoved(terminalSession.mSessionName)) {
             preferences.setSessionUserRemoved(terminalSession.mSessionName, false);
         }

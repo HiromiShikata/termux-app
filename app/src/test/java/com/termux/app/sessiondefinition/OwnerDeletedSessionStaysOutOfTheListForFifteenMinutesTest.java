@@ -12,6 +12,7 @@ import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.settings.preferences.UserRemovedSessionHideWindow;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -96,6 +97,49 @@ public class OwnerDeletedSessionStaysOutOfTheListForFifteenMinutesTest {
             sessionNamesInTheList().contains(DELETED_SESSION_NAME));
         assertTrue("a session the owner did not delete must keep its place in the list",
             sessionNamesInTheList().contains(UNTOUCHED_SESSION_NAME));
+    }
+
+    @Test
+    public void aSessionDefinitionLoadAFullFifteenMinutesAfterTheDeletionPutsTheSessionBack()
+            throws Exception {
+        TermuxSession deletedByTheOwner = liveSession(DELETED_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deletedByTheOwner);
+        TermuxSession untouched = liveSession(UNTOUCHED_SESSION_NAME);
+        shellManager.mTermuxSessions.add(untouched);
+        attachCurrentSession(untouched.getTerminalSession());
+
+        activity.getTermuxTerminalSessionClient().deleteSession(deletedByTheOwner.getTerminalSession());
+        activity.getPreferences().setUserRemovedSessionTimes(
+            (System.currentTimeMillis() - UserRemovedSessionHideWindow.HIDE_DURATION_MILLIS)
+                + " " + DELETED_SESSION_NAME);
+
+        invokeBuildSessions(new SessionDefinitionLoadResult(publishedEntries, 1, Collections.emptyList()));
+
+        assertTrue("the deletion hides the session for fifteen minutes and no longer, so a definition"
+                + " load after that window must create the name again exactly as it did before the"
+                + " owner ever deleted it",
+            sessionNamesInTheList().contains(DELETED_SESSION_NAME));
+    }
+
+    @Test
+    public void deletingASessionRecordsWhenTheOwnerDeletedIt() throws Exception {
+        TermuxSession deletedByTheOwner = liveSession(DELETED_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deletedByTheOwner);
+        TermuxSession untouched = liveSession(UNTOUCHED_SESSION_NAME);
+        shellManager.mTermuxSessions.add(untouched);
+        attachCurrentSession(untouched.getTerminalSession());
+        long beforeTheDeletion = System.currentTimeMillis();
+
+        activity.getTermuxTerminalSessionClient().deleteSession(deletedByTheOwner.getTerminalSession());
+
+        Long removedAtMillis = activity.getPreferences().getUserRemovedSessionTimes()
+            .get(DELETED_SESSION_NAME);
+        assertNotNull("without a recorded removal time nothing downstream can tell how long the session"
+            + " has been hidden for", removedAtMillis);
+        assertTrue("the recorded removal time must be the moment the owner deleted the session",
+            removedAtMillis >= beforeTheDeletion && removedAtMillis <= System.currentTimeMillis());
+        assertFalse("a session the owner never deleted must carry no removal time",
+            activity.getPreferences().getUserRemovedSessionTimes().containsKey(UNTOUCHED_SESSION_NAME));
     }
 
     private List<String> sessionNamesInTheList() {
