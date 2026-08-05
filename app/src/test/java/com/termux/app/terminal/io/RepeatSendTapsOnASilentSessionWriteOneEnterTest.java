@@ -39,6 +39,8 @@ public class RepeatSendTapsOnASilentSessionWriteOneEnterTest {
 
     private static final String SESSION_NAME = "repeat-send-tap-session";
 
+    private static final String OTHER_SESSION_NAME = "other-repeat-send-tap-session";
+
     private static final String OWNER_MESSAGE = "which check went red";
 
     private static final long CLEARLY_LATER_MILLIS = 60_000L;
@@ -107,6 +109,27 @@ public class RepeatSendTapsOnASilentSessionWriteOneEnterTest {
     }
 
     @Test
+    public void aSilentSessionDoesNotSuppressTheFirstBareEnterOfAnotherSession() throws Exception {
+        drainBytesDeliveredToSession();
+
+        tapSendWithAnEmptyField();
+        tapSendWithAnEmptyField();
+        assertEquals("the first session must have written exactly one enter before the switch, otherwise"
+                + " this test could not attribute what the second session receives",
+            expectedEnterSequence(), bytesDeliveredToSession());
+
+        TerminalSession otherSession = liveSessionHoldingAnEmulator(OTHER_SESSION_NAME);
+        switchCurrentSessionTo(otherSession);
+        drainBytesDeliveredTo(otherSession);
+
+        tapSendWithAnEmptyField();
+
+        assertEquals("suppression is about whether one session is consuming input, so a session the owner"
+                + " has just switched to must still receive the enter that confirms its prompt",
+            expectedEnterSequence(), bytesDeliveredTo(otherSession));
+    }
+
+    @Test
     public void repeatTapsThatCarryOwnerTextAreNeverSuppressed() throws Exception {
         drainBytesDeliveredToSession();
 
@@ -139,10 +162,22 @@ public class RepeatSendTapsOnASilentSessionWriteOneEnterTest {
             emulator.isCursorKeysApplicationMode(), emulator.isKeypadApplicationMode());
     }
 
+    private void switchCurrentSessionTo(TerminalSession session) throws Exception {
+        TerminalView terminalView = activity.getTerminalView();
+        assertNotNull(terminalView);
+        terminalView.mTermSession = session;
+        assertEquals("the activity must report the session this test switched to, otherwise the tap would"
+            + " still be delivered to the previous one", session, activity.getCurrentSession());
+    }
+
     private TerminalSession liveSessionHoldingAnEmulator() throws Exception {
+        return liveSessionHoldingAnEmulator(SESSION_NAME);
+    }
+
+    private TerminalSession liveSessionHoldingAnEmulator(String sessionName) throws Exception {
         TerminalSession session = new TerminalSession("/system/bin/sh", "/", new String[0],
             new String[0], 2000, activity.getTermuxTerminalSessionClient());
-        session.mSessionName = SESSION_NAME;
+        session.mSessionName = sessionName;
         try {
             session.initializeEmulator(80, 24, 10, 20);
         } catch (LinkageError deviceOnlyNativeSubprocessLibraryIsAbsent) {
@@ -169,19 +204,27 @@ public class RepeatSendTapsOnASilentSessionWriteOneEnterTest {
     }
 
     private String bytesDeliveredToSession() throws Exception {
+        return bytesDeliveredTo(currentSession);
+    }
+
+    private String bytesDeliveredTo(TerminalSession session) throws Exception {
         byte[] buffer = new byte[4096];
-        int readByteCount = readFromSessionIoQueue(buffer);
+        int readByteCount = readFromSessionIoQueue(session, buffer);
         return readByteCount <= 0 ? "" : new String(buffer, 0, readByteCount, StandardCharsets.UTF_8);
     }
 
     private void drainBytesDeliveredToSession() throws Exception {
-        readFromSessionIoQueue(new byte[4096]);
+        drainBytesDeliveredTo(currentSession);
     }
 
-    private int readFromSessionIoQueue(byte[] buffer) throws Exception {
+    private void drainBytesDeliveredTo(TerminalSession session) throws Exception {
+        readFromSessionIoQueue(session, new byte[4096]);
+    }
+
+    private int readFromSessionIoQueue(TerminalSession session, byte[] buffer) throws Exception {
         Field ioQueueField = TerminalSession.class.getDeclaredField("mTerminalToProcessIOQueue");
         ioQueueField.setAccessible(true);
-        Object ioQueue = ioQueueField.get(currentSession);
+        Object ioQueue = ioQueueField.get(session);
         assertNotNull(ioQueue);
         Method read = ioQueue.getClass().getDeclaredMethod("read", byte[].class, boolean.class);
         read.setAccessible(true);
