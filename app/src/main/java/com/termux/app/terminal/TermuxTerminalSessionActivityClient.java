@@ -2629,7 +2629,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         @Override
         public void run() {
-            if (reconnectedSession.isRunning()) {
+            if (ReconnectedSessionInputReplayPlanner.shouldWriteNow(
+                reconnectedSession.isRunning(), remoteTerminalSubmitsCarriageReturn())) {
                 reconnectedSession.write(textToSend);
                 return;
             }
@@ -2638,6 +2639,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 return;
             }
             mainThreadHandler.postDelayed(this, ReconnectedSessionInputReplayPlanner.RETRY_DELAY_MILLIS);
+        }
+
+        private boolean remoteTerminalSubmitsCarriageReturn() {
+            TerminalEmulator emulator = reconnectedSession.getEmulator();
+            return emulator != null && emulator.isBracketedPasteMode();
         }
     }
 

@@ -6,9 +6,9 @@ import org.junit.Test;
 public class ReconnectedSessionInputReplayPlannerTest {
 
     @Test
-    public void replayWindowIsBoundedToHalfASecondSoTheUiDoesNotFreezeForSeconds() {
-        Assert.assertEquals(500L, ReconnectedSessionInputReplayPlanner.maxReplayWindowMillis());
-        Assert.assertTrue(ReconnectedSessionInputReplayPlanner.maxReplayWindowMillis() <= 1_000L);
+    public void replayWindowIsBoundedAndCoversAnSshConnectionAndTmuxAttach() {
+        Assert.assertEquals(10_000L, ReconnectedSessionInputReplayPlanner.maxReplayWindowMillis());
+        Assert.assertTrue(ReconnectedSessionInputReplayPlanner.maxReplayWindowMillis() <= 30_000L);
     }
 
     @Test
@@ -24,8 +24,8 @@ public class ReconnectedSessionInputReplayPlannerTest {
     }
 
     @Test
-    public void retryCountIsBoundedShortRatherThanTheOldTwoAndAHalfSecondSchedule() {
-        Assert.assertEquals(10, ReconnectedSessionInputReplayPlanner.MAX_RETRY_ATTEMPTS);
-        Assert.assertEquals(50L, ReconnectedSessionInputReplayPlanner.RETRY_DELAY_MILLIS);
+    public void retryScheduleWaitsForTheRemoteTerminalWithoutBlockingTheUiThread() {
+        Assert.assertEquals(100, ReconnectedSessionInputReplayPlanner.MAX_RETRY_ATTEMPTS);
+        Assert.assertEquals(100L, ReconnectedSessionInputReplayPlanner.RETRY_DELAY_MILLIS);
     }
 }
