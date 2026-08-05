@@ -14,10 +14,14 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class TerminalEnterKeyController {
 
     private final TermuxActivity mActivity;
     private final ImageButton mButton;
+    private final Map<String, Long> mLastBareEnterTimeMillisBySessionName = new HashMap<>();
 
     public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
         this.mActivity = activity;
@@ -30,7 +34,7 @@ public class TerminalEnterKeyController {
                           @Nullable TerminalToolbarViewPager.PageAdapter adapter) {
         finishComposingText();
         boolean ownerContentSubmitted = commitToolbarTextInput(editText, adapter);
-        sendEnter();
+        sendEnter(ownerContentSubmitted);
         if (SendButtonReplySubmitDecision.shouldRecordReply(ownerContentSubmitted)) {
             recordReplyOnSubmit();
         }
@@ -48,13 +52,27 @@ public class TerminalEnterKeyController {
         return adapter.commitTextInputToTerminal(editText);
     }
 
-    private void sendEnter() {
+    private void sendEnter(boolean ownerContentSubmitted) {
         TerminalSession session = mActivity.getCurrentSession();
         if (session == null || !session.isRunning()) return;
         TerminalEmulator emulator = session.getEmulator();
         if (emulator == null) return;
+        if (!ownerContentSubmitted && !allowBareEnter(session)) return;
         session.write(TerminalEnterKeyEncoder.enterSequence(
             emulator.isCursorKeysApplicationMode(), emulator.isKeypadApplicationMode()));
+    }
+
+    private boolean allowBareEnter(@NonNull TerminalSession session) {
+        String sessionName = session.mSessionName;
+        if (sessionName == null) return true;
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return true;
+        if (!BareEnterWriteDecision.shouldWrite(mLastBareEnterTimeMillisBySessionName.get(sessionName),
+                store.getLastOutputActivityTimeMillis(sessionName))) {
+            return false;
+        }
+        mLastBareEnterTimeMillisBySessionName.put(sessionName, System.currentTimeMillis());
+        return true;
     }
 
     private void recordReplyOnSubmit() {
