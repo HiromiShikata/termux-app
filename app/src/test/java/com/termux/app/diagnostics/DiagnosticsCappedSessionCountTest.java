@@ -74,7 +74,7 @@ public class DiagnosticsCappedSessionCountTest {
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
-            new DiagnosticsMainThreadStalls(250L, 0L, 0L, ""),
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             0L);
 

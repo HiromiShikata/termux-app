@@ -16,7 +16,7 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsMemoryUsage NO_MEMORY_USAGE = new DiagnosticsMemoryUsage(0, 0, 0, 0);
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
-        new DiagnosticsMainThreadStalls(250L, 0L, 0L, "");
+        new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
 
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
                                          int countedTowardCap, int displayedCount, int maxCap,
@@ -374,18 +374,51 @@ public class DiagnosticsReportBuilderTest {
     }
 
     @Test
+    public void mainThreadStallSectionRanksTheCodePathsThatBlockedTheMainThreadTheLongest() {
+        DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
+            0, 0, false, true, Collections.emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            new DiagnosticsMainThreadStalls(80L, 31L, 900L,
+                "com.termux.app.Rare.once(Rare.java:1)",
+                java.util.Arrays.asList(
+                    new MainThreadStallHotPath(
+                        "com.termux.app.Frequent.everyFrame(Frequent.java:7)", 30L, 3000L, 140L),
+                    new MainThreadStallHotPath(
+                        "com.termux.app.Rare.once(Rare.java:1)", 1L, 900L, 900L))),
+            0L);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("The heading must announce the ranking so the reader knows the order is by blocked time: "
+                + text,
+            text.contains("Blocking the main thread the longest"));
+        Assert.assertTrue("The path that consumed the most total main thread time must be reported with its total,"
+                + " its occurrence count and its worst single occurrence: " + text,
+            text.contains("3000 ms total over 30 stalls, longest 140 ms"));
+        Assert.assertTrue("A path is useless without the code it names: " + text,
+            text.contains("com.termux.app.Frequent.everyFrame"));
+        Assert.assertTrue("The rarer path must still be reported so a one-off freeze is not hidden: " + text,
+            text.contains("900 ms total over 1 stalls, longest 900 ms"));
+        Assert.assertTrue("The frequent path must be printed before the rare one: " + text,
+            text.indexOf("3000 ms total over 30 stalls") < text.indexOf("900 ms total over 1 stalls"));
+    }
+
+    @Test
     public void mainThreadStallSectionNamesTheCodeTheLongestStallWasRunning() {
         DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
             0, 0, false, true, Collections.emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
             new DiagnosticsMainThreadStalls(250L, 12L, 4300L,
-                "com.termux.app.SlowThing.doWork(SlowThing.java:42)\nandroid.os.Looper.loop(Looper.java:223)"),
+                "com.termux.app.SlowThing.doWork(SlowThing.java:42)\nandroid.os.Looper.loop(Looper.java:223)",
+                Collections.emptyList()),
             0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
 
         Assert.assertTrue("The stall threshold must be stated so the reader knows what duration was counted: " + text,
             text.contains("Stalls over 250 ms"));
+        Assert.assertFalse("With no aggregated path there is nothing to rank, so the heading must be absent: " + text,
+            text.contains("Blocking the main thread the longest"));
         Assert.assertTrue("The stall count must be reported because a high count is what distinguishes a blocked main"
                 + " thread from an idle one: " + text,
             text.contains("Count: 12"));
@@ -404,7 +437,7 @@ public class DiagnosticsReportBuilderTest {
         DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
             0, 0, false, true, Collections.emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
-            new DiagnosticsMainThreadStalls(250L, 0L, 0L, ""),
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()),
             0L);
 
         String text = new DiagnosticsReportBuilder().build(report);

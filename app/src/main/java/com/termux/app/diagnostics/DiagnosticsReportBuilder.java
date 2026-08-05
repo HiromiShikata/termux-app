@@ -12,6 +12,10 @@ public final class DiagnosticsReportBuilder {
 
     private static final String TIMESTAMP_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
+    private static final int MAX_REPORTED_STALL_HOT_PATHS = 4;
+
+    private static final int MAX_REPORTED_STALL_HOT_PATH_FRAMES = 8;
+
     @NonNull
     public String build(@NonNull DiagnosticsReport report) {
         StringBuilder builder = new StringBuilder();
@@ -113,6 +117,27 @@ public final class DiagnosticsReportBuilder {
         builder.append("    Longest stall main thread was running:\n");
         for (String frame : stalls.getMaxStallStackTrace().split("\n")) {
             builder.append("      ").append(frame).append('\n');
+        }
+        appendMainThreadStallHotPathLines(builder, stalls.getHotPaths());
+    }
+
+    private void appendMainThreadStallHotPathLines(@NonNull StringBuilder builder,
+                                                   @NonNull List<MainThreadStallHotPath> hotPaths) {
+        if (hotPaths.isEmpty()) {
+            return;
+        }
+        builder.append("    Blocking the main thread the longest\n");
+        int reportedCount = Math.min(hotPaths.size(), MAX_REPORTED_STALL_HOT_PATHS);
+        for (int index = 0; index < reportedCount; index++) {
+            MainThreadStallHotPath hotPath = hotPaths.get(index);
+            builder.append("      ").append(hotPath.getTotalBlockedMillis())
+                .append(" ms total over ").append(hotPath.getStallCount())
+                .append(" stalls, longest ").append(hotPath.getMaxBlockedMillis()).append(" ms\n");
+            String[] frames = hotPath.getStackTrace().split("\n");
+            int reportedFrameCount = Math.min(frames.length, MAX_REPORTED_STALL_HOT_PATH_FRAMES);
+            for (int frameIndex = 0; frameIndex < reportedFrameCount; frameIndex++) {
+                builder.append("        ").append(frames[frameIndex]).append('\n');
+            }
         }
     }
 

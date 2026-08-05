@@ -8,9 +8,9 @@ import androidx.annotation.NonNull;
 
 public final class MainThreadStallWatchdog {
 
-    private static final long STALL_THRESHOLD_MILLIS = 250L;
-    private static final long HEARTBEAT_INTERVAL_MILLIS = 500L;
-    private static final long SAMPLE_INTERVAL_MILLIS = 100L;
+    private static final long STALL_THRESHOLD_MILLIS = 80L;
+    private static final long HEARTBEAT_INTERVAL_MILLIS = 200L;
+    private static final long SAMPLE_INTERVAL_MILLIS = 50L;
 
     private static final MainThreadStallRecorder RECORDER =
         new MainThreadStallRecorder(STALL_THRESHOLD_MILLIS);
@@ -59,7 +59,10 @@ public final class MainThreadStallWatchdog {
                 if (!sleep(SAMPLE_INTERVAL_MILLIS)) {
                     return;
                 }
-                recorder.sampleWhileOutstanding(SystemClock.uptimeMillis(), mainThread.getStackTrace());
+                long sampledAtMillis = SystemClock.uptimeMillis();
+                if (recorder.needsStackSample(sampledAtMillis)) {
+                    recorder.sampleWhileOutstanding(sampledAtMillis, mainThread.getStackTrace());
+                }
             }
             if (!sleep(HEARTBEAT_INTERVAL_MILLIS)) {
                 return;
