@@ -2636,6 +2636,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             }
             remainingAttempts--;
             if (!ReconnectedSessionInputReplayPlanner.shouldScheduleAnotherAttempt(remainingAttempts)) {
+                int lostCharacterCount = textToSend.length();
+                Logger.logError(LOG_TAG, "The reconnected session did not reach the input mode in which a "
+                    + "carriage return submits within "
+                    + ReconnectedSessionInputReplayPlanner.maxReplayWindowMillis()
+                    + "ms, so the pending input of " + lostCharacterCount
+                    + " characters was not replayed into \"" + reconnectedSession.mSessionName + "\".");
                 return;
             }
             mainThreadHandler.postDelayed(this, ReconnectedSessionInputReplayPlanner.RETRY_DELAY_MILLIS);
