@@ -46,17 +46,31 @@ public class BrowserLinkOpensMatchingNativeAppWiringTest {
     }
 
     @Test
-    public void onlyAUserInitiatedMainFrameNavigationLeavesTheInAppBrowser() throws IOException {
+    public void aMainFrameNavigationLeavesTheInAppBrowserWhateverStartedIt() throws IOException {
         String routingMethod = blockStartingAt(
             readModuleSource(CORE_WEB_VIEW_CLIENT_PATH),
             "private boolean routeToMatchingNativeAppIfRequired(", "\n    }");
 
-        Assert.assertTrue("a navigation the user did not start must stay in the in-app browser",
+        Assert.assertFalse("Google web properties navigate by script after a tap, and WebView reports no"
+                + " gesture for a script started navigation, so gating on one keeps exactly the links the"
+                + " owner wants in his applications inside the in-app browser instead",
             routingMethod.contains("hasGesture()"));
         Assert.assertTrue("a subframe navigation must stay in the in-app browser",
             routingMethod.contains("isForMainFrame()"));
         Assert.assertTrue("only a URL with a matching native application may leave the in-app browser",
             routingMethod.contains("openInMatchingNativeApp("));
+    }
+
+    @Test
+    public void aLinkThatOpensANewWindowIsOfferedToTheMatchingNativeApplication() throws IOException {
+        String newWindowOpener = blockStartingAt(
+            readModuleSource(BROWSER_CONTROLLER_PATH),
+            "private boolean openNewWindowUrlInNewTab(", "\n    }");
+
+        Assert.assertTrue("a target=_blank link never reaches shouldOverrideUrlLoading while multiple"
+                + " windows are supported, so without this the owner's Drive, Calendar and Sheets links"
+                + " open as another in-app tab he is not signed in to",
+            newWindowOpener.contains("openInMatchingNativeApp("));
     }
 
     @Test

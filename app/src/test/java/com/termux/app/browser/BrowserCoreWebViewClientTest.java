@@ -326,14 +326,18 @@ public class BrowserCoreWebViewClientTest {
     }
 
     @Test
-    public void aNavigationTheUserDidNotStartStaysInTheBrowser() {
+    public void aMainFrameNavigationReportingNoGestureStillReachesTheMatchingNativeApp() {
         RecordingHost host = new RecordingHost();
         host.matchingNativeAppInstalled = true;
         BrowserCoreWebViewClient client = new BrowserCoreWebViewClient(host);
         boolean overridden = client.shouldOverrideUrlLoading(newWebView(),
             new FakeWebResourceRequest("https://drive.google.com/file/d/abc/view", false, true));
-        Assert.assertFalse("a page must not push the user out of the browser on its own", overridden);
-        Assert.assertTrue(host.nativeAppUrls.isEmpty());
+        Assert.assertTrue("Google web properties navigate by script after a tap and WebView reports no"
+                + " gesture for that, so gating on one kept exactly the links the owner wants in his"
+                + " applications inside the in-app browser, where he is not signed in",
+            overridden);
+        Assert.assertEquals(Collections.singletonList("https://drive.google.com/file/d/abc/view"),
+            host.nativeAppUrls);
     }
 
     @Test
