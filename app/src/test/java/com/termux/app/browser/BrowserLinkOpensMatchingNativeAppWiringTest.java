@@ -77,7 +77,7 @@ public class BrowserLinkOpensMatchingNativeAppWiringTest {
     public void theBrowserResolvesTheMatchingNativeApplicationThroughTheSharedLinkResolver() throws IOException {
         String hostMethod = blockStartingAt(
             readModuleSource(BROWSER_CONTROLLER_PATH),
-            "public boolean openInMatchingNativeApp(", "\n            }");
+            "private boolean openInMatchingNativeApp(", "\n    }");
 
         Assert.assertTrue("the browser must reuse the shared Google application resolver",
             hostMethod.contains("GoogleAppLink.resolveTarget("));
