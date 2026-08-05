@@ -74,13 +74,26 @@ public final class MainThreadStallRecorder {
     private void recordHotPath(@NonNull String stackTrace, long blockedMillis) {
         HotPathAggregate aggregate = mHotPathsByStackTrace.get(stackTrace);
         if (aggregate == null) {
-            if (mHotPathsByStackTrace.size() >= MAX_TRACKED_HOT_PATHS) {
-                return;
-            }
             aggregate = new HotPathAggregate();
             mHotPathsByStackTrace.put(stackTrace, aggregate);
         }
         aggregate.addStall(blockedMillis);
+        dropLeastBlockingPathsBeyondCapacity();
+    }
+
+    private void dropLeastBlockingPathsBeyondCapacity() {
+        while (mHotPathsByStackTrace.size() > MAX_TRACKED_HOT_PATHS) {
+            String leastBlockingStackTrace = null;
+            long leastTotalBlockedMillis = Long.MAX_VALUE;
+            for (Map.Entry<String, HotPathAggregate> entry : mHotPathsByStackTrace.entrySet()) {
+                long totalBlockedMillis = entry.getValue().mTotalBlockedMillis;
+                if (totalBlockedMillis < leastTotalBlockedMillis) {
+                    leastTotalBlockedMillis = totalBlockedMillis;
+                    leastBlockingStackTrace = entry.getKey();
+                }
+            }
+            mHotPathsByStackTrace.remove(leastBlockingStackTrace);
+        }
     }
 
     @NonNull
