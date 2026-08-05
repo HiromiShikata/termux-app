@@ -61,6 +61,22 @@ public class MainThreadStallRecorderTest {
     }
 
     @Test
+    public void aHeavyPathFoundLateStillDisplacesTheNoiseThatFilledTheTable() {
+        MainThreadStallRecorder recorder = new MainThreadStallRecorder(STALL_THRESHOLD_MILLIS);
+
+        for (int noiseIndex = 0; noiseIndex < 200; noiseIndex++) {
+            stall(recorder, 1000L * noiseIndex, 300L, "noise" + noiseIndex);
+        }
+        stall(recorder, 900000L, 5000L, "scrollTerminal");
+
+        java.util.List<MainThreadStallHotPath> hotPaths = recorder.getHotPathsByTotalBlockedMillis();
+
+        Assert.assertTrue("the path that blocked the main thread the longest must survive the bound. Actual: "
+                + hotPaths.get(0).getStackTrace(),
+            hotPaths.get(0).getStackTrace().contains("com.termux.app.Blocking.scrollTerminal"));
+    }
+
+    @Test
     public void aHeartbeatInsideTheThresholdContributesToNoHotPath() {
         MainThreadStallRecorder recorder = new MainThreadStallRecorder(STALL_THRESHOLD_MILLIS);
 
