@@ -3,11 +3,21 @@ package com.termux.app.diagnostics;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public final class MainThreadStallRecorder {
 
     public static final String STACK_TRACE_NOT_SAMPLED = "not sampled";
 
     private static final int MAX_RECORDED_FRAMES = 16;
+
+    private static final int MAX_TRACKED_HOT_PATHS = 64;
+
+    private final Map<String, HotPathAggregate> mHotPathsByStackTrace = new HashMap<>();
 
     private final long mStallThresholdMillis;
 
@@ -27,6 +37,12 @@ public final class MainThreadStallRecorder {
         mHeartbeatOutstanding = true;
         mHeartbeatPostedAtMillis = postedAtMillis;
         mOutstandingStackTrace = STACK_TRACE_NOT_SAMPLED;
+    }
+
+    public synchronized boolean needsStackSample(long sampledAtMillis) {
+        return mHeartbeatOutstanding
+            && sampledAtMillis - mHeartbeatPostedAtMillis >= mStallThresholdMillis
+            && STACK_TRACE_NOT_SAMPLED.equals(mOutstandingStackTrace);
     }
 
     public synchronized void sampleWhileOutstanding(long sampledAtMillis,
@@ -51,6 +67,47 @@ public final class MainThreadStallRecorder {
         if (stallMillis > mMaxStallMillis) {
             mMaxStallMillis = stallMillis;
             mMaxStallStackTrace = mOutstandingStackTrace;
+        }
+        recordHotPath(mOutstandingStackTrace, stallMillis);
+    }
+
+    private void recordHotPath(@NonNull String stackTrace, long blockedMillis) {
+        HotPathAggregate aggregate = mHotPathsByStackTrace.get(stackTrace);
+        if (aggregate == null) {
+            if (mHotPathsByStackTrace.size() >= MAX_TRACKED_HOT_PATHS) {
+                return;
+            }
+            aggregate = new HotPathAggregate();
+            mHotPathsByStackTrace.put(stackTrace, aggregate);
+        }
+        aggregate.addStall(blockedMillis);
+    }
+
+    @NonNull
+    public synchronized List<MainThreadStallHotPath> getHotPathsByTotalBlockedMillis() {
+        List<MainThreadStallHotPath> hotPaths = new ArrayList<>();
+        for (Map.Entry<String, HotPathAggregate> entry : mHotPathsByStackTrace.entrySet()) {
+            HotPathAggregate aggregate = entry.getValue();
+            hotPaths.add(new MainThreadStallHotPath(entry.getKey(), aggregate.mStallCount,
+                aggregate.mTotalBlockedMillis, aggregate.mMaxBlockedMillis));
+        }
+        Collections.sort(hotPaths, (left, right) ->
+            Long.compare(right.getTotalBlockedMillis(), left.getTotalBlockedMillis()));
+        return hotPaths;
+    }
+
+    private static final class HotPathAggregate {
+
+        private long mStallCount;
+        private long mTotalBlockedMillis;
+        private long mMaxBlockedMillis;
+
+        void addStall(long blockedMillis) {
+            mStallCount++;
+            mTotalBlockedMillis += blockedMillis;
+            if (blockedMillis > mMaxBlockedMillis) {
+                mMaxBlockedMillis = blockedMillis;
+            }
         }
     }
 
