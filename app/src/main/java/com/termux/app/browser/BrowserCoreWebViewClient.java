@@ -80,7 +80,7 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     private boolean routeToMatchingNativeAppIfRequired(@Nullable String url,
                                                        @Nullable WebResourceRequest request) {
         if (url == null || request == null) return false;
-        if (!request.hasGesture() || !request.isForMainFrame()) return false;
+        if (!request.isForMainFrame()) return false;
         return mHost.openInMatchingNativeApp(url);
     }
 

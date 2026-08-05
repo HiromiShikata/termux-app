@@ -910,8 +910,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
             @Override
             public boolean openInMatchingNativeApp(@NonNull String url) {
-                GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
-                return target != null && GoogleAppLink.openInGoogleApp(mActivity, url, target);
+                return TermuxBrowserController.this.openInMatchingNativeApp(url);
             }
         }));
 
@@ -1039,7 +1038,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return true;
     }
 
+    private boolean openInMatchingNativeApp(@NonNull String url) {
+        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        return target != null && GoogleAppLink.openInGoogleApp(mActivity, url, target);
+    }
+
     private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url) {
+        if (openInMatchingNativeApp(url)) return true;
         if (openUrlInNewTab(url)) return true;
         requestingWebView.loadUrl(normalizeUrl(url));
         return true;
