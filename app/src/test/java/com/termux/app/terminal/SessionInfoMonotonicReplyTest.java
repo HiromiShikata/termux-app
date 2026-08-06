@@ -1,62 +1,14 @@
 package com.termux.app.terminal;
 
-import android.view.ContextThemeWrapper;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.widget.TextView;
-
-import com.termux.R;
-
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.RuntimeEnvironment;
 
-@RunWith(RobolectricTestRunner.class)
-public class SessionInfoCurrentSessionSceneAndMonotonicReplyTest {
+public class SessionInfoMonotonicReplyTest {
 
     private static final long ONE_SECOND_MILLIS = 1000L;
     private static final long ONE_MINUTE_MILLIS = 60L * ONE_SECOND_MILLIS;
     private static final long NOW = 1_000_000_000L;
     private static final String CURRENT_SESSION = "current-session";
-    private static final String OTHER_SESSION = "other-session";
-
-    @Test
-    public void currentSessionAreaShowsTheCurrentSessionSceneNotAnotherSessionsPendingReason() {
-        View root = inflateActivityLayout();
-        View sceneBar = root.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView sceneText = root.findViewById(R.id.session_pending_call_to_user_text);
-
-        SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall(OTHER_SESSION, NOW, "other session needs approval");
-        store.recordExplicitCall(CURRENT_SESSION, NOW, "current session needs approval");
-
-        SessionInfoBottomBarsBinder.bind(root, store, CURRENT_SESSION, NOW, () -> {
-        });
-
-        Assert.assertEquals(View.VISIBLE, sceneBar.getVisibility());
-        Assert.assertEquals("the current-session area scene must be the current session's reason, "
-                + "never another session's pending reason",
-            "current session needs approval", sceneText.getText().toString());
-    }
-
-    @Test
-    public void currentSessionAreaSceneIsHiddenWhenOnlyAnotherSessionHasAPendingReason() {
-        View root = inflateActivityLayout();
-        View sceneBar = root.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView sceneText = root.findViewById(R.id.session_pending_call_to_user_text);
-
-        SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordExplicitCall(OTHER_SESSION, NOW, "other session needs approval");
-
-        SessionInfoBottomBarsBinder.bind(root, store, CURRENT_SESSION, NOW, () -> {
-        });
-
-        Assert.assertEquals("when only a different session has a pending reason, the current-session "
-                + "area must show no scene", View.GONE, sceneBar.getVisibility());
-        Assert.assertEquals("", sceneText.getText().toString());
-    }
 
     @Test
     public void olderAppInputDoesNotLowerTheStoredUserInputTime() {
@@ -121,11 +73,5 @@ public class SessionInfoCurrentSessionSceneAndMonotonicReplyTest {
 
         Assert.assertEquals("an older statusline reply must not lower the stored statusline reply",
             Long.valueOf(NOW), store.getStatuslineReplyTimeMillis(CURRENT_SESSION));
-    }
-
-    private static View inflateActivityLayout() {
-        ContextThemeWrapper themedContext = new ContextThemeWrapper(
-            RuntimeEnvironment.getApplication(), R.style.Theme_TermuxActivity_DayNight_NoActionBar);
-        return LayoutInflater.from(themedContext).inflate(R.layout.activity_termux, null);
     }
 }

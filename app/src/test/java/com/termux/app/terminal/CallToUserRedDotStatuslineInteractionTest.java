@@ -7,7 +7,7 @@ import java.util.Calendar;
 import java.util.Locale;
 import java.util.TimeZone;
 
-public class CallToUserSceneStatuslineInteractionTest {
+public class CallToUserRedDotStatuslineInteractionTest {
 
     private static final String SESSION = "worker-session";
     private static final String REASON = "NEEDS APPROVAL TO DEPLOY";
@@ -33,7 +33,7 @@ public class CallToUserSceneStatuslineInteractionTest {
     }
 
     @Test
-    public void freshCallToUserSceneSurvivesAnOlderStatuslineReplyTokenInTheSameRender() {
+    public void freshCallToUserRedDotSurvivesAnOlderStatuslineReplyTokenInTheSameRender() {
         TimeZone timeZone = TimeZone.getTimeZone("UTC");
         long nowMillis = 12L * 60L * 60L * 1000L + 30L * 1000L;
         long replyClockMillis = nowMillis - 2L * 60L * 1000L;
@@ -48,15 +48,12 @@ public class CallToUserSceneStatuslineInteractionTest {
         replayStatuslineForVisibleScreen(store,
             statuslineWithReplyClock(replyClockMillis, timeZone), nowMillis, timeZone);
 
-        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
-            store.tierFor(SESSION), mostRecentReason(store));
-
         Assert.assertEquals("the unacknowledged reason recorded by the call-to-user scan must remain "
                 + "pending when only an older statusline reply clock token, not a real user reply newer "
                 + "than the call, is present", 1, store.getUnacknowledgedCallReasons(SESSION).size());
-        Assert.assertTrue("the scene must stay visible after an older statusline reply token is parsed "
-            + "in the same render that detected a fresh call-to-user tag", decision.isVisible());
-        Assert.assertEquals(REASON, decision.getReportText());
+        Assert.assertEquals("the red dot must stay lit after an older statusline reply token is parsed "
+            + "in the same render that detected a fresh call-to-user tag",
+            SessionNewActivityTier.RED, store.tierFor(SESSION));
     }
 
     @Test
@@ -77,19 +74,15 @@ public class CallToUserSceneStatuslineInteractionTest {
         SessionNewActivityStore reloadedStore = new SessionNewActivityStore(persistence);
         reloadedStore.recordStatuslineTimes(SESSION, null, null, callWholeSecondMillis);
 
-        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
-            reloadedStore.tierFor(SESSION), mostRecentReason(reloadedStore));
-
         Assert.assertFalse("a passive statusline reply: token that only equals the call: token must "
                 + "not acknowledge an unanswered call-to-user, because a reply equal to the call is a "
                 + "displayed clock value, not a real user reply newer than the call",
             reloadedStore.getUnacknowledgedCallReasons(SESSION).isEmpty());
         Assert.assertEquals(SessionNewActivityTier.RED, reloadedStore.tierFor(SESSION));
-        Assert.assertTrue(decision.isVisible());
     }
 
     @Test
-    public void statuslineReplyNewerThanTheCallToUserScanStillAcknowledgesTheScene() {
+    public void statuslineReplyNewerThanTheCallToUserScanStillClearsTheRedDot() {
         TimeZone timeZone = TimeZone.getTimeZone("UTC");
         long callScanMillis = 12L * 60L * 60L * 1000L;
         long replyClockMillis = callScanMillis + 2L * 60L * 1000L;
@@ -129,10 +122,5 @@ public class CallToUserSceneStatuslineInteractionTest {
                 + "reason even though the tag-scan wall-clock is later than the reply",
             store.getUnacknowledgedCallReasons(SESSION).isEmpty());
         Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));
-    }
-
-    private static String mostRecentReason(SessionNewActivityStore store) {
-        java.util.List<String> reasons = store.getUnacknowledgedCallReasons(SESSION);
-        return reasons.isEmpty() ? null : reasons.get(reasons.size() - 1);
     }
 }
