@@ -43,6 +43,38 @@ public class DisconnectedSessionSubmitRecordsOwnerReplyTest {
         return body.substring(reconnectStart, removeStart);
     }
 
+    private String reconnectAndDeliverAfterReconnectBody() throws IOException {
+        Path moduleRelative = Paths.get(
+            "src/main/java/com/termux/app/terminal/io/TerminalEnterKeyController.java");
+        Path path = Files.exists(moduleRelative)
+            ? moduleRelative
+            : Paths.get("app").resolve(moduleRelative);
+        String source = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+        String signature = "private boolean reconnectAndDeliverAfterReconnect(";
+        int methodIndex = source.indexOf(signature);
+        Assert.assertTrue("method not found: " + signature, methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        return source.substring(methodIndex, methodEnd);
+    }
+
+    @Test
+    public void theSubmitThatReconnectsBeforeDeliveringRecordsTheOwnerReply() throws IOException {
+        String body = reconnectAndDeliverAfterReconnectBody();
+        Assert.assertTrue("the send button and the enter key reach a disconnected session through this "
+                + "path, which reconnects and delivers the owner text, so it is where the genuine "
+                + "owner reply has to be recorded",
+            body.contains("recordReplyOnSubmit"));
+    }
+
+    @Test
+    public void anEmptySubmitThatOnlyReconnectsIsNotRecordedAsAnOwnerReply() throws IOException {
+        String body = reconnectAndDeliverAfterReconnectBody();
+        Assert.assertTrue("an empty submit only reconnects and carries no owner content, so it must be "
+                + "gated out of the reply recording rather than clearing a genuinely unanswered call",
+            body.contains("ReconnectSubmitReplyDecision.shouldRecordReply"));
+    }
+
     @Test
     public void submittingOwnerContentIntoADisconnectedSessionRecordsTheOwnerReply() throws IOException {
         String reconnectBranch = reconnectBranch();

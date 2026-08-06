@@ -54,8 +54,13 @@ public class TerminalEnterKeyController {
         TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
         if (session == null || sessionClient == null) return false;
         String pendingInput = editText == null ? null : editText.getText().toString();
-        if (!sessionClient.reconnectFinishedSessionInPlace(session, pendingInput)) return false;
+        boolean reconnected = sessionClient.reconnectFinishedSessionInPlace(session, pendingInput);
+        if (!reconnected) return false;
         if (editText != null) editText.setText("");
+        if (ReconnectSubmitReplyDecision.shouldRecordReply(reconnected,
+                pendingInput == null ? "" : pendingInput)) {
+            recordReplyOnSubmit();
+        }
         return true;
     }
 
