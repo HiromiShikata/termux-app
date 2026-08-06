@@ -141,4 +141,16 @@ public final class BrowserTabManager {
         mTabsBySessionHandle.remove(sessionHandle);
         mActiveTabBySessionHandle.remove(sessionHandle);
     }
+
+    public void moveSession(@NonNull String fromSessionHandle, @NonNull String toSessionHandle) {
+        if (fromSessionHandle.equals(toSessionHandle)) return;
+        List<BrowserTab> tabs = mTabsBySessionHandle.remove(fromSessionHandle);
+        BrowserTab activeTab = mActiveTabBySessionHandle.remove(fromSessionHandle);
+        if (tabs == null || tabs.isEmpty()) return;
+        for (BrowserTab tab : tabs) {
+            tab.moveToSession(toSessionHandle);
+        }
+        mTabsBySessionHandle.put(toSessionHandle, tabs);
+        if (activeTab != null) mActiveTabBySessionHandle.put(toSessionHandle, activeTab);
+    }
 }
