@@ -132,6 +132,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
+    private final BrowserTabPersistenceBatch mPersistenceBatch = new BrowserTabPersistenceBatch();
+
     private final BrowserTabHistorySerializer mTabHistorySerializer = new BrowserTabHistorySerializer();
 
     private BrowserTabHistory mTabHistory = new BrowserTabHistory();
@@ -406,7 +408,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mTabManager.addTab(sessionHandle, normalizeUrl(overviewUrl)).setViewMode(BrowserViewMode.DESKTOP);
     }
 
+    public void beginPersistenceBatch() {
+        mPersistenceBatch.begin();
+    }
+
+    public void endPersistenceBatch() {
+        if (mPersistenceBatch.end()) rebuildAndWritePersistedSessionTabs();
+    }
+
     private void persistSessionTabs() {
+        if (!mPersistenceBatch.requestWrite()) return;
+        rebuildAndWritePersistedSessionTabs();
+    }
+
+    private void rebuildAndWritePersistedSessionTabs() {
         for (String sessionHandle : liveSessionHandlesWithName().keySet()) {
             String sessionName = liveSessionHandlesWithName().get(sessionHandle);
             if (sessionName == null || sessionName.isEmpty()) continue;

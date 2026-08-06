@@ -2784,26 +2784,32 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         int configuredLimit = maxSessions();
         int droppedSessionCount = 0;
 
-        for (PersistedSessionRestoreData persistedSession : persistedSessions) {
-            String name = persistedSession.getName();
-            if (name != null && !restoredNames.add(name)) continue;
-            if (cappedSessionCount(service) >= configuredLimit) {
-                droppedSessionCount++;
-                continue;
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        try {
+            for (PersistedSessionRestoreData persistedSession : persistedSessions) {
+                String name = persistedSession.getName();
+                if (name != null && !restoredNames.add(name)) continue;
+                if (cappedSessionCount(service) >= configuredLimit) {
+                    droppedSessionCount++;
+                    continue;
+                }
+
+                TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
+                    persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
+                    persistedSession.isFailSafe(), name);
+                if (newTermuxSession == null) continue;
+
+                TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+                mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
+                    persistedSession.getExecutablePath(), persistedSession.getArguments(),
+                    persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
+                attachBrowserTabForUrlSessionName(newTerminalSession, name);
+                if (firstRestoredSession == null)
+                    firstRestoredSession = newTerminalSession;
             }
-
-            TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
-                persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
-                persistedSession.isFailSafe(), name);
-            if (newTermuxSession == null) continue;
-
-            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                persistedSession.getExecutablePath(), persistedSession.getArguments(), persistedSession.isFailSafe(),
-                persistedSession.getWorkingDirectory()));
-            attachBrowserTabForUrlSessionName(newTerminalSession, name);
-            if (firstRestoredSession == null)
-                firstRestoredSession = newTerminalSession;
+        } finally {
+            if (browserController != null) browserController.endPersistenceBatch();
         }
 
         notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
