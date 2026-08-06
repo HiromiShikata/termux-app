@@ -88,6 +88,8 @@ public class SessionNewActivityStore {
                 mStatuslineReplyTimeMillisByName.put(state.getSessionName(), state.getStatuslineReplyTimeMillis());
             if (state.getSubagentCount() != null)
                 mSubagentCountByName.put(state.getSessionName(), state.getSubagentCount());
+            if (state.getGenuineAppReplyTimeMillis() != null)
+                mGenuineAppReplyTimeMillisByName.put(state.getSessionName(), state.getGenuineAppReplyTimeMillis());
         }
     }
 
@@ -680,9 +682,10 @@ public class SessionNewActivityStore {
      * genuine reply signals — a real last user message and a real content submit — so folding them in
      * lets a genuine in-app submit clear the RED dot immediately without waiting minutes for the
      * statusline token, while raw keystrokes, which feed neither, never clear it. The genuine app-reply
-     * time is in-memory only; after a restart that loses it the statusline {@code reply:} token is the
-     * sole remaining genuine source and is used as the fallback. Returns null only when neither genuine
-     * source has a value.
+     * time is persisted with the rest of the session activity state, so a reply the owner already
+     * submitted keeps the dot cleared across a restart instead of falling back to a statusline {@code
+     * reply:} token that still predates the call. Returns null only when neither genuine source has a
+     * value.
      */
     @Nullable
     public Long genuineReplyTimeMillis(@NonNull String sessionName) {
@@ -865,6 +868,7 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mStatuslineOutTimeMillisByName.keySet());
         sessionNames.addAll(mStatuslineReplyTimeMillisByName.keySet());
         sessionNames.addAll(mSubagentCountByName.keySet());
+        sessionNames.addAll(mGenuineAppReplyTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
@@ -880,7 +884,8 @@ public class SessionNewActivityStore {
                 mStatuslineCallTimeMillisByName.get(sessionName),
                 mStatuslineOutTimeMillisByName.get(sessionName),
                 mStatuslineReplyTimeMillisByName.get(sessionName),
-                mSubagentCountByName.get(sessionName)));
+                mSubagentCountByName.get(sessionName),
+                mGenuineAppReplyTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
         notifyChanged();
