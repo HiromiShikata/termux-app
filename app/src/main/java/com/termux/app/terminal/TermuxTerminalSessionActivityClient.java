@@ -2861,24 +2861,30 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         int droppedSessionCount = 0;
 
         TerminalSession firstCreatedSession = null;
-        for (String sessionName : missingSessionNames) {
-            if (cappedSessionCount(service) >= configuredLimit) {
-                droppedSessionCount++;
-                continue;
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        try {
+            for (String sessionName : missingSessionNames) {
+                if (cappedSessionCount(service) >= configuredLimit) {
+                    droppedSessionCount++;
+                    continue;
+                }
+
+                AlwaysPresentSessionStartup startup =
+                    mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
+                TermuxSession newTermuxSession = service.createTermuxSession(startup.getExecutablePath(),
+                    startup.getArguments(), null, workingDirectory, false, sessionName);
+                if (newTermuxSession == null) continue;
+
+                TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+                recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
+                    startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
+                attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
+                if (firstCreatedSession == null)
+                    firstCreatedSession = newTerminalSession;
             }
-
-            AlwaysPresentSessionStartup startup =
-                mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
-            TermuxSession newTermuxSession = service.createTermuxSession(startup.getExecutablePath(),
-                startup.getArguments(), null, workingDirectory, false, sessionName);
-            if (newTermuxSession == null) continue;
-
-            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
-            attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
-            if (firstCreatedSession == null)
-                firstCreatedSession = newTerminalSession;
+        } finally {
+            if (browserController != null) browserController.endPersistenceBatch();
         }
 
         notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
@@ -2920,9 +2926,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         savePersistedSessions();
         service.pruneSessionNewActivityStoreToLiveSessions();
 
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            TerminalSession terminalSession = termuxSession.getTerminalSession();
-            attachBrowserTabForUrlSessionName(terminalSession, terminalSession.mSessionName);
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        try {
+            for (TermuxSession termuxSession : service.getTermuxSessions()) {
+                TerminalSession terminalSession = termuxSession.getTerminalSession();
+                attachBrowserTabForUrlSessionName(terminalSession, terminalSession.mSessionName);
+            }
+        } finally {
+            if (browserController != null) browserController.endPersistenceBatch();
         }
     }
 
