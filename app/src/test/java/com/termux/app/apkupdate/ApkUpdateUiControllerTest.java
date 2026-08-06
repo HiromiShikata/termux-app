@@ -266,4 +266,64 @@ public class ApkUpdateUiControllerTest {
         Assert.assertTrue(indicatorView.shownVersions.isEmpty());
         Assert.assertEquals(1, indicatorView.hideCount);
     }
+
+    private ApkUpdateUiController controllerWithACancelledInstallBehind(Activity activity,
+                                                                       FakeUpdateManager manager,
+                                                                       FakeApkInstaller installer) {
+        RecordingIndicatorView indicatorView = new RecordingIndicatorView();
+        ApkUpdateUiController controller = new ApkUpdateUiController(activity, manager, installer);
+        controller.checkAndShowFloatingIndicator(indicatorView);
+        indicatorView.lastTapAction.run();
+        Assert.assertEquals("the install must have been launched before it is cancelled",
+            1, installer.installedFiles.size());
+        return controller;
+    }
+
+    @Test
+    public void aCheckTheUserAsksForAfterCancellingAnInstallStillQueriesForANewerVersion() throws IOException {
+        Activity activity = newActivity();
+        FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
+        FakeApkInstaller installer = new FakeApkInstaller(activity);
+        ApkUpdateUiController controller = controllerWithACancelledInstallBehind(activity, manager, installer);
+        int checkCountBeforeTheUserAsked = manager.checkCount;
+
+        controller.checkAndPrompt(true);
+
+        Assert.assertEquals("a check the user asks for must reach the release source even after a cancelled install",
+            checkCountBeforeTheUserAsked + 1, manager.checkCount);
+    }
+
+    @Test
+    public void aCheckTheUserAsksForAfterCancellingAnInstallBringsTheUpdateButtonBack() throws IOException {
+        Activity activity = newActivity();
+        FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
+        FakeApkInstaller installer = new FakeApkInstaller(activity);
+        ApkUpdateUiController controller = controllerWithACancelledInstallBehind(activity, manager, installer);
+
+        controller.checkAndPrompt(true);
+
+        RecordingIndicatorView reopenedIndicatorView = new RecordingIndicatorView();
+        controller.showPendingIndicatorIfAny(reopenedIndicatorView);
+
+        Assert.assertEquals("the update button must surface again once the user asked for a check",
+            1, reopenedIndicatorView.shownVersions.size());
+        Assert.assertEquals("1.2.3", reopenedIndicatorView.shownVersions.get(0));
+    }
+
+    @Test
+    public void anAutomaticCheckRightAfterAnInstallLaunchStaysSuppressed() throws IOException {
+        Activity activity = newActivity();
+        FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
+        FakeApkInstaller installer = new FakeApkInstaller(activity);
+        ApkUpdateUiController controller = controllerWithACancelledInstallBehind(activity, manager, installer);
+        int checkCountAfterTheInstallLaunch = manager.checkCount;
+
+        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+
+        Assert.assertEquals("an automatic check must not re-offer the update while the install it launched is live",
+            checkCountAfterTheInstallLaunch, manager.checkCount);
+    }
 }

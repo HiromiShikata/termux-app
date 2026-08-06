@@ -64,7 +64,7 @@ public final class ApkUpdateUiController {
         if (userInitiated) {
             Logger.showToast(activity, activity.getString(R.string.apk_update_checking), false);
         }
-        if (pendingState.isInstallLaunchSuppressed(BuildConfig.VERSION_NAME, System.currentTimeMillis())) {
+        if (isCheckSuppressedByALaunchedInstall(userInitiated)) {
             indicatorView.hide();
             return;
         }
@@ -72,7 +72,7 @@ public final class ApkUpdateUiController {
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
-                if (pendingState.isInstallLaunchSuppressed(BuildConfig.VERSION_NAME, System.currentTimeMillis())) {
+                if (isCheckSuppressedByALaunchedInstall(userInitiated)) {
                     return;
                 }
                 pendingState.save(availability);
@@ -97,6 +97,14 @@ public final class ApkUpdateUiController {
                 }
             }
         });
+    }
+
+    private boolean isCheckSuppressedByALaunchedInstall(boolean userInitiated) {
+        if (userInitiated) {
+            pendingState.clearInstallLaunchedMarker();
+            return false;
+        }
+        return pendingState.isInstallLaunchSuppressed(BuildConfig.VERSION_NAME, System.currentTimeMillis());
     }
 
     private String checkFailedMessage(String message, boolean rateLimited) {
