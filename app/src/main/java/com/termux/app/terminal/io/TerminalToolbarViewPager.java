@@ -142,7 +142,11 @@ public class TerminalToolbarViewPager {
                         ownerContentSubmitted = true;
                     }
                 } else if (mActivity.getTermuxTerminalSessionClient().decideFinishedSessionEnterAction(session).isReconnect()) {
-                    mActivity.getTermuxTerminalSessionClient().reconnectFinishedSessionInPlace(session, submittedTextInput);
+                    boolean reconnected = mActivity.getTermuxTerminalSessionClient()
+                        .reconnectFinishedSessionInPlace(session, submittedTextInput);
+                    if (ReconnectSubmitReplyDecision.shouldRecordReply(reconnected, submittedTextInput)) {
+                        recordUserInputForSession(mActivity.getCurrentSession());
+                    }
                 } else {
                     mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
                 }
@@ -152,7 +156,7 @@ public class TerminalToolbarViewPager {
             return ownerContentSubmitted;
         }
 
-        private void recordUserInputForSession(@NonNull TerminalSession session) {
+        private void recordUserInputForSession(@Nullable TerminalSession session) {
             SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
             if (store == null) return;
             boolean recorded = new SessionReplyTimeRecorder(store)
