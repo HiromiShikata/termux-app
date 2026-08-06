@@ -48,7 +48,7 @@ public class SessionBringUpWritesBrowserTabsOnceTest {
     public void restoringAlwaysPresentSessionsWritesTheTabsOnceForTheWholeLoop() throws IOException {
         String source = readModuleSource(SESSION_CLIENT_PATH);
         assertAttachLoopIsBracketedByOneBatch(
-            methodBody(source, "public boolean restoreAlwaysPresentSessions("),
+            methodBody(source, "public boolean restoreAlwaysPresentSessions(@NonNull Collection<String>"),
             "restoreAlwaysPresentSessions");
     }
 
