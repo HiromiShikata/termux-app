@@ -76,6 +76,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -119,6 +120,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserRecentlyClosedTabs mRecentlyClosedTabs = new BrowserRecentlyClosedTabs();
 
     private final Set<String> mSessionHandlesWithTabsLoaded = new LinkedHashSet<>();
+
+    private final Map<String, String> mReconnectingSessionHandleBySessionName = new HashMap<>();
 
     private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
 
@@ -1605,6 +1608,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void onSessionRemoved(@NonNull TerminalSession session,
                                  @NonNull BrowserSessionRemovalReason reason) {
+        if (keepLiveTabsForReconnect(session, reason)) return;
         if (session.mHandle.equals(mRenderedFrame.getOwnerSessionHandle()))
             blankFrame();
         mWebViewHost.removeSession(session.mHandle);
@@ -1626,8 +1630,46 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
+    private boolean keepLiveTabsForReconnect(@NonNull TerminalSession session,
+                                             @NonNull BrowserSessionRemovalReason reason) {
+        if (!BrowserSessionRemovalLiveTabRetention.shouldKeepLiveTabs(reason)) {
+            forgetReconnectingSessionHandle(session.mSessionName);
+            return false;
+        }
+        if (session.mSessionName == null || session.mSessionName.isEmpty()) return false;
+        if (!mTabManager.hasTabs(session.mHandle)) return false;
+        forgetReconnectingSessionHandle(session.mSessionName);
+        mReconnectingSessionHandleBySessionName.put(session.mSessionName, session.mHandle);
+        return true;
+    }
+
+    private void forgetReconnectingSessionHandle(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        String previousSessionHandle = mReconnectingSessionHandleBySessionName.remove(sessionName);
+        if (previousSessionHandle == null) return;
+        mWebViewHost.removeSession(previousSessionHandle);
+        mTabManager.removeSession(previousSessionHandle);
+        mSessionHandlesWithTabsLoaded.remove(previousSessionHandle);
+        mSessionVisibilityState.clearSession(previousSessionHandle);
+    }
+
     public void restoreTabsForReconnectedSession(@Nullable String sessionHandle, @Nullable String sessionName) {
+        if (moveLiveTabsToReconnectedSession(sessionHandle, sessionName)) return;
         restorePersistedTabsForSession(sessionHandle, sessionName);
+    }
+
+    private boolean moveLiveTabsToReconnectedSession(@Nullable String sessionHandle,
+                                                    @Nullable String sessionName) {
+        if (sessionHandle == null || sessionName == null || sessionName.isEmpty()) return false;
+        String previousSessionHandle = mReconnectingSessionHandleBySessionName.remove(sessionName);
+        if (previousSessionHandle == null || previousSessionHandle.equals(sessionHandle)) return false;
+        if (!mTabManager.hasTabs(previousSessionHandle)) return false;
+        mTabManager.moveSession(previousSessionHandle, sessionHandle);
+        mSessionVisibilityState.moveSession(previousSessionHandle, sessionHandle);
+        mSessionHandlesWithTabsLoaded.remove(previousSessionHandle);
+        mSessionHandlesWithTabsLoaded.add(sessionHandle);
+        mRecentlyClosedTabs.removeSession(previousSessionHandle);
+        return true;
     }
 
     public void toggleBrowser() {
