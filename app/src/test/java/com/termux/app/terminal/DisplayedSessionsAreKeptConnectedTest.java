@@ -39,6 +39,21 @@ public class DisplayedSessionsAreKeptConnectedTest {
             body.contains("unableToReceiveInputLongEnough));"));
     }
 
+    @Test
+    public void aSessionThatWasJustReconnectedStartsItsDwellAgain() throws IOException {
+        String body = methodBody(
+            "private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String>");
+
+        int enqueueIndex = body.indexOf("mSessionReconnectPacer.enqueueSession(deadSession)");
+        int forgetIndex = body.indexOf("mSessionInputDeliverabilityDwell.forget(sessionName)");
+
+        Assert.assertTrue("the reconnect must be enqueued", enqueueIndex >= 0);
+        Assert.assertTrue(
+            "the dwell must start again for a session that was just reconnected, so a session that is"
+                + " slow to come back is not reconnected again immediately",
+            forgetIndex > enqueueIndex);
+    }
+
     private static String methodBody(String declarationPrefix) throws IOException {
         String source = readSessionClientSource();
         int declarationIndex = source.indexOf(declarationPrefix);
