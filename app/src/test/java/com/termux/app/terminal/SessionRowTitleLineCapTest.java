@@ -17,7 +17,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
 @RunWith(RobolectricTestRunner.class)
-public class SessionRowCallToUserReasonLineCapTest {
+public class SessionRowTitleLineCapTest {
 
     private static final int MAX_VISIBLE_LINES = 5;
 
@@ -30,14 +30,14 @@ public class SessionRowCallToUserReasonLineCapTest {
     }
 
     @Test
-    public void sessionRowReasonTextIsCappedAtFiveLines() {
+    public void sessionRowTitleTextIsCappedAtFiveLines() {
         TextView sessionTitleView = inflateSessionTitleView();
 
         Assert.assertEquals(MAX_VISIBLE_LINES, sessionTitleView.getMaxLines());
     }
 
     @Test
-    public void sessionRowReasonTextTruncatesWithATrailingEllipsis() {
+    public void sessionRowTitleTextTruncatesWithATrailingEllipsis() {
         TextView sessionTitleView = inflateSessionTitleView();
 
         Assert.assertEquals(TextUtils.TruncateAt.END, sessionTitleView.getEllipsize());

@@ -1,7 +1,6 @@
 package com.termux.app.terminal;
 
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,11 +16,8 @@ public final class SessionInfoBottomBarsBinder {
     public static void bind(@NonNull View root,
                             @Nullable SessionNewActivityStore store,
                             @Nullable String sessionName,
-                            long nowMillis,
-                            @NonNull Runnable scrollAction) {
+                            long nowMillis) {
         bindTimesLine(root, resolveSessionTimesLine(store, sessionName, nowMillis));
-        bindCallToUserScene(root, resolvePendingCallToUserFooterDecision(store, sessionName),
-            scrollAction);
     }
 
     private static void bindTimesLine(@NonNull View root, @NonNull SessionTimesLine line) {
@@ -34,21 +30,6 @@ public final class SessionInfoBottomBarsBinder {
             lastReplyBar.setText("");
             lastReplyBar.setVisibility(View.GONE);
         }
-    }
-
-    private static void bindCallToUserScene(@NonNull View root,
-                                            @NonNull PendingCallToUserFooterDecision decision,
-                                            @NonNull Runnable scrollAction) {
-        View pendingCallToUserBar = root.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView pendingCallToUserText = root.findViewById(R.id.session_pending_call_to_user_text);
-        ImageButton pendingCallToUserScrollButton =
-            root.findViewById(R.id.session_pending_call_to_user_scroll_button);
-        if (pendingCallToUserBar == null || pendingCallToUserText == null
-            || pendingCallToUserScrollButton == null) {
-            return;
-        }
-        PendingCallToUserFooterBinder.bind(pendingCallToUserBar, pendingCallToUserText,
-            pendingCallToUserScrollButton, decision, scrollAction);
     }
 
     @NonNull
@@ -64,16 +45,5 @@ public final class SessionInfoBottomBarsBinder {
             store.effectiveReplyTimeMillis(sessionName),
             store.getSubagentCount(sessionName),
             nowMillis);
-    }
-
-    @NonNull
-    private static PendingCallToUserFooterDecision resolvePendingCallToUserFooterDecision(
-            @Nullable SessionNewActivityStore store,
-            @Nullable String sessionName) {
-        if (store == null || sessionName == null) {
-            return PendingCallToUserFooterDecision.resolve(SessionNewActivityTier.NONE, null);
-        }
-        return PendingCallToUserFooterDecision.resolve(
-            store.tierFor(sessionName), store.currentPendingCallToUserReason(sessionName));
     }
 }

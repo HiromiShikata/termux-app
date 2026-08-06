@@ -1483,57 +1483,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         View sessionInfoRoot = mActivity.findViewById(android.R.id.content);
         if (sessionInfoRoot == null) return;
         SessionInfoBottomBarsBinder.bind(sessionInfoRoot, mActivity.getSessionNewActivityStore(),
-            sessionName, System.currentTimeMillis(),
-            () -> navigateToCallToUserSession(sessionName));
-    }
-
-    private void navigateToCallToUserSession(@Nullable String sessionName) {
-        TerminalSession session = sessionForName(sessionName);
-        if (session == null) return;
-
-        setCurrentSession(session);
-
-        TerminalView terminalView = mActivity.getTerminalView();
-        if (terminalView == null) return;
-        TerminalEmulator emulator = session.getEmulator();
-        if (emulator == null) return;
-        TerminalBuffer screen = emulator.getScreen();
-        if (screen == null) return;
-
-        CallToUserScrollAction action = CallToUserScrollAction.resolve(
-            emulator.isAlternateBufferActive(), locateCallToUserTagTopRow(emulator, screen));
-
-        emulator.setAutoScrollDisabled(action.getKind() == CallToUserScrollAction.Kind.SCROLL_TO_TAG);
-        terminalView.setTopRow(action.getTargetTopRow());
-        terminalView.invalidate();
-    }
-
-    private int locateCallToUserTagTopRow(@NonNull TerminalEmulator emulator,
-                                          @NonNull TerminalBuffer screen) {
-        int screenRows = emulator.mRows;
-        int activeTranscriptRows = screen.getActiveTranscriptRows();
-        int firstRowExternalIndex = -activeTranscriptRows;
-        List<String> rowTexts = new ArrayList<>();
-        for (int externalRow = firstRowExternalIndex; externalRow < screenRows; externalRow++) {
-            rowTexts.add(screen.getSelectedText(
-                0, externalRow, emulator.mColumns, externalRow, false, false));
-        }
-        return CallToUserTagScrollLocator.scrollTargetTopRow(
-            rowTexts, firstRowExternalIndex, activeTranscriptRows);
-    }
-
-    @Nullable
-    private TerminalSession sessionForName(@Nullable String sessionName) {
-        if (sessionName == null) return null;
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return null;
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            TerminalSession session = termuxSession.getTerminalSession();
-            if (session != null && sessionName.equals(session.mSessionName)) {
-                return session;
-            }
-        }
-        return null;
+            sessionName, System.currentTimeMillis());
     }
 
     @NonNull

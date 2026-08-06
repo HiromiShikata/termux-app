@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -9,6 +10,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Environment;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -71,7 +73,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
     }
 
     @Test
-    public void realScanToStoreToRenderPipelineSurfacesTheSceneInTheCurrentSessionInfoArea()
+    public void realScanToStoreToRenderPipelineArmsTheRedDotWithoutRenderingTheCallReason()
         throws Exception {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
 
@@ -90,8 +92,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
         assertNotNull("a current session with an initialized emulator must exist", session);
 
         AtomicReference<File> writtenFileRef = new AtomicReference<>();
-        AtomicReference<String> renderedSceneTextRef = new AtomicReference<>("");
-        AtomicReference<Integer> sceneVisibilityRef = new AtomicReference<>(View.GONE);
+        AtomicReference<String> renderedInfoAreaTextRef = new AtomicReference<>("");
         AtomicReference<SessionNewActivityTier> tierRef =
             new AtomicReference<>(SessionNewActivityTier.NONE);
         AtomicReference<String> unacknowledgedRef = new AtomicReference<>("");
@@ -115,14 +116,9 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
             unacknowledgedRef.set(String.join("|", store.getUnacknowledgedCallReasons(SESSION_NAME)));
 
             View bottomContainer = activity.findViewById(R.id.session_info_bottom_container);
-            View sceneBar = activity.findViewById(R.id.session_pending_call_to_user_bar);
-            TextView sceneText = activity.findViewById(R.id.session_pending_call_to_user_text);
             assertNotNull(bottomContainer);
-            assertNotNull(sceneBar);
-            assertNotNull(sceneText);
 
-            sceneVisibilityRef.set(sceneBar.getVisibility());
-            renderedSceneTextRef.set(sceneText.getText().toString());
+            renderedInfoAreaTextRef.set(renderedTextUnder(bottomContainer));
 
             Bitmap infoAreaBitmap = drawLaidOutViewToBitmap(bottomContainer);
             assertTrue(infoAreaBitmap.getWidth() > 0 && infoAreaBitmap.getHeight() > 0);
@@ -133,8 +129,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
 
         System.out.println("SCAN_RENDER tier=" + tierRef.get()
             + " unacknowledged=[" + unacknowledgedRef.get() + "]"
-            + " sceneVisible=" + (sceneVisibilityRef.get() == View.VISIBLE)
-            + " sceneText=[" + renderedSceneTextRef.get() + "]");
+            + " infoAreaText=[" + renderedInfoAreaTextRef.get() + "]");
 
         File written = writtenFileRef.get();
         assertNotNull("rendered info-area PNG must be written", written);
@@ -145,10 +140,23 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
             REASON, unacknowledgedRef.get());
         assertEquals("the real scan path must arm the red tier", SessionNewActivityTier.RED,
             tierRef.get());
-        assertEquals("the scene bar must be visible after the real scan-to-render pipeline runs",
-            View.VISIBLE, (int) sceneVisibilityRef.get());
-        assertEquals("the scene text must render the recorded call reason", REASON,
-            renderedSceneTextRef.get());
+        assertFalse("the session info area must never render the call reason text; the red dot "
+                + "alone reports the call",
+            renderedInfoAreaTextRef.get().contains(REASON));
+    }
+
+    private static String renderedTextUnder(View view) {
+        StringBuilder collected = new StringBuilder();
+        if (view instanceof TextView) {
+            collected.append(((TextView) view).getText());
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int childIndex = 0; childIndex < group.getChildCount(); childIndex++) {
+                collected.append(renderedTextUnder(group.getChildAt(childIndex)));
+            }
+        }
+        return collected.toString();
     }
 
     private static void waitForServiceConnected(ActivityScenario<TermuxActivity> scenario)

@@ -40,7 +40,7 @@ public class BottomSheetRowReplyRenderInstrumentedTest {
         String timestamp = TermuxSessionsListViewController.buildTimestampLine(store, sessionName, 61_000L);
 
         SessionInfoBlock titleBlock = SessionInfoBlock.compose("", sessionName, "",
-            "definition title here", "claude session subtitle", "");
+            "definition title here", "claude session subtitle");
 
         AtomicBoolean replyVisible = new AtomicBoolean(false);
         AtomicReference<String> renderedTimes = new AtomicReference<>("");
@@ -97,7 +97,7 @@ public class BottomSheetRowReplyRenderInstrumentedTest {
         String timestamp = TermuxSessionsListViewController.buildTimestampLine(store, sessionName, 61_000L);
 
         SessionInfoBlock sharedBlock = SessionInfoBlock.compose("", sessionName, timestamp,
-            "definition title here", "claude session subtitle", "");
+            "definition title here", "claude session subtitle");
 
         AtomicBoolean replyVisible = new AtomicBoolean(true);
         AtomicReference<String> renderedTitle = new AtomicReference<>("");

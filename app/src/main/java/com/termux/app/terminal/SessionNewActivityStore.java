@@ -461,41 +461,6 @@ public class SessionNewActivityStore {
         return Collections.unmodifiableList(new ArrayList<>(reasons));
     }
 
-    /**
-     * The call-to-user reason text to display in the current-session scene for {@code sessionName},
-     * or null when nothing should be shown. It is the latest unacknowledged reason, but only when
-     * that reason belongs to the call-to-user cycle that currently arms the RED tier. The RED tier
-     * is armed by two independent signals — the unacknowledged-reasons list ({@link
-     * #pendingCallToUserTimeMillis}) and the statusline {@code call: > reply:} relation ({@link
-     * #statuslineCallPendingTimeMillis}) — and these can refer to different cycles: after a new
-     * statusline {@code call:} token arms RED, the throttled transcript {@code <call-to-user>} scan
-     * has not yet recorded the new cycle's reason, so the unacknowledged list still ends in a reason
-     * recorded for a previous call. Showing that earlier reason against the current call is the stale
-     * scene the owner misreads as a different session's content. The reason recorded time ({@link
-     * #mUnacknowledgedCallReasonsRecordedTimeMillisByName}) is compared against the current
-     * statusline call token: a stored reason older than the current call is from a prior cycle and is
-     * suppressed (the scene shows nothing) until the scan records the current cycle's reason. When no
-     * statusline call token arms the tier (a non-Claude session armed only by the tag scan), the
-     * reason itself defines the pending cycle and is shown.
-     */
-    @Nullable
-    public String currentPendingCallToUserReason(@NonNull String sessionName) {
-        List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
-        if (reasons == null || reasons.isEmpty()) {
-            return null;
-        }
-        Long statuslineCallPendingTimeMillis = statuslineCallPendingTimeMillis(sessionName);
-        if (statuslineCallPendingTimeMillis != null) {
-            Long reasonRecordedTimeMillis =
-                mUnacknowledgedCallReasonsRecordedTimeMillisByName.get(sessionName);
-            if (reasonRecordedTimeMillis == null
-                || reasonRecordedTimeMillis < statuslineCallPendingTimeMillis) {
-                return null;
-            }
-        }
-        return reasons.get(reasons.size() - 1);
-    }
-
     public int pendingCallToUserSessionCount() {
         int count = 0;
         for (List<String> reasons : mUnacknowledgedCallReasonsByName.values()) {
