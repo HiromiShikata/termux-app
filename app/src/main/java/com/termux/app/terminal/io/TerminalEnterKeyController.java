@@ -6,10 +6,12 @@ import android.widget.ImageButton;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionReplyTimeRecorder;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.shared.logger.Logger;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -32,6 +34,11 @@ public class TerminalEnterKeyController {
 
     public boolean submit(@Nullable EditText editText,
                           @Nullable TerminalToolbarViewPager.PageAdapter adapter) {
+        if (!inputReachesTheProgramReadingTheTerminal()) {
+            Logger.showToast(mActivity,
+                mActivity.getString(R.string.msg_terminal_input_not_delivered), true);
+            return false;
+        }
         finishComposingText();
         boolean ownerContentSubmitted = commitToolbarTextInput(editText, adapter);
         sendEnter(ownerContentSubmitted);
@@ -52,9 +59,14 @@ public class TerminalEnterKeyController {
         return adapter.commitTextInputToTerminal(editText);
     }
 
+    private boolean inputReachesTheProgramReadingTheTerminal() {
+        TerminalSession session = mActivity.getCurrentSession();
+        return session != null && session.inputReachesTheProgramReadingTheTerminal();
+    }
+
     private void sendEnter(boolean ownerContentSubmitted) {
         TerminalSession session = mActivity.getCurrentSession();
-        if (session == null || !session.isRunning()) return;
+        if (session == null || !session.inputReachesTheProgramReadingTheTerminal()) return;
         TerminalEmulator emulator = session.getEmulator();
         if (emulator == null) return;
         if (!ownerContentSubmitted && !allowBareEnter(session)) return;
