@@ -45,6 +45,9 @@ public final class SessionNewActivityState {
     @Nullable
     private final Integer mSubagentCount;
 
+    @Nullable
+    private final Long mGenuineAppReplyTimeMillis;
+
     public SessionNewActivityState(@NonNull String sessionName,
                                    @Nullable Long lastOutputActivityTimeMillis,
                                    @Nullable Long lastExplicitCallTimeMillis,
@@ -109,6 +112,25 @@ public final class SessionNewActivityState {
                                    @Nullable Long statuslineOutTimeMillis,
                                    @Nullable Long statuslineReplyTimeMillis,
                                    @Nullable Integer subagentCount) {
+        this(sessionName, lastOutputActivityTimeMillis, lastExplicitCallTimeMillis,
+            lastExplicitCallReason, lastSeenTimeMillis, lastUserInputTimeMillis,
+            unacknowledgedCallReasons, acknowledgedCallReasons, statuslineCallTimeMillis,
+            statuslineOutTimeMillis, statuslineReplyTimeMillis, subagentCount, null);
+    }
+
+    public SessionNewActivityState(@NonNull String sessionName,
+                                   @Nullable Long lastOutputActivityTimeMillis,
+                                   @Nullable Long lastExplicitCallTimeMillis,
+                                   @Nullable String lastExplicitCallReason,
+                                   @Nullable Long lastSeenTimeMillis,
+                                   @Nullable Long lastUserInputTimeMillis,
+                                   @Nullable List<String> unacknowledgedCallReasons,
+                                   @Nullable List<String> acknowledgedCallReasons,
+                                   @Nullable Long statuslineCallTimeMillis,
+                                   @Nullable Long statuslineOutTimeMillis,
+                                   @Nullable Long statuslineReplyTimeMillis,
+                                   @Nullable Integer subagentCount,
+                                   @Nullable Long genuineAppReplyTimeMillis) {
         mSessionName = sessionName;
         mLastOutputActivityTimeMillis = lastOutputActivityTimeMillis;
         mLastExplicitCallTimeMillis = lastExplicitCallTimeMillis;
@@ -123,6 +145,7 @@ public final class SessionNewActivityState {
         mStatuslineOutTimeMillis = statuslineOutTimeMillis;
         mStatuslineReplyTimeMillis = statuslineReplyTimeMillis;
         mSubagentCount = subagentCount;
+        mGenuineAppReplyTimeMillis = genuineAppReplyTimeMillis;
     }
 
     @NonNull
@@ -183,5 +206,10 @@ public final class SessionNewActivityState {
     @Nullable
     public Integer getSubagentCount() {
         return mSubagentCount;
+    }
+
+    @Nullable
+    public Long getGenuineAppReplyTimeMillis() {
+        return mGenuineAppReplyTimeMillis;
     }
 }
