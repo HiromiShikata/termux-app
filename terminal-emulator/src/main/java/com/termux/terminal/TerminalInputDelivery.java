@@ -1,5 +1,7 @@
 package com.termux.terminal;
 
+import java.util.function.BooleanSupplier;
+
 public final class TerminalInputDelivery {
 
     public static final String REMOTE_SHELL_CLIENT_DETACHED_REASON =
@@ -9,7 +11,7 @@ public final class TerminalInputDelivery {
     }
 
     public static boolean reachesTheProgramReadingTheTerminal(
-            boolean sessionRunsRemoteShellClient, boolean terminalIsInCanonicalMode) {
-        return !sessionRunsRemoteShellClient || !terminalIsInCanonicalMode;
+            boolean sessionRunsRemoteShellClient, BooleanSupplier terminalIsInCanonicalMode) {
+        return !sessionRunsRemoteShellClient || !terminalIsInCanonicalMode.getAsBoolean();
     }
 }

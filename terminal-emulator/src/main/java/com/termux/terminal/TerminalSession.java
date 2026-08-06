@@ -227,7 +227,7 @@ public final class TerminalSession extends TerminalOutput {
         if (mRuntimeResourcesReleased || mShellPid <= 0) return false;
         return TerminalInputDelivery.reachesTheProgramReadingTheTerminal(
             RemoteShellClientCommand.isRunBy(mShellPath, mArgs),
-            JNI.isPtyInCanonicalMode(mTerminalFileDescriptor));
+            () -> JNI.isPtyInCanonicalMode(mTerminalFileDescriptor));
     }
 
     /** Write the Unicode code point to the terminal encoded in UTF-8. */
