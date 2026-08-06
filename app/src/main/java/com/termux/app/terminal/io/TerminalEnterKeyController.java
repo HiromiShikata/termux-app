@@ -35,6 +35,7 @@ public class TerminalEnterKeyController {
     public boolean submit(@Nullable EditText editText,
                           @Nullable TerminalToolbarViewPager.PageAdapter adapter) {
         if (!inputReachesTheProgramReadingTheTerminal()) {
+            if (reconnectAndDeliverAfterReconnect(editText)) return true;
             Logger.showToast(mActivity,
                 mActivity.getString(R.string.msg_terminal_input_not_delivered), true);
             return false;
@@ -46,6 +47,16 @@ public class TerminalEnterKeyController {
             recordReplyOnSubmit();
         }
         return ownerContentSubmitted;
+    }
+
+    private boolean reconnectAndDeliverAfterReconnect(@Nullable EditText editText) {
+        TerminalSession session = mActivity.getCurrentSession();
+        TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
+        if (session == null || sessionClient == null) return false;
+        String pendingInput = editText == null ? null : editText.getText().toString();
+        if (!sessionClient.reconnectFinishedSessionInPlace(session, pendingInput)) return false;
+        if (editText != null) editText.setText("");
+        return true;
     }
 
     private void finishComposingText() {
