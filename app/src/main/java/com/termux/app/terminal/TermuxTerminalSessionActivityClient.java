@@ -45,6 +45,7 @@ import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
+import com.termux.app.sessiondefinition.SessionInputDeliverabilityDwell;
 import com.termux.app.sessiondefinition.SessionResourceReleasePlanner;
 import com.termux.app.sessiondefinition.VisibleSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
@@ -258,6 +259,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final HungSessionDetector mHungSessionDetector =
         new HungSessionDetector(BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS);
+
+    private final SessionInputDeliverabilityDwell mSessionInputDeliverabilityDwell =
+        new SessionInputDeliverabilityDwell();
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
@@ -2323,8 +2327,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
             boolean hung = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
             boolean reconnecting = store != null && store.isReconnecting(sessionName);
+            boolean unableToReceiveInputLongEnough =
+                mSessionInputDeliverabilityDwell.hasBeenUnableToReceiveInputLongEnough(
+                    sessionName, terminalSession.inputReachesTheProgramReadingTheTerminal(), nowMillis);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
-                sessionName, running, current, hung, lastOutTimeMillis, reconnecting));
+                sessionName, running, current, hung, lastOutTimeMillis, reconnecting,
+                unableToReceiveInputLongEnough));
         }
 
         List<String> sessionNamesToReconnect =

@@ -14,7 +14,16 @@ public final class SessionInputDeliverabilityDwell {
     public boolean hasBeenUnableToReceiveInputLongEnough(@NonNull String sessionName,
                                                          boolean canReceiveInput,
                                                          long nowMillis) {
-        return false;
+        if (canReceiveInput) {
+            mUnableSinceMillisBySessionName.remove(sessionName);
+            return false;
+        }
+        Long unableSinceMillis = mUnableSinceMillisBySessionName.get(sessionName);
+        if (unableSinceMillis == null) {
+            mUnableSinceMillisBySessionName.put(sessionName, nowMillis);
+            return false;
+        }
+        return nowMillis - unableSinceMillis >= DWELL_MILLIS;
     }
 
     public void forget(@NonNull String sessionName) {

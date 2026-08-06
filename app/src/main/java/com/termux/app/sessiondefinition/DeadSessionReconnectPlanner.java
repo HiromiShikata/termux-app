@@ -82,6 +82,10 @@ public final class DeadSessionReconnectPlanner {
             return !current && !running && !reconnecting;
         }
 
+        boolean isDetachedInputReconnectCandidate() {
+            return unableToReceiveInputLongEnough && !reconnecting;
+        }
+
         boolean isHungAliveReconnectCandidate() {
             return !current && hung && !reconnecting;
         }
@@ -126,7 +130,8 @@ public final class DeadSessionReconnectPlanner {
             if (candidateSession == null) {
                 continue;
             }
-            if (candidateSession.isDeadProcessReconnectCandidate()) {
+            if (candidateSession.isDeadProcessReconnectCandidate()
+                || candidateSession.isDetachedInputReconnectCandidate()) {
                 addIfReconnectable(candidateSession, autosshCommandTemplate, userRemovedSessionNames,
                     sessionNamesToReconnect);
                 if (sessionNamesToReconnect.size() >= maxSessionsToReconnect) {
