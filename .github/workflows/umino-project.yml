@@ -41,7 +41,6 @@ env:
   project_id: 48
   project_v2_id: PVT_kwHOAGJHa84AFWnr
   field_id: PVTF_lAHOAGJHa84AFWnrzgIk_H0
-  team_repo: '7sea.world, blog-tech, media-pinpoint-research, instagram-beauty-aesthetics-review, umino-corporait-operation, instagram-14LBaggageTraveler, hashigoya-project'
 
 jobs:
   umino-job:
