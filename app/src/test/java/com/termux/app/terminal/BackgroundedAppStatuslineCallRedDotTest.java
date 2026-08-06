@@ -43,12 +43,13 @@ public class BackgroundedAppStatuslineCallRedDotTest {
 
     @Test
     public void bothSessionClientsBuildTheStatuslineScanTextTheSameWay() throws IOException {
-        String backgroundedSessionClient = readModuleResource(
-            "src/main/java/com/termux/app/terminal/TermuxTerminalSessionServiceClient.java");
+        String backgroundedStatuslineRecorder = readModuleResource(
+            "src/main/java/com/termux/app/terminal/SessionStatuslineTimesRecorder.java");
         String foregroundSessionClient = readModuleResource(
             "src/main/java/com/termux/app/terminal/TermuxTerminalSessionActivityClient.java");
 
-        Assert.assertTrue(backgroundedSessionClient.contains("SessionStatuslineScanText"));
+        Assert.assertTrue(backgroundedStatuslineRecorder.contains("SessionStatuslineScanText"));
+        Assert.assertTrue(backgroundedStatuslineRecorder.contains("SessionStatuslineReloadScanner"));
         Assert.assertTrue(foregroundSessionClient.contains("SessionStatuslineScanText"));
     }
 

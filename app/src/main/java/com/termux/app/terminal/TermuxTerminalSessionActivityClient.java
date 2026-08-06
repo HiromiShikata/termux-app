@@ -734,24 +734,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     @NonNull
     private static String statuslineScanText(@NonNull TerminalEmulator emulator,
                                              @NonNull TerminalBuffer screen) {
-        StringBuilder builder = new StringBuilder(emulator.getMainBufferTranscriptText());
-        builder.append('\n').append(visibleScreenText(emulator, screen));
-        return builder.toString();
-    }
-
-    @NonNull
-    private static String visibleScreenText(@NonNull TerminalEmulator emulator,
-                                            @NonNull TerminalBuffer screen) {
-        int screenRows = emulator.mRows;
-        int columns = emulator.mColumns;
-        StringBuilder builder = new StringBuilder();
-        for (int row = 0; row < screenRows; row++) {
-            if (row > 0) {
-                builder.append('\n');
-            }
-            builder.append(screen.getSelectedText(0, row, columns, row, false, false));
-        }
-        return builder.toString();
+        return SessionStatuslineScanText.of(emulator, screen);
     }
 
     @Override

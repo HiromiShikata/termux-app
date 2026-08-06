@@ -12,6 +12,8 @@ import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 
+import java.util.TimeZone;
+
 /** The {@link TerminalSessionClient} implementation that may require a {@link Service} for its interface methods. */
 public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionClientBase {
 
@@ -21,6 +23,9 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
 
     private final SessionOutputProgressTracker mSessionOutputProgressTracker = new SessionOutputProgressTracker();
 
+    private final SessionStatuslineTimesRecorder mSessionStatuslineTimesRecorder =
+        new SessionStatuslineTimesRecorder();
+
     public TermuxTerminalSessionServiceClient(TermuxService service) {
         this.mService = service;
     }
@@ -28,6 +33,13 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     @Override
     public void onTextChanged(@NonNull TerminalSession changedSession) {
         if (changedSession.mSessionName == null) return;
+
+        // The statusline call:/out:/reply: tokens are recorded for every session that produces
+        // output while the activity is unbound (app backgrounded), exactly as the activity client
+        // records them while bound. They are the only signal an owner call whose tag never appears
+        // literally in the transcript produces, so a session called while backgrounded records its
+        // red dot when the call is rendered rather than waiting for a later rescan.
+        recordStatuslineTimes(changedSession);
 
         // Scan the explicit-call and app-update output tags for every session, even while the
         // activity is unbound (app backgrounded). This records an explicit call into the shared
@@ -37,6 +49,13 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         // scanned here. The controllers keep one scanner per session and deduplicate, so calling
         // them on every text change fires each tag exactly once.
         scanOutputTags(changedSession);
+    }
+
+    private void recordStatuslineTimes(@NonNull TerminalSession session) {
+        SessionNewActivityStore store = mService.getSessionNewActivityStore();
+        if (store == null) return;
+        mSessionStatuslineTimesRecorder.recordFromVisibleScreen(store, session,
+            System.currentTimeMillis(), TimeZone.getDefault());
     }
 
     @Override
@@ -56,10 +75,9 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
-        // The service client runs while the activity is unbound (app backgrounded) and does not parse
-        // the statusline, so its stored statusline times can be stale here; it keeps the call-to-user
-        // tag scan unconditional as the backgrounded safety net so a session that calls the user while
-        // backgrounded still records its red dot regardless of the statusline-pending gate.
+        // The tag scan stays unconditional here, unlike the activity client which gates it on the
+        // statusline-pending state, so a session that calls the user while the app is backgrounded
+        // records its red dot from the tag as well as from the statusline times recorded above.
         new BackgroundOutputTagScanner(
             mService.getCallToUserTagController(),
             mService.getUpdateTagUpdateController())
