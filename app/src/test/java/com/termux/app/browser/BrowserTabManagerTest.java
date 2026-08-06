@@ -73,16 +73,16 @@ public class BrowserTabManagerTest {
     }
 
     @Test
-    public void attachOrActivateTabReactivatesExistingUrlTabWhenAnotherTabIsActive() {
+    public void attachOrActivateTabLeavesTheActiveTabAloneWhenAnotherTabIsActive() {
         BrowserTabManager manager = new BrowserTabManager();
         BrowserTab urlTab = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
         BrowserTab otherTab = manager.addTab(SESSION_A, "https://a.example/other");
         Assert.assertSame(otherTab, manager.getActiveTab(SESSION_A));
 
-        BrowserTab reactivated = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
+        BrowserTab attached = manager.attachOrActivateTab(SESSION_A, "https://a.example/");
 
-        Assert.assertSame(urlTab, reactivated);
-        Assert.assertSame(urlTab, manager.getActiveTab(SESSION_A));
+        Assert.assertSame(urlTab, attached);
+        Assert.assertSame(otherTab, manager.getActiveTab(SESSION_A));
         Assert.assertEquals(2, manager.getTabs(SESSION_A).size());
     }
 
