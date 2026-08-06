@@ -2346,6 +2346,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 continue;
             }
             mSessionReconnectPacer.enqueueSession(deadSession);
+            mSessionInputDeliverabilityDwell.forget(sessionName);
             reconnectedSessionNames.add(sessionName);
         }
         return reconnectedSessionNames;

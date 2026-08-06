@@ -7,7 +7,7 @@ import java.util.Map;
 
 public final class SessionInputDeliverabilityDwell {
 
-    public static final long DWELL_MILLIS = 90_000L;
+    public static final long DWELL_MILLIS = 120_000L;
 
     private final Map<String, Long> mUnableSinceMillisBySessionName = new HashMap<>();
 
