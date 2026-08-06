@@ -77,8 +77,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class TermuxBrowserController implements BrowserTabSelectionListener {
 
@@ -115,6 +117,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserTabManager mTabManager = new BrowserTabManager();
 
     private final BrowserRecentlyClosedTabs mRecentlyClosedTabs = new BrowserRecentlyClosedTabs();
+
+    private final Set<String> mSessionHandlesWithTabsLoaded = new LinkedHashSet<>();
 
     private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
 
@@ -392,6 +396,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void restorePersistedTabsForSession(@Nullable String sessionHandle, @Nullable String sessionName) {
         if (sessionHandle == null || sessionName == null || sessionName.isEmpty()) return;
+        mSessionHandlesWithTabsLoaded.add(sessionHandle);
         if (mTabManager.hasTabs(sessionHandle)) return;
         BrowserPersistedSessionTabs persistedSessionTabs = mPersistedTabsBySessionName.get(sessionName);
         if (persistedSessionTabs == null) return;
@@ -426,7 +431,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             String sessionName = liveSessionHandlesWithName().get(sessionHandle);
             if (sessionName == null || sessionName.isEmpty()) continue;
             List<BrowserTab> tabs = mTabManager.getTabs(sessionHandle);
-            if (tabs.isEmpty()) {
+            BrowserPersistedSessionTabsAction action = BrowserPersistedSessionTabsAction.decide(
+                mSessionHandlesWithTabsLoaded.contains(sessionHandle), !tabs.isEmpty());
+            if (action == BrowserPersistedSessionTabsAction.KEEP_PERSISTED) continue;
+            if (action == BrowserPersistedSessionTabsAction.REMOVE) {
                 mPersistedTabsBySessionName.remove(sessionName);
                 continue;
             }
@@ -1601,6 +1609,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             blankFrame();
         mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
+        mSessionHandlesWithTabsLoaded.remove(session.mHandle);
         mRecentlyClosedTabs.removeSession(session.mHandle);
         if (BrowserSessionRemovalVisibilityRetention.shouldClearBrowserOpenSessionName(reason)) {
             mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
@@ -1878,6 +1887,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url) {
+        restorePersistedTabsForSession(sessionHandle, resolveSessionName(sessionHandle));
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         if (sessionHandle.equals(mCurrentSessionHandle)) {
             openTab(tab);

@@ -8,6 +8,7 @@ public enum BrowserPersistedSessionTabsAction {
 
     public static BrowserPersistedSessionTabsAction decide(boolean storedTabsWereLoadedForSession,
                                                            boolean sessionHasTabsInMemory) {
-        return REWRITE_FROM_MEMORY;
+        if (sessionHasTabsInMemory) return REWRITE_FROM_MEMORY;
+        return storedTabsWereLoadedForSession ? REMOVE : KEEP_PERSISTED;
     }
 }
