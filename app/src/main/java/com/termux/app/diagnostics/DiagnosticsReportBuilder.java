@@ -28,22 +28,22 @@ public final class DiagnosticsReportBuilder {
         builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
 
         builder.append('\n');
-        appendMemorySection(builder, report);
-
-        builder.append('\n');
-        appendSessionsSection(builder, report);
-
-        builder.append('\n');
         appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
         appendBackgroundCycleSection(builder, report);
 
         builder.append('\n');
+        appendMemorySection(builder, report);
+
+        builder.append('\n');
         appendBrowserSection(builder, report);
 
         builder.append('\n');
         appendWakeLockSection(builder, report);
+
+        builder.append('\n');
+        appendSessionsSection(builder, report);
 
         builder.append('\n');
         appendEventsSection(builder, report);
