@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 
 import android.app.Instrumentation;
 
-import androidx.lifecycle.Lifecycle;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -36,6 +35,7 @@ public class BackgroundedCallToUserIsDetectedInstrumentedTest {
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 15_000L;
     private static final long CALL_REASON_RECORDED_TIMEOUT_MILLIS = 20_000L;
+    private static final long ACTIVITY_STOPPED_TIMEOUT_MILLIS = 20_000L;
 
     @Test
     public void aCallRaisedInANonCurrentSessionIsDetectedWhileTheActivityIsStopped() throws Exception {
@@ -59,12 +59,7 @@ public class BackgroundedCallToUserIsDetectedInstrumentedTest {
         assertEquals("the captured session must be the non-current one", OTHER_SESSION_NAME,
             otherSession.mSessionName);
 
-        scenario.moveToState(Lifecycle.State.CREATED);
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-        scenario.onActivity(activity -> assertFalse("the activity must report itself as not visible so "
-                + "this exercises the state the owner is actually in when a call goes unnoticed",
-            activity.isVisible()));
+        sendTheActivityToTheBackground(scenario);
 
         scenario.onActivity(activity -> {
             TerminalEmulator emulator = otherSession.getEmulator();
@@ -96,6 +91,36 @@ public class BackgroundedCallToUserIsDetectedInstrumentedTest {
             REASON, unacknowledgedRef.get());
         assertEquals("that detected call must arm the red tier so the session surfaces to the owner",
             SessionNewActivityTier.RED, tierRef.get());
+    }
+
+    /**
+     * Puts the app in the state the owner is actually in when a call goes unnoticed: the task sent to
+     * the background, so the activity runs through onStop and reports itself as not visible.
+     *
+     * <p>{@link ActivityScenario#moveToState} cannot be used for this. TermuxActivity is declared with
+     * {@code android:launchMode="singleTask"} in AndroidManifest.xml, and ActivityScenario does not
+     * drive lifecycle transitions for a singleTask activity — the requested transition times out with
+     * the activity still RESUMED. Moving the task to the back is the transition the platform itself
+     * performs when the owner leaves the app, so it reaches the same state without the harness
+     * limitation.
+     */
+    private static void sendTheActivityToTheBackground(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        scenario.onActivity(activity -> activity.moveTaskToBack(true));
+
+        long deadline = System.currentTimeMillis() + ACTIVITY_STOPPED_TIMEOUT_MILLIS;
+        AtomicBoolean stopped = new AtomicBoolean(false);
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> stopped.set(!activity.isVisible()));
+            if (stopped.get()) break;
+            Thread.sleep(100L);
+        }
+
+        scenario.onActivity(activity -> assertFalse("the activity must report itself as not visible so "
+                + "this exercises the state the owner is actually in when a call goes unnoticed",
+            activity.isVisible()));
     }
 
     private static String taggedOutputWithUnrepliedStatuslineCall() {
