@@ -10,6 +10,8 @@ import java.util.TimeZone;
 
 public final class DiagnosticsReportBuilder {
 
+    public static final int PASTE_LIMIT_CHARACTERS = 5000;
+
     private static final String TIMESTAMP_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
     private static final int MAX_REPORTED_STALL_HOT_PATHS = 4;

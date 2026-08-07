@@ -582,6 +582,65 @@ public class DiagnosticsReportBuilderTest {
             mainThreadCostIndex < recentEventsIndex);
     }
 
+    @Test
+    public void theWholeMainThreadCostSectionFitsInsideThePasteLimitTheReportTravelsThrough() {
+        List<MainThreadStallHotPath> hotPaths = new ArrayList<>();
+        for (int hotPathIndex = 0; hotPathIndex < 8; hotPathIndex++) {
+            hotPaths.add(new MainThreadStallHotPath(
+                stackTraceOf("com.termux.app.terminal.HotPath" + hotPathIndex + ".method", 16),
+                37L, 98765L, 4321L));
+        }
+        DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(250L, 987L, 4321L,
+            stackTraceOf("com.termux.app.terminal.LongestStall.method", 16), hotPaths);
+
+        List<String> looperDumpLines = new ArrayList<>();
+        for (int messageIndex = 0; messageIndex < 200; messageIndex++) {
+            looperDumpLines.add("Message " + messageIndex + ": { when=-1s234ms what=0"
+                + " target=android.os.Handler callback=com.termux.app.terminal"
+                + ".TermuxTerminalSessionActivityClient$$ExternalSyntheticLambda" + (messageIndex % 7)
+                + " }");
+        }
+
+        String text = new DiagnosticsReportBuilder().build(reportWithStallsAndLooperQueue(stalls,
+            DiagnosticsMainLooperQueue.parse(looperDumpLines)));
+
+        int endOfMainThreadCostSection = text.indexOf("Background cycle");
+        Assert.assertTrue("the section after the main-thread cost must be present so its start marks"
+            + " where the main-thread cost section ends: " + text, endOfMainThreadCostSection > 0);
+        Assert.assertTrue("the report reaches the owner by being pasted into a channel that keeps only"
+                + " the first " + DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS + " characters, so every part of the section"
+                + " that names what blocks the main thread must fit inside that budget, and it"
+                + " currently ends at character " + endOfMainThreadCostSection + ": " + text,
+            endOfMainThreadCostSection <= DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS);
+
+        String mainThreadCostSection = text.substring(0, endOfMainThreadCostSection);
+        Assert.assertTrue("the stack trace of the longest stall must survive: " + mainThreadCostSection,
+            mainThreadCostSection.contains("com.termux.app.terminal.LongestStall.method"));
+        Assert.assertTrue("the ranked hot paths must survive: " + mainThreadCostSection,
+            mainThreadCostSection.contains("Blocking the main thread the longest"));
+        Assert.assertTrue("the main looper queue must survive, because a flooded queue names the source"
+            + " of the flood: " + mainThreadCostSection, mainThreadCostSection.contains("Busiest targets:"));
+    }
+
+    private static String stackTraceOf(String methodName, int frameCount) {
+        StringBuilder stackTrace = new StringBuilder();
+        for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+            if (frameIndex > 0) stackTrace.append('\n');
+            stackTrace.append("at ").append(methodName).append(frameIndex)
+                .append("(TermuxTerminalSessionActivityClient.java:").append(1000 + frameIndex).append(')');
+        }
+        return stackTrace.toString();
+    }
+
+    private DiagnosticsReport reportWithStallsAndLooperQueue(DiagnosticsMainThreadStalls stalls,
+                                                             DiagnosticsMainLooperQueue looperQueue) {
+        return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
+            19, 19, 64, Collections.<DiagnosticsSessionLine>emptyList(),
+            0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST, stalls,
+            looperQueue, 0L, NO_BACKGROUND_CYCLE);
+    }
+
     private static DiagnosticsShellInputDelivery deliveringEverything() {
         return new DiagnosticsShellInputDelivery(0L, 0L, 0L, true, null);
     }
