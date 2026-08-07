@@ -79,9 +79,10 @@ public class BrowserLinkOpensMatchingNativeAppWiringTest {
             readModuleSource(BROWSER_CONTROLLER_PATH),
             "private boolean openInMatchingNativeApp(", "\n    }");
 
-        Assert.assertTrue("the browser must reuse the shared Google application resolver",
-            hostMethod.contains("GoogleAppLink.resolveTarget("));
+        Assert.assertTrue("the browser must reuse the shared native application resolver so every vendor it"
+                + " recognises, Slack included, leaves the in-app browser the same way",
+            hostMethod.contains("NativeAppLink.resolveTarget("));
         Assert.assertTrue("the browser must launch the resolved application",
-            hostMethod.contains("GoogleAppLink.openInGoogleApp("));
+            hostMethod.contains("NativeAppLink.openInNativeApp("));
     }
 }

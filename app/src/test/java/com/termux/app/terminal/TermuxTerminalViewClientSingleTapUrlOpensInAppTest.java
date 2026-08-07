@@ -90,16 +90,16 @@ public class TermuxTerminalViewClientSingleTapUrlOpensInAppTest {
         String methodBody = methodBody(
             readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "private void openUrlInMatchingAppOrBrowser(");
 
-        Assert.assertTrue("the shared helper must delegate the resolve-then-fallback decision to GoogleAppLink",
-            methodBody.contains("GoogleAppLink.openInGoogleAppOrElse(mActivity, url"));
+        Assert.assertTrue("the shared helper must delegate the resolve-then-fallback decision to NativeAppLink",
+            methodBody.contains("NativeAppLink.openInNativeAppOrElse(mActivity, url"));
         Assert.assertTrue("the shared helper must fall back to the in-app browser",
             methodBody.contains("openUrlInApp(url)"));
     }
 
     @Test
-    public void longPressOpenInGoogleAppReusesTheSharedHelper() throws IOException {
+    public void longPressOpenInNativeAppReusesTheSharedHelper() throws IOException {
         String methodBody = methodBody(
-            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void openLongPressedUrlInGoogleApp(");
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void openLongPressedUrlInNativeApp(");
 
         Assert.assertTrue("long-press Open in Google app must reuse the shared resolve-then-fallback helper",
             methodBody.contains("openUrlInMatchingAppOrBrowser(mLongPressedUrl)"));

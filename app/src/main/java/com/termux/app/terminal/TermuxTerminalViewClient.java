@@ -22,7 +22,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
-import com.termux.app.link.GoogleAppLink;
+import com.termux.app.link.NativeAppLink;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.shell.ShellUtils;
@@ -494,11 +494,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         ShareUtils.openUrlInChrome(mActivity, mLongPressedUrl);
     }
 
-    public GoogleAppLink.GoogleAppTarget getLongPressedUrlGoogleAppTarget() {
-        return GoogleAppLink.resolveTarget(mLongPressedUrl);
+    public NativeAppLink.NativeAppTarget getLongPressedUrlNativeAppTarget() {
+        return NativeAppLink.resolveTarget(mLongPressedUrl);
     }
 
-    public void openLongPressedUrlInGoogleApp() {
+    public void openLongPressedUrlInNativeApp() {
         if (DataUtils.isNullOrEmpty(mLongPressedUrl)) return;
         openUrlInMatchingAppOrBrowser(mLongPressedUrl);
     }
@@ -903,7 +903,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     }
 
     private void openUrlInMatchingAppOrBrowser(String url) {
-        GoogleAppLink.openInGoogleAppOrElse(mActivity, url, () -> openUrlInApp(url));
+        NativeAppLink.openInNativeAppOrElse(mActivity, url, () -> openUrlInApp(url));
     }
 
     private void openUrlInApp(String url) {

@@ -13,10 +13,10 @@ import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowApplication;
 
 @RunWith(RobolectricTestRunner.class)
-public class GoogleAppLinkTest {
+public class NativeAppLinkTest {
 
     private void assertTarget(String url, String expectedLabel, String expectedPackage) {
-        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        NativeAppLink.NativeAppTarget target = NativeAppLink.resolveTarget(url);
         Assert.assertNotNull("expected a target for " + url, target);
         Assert.assertEquals(expectedLabel, target.getAppDisplayName());
         Assert.assertEquals(expectedPackage, target.getPackageName());
@@ -102,27 +102,27 @@ public class GoogleAppLinkTest {
 
     @Test
     public void docsWithoutRecognizedEditorPathHasNoTarget() {
-        Assert.assertNull(GoogleAppLink.resolveTarget("https://docs.google.com/"));
+        Assert.assertNull(NativeAppLink.resolveTarget("https://docs.google.com/"));
     }
 
     @Test
     public void googleSearchWithoutRecognizedPathHasNoTarget() {
-        Assert.assertNull(GoogleAppLink.resolveTarget("https://www.google.com/search?q=test"));
+        Assert.assertNull(NativeAppLink.resolveTarget("https://www.google.com/search?q=test"));
     }
 
     @Test
     public void nonGoogleUrlHasNoTarget() {
-        Assert.assertNull(GoogleAppLink.resolveTarget("https://example.com/spreadsheets/d/abc"));
+        Assert.assertNull(NativeAppLink.resolveTarget("https://example.com/spreadsheets/d/abc"));
     }
 
     @Test
     public void nonHttpSchemeHasNoTarget() {
-        Assert.assertNull(GoogleAppLink.resolveTarget("ftp://drive.google.com/file"));
+        Assert.assertNull(NativeAppLink.resolveTarget("ftp://drive.google.com/file"));
     }
 
     @Test
     public void nullUrlHasNoTarget() {
-        Assert.assertNull(GoogleAppLink.resolveTarget(null));
+        Assert.assertNull(NativeAppLink.resolveTarget(null));
     }
 
     @Test
@@ -132,13 +132,91 @@ public class GoogleAppLinkTest {
     }
 
     @Test
-    public void openInGoogleAppStartsViewIntentWithMappedPackage() {
+    public void slackThreadPermalinkMapsToSlack() {
+        assertTarget("https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000"
+                + "?thread_ts=1700000000.000000&cid=C01ABCDEFGH",
+            "Slack", "com.Slack");
+    }
+
+    @Test
+    public void slackMessagePermalinkWithoutThreadQueryMapsToSlack() {
+        assertTarget("https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000",
+            "Slack", "com.Slack");
+    }
+
+    @Test
+    public void slackWebClientThreadUrlMapsToSlack() {
+        assertTarget("https://app.slack.com/client/T01ABCDEFGH/C01ABCDEFGH/thread/C01ABCDEFGH-1700000000.000000",
+            "Slack", "com.Slack");
+    }
+
+    @Test
+    public void slackHostMatchingIsCaseInsensitive() {
+        assertTarget("https://A-Workspace.Slack.com/archives/C01ABCDEFGH/p1700000000000000",
+            "Slack", "com.Slack");
+    }
+
+    @Test
+    public void slackApiDocumentationUrlHasNoTarget() {
+        Assert.assertNull(NativeAppLink.resolveTarget("https://api.slack.com/methods/chat.postMessage"));
+    }
+
+    @Test
+    public void slackMarketingSiteUrlHasNoTarget() {
+        Assert.assertNull(NativeAppLink.resolveTarget("https://slack.com/intl/en-gb/downloads"));
+        Assert.assertNull(NativeAppLink.resolveTarget("https://www.slack.com/help"));
+    }
+
+    @Test
+    public void slackWorkspaceHostWithoutAPermalinkPathHasNoTarget() {
+        Assert.assertNull(NativeAppLink.resolveTarget("https://a-workspace.slack.com/home"));
+    }
+
+    @Test
+    public void slackWebClientHostWithoutAClientPathHasNoTarget() {
+        Assert.assertNull(NativeAppLink.resolveTarget("https://app.slack.com/signin"));
+    }
+
+    @Test
+    public void openInNativeAppOrElseOpensSlackForAThreadPermalink() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000"
+            + "?thread_ts=1700000000.000000&cid=C01ABCDEFGH";
+        boolean[] fallbackRan = {false};
+
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertFalse("browser fallback must not run when Slack is installed", fallbackRan[0]);
+        Intent started = shadowApplication.getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.Slack", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
+    }
+
+    @Test
+    public void openInNativeAppOrElseFallsBackToBrowserForASlackThreadPermalinkWhenSlackIsNotInstalled() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        shadowApplication.checkActivities(true);
+        String url = "https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000";
+        boolean[] fallbackRan = {false};
+
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertTrue("browser fallback must run when Slack is not installed", fallbackRan[0]);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
+    }
+
+    @Test
+    public void openInNativeAppStartsViewIntentWithMappedPackage() {
         Context context = RuntimeEnvironment.getApplication();
         String url = "https://calendar.google.com/calendar/u/0/r";
-        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        NativeAppLink.NativeAppTarget target = NativeAppLink.resolveTarget(url);
         Assert.assertNotNull(target);
 
-        boolean launched = GoogleAppLink.openInGoogleApp(context, url, target);
+        boolean launched = NativeAppLink.openInNativeApp(context, url, target);
 
         Assert.assertTrue(launched);
         Intent started = Shadows.shadowOf((Application) context).getNextStartedActivity();
@@ -149,28 +227,28 @@ public class GoogleAppLinkTest {
     }
 
     @Test
-    public void openInGoogleAppReturnsFalseWhenAppNotInstalled() {
+    public void openInNativeAppReturnsFalseWhenAppNotInstalled() {
         Context context = RuntimeEnvironment.getApplication();
         ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
         shadowApplication.checkActivities(true);
         String url = "https://docs.google.com/spreadsheets/d/abc123/edit";
-        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        NativeAppLink.NativeAppTarget target = NativeAppLink.resolveTarget(url);
         Assert.assertNotNull(target);
 
-        boolean launched = GoogleAppLink.openInGoogleApp(context, url, target);
+        boolean launched = NativeAppLink.openInNativeApp(context, url, target);
 
         Assert.assertFalse(launched);
         Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
 
     @Test
-    public void openInGoogleAppOrElseOpensNativeAppForResolvableInstalledUrl() {
+    public void openInNativeAppOrElseOpensNativeAppForResolvableInstalledUrl() {
         Context context = RuntimeEnvironment.getApplication();
         ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
         String url = "https://calendar.google.com/calendar/u/0/r";
         boolean[] fallbackRan = {false};
 
-        GoogleAppLink.openInGoogleAppOrElse(context, url, () -> fallbackRan[0] = true);
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
 
         Assert.assertFalse("browser fallback must not run when the native app is installed", fallbackRan[0]);
         Intent started = shadowApplication.getNextStartedActivity();
@@ -181,27 +259,27 @@ public class GoogleAppLinkTest {
     }
 
     @Test
-    public void openInGoogleAppOrElseFallsBackToBrowserWhenNativeAppNotInstalled() {
+    public void openInNativeAppOrElseFallsBackToBrowserWhenNativeAppNotInstalled() {
         Context context = RuntimeEnvironment.getApplication();
         ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
         shadowApplication.checkActivities(true);
         String url = "https://docs.google.com/spreadsheets/d/abc123/edit";
         boolean[] fallbackRan = {false};
 
-        GoogleAppLink.openInGoogleAppOrElse(context, url, () -> fallbackRan[0] = true);
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
 
         Assert.assertTrue("browser fallback must run when the native app is not installed", fallbackRan[0]);
         Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
 
     @Test
-    public void openInGoogleAppOrElseFallsBackToBrowserForNonResolvableUrl() {
+    public void openInNativeAppOrElseFallsBackToBrowserForNonResolvableUrl() {
         Context context = RuntimeEnvironment.getApplication();
         ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
         String url = "https://example.com/some/page";
         boolean[] fallbackRan = {false};
 
-        GoogleAppLink.openInGoogleAppOrElse(context, url, () -> fallbackRan[0] = true);
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
 
         Assert.assertTrue("browser fallback must run for a URL with no matching native app", fallbackRan[0]);
         Assert.assertNull(shadowApplication.getNextStartedActivity());

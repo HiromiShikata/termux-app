@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
-public class OpenTagUrlGoogleAppOpenerTest {
+public class OpenTagUrlNativeAppOpenerTest {
 
     private static final String SESSION_HANDLE = "session-handle-1";
 
@@ -24,8 +24,8 @@ public class OpenTagUrlGoogleAppOpenerTest {
 
     private final List<String> mSessionHandlesOpenedInTheInAppBrowser = new ArrayList<>();
 
-    private OpenTagUrlGoogleAppOpener openerFor(Context context) {
-        return new OpenTagUrlGoogleAppOpener(context, (sessionHandle, url) -> {
+    private OpenTagUrlNativeAppOpener openerFor(Context context) {
+        return new OpenTagUrlNativeAppOpener(context, (sessionHandle, url) -> {
             mSessionHandlesOpenedInTheInAppBrowser.add(sessionHandle);
             mUrlsOpenedInTheInAppBrowser.add(url);
         });
@@ -54,6 +54,40 @@ public class OpenTagUrlGoogleAppOpenerTest {
         ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
         shadowApplication.checkActivities(true);
         String url = "https://drive.google.com/file/d/abc123/view";
+
+        openerFor(context).openUrlInTabForSession(SESSION_HANDLE, url);
+
+        Assert.assertEquals(java.util.Collections.singletonList(url), mUrlsOpenedInTheInAppBrowser);
+        Assert.assertEquals(java.util.Collections.singletonList(SESSION_HANDLE),
+            mSessionHandlesOpenedInTheInAppBrowser);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
+    }
+
+    @Test
+    public void slackThreadUrlOpensTheSlackApplicationInsteadOfTheInAppBrowser() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000"
+            + "?thread_ts=1700000000.000000&cid=C01ABCDEFGH";
+
+        openerFor(context).openUrlInTabForSession(SESSION_HANDLE, url);
+
+        Assert.assertTrue("a Slack thread link delivered by the open tag must not open in the in-app browser"
+                + " when the Slack application is installed",
+            mUrlsOpenedInTheInAppBrowser.isEmpty());
+        Intent started = shadowApplication.getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.Slack", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
+    }
+
+    @Test
+    public void slackThreadUrlFallsBackToTheInAppBrowserWhenSlackIsNotInstalled() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        shadowApplication.checkActivities(true);
+        String url = "https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000";
 
         openerFor(context).openUrlInTabForSession(SESSION_HANDLE, url);
 

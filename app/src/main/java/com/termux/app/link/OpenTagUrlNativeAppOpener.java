@@ -6,13 +6,13 @@ import androidx.annotation.NonNull;
 
 import com.termux.app.browser.OpenTagBrowserController;
 
-public final class OpenTagUrlGoogleAppOpener implements OpenTagBrowserController.UrlOpener {
+public final class OpenTagUrlNativeAppOpener implements OpenTagBrowserController.UrlOpener {
 
     private final Context mContext;
 
     private final OpenTagBrowserController.UrlOpener mInAppBrowserOpener;
 
-    public OpenTagUrlGoogleAppOpener(@NonNull Context context,
+    public OpenTagUrlNativeAppOpener(@NonNull Context context,
                                      @NonNull OpenTagBrowserController.UrlOpener inAppBrowserOpener) {
         this.mContext = context;
         this.mInAppBrowserOpener = inAppBrowserOpener;
@@ -20,7 +20,7 @@ public final class OpenTagUrlGoogleAppOpener implements OpenTagBrowserController
 
     @Override
     public void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url) {
-        GoogleAppLink.openInGoogleAppOrElse(mContext, url,
+        NativeAppLink.openInNativeAppOrElse(mContext, url,
             () -> mInAppBrowserOpener.openUrlInTabForSession(sessionHandle, url));
     }
 }

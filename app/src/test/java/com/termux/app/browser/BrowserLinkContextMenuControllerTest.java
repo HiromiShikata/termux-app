@@ -145,13 +145,13 @@ public class BrowserLinkContextMenuControllerTest {
     }
 
     @Test
-    public void nonGoogleUrlDoesNotAddOpenInGoogleAppItem() {
+    public void nonGoogleUrlDoesNotAddOpenInNativeAppItem() {
         WebView webView = new WebView(context());
         AlertDialog dialog = showMenuFor(webView, "https://example.com/page", new RecordingActions());
         ListAdapter adapter = dialog.getListView().getAdapter();
         for (int index = 0; index < adapter.getCount(); index++) {
             Assert.assertNotEquals(
-                context().getString(R.string.action_browser_open_in_google_app, "Google Sheets"),
+                context().getString(R.string.action_browser_open_in_native_app, "Google Sheets"),
                 adapter.getItem(index));
         }
     }
@@ -164,7 +164,7 @@ public class BrowserLinkContextMenuControllerTest {
         ListAdapter adapter = dialog.getListView().getAdapter();
         Assert.assertEquals(7, adapter.getCount());
         Assert.assertEquals(
-            context().getString(R.string.action_browser_open_in_google_app, "Google Sheets"),
+            context().getString(R.string.action_browser_open_in_native_app, "Google Sheets"),
             adapter.getItem(4));
     }
 
@@ -176,12 +176,12 @@ public class BrowserLinkContextMenuControllerTest {
         ListAdapter adapter = dialog.getListView().getAdapter();
         Assert.assertEquals(7, adapter.getCount());
         Assert.assertEquals(
-            context().getString(R.string.action_browser_open_in_google_app, "Google Calendar"),
+            context().getString(R.string.action_browser_open_in_native_app, "Google Calendar"),
             adapter.getItem(4));
     }
 
     @Test
-    public void selectingOpenInGoogleAppLaunchesIntentWithMappedPackage() {
+    public void selectingOpenInNativeAppLaunchesIntentWithMappedPackage() {
         Context context = context();
         WebView webView = new WebView(context);
         RecordingActions actions = new RecordingActions();
@@ -191,7 +191,7 @@ public class BrowserLinkContextMenuControllerTest {
         controller.showLinkContextMenu(url, null);
         AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
         int index = indexOfItem(dialog,
-            context.getString(R.string.action_browser_open_in_google_app, "Gmail"));
+            context.getString(R.string.action_browser_open_in_native_app, "Gmail"));
         dialog.getListView().performItemClick(null, index, 0);
         Intent started = Shadows.shadowOf((android.app.Application) context).getNextStartedActivity();
         Assert.assertNotNull(started);
@@ -202,7 +202,7 @@ public class BrowserLinkContextMenuControllerTest {
     }
 
     @Test
-    public void selectingOpenInGoogleAppFallsBackToBrowserWhenAppNotInstalled() {
+    public void selectingOpenInNativeAppFallsBackToBrowserWhenAppNotInstalled() {
         Context context = context();
         ShadowApplication shadowApplication = Shadows.shadowOf((android.app.Application) context);
         shadowApplication.checkActivities(true);
@@ -214,7 +214,7 @@ public class BrowserLinkContextMenuControllerTest {
         controller.showLinkContextMenu(url, null);
         AlertDialog dialog = ShadowAlertDialog.getLatestAlertDialog();
         int index = indexOfItem(dialog,
-            context.getString(R.string.action_browser_open_in_google_app, "Google Drive"));
+            context.getString(R.string.action_browser_open_in_native_app, "Google Drive"));
         dialog.getListView().performItemClick(null, index, 0);
         Assert.assertNull(Shadows.shadowOf((android.app.Application) context).getNextStartedActivity());
         Assert.assertEquals(url, actions.openedInBrowserUrl);
