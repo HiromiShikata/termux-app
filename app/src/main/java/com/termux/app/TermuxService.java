@@ -26,6 +26,8 @@ import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
+import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
+import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.PendingCallNotificationText;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -58,6 +60,7 @@ import com.termux.shared.data.DataUtils;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.ExecutionCommand.Runner;
 import com.termux.shared.shell.command.ExecutionCommand.ShellCreateMode;
+import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
@@ -808,8 +811,24 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     public synchronized int removeTermuxSessionBeingReplaced(TerminalSession sessionToRemove) {
+        if (sessionToRemove != null) {
+            recordShellInputLostOnSessionBeingReplaced(
+                ReplacedSessionShellInputRecorderHolder.getInstance(),
+                diagnosticSessionName(sessionToRemove),
+                sessionToRemove.getShellInputDeliveryRecord());
+        }
         terminateSessionBeingReplaced(sessionToRemove);
         return removeTermuxSession(sessionToRemove);
+    }
+
+    static void recordShellInputLostOnSessionBeingReplaced(
+            @NonNull ReplacedSessionShellInputRecorder recorder,
+            @Nullable String sessionName,
+            @NonNull ShellInputDeliveryRecord deliveryRecord) {
+        recorder.recordSessionBeingReplaced(sessionName,
+            deliveryRecord.getBytesAcceptedButNotWrittenYet(),
+            deliveryRecord.isWriterRunning(),
+            deliveryRecord.getWriterStoppedReason());
     }
 
     static void terminateSessionBeingReplaced(@Nullable TerminalSession sessionToRemove) {

@@ -17,6 +17,8 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
     private static final DiagnosticsSessionReconnectCost NO_SESSION_RECONNECT_COST =
         new DiagnosticsSessionReconnectCost(0, 0, 0, 0);
+    private static final DiagnosticsReplacedSessionShellInput NO_REPLACED_SESSION_SHELL_INPUT =
+        new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", "");
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
         new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
     private static final DiagnosticsBackgroundCycle NO_BACKGROUND_CYCLE =
@@ -100,7 +102,7 @@ public class DiagnosticsReportBuilderTest {
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
             memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost,
-            NO_SESSION_RECONNECT_COST, mainThreadStalls,
+            NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             processUptimeMillis, backgroundCycle);
     }
@@ -110,7 +112,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
-            NO_SESSION_RECONNECT_COST, NO_MAIN_THREAD_STALLS,
+            NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
     }
 
@@ -119,7 +121,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST,
-            NO_SESSION_RECONNECT_COST, NO_MAIN_THREAD_STALLS,
+            NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
     }
 
@@ -658,7 +660,7 @@ public class DiagnosticsReportBuilderTest {
         String text = new DiagnosticsReportBuilder().build(new DiagnosticsReport("0.119.0", 119,
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
             Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
-            NO_WORK_COST, NO_SESSION_RECONNECT_COST, stalls,
+            NO_WORK_COST, NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
             DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
@@ -734,7 +736,7 @@ public class DiagnosticsReportBuilderTest {
             19, 19, 64, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
-            NO_SESSION_RECONNECT_COST, stalls,
+            NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
             looperQueue, 0L, NO_BACKGROUND_CYCLE);
     }
 
