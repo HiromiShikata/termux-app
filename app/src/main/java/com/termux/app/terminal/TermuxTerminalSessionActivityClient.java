@@ -365,8 +365,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onStop() {
         stopActiveSessionSeenTick();
         stopAllSessionsCallScanTick();
-        stopDisplayedSessionCallScanTick();
-        stopStatuslineParseThread();
 
         // Store current session in shared preferences so that it can be restored later in
         // {@link #onStart} if needed.
@@ -377,6 +375,19 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // Bell is not played in background anyways
         // Related: https://stackoverflow.com/a/28708351/14686958
         releaseBellSoundPool();
+    }
+
+    /**
+     * Should be called when mActivity.onDestroy() is called.
+     *
+     * <p>The displayed-session call scan tick and the statusline parse thread it feeds are released here
+     * rather than in {@link #onStop} so that a call-to-user tag raised while the app is backgrounded is
+     * still detected. They are bound to the activity instance, so releasing them at destruction keeps the
+     * runnable and the parse thread from outliving it.
+     */
+    public void onDestroy() {
+        stopDisplayedSessionCallScanTick();
+        stopStatuslineParseThread();
     }
 
     /**
@@ -1281,19 +1292,23 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * {@link BackgroundOutputTagScanner} call-to-user transcript scan over every displayed session. The
      * per-session {@link CallToUserTagScanner} dedup ensures an already-detected tag does not re-fire.
      *
-     * <p>Hidden/filtered sessions are excluded (they stay on the slow cycle), and the tick runs only
-     * while the activity is visible and is removed in {@link #onStop}, so it adds no wake lock and does
-     * no work in the background, matching the existing tick behavior.
+     * <p>Hidden/filtered sessions are excluded (they stay on the slow cycle). The tick keeps running
+     * while the activity is stopped and is released in {@link #onDestroy}, because the owner acts on the
+     * red marker alone: a call raised while the app is backgrounded that is never detected leaves that
+     * session stopped indefinitely and skews the order the sessions are worked in. The service that owns
+     * {@link CallToUserTagController} is a foreground service and renders the pending-call count in its
+     * notification, so a call detected while the activity is stopped still surfaces. No wake lock is
+     * taken: the tick is a plain main-thread {@link Handler#postDelayed} that does not wake a sleeping
+     * device and resumes with the process, and the staggered reconnect keeps a large displayed set from
+     * reconnecting at once.
      */
     public void startDisplayedSessionCallScanTick() {
-        if (mActivity.isVisible())
-            refreshDisplayedSessionsForCallToUser();
+        refreshDisplayedSessionsForCallToUser();
         scheduleDisplayedSessionCallScanTick();
     }
 
     private void scheduleDisplayedSessionCallScanTick() {
         if (mDisplayedSessionCallScanTickScheduled) return;
-        if (!mActivity.isVisible()) return;
         mDisplayedSessionCallScanTickScheduled = true;
         mMainThreadHandler.postDelayed(mDisplayedSessionCallScanTickRunnable,
             displayedSessionCallScanIntervalMillis());
@@ -1314,7 +1329,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void onDisplayedSessionCallScanTick() {
         mDisplayedSessionCallScanTickScheduled = false;
-        if (!mActivity.isVisible()) return;
         refreshDisplayedSessionsForCallToUser();
         scheduleDisplayedSessionCallScanTick();
     }
