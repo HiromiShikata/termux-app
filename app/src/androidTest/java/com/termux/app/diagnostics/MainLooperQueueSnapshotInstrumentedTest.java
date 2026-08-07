@@ -19,31 +19,49 @@ public class MainLooperQueueSnapshotInstrumentedTest {
 
     private static final long QUEUED_MESSAGE_DELAY_MILLIS = 600000L;
 
+    private static final class MessageThatStaysQueued implements Runnable {
+        @Override
+        public void run() {
+        }
+    }
+
     @Test
     public void snapshotCountsTheMessagesWaitingOnTheMainLooper() {
         Handler mainHandler = new Handler(Looper.getMainLooper());
-        Runnable neverRun = () -> {
-        };
+        MessageThatStaysQueued messageThatStaysQueued = new MessageThatStaysQueued();
         try {
-            DiagnosticsMainLooperQueue before = MainLooperQueueSnapshot.take();
             for (int queued = 0; queued < QUEUED_MESSAGE_COUNT; queued++) {
-                mainHandler.postDelayed(neverRun, QUEUED_MESSAGE_DELAY_MILLIS);
+                mainHandler.postDelayed(messageThatStaysQueued, QUEUED_MESSAGE_DELAY_MILLIS);
             }
 
             List<String> dumpLines = MainLooperQueueSnapshot.dumpMainLooper();
-            DiagnosticsMainLooperQueue after = DiagnosticsMainLooperQueue.parse(dumpLines);
+            DiagnosticsMainLooperQueue queue = DiagnosticsMainLooperQueue.parse(dumpLines);
 
-            assertTrue("the snapshot must count every message waiting on the main looper, counted "
-                    + after.getPendingMessageCount() + " after queueing " + QUEUED_MESSAGE_COUNT
-                    + " on top of " + before.getPendingMessageCount()
-                    + ", from the dump\n" + String.join("\n", dumpLines),
-                after.getPendingMessageCount() >= before.getPendingMessageCount() + QUEUED_MESSAGE_COUNT);
-            assertTrue("the snapshot must name the target the waiting messages belong to, from the dump\n"
+            assertTrue("the snapshot must count the messages waiting on the main looper, and the "
+                    + QUEUED_MESSAGE_COUNT + " queued here cannot run for another "
+                    + QUEUED_MESSAGE_DELAY_MILLIS + "ms, so at least that many must be counted."
+                    + " It counted " + queue.getPendingMessageCount() + ", from the dump\n"
                     + String.join("\n", dumpLines),
-                !after.getBusiestTargets().isEmpty()
-                    && after.getBusiestTargets().get(0).getPendingMessageCount() >= QUEUED_MESSAGE_COUNT);
+                queue.getPendingMessageCount() >= QUEUED_MESSAGE_COUNT);
+            assertTrue("the snapshot must attribute the waiting messages to the callback they belong"
+                    + " to, and it attributed " + pendingMessagesAttributedToTheQueuedCallback(queue)
+                    + " of the " + QUEUED_MESSAGE_COUNT + " queued here to "
+                    + MessageThatStaysQueued.class.getName() + ", from the dump\n"
+                    + String.join("\n", dumpLines),
+                pendingMessagesAttributedToTheQueuedCallback(queue) >= QUEUED_MESSAGE_COUNT);
         } finally {
-            mainHandler.removeCallbacks(neverRun);
+            mainHandler.removeCallbacks(messageThatStaysQueued);
         }
+    }
+
+    private static int pendingMessagesAttributedToTheQueuedCallback(
+            DiagnosticsMainLooperQueue queue) {
+        String queuedCallbackName = MessageThatStaysQueued.class.getName();
+        for (DiagnosticsMainLooperQueueTarget target : queue.getBusiestTargets()) {
+            if (target.getDescription().contains(queuedCallbackName)) {
+                return target.getPendingMessageCount();
+            }
+        }
+        return 0;
     }
 }
