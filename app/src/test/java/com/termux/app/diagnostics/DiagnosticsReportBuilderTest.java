@@ -627,6 +627,59 @@ public class DiagnosticsReportBuilderTest {
             + " of the flood: " + mainThreadCostSection, mainThreadCostSection.contains("Busiest targets:"));
     }
 
+    @Test
+    public void inputThatNeverReachedTheShellSurvivesTheTruncationTheReportTravelsThrough() {
+        List<MainThreadStallHotPath> hotPaths = new ArrayList<>();
+        for (int hotPathIndex = 0; hotPathIndex < 8; hotPathIndex++) {
+            hotPaths.add(new MainThreadStallHotPath(
+                stackTraceOf("com.termux.app.terminal.HotPath" + hotPathIndex + ".method", 16),
+                37L, 98765L, 4321L));
+        }
+        DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(250L, 987L, 4321L,
+            stackTraceOf("com.termux.app.terminal.LongestStall.method", 16), hotPaths);
+
+        List<String> looperDumpLines = new ArrayList<>();
+        for (int messageIndex = 0; messageIndex < 200; messageIndex++) {
+            looperDumpLines.add("Message " + messageIndex + ": { when=-1s234ms what=0"
+                + " target=android.os.Handler callback=com.termux.app.terminal"
+                + ".TermuxTerminalSessionActivityClient$$ExternalSyntheticLambda" + (messageIndex % 7)
+                + " }");
+        }
+
+        List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
+        for (int sessionIndex = 0; sessionIndex < 18; sessionIndex++) {
+            sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex,
+                true, 4000, 108, deliveringEverything()));
+        }
+        sessionLines.add(new DiagnosticsSessionLine("host-stuck", true, 3, true, 4000, 108,
+            new DiagnosticsShellInputDelivery(4096L, 1000L, 0L, false,
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe")));
+
+        String text = new DiagnosticsReportBuilder().build(new DiagnosticsReport("0.119.0", 119,
+            REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
+            Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            NO_WORK_COST, NO_SESSION_RECONNECT_COST, stalls,
+            DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE));
+
+        Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
+                + " truncation never happens and this test proves nothing, but it is only "
+                + text.length() + " characters",
+            text.length() > DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS);
+
+        String survivingWindow = text.substring(0, DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS);
+
+        Assert.assertTrue("a session that accepted the user's characters and never wrote them to the"
+                + " shell is exactly the reported symptom of typed characters not being accepted, so"
+                + " the session it happened on must be named inside the window the report survives"
+                + " in: " + survivingWindow, survivingWindow.contains("host-stuck"));
+        Assert.assertTrue("the number of accepted bytes that never reached the shell is the"
+                + " measurement of that symptom, so it must survive the truncation: "
+                + survivingWindow, survivingWindow.contains("3096"));
+        Assert.assertTrue("the failure that stopped the writer names why the input stopped flowing,"
+                + " so it must survive the truncation: " + survivingWindow,
+            survivingWindow.contains("broken pipe"));
+    }
+
     private static String stackTraceOf(String methodName, int frameCount) {
         StringBuilder stackTrace = new StringBuilder();
         for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
