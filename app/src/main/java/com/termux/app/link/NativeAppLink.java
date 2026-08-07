@@ -94,6 +94,18 @@ public final class NativeAppLink {
             }
             return null;
         }
+        if (host.equals("app.slack.com")) {
+            if (path.startsWith("/client/")) {
+                return new NativeAppTarget("Slack", "com.Slack");
+            }
+            return null;
+        }
+        if (host.endsWith(".slack.com")) {
+            if (path.startsWith("/archives/")) {
+                return new NativeAppTarget("Slack", "com.Slack");
+            }
+            return null;
+        }
         return null;
     }
 
