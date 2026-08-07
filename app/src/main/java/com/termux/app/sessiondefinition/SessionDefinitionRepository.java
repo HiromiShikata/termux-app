@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 
 import com.termux.shared.logger.Logger;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,6 +31,8 @@ public final class SessionDefinitionRepository {
         new SessionDefinitionLoadResult(Collections.emptyList(), 0, Collections.emptyList());
 
     private final SessionDefinitionLoader loader;
+
+    private final List<OnEntriesLoadedListener> listenersAwaitingTheLoadInFlight = new ArrayList<>();
 
     private SessionDefinitionLoadResult result = EMPTY_RESULT;
 
@@ -59,7 +62,15 @@ public final class SessionDefinitionRepository {
     }
 
     public void load(@NonNull String baseUrl, @NonNull OnEntriesLoadedListener listener) {
-        if (loaded || loading || baseUrl.isEmpty()) {
+        if (baseUrl.isEmpty()) {
+            return;
+        }
+        if (loaded) {
+            listener.onEntriesLoaded();
+            return;
+        }
+        listenersAwaitingTheLoadInFlight.add(listener);
+        if (loading) {
             return;
         }
         loading = true;
@@ -71,13 +82,24 @@ public final class SessionDefinitionRepository {
                     result = loadResult;
                     loaded = true;
                     loading = false;
-                    listener.onEntriesLoaded();
+                    notifyListenersAwaitingTheLoadInFlight();
                 });
             } catch (Exception exception) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition entries from " + baseUrl, exception);
-                mainThreadHandler.post(() -> loading = false);
+                mainThreadHandler.post(() -> {
+                    loading = false;
+                    listenersAwaitingTheLoadInFlight.clear();
+                });
             }
         }).start();
+    }
+
+    private void notifyListenersAwaitingTheLoadInFlight() {
+        List<OnEntriesLoadedListener> listenersToNotify = new ArrayList<>(listenersAwaitingTheLoadInFlight);
+        listenersAwaitingTheLoadInFlight.clear();
+        for (OnEntriesLoadedListener listener : listenersToNotify) {
+            listener.onEntriesLoaded();
+        }
     }
 
     public void loadForRebuild(@NonNull String baseUrl, @NonNull OnEntriesReadyListener onEntriesReady, @NonNull OnLoadFailedListener onLoadFailed) {

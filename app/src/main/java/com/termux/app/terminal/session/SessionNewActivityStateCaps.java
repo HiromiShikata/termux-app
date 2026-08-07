@@ -64,6 +64,7 @@ public final class SessionNewActivityStateCaps {
             state.getStatuslineCallTimeMillis(),
             state.getStatuslineOutTimeMillis(),
             state.getStatuslineReplyTimeMillis(),
-            state.getSubagentCount());
+            state.getSubagentCount(),
+            state.getGenuineAppReplyTimeMillis());
     }
 }

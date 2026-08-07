@@ -23,6 +23,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_STATUSLINE_OUT_TIME_MILLIS = "statuslineOutTimeMillis";
     private static final String KEY_STATUSLINE_REPLY_TIME_MILLIS = "statuslineReplyTimeMillis";
     private static final String KEY_SUBAGENT_COUNT = "subagentCount";
+    private static final String KEY_GENUINE_APP_REPLY_TIME_MILLIS = "genuineAppReplyTimeMillis";
 
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
@@ -53,6 +54,8 @@ public final class SessionNewActivityStateSerializer {
                 object.put(KEY_STATUSLINE_REPLY_TIME_MILLIS, state.getStatuslineReplyTimeMillis().longValue());
             if (state.getSubagentCount() != null)
                 object.put(KEY_SUBAGENT_COUNT, state.getSubagentCount().intValue());
+            if (state.getGenuineAppReplyTimeMillis() != null)
+                object.put(KEY_GENUINE_APP_REPLY_TIME_MILLIS, state.getGenuineAppReplyTimeMillis().longValue());
             array.put(object);
         }
         return array.toString();
@@ -83,12 +86,13 @@ public final class SessionNewActivityStateSerializer {
             Long statuslineOutTimeMillis = optionalLong(object, KEY_STATUSLINE_OUT_TIME_MILLIS);
             Long statuslineReplyTimeMillis = optionalLong(object, KEY_STATUSLINE_REPLY_TIME_MILLIS);
             Integer subagentCount = optionalInt(object, KEY_SUBAGENT_COUNT);
+            Long genuineAppReplyTimeMillis = optionalLong(object, KEY_GENUINE_APP_REPLY_TIME_MILLIS);
 
             states.add(SessionNewActivityStateCaps.capState(new SessionNewActivityState(sessionName,
                 lastOutputActivityTimeMillis, lastExplicitCallTimeMillis, lastExplicitCallReason,
                 lastSeenTimeMillis, lastUserInputTimeMillis, unacknowledgedCallReasons,
                 acknowledgedCallReasons, statuslineCallTimeMillis, statuslineOutTimeMillis,
-                statuslineReplyTimeMillis, subagentCount)));
+                statuslineReplyTimeMillis, subagentCount, genuineAppReplyTimeMillis)));
         }
         return states;
     }

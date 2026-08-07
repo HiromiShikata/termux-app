@@ -35,6 +35,12 @@ final class JNI {
      */
     public static native int waitFor(int processId);
 
+    /**
+     * Whether the line discipline of the pty behind the given master file descriptor is in canonical mode, meaning no
+     * attached program has put it in raw mode and written bytes stay buffered by the line discipline.
+     */
+    public static native boolean isPtyInCanonicalMode(int fd);
+
     /** Close a file descriptor through the close(2) system call. */
     public static native void close(int fileDescriptor);
 

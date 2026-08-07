@@ -6,42 +6,22 @@ import org.junit.Test;
 public class ToolbarTextInputEncoderTest {
 
     @Test
-    public void sendsTextVerbatimWhenNotEmpty() {
-        Assert.assertEquals("ls -la", ToolbarTextInputEncoder.textToSend("ls -la", true));
+    public void sendsTextVerbatimWithoutASubmitTerminatorBecauseTheEnterSequenceIsWrittenSeparately() {
+        Assert.assertEquals("ls -la", ToolbarTextInputEncoder.textToSend("ls -la"));
     }
 
     @Test
-    public void sendsTextVerbatimWhenNotEmptyAndSubmitWhenEmptyDisabled() {
-        Assert.assertEquals("ls -la", ToolbarTextInputEncoder.textToSend("ls -la", false));
+    public void sendsNothingForEmptyTextBecauseTheEnterSequenceAloneSubmitsAnEmptyInput() {
+        Assert.assertEquals("", ToolbarTextInputEncoder.textToSend(""));
     }
 
     @Test
-    public void sendsCarriageReturnForEmptyTextWhenSubmitWhenEmptyEnabled() {
-        Assert.assertEquals("\r", ToolbarTextInputEncoder.textToSend("", true));
+    public void hasNoContentToSendForEmptyText() {
+        Assert.assertFalse(ToolbarTextInputEncoder.hasContentToSend(""));
     }
 
     @Test
-    public void sendsNothingForEmptyTextWhenSubmitWhenEmptyDisabled() {
-        Assert.assertEquals("", ToolbarTextInputEncoder.textToSend("", false));
-    }
-
-    @Test
-    public void hasNoContentToSendForEmptyTextWhenSubmitWhenEmptyDisabled() {
-        Assert.assertFalse(ToolbarTextInputEncoder.hasContentToSend("", false));
-    }
-
-    @Test
-    public void hasContentToSendForEmptyTextWhenSubmitWhenEmptyEnabled() {
-        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("", true));
-    }
-
-    @Test
-    public void hasContentToSendForNonEmptyTextWhenSubmitWhenEmptyDisabled() {
-        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("ls -la", false));
-    }
-
-    @Test
-    public void hasContentToSendForNonEmptyTextWhenSubmitWhenEmptyEnabled() {
-        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("ls -la", true));
+    public void hasContentToSendForNonEmptyText() {
+        Assert.assertTrue(ToolbarTextInputEncoder.hasContentToSend("ls -la"));
     }
 }

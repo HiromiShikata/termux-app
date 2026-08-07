@@ -28,12 +28,33 @@ public final class DiagnosticsReport {
     @NonNull
     private final List<DiagnosticEvent> mRecentEvents;
 
+    @NonNull
+    private final DiagnosticsMemoryUsage mMemoryUsage;
+    @NonNull
+    private final DiagnosticsWorkCostLine mBackgroundOutputScanCost;
+    @NonNull
+    private final DiagnosticsWorkCostLine mForegroundOpenTagScanCost;
+    @NonNull
+    private final DiagnosticsWorkCostLine mBufferReflowCost;
+    @NonNull
+    private final DiagnosticsMainThreadStalls mMainThreadStalls;
+    @NonNull
+    private final DiagnosticsMainLooperQueue mMainLooperQueue;
+    private final long mProcessUptimeMillis;
+
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
                              @NonNull List<DiagnosticsSessionLine> sessionLines,
                              int openTabCount, int tabHistoryEntryCount,
                              boolean wakeLockHeld, boolean foreground,
-                             @NonNull List<DiagnosticEvent> recentEvents) {
+                             @NonNull List<DiagnosticEvent> recentEvents,
+                             @NonNull DiagnosticsMemoryUsage memoryUsage,
+                             @NonNull DiagnosticsWorkCostLine backgroundOutputScanCost,
+                             @NonNull DiagnosticsWorkCostLine foregroundOpenTagScanCost,
+                             @NonNull DiagnosticsWorkCostLine bufferReflowCost,
+                             @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
+                             @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
+                             long processUptimeMillis) {
         mVersionName = versionName;
         mVersionCode = versionCode;
         mReportTimestampMillis = reportTimestampMillis;
@@ -46,6 +67,13 @@ public final class DiagnosticsReport {
         mWakeLockHeld = wakeLockHeld;
         mForeground = foreground;
         mRecentEvents = Collections.unmodifiableList(recentEvents);
+        mMemoryUsage = memoryUsage;
+        mBackgroundOutputScanCost = backgroundOutputScanCost;
+        mForegroundOpenTagScanCost = foregroundOpenTagScanCost;
+        mBufferReflowCost = bufferReflowCost;
+        mMainThreadStalls = mainThreadStalls;
+        mMainLooperQueue = mainLooperQueue;
+        mProcessUptimeMillis = processUptimeMillis;
     }
 
     @NonNull
@@ -102,5 +130,47 @@ public final class DiagnosticsReport {
     @NonNull
     public List<DiagnosticEvent> getRecentEvents() {
         return mRecentEvents;
+    }
+
+    @NonNull
+    public DiagnosticsMemoryUsage getMemoryUsage() {
+        return mMemoryUsage;
+    }
+
+    @NonNull
+    public DiagnosticsWorkCostLine getBackgroundOutputScanCost() {
+        return mBackgroundOutputScanCost;
+    }
+
+    @NonNull
+    public DiagnosticsWorkCostLine getForegroundOpenTagScanCost() {
+        return mForegroundOpenTagScanCost;
+    }
+
+    @NonNull
+    public DiagnosticsWorkCostLine getBufferReflowCost() {
+        return mBufferReflowCost;
+    }
+
+    @NonNull
+    public DiagnosticsMainThreadStalls getMainThreadStalls() {
+        return mMainThreadStalls;
+    }
+
+    @NonNull
+    public DiagnosticsMainLooperQueue getMainLooperQueue() {
+        return mMainLooperQueue;
+    }
+
+    public long getProcessUptimeMillis() {
+        return mProcessUptimeMillis;
+    }
+
+    public long getTotalTranscriptRows() {
+        long total = 0;
+        for (DiagnosticsSessionLine line : mSessionLines) {
+            total += line.getTranscriptRows();
+        }
+        return total;
     }
 }

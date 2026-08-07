@@ -53,7 +53,7 @@ public class SessionHierarchyBuilderHiddenSessionsTest {
             "https://example.test/a1", "https://example.test/b1");
         List<SessionHierarchyRow> rows = builder.build(sessionNames, entries, NA);
         Set<String> hiddenSessionNames = new HashSet<>(
-            Collections.singletonList("https://example.test/a1"));
+            Arrays.asList("https://example.test/a1", "projectOnepm"));
 
         List<SessionHierarchyRow> filtered = SessionHierarchyBuilder.filterHiddenSessions(
             rows, sessionNames, hiddenSessionNames);
@@ -62,7 +62,8 @@ public class SessionHierarchyBuilderHiddenSessionsTest {
             Assert.assertNotEquals("projectOne", row.getLabel());
             Assert.assertNotEquals("storyA", row.getLabel());
         }
-        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(filtered));
+        Assert.assertEquals("only projectTwo's story session and its project-manager row remain",
+            2, SessionHierarchyBuilder.totalSessionCount(filtered));
     }
 
     @Test
@@ -87,7 +88,8 @@ public class SessionHierarchyBuilderHiddenSessionsTest {
             }
         }
         Assert.assertTrue(projectHeaderRetained);
-        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(filtered));
+        Assert.assertEquals("the remaining story session and the project-manager row the project draws"
+            + " both stay", 2, SessionHierarchyBuilder.totalSessionCount(filtered));
     }
 
     @Test

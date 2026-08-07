@@ -5,6 +5,5 @@ public enum SessionInfoLine {
     SESSION_NAME,
     TIMESTAMP,
     DEFINITION_TITLE,
-    SESSION_TITLE,
-    EXPLICIT_CALL_REASON
+    SESSION_TITLE
 }

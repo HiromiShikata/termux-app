@@ -18,6 +18,11 @@
   "osvVulnerabilityAlerts": true,
   "packageRules": [
     {
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "groupName": "all non-major dependencies",
+      "groupSlug": "all-non-major"
+    },
+    {
       "matchPackageNames": ["eslint"],
       "allowedVersions": "<9.0.0"
     },

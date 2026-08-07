@@ -21,6 +21,7 @@ public final class DeadSessionReconnectPlanner {
         private final boolean hung;
         private final Long lastOutTimeMillis;
         private final boolean reconnecting;
+        private final boolean unableToReceiveInputLongEnough;
 
         public CandidateSession(String name, boolean running) {
             this(name, running, false, false, null);
@@ -33,12 +34,23 @@ public final class DeadSessionReconnectPlanner {
 
         public CandidateSession(String name, boolean running, boolean current, boolean hung,
                                 @Nullable Long lastOutTimeMillis, boolean reconnecting) {
+            this(name, running, current, hung, lastOutTimeMillis, reconnecting, false);
+        }
+
+        public CandidateSession(String name, boolean running, boolean current, boolean hung,
+                                @Nullable Long lastOutTimeMillis, boolean reconnecting,
+                                boolean unableToReceiveInputLongEnough) {
             this.name = name;
             this.running = running;
             this.current = current;
             this.hung = running && hung;
             this.lastOutTimeMillis = lastOutTimeMillis;
             this.reconnecting = reconnecting;
+            this.unableToReceiveInputLongEnough = unableToReceiveInputLongEnough;
+        }
+
+        public boolean isUnableToReceiveInputLongEnough() {
+            return unableToReceiveInputLongEnough;
         }
 
         public String getName() {
@@ -68,6 +80,10 @@ public final class DeadSessionReconnectPlanner {
 
         boolean isDeadProcessReconnectCandidate() {
             return !running && !reconnecting;
+        }
+
+        boolean isDetachedInputReconnectCandidate() {
+            return unableToReceiveInputLongEnough && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {
@@ -117,7 +133,8 @@ public final class DeadSessionReconnectPlanner {
             if (candidateSession == null) {
                 continue;
             }
-            if (candidateSession.isDeadProcessReconnectCandidate()) {
+            if (candidateSession.isDeadProcessReconnectCandidate()
+                || candidateSession.isDetachedInputReconnectCandidate()) {
                 addIfReconnectable(candidateSession, autosshCommandTemplate, userRemovedSessionNames,
                     sessionNamesToReconnect);
                 if (sessionNamesToReconnect.size() >= maxSessionsToReconnect) {

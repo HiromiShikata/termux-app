@@ -771,7 +771,7 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void statuslineCallNewerThanReplyDrivesRedTierEvenWhenTheTagScanCapturedNoScene() {
+    public void statuslineCallNewerThanReplyDrivesRedTierEvenWhenTheTagScanCapturedNoReason() {
         SessionNewActivityStore store = new SessionNewActivityStore();
 
         store.recordStatuslineTimes("worker", 9_000L, 9_000L, 2_000L);
@@ -779,8 +779,6 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
         Assert.assertTrue(store.hasPendingExplicitCall("worker"));
         Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
-        Assert.assertFalse(PendingCallToUserFooterDecision.resolve(
-            store.tierFor("worker"), mostRecentReason(store, "worker")).isVisible());
     }
 
     @Test
@@ -881,11 +879,6 @@ public class SessionNewActivityStoreTest {
         }
     }
 
-    private static String mostRecentReason(SessionNewActivityStore store, String sessionName) {
-        java.util.List<String> reasons = store.getUnacknowledgedCallReasons(sessionName);
-        return reasons.isEmpty() ? null : reasons.get(reasons.size() - 1);
-    }
-
     @Test
     public void ownerInputAcknowledgesTheCallClearingBothTheIndicatorAndTheSceneAndBumpsReplyTime() {
         SessionNewActivityStore store = new SessionNewActivityStore();
@@ -917,21 +910,17 @@ public class SessionNewActivityStoreTest {
     }
 
     @Test
-    public void aGenuinelyPendingCallShowsTheScene() {
+    public void aGenuinelyPendingCallLightsTheRedDot() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L, "needs approval");
 
-        PendingCallToUserFooterDecision decision = PendingCallToUserFooterDecision.resolve(
-            store.tierFor("worker"), mostRecentReason(store, "worker"));
-
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
-        Assert.assertTrue(decision.isVisible());
-        Assert.assertEquals("needs approval", decision.getReportText());
+        Assert.assertEquals("needs approval", store.getLastExplicitCallReason("worker"));
         assertTierAndSceneAgree(store, "worker");
     }
 
     @Test
-    public void aStatuslineCallTokenNewerThanTheLastReplyReArmsRedOnTheReliableSignalEvenWithAnEmptyScene() {
+    public void aStatuslineCallTokenNewerThanTheLastReplyReArmsRedOnTheReliableSignalEvenWithNoReason() {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordExplicitCall("worker", 1_000L, "needs approval");
         store.recordUserInput("worker", 2_000L);
@@ -942,8 +931,6 @@ public class SessionNewActivityStoreTest {
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor("worker"));
         Assert.assertTrue(store.hasPendingExplicitCall("worker"));
         Assert.assertTrue(store.getUnacknowledgedCallReasons("worker").isEmpty());
-        Assert.assertFalse(PendingCallToUserFooterDecision.resolve(
-            store.tierFor("worker"), mostRecentReason(store, "worker")).isVisible());
     }
 
     @Test

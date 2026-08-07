@@ -57,6 +57,12 @@ public final class BrowserSessionVisibilityState {
         mBrowserVisibleSessionHandles.remove(sessionHandle);
     }
 
+    public void moveSession(@Nullable String fromSessionHandle, @Nullable String toSessionHandle) {
+        if (fromSessionHandle == null || toSessionHandle == null) return;
+        if (!mBrowserVisibleSessionHandles.remove(fromSessionHandle)) return;
+        mBrowserVisibleSessionHandles.add(toSessionHandle);
+    }
+
     public void clearSession(@Nullable String sessionHandle, @Nullable String sessionName) {
         clearSession(sessionHandle);
         updatePersistedName(sessionName, false);

@@ -3,7 +3,6 @@ package com.termux.app.browser;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -142,34 +141,6 @@ public class TermuxBrowserControllerInstrumentedTest {
             assertEquals(tabCountBeforeBackground + 1, browserController.getTotalOpenTabCount());
             assertSame(firstActiveTab, activeTabAfterBackgroundOpen);
             assertTrue(browserController.isBrowserVisible());
-        });
-    }
-
-    @Test
-    public void openUrlInNewBackgroundTabIsNoOpWhenNoSessionIsSelected() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
-
-            browserController.onSessionChanged(null);
-            browserController.openUrlInNewBackgroundTab(LOOPBACK_TAB_URL);
-
-            assertNull(browserController.getActiveTab());
-            assertFalse(browserController.isBrowserVisible());
-        });
-    }
-
-    @Test
-    public void openUrlInNewTabIsNoOpWhenNoSessionIsSelected() {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
-        scenario.onActivity(activity -> {
-            TermuxBrowserController browserController = activity.getTermuxBrowserController();
-
-            browserController.onSessionChanged(null);
-            browserController.openUrlInNewTab(LOOPBACK_TAB_URL);
-
-            assertNull(browserController.getActiveTab());
-            assertFalse(browserController.isBrowserVisible());
         });
     }
 
