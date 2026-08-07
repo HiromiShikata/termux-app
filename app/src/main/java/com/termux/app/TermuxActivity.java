@@ -1402,10 +1402,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     static String longPressedUrlNativeAppMenuTitle(Context context, String longPressedUrl) {
-        NativeAppLink.NativeAppTarget googleAppTarget = NativeAppLink.resolveTarget(longPressedUrl);
-        if (googleAppTarget == null) return null;
+        NativeAppLink.NativeAppTarget nativeAppTarget = NativeAppLink.resolveTarget(longPressedUrl);
+        if (nativeAppTarget == null) return null;
         return context.getString(R.string.action_open_link_in_native_app,
-            googleAppTarget.getAppDisplayName());
+            nativeAppTarget.getAppDisplayName());
     }
 
     static final class LongPressedUrlMenuItem {
@@ -1437,9 +1437,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             context.getString(R.string.action_open_link_in_browser_background)));
         items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_CHROME_ID,
             context.getString(R.string.action_open_link_in_chrome)));
-        String googleAppMenuTitle = longPressedUrlNativeAppMenuTitle(context, longPressedUrl);
-        if (googleAppMenuTitle != null) {
-            items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, googleAppMenuTitle));
+        String nativeAppMenuTitle = longPressedUrlNativeAppMenuTitle(context, longPressedUrl);
+        if (nativeAppMenuTitle != null) {
+            items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_OPEN_LINK_IN_GOOGLE_APP_ID, nativeAppMenuTitle));
         }
         items.add(new LongPressedUrlMenuItem(CONTEXT_MENU_COPY_LINK_URL_ID,
             context.getString(R.string.action_copy_link_url)));
