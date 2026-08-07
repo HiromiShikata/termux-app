@@ -700,17 +700,19 @@ public class SessionNewActivityStore {
      * tick ({@link #recordStatuslineTimes} keeps {@link #mStatuslineCallTimeMillisByName} and {@link
      * #mStatuslineReplyTimeMillisByName} fresh), so the call-newer-than-reply relation is observed
      * reliably, unlike the one-shot tag whose last firing before idle can land inside the scan
-     * throttle window and never be re-scanned. The call is compared against the genuine reply time
-     * ({@link #genuineReplyTimeMillis}) — the later of the statusline {@code reply:} token and the
-     * dedicated genuine in-app reply-submit time ({@link #mGenuineAppReplyTimeMillisByName}) — never
-     * against {@link #effectiveReplyTimeMillis}: the effective reply folds in every app-captured owner
-     * input ({@link #getLastUserInputTimeMillis}, advanced by every raw keystroke, clipboard paste, and
-     * toolbar key), so folding it in here would let a stray keystroke newer than the call — with no
-     * genuine reply — clear the pending state and leave a genuinely unreplied owner-call showing as not
-     * RED. Only a genuine reply signal counts: the laggy statusline {@code reply:} token (the last
-     * genuine user message) or a real in-app reply submit, so the session is pending exactly when a
-     * {@code call:} token exists and no genuine reply has caught up to it ({@code reply == null || call
-     * > reply}), in which case the call token time is returned; otherwise null. A session with no
+     * throttle window and never be re-scanned. The call is compared against the statusline {@code
+     * reply:} token alone, so both sides of the comparison carry the clock of the host that rendered
+     * them and neither side can be a device-clock value: {@link #mGenuineAppReplyTimeMillisByName}
+     * counts as an answer by its presence instead, because {@link
+     * #forgetAppReplyRecordedBeforeThisCallWasObserved} drops it whenever a newer {@code call:} is
+     * observed and a surviving entry is therefore always a real in-app reply submitted after this
+     * {@code call:} was seen. {@link #effectiveReplyTimeMillis} is never used here: it folds in every
+     * app-captured owner input ({@link #getLastUserInputTimeMillis}, advanced by every raw keystroke,
+     * clipboard paste, and toolbar key), so folding it in would let a stray keystroke clear the pending
+     * state and leave a genuinely unreplied owner-call showing as not RED. The session is pending
+     * exactly when a {@code call:} token exists, no in-app reply is recorded for it, and the statusline
+     * {@code reply:} has not caught up to it ({@code reply == null || call > reply}), in which case the
+     * call token time is returned; otherwise null. A session with no
      * statusline at all (a non-Claude session) has a null {@code call:} token and is never armed
      * through this signal, leaving the tag-scan path as its sole, unchanged source of the RED tier.
      */
