@@ -32,13 +32,10 @@ public final class SessionShortcutBarPlanner {
                                                           @NonNull List<String> liveSessionNames) {
         List<SessionShortcut> rightToLeftShortcuts = new ArrayList<>();
         Set<String> seenAlwaysNaTargets = new LinkedHashSet<>();
-        for (String alwaysNaSessionName : alwaysNaSessionNames) {
-            String trimmedName = alwaysNaSessionName.trim();
-            if (trimmedName.isEmpty()) {
-                continue;
-            }
-            String targetSessionName =
-                resolveAlwaysNaTargetSessionName(trimmedName, entries, liveSessionNames);
+        Set<String> configuredNames = trimmedNonEmptyNames(alwaysNaSessionNames);
+        for (String trimmedName : configuredNames) {
+            String targetSessionName = resolveAlwaysNaTargetSessionName(trimmedName, entries,
+                liveSessionNames, configuredNames);
             if (!seenAlwaysNaTargets.add(targetSessionName)) {
                 continue;
             }
@@ -60,15 +57,30 @@ public final class SessionShortcutBarPlanner {
     }
 
     @NonNull
+    private static Set<String> trimmedNonEmptyNames(@NonNull Set<String> alwaysNaSessionNames) {
+        Set<String> trimmedNames = new LinkedHashSet<>();
+        for (String alwaysNaSessionName : alwaysNaSessionNames) {
+            String trimmedName = alwaysNaSessionName.trim();
+            if (trimmedName.isEmpty()) {
+                continue;
+            }
+            trimmedNames.add(trimmedName);
+        }
+        return trimmedNames;
+    }
+
+    @NonNull
     private String resolveAlwaysNaTargetSessionName(@NonNull String configuredName,
                                                     @NonNull List<SessionDefinitionEntry> entries,
-                                                    @NonNull List<String> liveSessionNames) {
+                                                    @NonNull List<String> liveSessionNames,
+                                                    @NonNull Set<String> configuredNames) {
         if (liveSessionNames.contains(configuredName)) {
             return configuredName;
         }
         String liveSessionNameForCompositeEntry =
             liveSessionNameForCompositeEntry(configuredName, entries, liveSessionNames);
-        if (liveSessionNameForCompositeEntry != null) {
+        if (liveSessionNameForCompositeEntry != null
+                && !configuredNames.contains(liveSessionNameForCompositeEntry)) {
             return liveSessionNameForCompositeEntry;
         }
         return configuredName;
