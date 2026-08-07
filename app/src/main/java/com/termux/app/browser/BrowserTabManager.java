@@ -77,9 +77,9 @@ public final class BrowserTabManager {
     @NonNull
     public BrowserTab attachOrActivateTab(@NonNull String sessionHandle, @NonNull String url) {
         BrowserTab existingTab = findTabByUrl(sessionHandle, url);
-        BrowserTab tab = (existingTab != null) ? existingTab : addTab(sessionHandle, url);
-        setActiveTab(tab);
-        return tab;
+        if (existingTab == null) return addBackgroundTab(sessionHandle, url);
+        if (getActiveTab(sessionHandle) == null) setActiveTab(existingTab);
+        return existingTab;
     }
 
     @Nullable
@@ -140,5 +140,17 @@ public final class BrowserTabManager {
     public void removeSession(@NonNull String sessionHandle) {
         mTabsBySessionHandle.remove(sessionHandle);
         mActiveTabBySessionHandle.remove(sessionHandle);
+    }
+
+    public void moveSession(@NonNull String fromSessionHandle, @NonNull String toSessionHandle) {
+        if (fromSessionHandle.equals(toSessionHandle)) return;
+        List<BrowserTab> tabs = mTabsBySessionHandle.remove(fromSessionHandle);
+        BrowserTab activeTab = mActiveTabBySessionHandle.remove(fromSessionHandle);
+        if (tabs == null || tabs.isEmpty()) return;
+        for (BrowserTab tab : tabs) {
+            tab.moveToSession(toSessionHandle);
+        }
+        mTabsBySessionHandle.put(toSessionHandle, tabs);
+        if (activeTab != null) mActiveTabBySessionHandle.put(toSessionHandle, activeTab);
     }
 }

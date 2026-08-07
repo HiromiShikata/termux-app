@@ -48,7 +48,7 @@ public class SubmittedTextInputHistoryAdapterTest {
         FrameLayout parent = new FrameLayout(context);
         SubmittedTextInputHistory history = pinnedFirstHistory();
         SubmittedTextInputHistoryAdapter adapter =
-            new SubmittedTextInputHistoryAdapter(context, history, () -> {});
+            new SubmittedTextInputHistoryAdapter(context, history, () -> {}, entry -> {});
 
         View pinnedRow = rowFor(adapter, parent, 0);
         View unpinnedRow = rowFor(adapter, parent, 1);
@@ -67,7 +67,8 @@ public class SubmittedTextInputHistoryAdapterTest {
         SubmittedTextInputHistory history = pinnedFirstHistory();
         AtomicInteger persistCalls = new AtomicInteger();
         SubmittedTextInputHistoryAdapter adapter =
-            new SubmittedTextInputHistoryAdapter(context, history, persistCalls::incrementAndGet);
+            new SubmittedTextInputHistoryAdapter(context, history, persistCalls::incrementAndGet,
+                entry -> {});
 
         View pinnedRow = rowFor(adapter, parent, 0);
         ImageButton editButton =

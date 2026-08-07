@@ -57,6 +57,7 @@ public class TerminalToolbarHistoryEntryBoundedHeightDeviceScreenshotInstrumente
         history.add(LONG_PINNED_ENTRY);
         history.pin(LONG_PINNED_ENTRY);
         return new TerminalToolbarViewPager.SubmittedTextInputHistoryAdapter(context, history, () -> {
+        }, entry -> {
         });
     }
 

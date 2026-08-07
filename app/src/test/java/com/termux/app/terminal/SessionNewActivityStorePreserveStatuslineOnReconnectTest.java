@@ -76,7 +76,7 @@ public class SessionNewActivityStorePreserveStatuslineOnReconnectTest {
         store.purgeSessionKeepingTheCallAndReplyTimes("session-one");
 
         Assert.assertTrue(store.getUnacknowledgedCallReasons("session-one").isEmpty());
-        Assert.assertNull(store.currentPendingCallToUserReason("session-one"));
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor("session-one"));
     }
 
     @Test

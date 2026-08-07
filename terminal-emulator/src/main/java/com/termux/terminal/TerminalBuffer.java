@@ -248,6 +248,8 @@ public final class TerminalBuffer {
             cursor[1] -= shiftDownOfTopRow;
             mScreenRows = newRows;
         } else {
+            final long reflowStartNanos = System.nanoTime();
+            final int transcriptRowsBeforeReflow = mActiveTranscriptRows;
             // Copy away old state and update new:
             TerminalRow[] oldLines = mLines;
             mLines = new TerminalRow[newTotalRows];
@@ -368,6 +370,9 @@ public final class TerminalBuffer {
 
             cursor[0] = newCursorColumn;
             cursor[1] = newCursorRow;
+
+            TerminalBufferReflowCostCounterHolder.getInstance()
+                .record(System.nanoTime() - reflowStartNanos, transcriptRowsBeforeReflow);
         }
 
         // Handle cursor scrolling off screen:

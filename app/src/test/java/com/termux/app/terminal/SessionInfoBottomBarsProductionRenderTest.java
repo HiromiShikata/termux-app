@@ -32,72 +32,70 @@ public class SessionInfoBottomBarsProductionRenderTest {
     private static final String SESSION_NAME = "claude-main";
     private static final int RENDER_WIDTH_PIXELS = 720;
 
+    private static final String[] REMOVED_CALL_REASON_VIEW_NAMES = {
+        "session_pending_call_to_user_bar",
+        "session_pending_call_to_user_scroll",
+        "session_pending_call_to_user_text",
+        "session_pending_call_to_user_scroll_button"
+    };
+
     @Test
-    public void productionBinderRendersBothTimesAndSceneInTheRealInfoArea() {
+    public void productionBinderRendersTheTimesLineInTheRealInfoArea() {
         long now = 2_000_000_000L;
         View root = inflateActivityLayout();
-        SessionNewActivityStore store = storeWithTimesAndScene(now);
+        SessionNewActivityStore store = storeWithTimesAndACall(now);
 
-        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, now, () -> {
-        });
+        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, now);
 
         TextView timesBar = root.findViewById(R.id.session_last_reply_bar);
-        View sceneBar = root.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView sceneText = root.findViewById(R.id.session_pending_call_to_user_text);
         View bottomContainer = root.findViewById(R.id.session_info_bottom_container);
 
         Assert.assertEquals(View.VISIBLE, timesBar.getVisibility());
-        Assert.assertEquals(View.VISIBLE, sceneBar.getVisibility());
         Assert.assertEquals("call: 3h  out: 12m  reply: 45s  sub: 0", timesBar.getText().toString());
-        Assert.assertEquals("the current-session info area must show only the single most recent "
-                + "call-to-user message, never a pile-up of every unacknowledged reason",
-            "waiting for the secret value", sceneText.getText().toString());
         Assert.assertTrue(isDescendantOf(timesBar, bottomContainer));
-        Assert.assertTrue(isDescendantOf(sceneBar, bottomContainer));
     }
 
     @Test
-    public void callToUserSceneTextIsRenderedSmallerThanTheTimesLine() {
+    public void theRealInfoAreaHoldsNoViewThatCouldDisplayACallReason() {
+        Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
+            R.style.Theme_TermuxActivity_DayNight_NoActionBar);
         View root = inflateActivityLayout();
-        TextView sceneText = root.findViewById(R.id.session_pending_call_to_user_text);
-        TextView timesBar = root.findViewById(R.id.session_last_reply_bar);
 
-        Assert.assertTrue("the call-to-user scene text in the current-session info area must be "
-                + "smaller than the call/out/reply times line so it no longer dominates the area",
-            sceneText.getTextSize() < timesBar.getTextSize());
+        for (String removedViewName : REMOVED_CALL_REASON_VIEW_NAMES) {
+            int viewId = context.getResources().getIdentifier(
+                removedViewName, "id", context.getPackageName());
+            Assert.assertTrue("the call-reason display view " + removedViewName
+                + " must not exist in the inflated session info area",
+                viewId == 0 || root.findViewById(viewId) == null);
+        }
     }
 
     @Test
-    public void productionBinderHidesSceneWhenThereIsNoUnacknowledgedCall() {
+    public void aPendingCallLeavesNoReasonTextAnywhereInTheRenderedInfoArea() {
         long now = 2_000_000_000L;
         View root = inflateActivityLayout();
-        SessionNewActivityStore store = new SessionNewActivityStore();
-        store.recordStatuslineTimes(SESSION_NAME, now - 3L * ONE_HOUR_MILLIS,
-            now - 12L * ONE_MINUTE_MILLIS, now - 45L * ONE_SECOND_MILLIS);
+        SessionNewActivityStore store = storeWithTimesAndACall(now);
 
-        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, now, () -> {
-        });
+        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, now);
 
-        View sceneBar = root.findViewById(R.id.session_pending_call_to_user_bar);
-        TextView timesBar = root.findViewById(R.id.session_last_reply_bar);
-        Assert.assertEquals(View.VISIBLE, timesBar.getVisibility());
-        Assert.assertEquals(View.GONE, sceneBar.getVisibility());
+        View bottomContainer = root.findViewById(R.id.session_info_bottom_container);
+        Assert.assertFalse("no view in the session info area may render the call reason text",
+            renderedTextUnder(bottomContainer).contains("waiting for the secret value"));
     }
 
     @Test
-    public void renderedInfoAreaScreenshotShowsSceneAlongsideTimes() throws IOException {
+    public void renderedInfoAreaScreenshotShowsTheTimesLine() throws IOException {
         long now = 2_000_000_000L;
         View root = inflateActivityLayout();
-        SessionNewActivityStore store = storeWithTimesAndScene(now);
+        SessionNewActivityStore store = storeWithTimesAndACall(now);
 
-        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, now, () -> {
-        });
+        SessionInfoBottomBarsBinder.bind(root, store, SESSION_NAME, now);
 
         View bottomContainer = root.findViewById(R.id.session_info_bottom_container);
         Bitmap bitmap = renderToBitmap(bottomContainer);
 
         File output = new File(System.getProperty("java.io.tmpdir"),
-            "session-info-area-scene-render.png");
+            "session-info-area-times-render.png");
         try (FileOutputStream stream = new FileOutputStream(output)) {
             Assert.assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream));
         }
@@ -106,13 +104,27 @@ public class SessionInfoBottomBarsProductionRenderTest {
         Assert.assertTrue(bitmap.getWidth() > 0 && bitmap.getHeight() > 0);
     }
 
-    private static SessionNewActivityStore storeWithTimesAndScene(long now) {
+    private static SessionNewActivityStore storeWithTimesAndACall(long now) {
         SessionNewActivityStore store = new SessionNewActivityStore();
         store.recordStatuslineTimes(SESSION_NAME, now - 3L * ONE_HOUR_MILLIS,
             now - 12L * ONE_MINUTE_MILLIS, now - 45L * ONE_SECOND_MILLIS);
         store.recordExplicitCall(SESSION_NAME, now, "needs approval to deploy");
         store.recordExplicitCall(SESSION_NAME, now, "waiting for the secret value");
         return store;
+    }
+
+    private static String renderedTextUnder(View view) {
+        StringBuilder collected = new StringBuilder();
+        if (view instanceof TextView) {
+            collected.append(((TextView) view).getText());
+        }
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int childIndex = 0; childIndex < group.getChildCount(); childIndex++) {
+                collected.append(renderedTextUnder(group.getChildAt(childIndex)));
+            }
+        }
+        return collected.toString();
     }
 
     private static Bitmap renderToBitmap(View view) {

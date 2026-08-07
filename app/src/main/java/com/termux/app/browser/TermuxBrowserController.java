@@ -54,6 +54,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.link.GoogleAppLink;
 import com.termux.app.terminal.SessionInfoHorizontalBounds;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
@@ -75,9 +76,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class TermuxBrowserController implements BrowserTabSelectionListener {
 
@@ -115,6 +119,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserRecentlyClosedTabs mRecentlyClosedTabs = new BrowserRecentlyClosedTabs();
 
+    private final Set<String> mSessionHandlesWithTabsLoaded = new LinkedHashSet<>();
+
+    private final Map<String, String> mReconnectingSessionHandleBySessionName = new HashMap<>();
+
     private final BrowserSessionVisibilityState mSessionVisibilityState = new BrowserSessionVisibilityState();
 
     private final BrowserOpenSessionNamesSerializer mOpenSessionNamesSerializer = new BrowserOpenSessionNamesSerializer();
@@ -130,6 +138,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserSessionSplitRatiosSerializer mSessionSplitRatiosSerializer = new BrowserSessionSplitRatiosSerializer();
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
+
+    private final BrowserTabPersistenceBatch mPersistenceBatch = new BrowserTabPersistenceBatch();
 
     private final BrowserTabHistorySerializer mTabHistorySerializer = new BrowserTabHistorySerializer();
 
@@ -389,6 +399,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private void restorePersistedTabsForSession(@Nullable String sessionHandle, @Nullable String sessionName) {
         if (sessionHandle == null || sessionName == null || sessionName.isEmpty()) return;
+        mSessionHandlesWithTabsLoaded.add(sessionHandle);
         if (mTabManager.hasTabs(sessionHandle)) return;
         BrowserPersistedSessionTabs persistedSessionTabs = mPersistedTabsBySessionName.get(sessionName);
         if (persistedSessionTabs == null) return;
@@ -405,12 +416,28 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         mTabManager.addTab(sessionHandle, normalizeUrl(overviewUrl)).setViewMode(BrowserViewMode.DESKTOP);
     }
 
+    public void beginPersistenceBatch() {
+        mPersistenceBatch.begin();
+    }
+
+    public void endPersistenceBatch() {
+        if (mPersistenceBatch.end()) rebuildAndWritePersistedSessionTabs();
+    }
+
     private void persistSessionTabs() {
+        if (!mPersistenceBatch.requestWrite()) return;
+        rebuildAndWritePersistedSessionTabs();
+    }
+
+    private void rebuildAndWritePersistedSessionTabs() {
         for (String sessionHandle : liveSessionHandlesWithName().keySet()) {
             String sessionName = liveSessionHandlesWithName().get(sessionHandle);
             if (sessionName == null || sessionName.isEmpty()) continue;
             List<BrowserTab> tabs = mTabManager.getTabs(sessionHandle);
-            if (tabs.isEmpty()) {
+            BrowserPersistedSessionTabsAction action = BrowserPersistedSessionTabsAction.decide(
+                mSessionHandlesWithTabsLoaded.contains(sessionHandle), !tabs.isEmpty());
+            if (action == BrowserPersistedSessionTabsAction.KEEP_PERSISTED) continue;
+            if (action == BrowserPersistedSessionTabsAction.REMOVE) {
                 mPersistedTabsBySessionName.remove(sessionName);
                 continue;
             }
@@ -906,6 +933,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             public void openInExternalBrowser(@NonNull String url) {
                 ShareUtils.openUrlInChrome(mActivity, url);
             }
+
+            @Override
+            public boolean openInMatchingNativeApp(@NonNull String url) {
+                return TermuxBrowserController.this.openInMatchingNativeApp(url);
+            }
         }));
 
         webView.setWebChromeClient(new WebChromeClient() {
@@ -975,8 +1007,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
         });
 
-        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) ->
-            mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype));
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            if (isDisplayedTab(tab)) restoreVisiblePageAfterTerminatedNavigation();
+            mDownloadController.enqueueDownload(url, userAgent, contentDisposition, mimetype);
+        });
 
         new BrowserLinkContextMenuController(mActivity, webView, new BrowserLinkContextMenuController.Actions() {
             @Override
@@ -1030,7 +1064,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return true;
     }
 
+    private boolean openInMatchingNativeApp(@NonNull String url) {
+        GoogleAppLink.GoogleAppTarget target = GoogleAppLink.resolveTarget(url);
+        return target != null && GoogleAppLink.openInGoogleApp(mActivity, url, target);
+    }
+
     private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url) {
+        if (openInMatchingNativeApp(url)) return true;
         if (openUrlInNewTab(url)) return true;
         requestingWebView.loadUrl(normalizeUrl(url));
         return true;
@@ -1100,10 +1140,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
-    private void handleMainFrameError() {
+    private void restoreVisiblePageAfterTerminatedNavigation() {
         revealWebView();
         hidePageLoadProgress();
         mSwipeRefreshLayout.setRefreshing(false);
+    }
+
+    private void handleMainFrameError() {
+        restoreVisiblePageAfterTerminatedNavigation();
     }
 
     private boolean recoverFromRenderProcessGone(@NonNull WebView deadWebView, boolean didCrash) {
@@ -1564,10 +1608,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void onSessionRemoved(@NonNull TerminalSession session,
                                  @NonNull BrowserSessionRemovalReason reason) {
+        if (keepLiveTabsForReconnect(session, reason)) return;
         if (session.mHandle.equals(mRenderedFrame.getOwnerSessionHandle()))
             blankFrame();
         mWebViewHost.removeSession(session.mHandle);
         mTabManager.removeSession(session.mHandle);
+        mSessionHandlesWithTabsLoaded.remove(session.mHandle);
         mRecentlyClosedTabs.removeSession(session.mHandle);
         if (BrowserSessionRemovalVisibilityRetention.shouldClearBrowserOpenSessionName(reason)) {
             mSessionVisibilityState.clearSession(session.mHandle, session.mSessionName);
@@ -1584,8 +1630,46 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
     }
 
+    private boolean keepLiveTabsForReconnect(@NonNull TerminalSession session,
+                                             @NonNull BrowserSessionRemovalReason reason) {
+        if (!BrowserSessionRemovalLiveTabRetention.shouldKeepLiveTabs(reason)) {
+            forgetReconnectingSessionHandle(session.mSessionName);
+            return false;
+        }
+        if (session.mSessionName == null || session.mSessionName.isEmpty()) return false;
+        if (!mTabManager.hasTabs(session.mHandle)) return false;
+        forgetReconnectingSessionHandle(session.mSessionName);
+        mReconnectingSessionHandleBySessionName.put(session.mSessionName, session.mHandle);
+        return true;
+    }
+
+    private void forgetReconnectingSessionHandle(@Nullable String sessionName) {
+        if (sessionName == null) return;
+        String previousSessionHandle = mReconnectingSessionHandleBySessionName.remove(sessionName);
+        if (previousSessionHandle == null) return;
+        mWebViewHost.removeSession(previousSessionHandle);
+        mTabManager.removeSession(previousSessionHandle);
+        mSessionHandlesWithTabsLoaded.remove(previousSessionHandle);
+        mSessionVisibilityState.clearSession(previousSessionHandle);
+    }
+
     public void restoreTabsForReconnectedSession(@Nullable String sessionHandle, @Nullable String sessionName) {
+        if (moveLiveTabsToReconnectedSession(sessionHandle, sessionName)) return;
         restorePersistedTabsForSession(sessionHandle, sessionName);
+    }
+
+    private boolean moveLiveTabsToReconnectedSession(@Nullable String sessionHandle,
+                                                    @Nullable String sessionName) {
+        if (sessionHandle == null || sessionName == null || sessionName.isEmpty()) return false;
+        String previousSessionHandle = mReconnectingSessionHandleBySessionName.remove(sessionName);
+        if (previousSessionHandle == null || previousSessionHandle.equals(sessionHandle)) return false;
+        if (!mTabManager.hasTabs(previousSessionHandle)) return false;
+        mTabManager.moveSession(previousSessionHandle, sessionHandle);
+        mSessionVisibilityState.moveSession(previousSessionHandle, sessionHandle);
+        mSessionHandlesWithTabsLoaded.remove(previousSessionHandle);
+        mSessionHandlesWithTabsLoaded.add(sessionHandle);
+        mRecentlyClosedTabs.removeSession(previousSessionHandle);
+        return true;
     }
 
     public void toggleBrowser() {
@@ -1801,25 +1885,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         openTab(tab);
     }
 
+    @Nullable
+    private String resolveSessionHandleForNewTab() {
+        TerminalSession displayedSession = mActivity.getCurrentSession();
+        return BrowserNewTabSessionHandle.resolve(mCurrentSessionHandle,
+            displayedSession == null ? null : displayedSession.mHandle);
+    }
+
     public boolean openUrlInNewTab(@NonNull String url) {
-        String sessionHandle = mCurrentSessionHandle;
-        if (sessionHandle == null) {
-            TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return false;
-            sessionHandle = currentSession.mHandle;
-        }
+        String sessionHandle = resolveSessionHandleForNewTab();
+        if (sessionHandle == null) return false;
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         openTab(tab);
         return true;
     }
 
     public boolean openUrlInNewBackgroundTab(@NonNull String url) {
-        String sessionHandle = mCurrentSessionHandle;
-        if (sessionHandle == null) {
-            TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return false;
-            sessionHandle = currentSession.mHandle;
-        }
+        String sessionHandle = resolveSessionHandleForNewTab();
+        if (sessionHandle == null) return false;
         BrowserTab tab = mTabManager.addBackgroundTab(sessionHandle, normalizeUrl(url));
         recordTabInHistory(tab);
         notifyTabsUpdated();
@@ -1828,12 +1911,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void openUrlInNewTab(@NonNull String url, @NonNull BrowserViewMode viewMode) {
-        String sessionHandle = mCurrentSessionHandle;
-        if (sessionHandle == null) {
-            TerminalSession currentSession = mActivity.getCurrentSession();
-            if (currentSession == null) return;
-            sessionHandle = currentSession.mHandle;
-        }
+        String sessionHandle = resolveSessionHandleForNewTab();
+        if (sessionHandle == null) return;
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         tab.setViewMode(viewMode);
         openTab(tab);
@@ -1850,6 +1929,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url) {
+        restorePersistedTabsForSession(sessionHandle, resolveSessionName(sessionHandle));
         BrowserTab tab = mTabManager.addTab(sessionHandle, normalizeUrl(url));
         if (sessionHandle.equals(mCurrentSessionHandle)) {
             openTab(tab);

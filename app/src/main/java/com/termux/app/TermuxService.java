@@ -856,7 +856,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             if (executionCommand != null && executionCommand.isPluginExecutionCommand)
                 TermuxPluginUtils.processPluginExecutionCommandResult(this, LOG_TAG, executionCommand);
 
-            mShellManager.mTermuxSessions.remove(termuxSession);
+            if (mShellManager.mTermuxSessions.remove(termuxSession))
+                DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_EXITED,
+                    diagnosticSessionName(termuxSession.getTerminalSession()));
 
             // Notify {@link TermuxSessionsListViewController} that sessions list has been updated if
             // activity in is foreground
@@ -1226,14 +1228,17 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         appLauncher.launchApp(packageId);
     }
 
-    private void recordCallToUserForSessionHandleOnTheMainThread(String sessionHandle, String reason) {
-        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason));
+    private void recordCallToUserForSessionHandleOnTheMainThread(String sessionHandle, String reason,
+                                                                 String callCycleKey) {
+        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason, callCycleKey));
     }
 
-    private void recordCallToUserForSessionHandle(String sessionHandle, String reason) {
+    private void recordCallToUserForSessionHandle(String sessionHandle, String reason,
+                                                  String callCycleKey) {
         TerminalSession session = getTerminalSessionForHandle(sessionHandle);
         if (session == null || session.mSessionName == null) return;
-        mSessionNewActivityStore.recordExplicitCall(session.mSessionName, System.currentTimeMillis(), reason);
+        mSessionNewActivityStore.recordExplicitCall(session.mSessionName, System.currentTimeMillis(),
+            reason, callCycleKey);
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)
             activityClient.termuxSessionListNotifyUpdated();

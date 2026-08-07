@@ -52,7 +52,7 @@ public class PinnedHistoryEditIconDeviceScreenshotInstrumentedTest {
         history.add(PINNED_ENTRY);
         history.pin(PINNED_ENTRY);
         SubmittedTextInputHistoryAdapter adapter =
-            new SubmittedTextInputHistoryAdapter(context, history, () -> {});
+            new SubmittedTextInputHistoryAdapter(context, history, () -> {}, entry -> {});
 
         View pinnedRow = adapter.getView(0, null, unattachedParent);
         View unpinnedRow = adapter.getView(1, null, unattachedParent);

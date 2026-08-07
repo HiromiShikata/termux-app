@@ -106,7 +106,8 @@ public class OutputTagTriggersReachTheMainThreadTest {
             throws Exception {
         List<String> calledSessionHandles = Collections.synchronizedList(new ArrayList<>());
         CallToUserTagController controller =
-            new CallToUserTagController((sessionHandle, reason) -> calledSessionHandles.add(sessionHandle));
+            new CallToUserTagController((sessionHandle, reason, callCycleKey) ->
+                calledSessionHandles.add(sessionHandle));
 
         feedEveryKeyTwiceFromItsOwnThread(sessionKey ->
             controller.onSessionTextChanged(sessionKey, CALL_TO_USER_TAG_OUTPUT));

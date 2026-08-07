@@ -16,6 +16,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
@@ -30,6 +31,7 @@ import com.termux.shared.termux.extrakeys.SpecialButton;
 import com.termux.app.terminal.io.KeyboardShortcut;
 import com.termux.app.terminal.session.FinishedSessionEnterAction;
 import com.termux.app.terminal.session.FinishedSessionPendingInput;
+import com.termux.app.terminal.session.TypedTerminalLineTracker;
 import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.logger.Logger;
@@ -65,11 +67,15 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     private boolean mTerminalCursorBlinkerStateAlreadySet;
 
+    private boolean mFontSizeApplyPendingFromScaleGesture;
+
     private List<KeyboardShortcut> mSessionShortcuts;
 
     private String mLongPressedUrl;
 
     private final FinishedSessionPendingInput mFinishedSessionPendingInput = new FinishedSessionPendingInput();
+
+    private final TypedTerminalLineTracker mTypedTerminalLineTracker = new TypedTerminalLineTracker();
 
     private static final String LOG_TAG = "TermuxTerminalViewClient";
 
@@ -176,15 +182,32 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     public float onScale(float scale) {
         switch (ScaleGestureFontSizeDecision.decide(scale)) {
             case INCREASE_FONT_SIZE:
-                changeFontSize(true);
+                stepFontSizeDuringScaleGesture(true);
                 return 1.0f;
             case DECREASE_FONT_SIZE:
-                changeFontSize(false);
+                stepFontSizeDuringScaleGesture(false);
                 return 1.0f;
             case NO_CHANGE:
             default:
                 return scale;
         }
+    }
+
+    /**
+     * Applying a font size rebuilds the renderer and reflows the whole terminal transcript, so the
+     * steps a single pinch gesture accumulates are applied together once the gesture ends instead
+     * of once per step.
+     */
+    @Override
+    public void onScaleEnd() {
+        if (!mFontSizeApplyPendingFromScaleGesture) return;
+        mFontSizeApplyPendingFromScaleGesture = false;
+        applyFontSizeToTerminalView();
+    }
+
+    private void stepFontSizeDuringScaleGesture(boolean increase) {
+        mActivity.getPreferences().changeFontSize(increase);
+        mFontSizeApplyPendingFromScaleGesture = true;
     }
 
 
@@ -254,6 +277,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent e, TerminalSession currentSession) {
         if (handleVirtualKeys(keyCode, e, true)) return true;
+
+        recordTypedTerminalLineReplyOnEnter(keyCode, currentSession);
 
         if (keyCode == KeyEvent.KEYCODE_ENTER && !currentSession.isRunning()) {
             handleFinishedSessionEnter(currentSession);
@@ -486,9 +511,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onOpenSelectedUrlRequested(String url) {
         if (DataUtils.isNullOrEmpty(url)) return false;
-        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
-        if (browserController == null) return false;
-        browserController.openUrlInNewTab(url);
+        if (mActivity.getTermuxBrowserController() == null) return false;
+        openUrlInMatchingAppOrBrowser(url);
         return true;
     }
 
@@ -502,6 +526,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public boolean onCodePoint(final int codePoint, boolean ctrlDown, TerminalSession session) {
         recordUserInputForSession(session);
+        recordTypedTerminalLineReply(session, codePoint);
         if (mVirtualFnKeyDown) {
             VirtualFunctionKeyMapper.Result mapping = VirtualFunctionKeyMapper.map(codePoint);
             int resultingKeyCode = mapping.keyCode;
@@ -575,8 +600,38 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         }
     }
 
+    private void recordTypedTerminalLineReply(@Nullable TerminalSession session, int codePoint) {
+        if (session == null || !session.isRunning()) return;
+        if (TypedTerminalLineTracker.isLineEndCodePoint(codePoint)) {
+            if (mTypedTerminalLineTracker.consumeTypedLine(session.mHandle)) {
+                recordGenuineReplyForSession(session);
+            }
+            return;
+        }
+        mTypedTerminalLineTracker.recordCodePoint(session.mHandle, codePoint);
+    }
+
+    private void recordTypedTerminalLineReplyOnEnter(int keyCode, @Nullable TerminalSession session) {
+        if (keyCode != KeyEvent.KEYCODE_ENTER) return;
+        if (session == null || !session.isRunning()) return;
+        if (!mTypedTerminalLineTracker.consumeTypedLine(session.mHandle)) return;
+        recordGenuineReplyForSession(session);
+    }
+
+    private void recordGenuineReplyForSession(@NonNull TerminalSession session) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return;
+        if (!new SessionReplyTimeRecorder(store).recordReplyOnSubmit(session, System.currentTimeMillis())) {
+            return;
+        }
+        if (mTermuxTerminalSessionActivityClient != null
+            && session == mActivity.getCurrentSession()) {
+            mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();
+        }
+    }
+
     private static boolean isPrintableInputCodePoint(int codePoint) {
-        return codePoint >= 0x20 && codePoint != 0x7F;
+        return TypedTerminalLineTracker.isPrintableCodePoint(codePoint);
     }
 
     private void handleFinishedSessionEnter(TerminalSession finishedSession) {
@@ -616,6 +671,10 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     public void changeFontSize(boolean increase) {
         mActivity.getPreferences().changeFontSize(increase);
+        applyFontSizeToTerminalView();
+    }
+
+    private void applyFontSizeToTerminalView() {
         mActivity.getTerminalView().setTextSize(mActivity.getPreferences().getFontSize());
     }
 

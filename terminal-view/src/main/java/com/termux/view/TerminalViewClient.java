@@ -21,6 +21,13 @@ public interface TerminalViewClient {
      */
     float onScale(float scale);
 
+    /**
+     * Callback function when a scale gesture ends, so that a client which accumulated scale steps
+     * during the gesture can apply their combined result exactly once.
+     */
+    default void onScaleEnd() {
+    }
+
 
 
     /**

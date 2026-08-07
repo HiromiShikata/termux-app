@@ -24,15 +24,27 @@ public class TermuxBrowserControllerNullSessionOpenTagWiringTest {
     }
 
     @Test
-    public void openUrlInNewTabFallsBackToCurrentActivitySessionWhenNoSessionHandleSet() throws IOException {
+    public void openUrlInNewTabResolvesTheSessionHandleThroughTheSharedDecision() throws IOException {
         String source = readControllerSource();
         int methodIndex = source.indexOf("public boolean openUrlInNewTab(@NonNull String url)");
         Assert.assertTrue(methodIndex >= 0);
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
         String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue(methodBody.contains("resolveSessionHandleForNewTab()"));
+    }
+
+    @Test
+    public void resolvedSessionHandleFallsBackToTheSessionDisplayedByTheActivity() throws IOException {
+        String source = readControllerSource();
+        int methodIndex = source.indexOf("private String resolveSessionHandleForNewTab()");
+        Assert.assertTrue(methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
         Assert.assertTrue(methodBody.contains("mActivity.getCurrentSession()"));
-        Assert.assertTrue(methodBody.contains("currentSession.mHandle"));
+        Assert.assertTrue(methodBody.contains("BrowserNewTabSessionHandle.resolve(mCurrentSessionHandle,"));
+        Assert.assertTrue(methodBody.contains("displayedSession.mHandle"));
     }
 
     @Test

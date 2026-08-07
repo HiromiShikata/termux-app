@@ -103,7 +103,6 @@
     <string name="msg_browser_render_process_gone_repeatedly">Browser page kept crashing and was not reloaded again</string>
     <string name="action_browser_create_session_for_link">Create new session</string>
     <string name="action_browser_close_tab">Close tab</string>
-    <string name="action_scroll_to_call_to_user_tag">Scroll to call-to-user message</string>
     <string name="title_browser_tabs">Browser tabs</string>
     <string name="title_browser_new_tab">New tab</string>
     <string name="hint_browser_omnibox">Search bookmarks or history, or enter URL</string>
@@ -230,9 +229,12 @@
     <string name="msg_select_url_copied_to_clipboard">URL copied to clipboard</string>
     <string name="msg_session_name_copied_to_clipboard">Session name copied to clipboard</string>
 
+    <string name="msg_terminal_input_not_delivered">This session is not connected, so nothing was sent. Your text is still in the input field.</string>
+
     <!-- Terminal Toolbar Text Input History -->
     <string name="title_toolbar_text_input_history_dialog">Tap to restore a recent submission</string>
     <string name="msg_toolbar_text_input_history_empty">No recent submissions to restore</string>
+    <string name="action_toolbar_text_input_history_restore">Put this entry in the text input field</string>
     <string name="action_toolbar_text_input_history_pin">Pin to top</string>
     <string name="action_toolbar_text_input_history_unpin">Unpin</string>
     <string name="action_toolbar_text_input_history_edit">Edit pinned entry</string>

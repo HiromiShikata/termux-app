@@ -71,7 +71,9 @@ public class SessionDefinitionAlwaysPresentCapPriorityTest {
         boolean secretaryCreatedInSecondPass = remainingCapacity > 0 && alwaysNa.contains("secretary");
         assertFalse("pre-fix: secretary starves because the second pass has no leftover capacity",
             secretaryCreatedInSecondPass);
-        assertFalse("pre-fix: no shortcut renders because secretary is not a live session",
+        assertTrue("the shortcut bar draws every configured shortcut, so the secretary shortcut renders"
+                + " even while the cap starved its session; tapping it opens the session from the"
+                + " session definition",
             renderedShortcutLabels(alwaysNa, definitionSessions).contains("secretary"));
     }
 
@@ -133,19 +135,11 @@ public class SessionDefinitionAlwaysPresentCapPriorityTest {
         }
         List<SessionShortcut> rightToLeftShortcuts =
             shortcutBarPlanner.planRightToLeftShortcuts(alwaysNa, entries, liveSessionNames);
-        Set<String> presentSessionNames = new LinkedHashSet<>();
-        for (SessionShortcut shortcut : rightToLeftShortcuts) {
-            if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {
-                presentSessionNames.add(shortcut.getTargetSessionName());
-            }
-        }
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
         List<String> labels = new ArrayList<>();
         for (SessionShortcut shortcut : renderOrderShortcuts) {
-            if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {
-                labels.add(shortcut.getLabel());
-            }
+            labels.add(shortcut.getLabel());
         }
         return labels;
     }

@@ -28,15 +28,13 @@ public final class SessionInfoBlock {
                                     @NonNull String sessionName,
                                     @NonNull String timestamp,
                                     @NonNull String definitionTitle,
-                                    @NonNull String sessionTitle,
-                                    @NonNull String explicitCallReason) {
+                                    @NonNull String sessionTitle) {
         Map<SessionInfoLine, String> partsByLine = new EnumMap<>(SessionInfoLine.class);
         partsByLine.put(SessionInfoLine.BELL_NOTIFICATION_LABEL, bellNotificationLabel);
         partsByLine.put(SessionInfoLine.SESSION_NAME, sessionName);
         partsByLine.put(SessionInfoLine.TIMESTAMP, timestamp);
         partsByLine.put(SessionInfoLine.DEFINITION_TITLE, definitionTitle);
         partsByLine.put(SessionInfoLine.SESSION_TITLE, sessionTitle);
-        partsByLine.put(SessionInfoLine.EXPLICIT_CALL_REASON, explicitCallReason);
 
         StringBuilder builder = new StringBuilder();
         Map<SessionInfoLine, Integer> startOffsets = new EnumMap<>(SessionInfoLine.class);

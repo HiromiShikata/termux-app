@@ -1,5 +1,6 @@
 package com.termux.app.terminal;
 
+import com.termux.app.outputtag.OutputTagOccurrence;
 import com.termux.app.outputtag.OutputTagScanner;
 
 import java.util.List;
@@ -7,7 +8,8 @@ import java.util.List;
 public final class CallToUserTagScanner {
 
     private final OutputTagScanner outputTagScanner =
-        new OutputTagScanner("call-to-user", CallToUserTagScanner::normalizeReason);
+        new OutputTagScanner("call-to-user", CallToUserTagScanner::normalizeReason,
+            StatuslineCallCycleKey::resolve);
 
     public static List<String> extractReasons(String output) {
         return new OutputTagScanner("call-to-user", CallToUserTagScanner::normalizeReason).extractValues(output);
@@ -20,7 +22,7 @@ public final class CallToUserTagScanner {
         return trimmed;
     }
 
-    public List<String> newReasons(String output) {
-        return outputTagScanner.newValues(output);
+    public List<OutputTagOccurrence> newCalls(String output) {
+        return outputTagScanner.newOccurrences(output);
     }
 }

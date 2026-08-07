@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.termux.app.outputtag.OutputTagOccurrence;
+
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
@@ -84,7 +87,7 @@ public class CallToUserTagScannerTest {
     @Test
     public void newReasonsReturnsEachReasonInOrderOnFirstScan() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
-        List<String> reasons = scanner.newReasons(
+        List<String> reasons = newReasons(scanner, 
             "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>");
         assertEquals(2, reasons.size());
         assertEquals("first", reasons.get(0));
@@ -96,8 +99,8 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
         String output = "prompt <call-to-user>needs approval</call-to-user> prompt";
 
-        assertEquals(1, scanner.newReasons(output).size());
-        assertTrue(scanner.newReasons(output).isEmpty());
+        assertEquals(1, newReasons(scanner, output).size());
+        assertTrue(newReasons(scanner, output).isEmpty());
     }
 
     @Test
@@ -105,18 +108,18 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
         assertEquals(List.of("first"),
-            scanner.newReasons("<call-to-user>first</call-to-user>"));
+            newReasons(scanner, "<call-to-user>first</call-to-user>"));
         assertEquals(List.of("second"),
-            scanner.newReasons("<call-to-user>first</call-to-user><call-to-user>second</call-to-user>"));
-        assertTrue(scanner.newReasons(
+            newReasons(scanner, "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>"));
+        assertTrue(newReasons(scanner, 
             "<call-to-user>first</call-to-user><call-to-user>second</call-to-user>").isEmpty());
     }
 
     @Test
     public void returnsEmptyWhenNoBlockPresent() {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
-        assertTrue(scanner.newReasons("plain terminal output").isEmpty());
-        assertTrue(scanner.newReasons(null).isEmpty());
+        assertTrue(newReasons(scanner, "plain terminal output").isEmpty());
+        assertTrue(newReasons(scanner, null).isEmpty());
     }
 
     @Test
@@ -131,11 +134,11 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
         assertEquals(List.of("approval"),
-            scanner.newReasons("<call-to-user>approval</call-to-user>"));
+            newReasons(scanner, "<call-to-user>approval</call-to-user>"));
 
-        assertTrue(scanner.newReasons(
+        assertTrue(newReasons(scanner, 
             "<call-to-user>approval</call-to-user>\nmore output line 1").isEmpty());
-        assertTrue(scanner.newReasons(
+        assertTrue(newReasons(scanner, 
             "<call-to-user>approval</call-to-user>\nmore output line 1\nmore output line 2").isEmpty());
     }
 
@@ -144,9 +147,9 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
         assertEquals(List.of("alpha"),
-            scanner.newReasons("<call-to-user>alpha</call-to-user>"));
+            newReasons(scanner, "<call-to-user>alpha</call-to-user>"));
 
-        List<String> burst = scanner.newReasons(
+        List<String> burst = newReasons(scanner, 
             "<call-to-user>alpha</call-to-user><call-to-user>beta</call-to-user><call-to-user>gamma</call-to-user>");
         assertEquals(2, burst.size());
         assertEquals("beta", burst.get(0));
@@ -161,11 +164,11 @@ public class CallToUserTagScannerTest {
         for (int line = 0; line < 5000; line++) {
             longTranscript.append("output line ").append(line).append('\n');
         }
-        assertEquals(List.of("approval"), scanner.newReasons(longTranscript.toString()));
+        assertEquals(List.of("approval"), newReasons(scanner, longTranscript.toString()));
 
         String trimmedWithNewTag =
             "output line 4998\noutput line 4999\n<call-to-user>review now</call-to-user>\n";
-        assertEquals(List.of("review now"), scanner.newReasons(trimmedWithNewTag));
+        assertEquals(List.of("review now"), newReasons(scanner, trimmedWithNewTag));
     }
 
     @Test
@@ -173,9 +176,9 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
         String output = "prompt <call-to-user>needs    review of   diff</call-to-user> tail";
 
-        assertEquals(List.of("needs    review of   diff"), scanner.newReasons(output));
-        assertTrue(scanner.newReasons(output).isEmpty());
-        assertTrue(scanner.newReasons(
+        assertEquals(List.of("needs    review of   diff"), newReasons(scanner, output));
+        assertTrue(newReasons(scanner, output).isEmpty());
+        assertTrue(newReasons(scanner, 
             output + "\nmore output appended after the answer").isEmpty());
     }
 
@@ -184,8 +187,8 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
         assertEquals(List.of("approval"),
-            scanner.newReasons("<call-to-user>approval</call-to-user>\nline a\nline b\n"));
-        assertTrue(scanner.newReasons(
+            newReasons(scanner, "<call-to-user>approval</call-to-user>\nline a\nline b\n"));
+        assertTrue(newReasons(scanner, 
             "line a\nline b\nstill the same already fired output\n").isEmpty());
     }
 
@@ -194,14 +197,22 @@ public class CallToUserTagScannerTest {
         CallToUserTagScanner scanner = new CallToUserTagScanner();
 
         assertEquals(List.of("first"),
-            scanner.newReasons("<call-to-user>first</call-to-user>\n"));
+            newReasons(scanner, "<call-to-user>first</call-to-user>\n"));
         assertEquals(List.of("second"),
-            scanner.newReasons("<call-to-user>first</call-to-user>\n<call-to-user>second</call-to-user>\n"));
+            newReasons(scanner, "<call-to-user>first</call-to-user>\n<call-to-user>second</call-to-user>\n"));
 
-        assertTrue(scanner.newReasons(
+        assertTrue(newReasons(scanner, 
             "<call-to-user>first</call-to-user>\nlater plain output\n").isEmpty());
 
         assertEquals(List.of("third"),
-            scanner.newReasons("<call-to-user>first</call-to-user>\nlater plain output\n<call-to-user>third</call-to-user>\n"));
+            newReasons(scanner, "<call-to-user>first</call-to-user>\nlater plain output\n<call-to-user>third</call-to-user>\n"));
+    }
+
+    private static List<String> newReasons(CallToUserTagScanner scanner, String output) {
+        List<String> reasons = new ArrayList<>();
+        for (OutputTagOccurrence call : scanner.newCalls(output)) {
+            reasons.add(call.getValue());
+        }
+        return reasons;
     }
 }
