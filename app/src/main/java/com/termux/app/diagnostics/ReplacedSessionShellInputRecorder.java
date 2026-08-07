@@ -5,6 +5,8 @@ import androidx.annotation.Nullable;
 
 public final class ReplacedSessionShellInputRecorder {
 
+    static final int SESSION_NAME_CHARACTER_LIMIT = 64;
+
     private int mSessionsReplacedWithInputUndelivered;
 
     private long mWorstUndeliveredBytes;
@@ -22,7 +24,7 @@ public final class ReplacedSessionShellInputRecorder {
                                                         long undeliveredBytes,
                                                         boolean writerRunning,
                                                         @Nullable String writerStoppedReason) {
-        String name = sessionName == null ? "" : sessionName;
+        String name = shortenedSessionName(sessionName);
         if (undeliveredBytes <= 0 && writerRunning) {
             return;
         }
@@ -35,6 +37,17 @@ public final class ReplacedSessionShellInputRecorder {
             mLastWriterStopSessionName = name;
             mLastWriterStopReason = writerStoppedReason == null ? "" : writerStoppedReason;
         }
+    }
+
+    @NonNull
+    private static String shortenedSessionName(@Nullable String sessionName) {
+        if (sessionName == null) {
+            return "";
+        }
+        if (sessionName.length() <= SESSION_NAME_CHARACTER_LIMIT) {
+            return sessionName;
+        }
+        return sessionName.substring(0, SESSION_NAME_CHARACTER_LIMIT);
     }
 
     @NonNull

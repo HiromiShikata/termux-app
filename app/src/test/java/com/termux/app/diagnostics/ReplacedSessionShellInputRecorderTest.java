@@ -74,6 +74,26 @@ public class ReplacedSessionShellInputRecorderTest {
     }
 
     @Test
+    public void anUnboundedSessionNameIsShortenedSoItCannotCrowdOutTheRestOfTheReport() {
+        ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
+        StringBuilder longName = new StringBuilder();
+        while (longName.length() < 4000) {
+            longName.append("session-name-");
+        }
+
+        recorder.recordSessionBeingReplaced(longName.toString(), 10L, false, "broken pipe");
+
+        DiagnosticsReplacedSessionShellInput snapshot = recorder.snapshot();
+        Assert.assertEquals("this account is rendered ahead of the main-thread evidence, so a session name"
+                + " the user is free to make arbitrarily long would otherwise eat the space that evidence"
+                + " needs inside the window a pasted report survives in",
+            ReplacedSessionShellInputRecorder.SESSION_NAME_CHARACTER_LIMIT,
+            snapshot.getWorstUndeliveredSessionName().length());
+        Assert.assertEquals(ReplacedSessionShellInputRecorder.SESSION_NAME_CHARACTER_LIMIT,
+            snapshot.getLastWriterStopSessionName().length());
+    }
+
+    @Test
     public void anUnnamedSessionIsRecordedWithoutAName() {
         ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
 
