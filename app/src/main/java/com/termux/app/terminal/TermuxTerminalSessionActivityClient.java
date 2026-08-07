@@ -2396,7 +2396,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             boolean running = terminalSession.isRunning();
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
             boolean silentLongEnough = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
-            if (silentLongEnough) {
+            if (silentLongEnough && running) {
                 silentSessionLastOutTimeMillisByName.put(sessionName, lastOutTimeMillis);
             }
             boolean hung = silentLongEnough && mHungSessionReconnectBackoff.isReadyToAttemptAgain(
@@ -2424,7 +2424,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             }
             mSessionReconnectPacer.enqueueSession(deadSession);
             mSessionInputDeliverabilityDwell.forget(sessionName);
-            if (deadSession.isRunning() && silentSessionLastOutTimeMillisByName.containsKey(sessionName)) {
+            if (silentSessionLastOutTimeMillisByName.containsKey(sessionName)) {
                 mHungSessionReconnectBackoff.recordAttemptForSilence(sessionName,
                     silentSessionLastOutTimeMillisByName.get(sessionName), nowMillis);
             }
