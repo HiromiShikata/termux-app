@@ -318,6 +318,7 @@ public class SessionNewActivityStore {
             long genuineCallTimeMillis = genuineStatuslineTimeMillis(
                 mStatuslineCallTimeMillisByName.get(sessionName), callTimeMillis,
                 callTimeFromDatedToken);
+            forgetAppReplyRecordedBeforeThisCallWasObserved(sessionName, genuineCallTimeMillis);
             mStatuslineCallTimeMillisByName.put(sessionName, genuineCallTimeMillis);
             mLastExplicitCallTimeMillisByName.put(sessionName, genuineCallTimeMillis);
         }
@@ -338,6 +339,15 @@ public class SessionNewActivityStore {
             }
         }
         save();
+    }
+
+    private void forgetAppReplyRecordedBeforeThisCallWasObserved(@NonNull String sessionName,
+                                                                 long genuineCallTimeMillis) {
+        Long observedCallTimeMillis = mStatuslineCallTimeMillisByName.get(sessionName);
+        if (observedCallTimeMillis != null && genuineCallTimeMillis <= observedCallTimeMillis) {
+            return;
+        }
+        mGenuineAppReplyTimeMillisByName.remove(sessionName);
     }
 
     private boolean statuslineTimesUnchanged(@NonNull String sessionName,
