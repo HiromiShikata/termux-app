@@ -39,6 +39,8 @@ public final class DiagnosticsReport {
     @NonNull
     private final DiagnosticsSessionReconnectCost mSessionReconnectCost;
     @NonNull
+    private final DiagnosticsReplacedSessionShellInput mReplacedSessionShellInput;
+    @NonNull
     private final DiagnosticsMainThreadStalls mMainThreadStalls;
     @NonNull
     private final DiagnosticsMainLooperQueue mMainLooperQueue;
@@ -57,6 +59,7 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsWorkCostLine foregroundOpenTagScanCost,
                              @NonNull DiagnosticsWorkCostLine bufferReflowCost,
                              @NonNull DiagnosticsSessionReconnectCost sessionReconnectCost,
+                             @NonNull DiagnosticsReplacedSessionShellInput replacedSessionShellInput,
                              @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
                              long processUptimeMillis,
@@ -78,6 +81,7 @@ public final class DiagnosticsReport {
         mForegroundOpenTagScanCost = foregroundOpenTagScanCost;
         mBufferReflowCost = bufferReflowCost;
         mSessionReconnectCost = sessionReconnectCost;
+        mReplacedSessionShellInput = replacedSessionShellInput;
         mMainThreadStalls = mainThreadStalls;
         mMainLooperQueue = mainLooperQueue;
         mProcessUptimeMillis = processUptimeMillis;
@@ -87,6 +91,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsBackgroundCycle getBackgroundCycle() {
         return mBackgroundCycle;
+    }
+
+    @NonNull
+    public DiagnosticsReplacedSessionShellInput getReplacedSessionShellInput() {
+        return mReplacedSessionShellInput;
     }
 
     @NonNull

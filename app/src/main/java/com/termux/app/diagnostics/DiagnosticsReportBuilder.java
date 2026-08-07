@@ -47,6 +47,9 @@ public final class DiagnosticsReportBuilder {
         appendUndeliveredShellInputSection(builder, report);
 
         builder.append('\n');
+        appendReplacedSessionShellInputSection(builder, report);
+
+        builder.append('\n');
         appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
@@ -108,6 +111,25 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         appendLinesWithinBudget(builder, undeliveredLines, UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS);
+    }
+
+    private void appendReplacedSessionShellInputSection(@NonNull StringBuilder builder,
+                                                        @NonNull DiagnosticsReport report) {
+        DiagnosticsReplacedSessionShellInput replaced = report.getReplacedSessionShellInput();
+        builder.append("Input stuck on sessions replaced since the app started\n");
+        builder.append("  Sessions replaced with input still undelivered: ")
+            .append(replaced.getSessionsReplacedWithInputUndelivered()).append('\n');
+        if (replaced.getSessionsReplacedWithInputUndelivered() == 0) {
+            return;
+        }
+        if (replaced.getWorstUndeliveredBytes() > 0) {
+            builder.append("  Most left unwritten: ").append(replaced.getWorstUndeliveredBytes())
+                .append("B on ").append(replaced.getWorstUndeliveredSessionName()).append('\n');
+        }
+        if (!replaced.getLastWriterStopSessionName().isEmpty()) {
+            builder.append("  Last writer stop: ").append(replaced.getLastWriterStopSessionName())
+                .append(" (").append(replaced.getLastWriterStopReason()).append(")\n");
+        }
     }
 
     @NonNull
