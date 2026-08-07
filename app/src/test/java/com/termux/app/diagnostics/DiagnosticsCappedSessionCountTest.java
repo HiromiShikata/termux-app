@@ -76,7 +76,7 @@ public class DiagnosticsCappedSessionCountTest {
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
-            0L);
+            0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
 
         // Orphaned is derived from the corrected live count (10), not the total 23 sessions.
         Assert.assertEquals(aliveCount, report.getSessionsCountedTowardCap());

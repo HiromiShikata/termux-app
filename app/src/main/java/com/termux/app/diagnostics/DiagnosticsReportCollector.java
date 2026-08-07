@@ -65,7 +65,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsWorkCostLine.of(TerminalBufferReflowCostCounterHolder.getInstance()),
             DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder()),
             MainLooperQueueSnapshot.take(),
-            ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()));
+            ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
+            DiagnosticsBackgroundCycle.of(BackgroundCycleIntervalRecorderHolder.getInstance()));
     }
 
     @NonNull

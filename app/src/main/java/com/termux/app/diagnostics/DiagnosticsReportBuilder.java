@@ -37,6 +37,9 @@ public final class DiagnosticsReportBuilder {
         appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
+        appendBackgroundCycleSection(builder, report);
+
+        builder.append('\n');
         appendBrowserSection(builder, report);
 
         builder.append('\n');
@@ -138,6 +141,25 @@ public final class DiagnosticsReportBuilder {
             for (int frameIndex = 0; frameIndex < reportedFrameCount; frameIndex++) {
                 builder.append("        ").append(frames[frameIndex]).append('\n');
             }
+        }
+    }
+
+    private void appendBackgroundCycleSection(@NonNull StringBuilder builder,
+                                              @NonNull DiagnosticsReport report) {
+        DiagnosticsBackgroundCycle backgroundCycle = report.getBackgroundCycle();
+        builder.append("Background cycle\n");
+        builder.append("  Cycles run: ").append(backgroundCycle.getCycleCount()).append('\n');
+        if (backgroundCycle.getLongestIntervals().isEmpty()) {
+            builder.append("  Longest gaps between cycles: none recorded yet\n");
+            return;
+        }
+        builder.append("  Longest gaps between cycles, longest first:\n");
+        for (BackgroundCycleInterval interval : backgroundCycle.getLongestIntervals()) {
+            builder.append("    ").append(interval.getIntervalMillis())
+                .append(" ms against a scheduled ").append(interval.getScheduledIntervalMillis())
+                .append(" ms, ending ").append(formatTimestamp(interval.getObservedAtMillis()))
+                .append(", activity ").append(interval.isActivityVisible() ? "visible" : "not visible")
+                .append('\n');
         }
     }
 
