@@ -45,6 +45,7 @@ import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
+import com.termux.app.sessiondefinition.HungSessionReconnectBackoff;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionInputDeliverabilityDwell;
@@ -283,6 +284,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final SessionInputDeliverabilityDwell mSessionInputDeliverabilityDwell =
         new SessionInputDeliverabilityDwell();
+
+    private final HungSessionReconnectBackoff mHungSessionReconnectBackoff =
+        new HungSessionReconnectBackoff();
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
@@ -2377,18 +2381,26 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         long nowMillis = System.currentTimeMillis();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
+        Map<String, Long> silentSessionLastOutTimeMillisByName = new HashMap<>();
+        Set<String> presentSessionNames = new HashSet<>();
         List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions = new ArrayList<>();
         for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             if (terminalSession == null) continue;
             String sessionName = terminalSession.mSessionName;
             if (sessionName == null) continue;
+            presentSessionNames.add(sessionName);
             if (!reconnectableSessionNames.contains(sessionName)) continue;
             sessionByName.put(sessionName, terminalSession);
             boolean current = sessionName.equals(currentSessionName);
             boolean running = terminalSession.isRunning();
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
-            boolean hung = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
+            boolean silentLongEnough = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
+            if (silentLongEnough && running) {
+                silentSessionLastOutTimeMillisByName.put(sessionName, lastOutTimeMillis);
+            }
+            boolean hung = silentLongEnough && mHungSessionReconnectBackoff.isReadyToAttemptAgain(
+                sessionName, lastOutTimeMillis, nowMillis);
             boolean reconnecting = store != null && store.isReconnecting(sessionName);
             boolean unableToReceiveInputLongEnough =
                 mSessionInputDeliverabilityDwell.hasBeenUnableToReceiveInputLongEnough(
@@ -2412,8 +2424,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             }
             mSessionReconnectPacer.enqueueSession(deadSession);
             mSessionInputDeliverabilityDwell.forget(sessionName);
+            if (silentSessionLastOutTimeMillisByName.containsKey(sessionName)) {
+                mHungSessionReconnectBackoff.recordAttemptForSilence(sessionName,
+                    silentSessionLastOutTimeMillisByName.get(sessionName), nowMillis);
+            }
             reconnectedSessionNames.add(sessionName);
         }
+        mHungSessionReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
         return reconnectedSessionNames;
     }
 
