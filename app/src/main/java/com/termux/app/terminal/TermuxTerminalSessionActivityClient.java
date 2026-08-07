@@ -2175,9 +2175,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mPersistedSessionBySession.remove(finishedSession) != null)
             savePersistedSessions();
 
-        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
-        if (toolbarAdapter != null)
-            toolbarAdapter.removeTextInputForSession(finishedSession);
+        dropToolbarTextInputForSession(finishedSession);
 
         service.removeTermuxSession(finishedSession);
 
@@ -2197,9 +2195,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         restoreBrowserTabsForReconnectedSession(newTerminalSession, sessionName);
         attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
         setCurrentSession(newTerminalSession);
+        dropToolbarTextInputForSession(finishedSession);
 
         replayPendingInputWhenConnected(newTerminalSession, pendingInput);
         return true;
+    }
+
+    private void dropToolbarTextInputForSession(@Nullable TerminalSession session) {
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter == null) return;
+        toolbarAdapter.removeTextInputForSession(session);
     }
 
     /**
@@ -2492,9 +2497,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mPersistedSessionBySession.remove(deadSession) != null)
             savePersistedSessions();
 
-        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
-        if (toolbarAdapter != null)
-            toolbarAdapter.removeTextInputForSession(deadSession);
+        dropToolbarTextInputForSession(deadSession);
 
         service.removeTermuxSessionBeingReplaced(deadSession);
 
@@ -2529,6 +2532,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         if (displayedSession == deadSession) {
             setCurrentSession(newTerminalSession);
+            dropToolbarTextInputForSession(deadSession);
         } else {
             if (displayedSessionNames().contains(sessionName)) {
                 eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
