@@ -481,7 +481,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Nullable
-    private SessionOutputScanText readOutputScanTextOnce(@NonNull TerminalSession session) {
+    @VisibleForTesting
+    SessionOutputScanText readOutputScanTextOnce(@NonNull TerminalSession session) {
         TerminalEmulator emulator = session.getEmulator();
         if (emulator == null) return null;
         TerminalBuffer screen = emulator.getScreen();
@@ -491,7 +492,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String transcriptText = screen.getTranscriptText();
         SessionOutputScanText scanText = new SessionOutputScanText(session.mSessionName,
             session.mHandle, transcriptText,
-            SessionStatuslineScanText.reusingActiveBufferTranscript(emulator, screen, transcriptText));
+            SessionStatuslineScanText.visibleScreenOf(emulator, screen));
         BackgroundOutputScanCostCounterHolder.getInstance()
             .record(System.nanoTime() - scanStartNanos, transcriptRows);
         return scanText;
@@ -527,7 +528,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         });
     }
 
-    private static final class SessionOutputScanText {
+    @VisibleForTesting
+    static final class SessionOutputScanText {
 
         @Nullable
         private final String mSessionName;
