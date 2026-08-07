@@ -407,8 +407,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         // output, not only the session currently being viewed, so that a non-current or backgrounded
         // session that calls the user records its red dot without the owner having to open it. These
         // run regardless of which session is current and regardless of activity visibility.
-        if (shouldRunBackgroundOutputScan(changedSession)) {
-            backgroundOutputTagsForSession(changedSession);
+        SessionOutputScanText scanText = shouldRunBackgroundOutputScan(changedSession)
+            ? readOutputScanTextOnce(changedSession)
+            : null;
+        if (scanText != null) {
+            parseStatuslineAndScanOutputTagsOffThread(scanText, System.currentTimeMillis());
         }
 
         if (!mActivity.isVisible()) return;
@@ -418,11 +421,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             updateSessionNameOverlay();
             // The open-URL tag stays scoped to the current session only: auto-opening a URL is a
             // foreground action and opening a non-viewed session's URL would be jarring.
-            openTagsForSession(changedSession);
+            openTagsForSession(changedSession,
+                scanText == null ? null : scanText.getTranscriptText());
         }
     }
 
-    private void openTagsForSession(TerminalSession session) {
+    private void openTagsForSession(TerminalSession session,
+                                    @Nullable String transcriptTextAlreadyMaterialized) {
         if (session == null) return;
 
         OpenTagBrowserController openTagBrowserController = mActivity.getOpenTagBrowserController();
@@ -438,7 +443,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         long scanStartNanos = System.nanoTime();
         int transcriptRows = screen.getActiveTranscriptRows();
 
-        String transcriptText = screen.getTranscriptText();
+        String transcriptText = transcriptTextAlreadyMaterialized != null
+            ? transcriptTextAlreadyMaterialized
+            : screen.getTranscriptText();
         openTagBrowserController.onSessionTextChanged(session.mHandle, transcriptText);
 
         AppOpenTagController appOpenTagController = mActivity.getAppOpenTagController();
@@ -467,6 +474,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         SessionOutputScanText scanText = readOutputScanTextOnce(session);
         if (scanText == null) return;
         parseStatuslineAndScanOutputTagsOffThread(scanText, System.currentTimeMillis());
+    }
+
+    private void openTagsForSession(TerminalSession session) {
+        openTagsForSession(session, null);
     }
 
     @Nullable
