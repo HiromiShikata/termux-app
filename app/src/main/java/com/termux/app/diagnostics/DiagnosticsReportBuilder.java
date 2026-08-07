@@ -296,15 +296,7 @@ public final class DiagnosticsReportBuilder {
             .append("B, still undelivered ").append(delivery.getBytesAcceptedButNotWrittenYet())
             .append("B, discarded before the queue ")
             .append(delivery.getBytesDiscardedBeforeDelivery()).append("B\n");
-        builder.append("      shell input writer: ");
-        if (delivery.isWriterRunning()) {
-            builder.append("running\n");
-            return;
-        }
-        String writerStoppedReason = delivery.getWriterStoppedReason();
-        builder.append("stopped")
-            .append(writerStoppedReason == null ? "" : " (" + writerStoppedReason + ")")
-            .append('\n');
+        builder.append("      shell input writer: ").append(describeWriterState(delivery)).append('\n');
     }
 
     @NonNull
