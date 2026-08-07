@@ -73,11 +73,8 @@ public class DisplayedSessionsAutoRefreshWiringTest {
         Assert.assertTrue("the displayed refresh must chunk the transcript reads into bounded batches",
             body.contains("STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE"));
         Assert.assertTrue("later batches must still be posted to the main-thread handler so many displayed "
-                + "sessions never read every transcript in one main-thread pass, and they must be posted "
-                + "with no per-batch delay so no displayed session waits behind another session's batch for "
-                + "its own statusline refresh",
-            body.contains("mMainThreadHandler.postDelayed(")
-                && body.contains("MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS"));
+                + "sessions never read every transcript in one main-thread pass",
+            body.contains("mMainThreadHandler.postDelayed("));
     }
 
     @Test

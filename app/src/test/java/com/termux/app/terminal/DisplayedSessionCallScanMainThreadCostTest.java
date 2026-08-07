@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
@@ -362,7 +363,7 @@ public class DisplayedSessionCallScanMainThreadCostTest {
     }
 
     @Test
-    public void displayedSessionStatuslineRefreshMakesNoDisplayedSessionWaitBehindABatchDelay() {
+    public void displayedSessionStatuslineRefreshSpacesItsBatchesOneFrameApartNotOneSecondApart() {
         long refreshStartUptimeMillis = SystemClock.uptimeMillis();
         sessionActivityClient.reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline();
         drainEveryLooperToTheHorizon();
@@ -376,17 +377,26 @@ public class DisplayedSessionCallScanMainThreadCostTest {
             latestRefreshDelayMillis = Math.max(latestRefreshDelayMillis, refreshDelayMillis);
         }
 
-        assertEquals("the displayed-session statusline refresh is split into batches spaced a second "
-                + "apart only because reading one session's statusline is expensive, and that spacing "
-                + "makes a displayed session the owner can see wait for its own refresh; over "
-                + DISPLAYED_SESSION_COUNT + " displayed sessions the last one currently waits seconds "
-                + "longer than the first, which the owner has ruled out, so once the per-session cost is "
-                + "removed every displayed session's refresh must be scheduled without a per-batch delay "
-                + "and no displayed session may be refreshed later than another; the earliest refresh "
-                + "happened " + earliestRefreshDelayMillis + " milliseconds after the refresh was asked "
-                + "for and the latest happened " + latestRefreshDelayMillis + " milliseconds after it, "
-                + "with the per-session delays being " + refreshDelayBySessionName,
-            earliestRefreshDelayMillis, latestRefreshDelayMillis);
+        int batchCount = (DISPLAYED_SESSION_COUNT
+            + TermuxTerminalSessionActivityClient.STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE - 1)
+            / TermuxTerminalSessionActivityClient.STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE;
+        long oneFrameApartSpreadMillis = (batchCount - 1)
+            * SessionReconnectPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS;
+
+        assertEquals("the displayed-session statusline refresh was split into batches spaced a second "
+                + "apart, which made the last of " + DISPLAYED_SESSION_COUNT + " displayed sessions wait "
+                + "seconds for its own refresh; the owner has ruled that out. Spacing the batches by "
+                + "nothing does not replace it, because postDelayed with a zero delay is post, so every "
+                + "batch would be due at the same instant and the looper would drain the whole set in one "
+                + "uninterrupted main-thread pass — exactly what this batching exists to prevent. Each "
+                + "batch must therefore be posted one frame further out than the batch before it, so over "
+                + batchCount + " batches the last displayed session is refreshed "
+                + oneFrameApartSpreadMillis + " milliseconds after the first rather than "
+                + ((batchCount - 1) * 1000L) + "; the earliest refresh happened "
+                + earliestRefreshDelayMillis + " milliseconds after the refresh was asked for and the "
+                + "latest happened " + latestRefreshDelayMillis + " milliseconds after it, with the "
+                + "per-session delays being " + refreshDelayBySessionName,
+            oneFrameApartSpreadMillis, latestRefreshDelayMillis - earliestRefreshDelayMillis);
 
         assertEquals("removing the batch delay must not remove the refresh itself, so the same run must "
                 + "also show every displayed session was refreshed; each of the " + DISPLAYED_SESSION_COUNT

@@ -196,8 +196,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     static final int STAGGERED_STATUSLINE_RESCAN_BATCH_SIZE = 4;
 
-    static final long MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS = 0L;
-
     /**
      * The staleness threshold used to decide which non-current sessions the background tick reconnects.
      * A session whose last {@code out:} statusline time is older than this is treated as stale and is
@@ -636,9 +634,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * {@link SessionNewActivityStore#recordStatuslineTimes} path), and never writes any input to any
      * session. The displayed set can be as large as the session cap, so the per-session transcript
      * reads are split into small batches, each subsequent batch posted to the main-thread {@link
-     * Handler} with {@link #MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS} delay, so a launch or reload with
-     * many displayed sessions never reads all their transcripts in one main-thread pass, never blocks
-     * the UI, and never makes one displayed session wait behind another's batch. Each
+     * Handler} one {@link SessionReconnectPacer#MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS} further out
+     * than the batch before it, so a launch or reload with many displayed sessions never reads all
+     * their transcripts in one main-thread pass and each batch actually yields a frame. A zero delay
+     * would not: {@code postDelayed(runnable, 0)} is {@code post(runnable)}, so every batch would be
+     * due at the same instant and the looper would drain them consecutively, which is the whole-set
+     * main-thread pass this batching exists to prevent. The spacing the owner ruled out was one
+     * second per batch, which made the last displayed session wait seconds for its own refresh; one
+     * frame per batch costs the last of sixteen displayed sessions about 48 milliseconds. Each
      * batch forces the gate-bypassing rescan through {@link
      * #repopulateStatuslineTimesForSessionNames(Set, boolean)}, whose heavy transcript materialization
      * and regex parse still run off the main thread via {@link #parseAndApplyStatuslineUpdatesOffThread}.
@@ -655,7 +658,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             } else {
                 mMainThreadHandler.postDelayed(
                     () -> repopulateStatuslineTimesForSessionNames(batchSessionNames, forceRescan),
-                    MAIN_THREAD_YIELD_WITHOUT_DELAY_MILLIS);
+                    batchIndex * SessionReconnectPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS);
             }
         }
     }
