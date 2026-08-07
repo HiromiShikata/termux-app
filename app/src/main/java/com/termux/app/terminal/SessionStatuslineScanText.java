@@ -14,6 +14,13 @@ import com.termux.terminal.TerminalEmulator;
  * therefore on screen: the tokens parsed out of it are the same ones the full text would yield,
  * because the visible screen is what the full text ends with, and a screen carrying no statusline
  * yields no token at all so the cheaper read can never store a value the full read would not.
+ *
+ * <p>{@link #reusingActiveBufferTranscript} yields the same text as {@link #of} for a caller that has
+ * already materialised the active buffer's transcript for another scan: while the main buffer is the
+ * active one those two transcripts are the same object's content, so the caller's copy is reused
+ * rather than the whole scrollback being walked a second time, and while a full-screen program holds
+ * the alternate buffer the main-buffer transcript is read because the alternate buffer keeps no
+ * scrollback and would hide a statusline that scrolled off before the program started.
  */
 public final class SessionStatuslineScanText {
 
@@ -22,7 +29,23 @@ public final class SessionStatuslineScanText {
 
     @NonNull
     public static String of(@NonNull TerminalEmulator emulator, @NonNull TerminalBuffer screen) {
-        StringBuilder builder = new StringBuilder(emulator.getMainBufferTranscriptText());
+        return withTranscript(emulator, screen, emulator.getMainBufferTranscriptText());
+    }
+
+    @NonNull
+    public static String reusingActiveBufferTranscript(@NonNull TerminalEmulator emulator,
+                                                       @NonNull TerminalBuffer screen,
+                                                       @NonNull String activeBufferTranscriptText) {
+        return withTranscript(emulator, screen, emulator.isAlternateBufferActive()
+            ? emulator.getMainBufferTranscriptText()
+            : activeBufferTranscriptText);
+    }
+
+    @NonNull
+    private static String withTranscript(@NonNull TerminalEmulator emulator,
+                                         @NonNull TerminalBuffer screen,
+                                         @NonNull String mainBufferTranscriptText) {
+        StringBuilder builder = new StringBuilder(mainBufferTranscriptText);
         builder.append('\n').append(visibleScreenOf(emulator, screen));
         return builder.toString();
     }

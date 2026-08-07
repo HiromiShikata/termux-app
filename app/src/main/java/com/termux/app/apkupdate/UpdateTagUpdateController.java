@@ -1,7 +1,7 @@
 package com.termux.app.apkupdate;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class UpdateTagUpdateController {
 
@@ -11,7 +11,7 @@ public final class UpdateTagUpdateController {
 
     private final ReasonTrigger reasonTrigger;
 
-    private final Map<String, UpdateTermuxAppTagScanner> mScannerBySessionKey = new HashMap<>();
+    private final Map<String, UpdateTermuxAppTagScanner> mScannerBySessionKey = new ConcurrentHashMap<>();
 
     public UpdateTagUpdateController(ReasonTrigger reasonTrigger) {
         this.reasonTrigger = reasonTrigger;
@@ -32,11 +32,6 @@ public final class UpdateTagUpdateController {
     }
 
     private UpdateTermuxAppTagScanner scannerForSession(String sessionKey) {
-        UpdateTermuxAppTagScanner scanner = mScannerBySessionKey.get(sessionKey);
-        if (scanner == null) {
-            scanner = new UpdateTermuxAppTagScanner();
-            mScannerBySessionKey.put(sessionKey, scanner);
-        }
-        return scanner;
+        return mScannerBySessionKey.computeIfAbsent(sessionKey, key -> new UpdateTermuxAppTagScanner());
     }
 }
