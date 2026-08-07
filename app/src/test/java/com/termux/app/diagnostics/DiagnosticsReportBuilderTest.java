@@ -547,6 +547,41 @@ public class DiagnosticsReportBuilderTest {
                 + text, text.contains("broken pipe"));
     }
 
+    @Test
+    public void mainThreadCostPrecedesEveryLongEnumerationSoATruncatedReportStillCarriesIt() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        for (int sessionIndex = 0; sessionIndex < 19; sessionIndex++) {
+            lines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex, true,
+                0, 108, deliveringEverything()));
+        }
+        List<DiagnosticEvent> events = new ArrayList<>();
+        for (int eventIndex = 0; eventIndex < 50; eventIndex++) {
+            events.add(new DiagnosticEvent(EVENT_MILLIS, DiagnosticEventType.SESSION_RECONNECTED, ""));
+        }
+        DiagnosticsReport report = reportWith(lines, 19, 19, 64, 0, 0, false, true, events);
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        int mainThreadCostIndex = text.indexOf("Main-thread cost");
+        int firstSessionLineIndex = text.indexOf("- host-0 |");
+        int recentEventsIndex = text.indexOf("Recent events");
+
+        Assert.assertTrue("the section naming what blocks the main thread must be present: " + text,
+            mainThreadCostIndex >= 0);
+        Assert.assertTrue("the per-session enumeration must be present for this ordering to matter: "
+            + text, firstSessionLineIndex >= 0);
+        Assert.assertTrue("the event tail must be present for this ordering to matter: " + text,
+            recentEventsIndex >= 0);
+
+        Assert.assertTrue("a report copied off the device is truncated from the end, so the"
+                + " per-session enumeration must not sit in front of the only section that names what"
+                + " blocks the main thread: " + text,
+            mainThreadCostIndex < firstSessionLineIndex);
+        Assert.assertTrue("the event tail must not sit in front of the only section that names what"
+                + " blocks the main thread: " + text,
+            mainThreadCostIndex < recentEventsIndex);
+    }
+
     private static DiagnosticsShellInputDelivery deliveringEverything() {
         return new DiagnosticsShellInputDelivery(0L, 0L, 0L, true, null);
     }
