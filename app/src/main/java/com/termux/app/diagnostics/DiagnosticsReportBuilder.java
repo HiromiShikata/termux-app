@@ -90,6 +90,7 @@ public final class DiagnosticsReportBuilder {
         appendWorkCostLines(builder, "Open-tag scan on the viewed session",
             report.getForegroundOpenTagScanCost());
         appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
+        appendSessionReconnectCostLines(builder, report.getSessionReconnectCost());
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());
     }
@@ -211,6 +212,20 @@ public final class DiagnosticsReportBuilder {
         }
         builder.append("    Max: ").append(cost.getMaxElapsedMillis()).append(" ms\n");
         builder.append("    Transcript rows at max: ").append(cost.getTranscriptRowsAtMaxElapsed()).append('\n');
+    }
+
+    private void appendSessionReconnectCostLines(@NonNull StringBuilder builder,
+                                                 @NonNull DiagnosticsSessionReconnectCost cost) {
+        builder.append("  Dead session reconnect on the main thread\n");
+        builder.append("    Count: ").append(cost.getReconnectCount()).append('\n');
+        builder.append("    Total: ").append(cost.getTotalElapsedMillis()).append(" ms\n");
+        if (cost.getReconnectCount() == 0) {
+            builder.append("    Max: n/a\n");
+            return;
+        }
+        builder.append("    Max: ").append(cost.getMaxElapsedMillis()).append(" ms\n");
+        builder.append("    Sessions still queued at max: ")
+            .append(cost.getSessionsStillQueuedAtMaxElapsed()).append('\n');
     }
 
     private void appendSessionsSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {

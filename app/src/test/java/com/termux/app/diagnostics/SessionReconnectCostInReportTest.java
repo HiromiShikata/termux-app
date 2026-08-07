@@ -24,6 +24,7 @@ public class SessionReconnectCostInReportTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
+            new DiagnosticsSessionReconnectCost(0, 0, 0, 0),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()));

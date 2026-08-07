@@ -54,7 +54,46 @@ public class SessionReconnectPacerTest {
         }
     }
 
+    private static final long NANOS_EVERY_RECONNECT_SPENDS = 3_000_000L;
+
+    private static final class AdvancingNanoClock implements SessionReconnectPacer.ElapsedNanosClock {
+
+        private final long advancePerReadingNanos;
+
+        private long currentNanos;
+
+        AdvancingNanoClock(long advancePerReadingNanos) {
+            this.advancePerReadingNanos = advancePerReadingNanos;
+        }
+
+        @Override
+        public long elapsedNanos() {
+            long reading = currentNanos;
+            currentNanos += advancePerReadingNanos;
+            return reading;
+        }
+    }
+
+    private static final class RecordedReconnectCosts
+            implements SessionReconnectPacer.ReconnectCostRecorder {
+
+        final List<Long> elapsedNanos = new ArrayList<>();
+
+        final List<Integer> sessionsStillQueued = new ArrayList<>();
+
+        @Override
+        public void recordReconnectCost(long elapsedNanos, int sessionsStillQueued) {
+            this.elapsedNanos.add(elapsedNanos);
+            this.sessionsStillQueued.add(sessionsStillQueued);
+        }
+    }
+
     private final PendingMainThreadMessages mainThreadMessages = new PendingMainThreadMessages();
+
+    private final AdvancingNanoClock mainThreadNanoClock =
+        new AdvancingNanoClock(NANOS_EVERY_RECONNECT_SPENDS);
+
+    private final RecordedReconnectCosts recordedReconnectCosts = new RecordedReconnectCosts();
 
     private final List<TerminalSession> reconnectedSessions = new ArrayList<>();
 
@@ -72,7 +111,8 @@ public class SessionReconnectPacerTest {
     private SessionReconnectPacer newPacerReconnectingWith(
             @NonNull SessionReconnectPacer.SessionReconnectAction sessionReconnectAction) {
         return new SessionReconnectPacer(mainThreadMessages,
-            session -> !sessionsThatLeftTheReconnectList.contains(session), sessionReconnectAction);
+            session -> !sessionsThatLeftTheReconnectList.contains(session), sessionReconnectAction,
+            mainThreadNanoClock, recordedReconnectCosts);
     }
 
     @Test
@@ -231,6 +271,70 @@ public class SessionReconnectPacerTest {
                 + "session closed or removed after it was enqueued must not have a replacement shell "
                 + "forked for it, while every session still in the list must keep draining",
             List.of(sessionQueuedBehindIt), reconnectedSessions);
+    }
+
+    @Test
+    public void recordsWhatEveryReconnectCostTheMainThreadSoASubThresholdBurstStaysMeasurable() {
+        SessionReconnectPacer pacer = newPacer();
+
+        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession());
+        mainThreadMessages.runUntilNoMessagesRemain();
+
+        assertEquals("the stall watchdog only records a stall once the main thread has been blocked "
+                + "past its threshold, so a run of reconnects that each stay under it leaves the "
+                + "interface unresponsive while the report shows nothing unless every reconnect "
+                + "contributes its own measurement",
+            List.of(NANOS_EVERY_RECONNECT_SPENDS, NANOS_EVERY_RECONNECT_SPENDS,
+                NANOS_EVERY_RECONNECT_SPENDS),
+            recordedReconnectCosts.elapsedNanos);
+    }
+
+    @Test
+    public void recordsHowManySessionsWereStillQueuedBehindEachReconnect() {
+        SessionReconnectPacer pacer = newPacer();
+
+        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession());
+        mainThreadMessages.runUntilNoMessagesRemain();
+
+        assertEquals("a single slow reconnect and a burst that occupies the main thread once per "
+                + "session read the same in a total, so the queue depth behind each reconnect is what "
+                + "separates them",
+            List.of(2, 1, 0), recordedReconnectCosts.sessionsStillQueued);
+    }
+
+    @Test
+    public void recordsTheCostOfAReconnectThatThrewBecauseTheMainThreadStillSpentThatTime() {
+        TerminalSession failingSession = newDeadSession();
+        SessionReconnectPacer pacer = newPacerReconnectingWith(session -> {
+            reconnectedSessions.add(session);
+            throw new IllegalStateException("session creation failed");
+        });
+
+        pacer.enqueueSession(failingSession);
+        assertThrows(IllegalStateException.class, mainThreadMessages::runNextMessage);
+
+        assertEquals("a reconnect that fails has already spent its main-thread time, so dropping its "
+                + "measurement would under-report exactly the case where reconnects are failing and "
+                + "being retried",
+            List.of(NANOS_EVERY_RECONNECT_SPENDS), recordedReconnectCosts.elapsedNanos);
+    }
+
+    @Test
+    public void recordsNothingForASessionThatLeftTheReconnectListBeforeItsMessageRan() {
+        TerminalSession sessionLeavingTheList = newDeadSession();
+        SessionReconnectPacer pacer = newPacer();
+
+        pacer.enqueueSession(sessionLeavingTheList);
+        sessionsThatLeftTheReconnectList.add(sessionLeavingTheList);
+        mainThreadMessages.runUntilNoMessagesRemain();
+
+        assertEquals("no reconnect ran, so recording a cost for it would inflate the count the report "
+                + "shows and invent main-thread time that was never spent",
+            List.of(), recordedReconnectCosts.elapsedNanos);
     }
 
     @Test

@@ -37,6 +37,8 @@ public final class DiagnosticsReport {
     @NonNull
     private final DiagnosticsWorkCostLine mBufferReflowCost;
     @NonNull
+    private final DiagnosticsSessionReconnectCost mSessionReconnectCost;
+    @NonNull
     private final DiagnosticsMainThreadStalls mMainThreadStalls;
     @NonNull
     private final DiagnosticsMainLooperQueue mMainLooperQueue;
@@ -54,6 +56,7 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsWorkCostLine backgroundOutputScanCost,
                              @NonNull DiagnosticsWorkCostLine foregroundOpenTagScanCost,
                              @NonNull DiagnosticsWorkCostLine bufferReflowCost,
+                             @NonNull DiagnosticsSessionReconnectCost sessionReconnectCost,
                              @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
                              long processUptimeMillis,
@@ -74,6 +77,7 @@ public final class DiagnosticsReport {
         mBackgroundOutputScanCost = backgroundOutputScanCost;
         mForegroundOpenTagScanCost = foregroundOpenTagScanCost;
         mBufferReflowCost = bufferReflowCost;
+        mSessionReconnectCost = sessionReconnectCost;
         mMainThreadStalls = mainThreadStalls;
         mMainLooperQueue = mainLooperQueue;
         mProcessUptimeMillis = processUptimeMillis;
@@ -159,6 +163,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsWorkCostLine getBufferReflowCost() {
         return mBufferReflowCost;
+    }
+
+    @NonNull
+    public DiagnosticsSessionReconnectCost getSessionReconnectCost() {
+        return mSessionReconnectCost;
     }
 
     @NonNull
