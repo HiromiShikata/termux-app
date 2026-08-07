@@ -68,6 +68,8 @@ public class ViewedSessionOutputMaterializesItsTranscriptOnceTest {
 
     private static final int MAX_TRANSCRIPT_MATERIALIZATIONS_PER_OUTPUT_EVENT = 1;
 
+    private static final String OPEN_TAG_URL = "https://example.com/opened-from-the-viewed-session";
+
     private static final long DRAIN_HORIZON_MILLIS = 30_000L;
 
     private static final int DRAIN_STEP_LIMIT = 500;
@@ -110,6 +112,8 @@ public class ViewedSessionOutputMaterializesItsTranscriptOnceTest {
 
     private TerminalSession viewedSession;
 
+    private final List<String> urlsHandedToTheBrowser = new ArrayList<>();
+
     @Before
     public void setUp() throws Exception {
         activity = Robolectric.buildActivity(TermuxActivity.class).get();
@@ -132,7 +136,8 @@ public class ViewedSessionOutputMaterializesItsTranscriptOnceTest {
 
         preferences.setOpenTagAutoOpenEnabled(true);
         set(service, TermuxService.class, "mOpenTagBrowserController",
-            new OpenTagBrowserController(preferences, (sessionHandle, url) -> { }));
+            new OpenTagBrowserController(preferences,
+                (sessionHandle, url) -> urlsHandedToTheBrowser.add(url)));
 
         activity.setContentView(R.layout.activity_termux);
         set(activity, TermuxActivity.class, "mTerminalView",
@@ -168,6 +173,40 @@ public class ViewedSessionOutputMaterializesItsTranscriptOnceTest {
                 + "consumer having read anything, so the same run must also show the text really was "
                 + "read once; the viewed session's transcript must be materialized exactly once",
             MAX_TRANSCRIPT_MATERIALIZATIONS_PER_OUTPUT_EVENT, materializationsOfTheViewedSession);
+    }
+
+    @Test
+    public void theOneSharedMaterializationStillCarriesTheOpenTagToTheBrowser() {
+        renderInto(viewedSession, "<open>" + OPEN_TAG_URL + "</open>");
+        transcriptMaterializations.clear();
+
+        sessionActivityClient.onTextChanged(viewedSession);
+        drainEveryLooperToTheHorizon();
+
+        assertEquals("handing one materialization to both consumers must not cost the open-tag scan "
+                + "the text it reads, so the URL the viewed session printed must still reach the "
+                + "browser", Collections.singletonList(OPEN_TAG_URL), urlsHandedToTheBrowser);
+        assertEquals("and it must still have cost the drawing thread one materialization",
+            MAX_TRANSCRIPT_MATERIALIZATIONS_PER_OUTPUT_EVENT, materializationsOfTheViewedSession());
+    }
+
+    @Test
+    public void theViewedSessionStillCostsOneMaterializationWhenTheBackgroundScanIsThrottledOut() {
+        sessionActivityClient.onTextChanged(viewedSession);
+        drainEveryLooperToTheHorizon();
+        long screenContentVersionAfterTheFirstEvent = viewedSession.getScreenContentVersion();
+        transcriptMaterializations.clear();
+
+        sessionActivityClient.onTextChanged(viewedSession);
+        drainEveryLooperToTheHorizon();
+
+        assertEquals("this case only means what it says while the screen content the background scan "
+                + "gates on is unchanged, which is what makes that scan skip the second event",
+            screenContentVersionAfterTheFirstEvent, viewedSession.getScreenContentVersion());
+        assertEquals("the open-tag scan is then the only consumer left, so it must read the transcript "
+                + "for itself rather than be left with nothing, and the event must still cost exactly "
+                + "one materialization", MAX_TRANSCRIPT_MATERIALIZATIONS_PER_OUTPUT_EVENT,
+            materializationsOfTheViewedSession());
     }
 
     private int materializationsOfTheViewedSession() {
@@ -215,6 +254,11 @@ public class ViewedSessionOutputMaterializesItsTranscriptOnceTest {
         shellProcessId.setInt(terminalSession, LIVE_SHELL_PROCESS_ID);
         renderAScrollback(terminalSession);
         return terminalSession;
+    }
+
+    private void renderInto(TerminalSession session, String renderedLine) {
+        byte[] renderedBytes = (renderedLine + "\r\n").getBytes(StandardCharsets.UTF_8);
+        session.getEmulator().append(renderedBytes, renderedBytes.length);
     }
 
     private void renderAScrollback(TerminalSession session) {
