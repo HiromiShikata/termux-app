@@ -2518,9 +2518,35 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     /**
-     * The on-demand "refresh everything to the current state" action shared by the reload / Load
-     * Sessions button press and the periodic foreground reconnect tick. It reconnects every dead /
-     * finished definition-backed session (healthy live sessions are left untouched by {@link
+     * The on-demand "refresh everything to the current state" action shared by the reload / Load Sessions
+     * button press and the periodic reconnect tick. It reconnects every dead / finished definition-backed
+     * session of the displayed (non-hidden) set rather than of the narrow visible set, because the Load
+     * Sessions button hides the session list before running the reload and the visible set then holds only
+     * the session shown in the terminal, which left every other dead row un-reconnected. Healthy live
+     * sessions are left untouched by {@link DeadSessionReconnectPlanner} and the reconnects are still paced
+     * one at a time through {@link SessionReconnectPacer}, so widening the set does not widen the burst.
+     * The statusline refresh that follows is the same one {@link
+     * #reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline()} runs.
+     */
+    public void reconnectDeadDisplayedSessionsThenForceRescanStatusline() {
+        List<String> reconnectedSessionNames = reconnectDeadDisplayedSessionsInBackground(displayedSessionNames());
+        repopulateStatuslineTimesForAllSessions(true);
+        repopulateStatuslineTimesForDisplayedSessions(true);
+        if (reconnectedSessionNames.isEmpty()) return;
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController != null) {
+            listViewController.beginPostReconnectRescanWindow();
+        }
+        mMainThreadHandler.postDelayed(
+            new PostReconnectStatuslineRescanRetry(reconnectedSessionNames),
+            mPostReconnectStatuslineRescanRetryPlanner.firstAttemptDelayMillis());
+    }
+
+    /**
+     * The narrow-set variant of the same refresh, kept for the unhide path, which has just recreated the
+     * one session it acts on and must not have that session immediately re-planned for reconnection. It
+     * reconnects every dead / finished definition-backed session of the visible set (healthy live sessions
+     * are left untouched by {@link
      * DeadSessionReconnectPlanner}), then force-refreshes the latest call/out/reply statusline state for
      * every session so each one lands on its correct tier instead of the uncolored tier. A
      * freshly-reconnected session has no rendered emulator at the instant it is created, so its
