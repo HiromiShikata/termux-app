@@ -481,7 +481,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Nullable
-    private SessionOutputScanText readOutputScanTextOnce(@NonNull TerminalSession session) {
+    @VisibleForTesting
+    SessionOutputScanText readOutputScanTextOnce(@NonNull TerminalSession session) {
         TerminalEmulator emulator = session.getEmulator();
         if (emulator == null) return null;
         TerminalBuffer screen = emulator.getScreen();
@@ -527,7 +528,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         });
     }
 
-    private static final class SessionOutputScanText {
+    @VisibleForTesting
+    static final class SessionOutputScanText {
 
         @Nullable
         private final String mSessionName;
