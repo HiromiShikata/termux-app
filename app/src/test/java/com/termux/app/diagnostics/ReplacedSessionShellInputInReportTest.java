@@ -1,0 +1,65 @@
+package com.termux.app.diagnostics;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.Collections;
+
+/**
+ * The record of how much typed input reached the shell lives on the terminal session, and the
+ * automatic reconnect replaces a dead session rather than restarting it, so every figure returns to
+ * zero the moment the application recovers on its own. A user who takes a report after that recovery
+ * cannot tell it apart from a report taken on a healthy application, which is the state they are
+ * normally in by the time they are able to take one at all.
+ */
+public class ReplacedSessionShellInputInReportTest {
+
+    private static final long REPORT_MILLIS = 1783216800000L;
+
+    private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
+
+    private static String renderedReport() {
+        DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
+            0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
+            0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
+            new DiagnosticsMemoryUsage(0, 0, 0, 0),
+            NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
+            new DiagnosticsSessionReconnectCost(0, 0, 0, 0),
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
+            new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()));
+        return new DiagnosticsReportBuilder().build(report);
+    }
+
+    @Test
+    public void inputStuckOnASessionThatHasSinceBeenReplacedIsStillAccountedForInTheReport() {
+        String report = renderedReport();
+
+        int replacedSectionIndex = report.indexOf("Input stuck on sessions replaced since the app started");
+        Assert.assertTrue("the only record of input that never reached the shell lives on the terminal"
+                + " session, and the automatic reconnect builds a replacement rather than restarting"
+                + " the dead one, so an episode is erased as soon as the application recovers. A report"
+                + " that never accounts for the sessions it replaced therefore reads identically"
+                + " whether nothing went wrong or everything did. Actual report:\n" + report,
+            replacedSectionIndex >= 0);
+
+        Assert.assertTrue("nothing recorded must read as measured-and-none rather than as a missing"
+                + " measurement, otherwise a reader cannot tell a healthy application from one whose"
+                + " history was discarded. Actual report:\n" + report,
+            report.substring(replacedSectionIndex).contains("Sessions replaced with input still undelivered: 0"));
+    }
+
+    @Test
+    public void theAccountOfReplacedSessionsSitsInsideTheWindowTheReportSurvives() {
+        String report = renderedReport();
+
+        int replacedSectionIndex = report.indexOf("Input stuck on sessions replaced since the app started");
+        Assert.assertTrue("the account has to be present for its position to matter. Actual report:\n"
+            + report, replacedSectionIndex >= 0);
+        Assert.assertTrue("the report reaches the reader by being pasted into a channel that keeps only"
+                + " the first " + DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS + " characters, so an"
+                + " account that falls outside that window cannot be read at all. It currently begins"
+                + " at character " + replacedSectionIndex + ". Actual report:\n" + report,
+            replacedSectionIndex < DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS);
+    }
+}
