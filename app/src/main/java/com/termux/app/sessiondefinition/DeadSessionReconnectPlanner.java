@@ -79,7 +79,7 @@ public final class DeadSessionReconnectPlanner {
         }
 
         boolean isDeadProcessReconnectCandidate() {
-            return !current && !running && !reconnecting;
+            return !running && !reconnecting;
         }
 
         boolean isDetachedInputReconnectCandidate() {
@@ -108,10 +108,13 @@ public final class DeadSessionReconnectPlanner {
     }
 
     /**
-     * Plans which stale non-current definition-backed sessions to reconnect, capped at {@code
-     * maxSessionsToReconnect}. The proactive background reconnect passes {@link #UNLIMITED} so every
-     * currently-stale non-current session is planned and none is left to go 30+ minutes stale; the
-     * caller then spaces the resulting reconnects out in time so a large batch never fires
+     * Plans which stale definition-backed sessions to reconnect, capped at {@code
+     * maxSessionsToReconnect}. A session whose shell process has exited is planned whether or not it is
+     * the one currently displayed in the terminal view; a session that is still running but has gone
+     * silent is planned only while it is not the displayed one, because it may be the session the owner
+     * is typing into and it has no in-place replacement. The proactive background reconnect passes
+     * {@link #UNLIMITED} so every currently-stale session is planned and none is left to go 30+ minutes
+     * stale; the caller then spaces the resulting reconnects out in time so a large batch never fires
      * simultaneously. A finite cap is still honored for callers that want to bound a single pass. Dead
      * processes are preferred over merely hung ones, and hung sessions are ordered oldest-output-first
      * so the most stale session is reconnected first when a finite cap is reached.
