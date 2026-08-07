@@ -575,11 +575,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             labels.add(bookmark.getTitle() + "\n" + bookmark.getUrl());
         }
         ListView listView = new ListView(mActivity);
-        listView.setAdapter(new ArrayAdapter<>(mActivity, R.layout.item_browser_bookmark_list_entry, labels));
         AlertDialog dialog = new AlertDialog.Builder(mActivity)
             .setTitle(R.string.title_browser_bookmarks)
             .setView(listView)
             .create();
+        listView.setAdapter(new ArrayAdapter<String>(
+            mActivity, R.layout.item_browser_bookmark_list_entry, android.R.id.text1, labels) {
+            @NonNull
+            @Override
+            public View getView(int position, View convertView, @NonNull ViewGroup parent) {
+                View view = super.getView(position, convertView, parent);
+                view.findViewById(R.id.browser_bookmark_list_entry_delete_button)
+                    .setOnClickListener(deleteButton -> {
+                        dialog.dismiss();
+                        promptDeleteBookmark(bookmarks.get(position));
+                    });
+                return view;
+            }
+        });
         dialog.setCanceledOnTouchOutside(true);
         listView.setOnItemClickListener((parent, view, position, id) -> {
             openUrlInNewTab(bookmarks.get(position).getUrl());
@@ -591,6 +604,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             return true;
         });
         dialog.show();
+    }
+
+    private void promptDeleteBookmarkForUrl(@NonNull String url) {
+        for (BrowserBookmark bookmark : loadBookmarks().getBookmarks()) {
+            if (bookmark.getUrl().equals(url)) {
+                promptDeleteBookmark(bookmark);
+                return;
+            }
+        }
     }
 
     private void promptDeleteBookmark(@NonNull BrowserBookmark bookmark) {
@@ -2009,6 +2031,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             if (typed.isEmpty()) return false;
             dialog.dismiss();
             openTypedUrlInNewTab(typed);
+            return true;
+        });
+
+        listView.setOnItemLongClickListener((parent, view, position, id) -> {
+            BrowserNewTabEntry entry = adapter.getItem(position);
+            if (entry == null || !entry.isBookmark()) return false;
+            dialog.dismiss();
+            promptDeleteBookmarkForUrl(entry.getUrl());
             return true;
         });
 
