@@ -36,7 +36,7 @@ public class ConstantMarkerCallToUserCycleTest {
 
     private boolean ownerIsPaged() {
         return store.pendingCallToUserSessionCount() > 0
-            && store.currentPendingCallToUserReason(SESSION) != null;
+            && !store.getUnacknowledgedCallReasons(SESSION).isEmpty();
     }
 
     private int pagesAcrossCycles(int cycleCount, boolean retainOlderTags) {
