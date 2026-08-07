@@ -720,8 +720,11 @@ public class SessionNewActivityStore {
         if (statuslineCallTimeMillis == null) {
             return null;
         }
-        Long genuineReplyTimeMillis = genuineReplyTimeMillis(sessionName);
-        if (genuineReplyTimeMillis == null || statuslineCallTimeMillis > genuineReplyTimeMillis) {
+        if (mGenuineAppReplyTimeMillisByName.get(sessionName) != null) {
+            return null;
+        }
+        Long statuslineReplyTimeMillis = getStatuslineReplyTimeMillis(sessionName);
+        if (statuslineReplyTimeMillis == null || statuslineCallTimeMillis > statuslineReplyTimeMillis) {
             return statuslineCallTimeMillis;
         }
         return null;
