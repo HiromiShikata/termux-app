@@ -45,6 +45,7 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
     private static final int SECONDS_PER_DAY = 24 * 3600;
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 15_000L;
+    private static final long CALL_REASON_RECORDED_TIMEOUT_MILLIS = 15_000L;
 
     @Rule
     public GrantPermissionRule writeExternalStoragePermissionRule =
@@ -109,7 +110,11 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
 
             client.forgetBackgroundOutputScanThrottle(session);
             client.onTextChanged(session);
+        });
 
+        waitForUnacknowledgedCallReason(scenario);
+
+        scenario.onActivity(activity -> {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();
             assertNotNull(store);
             tierRef.set(store.tierFor(SESSION_NAME));
@@ -157,6 +162,34 @@ public class SessionInfoBottomBarsScanToRenderInstrumentedTest {
             }
         }
         return collected.toString();
+    }
+
+    /**
+     * The scan path reaches the store through the statusline parse thread and back, so the reason is
+     * recorded a few main-thread messages after {@code onTextChanged} returns rather than inside it.
+     * This waits for that arrival instead of assuming it, so the test still drives the real path end to
+     * end and still asserts the same recorded reason.
+     */
+    private static void waitForUnacknowledgedCallReason(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + CALL_REASON_RECORDED_TIMEOUT_MILLIS;
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            AtomicBoolean recorded = new AtomicBoolean(false);
+            scenario.onActivity(activity -> {
+                SessionNewActivityStore store = activity.getSessionNewActivityStore();
+                recorded.set(store != null
+                    && !store.getUnacknowledgedCallReasons(SESSION_NAME).isEmpty());
+            });
+            if (recorded.get()) {
+                instrumentation.waitForIdleSync();
+                return;
+            }
+            Thread.sleep(100L);
+        }
+        throw new AssertionError("the real scan path did not record any unacknowledged call reason "
+            + "for " + SESSION_NAME + " within " + CALL_REASON_RECORDED_TIMEOUT_MILLIS + "ms");
     }
 
     private static void waitForServiceConnected(ActivityScenario<TermuxActivity> scenario)
