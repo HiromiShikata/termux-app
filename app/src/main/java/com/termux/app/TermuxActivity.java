@@ -239,7 +239,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionDefinitionAutoReloadScheduler(this::loadSessionsFromDefinition);
 
     private final SessionReconnectScheduler mSessionReconnectScheduler =
-        new SessionReconnectScheduler(this::reconnectDeadDefinitionBackedSessions);
+        new SessionReconnectScheduler(this::reconnectDeadDisplayedSessions);
 
     private final SessionEagerLoadPacer mSessionEagerLoadPacer = new SessionEagerLoadPacer(
         this::collectSessionsToEagerLoad,
@@ -1031,11 +1031,20 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void reloadSessionsAndRefreshAllState() {
         loadSessionsFromDefinition();
-        reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline();
+        reconnectDeadDisplayedSessionsThenForceRescanStatusline();
+    }
+
+    public void reconnectDeadDisplayedSessions() {
+        reconnectDeadDisplayedSessionsThenForceRescanStatusline();
     }
 
     public void reconnectDeadDefinitionBackedSessions() {
         reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline();
+    }
+
+    private void reconnectDeadDisplayedSessionsThenForceRescanStatusline() {
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.reconnectDeadDisplayedSessionsThenForceRescanStatusline();
     }
 
     private void reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline() {

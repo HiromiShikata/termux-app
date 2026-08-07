@@ -52,19 +52,19 @@ public class SessionRefreshAllStateWiringTest {
         Assert.assertTrue("the reload action must keep loading the session definitions",
             methodBody.contains("loadSessionsFromDefinition()"));
         Assert.assertTrue("the reload action must also reconnect dead sessions and force a statusline rescan",
-            methodBody.contains("reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline()"));
+            methodBody.contains("reconnectDeadDisplayedSessionsThenForceRescanStatusline()"));
     }
 
     @Test
     public void fiveMinuteReconnectTickAlsoForcesAStatuslineRescan() throws IOException {
         String source = readSource(ACTIVITY_RELATIVE_PATH);
-        int methodIndex = source.indexOf("public void reconnectDeadDefinitionBackedSessions() {");
+        int methodIndex = source.indexOf("public void reconnectDeadDisplayedSessions() {");
         Assert.assertTrue(methodIndex >= 0);
         int methodEnd = source.indexOf("\n    }", methodIndex);
         Assert.assertTrue(methodEnd > methodIndex);
         String methodBody = source.substring(methodIndex, methodEnd);
         Assert.assertTrue("the periodic reconnect tick action must route through the reconnect-then-rescan path",
-            methodBody.contains("reconnectDeadDefinitionBackedSessionsThenForceRescanStatusline()"));
+            methodBody.contains("reconnectDeadDisplayedSessionsThenForceRescanStatusline()"));
     }
 
     @Test
