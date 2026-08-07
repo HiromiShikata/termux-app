@@ -46,6 +46,17 @@ public class SessionNewActivityStoreStaleAppReplyDoesNotAnswerANewerCallTest {
     }
 
     @Test
+    public void anAppReplyTypedAfterTheCallClearsTheDotEvenWhenTheDeviceClockLagsTheHost() {
+        SessionNewActivityStore store = storeWhoseOwnerRepliedBeforeTheCallArrived();
+        recordTheCallThatNobodyHasAnsweredYet(store);
+
+        store.recordGenuineAppReply(SESSION,
+            OWNER_CALL_ON_THE_HOST_CLOCK_MILLIS - DEVICE_CLOCK_AHEAD_OF_THE_HOST_MILLIS);
+
+        Assert.assertNotEquals(SessionNewActivityTier.RED, store.tierFor(SESSION, NOW_MILLIS));
+    }
+
+    @Test
     public void reparsingTheSameCallKeepsTheAppReplyThatAlreadyAnsweredIt() {
         SessionNewActivityStore store = storeWhoseOwnerRepliedBeforeTheCallArrived();
         recordTheCallThatNobodyHasAnsweredYet(store);
