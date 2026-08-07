@@ -23,11 +23,23 @@ public final class SessionReconnectPacer {
         void reconnectSession(@NonNull TerminalSession session);
     }
 
+    public interface ElapsedNanosClock {
+        long elapsedNanos();
+    }
+
+    public interface ReconnectCostRecorder {
+        void recordReconnectCost(long elapsedNanos, int sessionsStillQueued);
+    }
+
     private final MainThreadMessagePoster mainThreadMessagePoster;
 
     private final SessionStillInTheReconnectList sessionStillInTheReconnectList;
 
     private final SessionReconnectAction sessionReconnectAction;
+
+    private final ElapsedNanosClock elapsedNanosClock;
+
+    private final ReconnectCostRecorder reconnectCostRecorder;
 
     private final LinkedHashSet<TerminalSession> pendingSessions = new LinkedHashSet<>();
 
@@ -36,10 +48,14 @@ public final class SessionReconnectPacer {
     public SessionReconnectPacer(
         @NonNull MainThreadMessagePoster mainThreadMessagePoster,
         @NonNull SessionStillInTheReconnectList sessionStillInTheReconnectList,
-        @NonNull SessionReconnectAction sessionReconnectAction) {
+        @NonNull SessionReconnectAction sessionReconnectAction,
+        @NonNull ElapsedNanosClock elapsedNanosClock,
+        @NonNull ReconnectCostRecorder reconnectCostRecorder) {
         this.mainThreadMessagePoster = mainThreadMessagePoster;
         this.sessionStillInTheReconnectList = sessionStillInTheReconnectList;
         this.sessionReconnectAction = sessionReconnectAction;
+        this.elapsedNanosClock = elapsedNanosClock;
+        this.reconnectCostRecorder = reconnectCostRecorder;
     }
 
     public void enqueueSession(@NonNull TerminalSession session) {
@@ -61,7 +77,13 @@ public final class SessionReconnectPacer {
             TerminalSession session = pollNextPendingSession();
             if (session == null) return;
             if (!sessionStillInTheReconnectList.stillContains(session)) return;
-            sessionReconnectAction.reconnectSession(session);
+            long reconnectStartedAtNanos = elapsedNanosClock.elapsedNanos();
+            try {
+                sessionReconnectAction.reconnectSession(session);
+            } finally {
+                reconnectCostRecorder.recordReconnectCost(
+                    elapsedNanosClock.elapsedNanos() - reconnectStartedAtNanos, pendingSessions.size());
+            }
         } finally {
             postNextUnitMessageIfIdle();
         }

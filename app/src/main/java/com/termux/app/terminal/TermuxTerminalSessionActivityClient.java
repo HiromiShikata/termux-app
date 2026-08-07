@@ -42,6 +42,7 @@ import com.termux.app.diagnostics.ForegroundOpenTagScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
+import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
@@ -273,7 +274,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final SessionReconnectPacer mSessionReconnectPacer = new SessionReconnectPacer(
         mMainThreadHandler::postDelayed,
         this::isSessionStillInTheReconnectList,
-        this::reconnectThenMarkSessionReconnecting);
+        this::reconnectThenMarkSessionReconnecting,
+        System::nanoTime,
+        SessionReconnectCostCounterHolder.getInstance()::record);
 
     private final HungSessionDetector mHungSessionDetector =
         new HungSessionDetector(BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS);

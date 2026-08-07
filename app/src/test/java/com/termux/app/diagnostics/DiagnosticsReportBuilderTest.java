@@ -15,6 +15,8 @@ public class DiagnosticsReportBuilderTest {
 
     private static final DiagnosticsMemoryUsage NO_MEMORY_USAGE = new DiagnosticsMemoryUsage(0, 0, 0, 0);
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
+    private static final DiagnosticsSessionReconnectCost NO_SESSION_RECONNECT_COST =
+        new DiagnosticsSessionReconnectCost(0, 0, 0, 0);
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
         new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
     private static final DiagnosticsBackgroundCycle NO_BACKGROUND_CYCLE =
@@ -97,7 +99,8 @@ public class DiagnosticsReportBuilderTest {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
-            memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost, mainThreadStalls,
+            memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost,
+            NO_SESSION_RECONNECT_COST, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             processUptimeMillis, backgroundCycle);
     }
@@ -106,7 +109,8 @@ public class DiagnosticsReportBuilderTest {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
-            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
+            NO_SESSION_RECONNECT_COST, NO_MAIN_THREAD_STALLS,
             mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
     }
 
@@ -114,7 +118,8 @@ public class DiagnosticsReportBuilderTest {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
-            NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
+            NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST,
+            NO_SESSION_RECONNECT_COST, NO_MAIN_THREAD_STALLS,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
     }
 
@@ -637,7 +642,8 @@ public class DiagnosticsReportBuilderTest {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             19, 19, 64, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
-            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST, stalls,
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
+            NO_SESSION_RECONNECT_COST, stalls,
             looperQueue, 0L, NO_BACKGROUND_CYCLE);
     }
 
