@@ -718,6 +718,26 @@ public class SessionNewActivityStore {
     }
 
     /**
+     * When the owner's still-unanswered call on this session began, taken as the earlier of the two
+     * signals that arm the RED tier — the unacknowledged reason recorded by the transcript tag scan
+     * ({@link #pendingCallToUserTimeMillis}) and the statusline {@code call:} token that no genuine
+     * reply has caught up to ({@link #statuslineCallPendingTimeMillis}) — or null while neither is
+     * armed. Ordering by this value picks the session the owner has been kept waiting on longest.
+     */
+    @Nullable
+    public Long pendingCallToUserSinceTimeMillis(@NonNull String sessionName) {
+        Long unacknowledgedReasonTimeMillis = pendingCallToUserTimeMillis(sessionName);
+        Long statuslineCallTimeMillis = statuslineCallPendingTimeMillis(sessionName);
+        if (unacknowledgedReasonTimeMillis == null) {
+            return statuslineCallTimeMillis;
+        }
+        if (statuslineCallTimeMillis == null) {
+            return unacknowledgedReasonTimeMillis;
+        }
+        return Math.min(unacknowledgedReasonTimeMillis, statuslineCallTimeMillis);
+    }
+
+    /**
      * The genuine "owner replied" time that {@link #statuslineCallPendingTimeMillis} compares the
      * {@code call:} token against: the later of the laggy statusline {@code reply:} token ({@link
      * #getStatuslineReplyTimeMillis}) and a genuine in-app reply submit ({@link
