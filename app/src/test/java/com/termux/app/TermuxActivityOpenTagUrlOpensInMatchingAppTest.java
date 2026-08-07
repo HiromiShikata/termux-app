@@ -32,12 +32,12 @@ public class TermuxActivityOpenTagUrlOpensInMatchingAppTest {
     }
 
     @Test
-    public void openTagUrlOpenerResolvesTheMatchingGoogleApplicationFirst() throws IOException {
+    public void openTagUrlOpenerResolvesTheMatchingNativeApplicationFirst() throws IOException {
         String methodBody = methodBody(
             readModuleFile(ACTIVITY_RELATIVE_PATH), "private void setBrowserView(");
 
         Assert.assertTrue("a URL opened by the open tag must resolve to the matching Google application before the in-app browser",
-            methodBody.contains("new OpenTagUrlGoogleAppOpener("));
+            methodBody.contains("new OpenTagUrlNativeAppOpener("));
     }
 
     @Test

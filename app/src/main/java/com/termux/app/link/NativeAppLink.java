@@ -10,15 +10,15 @@ import androidx.annotation.Nullable;
 
 import java.util.Locale;
 
-public final class GoogleAppLink {
+public final class NativeAppLink {
 
-    public static final class GoogleAppTarget {
+    public static final class NativeAppTarget {
 
         private final String mAppDisplayName;
 
         private final String mPackageName;
 
-        GoogleAppTarget(@NonNull String appDisplayName, @NonNull String packageName) {
+        NativeAppTarget(@NonNull String appDisplayName, @NonNull String packageName) {
             this.mAppDisplayName = appDisplayName;
             this.mPackageName = packageName;
         }
@@ -34,11 +34,11 @@ public final class GoogleAppLink {
         }
     }
 
-    private GoogleAppLink() {
+    private NativeAppLink() {
     }
 
     @Nullable
-    public static GoogleAppTarget resolveTarget(@Nullable String url) {
+    public static NativeAppTarget resolveTarget(@Nullable String url) {
         if (url == null) return null;
         Uri uri = Uri.parse(url.trim());
         String scheme = uri.getScheme();
@@ -54,51 +54,63 @@ public final class GoogleAppLink {
 
         if (host.equals("docs.google.com")) {
             if (path.startsWith("/spreadsheets")) {
-                return new GoogleAppTarget("Google Sheets", "com.google.android.apps.docs.editors.sheets");
+                return new NativeAppTarget("Google Sheets", "com.google.android.apps.docs.editors.sheets");
             }
             if (path.startsWith("/document")) {
-                return new GoogleAppTarget("Google Docs", "com.google.android.apps.docs.editors.docs");
+                return new NativeAppTarget("Google Docs", "com.google.android.apps.docs.editors.docs");
             }
             if (path.startsWith("/presentation")) {
-                return new GoogleAppTarget("Google Slides", "com.google.android.apps.docs.editors.slides");
+                return new NativeAppTarget("Google Slides", "com.google.android.apps.docs.editors.slides");
             }
             return null;
         }
         if (host.equals("drive.google.com")) {
-            return new GoogleAppTarget("Google Drive", "com.google.android.apps.docs");
+            return new NativeAppTarget("Google Drive", "com.google.android.apps.docs");
         }
         if (host.equals("meet.google.com")) {
-            return new GoogleAppTarget("Google Meet", "com.google.android.apps.tachyon");
+            return new NativeAppTarget("Google Meet", "com.google.android.apps.tachyon");
         }
         if (host.equals("calendar.google.com")) {
-            return new GoogleAppTarget("Google Calendar", "com.google.android.calendar");
+            return new NativeAppTarget("Google Calendar", "com.google.android.calendar");
         }
         if (host.equals("mail.google.com")) {
-            return new GoogleAppTarget("Gmail", "com.google.android.gm");
+            return new NativeAppTarget("Gmail", "com.google.android.gm");
         }
         if (host.equals("photos.google.com")) {
-            return new GoogleAppTarget("Google Photos", "com.google.android.apps.photos");
+            return new NativeAppTarget("Google Photos", "com.google.android.apps.photos");
         }
         if (host.equals("keep.google.com")) {
-            return new GoogleAppTarget("Google Keep", "com.google.android.keep");
+            return new NativeAppTarget("Google Keep", "com.google.android.keep");
         }
         if (host.equals("maps.google.com")) {
-            return new GoogleAppTarget("Google Maps", "com.google.android.apps.maps");
+            return new NativeAppTarget("Google Maps", "com.google.android.apps.maps");
         }
         if (host.equals("www.google.com") || host.equals("google.com")) {
             if (path.startsWith("/maps")) {
-                return new GoogleAppTarget("Google Maps", "com.google.android.apps.maps");
+                return new NativeAppTarget("Google Maps", "com.google.android.apps.maps");
             }
             if (path.startsWith("/calendar")) {
-                return new GoogleAppTarget("Google Calendar", "com.google.android.calendar");
+                return new NativeAppTarget("Google Calendar", "com.google.android.calendar");
+            }
+            return null;
+        }
+        if (host.equals("app.slack.com")) {
+            if (path.startsWith("/client/")) {
+                return new NativeAppTarget("Slack", "com.Slack");
+            }
+            return null;
+        }
+        if (host.endsWith(".slack.com")) {
+            if (path.startsWith("/archives/")) {
+                return new NativeAppTarget("Slack", "com.Slack");
             }
             return null;
         }
         return null;
     }
 
-    public static boolean openInGoogleApp(@NonNull Context context, @NonNull String url,
-                                          @NonNull GoogleAppTarget target) {
+    public static boolean openInNativeApp(@NonNull Context context, @NonNull String url,
+                                          @NonNull NativeAppTarget target) {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
         intent.setPackage(target.getPackageName());
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -110,10 +122,10 @@ public final class GoogleAppLink {
         }
     }
 
-    public static void openInGoogleAppOrElse(@NonNull Context context, @NonNull String url,
+    public static void openInNativeAppOrElse(@NonNull Context context, @NonNull String url,
                                              @NonNull Runnable browserFallback) {
-        GoogleAppTarget target = resolveTarget(url);
-        if (target == null || !openInGoogleApp(context, url, target)) {
+        NativeAppTarget target = resolveTarget(url);
+        if (target == null || !openInNativeApp(context, url, target)) {
             browserFallback.run();
         }
     }

@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
-import com.termux.app.link.GoogleAppLink;
+import com.termux.app.link.NativeAppLink;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 
@@ -85,17 +85,17 @@ public final class BrowserLinkContextMenuController {
     }
 
     void showLinkContextMenu(@NonNull String linkUrl, @Nullable String anchorText) {
-        GoogleAppLink.GoogleAppTarget googleAppTarget =
-            GoogleAppLink.resolveTarget(linkUrl);
+        NativeAppLink.NativeAppTarget nativeAppTarget =
+            NativeAppLink.resolveTarget(linkUrl);
 
         List<CharSequence> actions = new ArrayList<>();
         actions.add(mContext.getString(R.string.action_browser_copy_link_text));
         actions.add(mContext.getString(R.string.action_browser_copy_link_url));
         actions.add(mContext.getString(R.string.action_browser_open_link));
         actions.add(mContext.getString(R.string.action_browser_open_link_background));
-        if (googleAppTarget != null) {
-            actions.add(mContext.getString(R.string.action_browser_open_in_google_app,
-                googleAppTarget.getAppDisplayName()));
+        if (nativeAppTarget != null) {
+            actions.add(mContext.getString(R.string.action_browser_open_in_native_app,
+                nativeAppTarget.getAppDisplayName()));
         }
         actions.add(mContext.getString(R.string.action_browser_open_in_chrome));
         actions.add(mContext.getString(R.string.action_browser_create_session_for_link));
@@ -113,10 +113,10 @@ public final class BrowserLinkContextMenuController {
                     mActions.openLinkInBrowser(linkUrl);
                 } else if (selected.equals(mContext.getString(R.string.action_browser_open_link_background))) {
                     mActions.openLinkInBrowserBackground(linkUrl);
-                } else if (googleAppTarget != null && selected.equals(
-                    mContext.getString(R.string.action_browser_open_in_google_app,
-                        googleAppTarget.getAppDisplayName()))) {
-                    openLinkInGoogleApp(linkUrl, googleAppTarget);
+                } else if (nativeAppTarget != null && selected.equals(
+                    mContext.getString(R.string.action_browser_open_in_native_app,
+                        nativeAppTarget.getAppDisplayName()))) {
+                    openLinkInNativeApp(linkUrl, nativeAppTarget);
                 } else if (selected.equals(mContext.getString(R.string.action_browser_open_in_chrome))) {
                     ShareUtils.openUrlInChrome(mContext, linkUrl);
                 } else {
@@ -126,9 +126,9 @@ public final class BrowserLinkContextMenuController {
             }));
     }
 
-    private void openLinkInGoogleApp(@NonNull String linkUrl,
-                                     @NonNull GoogleAppLink.GoogleAppTarget googleAppTarget) {
-        if (!GoogleAppLink.openInGoogleApp(mContext, linkUrl, googleAppTarget)) {
+    private void openLinkInNativeApp(@NonNull String linkUrl,
+                                     @NonNull NativeAppLink.NativeAppTarget nativeAppTarget) {
+        if (!NativeAppLink.openInNativeApp(mContext, linkUrl, nativeAppTarget)) {
             mActions.openLinkInBrowser(linkUrl);
         }
     }

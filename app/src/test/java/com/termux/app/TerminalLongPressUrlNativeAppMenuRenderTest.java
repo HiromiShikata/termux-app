@@ -27,7 +27,7 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-public class TerminalLongPressUrlGoogleAppMenuRenderTest {
+public class TerminalLongPressUrlNativeAppMenuRenderTest {
 
     private static final int RENDER_WIDTH_PIXELS = 720;
 
@@ -40,7 +40,7 @@ public class TerminalLongPressUrlGoogleAppMenuRenderTest {
             TermuxActivity.longPressedUrlMenuItems(context, calendarUrl);
 
         String openInCalendarTitle =
-            context.getString(R.string.action_open_link_in_google_app, "Google Calendar");
+            context.getString(R.string.action_open_link_in_native_app, "Google Calendar");
         Assert.assertTrue("terminal long-press menu must contain the open-in-Google-Calendar option",
             containsTitle(items, openInCalendarTitle));
 
