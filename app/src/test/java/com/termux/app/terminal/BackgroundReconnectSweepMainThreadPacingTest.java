@@ -60,6 +60,12 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
 
     private static final int RUNNING_SHELL_PROCESS_ID = 4242;
 
+    private static final long STATUSLINE_CALL_TIME_MILLIS = 2_000L;
+
+    private static final long STATUSLINE_OUT_TIME_MILLIS = 1_500L;
+
+    private static final long STATUSLINE_REPLY_TIME_MILLIS = 1_000L;
+
     private TermuxActivity activity;
 
     private TermuxTerminalSessionActivityClient sessionActivityClient;
@@ -264,6 +270,7 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
     @Test
     public void backgroundReconnectSweepLetsAThrowingCreationsFailureReachTheCaller() throws Exception {
         layOutTheTerminalViewSoEveryBackgroundCreationInitializesAnEmulator();
+        armAPendingCallToTheOwnerOn(visibleSessions.get(0));
 
         runBackgroundReconnectSweep();
         drainMainThreadQueueToTheSweepHorizon();
@@ -275,6 +282,16 @@ public class BackgroundReconnectSweepMainThreadPacingTest {
             !throwablesSurfacedByTheSweep.isEmpty());
 
         assertEveryThrowableSurfacedByTheSweepIsTheNativeSubprocessLinkageFailure();
+    }
+
+    private void armAPendingCallToTheOwnerOn(TerminalSession session) {
+        SessionNewActivityStore store = activity.getSessionNewActivityStore();
+        store.recordStatuslineTimes(session.mSessionName, STATUSLINE_CALL_TIME_MILLIS,
+            STATUSLINE_OUT_TIME_MILLIS, STATUSLINE_REPLY_TIME_MILLIS);
+        assertTrue("the sweep materializes a replacement only for the session whose call to the owner "
+                + "is still unanswered, so without that state no creation reaches the native subprocess "
+                + "call and this case would assert against a sweep that never spawns anything",
+            store.pendingCallToUserSinceTimeMillis(session.mSessionName) != null);
     }
 
     @Test

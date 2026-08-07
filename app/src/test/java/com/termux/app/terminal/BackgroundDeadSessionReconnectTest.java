@@ -17,6 +17,7 @@ import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.JniSpawnCounter;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
@@ -106,14 +107,16 @@ public class BackgroundDeadSessionReconnectTest {
         int liveSessionCountBeforeTheReconnect = shellManager.mTermuxSessions.size();
 
         TerminalSession reconnectedBackgroundSession =
-            invokeReconnect(hiddenBackgroundDeadSession.getTerminalSession());
+            invokeReconnect(hiddenBackgroundDeadSession.getTerminalSession(), true);
 
         assertNull(
             "a hidden session holds no runtime resource at all, so a reconnect must not replace it with a "
                 + "live session. This assertion previously required the opposite, that a hidden session is "
                 + "reconnected with its emulator left uninitialized, and that contract is superseded: a "
                 + "session that is never reconnected cannot spawn a subprocess on the main thread either, "
-                + "so the freeze this test was written to prevent is prevented more strongly than before",
+                + "so the freeze this test was written to prevent is prevented more strongly than before. "
+                + "The caller here asks for the replacement to be materialized, which is the strongest form "
+                + "of the request, so the refusal must not depend on the caller declining materialization",
             reconnectedBackgroundSession);
         assertEquals(
             "a refused reconnect must add no live session object to the service session list, otherwise "
@@ -123,7 +126,8 @@ public class BackgroundDeadSessionReconnectTest {
     }
 
     @Test
-    public void reconnectingShownBackgroundDeadSessionAttemptsEagerEmulatorInitialization() throws Exception {
+    public void reconnectingShownBackgroundDeadSessionAttemptsEagerEmulatorInitializationWhenTheCallerAsksForIt()
+            throws Exception {
         TermuxSession displayedDeadSession = deadSession("displayed-session");
         TermuxSession shownBackgroundDeadSession = deadSession("shown-background-session");
         shellManager.mTermuxSessions.add(displayedDeadSession);
@@ -131,14 +135,39 @@ public class BackgroundDeadSessionReconnectTest {
         activity.getTerminalView().mTermSession = displayedDeadSession.getTerminalSession();
 
         try {
-            invokeReconnect(shownBackgroundDeadSession.getTerminalSession());
+            invokeReconnect(shownBackgroundDeadSession.getTerminalSession(), true);
             fail("a reconnected background session that is displayed (not hidden, project not collapsed) "
-                + "must still be eagerly initialized, which in this JVM test environment reaches "
+                + "and whose caller asked for the replacement to be materialized must still be eagerly "
+                + "initialized, which in this JVM test environment reaches "
                 + "TerminalSession.updateSize() -> JNI.createSubprocess() and fails to load the native "
                 + "library that only exists on a real device; that failure is the proof eager init ran");
         } catch (InvocationTargetException expected) {
             assertContainsJniEvidence(causeChainDescription(expected.getCause()));
         }
+    }
+
+    @Test
+    public void reconnectingShownBackgroundDeadSessionSpawnsNoSubprocessWhenTheCallerDidNotAskForIt()
+            throws Exception {
+        TermuxSession displayedDeadSession = deadSession("displayed-session");
+        TermuxSession shownBackgroundDeadSession = deadSession("shown-background-session");
+        shellManager.mTermuxSessions.add(displayedDeadSession);
+        shellManager.mTermuxSessions.add(shownBackgroundDeadSession);
+        activity.getTerminalView().mTermSession = displayedDeadSession.getTerminalSession();
+        int subprocessSpawnCountBeforeTheReconnect = JniSpawnCounter.createSubprocessCallCount();
+
+        TerminalSession reconnectedBackgroundSession =
+            invokeReconnect(shownBackgroundDeadSession.getTerminalSession(), false);
+
+        assertNotNull("declining to materialize the replacement must still produce the replacement "
+                + "session, otherwise the owner is left with a dead row that no later sweep revives",
+            reconnectedBackgroundSession);
+        assertEquals("a bulk sweep asks for no materialization, and this is the whole point of that "
+                + "request: the replacement must be created without forking a shell, so the reconnect "
+                + "must add no subprocess spawn at all. Before this change every reconnected background "
+                + "session was materialized here, and the spawn count grew with the size of the "
+                + "population the sweep walked, on the main thread that draws",
+            subprocessSpawnCountBeforeTheReconnect, JniSpawnCounter.createSubprocessCallCount());
     }
 
     private String causeChainDescription(Throwable throwable) {
@@ -161,11 +190,12 @@ public class BackgroundDeadSessionReconnectTest {
         }
     }
 
-    private TerminalSession invokeReconnect(TerminalSession deadSession) throws Exception {
+    private TerminalSession invokeReconnect(TerminalSession deadSession,
+                                            boolean eagerlyInitializeReplacement) throws Exception {
         Method method = TermuxTerminalSessionActivityClient.class.getDeclaredMethod(
-            "reconnectDeadSessionPreservingDisplayedSession", TerminalSession.class);
+            "reconnectDeadSessionPreservingDisplayedSession", TerminalSession.class, boolean.class);
         method.setAccessible(true);
-        return (TerminalSession) method.invoke(client, deadSession);
+        return (TerminalSession) method.invoke(client, deadSession, eagerlyInitializeReplacement);
     }
 
     private TermuxSession deadSession(String name) throws Exception {
