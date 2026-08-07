@@ -17,6 +17,45 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
         new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
+    private static final DiagnosticsBackgroundCycle NO_BACKGROUND_CYCLE =
+        new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList());
+
+    @Test
+    public void backgroundCycleGapsAreReportedSoAFrozenCycleIsVisibleAfterTheFact() {
+        DiagnosticsBackgroundCycle backgroundCycle = new DiagnosticsBackgroundCycle(412L, Arrays.asList(
+            new BackgroundCycleInterval(10_800_000L, REPORT_MILLIS, 60_000L, false),
+            new BackgroundCycleInterval(61_500L, REPORT_MILLIS, 60_000L, true)));
+
+        String text = new DiagnosticsReportBuilder().build(reportWith(
+            Collections.<DiagnosticsSessionLine>emptyList(), 0, 0, 32, 0, 0, false, true,
+            Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            NO_MAIN_THREAD_STALLS, 0L, backgroundCycle));
+
+        int sectionIndex = text.indexOf("Background cycle");
+        Assert.assertTrue("without this section a report captured after a long disconnection cannot say"
+            + " whether the cycle ran at all: " + text, sectionIndex >= 0);
+        String section = text.substring(sectionIndex);
+
+        Assert.assertTrue("how many cycles ran must be stated: " + section,
+            section.contains("Cycles run: 412"));
+        Assert.assertTrue("the longest gap must be stated so a freeze is measurable: " + section,
+            section.contains("10800000 ms against a scheduled 60000 ms"));
+        Assert.assertTrue("whether the activity was visible during the gap separates a backgrounded"
+            + " freeze from a foreground stall: " + section, section.contains("activity not visible"));
+        Assert.assertTrue("an ordinary gap must be listed after the long one: " + section,
+            section.indexOf("61500 ms") > section.indexOf("10800000 ms"));
+    }
+
+    @Test
+    public void backgroundCycleSectionSaysSoWhenNoGapHasBeenRecordedYet() {
+        String text = new DiagnosticsReportBuilder().build(reportWith(
+            Collections.<DiagnosticsSessionLine>emptyList(), 0, 0, 32, 0, 0, false, true,
+            Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            NO_MAIN_THREAD_STALLS, 0L, NO_BACKGROUND_CYCLE));
+
+        Assert.assertTrue("an empty list must read as no data rather than as a healthy cycle: " + text,
+            text.contains("Longest gaps between cycles: none recorded yet"));
+    }
 
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
                                          int countedTowardCap, int displayedCount, int maxCap,
@@ -38,12 +77,29 @@ public class DiagnosticsReportBuilderTest {
                                          DiagnosticsWorkCostLine bufferReflowCost,
                                          DiagnosticsMainThreadStalls mainThreadStalls,
                                          long processUptimeMillis) {
+        return reportWith(sessionLines, countedTowardCap, displayedCount, maxCap, openTabCount,
+            tabHistoryEntryCount, wakeLockHeld, foreground, events, memoryUsage,
+            backgroundOutputScanCost, bufferReflowCost, mainThreadStalls, processUptimeMillis,
+            NO_BACKGROUND_CYCLE);
+    }
+
+    private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
+                                         int countedTowardCap, int displayedCount, int maxCap,
+                                         int openTabCount, int tabHistoryEntryCount,
+                                         boolean wakeLockHeld, boolean foreground,
+                                         List<DiagnosticEvent> events,
+                                         DiagnosticsMemoryUsage memoryUsage,
+                                         DiagnosticsWorkCostLine backgroundOutputScanCost,
+                                         DiagnosticsWorkCostLine bufferReflowCost,
+                                         DiagnosticsMainThreadStalls mainThreadStalls,
+                                         long processUptimeMillis,
+                                         DiagnosticsBackgroundCycle backgroundCycle) {
         return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             countedTowardCap, displayedCount, maxCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
             memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
-            processUptimeMillis);
+            processUptimeMillis, backgroundCycle);
     }
 
     private DiagnosticsReport reportWithMainLooperQueue(DiagnosticsMainLooperQueue mainLooperQueue) {
@@ -51,7 +107,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
-            mainLooperQueue, 0L);
+            mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
     }
 
     private DiagnosticsReport reportWithForegroundOpenTagScanCost(DiagnosticsWorkCostLine cost) {
@@ -59,7 +115,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST, NO_MAIN_THREAD_STALLS,
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L);
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
     }
 
     @Test

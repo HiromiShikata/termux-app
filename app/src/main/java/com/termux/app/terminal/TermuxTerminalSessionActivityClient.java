@@ -41,6 +41,7 @@ import com.termux.app.diagnostics.BackgroundOutputScanCostCounterHolder;
 import com.termux.app.diagnostics.ForegroundOpenTagScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
+import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
@@ -1334,6 +1335,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private void refreshDisplayedSessionsForCallToUser() {
+        BackgroundCycleIntervalRecorderHolder.getInstance().recordCycle(System.currentTimeMillis(),
+            displayedSessionCallScanIntervalMillis(), mActivity.isVisible());
+
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
