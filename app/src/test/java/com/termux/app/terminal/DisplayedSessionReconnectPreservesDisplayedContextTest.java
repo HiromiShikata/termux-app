@@ -134,7 +134,8 @@ public class DisplayedSessionReconnectPreservesDisplayedContextTest {
         TerminalSession replacementSession = liveSessionNamed(DISPLAYED_SESSION_NAME);
         assertNotNull("this test only says something about carrying the owner's typing across the "
             + "reconnect if the reconnect really happened, so a live session named "
-            + DISPLAYED_SESSION_NAME + " must exist once the main-thread queue drains",
+            + DISPLAYED_SESSION_NAME + " must exist once the main-thread queue drains"
+            + caughtErrorsDescription(),
             replacementSession);
         assertNotSame("the reconnect must really have replaced the displayed session object, otherwise "
             + "nothing was carried across anything", displayedSession, replacementSession);
@@ -157,7 +158,7 @@ public class DisplayedSessionReconnectPreservesDisplayedContextTest {
         TerminalSession replacementSession = liveSessionNamed(DISPLAYED_SESSION_NAME);
         assertNotNull("the reconnect removes the dead displayed session before it creates its "
             + "replacement, so a live session named " + DISPLAYED_SESSION_NAME + " must exist once the "
-            + "main-thread queue drains", replacementSession);
+            + "main-thread queue drains" + caughtErrorsDescription(), replacementSession);
 
         assertSame("the terminal view is the owner's whole window onto the session, so after the "
                 + "displayed session is reconnected it must be attached to the live replacement rather "
@@ -220,6 +221,9 @@ public class DisplayedSessionReconnectPreservesDisplayedContextTest {
                 throwablesSurfacedByTheScan.add(nativeSubprocessUnavailableOffDevice);
             }
         }
+        throw failureFromCaughtErrors("the main-thread clock never reached uptime "
+            + targetUptimeMillis + " because all " + DRAIN_ATTEMPT_LIMIT
+            + " attempts to idle it threw");
     }
 
     private void idleMainThreadTasksDueNow() {
@@ -231,6 +235,25 @@ public class DisplayedSessionReconnectPreservesDisplayedContextTest {
                 throwablesSurfacedByTheScan.add(nativeSubprocessUnavailableOffDevice);
             }
         }
+        throw failureFromCaughtErrors("the tasks already due on the main thread never ran because all "
+            + DRAIN_ATTEMPT_LIMIT + " attempts to idle it threw");
+    }
+
+    private AssertionError failureFromCaughtErrors(String whatDidNotHappen) {
+        Throwable lastCaughtError = throwablesSurfacedByTheScan.isEmpty()
+            ? null
+            : throwablesSurfacedByTheScan.get(throwablesSurfacedByTheScan.size() - 1);
+        return new AssertionError(whatDidNotHappen + caughtErrorsDescription(), lastCaughtError);
+    }
+
+    private String caughtErrorsDescription() {
+        if (throwablesSurfacedByTheScan.isEmpty()) return "";
+        StringBuilder description =
+            new StringBuilder("; errors caught and stepped over while the scan ran:");
+        for (Throwable caughtError : throwablesSurfacedByTheScan) {
+            description.append(' ').append(caughtError);
+        }
+        return description.toString();
     }
 
     private Set<TerminalSession> liveSessions() {
