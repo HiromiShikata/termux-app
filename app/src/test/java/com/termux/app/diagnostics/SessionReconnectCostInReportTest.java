@@ -19,12 +19,16 @@ public class SessionReconnectCostInReportTest {
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
 
     private static String renderedReportWithNothingRecorded() {
+        return renderedReportWith(new DiagnosticsSessionReconnectCost(0, 0, 0, 0));
+    }
+
+    private static String renderedReportWith(DiagnosticsSessionReconnectCost sessionReconnectCost) {
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
-            new DiagnosticsSessionReconnectCost(0, 0, 0, 0),
+            sessionReconnectCost,
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()));
@@ -50,5 +54,25 @@ public class SessionReconnectCostInReportTest {
         Assert.assertTrue("a reconnect count of zero must read as measured-and-none rather than as a"
                 + " missing measurement. Actual report:\n" + renderedReport,
             renderedReport.substring(reconnectSectionIndex).contains("Count: 0"));
+    }
+
+    @Test
+    public void everyRecordedFigureReachesTheReportIncludingTheQueueDepthBehindTheSlowestReconnect() {
+        String renderedReport = renderedReportWith(new DiagnosticsSessionReconnectCost(20, 1480, 210, 17));
+
+        String section = renderedReport.substring(
+            renderedReport.indexOf("Dead session reconnect on the main thread"));
+
+        Assert.assertTrue("how many reconnects ran is what turns a total into a per-reconnect cost."
+                + " Actual section:\n" + section, section.contains("Count: 20"));
+        Assert.assertTrue("the accumulated main-thread time is the figure the stall section cannot"
+                + " supply for sub-threshold work. Actual section:\n" + section,
+            section.contains("Total: 1480 ms"));
+        Assert.assertTrue("the longest single reconnect says whether one reconnect alone is heavy."
+                + " Actual section:\n" + section, section.contains("Max: 210 ms"));
+        Assert.assertTrue("a single slow reconnect and a burst that occupies the main thread once per"
+                + " session read the same in a total, so the queue depth behind the slowest one is what"
+                + " separates them and it must survive into the report. Actual section:\n" + section,
+            section.contains("Sessions still queued at max: 17"));
     }
 }
