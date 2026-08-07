@@ -60,9 +60,9 @@ import com.termux.shared.data.DataUtils;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.shell.command.ExecutionCommand.Runner;
 import com.termux.shared.shell.command.ExecutionCommand.ShellCreateMode;
+import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
-import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalSessionClient;
 
 import java.io.File;
@@ -824,8 +824,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     static void recordShellInputLostOnSessionBeingReplaced(
             @NonNull ReplacedSessionShellInputRecorder recorder,
             @Nullable String sessionName,
-            @Nullable ShellInputDeliveryRecord deliveryRecord) {
-        if (deliveryRecord == null) return;
+            @NonNull ShellInputDeliveryRecord deliveryRecord) {
         recorder.recordSessionBeingReplaced(sessionName,
             deliveryRecord.getBytesAcceptedButNotWrittenYet(),
             deliveryRecord.isWriterRunning(),

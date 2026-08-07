@@ -48,12 +48,18 @@ public class TermuxServiceReplacedSessionShellInputRecordingTest {
     }
 
     @Test
-    public void aReplacedSessionWithNoDeliveryRecordIsIgnoredRatherThanCountedAsAnEpisode() {
+    public void aReplacedSessionThatWroteEverythingItAcceptedIsNotCountedAsAnEpisode() {
+        ShellInputDeliveryRecord deliveryRecord = new ShellInputDeliveryRecord();
+        deliveryRecord.recordWriterStarted();
+        deliveryRecord.recordBytesAcceptedForDelivery(512);
+        deliveryRecord.recordBytesWrittenToTheShell(512);
         ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
 
-        TermuxService.recordShellInputLostOnSessionBeingReplaced(recorder, "host-unknown", null);
+        TermuxService.recordShellInputLostOnSessionBeingReplaced(recorder, "host-healthy", deliveryRecord);
 
-        Assert.assertEquals(0, recorder.snapshot().getSessionsReplacedWithInputUndelivered());
+        Assert.assertEquals("an ordinary replacement of a session that lost nothing must not be counted,"
+            + " otherwise the count says an episode happened on every reconnect",
+            0, recorder.snapshot().getSessionsReplacedWithInputUndelivered());
     }
 
     @Test
