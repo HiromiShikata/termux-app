@@ -25,7 +25,10 @@ public final class DiagnosticsReportBuilder {
 
     private static final int OMISSION_NOTE_BUDGET_CHARACTERS = 96;
 
-    private static final int MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS = 4700;
+    private static final int SECTION_CEILING_HEADROOM_CHARACTERS = 300;
+
+    private static final int MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS =
+        PASTE_LIMIT_CHARACTERS - SECTION_CEILING_HEADROOM_CHARACTERS;
 
     @NonNull
     public String build(@NonNull DiagnosticsReport report) {
