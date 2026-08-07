@@ -23,6 +23,8 @@ public final class DiagnosticsReportBuilder {
 
     private static final int PENDING_MESSAGE_LINE_BUDGET_CHARACTERS = 1000;
 
+    private static final int UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS = 600;
+
     private static final int OMISSION_NOTE_BUDGET_CHARACTERS = 96;
 
     private static final int SECTION_CEILING_HEADROOM_CHARACTERS = 300;
@@ -40,6 +42,9 @@ public final class DiagnosticsReportBuilder {
             .append(" (").append(report.getVersionCode()).append(")\n");
 
         builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
+
+        builder.append('\n');
+        appendUndeliveredShellInputSection(builder, report);
 
         builder.append('\n');
         appendMainThreadCostSection(builder, report);
@@ -82,6 +87,36 @@ public final class DiagnosticsReportBuilder {
         builder.append("  Java heap max: ").append(memoryUsage.getJavaHeapMaxMegabytes()).append(" MB\n");
         builder.append("  Native heap allocated: ")
             .append(memoryUsage.getNativeHeapAllocatedMegabytes()).append(" MB\n");
+    }
+
+    private void appendUndeliveredShellInputSection(@NonNull StringBuilder builder,
+                                                    @NonNull DiagnosticsReport report) {
+        builder.append("Input accepted from the user that never reached the shell\n");
+        List<String> undeliveredLines = new ArrayList<>();
+        for (DiagnosticsSessionLine sessionLine : report.getSessionLines()) {
+            DiagnosticsShellInputDelivery delivery = sessionLine.getShellInputDelivery();
+            if (delivery.getBytesAcceptedButNotWrittenYet() == 0 && delivery.isWriterRunning()) {
+                continue;
+            }
+            undeliveredLines.add("  " + sessionLine.getName() + ": "
+                + delivery.getBytesAcceptedButNotWrittenYet() + "B of "
+                + delivery.getBytesAcceptedForDelivery() + "B accepted, writer "
+                + describeWriterState(delivery));
+        }
+        if (undeliveredLines.isEmpty()) {
+            builder.append("  None: every session wrote everything it accepted\n");
+            return;
+        }
+        appendLinesWithinBudget(builder, undeliveredLines, UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS);
+    }
+
+    @NonNull
+    private String describeWriterState(@NonNull DiagnosticsShellInputDelivery delivery) {
+        if (delivery.isWriterRunning()) {
+            return "running";
+        }
+        String writerStoppedReason = delivery.getWriterStoppedReason();
+        return "stopped" + (writerStoppedReason == null ? "" : " (" + writerStoppedReason + ")");
     }
 
     private void appendMainThreadCostSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
