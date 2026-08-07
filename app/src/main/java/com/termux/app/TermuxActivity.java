@@ -674,6 +674,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mSessionReconnectScheduler.stop();
 
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.onDestroy();
+
         for (ActivityComponent component : mActivityComponents)
             component.onActivityDestroy();
 
