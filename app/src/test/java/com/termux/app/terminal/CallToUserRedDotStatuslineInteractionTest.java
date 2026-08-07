@@ -39,8 +39,8 @@ public class CallToUserRedDotStatuslineInteractionTest {
         long replyClockMillis = nowMillis - 2L * 60L * 1000L;
 
         SessionNewActivityStore store = new SessionNewActivityStore();
-        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, nowMillis, reason));
+        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason, callCycleKey) ->
+            store.recordExplicitCall(sessionKey, nowMillis, reason, callCycleKey));
 
         controller.onSessionTextChanged(SESSION,
             "build finished\n<call-to-user>" + REASON + "</call-to-user>");
@@ -63,8 +63,8 @@ public class CallToUserRedDotStatuslineInteractionTest {
         SessionNewActivityStore store = new SessionNewActivityStore(persistence);
 
         long callTagMillis = 12L * 60L * 60L * 1000L + 30L * 1000L + 700L;
-        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, callTagMillis, reason));
+        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason, callCycleKey) ->
+            store.recordExplicitCall(sessionKey, callTagMillis, reason, callCycleKey));
         controller.onSessionTextChanged(SESSION,
             "build finished\n<call-to-user>" + REASON + "</call-to-user>");
 
@@ -89,8 +89,8 @@ public class CallToUserRedDotStatuslineInteractionTest {
         long nowMillis = replyClockMillis + 60L * 1000L;
 
         SessionNewActivityStore store = new SessionNewActivityStore();
-        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, callScanMillis, reason));
+        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason, callCycleKey) ->
+            store.recordExplicitCall(sessionKey, callScanMillis, reason, callCycleKey));
 
         controller.onSessionTextChanged(SESSION,
             "build finished\n<call-to-user>" + REASON + "</call-to-user>");
@@ -110,8 +110,8 @@ public class CallToUserRedDotStatuslineInteractionTest {
         long tagScanWallClockMillis = outTokenMillis;
 
         SessionNewActivityStore store = new SessionNewActivityStore();
-        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason) ->
-            store.recordExplicitCall(sessionKey, tagScanWallClockMillis, reason));
+        CallToUserTagController controller = new CallToUserTagController((sessionKey, reason, callCycleKey) ->
+            store.recordExplicitCall(sessionKey, tagScanWallClockMillis, reason, callCycleKey));
         controller.onSessionTextChanged(SESSION,
             "build finished\n<call-to-user>" + REASON + "</call-to-user>");
         Assert.assertEquals(SessionNewActivityTier.RED, store.tierFor(SESSION));

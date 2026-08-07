@@ -1,12 +1,14 @@
 package com.termux.app.terminal;
 
+import com.termux.app.outputtag.OutputTagOccurrence;
+
 import java.util.HashMap;
 import java.util.Map;
 
 public final class CallToUserTagController {
 
     public interface CallTrigger {
-        void onCallToUser(String sessionKey, String reason);
+        void onCallToUser(String sessionKey, String reason, String callCycleKey);
     }
 
     private final CallTrigger callTrigger;
@@ -21,8 +23,8 @@ public final class CallToUserTagController {
         if (sessionKey == null) return;
 
         CallToUserTagScanner scanner = scannerForSession(sessionKey);
-        for (String reason : scanner.newReasons(screenText)) {
-            callTrigger.onCallToUser(sessionKey, reason);
+        for (OutputTagOccurrence call : scanner.newCalls(screenText)) {
+            callTrigger.onCallToUser(sessionKey, call.getValue(), call.getDeduplicationKey());
         }
     }
 

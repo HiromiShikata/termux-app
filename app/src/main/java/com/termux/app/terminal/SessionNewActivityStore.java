@@ -30,6 +30,7 @@ public class SessionNewActivityStore {
     private final Map<String, List<String>> mUnacknowledgedCallReasonsByName = new HashMap<>();
     private final Map<String, Long> mUnacknowledgedCallReasonsRecordedTimeMillisByName = new HashMap<>();
     private final Map<String, List<String>> mAcknowledgedCallReasonsByName = new HashMap<>();
+    private final Map<String, List<String>> mRecordedCallCycleKeysByName = new HashMap<>();
     private final Map<String, Long> mLastSeenTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mLastUserInputTimeMillisByName = new HashMap<>();
     private final Map<String, Long> mStatuslineCallTimeMillisByName = new HashMap<>();
@@ -68,14 +69,19 @@ public class SessionNewActivityStore {
             if (state.getUnacknowledgedCallReasons() != null) {
                 mUnacknowledgedCallReasonsByName.put(state.getSessionName(),
                     new ArrayList<>(state.getUnacknowledgedCallReasons()));
+                rememberRecordedCallCycleKeys(state.getSessionName(),
+                    state.getUnacknowledgedCallReasons());
                 if (!state.getUnacknowledgedCallReasons().isEmpty()
                     && state.getLastExplicitCallTimeMillis() != null)
                     mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(state.getSessionName(),
                         state.getLastExplicitCallTimeMillis());
             }
-            if (state.getAcknowledgedCallReasons() != null)
+            if (state.getAcknowledgedCallReasons() != null) {
                 mAcknowledgedCallReasonsByName.put(state.getSessionName(),
                     new ArrayList<>(state.getAcknowledgedCallReasons()));
+                rememberRecordedCallCycleKeys(state.getSessionName(),
+                    state.getAcknowledgedCallReasons());
+            }
             if (state.getLastSeenTimeMillis() != null)
                 mLastSeenTimeMillisByName.put(state.getSessionName(), state.getLastSeenTimeMillis());
             if (state.getLastUserInputTimeMillis() != null)
@@ -104,9 +110,17 @@ public class SessionNewActivityStore {
 
     public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
                                    @NonNull String reason) {
+        recordExplicitCall(sessionName, explicitCallTimeMillis, reason, reason);
+    }
+
+    public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
+                                   @NonNull String reason, @NonNull String callCycleKey) {
         String cappedReason = SessionNewActivityStateCaps.capReason(reason);
-        if (!cappedReason.trim().isEmpty() && isAlreadyKnownCall(sessionName, cappedReason)) {
-            return;
+        if (!cappedReason.trim().isEmpty()) {
+            if (isAlreadyRecordedCallCycle(sessionName, callCycleKey)) {
+                return;
+            }
+            rememberRecordedCallCycleKey(sessionName, callCycleKey);
         }
         mLastExplicitCallTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         mLastExplicitCallReasonByName.put(sessionName, cappedReason);
@@ -129,18 +143,43 @@ public class SessionNewActivityStore {
         }
     }
 
-    private boolean isAlreadyKnownCall(@NonNull String sessionName, @NonNull String reason) {
-        return containsCanonically(mUnacknowledgedCallReasonsByName.get(sessionName), reason)
-            || containsCanonically(mAcknowledgedCallReasonsByName.get(sessionName), reason);
+    private boolean isAlreadyRecordedCallCycle(@NonNull String sessionName,
+                                               @NonNull String callCycleKey) {
+        return containsCanonically(mRecordedCallCycleKeysByName.get(sessionName), callCycleKey);
     }
 
-    private static boolean containsCanonically(@Nullable List<String> reasons, @NonNull String reason) {
-        if (reasons == null) {
+    private void rememberRecordedCallCycleKey(@NonNull String sessionName,
+                                              @NonNull String callCycleKey) {
+        List<String> recordedKeys = mRecordedCallCycleKeysByName.get(sessionName);
+        if (recordedKeys == null) {
+            recordedKeys = new ArrayList<>();
+            mRecordedCallCycleKeysByName.put(sessionName, recordedKeys);
+        }
+        recordedKeys.add(callCycleKey);
+        capTrailing(recordedKeys);
+    }
+
+    private void rememberRecordedCallCycleKeys(@NonNull String sessionName,
+                                               @NonNull List<String> callCycleKeys) {
+        for (String callCycleKey : callCycleKeys) {
+            if (callCycleKey == null || callCycleKey.trim().isEmpty()) {
+                continue;
+            }
+            if (isAlreadyRecordedCallCycle(sessionName, callCycleKey)) {
+                continue;
+            }
+            rememberRecordedCallCycleKey(sessionName, callCycleKey);
+        }
+    }
+
+    private static boolean containsCanonically(@Nullable List<String> knownKeys,
+                                               @NonNull String key) {
+        if (knownKeys == null) {
             return false;
         }
-        String canonicalReason = canonicalReasonKey(reason);
-        for (String knownReason : reasons) {
-            if (knownReason != null && canonicalReasonKey(knownReason).equals(canonicalReason)) {
+        String canonicalKey = canonicalReasonKey(key);
+        for (String knownKey : knownKeys) {
+            if (knownKey != null && canonicalReasonKey(knownKey).equals(canonicalKey)) {
                 return true;
             }
         }
@@ -148,14 +187,15 @@ public class SessionNewActivityStore {
     }
 
     /**
-     * The reflow-insensitive identity of a call-to-user reason used for deduplication only (the
+     * The reflow-insensitive identity of a call-to-user cycle key used for deduplication only (the
      * stored and displayed reason text keeps its original whitespace). The same {@code
      * <call-to-user>} tag re-rendered after a terminal column resize or a scrollback reflow wraps its
      * inner text across different line boundaries, so a re-scan on the load/reload path produces the
-     * same reason with interior newlines and spaces shifted. Collapsing every run of whitespace to a
-     * single space and trimming yields a stable key, so a reloaded session whose call-to-user was
-     * already recorded or acknowledged is recognized as already known and {@code recordExplicitCall}
-     * stays a no-op — it does not bump the timestamp or re-arm the red tier.
+     * same cycle key with interior newlines and spaces shifted. Collapsing every run of whitespace to
+     * a single space and trimming yields a stable key, so a reloaded session whose call-to-user cycle
+     * was already recorded is recognized as already known and {@code recordExplicitCall} stays a
+     * no-op — it does not bump the timestamp or re-arm the red tier. A genuinely new cycle carries a
+     * different key even when its reason text is identical, so it is recorded and does re-arm.
      */
     @NonNull
     private static String canonicalReasonKey(@NonNull String reason) {
@@ -386,6 +426,7 @@ public class SessionNewActivityStore {
         mUnacknowledgedCallReasonsByName.remove(sessionName);
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
         mAcknowledgedCallReasonsByName.remove(sessionName);
+        mRecordedCallCycleKeysByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mLastUserInputTimeMillisByName.remove(sessionName);
         mStatuslineCallTimeMillisByName.remove(sessionName);
@@ -406,6 +447,7 @@ public class SessionNewActivityStore {
         mUnacknowledgedCallReasonsByName.remove(sessionName);
         mUnacknowledgedCallReasonsRecordedTimeMillisByName.remove(sessionName);
         mAcknowledgedCallReasonsByName.remove(sessionName);
+        mRecordedCallCycleKeysByName.remove(sessionName);
         mLastSeenTimeMillisByName.remove(sessionName);
         mReconnectingStartTimeMillisByName.remove(sessionName);
         mLastCallToUserTagScanCallTimeMillisByName.remove(sessionName);
@@ -423,6 +465,7 @@ public class SessionNewActivityStore {
         changed |= mUnacknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
         changed |= mUnacknowledgedCallReasonsRecordedTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mAcknowledgedCallReasonsByName.keySet().retainAll(knownSessionNames);
+        changed |= mRecordedCallCycleKeysByName.keySet().retainAll(knownSessionNames);
         changed |= mLastSeenTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mLastUserInputTimeMillisByName.keySet().retainAll(knownSessionNames);
         changed |= mStatuslineCallTimeMillisByName.keySet().retainAll(knownSessionNames);
