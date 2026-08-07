@@ -492,7 +492,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String transcriptText = screen.getTranscriptText();
         SessionOutputScanText scanText = new SessionOutputScanText(session.mSessionName,
             session.mHandle, transcriptText,
-            SessionStatuslineScanText.reusingActiveBufferTranscript(emulator, screen, transcriptText));
+            SessionStatuslineScanText.visibleScreenOf(emulator, screen));
         BackgroundOutputScanCostCounterHolder.getInstance()
             .record(System.nanoTime() - scanStartNanos, transcriptRows);
         return scanText;
