@@ -7,6 +7,16 @@
     android:gravity="center_vertical"
     android:orientation="horizontal">
 
+    <ImageButton
+        android:id="@+id/toolbar_text_input_history_restore_button"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:focusable="false"
+        android:paddingHorizontal="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_toolbar_input_history_restore" />
+
     <com.termux.app.terminal.MaxHeightScrollView
         android:id="@+id/toolbar_text_input_history_entry_scroll"
         android:layout_width="0dp"

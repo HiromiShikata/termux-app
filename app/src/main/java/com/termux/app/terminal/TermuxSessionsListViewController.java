@@ -28,6 +28,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
 import com.termux.app.browser.TermuxBrowserController;
@@ -77,12 +78,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private static final int DEFINITION_TITLE_ALPHA = 0xA6;
     static final int SUBDUED_TEXT_ALPHA = 0x99;
     private static final float BELL_NOTIFICATION_LABEL_RELATIVE_SIZE = 0.75f;
-    private static final float EXPLICIT_CALL_REASON_RELATIVE_SIZE = 0.5f;
 
     private static final String PROJECT_EXPANDED_INDICATOR = "▾";
     private static final String PROJECT_COLLAPSED_INDICATOR = "▸";
-
-    private static final String EXPLICIT_CALL_REASON_PREFIX = "⚠ ";
 
     static final long REFRESH_DEBOUNCE_WINDOW_MILLIS = 200L;
 
@@ -340,7 +338,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         return mHierarchyBuilder.build(sessionNames, mEntries,
             mActivity.getString(R.string.session_list_na_group_header),
-            alwaysNaSessionNames());
+            alwaysNaSessionNames(), userRemovedSessionNames());
     }
 
     @NonNull
@@ -350,6 +348,15 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             return Collections.emptySet();
         }
         return preferences.getAlwaysNaSessionNames();
+    }
+
+    @NonNull
+    private Set<String> userRemovedSessionNames() {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) {
+            return Collections.emptySet();
+        }
+        return preferences.getUserRemovedSessionNames();
     }
 
     @NonNull
@@ -435,7 +442,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             String.valueOf(sessionAtRow.getExitStatus()),
             nullToEmpty(sessionAtRow.getTitle()),
             buildTimestampLine(sessionAtRow.mSessionName),
-            explicitCallReasonLabel(sessionRow),
             String.valueOf(showDivider),
             String.valueOf(reconnectingIndicatorVisible(sessionAtRow.mSessionName)));
     }
@@ -488,17 +494,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
     @NonNull
     public List<Integer> getSessionIndexesOfRowsTheOwnerCanSee() {
-        List<Integer> sessionIndexes = new ArrayList<>();
         List<SessionHierarchyRow> rowsTheOwnerCanSee = SessionHierarchyBuilder.filterCollapsedProjectSessions(
             SessionHierarchyBuilder.filterHiddenSessions(buildAllRows(), sessionNamesByIndex(),
                 disabledSessionNames()), mCollapsedProjectKeys);
-        for (SessionHierarchyRow row : rowsTheOwnerCanSee) {
-            if (row.isHeader()) {
-                continue;
-            }
-            sessionIndexes.add(row.getSessionIndex());
-        }
-        return sessionIndexes;
+        return SessionHierarchyBuilder.visibleSessionIndexes(rowsTheOwnerCanSee);
     }
 
     public int getNextVisibleSessionIndex(int currentSessionIndex, boolean forward) {
@@ -1292,15 +1291,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         styled.setSpan(new RelativeSizeSpan(BELL_NOTIFICATION_LABEL_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
-    static void applyExplicitCallReasonStyling(@NonNull SpannableString styled, int start, int end,
-                                                @NonNull StyleSpan boldSpan) {
-        if (start < 0 || end <= start) {
-            return;
-        }
-        styled.setSpan(new RelativeSizeSpan(EXPLICIT_CALL_REASON_RELATIVE_SIZE), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        styled.setSpan(boldSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-    }
-
     @SuppressLint("SetTextI18n")
     private void bindSessionView(@NonNull SessionHierarchyRow row, @NonNull View sessionRowView, int position) {
         applySessionRowGroupDividerVisibility(sessionRowView, position);
@@ -1339,10 +1329,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
 
         String bellNotificationLabelPart = buildBellNotificationLabel(sessionRow);
         String timestampLine = buildTimestampLine(sessionAtRow.mSessionName);
-        String explicitCallReasonPart = explicitCallReasonLabel(sessionRow);
 
         SessionInfoBlock sessionInfoBlock = SessionInfoBlock.compose(bellNotificationLabelPart, sessionNamePart,
-            "", definitionTitle, sessionTitle, explicitCallReasonPart);
+            "", definitionTitle, sessionTitle);
 
         bindSessionRowTimes(sessionRowView, timestampLine);
         bindSessionRowReconnectingIndicator(sessionRowView, sessionAtRow.mSessionName);
@@ -1355,8 +1344,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         int definitionTitleEnd = sessionInfoBlock.endOf(SessionInfoLine.DEFINITION_TITLE);
         int sessionTitleStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_TITLE);
         int sessionTitleEnd = sessionInfoBlock.endOf(SessionInfoLine.SESSION_TITLE);
-        int explicitCallReasonStart = sessionInfoBlock.startOf(SessionInfoLine.EXPLICIT_CALL_REASON);
-        int explicitCallReasonEnd = sessionInfoBlock.endOf(SessionInfoLine.EXPLICIT_CALL_REASON);
 
         String fullSessionTitle = sessionInfoBlock.text();
         SpannableString fullSessionTitleStyled = new SpannableString(fullSessionTitle);
@@ -1375,11 +1362,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
         if (sessionTitleStart >= 0) {
             fullSessionTitleStyled.setSpan(italicSpan, sessionTitleStart, sessionTitleEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        if (explicitCallReasonStart >= 0) {
-            int reasonColor = ContextCompat.getColor(mActivity, R.color.session_explicit_call_reason_text);
-            applyExplicitCallReasonStyling(fullSessionTitleStyled, explicitCallReasonStart, explicitCallReasonEnd, boldSpan);
-            fullSessionTitleStyled.setSpan(new ForegroundColorSpan(reasonColor), explicitCallReasonStart, explicitCallReasonEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         sessionTitleView.setText(fullSessionTitleStyled);
 
@@ -1405,7 +1387,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
             false, ContextCompat.getColor(mActivity, R.color.session_active_indicator));
 
         SessionInfoBlock sessionInfoBlock = SessionInfoBlock.compose("", sessionName, "",
-            definitionTitleOrEmpty(sessionName), "", "");
+            definitionTitleOrEmpty(sessionName), "");
         SpannableString styledSessionInfo = new SpannableString(sessionInfoBlock.text());
         int sessionNameStart = sessionInfoBlock.startOf(SessionInfoLine.SESSION_NAME);
         if (sessionNameStart >= 0) {
@@ -1572,26 +1554,6 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                 sessionName, mActivity.getSessionNewActivityStore());
     }
 
-    @NonNull
-    private String explicitCallReasonLabel(@NonNull SessionRow sessionRow) {
-        if (sessionRow.getTier() != SessionNewActivityTier.RED) {
-            return "";
-        }
-        String sessionName = sessionRow.getName();
-        if (sessionName.isEmpty()) {
-            return "";
-        }
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) {
-            return "";
-        }
-        String reason = store.getLastExplicitCallReason(sessionName);
-        if (reason.isEmpty()) {
-            return "";
-        }
-        return EXPLICIT_CALL_REASON_PREFIX + reason;
-    }
-
     private void applyBellNotificationIcon(@NonNull TextView sessionTitleView, @NonNull SessionRow sessionRow) {
         int indicatorDrawableRes = newActivityIndicatorDrawableRes(sessionRow.getTier());
         sessionTitleView.setCompoundDrawablesRelativeWithIntrinsicBounds(indicatorDrawableRes, 0, 0, 0);
@@ -1669,7 +1631,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         }
     }
 
-    private void openDefinitionBackedSession(@Nullable String sessionName) {
+    public void openDefinitionBackedSession(@Nullable String sessionName) {
         if (sessionName == null || sessionName.isEmpty()) {
             return;
         }
@@ -1685,6 +1647,20 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         if (mSessionClickHost != null) {
             mSessionClickHost.onSessionSelected();
         }
+        displayTheSessionTheOwnerOpened(sessionName);
+    }
+
+    private void displayTheSessionTheOwnerOpened(@NonNull String sessionName) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) {
+            return;
+        }
+        TermuxSession openedSession = service.getTermuxSessionForSessionName(sessionName);
+        if (openedSession == null) {
+            return;
+        }
+        mActivity.getTermuxTerminalSessionClient()
+            .switchToSessionReconnectingIfDead(openedSession.getTerminalSession());
     }
 
     private boolean reconnectFailed(@Nullable String sessionName) {

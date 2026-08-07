@@ -136,13 +136,10 @@ public class ShortcutFlowLayoutWrapVisibilityTest {
 
     private List<SessionShortcut> renderOrderShortcutsWithSecretaryAndManyProjects() {
         List<SessionDefinitionEntry> entries = new ArrayList<>();
-        Set<String> presentSessionNames = new LinkedHashSet<>();
-        presentSessionNames.add("secretary");
         for (int index = 0; index < 12; index++) {
             String projectLabel = "project" + index;
             entries.add(new SessionDefinitionEntry(projectLabel, "story",
                 Collections.singletonList("https://example.test/" + index)));
-            presentSessionNames.add(projectLabel + "pm");
         }
         Set<String> alwaysNaSessionNames = new LinkedHashSet<>();
         alwaysNaSessionNames.add("secretary");
@@ -151,8 +148,7 @@ public class ShortcutFlowLayoutWrapVisibilityTest {
             new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
-        return SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts,
-            presentSessionNames);
+        return SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
     }
 
     private static View fixedSizeChild(Context context) {

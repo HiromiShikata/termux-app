@@ -77,7 +77,7 @@ public class SessionShortcutBarLiveResolutionTest {
     }
 
     @Test
-    public void compositeConfiguredAlwaysNaSessionThatIsNotLiveRendersNoButton() throws Exception {
+    public void compositeConfiguredAlwaysNaSessionThatIsNotLiveStillRendersItsButton() throws Exception {
         String url = "https://github.com/HiromiShikata/secretary";
         shellManager.mTermuxSessions.add(session("uminopm"));
         List<SessionDefinitionEntry> entries = Collections.singletonList(
@@ -86,7 +86,9 @@ public class SessionShortcutBarLiveResolutionTest {
 
         List<String> labels = renderedShortcutLabels(alwaysNa, entries);
 
-        assertEquals(Collections.singletonList("umino"), labels);
+        assertEquals("a pinned composite name whose session is not live still renders its button, so"
+                + " the owner can reach the session without opening it by another route first",
+            Arrays.asList("umino", "umino/story"), labels);
     }
 
     private List<String> renderedShortcutLabels(Set<String> alwaysNaSessionNames,
@@ -97,19 +99,11 @@ public class SessionShortcutBarLiveResolutionTest {
         }
         List<SessionShortcut> rightToLeftShortcuts =
             planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries, liveSessionNames);
-        Set<String> presentSessionNames = new LinkedHashSet<>();
-        for (SessionShortcut shortcut : rightToLeftShortcuts) {
-            if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {
-                presentSessionNames.add(shortcut.getTargetSessionName());
-            }
-        }
         List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderPresentShortcuts(rightToLeftShortcuts, presentSessionNames);
+            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
         List<String> labels = new ArrayList<>();
         for (SessionShortcut shortcut : renderOrderShortcuts) {
-            if (service.getTermuxSessionForSessionName(shortcut.getTargetSessionName()) != null) {
-                labels.add(shortcut.getLabel());
-            }
+            labels.add(shortcut.getLabel());
         }
         return labels;
     }

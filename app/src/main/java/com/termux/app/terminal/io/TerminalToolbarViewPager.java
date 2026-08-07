@@ -103,10 +103,14 @@ public class TerminalToolbarViewPager {
                 if (text != null) editText.setText(text);
             }
 
+            ImageButton sendButton = textInputRow.findViewById(R.id.terminal_toolbar_enter_button);
+            final TerminalEnterKeyController enterKeyController =
+                new TerminalEnterKeyController(mActivity, sendButton);
+
             editText.setOnEditorActionListener((v, actionId, event) -> {
                 boolean shouldSubmit = ToolbarTextInputSubmitDecision.shouldSubmitForEditorAction(actionId, event != null);
                 if (shouldSubmit) {
-                    submitTextInput(editText);
+                    enterKeyController.submit(editText, this);
                 }
                 return shouldSubmit;
             });
@@ -115,7 +119,7 @@ public class TerminalToolbarViewPager {
                 if (keyCode == KeyEvent.KEYCODE_ENTER
                     && event.getAction() == KeyEvent.ACTION_DOWN
                     && event.hasNoModifiers()) {
-                    submitTextInput(editText);
+                    enterKeyController.submit(editText, this);
                     return true;
                 }
                 return false;
@@ -123,33 +127,26 @@ public class TerminalToolbarViewPager {
 
             ImageButton historyButton = textInputRow.findViewById(R.id.terminal_toolbar_text_input_history_button);
             historyButton.setOnClickListener(v -> showSubmittedTextInputHistory(editText));
-
-            ImageButton sendButton = textInputRow.findViewById(R.id.terminal_toolbar_enter_button);
-            new TerminalEnterKeyController(mActivity, sendButton);
-        }
-
-        void submitTextInput(final EditText editText) {
-            writeTextInputToSession(editText, true);
         }
 
         public boolean commitTextInputToTerminal(final EditText editText) {
-            return writeTextInputToSession(editText, false);
-        }
-
-        private boolean writeTextInputToSession(final EditText editText, boolean submitWhenEmpty) {
             TerminalSession session = mActivity.getCurrentSession();
             boolean ownerContentSubmitted = false;
             if (session != null) {
                 String submittedTextInput = editText.getText().toString();
                 addSubmittedTextInputToHistory(submittedTextInput);
                 if (session.isRunning()) {
-                    if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput, submitWhenEmpty)) {
-                        session.write(ToolbarTextInputEncoder.textToSend(submittedTextInput, submitWhenEmpty));
+                    if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput)) {
+                        session.getEmulator().paste(ToolbarTextInputEncoder.textToSend(submittedTextInput));
                         recordUserInputForSession(session);
                         ownerContentSubmitted = true;
                     }
                 } else if (mActivity.getTermuxTerminalSessionClient().decideFinishedSessionEnterAction(session).isReconnect()) {
-                    mActivity.getTermuxTerminalSessionClient().reconnectFinishedSessionInPlace(session, submittedTextInput);
+                    boolean reconnected = mActivity.getTermuxTerminalSessionClient()
+                        .reconnectFinishedSessionInPlace(session, submittedTextInput);
+                    if (ReconnectSubmitReplyDecision.shouldRecordReply(reconnected, submittedTextInput)) {
+                        recordUserInputForSession(mActivity.getCurrentSession());
+                    }
                 } else {
                     mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
                 }
@@ -159,7 +156,7 @@ public class TerminalToolbarViewPager {
             return ownerContentSubmitted;
         }
 
-        private void recordUserInputForSession(@NonNull TerminalSession session) {
+        private void recordUserInputForSession(@Nullable TerminalSession session) {
             SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
             if (store == null) return;
             boolean recorded = new SessionReplyTimeRecorder(store)
@@ -178,14 +175,17 @@ public class TerminalToolbarViewPager {
                 return;
             }
 
+            final AlertDialog[] openDialog = new AlertDialog[1];
             final SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-                mActivity, mSubmittedTextInputHistory, this::persistPinnedTextInputHistory);
-            DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
+                mActivity, mSubmittedTextInputHistory, this::persistPinnedTextInputHistory,
+                entry -> {
+                    HistoryEntryRestore.into(editText, entry);
+                    openDialog[0].dismiss();
+                });
+            openDialog[0] = DialogUtils.showDismissibleOnTouchOutside(new AlertDialog.Builder(mActivity)
                 .setTitle(R.string.title_toolbar_text_input_history_dialog)
-                .setAdapter(adapter, (dialog, which) -> {
-                    editText.setText(adapter.getItem(which));
-                    editText.setSelection(editText.getText().length());
-                }));
+                .setAdapter(adapter, (dialog, which) ->
+                    HistoryEntryRestore.into(editText, adapter.getItem(which))));
         }
 
         @Override
@@ -225,20 +225,27 @@ public class TerminalToolbarViewPager {
 
     }
 
+    public interface HistoryEntryRestoreListener {
+        void onEntryChosenForRestore(@NonNull String entry);
+    }
+
     static final class SubmittedTextInputHistoryAdapter extends BaseAdapter {
 
         private final Context mContext;
         private final SubmittedTextInputHistory mHistory;
         private final Runnable mOnPinnedChanged;
+        private final HistoryEntryRestoreListener mOnEntryChosenForRestore;
         private final LayoutInflater mInflater;
         private List<String> mOrderedEntries;
 
         SubmittedTextInputHistoryAdapter(@NonNull Context context,
                                          @NonNull SubmittedTextInputHistory history,
-                                         @NonNull Runnable onPinnedChanged) {
+                                         @NonNull Runnable onPinnedChanged,
+                                         @NonNull HistoryEntryRestoreListener onEntryChosenForRestore) {
             mContext = context;
             mHistory = history;
             mOnPinnedChanged = onPinnedChanged;
+            mOnEntryChosenForRestore = onEntryChosenForRestore;
             mInflater = LayoutInflater.from(context);
             mOrderedEntries = history.getOrderedEntries();
         }
@@ -266,6 +273,11 @@ public class TerminalToolbarViewPager {
                 ? convertView
                 : mInflater.inflate(R.layout.item_toolbar_text_input_history, parent, false);
             final String entry = getItem(position);
+            ImageButton restoreButton =
+                row.findViewById(R.id.toolbar_text_input_history_restore_button);
+            restoreButton.setContentDescription(
+                mContext.getString(R.string.action_toolbar_text_input_history_restore));
+            restoreButton.setOnClickListener(v -> mOnEntryChosenForRestore.onEntryChosenForRestore(entry));
             TextView entryView = row.findViewById(R.id.toolbar_text_input_history_entry);
             entryView.setText(entry);
             MaxHeightScrollView entryScroll =

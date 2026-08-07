@@ -12,6 +12,10 @@ public final class DiagnosticsReportBuilder {
 
     private static final String TIMESTAMP_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
+    private static final int MAX_REPORTED_STALL_HOT_PATHS = 4;
+
+    private static final int MAX_REPORTED_STALL_HOT_PATH_FRAMES = 8;
+
     @NonNull
     public String build(@NonNull DiagnosticsReport report) {
         StringBuilder builder = new StringBuilder();
@@ -21,8 +25,16 @@ public final class DiagnosticsReportBuilder {
         builder.append("App version: ").append(report.getVersionName())
             .append(" (").append(report.getVersionCode()).append(")\n");
 
+        builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
+
+        builder.append('\n');
+        appendMemorySection(builder, report);
+
         builder.append('\n');
         appendSessionsSection(builder, report);
+
+        builder.append('\n');
+        appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
         appendBrowserSection(builder, report);
@@ -36,6 +48,112 @@ public final class DiagnosticsReportBuilder {
         return builder.toString();
     }
 
+    @NonNull
+    private String formatUptime(long uptimeMillis) {
+        long totalSeconds = uptimeMillis / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        return hours + "h " + minutes + "m " + seconds + "s";
+    }
+
+    private void appendMemorySection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+        DiagnosticsMemoryUsage memoryUsage = report.getMemoryUsage();
+        builder.append("Memory\n");
+        builder.append("  Java heap used: ").append(memoryUsage.getJavaHeapUsedMegabytes()).append(" MB\n");
+        builder.append("  Java heap total: ").append(memoryUsage.getJavaHeapTotalMegabytes()).append(" MB\n");
+        builder.append("  Java heap max: ").append(memoryUsage.getJavaHeapMaxMegabytes()).append(" MB\n");
+        builder.append("  Native heap allocated: ")
+            .append(memoryUsage.getNativeHeapAllocatedMegabytes()).append(" MB\n");
+    }
+
+    private void appendMainThreadCostSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+        builder.append("Main-thread cost\n");
+        appendWorkCostLines(builder, "Background output tag scan", report.getBackgroundOutputScanCost());
+        appendWorkCostLines(builder, "Open-tag scan on the viewed session",
+            report.getForegroundOpenTagScanCost());
+        appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
+        appendMainThreadStallLines(builder, report.getMainThreadStalls());
+        appendMainLooperQueueLines(builder, report.getMainLooperQueue());
+    }
+
+    private void appendMainLooperQueueLines(@NonNull StringBuilder builder,
+                                            @NonNull DiagnosticsMainLooperQueue looperQueue) {
+        builder.append("  Main looper queue\n");
+        builder.append("    Pending messages: ").append(looperQueue.getPendingMessageCount()).append('\n');
+        if (looperQueue.getBusiestTargets().isEmpty()) {
+            builder.append("    Busiest targets: none\n");
+            return;
+        }
+        builder.append("    Busiest targets:\n");
+        for (DiagnosticsMainLooperQueueTarget target : looperQueue.getBusiestTargets()) {
+            builder.append("      ").append(target.getPendingMessageCount()).append(" x ")
+                .append(target.getDescription()).append('\n');
+        }
+        appendPendingMessageLines(builder, looperQueue);
+    }
+
+    private void appendPendingMessageLines(@NonNull StringBuilder builder,
+                                           @NonNull DiagnosticsMainLooperQueue looperQueue) {
+        if (looperQueue.getPendingMessageLines().isEmpty()) {
+            return;
+        }
+        builder.append("    Pending messages, oldest first (up to ")
+            .append(DiagnosticsMainLooperQueue.MAX_REPORTED_MESSAGE_LINES).append("):\n");
+        for (String pendingMessageLine : looperQueue.getPendingMessageLines()) {
+            builder.append("      ").append(pendingMessageLine).append('\n');
+        }
+    }
+
+    private void appendMainThreadStallLines(@NonNull StringBuilder builder,
+                                            @NonNull DiagnosticsMainThreadStalls stalls) {
+        builder.append("  Stalls over ").append(stalls.getThresholdMillis()).append(" ms\n");
+        builder.append("    Count: ").append(stalls.getStallCount()).append('\n');
+        if (stalls.getStallCount() == 0) {
+            builder.append("    Longest: n/a\n");
+            return;
+        }
+        builder.append("    Longest: ").append(stalls.getMaxStallMillis()).append(" ms\n");
+        builder.append("    Longest stall main thread was running:\n");
+        for (String frame : stalls.getMaxStallStackTrace().split("\n")) {
+            builder.append("      ").append(frame).append('\n');
+        }
+        appendMainThreadStallHotPathLines(builder, stalls.getHotPaths());
+    }
+
+    private void appendMainThreadStallHotPathLines(@NonNull StringBuilder builder,
+                                                   @NonNull List<MainThreadStallHotPath> hotPaths) {
+        if (hotPaths.isEmpty()) {
+            return;
+        }
+        builder.append("    Blocking the main thread the longest\n");
+        int reportedCount = Math.min(hotPaths.size(), MAX_REPORTED_STALL_HOT_PATHS);
+        for (int index = 0; index < reportedCount; index++) {
+            MainThreadStallHotPath hotPath = hotPaths.get(index);
+            builder.append("      ").append(hotPath.getTotalBlockedMillis())
+                .append(" ms total over ").append(hotPath.getStallCount())
+                .append(" stalls, longest ").append(hotPath.getMaxBlockedMillis()).append(" ms\n");
+            String[] frames = hotPath.getStackTrace().split("\n");
+            int reportedFrameCount = Math.min(frames.length, MAX_REPORTED_STALL_HOT_PATH_FRAMES);
+            for (int frameIndex = 0; frameIndex < reportedFrameCount; frameIndex++) {
+                builder.append("        ").append(frames[frameIndex]).append('\n');
+            }
+        }
+    }
+
+    private void appendWorkCostLines(@NonNull StringBuilder builder, @NonNull String label,
+                                     @NonNull DiagnosticsWorkCostLine cost) {
+        builder.append("  ").append(label).append('\n');
+        builder.append("    Count: ").append(cost.getSampleCount()).append('\n');
+        builder.append("    Total: ").append(cost.getTotalElapsedMillis()).append(" ms\n");
+        if (cost.getSampleCount() == 0) {
+            builder.append("    Max: n/a\n");
+            return;
+        }
+        builder.append("    Max: ").append(cost.getMaxElapsedMillis()).append(" ms\n");
+        builder.append("    Transcript rows at max: ").append(cost.getTranscriptRowsAtMaxElapsed()).append('\n');
+    }
+
     private void appendSessionsSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
         builder.append("Sessions\n");
         builder.append("  Counted toward cap: ").append(report.getSessionsCountedTowardCap()).append('\n');
@@ -45,6 +163,7 @@ public final class DiagnosticsReportBuilder {
             builder.append("  Orphaned (counted but not displayed): ").append(orphaned).append('\n');
         }
         builder.append("  Max sessions cap: ").append(report.getMaxSessionsCap()).append('\n');
+        builder.append("  Total transcript rows: ").append(report.getTotalTranscriptRows()).append('\n');
         List<DiagnosticsSessionLine> lines = report.getSessionLines();
         if (lines.isEmpty()) {
             builder.append("  (no sessions)\n");
@@ -54,6 +173,8 @@ public final class DiagnosticsReportBuilder {
             builder.append("  - ").append(line.getName())
                 .append(" | ").append(line.isAlive() ? "alive" : "dead")
                 .append(" | last activity: ").append(formatSecondsSinceLastActivity(line))
+                .append(" | transcript rows: ").append(line.getTranscriptRows())
+                .append(" | columns: ").append(line.getColumns())
                 .append('\n');
         }
     }

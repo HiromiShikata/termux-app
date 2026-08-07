@@ -13,7 +13,7 @@ public final class BrowserTab {
 
     private final String mId = UUID.randomUUID().toString();
 
-    private final String mSessionHandle;
+    private String mSessionHandle;
 
     private String mUrl;
 
@@ -37,6 +37,10 @@ public final class BrowserTab {
     @NonNull
     public String getSessionHandle() {
         return mSessionHandle;
+    }
+
+    public void moveToSession(@NonNull String sessionHandle) {
+        this.mSessionHandle = sessionHandle;
     }
 
     @NonNull

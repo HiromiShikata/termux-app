@@ -43,8 +43,9 @@ public class SessionHierarchyBuilderVisibleFractionTest {
         List<SessionHierarchyRow> renderedRows =
             renderedRows(sessionNames, entries, hiddenSessionNames, false);
 
-        Assert.assertEquals("denominator must be every session when showing all",
-            3, SessionHierarchyBuilder.totalSessionCount(renderedRows));
+        Assert.assertEquals("denominator must be every session row when showing all, which is the three"
+                + " story sessions plus the project-manager row the project draws",
+            4, SessionHierarchyBuilder.totalSessionCount(renderedRows));
         Assert.assertEquals("numerator must count every pending call when showing all, including the hidden one",
             2, SessionHierarchyBuilder.pendingCallSessionCount(renderedRows, sessionNames, pendingCallSessionNames));
     }
@@ -64,8 +65,9 @@ public class SessionHierarchyBuilderVisibleFractionTest {
         List<SessionHierarchyRow> renderedRows =
             renderedRows(sessionNames, entries, hiddenSessionNames, true);
 
-        Assert.assertEquals("denominator must drop the hidden session when filtering",
-            2, SessionHierarchyBuilder.totalSessionCount(renderedRows));
+        Assert.assertEquals("denominator must drop the hidden session when filtering, leaving the two"
+                + " visible story sessions plus the project-manager row the project draws",
+            3, SessionHierarchyBuilder.totalSessionCount(renderedRows));
         Assert.assertEquals("numerator must not count the hidden session's pending call when filtering",
             1, SessionHierarchyBuilder.pendingCallSessionCount(renderedRows, sessionNames, pendingCallSessionNames));
     }
@@ -93,12 +95,14 @@ public class SessionHierarchyBuilderVisibleFractionTest {
         Map<String, Integer> pendingByProject = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
             renderedRows, sessionNames, pendingCallSessionNames);
 
-        Assert.assertEquals("projectOne visible denominator excludes its hidden session",
-            Integer.valueOf(1), visibleCountByProject.get("projectOne"));
+        Assert.assertEquals("projectOne visible denominator excludes its hidden session and keeps its"
+                + " project-manager row",
+            Integer.valueOf(2), visibleCountByProject.get("projectOne"));
         Assert.assertEquals("projectOne numerator drops the hidden pending call so it reports zero",
             Integer.valueOf(0), pendingByProject.get("projectOne"));
-        Assert.assertEquals("projectTwo visible denominator excludes its hidden session",
-            Integer.valueOf(1), visibleCountByProject.get("projectTwo"));
+        Assert.assertEquals("projectTwo visible denominator excludes its hidden session and keeps its"
+                + " project-manager row",
+            Integer.valueOf(2), visibleCountByProject.get("projectTwo"));
         Assert.assertEquals("projectTwo numerator keeps its visible pending call",
             Integer.valueOf(1), pendingByProject.get("projectTwo"));
     }
@@ -126,9 +130,11 @@ public class SessionHierarchyBuilderVisibleFractionTest {
         Map<String, Integer> pendingByProject = SessionHierarchyBuilder.pendingCallSessionCountByProjectLabel(
             renderedRows, sessionNames, pendingCallSessionNames);
 
-        Assert.assertEquals(Integer.valueOf(2), visibleCountByProject.get("projectOne"));
+        Assert.assertEquals("projectOne counts both story sessions plus its project-manager row",
+            Integer.valueOf(3), visibleCountByProject.get("projectOne"));
         Assert.assertEquals(Integer.valueOf(1), pendingByProject.get("projectOne"));
-        Assert.assertEquals(Integer.valueOf(2), visibleCountByProject.get("projectTwo"));
+        Assert.assertEquals("projectTwo counts both story sessions plus its project-manager row",
+            Integer.valueOf(3), visibleCountByProject.get("projectTwo"));
         Assert.assertEquals(Integer.valueOf(1), pendingByProject.get("projectTwo"));
     }
 }

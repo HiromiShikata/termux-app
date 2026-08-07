@@ -213,10 +213,21 @@ public final class TerminalSession extends TerminalOutput {
     /** Write data to the shell process. */
     @Override
     public void write(byte[] data, int offset, int count) {
-        if (mShellPid > 0) {
+        if (mShellPid > 0 && inputReachesTheProgramReadingTheTerminal()) {
             mInputEchoFilter.recordUserInput(data, offset, count);
             mTerminalToProcessIOQueue.write(data, offset, count);
         }
+    }
+
+    /**
+     * Whether input written now is read by the program the session was started for, rather than being held by the line
+     * discipline until some later program reads it as stale input.
+     */
+    public boolean inputReachesTheProgramReadingTheTerminal() {
+        if (mRuntimeResourcesReleased || mShellPid <= 0) return false;
+        return TerminalInputDelivery.reachesTheProgramReadingTheTerminal(
+            RemoteShellClientCommand.isRunBy(mShellPath, mArgs),
+            () -> JNI.isPtyInCanonicalMode(mTerminalFileDescriptor));
     }
 
     /** Write the Unicode code point to the terminal encoded in UTF-8. */

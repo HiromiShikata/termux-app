@@ -19,6 +19,8 @@ final class GestureAndScaleRecognizer {
 
         boolean onScale(float focusX, float focusY, float scale);
 
+        void onScaleEnd();
+
         boolean onDown(float x, float y);
 
         boolean onUp(MotionEvent e);
@@ -83,6 +85,11 @@ final class GestureAndScaleRecognizer {
             @Override
             public boolean onScale(ScaleGestureDetector detector) {
                 return mListener.onScale(detector.getFocusX(), detector.getFocusY(), detector.getScaleFactor());
+            }
+
+            @Override
+            public void onScaleEnd(ScaleGestureDetector detector) {
+                mListener.onScaleEnd();
             }
         });
         mScaleDetector.setQuickScaleEnabled(false);

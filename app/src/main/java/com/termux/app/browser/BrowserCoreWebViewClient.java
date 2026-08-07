@@ -38,6 +38,8 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         boolean onRenderProcessGone(@NonNull WebView view, boolean didCrash);
 
         void openInExternalBrowser(@NonNull String url);
+
+        boolean openInMatchingNativeApp(@NonNull String url);
     }
 
     private final Host mHost;
@@ -57,7 +59,8 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         return mCallbackGuard.runReturning("shouldOverrideUrlLoading", false, () -> {
             String url = request == null || request.getUrl() == null ? null : request.getUrl().toString();
-            return routeToExternalBrowserIfRequired(url);
+            if (routeToExternalBrowserIfRequired(url)) return true;
+            return routeToMatchingNativeAppIfRequired(url, request);
         });
     }
 
@@ -72,6 +75,13 @@ public final class BrowserCoreWebViewClient extends BrowserHttpAuthWebViewClient
         if (url == null || !BrowserGoogleSignInRedirect.requiresExternalBrowser(url)) return false;
         mHost.openInExternalBrowser(url);
         return true;
+    }
+
+    private boolean routeToMatchingNativeAppIfRequired(@Nullable String url,
+                                                       @Nullable WebResourceRequest request) {
+        if (url == null || request == null) return false;
+        if (!request.isForMainFrame()) return false;
+        return mHost.openInMatchingNativeApp(url);
     }
 
     @Override

@@ -855,7 +855,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             if (executionCommand != null && executionCommand.isPluginExecutionCommand)
                 TermuxPluginUtils.processPluginExecutionCommandResult(this, LOG_TAG, executionCommand);
 
-            mShellManager.mTermuxSessions.remove(termuxSession);
+            if (mShellManager.mTermuxSessions.remove(termuxSession))
+                DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_EXITED,
+                    diagnosticSessionName(termuxSession.getTerminalSession()));
 
             // Notify {@link TermuxSessionsListViewController} that sessions list has been updated if
             // activity in is foreground

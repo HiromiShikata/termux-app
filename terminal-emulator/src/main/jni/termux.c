@@ -216,3 +216,10 @@ JNIEXPORT void JNICALL Java_com_termux_terminal_JNI_close(JNIEnv* TERMUX_UNUSED(
 {
     close(fileDescriptor);
 }
+
+JNIEXPORT jboolean JNICALL Java_com_termux_terminal_JNI_isPtyInCanonicalMode(JNIEnv* TERMUX_UNUSED(env), jclass TERMUX_UNUSED(clazz), jint fd)
+{
+    struct termios tios;
+    if (tcgetattr(fd, &tios) != 0) return JNI_FALSE;
+    return (tios.c_lflag & ICANON) != 0 ? JNI_TRUE : JNI_FALSE;
+}

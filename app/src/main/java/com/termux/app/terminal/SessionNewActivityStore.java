@@ -94,6 +94,8 @@ public class SessionNewActivityStore {
                 mStatuslineReplyTimeMillisByName.put(state.getSessionName(), state.getStatuslineReplyTimeMillis());
             if (state.getSubagentCount() != null)
                 mSubagentCountByName.put(state.getSessionName(), state.getSubagentCount());
+            if (state.getGenuineAppReplyTimeMillis() != null)
+                mGenuineAppReplyTimeMillisByName.put(state.getSessionName(), state.getGenuineAppReplyTimeMillis());
         }
     }
 
@@ -504,41 +506,6 @@ public class SessionNewActivityStore {
         return Collections.unmodifiableList(new ArrayList<>(reasons));
     }
 
-    /**
-     * The call-to-user reason text to display in the current-session scene for {@code sessionName},
-     * or null when nothing should be shown. It is the latest unacknowledged reason, but only when
-     * that reason belongs to the call-to-user cycle that currently arms the RED tier. The RED tier
-     * is armed by two independent signals — the unacknowledged-reasons list ({@link
-     * #pendingCallToUserTimeMillis}) and the statusline {@code call: > reply:} relation ({@link
-     * #statuslineCallPendingTimeMillis}) — and these can refer to different cycles: after a new
-     * statusline {@code call:} token arms RED, the throttled transcript {@code <call-to-user>} scan
-     * has not yet recorded the new cycle's reason, so the unacknowledged list still ends in a reason
-     * recorded for a previous call. Showing that earlier reason against the current call is the stale
-     * scene the owner misreads as a different session's content. The reason recorded time ({@link
-     * #mUnacknowledgedCallReasonsRecordedTimeMillisByName}) is compared against the current
-     * statusline call token: a stored reason older than the current call is from a prior cycle and is
-     * suppressed (the scene shows nothing) until the scan records the current cycle's reason. When no
-     * statusline call token arms the tier (a non-Claude session armed only by the tag scan), the
-     * reason itself defines the pending cycle and is shown.
-     */
-    @Nullable
-    public String currentPendingCallToUserReason(@NonNull String sessionName) {
-        List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
-        if (reasons == null || reasons.isEmpty()) {
-            return null;
-        }
-        Long statuslineCallPendingTimeMillis = statuslineCallPendingTimeMillis(sessionName);
-        if (statuslineCallPendingTimeMillis != null) {
-            Long reasonRecordedTimeMillis =
-                mUnacknowledgedCallReasonsRecordedTimeMillisByName.get(sessionName);
-            if (reasonRecordedTimeMillis == null
-                || reasonRecordedTimeMillis < statuslineCallPendingTimeMillis) {
-                return null;
-            }
-        }
-        return reasons.get(reasons.size() - 1);
-    }
-
     public int pendingCallToUserSessionCount() {
         int count = 0;
         for (List<String> reasons : mUnacknowledgedCallReasonsByName.values()) {
@@ -758,9 +725,10 @@ public class SessionNewActivityStore {
      * genuine reply signals — a real last user message and a real content submit — so folding them in
      * lets a genuine in-app submit clear the RED dot immediately without waiting minutes for the
      * statusline token, while raw keystrokes, which feed neither, never clear it. The genuine app-reply
-     * time is in-memory only; after a restart that loses it the statusline {@code reply:} token is the
-     * sole remaining genuine source and is used as the fallback. Returns null only when neither genuine
-     * source has a value.
+     * time is persisted with the rest of the session activity state, so a reply the owner already
+     * submitted keeps the dot cleared across a restart instead of falling back to a statusline {@code
+     * reply:} token that still predates the call. Returns null only when neither genuine source has a
+     * value.
      */
     @Nullable
     public Long genuineReplyTimeMillis(@NonNull String sessionName) {
@@ -943,6 +911,7 @@ public class SessionNewActivityStore {
         sessionNames.addAll(mStatuslineOutTimeMillisByName.keySet());
         sessionNames.addAll(mStatuslineReplyTimeMillisByName.keySet());
         sessionNames.addAll(mSubagentCountByName.keySet());
+        sessionNames.addAll(mGenuineAppReplyTimeMillisByName.keySet());
         List<SessionNewActivityState> states = new ArrayList<>();
         for (String sessionName : sessionNames) {
             List<String> reasons = mUnacknowledgedCallReasonsByName.get(sessionName);
@@ -958,7 +927,8 @@ public class SessionNewActivityStore {
                 mStatuslineCallTimeMillisByName.get(sessionName),
                 mStatuslineOutTimeMillisByName.get(sessionName),
                 mStatuslineReplyTimeMillisByName.get(sessionName),
-                mSubagentCountByName.get(sessionName)));
+                mSubagentCountByName.get(sessionName),
+                mGenuineAppReplyTimeMillisByName.get(sessionName)));
         }
         mPersistence.save(states);
         notifyChanged();

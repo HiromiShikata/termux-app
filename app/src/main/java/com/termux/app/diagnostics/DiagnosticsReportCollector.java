@@ -1,5 +1,8 @@
 package com.termux.app.diagnostics;
 
+import android.os.Debug;
+import android.os.SystemClock;
+
 import androidx.annotation.NonNull;
 
 import com.termux.BuildConfig;
@@ -10,6 +13,9 @@ import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalBuffer;
+import com.termux.terminal.TerminalBufferReflowCostCounterHolder;
+import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 
 import java.util.ArrayList;
@@ -51,7 +57,27 @@ public final class DiagnosticsReportCollector {
 
         return new DiagnosticsReport(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, nowMillis,
             countedTowardCap, displayedCount, maxSessionsCap, sessionLines,
-            openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, recentEvents);
+            openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, recentEvents,
+            collectMemoryUsage(),
+            DiagnosticsWorkCostLine.of(BackgroundOutputScanCostCounterHolder.getInstance()),
+            DiagnosticsWorkCostLine.of(ForegroundOpenTagScanCostCounterHolder.getInstance()),
+            DiagnosticsWorkCostLine.of(TerminalBufferReflowCostCounterHolder.getInstance()),
+            DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder()),
+            MainLooperQueueSnapshot.take(),
+            ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()));
+    }
+
+    @NonNull
+    private DiagnosticsMemoryUsage collectMemoryUsage() {
+        Runtime runtime = Runtime.getRuntime();
+        long totalBytes = runtime.totalMemory();
+        long usedBytes = totalBytes - runtime.freeMemory();
+        return new DiagnosticsMemoryUsage(toMegabytes(usedBytes), toMegabytes(totalBytes),
+            toMegabytes(runtime.maxMemory()), toMegabytes(Debug.getNativeHeapAllocatedSize()));
+    }
+
+    private long toMegabytes(long bytes) {
+        return bytes / (1024L * 1024L);
     }
 
     /**
@@ -101,7 +127,13 @@ public final class DiagnosticsReportCollector {
                 ? Math.max(0, (nowMillis - lastOutputMillis) / 1000)
                 : 0;
 
-            lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity));
+            TerminalEmulator emulator = terminalSession.getEmulator();
+            TerminalBuffer screen = emulator == null ? null : emulator.getScreen();
+            int transcriptRows = screen == null ? 0 : screen.getActiveTranscriptRows();
+            int columns = emulator == null ? 0 : emulator.mColumns;
+
+            lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
+                transcriptRows, columns));
         }
         return lines;
     }

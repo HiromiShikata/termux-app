@@ -3,6 +3,8 @@ package com.termux.app.sessiondefinition;
 import android.view.View;
 import android.widget.ProgressBar;
 
+import androidx.annotation.NonNull;
+
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
@@ -78,6 +80,24 @@ public final class SessionDefinitionController {
         });
     }
 
+    public void restoreProjectManagerSessionsOnColdStart() {
+        List<SessionDefinitionEntry> cachedEntries = repository.getCachedEntries();
+        if (!cachedEntries.isEmpty()) {
+            restoreProjectManagerSessions(cachedEntries);
+            return;
+        }
+        repository.load(activity.getPreferences().getSessionDefinitionUrl().trim(),
+            () -> restoreProjectManagerSessions(repository.getCachedEntries()));
+    }
+
+    private void restoreProjectManagerSessions(@NonNull List<SessionDefinitionEntry> entries) {
+        List<String> projectManagerSessionNames = defaultProjectManagerSessionPlanner.planSessionNames(entries);
+        if (projectManagerSessionNames.isEmpty()) {
+            return;
+        }
+        activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions(projectManagerSessionNames);
+    }
+
     private void notifyPartialLoad(SessionDefinitionLoadResult result) {
         if (!result.hasFailedGroups()) {
             return;
@@ -112,12 +132,12 @@ public final class SessionDefinitionController {
 
         List<SessionDefinitionPlannedSession> sessionsToCreate =
             SessionDefinitionExistingSessionFilter.selectSessionsToCreate(
-                plannedSessions, liveSessionNames, hiddenSessionNames());
+                plannedSessions, liveSessionNames, hiddenSessionNames(),
+                userRemovedSessionTimes(), System.currentTimeMillis());
 
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
 
         if (authoritativeLoad) {
-            pruneHiddenStateForDisappearedGithubSessions(entries);
             removeSessionsWithDisappearedDefinition(entries);
         }
 
@@ -192,6 +212,11 @@ public final class SessionDefinitionController {
             ? Collections.emptySet() : activity.getPreferences().getDisabledSessionNames();
     }
 
+    private Map<String, Long> userRemovedSessionTimes() {
+        return activity.getPreferences() == null
+            ? Collections.emptyMap() : activity.getPreferences().getUserRemovedSessionTimes();
+    }
+
     private void reconcileDuplicateLiveSessions() {
         TermuxService service = activity.getTermuxService();
         if (service == null) {
@@ -245,19 +270,6 @@ public final class SessionDefinitionController {
             if (terminalSession != null) {
                 activity.getTermuxTerminalSessionClient().removeSessionForRebuild(terminalSession);
             }
-        }
-    }
-
-    private void pruneHiddenStateForDisappearedGithubSessions(List<SessionDefinitionEntry> currentEntries) {
-        if (activity.getPreferences() == null) {
-            return;
-        }
-        Set<String> persistedHiddenSessionNames = activity.getPreferences().getDisabledSessionNames();
-        List<String> hiddenSessionNamesToPrune =
-            githubDisappearedSessionPlanner.planGithubHiddenSessionNamesToPrune(
-                currentEntries, persistedHiddenSessionNames);
-        for (String sessionName : hiddenSessionNamesToPrune) {
-            activity.getPreferences().setSessionDisabled(sessionName, false);
         }
     }
 

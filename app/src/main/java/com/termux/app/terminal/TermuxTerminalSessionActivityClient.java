@@ -37,12 +37,15 @@ import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.diagnostics.BackgroundOutputScanCostCounterHolder;
+import com.termux.app.diagnostics.ForegroundOpenTagScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
+import com.termux.app.sessiondefinition.SessionInputDeliverabilityDwell;
 import com.termux.app.sessiondefinition.SessionResourceReleasePlanner;
 import com.termux.app.sessiondefinition.VisibleSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
@@ -257,6 +260,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final HungSessionDetector mHungSessionDetector =
         new HungSessionDetector(BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS);
 
+    private final SessionInputDeliverabilityDwell mSessionInputDeliverabilityDwell =
+        new SessionInputDeliverabilityDwell();
+
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
     private boolean mActiveSessionSeenTickScheduled;
@@ -412,12 +418,18 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        long scanStartNanos = System.nanoTime();
+        int transcriptRows = screen.getActiveTranscriptRows();
+
         String transcriptText = screen.getTranscriptText();
         openTagBrowserController.onSessionTextChanged(session.mHandle, transcriptText);
 
         AppOpenTagController appOpenTagController = mActivity.getAppOpenTagController();
         if (appOpenTagController != null && appOpenTagController.isAutoOpenEnabled())
             appOpenTagController.onSessionTextChanged(session.mHandle, transcriptText);
+
+        ForegroundOpenTagScanCostCounterHolder.getInstance()
+            .record(System.nanoTime() - scanStartNanos, transcriptRows);
     }
 
     private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {
@@ -446,6 +458,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        long scanStartNanos = System.nanoTime();
+        int transcriptRows = screen.getActiveTranscriptRows();
+
         // The statusline is parsed first so the call-to-user scan gate below reads fresh call:/reply:
         // values from this same render. The expensive transcript reason/scene scan then runs only when
         // the session has a pending call, has no statusline at all (the non-Claude fallback), or has an
@@ -462,6 +477,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (shouldScanCallToUserTag) {
             recordCallToUserTagScanPerformedForSession(session);
         }
+
+        BackgroundOutputScanCostCounterHolder.getInstance()
+            .record(System.nanoTime() - scanStartNanos, transcriptRows);
     }
 
     private void recordCallToUserTagScanPerformedForSession(@NonNull TerminalSession session) {
@@ -716,24 +734,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     @NonNull
     private static String statuslineScanText(@NonNull TerminalEmulator emulator,
                                              @NonNull TerminalBuffer screen) {
-        StringBuilder builder = new StringBuilder(emulator.getMainBufferTranscriptText());
-        builder.append('\n').append(visibleScreenText(emulator, screen));
-        return builder.toString();
-    }
-
-    @NonNull
-    private static String visibleScreenText(@NonNull TerminalEmulator emulator,
-                                            @NonNull TerminalBuffer screen) {
-        int screenRows = emulator.mRows;
-        int columns = emulator.mColumns;
-        StringBuilder builder = new StringBuilder();
-        for (int row = 0; row < screenRows; row++) {
-            if (row > 0) {
-                builder.append('\n');
-            }
-            builder.append(screen.getSelectedText(0, row, columns, row, false, false));
-        }
-        return builder.toString();
+        return SessionStatuslineScanText.of(emulator, screen);
     }
 
     @Override
@@ -1465,57 +1466,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         View sessionInfoRoot = mActivity.findViewById(android.R.id.content);
         if (sessionInfoRoot == null) return;
         SessionInfoBottomBarsBinder.bind(sessionInfoRoot, mActivity.getSessionNewActivityStore(),
-            sessionName, System.currentTimeMillis(),
-            () -> navigateToCallToUserSession(sessionName));
-    }
-
-    private void navigateToCallToUserSession(@Nullable String sessionName) {
-        TerminalSession session = sessionForName(sessionName);
-        if (session == null) return;
-
-        setCurrentSession(session);
-
-        TerminalView terminalView = mActivity.getTerminalView();
-        if (terminalView == null) return;
-        TerminalEmulator emulator = session.getEmulator();
-        if (emulator == null) return;
-        TerminalBuffer screen = emulator.getScreen();
-        if (screen == null) return;
-
-        CallToUserScrollAction action = CallToUserScrollAction.resolve(
-            emulator.isAlternateBufferActive(), locateCallToUserTagTopRow(emulator, screen));
-
-        emulator.setAutoScrollDisabled(action.getKind() == CallToUserScrollAction.Kind.SCROLL_TO_TAG);
-        terminalView.setTopRow(action.getTargetTopRow());
-        terminalView.invalidate();
-    }
-
-    private int locateCallToUserTagTopRow(@NonNull TerminalEmulator emulator,
-                                          @NonNull TerminalBuffer screen) {
-        int screenRows = emulator.mRows;
-        int activeTranscriptRows = screen.getActiveTranscriptRows();
-        int firstRowExternalIndex = -activeTranscriptRows;
-        List<String> rowTexts = new ArrayList<>();
-        for (int externalRow = firstRowExternalIndex; externalRow < screenRows; externalRow++) {
-            rowTexts.add(screen.getSelectedText(
-                0, externalRow, emulator.mColumns, externalRow, false, false));
-        }
-        return CallToUserTagScrollLocator.scrollTargetTopRow(
-            rowTexts, firstRowExternalIndex, activeTranscriptRows);
-    }
-
-    @Nullable
-    private TerminalSession sessionForName(@Nullable String sessionName) {
-        if (sessionName == null) return null;
-        TermuxService service = mActivity.getTermuxService();
-        if (service == null) return null;
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            TerminalSession session = termuxSession.getTerminalSession();
-            if (session != null && sessionName.equals(session.mSessionName)) {
-                return session;
-            }
-        }
-        return null;
+            sessionName, System.currentTimeMillis());
     }
 
     @NonNull
@@ -1642,7 +1593,21 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (sessionToDelete == null) return;
 
         suppressReconnectForUserRemovedSession(sessionToDelete.mSessionName);
+        finishAndRemoveSession(sessionToDelete);
+    }
 
+    /**
+     * Killing the host session tears the local session down so that it can be established again, so
+     * the session name is not recorded as removed when it is an always-present name.
+     */
+    private void deleteSessionAfterHostSessionKill(final TerminalSession sessionToDelete) {
+        if (sessionToDelete == null) return;
+
+        suppressReconnectAfterHostSessionKill(sessionToDelete.mSessionName);
+        finishAndRemoveSession(sessionToDelete);
+    }
+
+    private void finishAndRemoveSession(final TerminalSession sessionToDelete) {
         TerminalSession currentSession = mActivity.getCurrentSession();
         sessionToDelete.finishIfRunning();
         removeFinishedSession(sessionToDelete);
@@ -1654,6 +1619,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return;
         if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterUserRemoval(
+                sessionName)) {
+            preferences.setSessionUserRemoved(sessionName, true);
+            preferences.recordSessionUserRemovedAt(sessionName, System.currentTimeMillis());
+        }
+    }
+
+    private void suppressReconnectAfterHostSessionKill(@Nullable String sessionName) {
+        TermuxAppSharedPreferences preferences = mActivity.getPreferences();
+        if (preferences == null) return;
+        if (mUserRemovedSessionReconnectSuppressionPlanner.shouldSuppressReconnectAfterHostSessionKill(
                 sessionName, preferences.getAlwaysNaSessionNames())) {
             preferences.setSessionUserRemoved(sessionName, true);
         }
@@ -1692,7 +1667,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             @Override
             public void finishLocalSession() {
-                deleteSession(sessionToKill);
+                deleteSessionAfterHostSessionKill(sessionToKill);
             }
         }, mActivity.getPreferences().getKillSessionCommand(), sessionToKill.mSessionName,
             mMainThreadHandler::postDelayed);
@@ -2200,9 +2175,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mPersistedSessionBySession.remove(finishedSession) != null)
             savePersistedSessions();
 
-        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
-        if (toolbarAdapter != null)
-            toolbarAdapter.removeTextInputForSession(finishedSession);
+        dropToolbarTextInputForSession(finishedSession);
 
         service.removeTermuxSession(finishedSession);
 
@@ -2222,9 +2195,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         restoreBrowserTabsForReconnectedSession(newTerminalSession, sessionName);
         attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
         setCurrentSession(newTerminalSession);
+        dropToolbarTextInputForSession(finishedSession);
 
         replayPendingInputWhenConnected(newTerminalSession, pendingInput);
         return true;
+    }
+
+    private void dropToolbarTextInputForSession(@Nullable TerminalSession session) {
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter == null) return;
+        toolbarAdapter.removeTextInputForSession(session);
     }
 
     /**
@@ -2285,8 +2265,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
             boolean hung = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
             boolean reconnecting = store != null && store.isReconnecting(sessionName);
+            boolean unableToReceiveInputLongEnough =
+                mSessionInputDeliverabilityDwell.hasBeenUnableToReceiveInputLongEnough(
+                    sessionName, terminalSession.inputReachesTheProgramReadingTheTerminal(), nowMillis);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
-                sessionName, running, current, hung, lastOutTimeMillis, reconnecting));
+                sessionName, running, current, hung, lastOutTimeMillis, reconnecting,
+                unableToReceiveInputLongEnough));
         }
 
         List<String> sessionNamesToReconnect =
@@ -2300,6 +2284,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 continue;
             }
             mSessionReconnectPacer.enqueueSession(deadSession);
+            mSessionInputDeliverabilityDwell.forget(sessionName);
             reconnectedSessionNames.add(sessionName);
         }
         return reconnectedSessionNames;
@@ -2512,9 +2497,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (mPersistedSessionBySession.remove(deadSession) != null)
             savePersistedSessions();
 
-        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
-        if (toolbarAdapter != null)
-            toolbarAdapter.removeTextInputForSession(deadSession);
+        dropToolbarTextInputForSession(deadSession);
 
         service.removeTermuxSessionBeingReplaced(deadSession);
 
@@ -2548,7 +2531,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
 
         if (displayedSession == deadSession) {
+            carryUnsubmittedToolbarInputToReconnectedSession(newTerminalSession);
             setCurrentSession(newTerminalSession);
+            dropToolbarTextInputForSession(deadSession);
         } else {
             if (displayedSessionNames().contains(sessionName)) {
                 eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
@@ -2556,6 +2541,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             termuxSessionListNotifyUpdated();
         }
         return newTerminalSession;
+    }
+
+    private void carryUnsubmittedToolbarInputToReconnectedSession(@NonNull TerminalSession reconnectedSession) {
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = mActivity.getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter == null) return;
+        toolbarAdapter.saveTextInputForSession(reconnectedSession);
     }
 
     private void eagerInitializeReconnectedBackgroundSessionEmulator(@NonNull TerminalSession session) {
@@ -2696,6 +2687,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (terminalSession == null) return;
         TermuxAppSharedPreferences preferences = mActivity.getPreferences();
         if (preferences == null) return;
+        preferences.clearSessionUserRemovedTime(terminalSession.mSessionName);
         if (preferences.isSessionUserRemoved(terminalSession.mSessionName)) {
             preferences.setSessionUserRemoved(terminalSession.mSessionName, false);
         }
@@ -2745,26 +2737,32 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         int configuredLimit = maxSessions();
         int droppedSessionCount = 0;
 
-        for (PersistedSessionRestoreData persistedSession : persistedSessions) {
-            String name = persistedSession.getName();
-            if (name != null && !restoredNames.add(name)) continue;
-            if (cappedSessionCount(service) >= configuredLimit) {
-                droppedSessionCount++;
-                continue;
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        try {
+            for (PersistedSessionRestoreData persistedSession : persistedSessions) {
+                String name = persistedSession.getName();
+                if (name != null && !restoredNames.add(name)) continue;
+                if (cappedSessionCount(service) >= configuredLimit) {
+                    droppedSessionCount++;
+                    continue;
+                }
+
+                TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
+                    persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
+                    persistedSession.isFailSafe(), name);
+                if (newTermuxSession == null) continue;
+
+                TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+                mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
+                    persistedSession.getExecutablePath(), persistedSession.getArguments(),
+                    persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
+                attachBrowserTabForUrlSessionName(newTerminalSession, name);
+                if (firstRestoredSession == null)
+                    firstRestoredSession = newTerminalSession;
             }
-
-            TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
-                persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
-                persistedSession.isFailSafe(), name);
-            if (newTermuxSession == null) continue;
-
-            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                persistedSession.getExecutablePath(), persistedSession.getArguments(), persistedSession.isFailSafe(),
-                persistedSession.getWorkingDirectory()));
-            attachBrowserTabForUrlSessionName(newTerminalSession, name);
-            if (firstRestoredSession == null)
-                firstRestoredSession = newTerminalSession;
+        } finally {
+            if (browserController != null) browserController.endPersistenceBatch();
         }
 
         notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
@@ -2803,7 +2801,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         alwaysPresentSessionNames.addAll(mActivity.getPreferences().getAlwaysNaSessionNames());
 
         List<String> missingSessionNames = mAlwaysPresentSessionPlanner.planMissingSessionNames(
-            alwaysPresentSessionNames, liveSessionNames);
+            alwaysPresentSessionNames, liveSessionNames,
+            mActivity.getPreferences().getDisabledSessionNames(),
+            mActivity.getPreferences().getUserRemovedSessionNames());
         if (missingSessionNames.isEmpty()) return false;
 
         String commandTemplate = mActivity.getPreferences().getAutosshCommand();
@@ -2814,24 +2814,30 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         int droppedSessionCount = 0;
 
         TerminalSession firstCreatedSession = null;
-        for (String sessionName : missingSessionNames) {
-            if (cappedSessionCount(service) >= configuredLimit) {
-                droppedSessionCount++;
-                continue;
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        try {
+            for (String sessionName : missingSessionNames) {
+                if (cappedSessionCount(service) >= configuredLimit) {
+                    droppedSessionCount++;
+                    continue;
+                }
+
+                AlwaysPresentSessionStartup startup =
+                    mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
+                TermuxSession newTermuxSession = service.createTermuxSession(startup.getExecutablePath(),
+                    startup.getArguments(), null, workingDirectory, false, sessionName);
+                if (newTermuxSession == null) continue;
+
+                TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+                recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
+                    startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
+                attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
+                if (firstCreatedSession == null)
+                    firstCreatedSession = newTerminalSession;
             }
-
-            AlwaysPresentSessionStartup startup =
-                mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
-            TermuxSession newTermuxSession = service.createTermuxSession(startup.getExecutablePath(),
-                startup.getArguments(), null, workingDirectory, false, sessionName);
-            if (newTermuxSession == null) continue;
-
-            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-            recordPersistedSession(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                startup.getExecutablePath(), startup.getArguments(), false, workingDirectory));
-            attachBrowserTabForUrlSessionName(newTerminalSession, sessionName);
-            if (firstCreatedSession == null)
-                firstCreatedSession = newTerminalSession;
+        } finally {
+            if (browserController != null) browserController.endPersistenceBatch();
         }
 
         notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
@@ -2873,9 +2879,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         savePersistedSessions();
         service.pruneSessionNewActivityStoreToLiveSessions();
 
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
-            TerminalSession terminalSession = termuxSession.getTerminalSession();
-            attachBrowserTabForUrlSessionName(terminalSession, terminalSession.mSessionName);
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        try {
+            for (TermuxSession termuxSession : service.getTermuxSessions()) {
+                TerminalSession terminalSession = termuxSession.getTerminalSession();
+                attachBrowserTabForUrlSessionName(terminalSession, terminalSession.mSessionName);
+            }
+        } finally {
+            if (browserController != null) browserController.endPersistenceBatch();
         }
     }
 

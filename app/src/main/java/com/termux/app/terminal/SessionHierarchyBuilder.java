@@ -39,11 +39,27 @@ public final class SessionHierarchyBuilder {
                                            @NonNull List<SessionDefinitionEntry> entries,
                                            @NonNull String naProjectLabel,
                                            @NonNull Set<String> alwaysNaSessionNames) {
+        return build(sessionNames, entries, naProjectLabel, alwaysNaSessionNames,
+            Collections.emptySet());
+    }
+
+    @NonNull
+    public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
+                                           @NonNull List<SessionDefinitionEntry> entries,
+                                           @NonNull String naProjectLabel,
+                                           @NonNull Set<String> alwaysNaSessionNames,
+                                           @NonNull Set<String> deletedSessionNames) {
         if (entries.isEmpty()) {
             return flatten(sessionNames);
         }
 
         Map<String, String> projectLabelByManagerSessionName = projectLabelByManagerSessionName(entries);
+        Set<String> notApplicableDefinitionNames = new LinkedHashSet<>();
+        for (String managerSessionName : projectLabelByManagerSessionName.keySet()) {
+            if (isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)) {
+                notApplicableDefinitionNames.add(managerSessionName);
+            }
+        }
 
         Map<String, Integer> sessionIndexByName = new LinkedHashMap<>();
         Map<String, Integer> liveSessionIndexByName = new LinkedHashMap<>();
@@ -93,16 +109,17 @@ public final class SessionHierarchyBuilder {
 
         Map<String, Map<String, List<String>>> sessionNamesByProjectAndStory = new LinkedHashMap<>();
         Set<String> placedNames = new HashSet<>();
-        Map<String, String> definedManagerSessionNameByProjectLabel = new LinkedHashMap<>();
         for (SessionDefinitionEntry entry : entries) {
             for (String url : entry.getUrls()) {
-                if (url == null || url.isEmpty()
-                        || isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
+                if (url == null || url.isEmpty()) {
                     continue;
                 }
-                String managedProjectLabel = projectLabelByManagerSessionName.get(url);
-                if (managedProjectLabel != null) {
-                    definedManagerSessionNameByProjectLabel.putIfAbsent(managedProjectLabel, url);
+                if (isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
+                    placedNames.add(url);
+                    notApplicableDefinitionNames.add(url);
+                    continue;
+                }
+                if (projectLabelByManagerSessionName.containsKey(url)) {
                     placedNames.add(url);
                     continue;
                 }
@@ -125,11 +142,21 @@ public final class SessionHierarchyBuilder {
         Collections.sort(unmatchedSessionIndexes);
 
         List<SessionHierarchyRow> rows = new ArrayList<>();
-        if (!unmatchedSessionIndexes.isEmpty()) {
-            rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
-            for (int sessionIndex : unmatchedSessionIndexes) {
-                rows.add(sessionRow(sessionNames, sessionIndex));
+        List<SessionHierarchyRow> notApplicableRows = new ArrayList<>();
+        for (int sessionIndex : unmatchedSessionIndexes) {
+            notApplicableRows.add(sessionRow(sessionNames, sessionIndex));
+        }
+        for (String notApplicableDefinitionName : notApplicableDefinitionNames) {
+            if (!liveSessionIndexByName.containsKey(notApplicableDefinitionName)
+                    && !isDeletedWithoutALiveSession(notApplicableDefinitionName,
+                        deletedSessionNames, liveSessionIndexByName)) {
+                notApplicableRows.add(
+                    definitionBackedSessionRow(liveSessionIndexByName, notApplicableDefinitionName));
             }
+        }
+        if (!notApplicableRows.isEmpty()) {
+            rows.add(SessionHierarchyRow.projectHeader(naProjectLabel));
+            rows.addAll(notApplicableRows);
         }
         Set<String> definedProjectLabels = new LinkedHashSet<>();
         for (SessionDefinitionEntry entry : entries) {
@@ -139,30 +166,78 @@ public final class SessionHierarchyBuilder {
             rows.add(SessionHierarchyRow.projectHeader(projectLabel,
                 overviewUrlByProject.get(projectLabel), tdpmConsoleUrlByProject.get(projectLabel),
                 newIssueUrlByProject.get(projectLabel)));
-            Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
-            if (managerSessionIndex != null) {
-                rows.add(sessionRow(sessionNames, managerSessionIndex));
-            } else {
-                String definedManagerSessionName = definedManagerSessionNameByProjectLabel.get(projectLabel);
-                if (definedManagerSessionName != null) {
-                    rows.add(definitionBackedSessionRow(liveSessionIndexByName, definedManagerSessionName));
-                }
+            String managerSessionName = drawableManagerSessionNameOwnedByProject(projectLabel,
+                projectLabelByManagerSessionName, alwaysNaSessionNames);
+            if (managerSessionName != null
+                    && !isDeletedWithoutALiveSession(managerSessionName, deletedSessionNames,
+                        liveSessionIndexByName)) {
+                Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
+                rows.add(managerSessionIndex == null
+                    ? definitionBackedSessionRow(liveSessionIndexByName, managerSessionName)
+                    : sessionRow(sessionNames, managerSessionIndex));
             }
             Map<String, List<String>> storiesInProject = sessionNamesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
                 continue;
             }
             for (Map.Entry<String, List<String>> story : storiesInProject.entrySet()) {
-                rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
+                List<SessionHierarchyRow> storySessionRows = new ArrayList<>();
                 for (String storySessionName : story.getValue()) {
-                    rows.add(definitionBackedSessionRow(liveSessionIndexByName, storySessionName));
+                    if (!isDeletedWithoutALiveSession(storySessionName, deletedSessionNames,
+                            liveSessionIndexByName)) {
+                        storySessionRows.add(
+                            definitionBackedSessionRow(liveSessionIndexByName, storySessionName));
+                    }
                 }
+                if (storySessionRows.isEmpty()) {
+                    continue;
+                }
+                rows.add(SessionHierarchyRow.storyHeader(story.getKey()));
+                rows.addAll(storySessionRows);
             }
         }
         return rows;
     }
 
     public static final int NO_LIVE_SESSION_INDEX = -1;
+
+    /**
+     * A project-manager session name is derived from a project label, so the session definition
+     * entries do not have to carry it, and a project can be named by the definition while no live
+     * session exists for its project-manager name. Such a project still owns a project-manager row,
+     * drawn from the derived name the same way a story row is drawn from a name the definition lists.
+     * The derived name drops the surrounding whitespace of the project label, so two labels that
+     * differ only by whitespace derive one name and only the label that owns that name draws its row.
+     * A name the owner pinned to the not-applicable group keeps its single row there instead.
+     */
+    @Nullable
+    private String drawableManagerSessionNameOwnedByProject(
+            @NonNull String projectLabel,
+            @NonNull Map<String, String> projectLabelByManagerSessionName,
+            @NonNull Set<String> alwaysNaSessionNames) {
+        String managerSessionName =
+            mDefaultProjectManagerSessionPlanner.sessionNameForProjectLabel(projectLabel);
+        if (managerSessionName == null
+                || !projectLabel.equals(projectLabelByManagerSessionName.get(managerSessionName))) {
+            return null;
+        }
+        return isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)
+            ? null : managerSessionName;
+    }
+
+    /**
+     * The owner deleting a session records the name as removed and ends the session, so a name the
+     * session definition still carries must draw no row while that removal stands and no session is
+     * live for it. A live session always outranks the removal record: reopening the name draws its
+     * row again so the running session stays reachable from the list.
+     */
+    private static boolean isDeletedWithoutALiveSession(
+            @NonNull String sessionName,
+            @NonNull Set<String> deletedSessionNames,
+            @NonNull Map<String, Integer> liveSessionIndexByName) {
+        return deletedSessionNames.contains(sessionName)
+            && !liveSessionIndexByName.containsKey(sessionName);
+    }
 
     @NonNull
     private static SessionHierarchyRow definitionBackedSessionRow(
