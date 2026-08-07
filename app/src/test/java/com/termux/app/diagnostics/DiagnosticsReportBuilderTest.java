@@ -160,8 +160,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsNameAliveStateAndSecondsSinceActivity() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80));
-        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, deliveringEverything()));
+        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80, deliveringEverything()));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -269,7 +269,7 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsTranscriptRowsAndColumns() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92, deliveringEverything()));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -283,8 +283,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionsSectionShowsTotalTranscriptRowsAcrossAllSessions() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92));
-        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92, deliveringEverything()));
+        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92, deliveringEverything()));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -448,5 +448,50 @@ public class DiagnosticsReportBuilderTest {
         Assert.assertTrue("With no stall the longest must read n/a rather than 0 ms, which would look like a measured"
                 + " result: " + text,
             text.contains("Longest: n/a"));
+    }
+
+    @Test
+    public void sessionLineStatesWhatWasAcceptedFromTheOwnerAndWhatReachedTheShell() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
+            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null)));
+        DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
+            Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("what the application accepted from the owner must be stated: " + text,
+            text.contains("shell input: accepted 4096B"));
+        Assert.assertTrue("what actually reached the shell must be stated: " + text,
+            text.contains("written to the shell 3000B"));
+        Assert.assertTrue("the gap between the two is the loss the owner reported, so it must be stated"
+                + " rather than left to be computed: " + text,
+            text.contains("still undelivered 1096B"));
+        Assert.assertTrue("bytes the session refused before the queue must be stated: " + text,
+            text.contains("discarded before the queue 64B"));
+        Assert.assertTrue("a live writer must be stated so a session with no reader is recognisable: "
+                + text, text.contains("shell input writer: running"));
+    }
+
+    @Test
+    public void sessionLineNamesTheFailureThatStoppedTheShellInputWriter() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
+            new DiagnosticsShellInputDelivery(4096L, 0L, 0L, false,
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe")));
+        DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
+            Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("a session that still reports itself alive while nothing drains its input"
+                + " queue is exactly the reported symptom, so the stopped writer must be stated: " + text,
+            text.contains("shell input writer: stopped"));
+        Assert.assertTrue("the failure that stopped the writer must be named rather than swallowed: "
+                + text, text.contains("broken pipe"));
+    }
+
+    private static DiagnosticsShellInputDelivery deliveringEverything() {
+        return new DiagnosticsShellInputDelivery(0L, 0L, 0L, true, null);
     }
 }

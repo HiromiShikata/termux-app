@@ -176,7 +176,26 @@ public final class DiagnosticsReportBuilder {
                 .append(" | transcript rows: ").append(line.getTranscriptRows())
                 .append(" | columns: ").append(line.getColumns())
                 .append('\n');
+            appendShellInputDelivery(builder, line.getShellInputDelivery());
         }
+    }
+
+    private void appendShellInputDelivery(@NonNull StringBuilder builder,
+                                          @NonNull DiagnosticsShellInputDelivery delivery) {
+        builder.append("      shell input: accepted ").append(delivery.getBytesAcceptedForDelivery())
+            .append("B, written to the shell ").append(delivery.getBytesWrittenToTheShell())
+            .append("B, still undelivered ").append(delivery.getBytesAcceptedButNotWrittenYet())
+            .append("B, discarded before the queue ")
+            .append(delivery.getBytesDiscardedBeforeDelivery()).append("B\n");
+        builder.append("      shell input writer: ");
+        if (delivery.isWriterRunning()) {
+            builder.append("running\n");
+            return;
+        }
+        String writerStoppedReason = delivery.getWriterStoppedReason();
+        builder.append("stopped")
+            .append(writerStoppedReason == null ? "" : " (" + writerStoppedReason + ")")
+            .append('\n');
     }
 
     @NonNull
