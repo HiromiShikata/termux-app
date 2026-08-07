@@ -28,28 +28,10 @@ public final class DisplayedSessionSelector {
                                                    boolean hideHiddenSessions,
                                                    @NonNull Set<String> hiddenSessionNames,
                                                    @Nullable Set<String> expandedProjectSessionNames) {
-        if (!activityVisible) {
-            return new LinkedHashSet<>();
-        }
-        return selectDisplayedSessionNamesRegardlessOfActivityVisibility(currentSessionName,
-            allLiveSessionNames, hideHiddenSessions, hiddenSessionNames, expandedProjectSessionNames);
-    }
-
-    /**
-     * The same selection without the activity-visibility gate, for the periodic background cycle. The
-     * cycle keeps ticking while the app is backgrounded, and the gated selection returns an empty set in
-     * that state, which makes every firing return at its empty-set guard without detecting a call-to-user
-     * tag or reconnecting a dead session. The exclusions are unchanged: a session the owner hid stays out,
-     * a session under a collapsed project stays out, and the current session is always kept.
-     */
-    @NonNull
-    public Set<String> selectDisplayedSessionNamesRegardlessOfActivityVisibility(
-            @Nullable String currentSessionName,
-            @NonNull Collection<String> allLiveSessionNames,
-            boolean hideHiddenSessions,
-            @NonNull Set<String> hiddenSessionNames,
-            @Nullable Set<String> expandedProjectSessionNames) {
         Set<String> displayedSessionNames = new LinkedHashSet<>();
+        if (!activityVisible) {
+            return displayedSessionNames;
+        }
         for (String sessionName : allLiveSessionNames) {
             if (sessionName == null) {
                 continue;

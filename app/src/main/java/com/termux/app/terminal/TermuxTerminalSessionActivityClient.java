@@ -1054,7 +1054,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         Set<String> expandedProjectSessionNames = listViewController != null
             ? listViewController.getExpandedProjectSessionNames()
             : null;
-        return mDisplayedSessionSelector.selectDisplayedSessionNamesRegardlessOfActivityVisibility(
+        return mDisplayedSessionSelector.selectDisplayedSessionNames(mActivity.isVisible(),
             activeSessionName(), allLiveSessionNames, true, hiddenSessionNames,
             expandedProjectSessionNames);
     }
