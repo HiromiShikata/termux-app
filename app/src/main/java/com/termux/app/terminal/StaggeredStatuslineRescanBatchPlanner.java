@@ -37,18 +37,27 @@ public final class StaggeredStatuslineRescanBatchPlanner {
     @NonNull
     public static List<Batch> plan(@NonNull List<String> sessionNames, int batchSize,
                                    long batchIntervalMillis) {
+        List<Set<String>> sessionNameBatches = sessionNameBatches(sessionNames, batchSize);
+        List<Batch> batches = new ArrayList<>();
+        for (int batchIndex = 0; batchIndex < sessionNameBatches.size(); batchIndex++) {
+            batches.add(new Batch(batchIndex * batchIntervalMillis,
+                sessionNameBatches.get(batchIndex)));
+        }
+        return batches;
+    }
+
+    @NonNull
+    public static List<Set<String>> sessionNameBatches(@NonNull List<String> sessionNames,
+                                                       int batchSize) {
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive but was " + batchSize);
         }
         if (sessionNames.isEmpty()) return Collections.emptyList();
-        List<Batch> batches = new ArrayList<>();
-        int batchIndex = 0;
+        List<Set<String>> sessionNameBatches = new ArrayList<>();
         for (int start = 0; start < sessionNames.size(); start += batchSize) {
             int end = Math.min(start + batchSize, sessionNames.size());
-            batches.add(new Batch(batchIndex * batchIntervalMillis,
-                new LinkedHashSet<>(sessionNames.subList(start, end))));
-            batchIndex++;
+            sessionNameBatches.add(new LinkedHashSet<>(sessionNames.subList(start, end)));
         }
-        return batches;
+        return sessionNameBatches;
     }
 }

@@ -45,7 +45,14 @@ public final class OutputTagScanner {
     private final OccurrenceExtractor occurrenceExtractor;
 
     /** The full ordered sequence of deduplication keys that have already fired, oldest first. This is
-     * the monotonic stream prefix; it never shrinks even when the rendered window trims its front. */
+     * the monotonic stream prefix; it never shrinks even when the rendered window trims its front.
+     *
+     * <p>One session's transcript now reaches a single scanner instance from more than one thread —
+     * the statusline parse thread walking the displayed sessions and the main thread feeding the
+     * session the owner is viewing — so the read-then-append over this list in {@link
+     * #newOccurrences(String)} MUST be atomic. Without that, two threads both observe an occurrence
+     * as unfired and the owner is called twice for one request, or the concurrent append loses a key
+     * and an already-answered call fires again. */
     private final List<String> firedDeduplicationKeys = new ArrayList<>();
 
     public interface ValueNormalizer {
@@ -112,7 +119,7 @@ public final class OutputTagScanner {
         }
     }
 
-    public List<OutputTagOccurrence> newOccurrences(String currentText) {
+    public synchronized List<OutputTagOccurrence> newOccurrences(String currentText) {
         if (currentText == null) {
             return new ArrayList<>();
         }

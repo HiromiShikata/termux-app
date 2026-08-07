@@ -2,8 +2,8 @@ package com.termux.app.terminal;
 
 import com.termux.app.outputtag.OutputTagOccurrence;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class CallToUserTagController {
 
@@ -13,7 +13,7 @@ public final class CallToUserTagController {
 
     private final CallTrigger callTrigger;
 
-    private final Map<String, CallToUserTagScanner> mScannerBySessionKey = new HashMap<>();
+    private final Map<String, CallToUserTagScanner> mScannerBySessionKey = new ConcurrentHashMap<>();
 
     public CallToUserTagController(CallTrigger callTrigger) {
         this.callTrigger = callTrigger;
@@ -34,11 +34,6 @@ public final class CallToUserTagController {
     }
 
     private CallToUserTagScanner scannerForSession(String sessionKey) {
-        CallToUserTagScanner scanner = mScannerBySessionKey.get(sessionKey);
-        if (scanner == null) {
-            scanner = new CallToUserTagScanner();
-            mScannerBySessionKey.put(sessionKey, scanner);
-        }
-        return scanner;
+        return mScannerBySessionKey.computeIfAbsent(sessionKey, key -> new CallToUserTagScanner());
     }
 }
