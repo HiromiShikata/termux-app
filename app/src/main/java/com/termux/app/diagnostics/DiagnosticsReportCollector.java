@@ -15,6 +15,7 @@ import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalBufferReflowCostCounterHolder;
+import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 
@@ -132,8 +133,16 @@ public final class DiagnosticsReportCollector {
             int transcriptRows = screen == null ? 0 : screen.getActiveTranscriptRows();
             int columns = emulator == null ? 0 : emulator.mColumns;
 
+            ShellInputDeliveryRecord deliveryRecord = terminalSession.getShellInputDeliveryRecord();
+            DiagnosticsShellInputDelivery shellInputDelivery = new DiagnosticsShellInputDelivery(
+                deliveryRecord.getBytesAcceptedForDelivery(),
+                deliveryRecord.getBytesWrittenToTheShell(),
+                deliveryRecord.getBytesDiscardedBeforeDelivery(),
+                deliveryRecord.isWriterRunning(),
+                deliveryRecord.getWriterStoppedReason());
+
             lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
-                transcriptRows, columns));
+                transcriptRows, columns, shellInputDelivery));
         }
         return lines;
     }

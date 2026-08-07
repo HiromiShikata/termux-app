@@ -7,6 +7,8 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
 
+import androidx.annotation.NonNull;
+
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -91,6 +93,8 @@ public final class TerminalSession extends TerminalOutput {
     private long mTotalBytesProcessed = 0L;
 
     private final TerminalInputEchoFilter mInputEchoFilter = new TerminalInputEchoFilter();
+
+    private final ShellInputDeliveryRecord mShellInputDeliveryRecord = new ShellInputDeliveryRecord();
 
     private static final String LOG_TAG = "TerminalSession";
 
@@ -183,6 +187,8 @@ public final class TerminalSession extends TerminalOutput {
             }
         }.start();
 
+        final ShellInputDeliveryRecord shellInputDeliveryRecord = mShellInputDeliveryRecord;
+        shellInputDeliveryRecord.recordWriterStarted();
         new Thread("TermSessionOutputWriter[pid=" + mShellPid + "]") {
             @Override
             public void run() {
@@ -190,11 +196,17 @@ public final class TerminalSession extends TerminalOutput {
                 try (FileOutputStream termOut = new FileOutputStream(terminalFileDescriptorWrapped)) {
                     while (true) {
                         int bytesToWrite = terminalToProcessIOQueue.read(buffer, true);
-                        if (bytesToWrite == -1) return;
+                        if (bytesToWrite == -1) {
+                            shellInputDeliveryRecord.recordWriterStopped(
+                                "the terminal-to-process queue was closed");
+                            return;
+                        }
                         termOut.write(buffer, 0, bytesToWrite);
+                        shellInputDeliveryRecord.recordBytesWrittenToTheShell(bytesToWrite);
                     }
                 } catch (IOException e) {
-                    // Ignore.
+                    shellInputDeliveryRecord.recordWriterStopped(
+                        "writing to the pseudo terminal failed: " + e);
                 }
             }
         }.start();
@@ -213,10 +225,21 @@ public final class TerminalSession extends TerminalOutput {
     /** Write data to the shell process. */
     @Override
     public void write(byte[] data, int offset, int count) {
-        if (mShellPid > 0 && inputReachesTheProgramReadingTheTerminal()) {
-            mInputEchoFilter.recordUserInput(data, offset, count);
-            mTerminalToProcessIOQueue.write(data, offset, count);
+        if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()) {
+            mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count);
+            return;
         }
+        mInputEchoFilter.recordUserInput(data, offset, count);
+        if (mTerminalToProcessIOQueue.write(data, offset, count)) {
+            mShellInputDeliveryRecord.recordBytesAcceptedForDelivery(count);
+        } else {
+            mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count);
+        }
+    }
+
+    @NonNull
+    public ShellInputDeliveryRecord getShellInputDeliveryRecord() {
+        return mShellInputDeliveryRecord;
     }
 
     /**
