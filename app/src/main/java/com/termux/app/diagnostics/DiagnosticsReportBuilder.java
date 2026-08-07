@@ -4,17 +4,31 @@ import androidx.annotation.NonNull;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
 public final class DiagnosticsReportBuilder {
 
+    public static final int PASTE_LIMIT_CHARACTERS = 5000;
+
     private static final String TIMESTAMP_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
-    private static final int MAX_REPORTED_STALL_HOT_PATHS = 4;
+    private static final int LONGEST_STALL_STACK_TRACE_BUDGET_CHARACTERS = 1200;
 
-    private static final int MAX_REPORTED_STALL_HOT_PATH_FRAMES = 8;
+    private static final int STALL_HOT_PATH_BUDGET_CHARACTERS = 1500;
+
+    private static final int BUSIEST_TARGET_BUDGET_CHARACTERS = 500;
+
+    private static final int PENDING_MESSAGE_LINE_BUDGET_CHARACTERS = 1000;
+
+    private static final int OMISSION_NOTE_BUDGET_CHARACTERS = 96;
+
+    private static final int SECTION_CEILING_HEADROOM_CHARACTERS = 300;
+
+    private static final int MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS =
+        PASTE_LIMIT_CHARACTERS - SECTION_CEILING_HEADROOM_CHARACTERS;
 
     @NonNull
     public String build(@NonNull DiagnosticsReport report) {
@@ -89,10 +103,11 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("    Busiest targets:\n");
+        List<String> targetLines = new ArrayList<>();
         for (DiagnosticsMainLooperQueueTarget target : looperQueue.getBusiestTargets()) {
-            builder.append("      ").append(target.getPendingMessageCount()).append(" x ")
-                .append(target.getDescription()).append('\n');
+            targetLines.add("      " + target.getPendingMessageCount() + " x " + target.getDescription());
         }
+        appendLinesWithinBudget(builder, targetLines, BUSIEST_TARGET_BUDGET_CHARACTERS);
         appendPendingMessageLines(builder, looperQueue);
     }
 
@@ -103,9 +118,31 @@ public final class DiagnosticsReportBuilder {
         }
         builder.append("    Pending messages, oldest first (up to ")
             .append(DiagnosticsMainLooperQueue.MAX_REPORTED_MESSAGE_LINES).append("):\n");
+        List<String> pendingMessageLines = new ArrayList<>();
         for (String pendingMessageLine : looperQueue.getPendingMessageLines()) {
-            builder.append("      ").append(pendingMessageLine).append('\n');
+            pendingMessageLines.add("      " + pendingMessageLine);
         }
+        appendLinesWithinBudget(builder, pendingMessageLines, PENDING_MESSAGE_LINE_BUDGET_CHARACTERS);
+    }
+
+    private static void appendLinesWithinBudget(@NonNull StringBuilder builder,
+                                                @NonNull List<String> lines, int budgetCharacters) {
+        int remainingToSectionCeiling =
+            MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS - builder.length() - OMISSION_NOTE_BUDGET_CHARACTERS;
+        int allowedCharacters =
+            Math.min(budgetCharacters - OMISSION_NOTE_BUDGET_CHARACTERS, remainingToSectionCeiling);
+        int spentCharacters = 0;
+        int appendedLineCount = 0;
+        for (String line : lines) {
+            int lineCharacters = line.length() + 1;
+            if (spentCharacters + lineCharacters > allowedCharacters) break;
+            builder.append(line).append('\n');
+            spentCharacters += lineCharacters;
+            appendedLineCount++;
+        }
+        if (appendedLineCount == lines.size()) return;
+        builder.append("      ... ").append(lines.size() - appendedLineCount)
+            .append(" further lines left out so this report survives being pasted\n");
     }
 
     private void appendMainThreadStallLines(@NonNull StringBuilder builder,
@@ -118,9 +155,11 @@ public final class DiagnosticsReportBuilder {
         }
         builder.append("    Longest: ").append(stalls.getMaxStallMillis()).append(" ms\n");
         builder.append("    Longest stall main thread was running:\n");
+        List<String> frameLines = new ArrayList<>();
         for (String frame : stalls.getMaxStallStackTrace().split("\n")) {
-            builder.append("      ").append(frame).append('\n');
+            frameLines.add("      " + frame);
         }
+        appendLinesWithinBudget(builder, frameLines, LONGEST_STALL_STACK_TRACE_BUDGET_CHARACTERS);
         appendMainThreadStallHotPathLines(builder, stalls.getHotPaths());
     }
 
@@ -130,18 +169,16 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("    Blocking the main thread the longest\n");
-        int reportedCount = Math.min(hotPaths.size(), MAX_REPORTED_STALL_HOT_PATHS);
-        for (int index = 0; index < reportedCount; index++) {
-            MainThreadStallHotPath hotPath = hotPaths.get(index);
-            builder.append("      ").append(hotPath.getTotalBlockedMillis())
-                .append(" ms total over ").append(hotPath.getStallCount())
-                .append(" stalls, longest ").append(hotPath.getMaxBlockedMillis()).append(" ms\n");
-            String[] frames = hotPath.getStackTrace().split("\n");
-            int reportedFrameCount = Math.min(frames.length, MAX_REPORTED_STALL_HOT_PATH_FRAMES);
-            for (int frameIndex = 0; frameIndex < reportedFrameCount; frameIndex++) {
-                builder.append("        ").append(frames[frameIndex]).append('\n');
+        List<String> hotPathLines = new ArrayList<>();
+        for (MainThreadStallHotPath hotPath : hotPaths) {
+            hotPathLines.add("      " + hotPath.getTotalBlockedMillis()
+                + " ms total over " + hotPath.getStallCount()
+                + " stalls, longest " + hotPath.getMaxBlockedMillis() + " ms");
+            for (String frame : hotPath.getStackTrace().split("\n")) {
+                hotPathLines.add("        " + frame);
             }
         }
+        appendLinesWithinBudget(builder, hotPathLines, STALL_HOT_PATH_BUDGET_CHARACTERS);
     }
 
     private void appendBackgroundCycleSection(@NonNull StringBuilder builder,

@@ -16,7 +16,7 @@ import java.util.List;
  */
 public class PendingMainLooperMessageLinesTest {
 
-    private static final int LINES_ONE_REPORT_STAYS_READABLE_WITH = 40;
+    private static final int PENDING_MESSAGES_MORE_THAN_ONE_REPORT_CAN_RENDER = 50;
 
     private static DiagnosticsReport reportWithMainLooperQueue(DiagnosticsMainLooperQueue mainLooperQueue) {
         return new DiagnosticsReport("0.119.0", 119, 0L,
@@ -70,17 +70,25 @@ public class PendingMainLooperMessageLinesTest {
 
     @Test
     public void theRenderedLinesAreBoundedSoOneReportStaysReadable() {
-        String[] whenValues = new String[LINES_ONE_REPORT_STAYS_READABLE_WITH + 10];
+        String[] whenValues = new String[PENDING_MESSAGES_MORE_THAN_ONE_REPORT_CAN_RENDER];
         Arrays.fill(whenValues, "+300ms");
 
         String renderedReport = renderReportFor(whenValues);
 
-        Assert.assertEquals("the owner pastes this report into a message, so the rendered lines are capped"
-                + " while the total count keeps the full picture. Actual report:\n" + renderedReport,
-            LINES_ONE_REPORT_STAYS_READABLE_WITH, countOfRenderedMessageLines(renderedReport));
+        int renderedMessageLineCount = countOfRenderedMessageLines(renderedReport);
+        Assert.assertTrue("the report is read after being pasted into a channel that keeps only the first "
+                + DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS + " characters, so a queue this long must"
+                + " render fewer lines than it holds. Actual report:\n" + renderedReport,
+            renderedMessageLineCount < whenValues.length);
+        Assert.assertTrue("a queue this busy is the evidence the report exists to carry, so the rendering must"
+                + " not collapse to nothing. Actual report:\n" + renderedReport,
+            renderedMessageLineCount > 0);
         Assert.assertTrue("capping the rendered lines must not change the reported total. Actual report:\n"
                 + renderedReport,
             renderedReport.contains("Pending messages: " + whenValues.length));
+        Assert.assertTrue("a shortened list that does not say it was shortened reads as the whole queue, so the"
+                + " count left out must be stated. Actual report:\n" + renderedReport,
+            renderedReport.contains("further lines left out"));
     }
 
     @Test
