@@ -680,6 +680,44 @@ public class DiagnosticsReportBuilderTest {
             survivingWindow.contains("broken pipe"));
     }
 
+    @Test
+    public void everySessionWritingEverythingItAcceptedReadsAsMeasuredRatherThanAsAMissingMeasurement() {
+        List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
+        for (int sessionIndex = 0; sessionIndex < 3; sessionIndex++) {
+            sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex,
+                true, 100, 80, deliveringEverything()));
+        }
+        DiagnosticsReport report = reportWith(sessionLines, 3, 3, 32, 0, 0, false, true,
+            Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("a reader who finds nothing under this heading must be able to tell that"
+                + " the measurement ran and found nothing, rather than that it is missing: " + text,
+            text.contains("None: every session wrote everything it accepted"));
+    }
+
+    @Test
+    public void aStoppedWriterIsReportedEvenWhenNothingIsWaitingToBeWritten() {
+        List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
+        sessionLines.add(new DiagnosticsSessionLine("host-drained", true, 3, true, 100, 80,
+            new DiagnosticsShellInputDelivery(2048L, 2048L, 0L, false,
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe")));
+        DiagnosticsReport report = reportWith(sessionLines, 1, 1, 32, 0, 0, false, true,
+            Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("a session whose writer has stopped cannot accept anything the user types"
+                + " next, so it must be reported even though everything accepted so far was"
+                + " written: " + text, text.contains("host-drained"));
+        Assert.assertTrue("the failure that stopped the writer must be named: " + text,
+            text.contains("broken pipe"));
+        Assert.assertFalse("this session must not also be reported as having written everything it"
+                + " accepted, because its writer has stopped: " + text,
+            text.contains("None: every session wrote everything it accepted"));
+    }
+
     private static String stackTraceOf(String methodName, int frameCount) {
         StringBuilder stackTrace = new StringBuilder();
         for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
