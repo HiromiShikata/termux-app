@@ -9,6 +9,14 @@ public final class JniSpawnCounter {
         JNI.resetCounters();
     }
 
+    public static void pretendTheDeviceNativeSubprocessLibraryIsPresent() {
+        JNI.deviceNativeSubprocessLibraryIsPresent = true;
+    }
+
+    public static void restoreTheAbsenceOfTheDeviceNativeSubprocessLibrary() {
+        JNI.deviceNativeSubprocessLibraryIsPresent = false;
+    }
+
     public static int createSubprocessCallCount() {
         return JNI.createSubprocessCallCount;
     }

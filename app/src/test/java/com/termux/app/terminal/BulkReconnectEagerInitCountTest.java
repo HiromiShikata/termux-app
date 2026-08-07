@@ -22,6 +22,7 @@ import com.termux.terminal.JniSpawnCounter;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -60,6 +61,7 @@ public class BulkReconnectEagerInitCountTest {
 
     @Before
     public void setUp() throws Exception {
+        JniSpawnCounter.pretendTheDeviceNativeSubprocessLibraryIsPresent();
         JniSpawnCounter.reset();
         assertTrue("the test-source-set JNI stub must be the class on the runtime classpath, "
             + "otherwise the measurement counts nothing", JniSpawnCounter.stubIsActive());
@@ -103,6 +105,11 @@ public class BulkReconnectEagerInitCountTest {
         terminalView.setTerminalViewClient(terminalViewClient);
 
         JniSpawnCounter.reset();
+    }
+
+    @After
+    public void restoreTheDefaultAbsenceOfTheDeviceNativeSubprocessLibrary() {
+        JniSpawnCounter.restoreTheAbsenceOfTheDeviceNativeSubprocessLibrary();
     }
 
     @Test
