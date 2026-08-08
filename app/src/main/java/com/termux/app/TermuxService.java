@@ -174,6 +174,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     private final DefinitionBackedSessionCounter mDefinitionBackedSessionCounter = new DefinitionBackedSessionCounter();
 
+    private final TermuxSessionCreationBatch mSessionCreationBatch = new TermuxSessionCreationBatch();
+
     /** If the user has executed the {@link TERMUX_SERVICE#ACTION_STOP_SERVICE} intent. */
     boolean mWantsToStop = false;
 
@@ -753,8 +755,6 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     /** Create a {@link TermuxSession}. */
     @Nullable
-    private final TermuxSessionCreationBatch mSessionCreationBatch = new TermuxSessionCreationBatch();
-
     public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {
         if (executionCommand == null) return null;
 
