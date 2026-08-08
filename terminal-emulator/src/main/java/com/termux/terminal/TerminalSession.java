@@ -96,6 +96,8 @@ public final class TerminalSession extends TerminalOutput {
 
     private final ShellInputDeliveryRecord mShellInputDeliveryRecord = new ShellInputDeliveryRecord();
 
+    private final ShellStartupInputBuffer mShellStartupInputBuffer = new ShellStartupInputBuffer();
+
     private static final String LOG_TAG = "TerminalSession";
 
     public TerminalSession(String shellPath, String cwd, String[] args, String[] env, Integer transcriptRows, TerminalSessionClient client) {
@@ -220,12 +222,16 @@ public final class TerminalSession extends TerminalOutput {
             }
         }.start();
 
+        deliverInputHeldUntilTheShellStarted();
     }
 
     /** Write data to the shell process. */
     @Override
     public void write(byte[] data, int offset, int count) {
         if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()) {
+            if (holdsInputUntilTheShellStarts() && mShellStartupInputBuffer.hold(data, offset, count)) {
+                return;
+            }
             mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count);
             return;
         }
@@ -235,6 +241,16 @@ public final class TerminalSession extends TerminalOutput {
         } else {
             mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count);
         }
+    }
+
+    private boolean holdsInputUntilTheShellStarts() {
+        return mEmulator == null && !mRuntimeResourcesReleased;
+    }
+
+    private void deliverInputHeldUntilTheShellStarted() {
+        byte[] heldInput = mShellStartupInputBuffer.drain();
+        if (heldInput.length == 0) return;
+        write(heldInput, 0, heldInput.length);
     }
 
     @NonNull
