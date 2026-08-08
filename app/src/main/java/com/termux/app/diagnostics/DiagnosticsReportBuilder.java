@@ -17,7 +17,9 @@ public final class DiagnosticsReportBuilder {
 
     private static final int LONGEST_STALL_STACK_TRACE_BUDGET_CHARACTERS = 1200;
 
-    private static final int STALL_HOT_PATH_BUDGET_CHARACTERS = 1500;
+    private static final int STALL_HOT_PATH_RANKING_BUDGET_CHARACTERS = 900;
+
+    private static final int STALL_HOT_PATH_STACK_TRACE_BUDGET_CHARACTERS = 600;
 
     private static final int BUSIEST_TARGET_BUDGET_CHARACTERS = 500;
 
@@ -227,16 +229,28 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("    Blocking the main thread the longest\n");
-        List<String> hotPathLines = new ArrayList<>();
+        List<String> rankingLines = new ArrayList<>();
         for (MainThreadStallHotPath hotPath : hotPaths) {
-            hotPathLines.add("      " + hotPath.getTotalBlockedMillis()
+            rankingLines.add("      " + hotPath.getTotalBlockedMillis()
                 + " ms total over " + hotPath.getStallCount()
-                + " stalls, longest " + hotPath.getMaxBlockedMillis() + " ms");
+                + " stalls, longest " + hotPath.getMaxBlockedMillis() + " ms: "
+                + hotPath.getIdentifyingFrame());
+        }
+        appendLinesWithinBudget(builder, rankingLines, STALL_HOT_PATH_RANKING_BUDGET_CHARACTERS);
+        appendMainThreadStallHotPathStackTraceLines(builder, hotPaths);
+    }
+
+    private void appendMainThreadStallHotPathStackTraceLines(@NonNull StringBuilder builder,
+                                                             @NonNull List<MainThreadStallHotPath> hotPaths) {
+        builder.append("    Caller chain of each path blocking the main thread\n");
+        List<String> stackTraceLines = new ArrayList<>();
+        for (MainThreadStallHotPath hotPath : hotPaths) {
+            stackTraceLines.add("      " + hotPath.getIdentifyingFrame());
             for (String frame : hotPath.getStackTrace().split("\n")) {
-                hotPathLines.add("        " + frame);
+                stackTraceLines.add("        " + frame);
             }
         }
-        appendLinesWithinBudget(builder, hotPathLines, STALL_HOT_PATH_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, stackTraceLines, STALL_HOT_PATH_STACK_TRACE_BUDGET_CHARACTERS);
     }
 
     private void appendBackgroundCycleSection(@NonNull StringBuilder builder,
