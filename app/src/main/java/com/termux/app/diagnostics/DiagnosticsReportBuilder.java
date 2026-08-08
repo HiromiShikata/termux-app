@@ -43,6 +43,8 @@ public final class DiagnosticsReportBuilder {
         builder.append("App version: ").append(report.getVersionName())
             .append(" (").append(report.getVersionCode()).append(")\n");
 
+        appendVersionChangeLine(builder, report.getVersionChange());
+
         builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
 
         builder.append('\n');
@@ -73,6 +75,17 @@ public final class DiagnosticsReportBuilder {
         appendEventsSection(builder, report);
 
         return builder.toString();
+    }
+
+    private void appendVersionChangeLine(@NonNull StringBuilder builder,
+                                         @NonNull DiagnosticsVersionChange versionChange) {
+        if (!versionChange.isFirstLaunchOfThisVersion()) return;
+        if (versionChange.hasPreviousVersionCode()) {
+            builder.append("First launch after replacing version code ")
+                .append(versionChange.getPreviousVersionCode()).append('\n');
+            return;
+        }
+        builder.append("First launch after installation\n");
     }
 
     @NonNull

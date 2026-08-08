@@ -224,6 +224,13 @@ public final class TermuxPreferenceConstants {
 
 
         /**
+         * Defines the key for the version code of the app that ran on the previous launch.
+         */
+        public static final String KEY_VERSION_CODE_OF_THE_PREVIOUS_LAUNCH = "version_code_of_the_previous_launch";
+        public static final int DEFAULT_VALUE_VERSION_CODE_OF_THE_PREVIOUS_LAUNCH = -1;
+
+
+        /**
          * Defines the key for last used notification id.
          */
         public static final String KEY_LAST_NOTIFICATION_ID = "last_notification_id";

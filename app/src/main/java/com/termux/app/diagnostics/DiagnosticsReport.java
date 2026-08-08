@@ -47,6 +47,8 @@ public final class DiagnosticsReport {
     private final long mProcessUptimeMillis;
     @NonNull
     private final DiagnosticsBackgroundCycle mBackgroundCycle;
+    @NonNull
+    private final DiagnosticsVersionChange mVersionChange;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -63,7 +65,8 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
                              long processUptimeMillis,
-                             @NonNull DiagnosticsBackgroundCycle backgroundCycle) {
+                             @NonNull DiagnosticsBackgroundCycle backgroundCycle,
+                             @NonNull DiagnosticsVersionChange versionChange) {
         mVersionName = versionName;
         mVersionCode = versionCode;
         mReportTimestampMillis = reportTimestampMillis;
@@ -86,6 +89,12 @@ public final class DiagnosticsReport {
         mMainLooperQueue = mainLooperQueue;
         mProcessUptimeMillis = processUptimeMillis;
         mBackgroundCycle = backgroundCycle;
+        mVersionChange = versionChange;
+    }
+
+    @NonNull
+    public DiagnosticsVersionChange getVersionChange() {
+        return mVersionChange;
     }
 
     @NonNull

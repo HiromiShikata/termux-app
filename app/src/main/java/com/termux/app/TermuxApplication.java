@@ -9,6 +9,8 @@ import androidx.work.Configuration;
 
 import com.termux.BuildConfig;
 import com.termux.app.apkupdate.ApkUpdateCheckWorker;
+import com.termux.app.diagnostics.AppVersionChangeHolder;
+import com.termux.app.diagnostics.AppVersionChangeRecorder;
 import com.termux.app.diagnostics.CrashReportDiagnosticsSupplement;
 import com.termux.app.diagnostics.MainThreadStallWatchdog;
 import com.termux.app.diagnostics.ProcessUptimeTracker;
@@ -52,6 +54,8 @@ public class TermuxApplication extends Application implements Configuration.Prov
         // Set log config for the app
         setLogConfig(context);
 
+        recordVersionChangeOfThisLaunch(context);
+
         Logger.logDebug("Starting Application");
 
         // Set TermuxBootstrap.TERMUX_APP_PACKAGE_MANAGER and TermuxBootstrap.TERMUX_APP_PACKAGE_VARIANT
@@ -93,6 +97,14 @@ public class TermuxApplication extends Application implements Configuration.Prov
         }
 
         ApkUpdateCheckWorker.schedule(this);
+    }
+
+    private static void recordVersionChangeOfThisLaunch(Context context) {
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(context);
+        if (preferences == null) return;
+        AppVersionChangeHolder.set(new AppVersionChangeRecorder().versionChangeOfThisLaunch(
+            preferences.getVersionCodeOfThePreviousLaunch(), BuildConfig.VERSION_CODE));
+        preferences.setVersionCodeOfThePreviousLaunch(BuildConfig.VERSION_CODE);
     }
 
     public static void setLogConfig(Context context) {
