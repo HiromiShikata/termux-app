@@ -69,7 +69,7 @@ public final class DiagnosticsReportCollector {
             MainLooperQueueSnapshot.take(),
             ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
             DiagnosticsBackgroundCycle.of(BackgroundCycleIntervalRecorderHolder.getInstance()),
-            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
+            AppVersionChangeHolder.getInstance());
     }
 
     @NonNull

@@ -157,6 +157,17 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_KEEP_SCREEN_ON, value, false);
     }
 
+    public int getVersionCodeOfThePreviousLaunch() {
+        return SharedPreferenceUtils.getInt(mSharedPreferences,
+            TERMUX_APP.KEY_VERSION_CODE_OF_THE_PREVIOUS_LAUNCH,
+            TERMUX_APP.DEFAULT_VALUE_VERSION_CODE_OF_THE_PREVIOUS_LAUNCH);
+    }
+
+    public void setVersionCodeOfThePreviousLaunch(int versionCode) {
+        SharedPreferenceUtils.setInt(mSharedPreferences,
+            TERMUX_APP.KEY_VERSION_CODE_OF_THE_PREVIOUS_LAUNCH, versionCode, false);
+    }
+
 
     public static int[] getDefaultFontSizes(Context context) {
         float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, context.getResources().getDisplayMetrics());
