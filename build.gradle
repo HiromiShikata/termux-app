@@ -14,6 +14,16 @@ allprojects {
         mavenCentral()
         maven { url "https://jitpack.io" }
     }
+
+    tasks.withType(Test).configureEach {
+        testLogging {
+            events "failed"
+            exceptionFormat "full"
+            showExceptions true
+            showCauses true
+            showStackTraces true
+        }
+    }
 }
 
 ext.jacocoToolVersion = "0.8.12"
