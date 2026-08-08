@@ -2930,6 +2930,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController != null) browserController.beginPersistenceBatch();
+        service.beginSessionCreationBatch();
         try {
             for (PersistedSessionRestoreData persistedSession : persistedSessions) {
                 String name = persistedSession.getName();
@@ -2953,6 +2954,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                     firstRestoredSession = newTerminalSession;
             }
         } finally {
+            service.endSessionCreationBatch();
             if (browserController != null) browserController.endPersistenceBatch();
         }
 
