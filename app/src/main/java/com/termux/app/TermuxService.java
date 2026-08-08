@@ -753,6 +753,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     /** Create a {@link TermuxSession}. */
     @Nullable
+    private final TermuxSessionCreationBatch mSessionCreationBatch = new TermuxSessionCreationBatch();
+
     public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {
         if (executionCommand == null) return null;
 
@@ -796,18 +798,27 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (executionCommand.isPluginExecutionCommand)
             mShellManager.mPendingPluginExecutionCommands.remove(executionCommand);
 
-        // Notify {@link TermuxSessionsListViewController} that sessions list has been updated if
-        // activity in is foreground
+        mSessionCreationBatch.runOrDefer(this::runWorkSharedByCreatedSessions);
+
+        return newTermuxSession;
+    }
+
+    public synchronized void beginSessionCreationBatch() {
+        mSessionCreationBatch.begin();
+    }
+
+    public synchronized void endSessionCreationBatch() {
+        mSessionCreationBatch.end(this::runWorkSharedByCreatedSessions);
+    }
+
+    private void runWorkSharedByCreatedSessions() {
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
 
         reconcileAlwaysConnectedWakeLock();
         updateNotification();
 
-        // No need to recreate the activity since it likely just started and theme should already have applied
         TermuxActivity.updateTermuxActivityStyling(this, false);
-
-        return newTermuxSession;
     }
 
     public synchronized int removeTermuxSessionBeingReplaced(TerminalSession sessionToRemove) {
