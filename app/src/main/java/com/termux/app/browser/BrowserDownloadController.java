@@ -93,7 +93,7 @@ public final class BrowserDownloadController {
                 long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
                 if (!mEnqueuedDownloadIds.remove(completedId)) return;
                 if (isDownloadSuccessful(completedId)) {
-                    openDownloadsView();
+                    displayDownloadedDocumentOrOpenDownloadsView(completedId);
                 } else {
                     mHost.onDownloadFailed();
                 }
@@ -133,6 +133,46 @@ public final class BrowserDownloadController {
         } catch (Exception e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to query download status", e);
             return false;
+        }
+    }
+
+    private void displayDownloadedDocumentOrOpenDownloadsView(long downloadId) {
+        if (!BrowserDownloadedDocumentDisplay.displaysAsDocument(downloadedMediaType(downloadId))) {
+            openDownloadsView();
+            return;
+        }
+        if (!mHost.isActivityVisible()) return;
+        DownloadManager downloadManager = downloadManager();
+        if (downloadManager == null) {
+            mHost.onDownloadFailed();
+            return;
+        }
+        try {
+            Uri downloadedDocument = downloadManager.getUriForDownloadedFile(downloadId);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(downloadedDocument, BrowserDownloadedDocumentDisplay.PDF_MEDIA_TYPE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mHost.getDownloadContext().startActivity(intent);
+            mHost.onDownloadComplete();
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to display the downloaded document", e);
+            mHost.onDownloadFailed();
+        }
+    }
+
+    @Nullable
+    private String downloadedMediaType(long downloadId) {
+        DownloadManager downloadManager = downloadManager();
+        if (downloadManager == null) return null;
+        try (Cursor cursor = downloadManager.query(new DownloadManager.Query().setFilterById(downloadId))) {
+            if (cursor == null || !cursor.moveToFirst()) return null;
+            int mediaTypeColumn = cursor.getColumnIndex(DownloadManager.COLUMN_MEDIA_TYPE);
+            if (mediaTypeColumn < 0) return null;
+            return cursor.getString(mediaTypeColumn);
+        } catch (Exception e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to query the downloaded media type", e);
+            return null;
         }
     }
 
