@@ -163,7 +163,38 @@ public class DiagnosticsReportBuilderTest {
             memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
-            processUptimeMillis, backgroundCycle);
+            processUptimeMillis, backgroundCycle, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
+    }
+
+    private DiagnosticsReport reportWithVersionChange(DiagnosticsVersionChange versionChange) {
+        return new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
+            0, 0, 32, Collections.<DiagnosticsSessionLine>emptyList(),
+            0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
+            NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
+            NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, NO_BACKGROUND_CYCLE,
+            versionChange);
+    }
+
+    @Test
+    public void aReportTakenOnTheFirstLaunchAfterAnUpdateSaysSoAndNamesTheVersionItReplaced() {
+        String text = new DiagnosticsReportBuilder().build(
+            reportWithVersionChange(DiagnosticsVersionChange.firstLaunchAfterReplacing(3658)));
+
+        Assert.assertTrue("a report taken after an update is indistinguishable from one taken after an"
+                + " ordinary restart unless it says the version had just changed and which version code it"
+                + " replaced: " + text,
+            text.contains("First launch after replacing version code 3658"));
+    }
+
+    @Test
+    public void aReportTakenOnALaunchOfTheSameVersionSaysNothingAboutAVersionChange() {
+        String text = new DiagnosticsReportBuilder().build(
+            reportWithVersionChange(DiagnosticsVersionChange.sameVersionAsThePreviousLaunch()));
+
+        Assert.assertFalse("a launch that replaced nothing must not claim a version change, otherwise every"
+                + " report reads as if it followed one: " + text,
+            text.contains("First launch after"));
     }
 
     private DiagnosticsReport reportWithMainLooperQueue(DiagnosticsMainLooperQueue mainLooperQueue) {
@@ -172,7 +203,8 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
-            mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
+            mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
+            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
     }
 
     private DiagnosticsReport reportWithForegroundOpenTagScanCost(DiagnosticsWorkCostLine cost) {
@@ -181,7 +213,8 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
+            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
     }
 
     @Test
@@ -720,7 +753,7 @@ public class DiagnosticsReportBuilderTest {
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
             Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
             NO_WORK_COST, NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
-            DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE));
+            DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch()));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
                 + " truncation never happens and this test proves nothing, but it is only "
@@ -796,7 +829,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
-            looperQueue, 0L, NO_BACKGROUND_CYCLE);
+            looperQueue, 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
     }
 
     private static DiagnosticsShellInputDelivery deliveringEverything() {

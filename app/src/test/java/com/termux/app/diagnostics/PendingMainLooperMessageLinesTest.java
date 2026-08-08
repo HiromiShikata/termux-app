@@ -27,7 +27,7 @@ public class PendingMainLooperMessageLinesTest {
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsSessionReconnectCost(0, 0, 0, 0),
             new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", ""),
-            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()), mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()));
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()), mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()), DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
     }
 
     private static List<String> looperDumpWithMessages(String... whenValues) {
