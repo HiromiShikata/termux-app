@@ -130,7 +130,7 @@ public final class ApkUpdateUiController {
     private void preDownloadThenShowIndicator(ApkUpdateAvailability availability,
                                               ApkUpdateFloatingIndicatorController indicatorController) {
         if (!DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
-            indicatorController.onUpdateAvailable(availability);
+            Logger.logInfo(LOG_TAG, "An APK update is already being prepared, so no indicator is offered yet");
             return;
         }
         Logger.logInfo(LOG_TAG, "Pre-downloading APK update before showing indicator");
@@ -184,6 +184,7 @@ public final class ApkUpdateUiController {
         }
 
         if (!DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
+            Logger.showToast(activity, activity.getString(R.string.apk_update_preparing), false);
             return;
         }
 
