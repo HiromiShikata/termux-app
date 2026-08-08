@@ -61,6 +61,44 @@ public class DiagnosticsReportBuilderTest {
             text.contains("Longest gaps between cycles: none recorded yet"));
     }
 
+    private static String stackTraceLedBy(String topFrame) {
+        StringBuilder trace = new StringBuilder(topFrame + "(TermuxService.java:1094)");
+        for (int frameIndex = 1; frameIndex < 16; frameIndex++) {
+            trace.append("\nandroid.os.Handler.dispatchMessage(Handler.java:").append(100 + frameIndex).append(')');
+        }
+        return trace.toString();
+    }
+
+    private static MainThreadStallHotPath hotPathLedBy(String topFrame, long totalBlockedMillis,
+                                                       long stallCount, long maxBlockedMillis) {
+        return new MainThreadStallHotPath(stackTraceLedBy(topFrame), stallCount,
+            totalBlockedMillis, maxBlockedMillis);
+    }
+
+    @Test
+    public void everyPathThatBlockedTheMainThreadIsNamedSoTheSecondCauseIsNotLostToTruncation() {
+        String longestBlocker = "com.termux.app.TermuxService.updateNotification";
+        String secondBlocker = "com.termux.app.terminal.TermuxTerminalSessionActivityClient.reconnect";
+        String thirdBlocker = "com.termux.app.browser.TermuxBrowserController.persistOpenTabs";
+        DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(80L, 24L, 711L,
+            stackTraceLedBy(longestBlocker), Arrays.asList(
+                hotPathLedBy(longestBlocker, 2130L, 13L, 711L),
+                hotPathLedBy(secondBlocker, 402L, 7L, 96L),
+                hotPathLedBy(thirdBlocker, 188L, 4L, 55L)));
+
+        String text = new DiagnosticsReportBuilder().build(reportWith(
+            Collections.<DiagnosticsSessionLine>emptyList(), 0, 0, 32, 0, 0, false, true,
+            Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            stalls, 0L, NO_BACKGROUND_CYCLE));
+
+        Assert.assertTrue("the path that blocked the main thread the longest must be named: " + text,
+            text.contains(longestBlocker));
+        Assert.assertTrue("the second cause is the one a reader needs after the longest is fixed,"
+            + " and it is lost when the ranking is cut short: " + text, text.contains(secondBlocker));
+        Assert.assertTrue("a ranking that stops before its third entry cannot rank anything: " + text,
+            text.contains(thirdBlocker));
+    }
+
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
                                          int countedTowardCap, int displayedCount, int maxCap,
                                          int openTabCount, int tabHistoryEntryCount,
