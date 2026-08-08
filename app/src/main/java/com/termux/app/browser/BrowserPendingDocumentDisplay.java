@@ -8,9 +8,18 @@ public final class BrowserPendingDocumentDisplay {
         void display(long downloadId);
     }
 
+    private static final long NO_DOCUMENT = -1L;
+
+    private long mDownloadId = NO_DOCUMENT;
+
     public void rememberUntilTheActivityReturns(long downloadId) {
+        mDownloadId = downloadId;
     }
 
     public void displayRememberedDocument(@NonNull Display display) {
+        if (mDownloadId == NO_DOCUMENT) return;
+        long rememberedDownloadId = mDownloadId;
+        mDownloadId = NO_DOCUMENT;
+        display.display(rememberedDownloadId);
     }
 }
