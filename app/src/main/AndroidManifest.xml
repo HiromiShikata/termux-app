@@ -112,13 +112,6 @@
         </activity-alias>
 
         <activity
-            android:name=".app.browser.BrowserPdfDocumentActivity"
-            android:exported="false"
-            android:label="@string/application_name"
-            android:parentActivityName=".app.TermuxActivity"
-            android:theme="@style/Theme.TermuxApp.DayNight.NoActionBar" />
-
-        <activity
             android:name=".app.activities.HelpActivity"
             android:exported="false"
             android:label="@string/application_name"

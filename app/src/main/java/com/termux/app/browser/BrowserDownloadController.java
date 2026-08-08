@@ -164,13 +164,13 @@ public final class BrowserDownloadController {
         }
         try {
             Uri downloadedDocument = downloadManager.getUriForDownloadedFile(downloadId);
-            Intent displayIntent = new Intent(Intent.ACTION_VIEW, downloadedDocument);
-            displayIntent.setClass(mHost.getDownloadContext(), BrowserPdfDocumentActivity.class);
+            Intent displayIntent = new Intent(Intent.ACTION_VIEW);
+            displayIntent.setDataAndType(downloadedDocument, BrowserDownloadedDocumentDisplay.PDF_MEDIA_TYPE);
             displayIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             displayIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             mHost.getDownloadContext().startActivity(displayIntent);
         } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to display the downloaded document", e);
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open the downloaded document in a viewer", e);
             mHost.onDownloadFailed();
         }
     }
