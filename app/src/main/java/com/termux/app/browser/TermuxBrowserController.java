@@ -2190,6 +2190,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     public void onActivityResume() {
         mAppForegrounded = true;
         applyWebViewPauseState();
+        mDownloadController.displayPendingDocumentIfAny();
     }
 
     public void onActivityStop() {

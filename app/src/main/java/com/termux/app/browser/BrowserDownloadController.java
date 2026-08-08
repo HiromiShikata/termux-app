@@ -18,7 +18,9 @@ import androidx.core.content.ContextCompat;
 
 import com.termux.shared.logger.Logger;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public final class BrowserDownloadController {
@@ -42,6 +44,11 @@ public final class BrowserDownloadController {
     private final Host mHost;
 
     private final Set<Long> mEnqueuedDownloadIds = new HashSet<>();
+
+    private final Map<Long, String> mDownloadFileNames = new HashMap<>();
+
+    private final BrowserPendingDocumentDisplay mPendingDocumentDisplay =
+        new BrowserPendingDocumentDisplay();
 
     private BroadcastReceiver mDownloadCompleteReceiver;
 
@@ -77,6 +84,7 @@ public final class BrowserDownloadController {
             long downloadId = downloadManager.enqueue(request);
             if (receiverReady) {
                 mEnqueuedDownloadIds.add(downloadId);
+                mDownloadFileNames.put(downloadId, fileName);
             }
             mHost.onDownloadStarted(fileName);
         } catch (Exception e) {
@@ -95,6 +103,7 @@ public final class BrowserDownloadController {
                 if (isDownloadSuccessful(completedId)) {
                     displayDownloadedDocumentOrOpenDownloadsView(completedId);
                 } else {
+                    mDownloadFileNames.remove(completedId);
                     mHost.onDownloadFailed();
                 }
             }
@@ -137,11 +146,17 @@ public final class BrowserDownloadController {
     }
 
     private void displayDownloadedDocumentOrOpenDownloadsView(long downloadId) {
-        if (!BrowserDownloadedDocumentDisplay.displaysAsDocument(downloadedMediaType(downloadId))) {
+        String fileName = mDownloadFileNames.get(downloadId);
+        if (!BrowserDownloadedDocumentDisplay.displaysAsDocument(downloadedMediaType(downloadId), fileName)) {
+            mDownloadFileNames.remove(downloadId);
             openDownloadsView();
             return;
         }
-        if (!mHost.isActivityVisible()) return;
+        if (!mHost.isActivityVisible()) {
+            mPendingDocumentDisplay.rememberUntilTheActivityReturns(downloadId);
+            return;
+        }
+        mDownloadFileNames.remove(downloadId);
         DownloadManager downloadManager = downloadManager();
         if (downloadManager == null) {
             mHost.onDownloadFailed();
@@ -149,16 +164,19 @@ public final class BrowserDownloadController {
         }
         try {
             Uri downloadedDocument = downloadManager.getUriForDownloadedFile(downloadId);
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(downloadedDocument, BrowserDownloadedDocumentDisplay.PDF_MEDIA_TYPE);
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            mHost.getDownloadContext().startActivity(intent);
-            mHost.onDownloadComplete();
+            Intent displayIntent = new Intent(Intent.ACTION_VIEW);
+            displayIntent.setDataAndType(downloadedDocument, BrowserDownloadedDocumentDisplay.PDF_MEDIA_TYPE);
+            displayIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            displayIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            mHost.getDownloadContext().startActivity(displayIntent);
         } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to display the downloaded document", e);
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to open the downloaded document in a viewer", e);
             mHost.onDownloadFailed();
         }
+    }
+
+    public void displayPendingDocumentIfAny() {
+        mPendingDocumentDisplay.displayRememberedDocument(this::displayDownloadedDocumentOrOpenDownloadsView);
     }
 
     @Nullable
