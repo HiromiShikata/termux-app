@@ -99,6 +99,27 @@ public class DiagnosticsReportBuilderTest {
             text.contains(thirdBlocker));
     }
 
+    @Test
+    public void aPathSampledEntirelyInsideThePlatformIsStillNamedByTheFrameItStoppedIn() {
+        String platformFrame = "android.os.MessageQueue.nativePollOnce(MessageQueue.java:-2)";
+        StringBuilder platformOnlyTrace = new StringBuilder(platformFrame);
+        for (int frameIndex = 1; frameIndex < 16; frameIndex++) {
+            platformOnlyTrace.append("\nandroid.os.Looper.loop(Looper.java:").append(200 + frameIndex).append(')');
+        }
+        DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(80L, 3L, 240L,
+            platformOnlyTrace.toString(), Arrays.asList(
+                new MainThreadStallHotPath(platformOnlyTrace.toString(), 3L, 640L, 240L)));
+
+        String text = new DiagnosticsReportBuilder().build(reportWith(
+            Collections.<DiagnosticsSessionLine>emptyList(), 0, 0, 32, 0, 0, false, true,
+            Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
+            stalls, 0L, NO_BACKGROUND_CYCLE));
+
+        Assert.assertTrue("a ranked entry with no name tells the reader nothing, so a sample that caught"
+                + " no application frame must still be named by the frame it stopped in: " + text,
+            text.contains("640 ms total over 3 stalls, longest 240 ms: " + platformFrame));
+    }
+
     private DiagnosticsReport reportWith(List<DiagnosticsSessionLine> sessionLines,
                                          int countedTowardCap, int displayedCount, int maxCap,
                                          int openTabCount, int tabHistoryEntryCount,
