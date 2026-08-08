@@ -244,7 +244,10 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     private boolean holdsInputUntilTheShellStarts() {
-        return mEmulator == null && !mRuntimeResourcesReleased;
+        return mShellPath != null
+            && mEmulator == null
+            && !mRuntimeResourcesReleased
+            && mShellProcessGeneration == 0;
     }
 
     private void deliverInputHeldUntilTheShellStarted() {

@@ -34,6 +34,12 @@ public class TerminalSessionHoldsInputUntilTheShellStartsTest {
         Assert.assertTrue("a session whose runtime resources were released gets no further shell,"
                 + " so holding its input would keep bytes that can never be delivered",
             decisionBody.contains("mRuntimeResourcesReleased"));
+        Assert.assertTrue("a session with no shell path can never start a process, so holding its"
+                + " input would keep it forever instead of reporting it as discarded",
+            decisionBody.contains("mShellPath != null"));
+        Assert.assertTrue("a session that already owned a shell is reconnected and replayed by the"
+                + " layer above, so holding here as well would deliver the same input twice",
+            decisionBody.contains("mShellProcessGeneration == 0"));
     }
 
     @Test
