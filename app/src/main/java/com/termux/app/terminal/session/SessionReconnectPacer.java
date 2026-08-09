@@ -35,6 +35,12 @@ public final class SessionReconnectPacer {
                                  int sessionsStillQueued);
     }
 
+    public interface SharedCreationWorkBatch {
+        void begin();
+
+        void end();
+    }
+
     private final MainThreadMessagePoster mainThreadMessagePoster;
 
     private final SessionStillInTheReconnectList sessionStillInTheReconnectList;
@@ -45,22 +51,28 @@ public final class SessionReconnectPacer {
 
     private final ReconnectCostRecorder reconnectCostRecorder;
 
+    private final SharedCreationWorkBatch sharedCreationWorkBatch;
+
     private final LinkedHashMap<TerminalSession, SessionReconnectReason> pendingSessions =
         new LinkedHashMap<>();
 
     private boolean unitMessagePosted;
+
+    private boolean sharedCreationWorkBatchIsOpen;
 
     public SessionReconnectPacer(
         @NonNull MainThreadMessagePoster mainThreadMessagePoster,
         @NonNull SessionStillInTheReconnectList sessionStillInTheReconnectList,
         @NonNull SessionReconnectAction sessionReconnectAction,
         @NonNull ElapsedNanosClock elapsedNanosClock,
-        @NonNull ReconnectCostRecorder reconnectCostRecorder) {
+        @NonNull ReconnectCostRecorder reconnectCostRecorder,
+        @NonNull SharedCreationWorkBatch sharedCreationWorkBatch) {
         this.mainThreadMessagePoster = mainThreadMessagePoster;
         this.sessionStillInTheReconnectList = sessionStillInTheReconnectList;
         this.sessionReconnectAction = sessionReconnectAction;
         this.elapsedNanosClock = elapsedNanosClock;
         this.reconnectCostRecorder = reconnectCostRecorder;
+        this.sharedCreationWorkBatch = sharedCreationWorkBatch;
     }
 
     public void enqueueSession(@NonNull TerminalSession session,
@@ -85,6 +97,7 @@ public final class SessionReconnectPacer {
             if (pendingReconnect == null) return;
             TerminalSession session = pendingReconnect.getKey();
             if (!sessionStillInTheReconnectList.stillContains(session)) return;
+            openSharedCreationWorkBatchUnlessAlreadyOpen();
             long reconnectStartedAtNanos = elapsedNanosClock.elapsedNanos();
             try {
                 sessionReconnectAction.reconnectSession(session);
@@ -93,8 +106,22 @@ public final class SessionReconnectPacer {
                     elapsedNanosClock.elapsedNanos() - reconnectStartedAtNanos, pendingSessions.size());
             }
         } finally {
+            closeSharedCreationWorkBatchWhenNothingIsStillQueued();
             postNextUnitMessageIfIdle();
         }
+    }
+
+    private void openSharedCreationWorkBatchUnlessAlreadyOpen() {
+        if (sharedCreationWorkBatchIsOpen) return;
+        sharedCreationWorkBatchIsOpen = true;
+        sharedCreationWorkBatch.begin();
+    }
+
+    private void closeSharedCreationWorkBatchWhenNothingIsStillQueued() {
+        if (!sharedCreationWorkBatchIsOpen) return;
+        if (!pendingSessions.isEmpty()) return;
+        sharedCreationWorkBatchIsOpen = false;
+        sharedCreationWorkBatch.end();
     }
 
     private Map.Entry<TerminalSession, SessionReconnectReason> pollNextPendingSession() {
