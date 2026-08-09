@@ -2920,17 +2920,35 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return false;
 
-        List<PersistedSessionRestoreData> persistedSessions = uniquelyNamedSessions(loadPersistedSessions());
+        List<PersistedSessionRestoreData> persistedSessions = loadPersistedSessions();
         if (persistedSessions.isEmpty()) return false;
 
-        PersistedSessionRestoreRun restoreRun = new PersistedSessionRestoreRun(service, persistedSessions);
-        TerminalSession firstRestoredSession = restoreRun.restoreSessionsUntilTheDisplayedOneExists();
+        StartupSessionRestore restore = new StartupSessionRestore(service, persistedSessions);
+        TerminalSession firstRestoredSession = null;
+
+        TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
+        if (browserController != null) browserController.beginPersistenceBatch();
+        service.beginSessionCreationBatch();
+        try {
+            PersistedSessionRestoreData persistedSession;
+            while ((persistedSession = restore.takeNextRestorableSession()) != null) {
+                TerminalSession restoredSession = restore.createSessionFor(persistedSession);
+                if (restoredSession == null) continue;
+                attachBrowserTabForUrlSessionName(restoredSession, persistedSession.getName());
+                if (firstRestoredSession == null) firstRestoredSession = restoredSession;
+                if (theSessionTheUserIsShownExists()) break;
+            }
+        } finally {
+            service.endSessionCreationBatch();
+            if (browserController != null) browserController.endPersistenceBatch();
+        }
+
         if (firstRestoredSession == null) {
-            restoreRun.finish();
+            notifySessionLimitExceeded(restore.configuredLimit(), restore.droppedSessionCount());
             return false;
         }
 
-        restoreRun.enqueueTheSessionsLeft();
+        restore.buildTheSessionsLeftOnePerFrame();
 
         if (shouldSwitchSessionOnReconnect(hasValidCurrentDisplayedSession()))
             setStartupDisplayedSession(firstRestoredSession);
@@ -2938,96 +2956,100 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return true;
     }
 
-    private List<PersistedSessionRestoreData> uniquelyNamedSessions(
-        List<PersistedSessionRestoreData> persistedSessions) {
-        Set<String> seenNames = new HashSet<>();
-        List<PersistedSessionRestoreData> uniquelyNamed = new ArrayList<>();
-        for (PersistedSessionRestoreData persistedSession : persistedSessions) {
-            String name = persistedSession.getName();
-            if (name != null && !seenNames.add(name)) continue;
-            uniquelyNamed.add(persistedSession);
-        }
-        return uniquelyNamed;
+    private boolean theSessionTheUserIsShownExists() {
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return true;
+        return listViewController.getTopmostNonHiddenSessionIndex() >= 0;
     }
 
-    private final class PersistedSessionRestoreRun {
+    private final class StartupSessionRestore {
 
         private final TermuxService service;
 
-        private final TermuxBrowserController browserController;
-
         private final Deque<PersistedSessionRestoreData> sessionsLeft;
+
+        private final Set<String> restoredNames = new HashSet<>();
 
         private final int configuredLimit = maxSessions();
 
         private int droppedSessionCount;
 
-        private boolean restoredAnySession;
+        private TermuxBrowserController deferredFramesBrowserController;
 
-        private TerminalSession firstRestoredSession;
-
-        private PersistedSessionRestoreRun(TermuxService service,
-                                           List<PersistedSessionRestoreData> persistedSessions) {
+        private StartupSessionRestore(TermuxService service,
+                                      List<PersistedSessionRestoreData> persistedSessions) {
             this.service = service;
-            this.browserController = mActivity.getTermuxBrowserController();
             this.sessionsLeft = new ArrayDeque<>(persistedSessions);
-            if (browserController != null) browserController.beginPersistenceBatch();
-            service.beginSessionCreationBatch();
         }
 
-        private TerminalSession restoreSessionsUntilTheDisplayedOneExists() {
-            do {
-                if (restoreNextSession() == null) break;
-            } while (!theSessionToDisplayExists());
-            return firstRestoredSession;
+        private int configuredLimit() {
+            return configuredLimit;
         }
 
-        private boolean theSessionToDisplayExists() {
-            TermuxSessionsListViewController listViewController =
-                mActivity.getTermuxSessionListViewController();
-            if (listViewController == null) return true;
-            return listViewController.getTopmostNonHiddenSessionIndex() >= 0;
+        private int droppedSessionCount() {
+            return droppedSessionCount;
         }
 
-        private void enqueueTheSessionsLeft() {
-            for (int remaining = sessionsLeft.size(); remaining > 0; remaining--)
-                mStartupSessionRestorePacer.enqueueUnit(this::restoreNextSession);
-            mStartupSessionRestorePacer.enqueueUnit(this::finish);
-        }
-
-        private TerminalSession restoreNextSession() {
+        private PersistedSessionRestoreData takeNextRestorableSession() {
             while (!sessionsLeft.isEmpty()) {
                 PersistedSessionRestoreData persistedSession = sessionsLeft.poll();
+                String name = persistedSession.getName();
+                if (name != null && !restoredNames.add(name)) continue;
                 if (cappedSessionCount(service) >= configuredLimit) {
                     droppedSessionCount++;
                     continue;
                 }
-
-                TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
-                    persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
-                    persistedSession.isFailSafe(), persistedSession.getName());
-                if (newTermuxSession == null) continue;
-
-                TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
-                mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                    persistedSession.getExecutablePath(), persistedSession.getArguments(),
-                    persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
-                attachBrowserTabForUrlSessionName(newTerminalSession, persistedSession.getName());
-                restoredAnySession = true;
-                if (firstRestoredSession == null) firstRestoredSession = newTerminalSession;
-                return newTerminalSession;
+                return persistedSession;
             }
             return null;
         }
 
-        private void finish() {
+        private TerminalSession createSessionFor(PersistedSessionRestoreData persistedSession) {
+            TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
+                persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
+                persistedSession.isFailSafe(), persistedSession.getName());
+            if (newTermuxSession == null) return null;
+
+            TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
+            mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
+                persistedSession.getExecutablePath(), persistedSession.getArguments(),
+                persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
+            return newTerminalSession;
+        }
+
+        private void buildTheSessionsLeftOnePerFrame() {
+            if (sessionsLeft.isEmpty()) {
+                recordTheRestoredSessions();
+                return;
+            }
+
+            deferredFramesBrowserController = mActivity.getTermuxBrowserController();
+            if (deferredFramesBrowserController != null)
+                deferredFramesBrowserController.beginPersistenceBatch();
+            service.beginSessionCreationBatch();
+            for (int remaining = sessionsLeft.size(); remaining > 0; remaining--)
+                mStartupSessionRestorePacer.enqueueUnit(this::buildTheNextSessionOnThisFrame);
+            mStartupSessionRestorePacer.enqueueUnit(this::closeTheDeferredFrames);
+        }
+
+        private void buildTheNextSessionOnThisFrame() {
+            PersistedSessionRestoreData persistedSession = takeNextRestorableSession();
+            if (persistedSession == null) return;
+            TerminalSession restoredSession = createSessionFor(persistedSession);
+            if (restoredSession == null) return;
+            attachBrowserTabForUrlSessionName(restoredSession, persistedSession.getName());
+        }
+
+        private void closeTheDeferredFrames() {
             service.endSessionCreationBatch();
-            if (browserController != null) browserController.endPersistenceBatch();
+            if (deferredFramesBrowserController != null)
+                deferredFramesBrowserController.endPersistenceBatch();
 
             notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
+            recordTheRestoredSessions();
+        }
 
-            if (!restoredAnySession) return;
-
+        private void recordTheRestoredSessions() {
             savePersistedSessions();
             service.pruneSessionNewActivityStoreToLiveSessions();
         }
