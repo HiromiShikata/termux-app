@@ -45,6 +45,7 @@ import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
+import com.termux.app.sessiondefinition.ExitedSessionImmediateReconnectBackoff;
 import com.termux.app.sessiondefinition.HungSessionReconnectBackoff;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
@@ -287,6 +288,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final HungSessionReconnectBackoff mHungSessionReconnectBackoff =
         new HungSessionReconnectBackoff();
+
+    private final ExitedSessionImmediateReconnectBackoff mExitedSessionImmediateReconnectBackoff =
+        new ExitedSessionImmediateReconnectBackoff();
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
@@ -895,10 +899,29 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 Logger.logVerbose(LOG_TAG, "The \"" + finishedSession.mSessionName + "\" session will be force finished automatically since result in pending.");
         }
 
+        reconnectAtOnceWhenAConnectedSessionDied(finishedSession, index);
+
         boolean isAndroidTV = mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
         if (shouldRemoveFinishedSession(isAndroidTV, service.getTermuxSessionsSize(), isPluginExecutionCommandWithPendingResult)) {
             removeFinishedSession(finishedSession);
         }
+    }
+
+    private void reconnectAtOnceWhenAConnectedSessionDied(TerminalSession finishedSession, int index) {
+        String sessionName = finishedSession.mSessionName;
+        if (index < 0 || sessionName == null || !everProducedOutput(finishedSession)) {
+            return;
+        }
+        long nowMillis = System.currentTimeMillis();
+        if (!mExitedSessionImmediateReconnectBackoff.isReadyToReconnectImmediately(sessionName, nowMillis)) {
+            return;
+        }
+        mExitedSessionImmediateReconnectBackoff.recordImmediateReconnect(sessionName, nowMillis);
+        mSessionReconnectPacer.enqueueSession(finishedSession);
+    }
+
+    private static boolean everProducedOutput(TerminalSession session) {
+        return session.getTotalBytesProcessed() > 0L;
     }
 
     static boolean shouldRemoveFinishedSession(boolean isAndroidTV, int sessionsSize, boolean isPluginExecutionCommandWithPendingResult) {
@@ -2424,6 +2447,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             reconnectedSessionNames.add(sessionName);
         }
         mHungSessionReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
+        mExitedSessionImmediateReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
         return reconnectedSessionNames;
     }
 
