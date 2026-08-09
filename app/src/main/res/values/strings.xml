@@ -116,6 +116,7 @@
     <string name="msg_browser_no_current_url">No page to open.</string>
     <string name="msg_browser_url_copied">URL copied</string>
     <string name="msg_browser_link_text_copied">Link text copied</string>
+    <string name="msg_copy_tag_content_copied">Copied</string>
     <string name="action_browser_edit_url_add_bookmark">Bookmark</string>
     <string name="action_browser_edit_url_bookmarks">Bookmarks</string>
     <string name="action_browser_bookmark_current_page">Bookmark this page</string>
