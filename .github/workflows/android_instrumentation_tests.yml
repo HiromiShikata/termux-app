@@ -160,13 +160,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard-index: [0, 1]
+        shard-index: [0, 1, 2, 3]
     env:
       EMULATOR_API_LEVEL: 29
       EMULATOR_TARGET: google_apis
       EMULATOR_ARCH: x86_64
       EMULATOR_PROFILE: pixel
-      SHARD_COUNT: 2
+      SHARD_COUNT: 4
       SHARD_INDEX: ${{ matrix.shard-index }}
       GRADLE_TEST_ARGS: ${{ needs.select-tests.outputs.gradle-test-args }}
       SELECTION_MODE: ${{ needs.select-tests.outputs.mode }}
