@@ -28,6 +28,8 @@ public final class DiagnosticsReportBuilder {
 
     private static final int UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS = 600;
 
+    private static final int SHELL_EXIT_STATUS_BUDGET_CHARACTERS = 400;
+
     private static final int OMISSION_NOTE_BUDGET_CHARACTERS = 96;
 
     private static final int SECTION_CEILING_HEADROOM_CHARACTERS = 300;
@@ -53,6 +55,9 @@ public final class DiagnosticsReportBuilder {
 
         builder.append('\n');
         appendReplacedSessionShellInputSection(builder, report);
+
+        builder.append('\n');
+        appendShellExitSection(builder, report);
 
         builder.append('\n');
         appendMainThreadCostSection(builder, report);
@@ -146,6 +151,22 @@ public final class DiagnosticsReportBuilder {
             builder.append("  Last writer stop: ").append(replaced.getLastWriterStopSessionName())
                 .append(" (").append(replaced.getLastWriterStopReason()).append(")\n");
         }
+    }
+
+    private void appendShellExitSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+        DiagnosticsShellExits shellExits = report.getShellExits();
+        builder.append("Shell exits since the app started\n");
+        if (shellExits.getCountsByExitStatus().isEmpty()) {
+            builder.append("  None: no shell process has exited yet\n");
+            return;
+        }
+        builder.append("  Total: ").append(shellExits.getTotalExitCount()).append('\n');
+        List<String> exitStatusLines = new ArrayList<>();
+        for (DiagnosticsShellExitCount countByExitStatus : shellExits.getCountsByExitStatus()) {
+            exitStatusLines.add("  Exit status " + countByExitStatus.getExitStatus() + ": "
+                + countByExitStatus.getCount());
+        }
+        appendLinesWithinBudget(builder, exitStatusLines, SHELL_EXIT_STATUS_BUDGET_CHARACTERS);
     }
 
     @NonNull

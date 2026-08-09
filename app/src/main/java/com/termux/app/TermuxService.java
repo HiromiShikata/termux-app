@@ -25,6 +25,7 @@ import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
+import com.termux.app.diagnostics.ShellExitStatusRecorderHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
@@ -886,9 +887,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             if (executionCommand != null && executionCommand.isPluginExecutionCommand)
                 TermuxPluginUtils.processPluginExecutionCommandResult(this, LOG_TAG, executionCommand);
 
-            if (mShellManager.mTermuxSessions.remove(termuxSession))
+            if (mShellManager.mTermuxSessions.remove(termuxSession)) {
+                int shellExitStatus = termuxSession.getTerminalSession().getExitStatus();
+                ShellExitStatusRecorderHolder.getInstance().recordShellExit(shellExitStatus);
                 DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_EXITED,
-                    diagnosticSessionName(termuxSession.getTerminalSession()));
+                    diagnosticSessionName(termuxSession.getTerminalSession()) + " exit=" + shellExitStatus);
+            }
 
             // Notify {@link TermuxSessionsListViewController} that sessions list has been updated if
             // activity in is foreground
