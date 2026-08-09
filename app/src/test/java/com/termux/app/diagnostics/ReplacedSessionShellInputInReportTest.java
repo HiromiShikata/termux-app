@@ -19,7 +19,7 @@ public class ReplacedSessionShellInputInReportTest {
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
 
     private static String renderedReport() {
-        return renderedReportOf(new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", ""));
+        return renderedReportOf(new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", ""));
     }
 
     private static String renderedReportOf(DiagnosticsReplacedSessionShellInput replacedSessionShellInput) {
@@ -71,7 +71,7 @@ public class ReplacedSessionShellInputInReportTest {
 
     @Test
     public void theWorstSessionAndTheLastWriterStopSurviveTheReplacementThatEndedTheEpisode() {
-        String report = renderedReportOf(new DiagnosticsReplacedSessionShellInput(3, 3096L,
+        String report = renderedReportOf(new DiagnosticsReplacedSessionShellInput(3, 1, 3096L,
             "host-stuck", "host-stuck", "broken pipe"));
 
         int replacedSectionIndex = report.indexOf("Input stuck on sessions replaced since the app started");
@@ -90,8 +90,30 @@ public class ReplacedSessionShellInputInReportTest {
     }
 
     @Test
+    public void replacementsThatLostNothingAreReportedAsWriterStopsRatherThanAsUndeliveredInput() {
+        String report = renderedReportOf(new DiagnosticsReplacedSessionShellInput(0, 21, 0L,
+            "", "host-dead", "the terminal-to-process queue was closed"));
+
+        int replacedSectionIndex = report.indexOf("Input stuck on sessions replaced since the app started");
+        String section = report.substring(replacedSectionIndex);
+        Assert.assertTrue("nothing was outstanding on any of these replacements, so a non-zero figure"
+                + " under a label naming undelivered input reports lost input that was never lost."
+                + " Actual report:\n" + report,
+            section.contains("Sessions replaced with input still undelivered: 0"));
+        Assert.assertTrue("a session already torn down before it was replaced is the fact these"
+                + " replacements actually carry, and it is what distinguishes a shell that had already"
+                + " died from one that merely fell behind. Actual report:\n" + report,
+            section.contains("Sessions replaced after the input writer had already stopped: 21"));
+        Assert.assertFalse("no bytes were left unwritten, so naming a worst loss would invent one."
+            + " Actual report:\n" + report, section.contains("Most left unwritten:"));
+        Assert.assertTrue("the writer stop that ended these sessions is the actionable detail and must"
+                + " survive even though no input was lost. Actual report:\n" + report,
+            section.contains("Last writer stop: host-dead (the terminal-to-process queue was closed)"));
+    }
+
+    @Test
     public void aReplacedSessionWhoseWriterWasStillRunningIsReportedWithoutAWriterStopLine() {
-        String report = renderedReportOf(new DiagnosticsReplacedSessionShellInput(1, 512L,
+        String report = renderedReportOf(new DiagnosticsReplacedSessionShellInput(1, 0, 512L,
             "host-slow", "", ""));
 
         int replacedSectionIndex = report.indexOf("Input stuck on sessions replaced since the app started");

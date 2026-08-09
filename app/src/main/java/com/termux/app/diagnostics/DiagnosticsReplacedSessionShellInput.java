@@ -12,6 +12,8 @@ public final class DiagnosticsReplacedSessionShellInput {
 
     private final int mSessionsReplacedWithInputUndelivered;
 
+    private final int mSessionsReplacedAfterTheWriterStopped;
+
     private final long mWorstUndeliveredBytes;
 
     @NonNull
@@ -24,11 +26,13 @@ public final class DiagnosticsReplacedSessionShellInput {
     private final String mLastWriterStopReason;
 
     public DiagnosticsReplacedSessionShellInput(int sessionsReplacedWithInputUndelivered,
+                                                int sessionsReplacedAfterTheWriterStopped,
                                                 long worstUndeliveredBytes,
                                                 @NonNull String worstUndeliveredSessionName,
                                                 @NonNull String lastWriterStopSessionName,
                                                 @NonNull String lastWriterStopReason) {
         mSessionsReplacedWithInputUndelivered = sessionsReplacedWithInputUndelivered;
+        mSessionsReplacedAfterTheWriterStopped = sessionsReplacedAfterTheWriterStopped;
         mWorstUndeliveredBytes = worstUndeliveredBytes;
         mWorstUndeliveredSessionName = worstUndeliveredSessionName;
         mLastWriterStopSessionName = lastWriterStopSessionName;
@@ -37,6 +41,10 @@ public final class DiagnosticsReplacedSessionShellInput {
 
     public int getSessionsReplacedWithInputUndelivered() {
         return mSessionsReplacedWithInputUndelivered;
+    }
+
+    public int getSessionsReplacedAfterTheWriterStopped() {
+        return mSessionsReplacedAfterTheWriterStopped;
     }
 
     public long getWorstUndeliveredBytes() {

@@ -20,7 +20,7 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsSessionReconnectCost NO_SESSION_RECONNECT_COST =
         new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList());
     private static final DiagnosticsReplacedSessionShellInput NO_REPLACED_SESSION_SHELL_INPUT =
-        new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", "");
+        new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", "");
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
         new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
     private static final DiagnosticsBackgroundCycle NO_BACKGROUND_CYCLE =

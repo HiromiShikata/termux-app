@@ -29,7 +29,7 @@ public class SessionReconnectCostInReportTest {
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             sessionReconnectCost,
-            new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", ""),
+            new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", ""),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
