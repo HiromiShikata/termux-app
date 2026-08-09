@@ -11,6 +11,7 @@ import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.terminal.SessionNewActivityStore;
+import com.termux.app.terminal.SessionNewActivityTier;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalBuffer;
@@ -145,8 +146,16 @@ public final class DiagnosticsReportCollector {
                 deliveryRecord.isWriterRunning(),
                 deliveryRecord.getWriterStoppedReason());
 
+            DiagnosticsSessionStatusline statusline = activityStore == null
+                ? new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.NONE)
+                : new DiagnosticsSessionStatusline(
+                    activityStore.getStatuslineCallTimeMillis(name),
+                    activityStore.getStatuslineOutTimeMillis(name),
+                    activityStore.getStatuslineReplyTimeMillis(name),
+                    activityStore.tierFor(name, nowMillis));
+
             lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
-                transcriptRows, columns, shellInputDelivery));
+                transcriptRows, columns, shellInputDelivery, statusline));
         }
         return lines;
     }

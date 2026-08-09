@@ -1,5 +1,7 @@
 package com.termux.app.diagnostics;
 
+import com.termux.app.terminal.SessionNewActivityTier;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -23,6 +25,11 @@ public class DiagnosticsReportBuilderTest {
         new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
     private static final DiagnosticsBackgroundCycle NO_BACKGROUND_CYCLE =
         new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList());
+    private static final DiagnosticsSessionStatusline NO_STATUSLINE_HELD =
+        new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY);
+
+    private static final long CALL_MILLIS = 1786255921000L;
+    private static final long REPLY_MILLIS = 1786255825000L;
 
     @Test
     public void backgroundCycleGapsAreReportedSoAFrozenCycleIsVisibleAfterTheFact() {
@@ -315,8 +322,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsNameAliveStateAndSecondsSinceActivity() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, deliveringEverything()));
-        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80, deliveringEverything()));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, deliveringEverything(), NO_STATUSLINE_HELD));
+        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80, deliveringEverything(), NO_STATUSLINE_HELD));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -324,6 +331,42 @@ public class DiagnosticsReportBuilderTest {
 
         Assert.assertTrue(text.contains("- host-a | alive | last activity: 12s ago"));
         Assert.assertTrue(text.contains("- host-b | dead | last activity: n/a"));
+    }
+
+    @Test
+    public void theStatuslineTimesTheAppHoldsAndTheTierTheyResolveToAreReportedForEachSession() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, deliveringEverything(),
+            new DiagnosticsSessionStatusline(CALL_MILLIS, CALL_MILLIS, REPLY_MILLIS,
+                SessionNewActivityTier.RED)));
+        DiagnosticsReport report = reportWith(lines, 1, 1, 32,
+            0, 0, false, true, Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("a grey dot on a session whose own screen shows call newer than reply is"
+                + " explained either by the app never holding that statusline or by the tier resolving"
+                + " away from RED while holding it, and only the held times next to the tier separate"
+                + " the two: " + text,
+            text.contains("statusline held by the app: call 2026-08-09T06:12:01Z,"
+                + " out 2026-08-09T06:12:01Z, reply 2026-08-09T06:10:25Z, dot RED"));
+    }
+
+    @Test
+    public void aSessionTheAppHoldsNoStatuslineForSaysSoInsteadOfShowingAFabricatedTime() {
+        List<DiagnosticsSessionLine> lines = new ArrayList<>();
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, deliveringEverything(),
+            NO_STATUSLINE_HELD));
+        DiagnosticsReport report = reportWith(lines, 1, 1, 32,
+            0, 0, false, true, Collections.emptyList());
+
+        String text = new DiagnosticsReportBuilder().build(report);
+
+        Assert.assertTrue("holding nothing is the finding that matters most, so it must read as"
+                + " nothing rather than as an epoch timestamp: " + text,
+            text.contains("statusline held by the app: none, dot GRAY"));
+        Assert.assertFalse("a null held time rendered as an epoch value would read as a real"
+            + " observation the app never made: " + text, text.contains("1970-01-01"));
     }
 
     @Test
@@ -424,7 +467,7 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsTranscriptRowsAndColumns() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92, deliveringEverything()));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92, deliveringEverything(), NO_STATUSLINE_HELD));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -438,8 +481,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionsSectionShowsTotalTranscriptRowsAcrossAllSessions() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92, deliveringEverything()));
-        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92, deliveringEverything()));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92, deliveringEverything(), NO_STATUSLINE_HELD));
+        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92, deliveringEverything(), NO_STATUSLINE_HELD));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -609,7 +652,7 @@ public class DiagnosticsReportBuilderTest {
     public void sessionLineStatesWhatWasAcceptedFromTheOwnerAndWhatReachedTheShell() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
-            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null)));
+            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null), NO_STATUSLINE_HELD));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -633,7 +676,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
             new DiagnosticsShellInputDelivery(4096L, 0L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe")));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -651,7 +694,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < 19; sessionIndex++) {
             lines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex, true,
-                0, 108, deliveringEverything()));
+                0, 108, deliveringEverything(), NO_STATUSLINE_HELD));
         }
         List<DiagnosticEvent> events = new ArrayList<>();
         for (int eventIndex = 0; eventIndex < 50; eventIndex++) {
@@ -743,11 +786,11 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < 18; sessionIndex++) {
             sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex,
-                true, 4000, 108, deliveringEverything()));
+                true, 4000, 108, deliveringEverything(), NO_STATUSLINE_HELD));
         }
         sessionLines.add(new DiagnosticsSessionLine("host-stuck", true, 3, true, 4000, 108,
             new DiagnosticsShellInputDelivery(4096L, 1000L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe")));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD));
 
         String text = new DiagnosticsReportBuilder().build(new DiagnosticsReport("0.119.0", 119,
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
@@ -779,7 +822,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < 3; sessionIndex++) {
             sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex,
-                true, 100, 80, deliveringEverything()));
+                true, 100, 80, deliveringEverything(), NO_STATUSLINE_HELD));
         }
         DiagnosticsReport report = reportWith(sessionLines, 3, 3, 32, 0, 0, false, true,
             Collections.emptyList());
@@ -796,7 +839,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
         sessionLines.add(new DiagnosticsSessionLine("host-drained", true, 3, true, 100, 80,
             new DiagnosticsShellInputDelivery(2048L, 2048L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe")));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD));
         DiagnosticsReport report = reportWith(sessionLines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
