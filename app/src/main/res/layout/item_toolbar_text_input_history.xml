@@ -8,14 +8,14 @@
     android:orientation="horizontal">
 
     <ImageButton
-        android:id="@+id/toolbar_text_input_history_restore_button"
+        android:id="@+id/toolbar_text_input_history_pin_button"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:focusable="false"
         android:paddingHorizontal="12dp"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_toolbar_input_history_restore" />
+        android:src="@drawable/ic_browser_bookmark_star_outline" />
 
     <com.termux.app.terminal.MaxHeightScrollView
         android:id="@+id/toolbar_text_input_history_entry_scroll"
@@ -44,12 +44,12 @@
         android:visibility="gone" />
 
     <ImageButton
-        android:id="@+id/toolbar_text_input_history_pin_button"
+        android:id="@+id/toolbar_text_input_history_restore_button"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:background="?android:attr/selectableItemBackgroundBorderless"
         android:focusable="false"
         android:paddingHorizontal="12dp"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_browser_bookmark_star_outline" />
+        android:src="@drawable/ic_toolbar_input_history_restore" />
 </LinearLayout>
