@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 
@@ -162,6 +163,18 @@ public class ExitedConnectedSessionIsReconnectedAtOnceTest {
                 + " loop if every death reconnected it, so the repeats must be spaced and the session left"
                 + " to the background scan until the wait elapses",
             firstReplacementTerminalSession, sessionUnderTheSameName.getTerminalSession());
+    }
+
+    @Test
+    public void aSessionAlreadyRemovedFromTheListIsNotBroughtBackByItsProcessDying() throws Exception {
+        TermuxSession removedSession = connectedThenDiedSession(BACKGROUND_SESSION_NAME);
+
+        activity.getTermuxTerminalSessionClient().onSessionFinished(removedSession.getTerminalSession());
+        idlePastTheReconnectPacer();
+
+        assertNull("a session the owner already removed is gone on purpose, so the death of its shell"
+                + " process must not resurrect it under its old name",
+            service.getTermuxSessionForSessionName(BACKGROUND_SESSION_NAME));
     }
 
     private void idlePastTheReconnectPacer() {
