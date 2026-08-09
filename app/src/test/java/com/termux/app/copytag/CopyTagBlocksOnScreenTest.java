@@ -19,7 +19,7 @@ public class CopyTagBlocksOnScreenTest {
     }
 
     private static CopyTagBlocksOnScreen screenOf(List<ScreenRow> rows) {
-        return new CopyTagBlocksOnScreen(rows, 0);
+        return CopyTagBlocksOnScreen.of(rows, 0);
     }
 
     @Test
@@ -103,12 +103,59 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void rowsAreAddressedByTheirTerminalRowNumber() {
-        CopyTagBlocksOnScreen screen = new CopyTagBlocksOnScreen(Arrays.asList(
+        CopyTagBlocksOnScreen screen = CopyTagBlocksOnScreen.of(Arrays.asList(
             row("<copy>"),
             row("the payload"),
             row("</copy>")), -3);
 
         assertEquals("the payload", screen.contentOfTheBlockCoveringRow(-2));
         assertNull(screen.contentOfTheBlockCoveringRow(5));
+    }
+
+    @Test
+    public void aTapInsideASmallBlockReadsOnlyTheRowsOfThatBlock() {
+        CountingScreenRows rows = new CountingScreenRows(rowNumber -> {
+            if (rowNumber == -1) return row("<copy>");
+            if (rowNumber == 0) return row("the payload");
+            if (rowNumber == 1) return row("</copy>");
+            return row("unrelated output");
+        });
+
+        CopyTagBlocksOnScreen screen = new CopyTagBlocksOnScreen(rows, -400, 400);
+
+        assertEquals("the payload", screen.contentOfTheBlockCoveringRow(0));
+        assertEquals(3, rows.numberOfRowsRead());
+    }
+
+    @Test
+    public void aTapBelowAClosedBlockStopsReadingAtThatBlocksClosingTag() {
+        CountingScreenRows rows = new CountingScreenRows(rowNumber ->
+            rowNumber == -1 ? row("</copy>") : row("unrelated output"));
+
+        CopyTagBlocksOnScreen screen = new CopyTagBlocksOnScreen(rows, -400, 400);
+
+        assertNull(screen.contentOfTheBlockCoveringRow(0));
+        assertEquals(2, rows.numberOfRowsRead());
+    }
+
+    private static final class CountingScreenRows implements ScreenRows {
+
+        private final ScreenRows delegate;
+
+        private int rowsRead;
+
+        private CountingScreenRows(ScreenRows delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ScreenRow rowAt(int rowNumber) {
+            rowsRead++;
+            return delegate.rowAt(rowNumber);
+        }
+
+        private int numberOfRowsRead() {
+            return rowsRead;
+        }
     }
 }
