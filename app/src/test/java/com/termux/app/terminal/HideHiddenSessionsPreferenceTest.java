@@ -6,6 +6,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
@@ -13,6 +14,13 @@ import org.robolectric.RobolectricTestRunner;
 
 @RunWith(RobolectricTestRunner.class)
 public class HideHiddenSessionsPreferenceTest {
+
+    @Before
+    public void resetHideHiddenSessionsToDefault() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        if (prefs != null) prefs.setHideHiddenSessions(false);
+    }
 
     @Test
     public void hideHiddenSessionsKeyAndDefaultAreStable() {
