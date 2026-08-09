@@ -170,7 +170,7 @@ public class DiagnosticsReportBuilderTest {
             memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
-            processUptimeMillis, backgroundCycle, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
+            processUptimeMillis, backgroundCycle, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE);
     }
 
     private DiagnosticsReport reportWithVersionChange(DiagnosticsVersionChange versionChange) {
@@ -180,7 +180,7 @@ public class DiagnosticsReportBuilderTest {
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, NO_BACKGROUND_CYCLE,
-            versionChange);
+            versionChange, DiagnosticsShellExits.NONE);
     }
 
     @Test
@@ -211,7 +211,7 @@ public class DiagnosticsReportBuilderTest {
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
-            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
+            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE);
     }
 
     private DiagnosticsReport reportWithForegroundOpenTagScanCost(DiagnosticsWorkCostLine cost) {
@@ -221,7 +221,7 @@ public class DiagnosticsReportBuilderTest {
             NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
-            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
+            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE);
     }
 
     @Test
@@ -796,7 +796,7 @@ public class DiagnosticsReportBuilderTest {
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
             Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
             NO_WORK_COST, NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
-            DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch()));
+            DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
                 + " truncation never happens and this test proves nothing, but it is only "
@@ -872,7 +872,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
-            looperQueue, 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
+            looperQueue, 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE);
     }
 
     private static DiagnosticsShellInputDelivery deliveringEverything() {
