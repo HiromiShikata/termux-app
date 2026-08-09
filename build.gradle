@@ -16,6 +16,8 @@ allprojects {
     }
 
     tasks.withType(Test).configureEach {
+        maxParallelForks = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+
         testLogging {
             events "failed"
             exceptionFormat "full"

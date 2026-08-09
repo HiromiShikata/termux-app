@@ -35,7 +35,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v4
     - name: Execute tests with JaCoCo coverage
       run: |
-        ./gradlew test jacocoTestReport
+        ./gradlew jacocoTestReport
     - name: Print overall coverage percentage to the log
       run: |
         REPORT="build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
