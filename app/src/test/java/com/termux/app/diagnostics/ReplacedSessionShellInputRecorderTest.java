@@ -35,6 +35,21 @@ public class ReplacedSessionShellInputRecorderTest {
     }
 
     @Test
+    public void aWriterThatStoppedWithNothingOutstandingIsNotCountedAsInputStillUndelivered() {
+        ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
+
+        recorder.recordSessionBeingReplaced("host-dead", 0L, false,
+            "the terminal-to-process queue was closed");
+
+        DiagnosticsReplacedSessionShellInput snapshot = recorder.snapshot();
+        Assert.assertEquals("a session whose writer had already stopped had nothing outstanding to lose,"
+                + " so counting it under a figure that names undelivered input states an amount of lost"
+                + " input that was never lost. A report reading twenty-one here with nothing left"
+                + " unwritten was read as twenty-one episodes of lost input and had to be withdrawn",
+            0, snapshot.getSessionsReplacedWithInputUndelivered());
+    }
+
+    @Test
     public void aWriterThatStoppedIsRecordedEvenWithNothingLeftUnwritten() {
         ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
 
