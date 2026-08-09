@@ -252,7 +252,7 @@ public final class TermuxPreferenceConstants {
         public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES = 0;
 
         public static final String KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES = "background_reconnect_scan_interval_minutes";
-        public static final int DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES = 5;
+        public static final int DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES = 1;
 
         public static final String KEY_SESSION_DEFINITION_MAX_SESSIONS = "session_definition_max_sessions";
         public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 64;
