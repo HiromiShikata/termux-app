@@ -76,6 +76,9 @@ public final class NativeAppLink {
         if (host.equals("mail.google.com")) {
             return new NativeAppTarget("Gmail", "com.google.android.gm");
         }
+        if (host.equals("chat.google.com")) {
+            return new NativeAppTarget("Google Chat", "com.google.android.apps.dynamite");
+        }
         if (host.equals("photos.google.com")) {
             return new NativeAppTarget("Google Photos", "com.google.android.apps.photos");
         }
