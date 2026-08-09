@@ -155,6 +155,20 @@ public final class DeadSessionReconnectPlanner {
         return sessionNamesToReconnect;
     }
 
+    @NonNull
+    public List<PlannedSessionReconnect> planReconnects(@NonNull List<CandidateSession> candidateSessions,
+                                                        @Nullable String autosshCommandTemplate,
+                                                        int maxSessionsToReconnect,
+                                                        @NonNull Set<String> userRemovedSessionNames) {
+        List<PlannedSessionReconnect> plannedReconnects = new ArrayList<>();
+        for (String sessionName : planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate,
+            maxSessionsToReconnect, userRemovedSessionNames)) {
+            plannedReconnects.add(new PlannedSessionReconnect(sessionName,
+                SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN));
+        }
+        return plannedReconnects;
+    }
+
     private static void addIfReconnectable(@NonNull CandidateSession candidateSession,
                                            @Nullable String autosshCommandTemplate,
                                            @NonNull Set<String> userRemovedSessionNames,

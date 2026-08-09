@@ -1,5 +1,12 @@
 package com.termux.app.diagnostics;
 
+import androidx.annotation.NonNull;
+
+import com.termux.app.sessiondefinition.SessionReconnectReason;
+
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Accumulates the main-thread time spent reconnecting dead sessions, together with how many sessions
  * were still waiting behind the slowest one, so a report can separate a single slow reconnect from a
@@ -9,9 +16,9 @@ package com.termux.app.diagnostics;
  * so a run of reconnects that each stay under it leaves no trace there while the interface is
  * unresponsive for the whole run. This counter is what makes that run measurable.
  * <p>
- * A single {@link #record(long, int)} call performs no allocation, takes no lock and writes no log,
- * so an instance is cheap enough to stay enabled permanently on the main thread. State is
- * process-lifetime only and is never persisted.
+ * A single record call performs no allocation, takes no lock and writes no log, so an instance is
+ * cheap enough to stay enabled permanently on the main thread. State is process-lifetime only and is
+ * never persisted.
  */
 public final class SessionReconnectCostCounter {
 
@@ -22,7 +29,8 @@ public final class SessionReconnectCostCounter {
     private long mMaxElapsedNanos;
     private int mSessionsStillQueuedAtMaxElapsed;
 
-    public void record(long elapsedNanos, int sessionsStillQueued) {
+    public void record(@NonNull SessionReconnectReason reason, long elapsedNanos,
+                       int sessionsStillQueued) {
         mReconnectCount++;
         mTotalElapsedNanos += elapsedNanos;
         if (elapsedNanos > mMaxElapsedNanos) {
@@ -45,5 +53,10 @@ public final class SessionReconnectCostCounter {
 
     public int getSessionsStillQueuedAtMaxElapsed() {
         return mSessionsStillQueuedAtMaxElapsed;
+    }
+
+    @NonNull
+    public List<DiagnosticsSessionReconnectCostByReason> getCostsByReason() {
+        return Collections.emptyList();
     }
 }

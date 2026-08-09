@@ -29,6 +29,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.terminal.TerminalEmulator;
+import com.termux.app.sessiondefinition.SessionReconnectReason;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
 
@@ -407,7 +408,8 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         pacerField.setAccessible(true);
         SessionReconnectPacer pacer =
             (SessionReconnectPacer) pacerField.get(activity.getTermuxTerminalSessionClient());
-        pacer.enqueueSession(deadSession);
+        pacer.enqueueSession(deadSession,
+            SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
     }
 
     private void idlePastThePacedReconnectWindow() {

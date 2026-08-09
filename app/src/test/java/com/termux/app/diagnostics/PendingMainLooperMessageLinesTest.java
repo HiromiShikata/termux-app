@@ -25,7 +25,7 @@ public class PendingMainLooperMessageLinesTest {
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0), new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
-            new DiagnosticsSessionReconnectCost(0, 0, 0, 0),
+            new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList()),
             new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", ""),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()), mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()), DiagnosticsVersionChange.sameVersionAsThePreviousLaunch());
     }

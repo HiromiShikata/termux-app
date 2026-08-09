@@ -19,7 +19,7 @@ public class SessionReconnectCostInReportTest {
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
 
     private static String renderedReportWithNothingRecorded() {
-        return renderedReportWith(new DiagnosticsSessionReconnectCost(0, 0, 0, 0));
+        return renderedReportWith(new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList()));
     }
 
     private static String renderedReportWith(DiagnosticsSessionReconnectCost sessionReconnectCost) {
@@ -60,7 +60,7 @@ public class SessionReconnectCostInReportTest {
 
     @Test
     public void everyRecordedFigureReachesTheReportIncludingTheQueueDepthBehindTheSlowestReconnect() {
-        String renderedReport = renderedReportWith(new DiagnosticsSessionReconnectCost(20, 1480, 210, 17));
+        String renderedReport = renderedReportWith(new DiagnosticsSessionReconnectCost(20, 1480, 210, 17, Collections.emptyList()));
 
         String section = renderedReport.substring(
             renderedReport.indexOf("Dead session reconnect on the main thread"));

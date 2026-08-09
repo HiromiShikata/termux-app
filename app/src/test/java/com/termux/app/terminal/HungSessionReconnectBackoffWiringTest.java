@@ -48,7 +48,7 @@ public class HungSessionReconnectBackoffWiringTest {
     public void whichSessionsCountAsSilentIsDecidedBeforeAnyReconnectIsEnqueued() throws IOException {
         String source = readClientSource();
         int decisionIndex = source.indexOf("silentSessionLastOutTimeMillisByName.put(");
-        int enqueueIndex = source.indexOf("mSessionReconnectPacer.enqueueSession(deadSession)");
+        int enqueueIndex = source.indexOf("mSessionReconnectPacer.enqueueSession(deadSession,");
         int recordIndex = source.indexOf("mHungSessionReconnectBackoff.recordAttemptForSilence(");
 
         Assert.assertTrue("the set of silent sessions is not decided anywhere", decisionIndex >= 0);

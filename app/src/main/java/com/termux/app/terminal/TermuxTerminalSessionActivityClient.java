@@ -47,6 +47,8 @@ import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.ExitedSessionImmediateReconnectBackoff;
 import com.termux.app.sessiondefinition.HungSessionReconnectBackoff;
+import com.termux.app.sessiondefinition.PlannedSessionReconnect;
+import com.termux.app.sessiondefinition.SessionReconnectReason;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
 import com.termux.app.sessiondefinition.SessionInputDeliverabilityDwell;
@@ -918,7 +920,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             return;
         }
         mExitedSessionImmediateReconnectBackoff.recordImmediateReconnect(sessionName, nowMillis);
-        mSessionReconnectPacer.enqueueSession(finishedSession);
+        mSessionReconnectPacer.enqueueSession(finishedSession,
+            SessionReconnectReason.SHELL_PROCESS_EXITED);
     }
 
     private static boolean everProducedOutput(TerminalSession session) {
@@ -2430,19 +2433,24 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 unableToReceiveInputLongEnough));
         }
 
-        List<String> sessionNamesToReconnect =
-            mDeadSessionReconnectPlanner.planSessionNamesToReconnect(candidateSessions, autosshCommandTemplate,
+        List<PlannedSessionReconnect> plannedReconnects =
+            mDeadSessionReconnectPlanner.planReconnects(candidateSessions, autosshCommandTemplate,
                 DeadSessionReconnectPlanner.UNLIMITED,
                 mActivity.getPreferences().getUserRemovedSessionNames());
+        List<String> sessionNamesToReconnect = new ArrayList<>();
+        for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
+            sessionNamesToReconnect.add(plannedReconnect.getSessionName());
+        }
         mSessionNameToMaterializeOnTheNextBulkReconnect =
             oldestPendingCallToUserSessionName(store, sessionNamesToReconnect);
         List<String> reconnectedSessionNames = new ArrayList<>();
-        for (String sessionName : sessionNamesToReconnect) {
+        for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
+            String sessionName = plannedReconnect.getSessionName();
             TerminalSession deadSession = sessionByName.get(sessionName);
             if (deadSession == null) {
                 continue;
             }
-            mSessionReconnectPacer.enqueueSession(deadSession);
+            mSessionReconnectPacer.enqueueSession(deadSession, plannedReconnect.getReason());
             mSessionInputDeliverabilityDwell.forget(sessionName);
             if (silentSessionLastOutTimeMillisByName.containsKey(sessionName)) {
                 mHungSessionReconnectBackoff.recordAttemptForSilence(sessionName,

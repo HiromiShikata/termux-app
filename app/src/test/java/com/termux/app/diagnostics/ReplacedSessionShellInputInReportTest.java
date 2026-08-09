@@ -28,7 +28,7 @@ public class ReplacedSessionShellInputInReportTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             new DiagnosticsMemoryUsage(0, 0, 0, 0),
             NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
-            new DiagnosticsSessionReconnectCost(0, 0, 0, 0),
+            new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList()),
             replacedSessionShellInput,
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
