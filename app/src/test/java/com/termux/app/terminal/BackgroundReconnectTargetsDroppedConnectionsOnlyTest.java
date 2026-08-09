@@ -140,6 +140,17 @@ public class BackgroundReconnectTargetsDroppedConnectionsOnlyTest {
             !reconnectedSessionNames.contains(QUIET_SESSION_NAME));
     }
 
+    @Test
+    public void theBackgroundScanRunsEveryMinuteSoADroppedConnectionIsNotLeftWaitingForIt() {
+        int scanIntervalMinutes = activity.getPreferences().getBackgroundReconnectScanIntervalMinutes();
+
+        assertTrue("the scan interval is the longest a session whose connection is gone can sit there "
+                + "showing nothing while a call raised on it waits for the owner to see it, and the "
+                + "owner states that waiting minutes for that is unusable, so the scan must come round "
+                + "every minute; it is scheduled every " + scanIntervalMinutes + " minutes",
+            scanIntervalMinutes == 1);
+    }
+
     private void recordASessionThatHasBeenQuietForALongTimeWithNoCallOutstanding(String sessionName) {
         SessionNewActivityStore store = activity.getSessionNewActivityStore();
         store.recordStatuslineTimes(sessionName, ANCIENT_CALL_TIME_MILLIS, ANCIENT_OUT_TIME_MILLIS,
