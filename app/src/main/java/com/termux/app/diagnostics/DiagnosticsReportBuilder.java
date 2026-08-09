@@ -1,6 +1,7 @@
 package com.termux.app.diagnostics;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -341,7 +342,29 @@ public final class DiagnosticsReportBuilder {
                 .append(" | columns: ").append(line.getColumns())
                 .append('\n');
             appendShellInputDelivery(builder, line.getShellInputDelivery());
+            appendStatusline(builder, line.getStatusline());
         }
+    }
+
+    private void appendStatusline(@NonNull StringBuilder builder,
+                                  @NonNull DiagnosticsSessionStatusline statusline) {
+        builder.append("      statusline held by the app: ");
+        if (statusline.isHeld()) {
+            builder.append("call ").append(formatHeldTime(statusline.getCallTimeMillis()))
+                .append(", out ").append(formatHeldTime(statusline.getOutTimeMillis()))
+                .append(", reply ").append(formatHeldTime(statusline.getReplyTimeMillis()));
+        } else {
+            builder.append("none");
+        }
+        builder.append(", dot ").append(statusline.getTier()).append('\n');
+    }
+
+    @NonNull
+    private String formatHeldTime(@Nullable Long timeMillis) {
+        if (timeMillis == null) {
+            return "none";
+        }
+        return formatTimestamp(timeMillis);
     }
 
     private void appendShellInputDelivery(@NonNull StringBuilder builder,
