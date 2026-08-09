@@ -58,6 +58,8 @@ public final class SessionReconnectPacer {
 
     private boolean unitMessagePosted;
 
+    private boolean sharedCreationWorkBatchIsOpen;
+
     public SessionReconnectPacer(
         @NonNull MainThreadMessagePoster mainThreadMessagePoster,
         @NonNull SessionStillInTheReconnectList sessionStillInTheReconnectList,
@@ -95,6 +97,7 @@ public final class SessionReconnectPacer {
             if (pendingReconnect == null) return;
             TerminalSession session = pendingReconnect.getKey();
             if (!sessionStillInTheReconnectList.stillContains(session)) return;
+            openSharedCreationWorkBatchUnlessAlreadyOpen();
             long reconnectStartedAtNanos = elapsedNanosClock.elapsedNanos();
             try {
                 sessionReconnectAction.reconnectSession(session);
@@ -103,8 +106,22 @@ public final class SessionReconnectPacer {
                     elapsedNanosClock.elapsedNanos() - reconnectStartedAtNanos, pendingSessions.size());
             }
         } finally {
+            closeSharedCreationWorkBatchWhenNothingIsStillQueued();
             postNextUnitMessageIfIdle();
         }
+    }
+
+    private void openSharedCreationWorkBatchUnlessAlreadyOpen() {
+        if (sharedCreationWorkBatchIsOpen) return;
+        sharedCreationWorkBatchIsOpen = true;
+        sharedCreationWorkBatch.begin();
+    }
+
+    private void closeSharedCreationWorkBatchWhenNothingIsStillQueued() {
+        if (!sharedCreationWorkBatchIsOpen) return;
+        if (!pendingSessions.isEmpty()) return;
+        sharedCreationWorkBatchIsOpen = false;
+        sharedCreationWorkBatch.end();
     }
 
     private Map.Entry<TerminalSession, SessionReconnectReason> pollNextPendingSession() {
