@@ -281,7 +281,18 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         this::isSessionStillInTheReconnectList,
         this::reconnectThenMarkSessionReconnecting,
         System::nanoTime,
-        SessionReconnectCostCounterHolder.getInstance()::record);
+        SessionReconnectCostCounterHolder.getInstance()::record,
+        new SessionReconnectPacer.SharedCreationWorkBatch() {
+            @Override
+            public void begin() {
+                beginSessionCreationBatchOnTheService();
+            }
+
+            @Override
+            public void end() {
+                endSessionCreationBatchOnTheService();
+            }
+        });
 
     private final HungSessionDetector mHungSessionDetector =
         new HungSessionDetector(BACKGROUND_RECONNECT_STALE_OUT_MAX_AGE_MILLIS);
@@ -2582,6 +2593,18 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             reconnectDeadSessionPreservingDisplayedSession(deadSession, materializeThisReplacement);
         if (reconnectedSession == null) return;
         markSessionReconnecting(deadSessionName, false);
+    }
+
+    private void beginSessionCreationBatchOnTheService() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        service.beginSessionCreationBatch();
+    }
+
+    private void endSessionCreationBatchOnTheService() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        service.endSessionCreationBatch();
     }
 
     /**

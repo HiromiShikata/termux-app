@@ -35,6 +35,12 @@ public final class SessionReconnectPacer {
                                  int sessionsStillQueued);
     }
 
+    public interface SharedCreationWorkBatch {
+        void begin();
+
+        void end();
+    }
+
     private final MainThreadMessagePoster mainThreadMessagePoster;
 
     private final SessionStillInTheReconnectList sessionStillInTheReconnectList;
@@ -44,6 +50,8 @@ public final class SessionReconnectPacer {
     private final ElapsedNanosClock elapsedNanosClock;
 
     private final ReconnectCostRecorder reconnectCostRecorder;
+
+    private final SharedCreationWorkBatch sharedCreationWorkBatch;
 
     private final LinkedHashMap<TerminalSession, SessionReconnectReason> pendingSessions =
         new LinkedHashMap<>();
@@ -55,12 +63,14 @@ public final class SessionReconnectPacer {
         @NonNull SessionStillInTheReconnectList sessionStillInTheReconnectList,
         @NonNull SessionReconnectAction sessionReconnectAction,
         @NonNull ElapsedNanosClock elapsedNanosClock,
-        @NonNull ReconnectCostRecorder reconnectCostRecorder) {
+        @NonNull ReconnectCostRecorder reconnectCostRecorder,
+        @NonNull SharedCreationWorkBatch sharedCreationWorkBatch) {
         this.mainThreadMessagePoster = mainThreadMessagePoster;
         this.sessionStillInTheReconnectList = sessionStillInTheReconnectList;
         this.sessionReconnectAction = sessionReconnectAction;
         this.elapsedNanosClock = elapsedNanosClock;
         this.reconnectCostRecorder = reconnectCostRecorder;
+        this.sharedCreationWorkBatch = sharedCreationWorkBatch;
     }
 
     public void enqueueSession(@NonNull TerminalSession session,

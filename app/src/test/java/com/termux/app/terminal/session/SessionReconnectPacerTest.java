@@ -117,7 +117,16 @@ public class SessionReconnectPacerTest {
             @NonNull SessionReconnectPacer.SessionReconnectAction sessionReconnectAction) {
         return new SessionReconnectPacer(mainThreadMessages,
             session -> !sessionsThatLeftTheReconnectList.contains(session), sessionReconnectAction,
-            mainThreadNanoClock, recordedReconnectCosts);
+            mainThreadNanoClock, recordedReconnectCosts,
+            new SessionReconnectPacer.SharedCreationWorkBatch() {
+                @Override
+                public void begin() {
+                }
+
+                @Override
+                public void end() {
+                }
+            });
     }
 
     @Test
