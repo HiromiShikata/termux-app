@@ -202,11 +202,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     /**
      * The staleness threshold used to decide which non-current sessions the background tick reconnects.
-     * A session whose last {@code out:} statusline time is older than this is treated as stale and is
-     * reconnected on the next tick so its shown info is refreshed; a session receiving fresh output
-     * stays under this age and is left untouched. It is deliberately shorter than {@link
+     * A session whose last {@code out:} statusline time is older than this has stopped saying anything,
+     * which on its own says nothing about whether its connection is still there, so it is reconnected
+     * only when input has also stopped reaching the program reading its terminal. It is deliberately
+     * shorter than {@link
      * HungSessionDetector#STALE_OUT_MAX_AGE_MILLIS} and tied to the background reconnect tick interval
-     * (default five minutes, {@link
+     * (default one minute, {@link
      * com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_APP#DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES})
      * so that a stale session is refreshed within roughly one tick — a few minutes — instead of only
      * after the former ten-minute hung threshold plus a full tick, which let info reach 30+ minutes old.
@@ -2411,16 +2412,19 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             boolean current = sessionName.equals(currentSessionName);
             boolean running = terminalSession.isRunning();
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
-            boolean silentLongEnough = mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis);
-            if (silentLongEnough && running) {
+            boolean inputStillReachesTheProgram =
+                terminalSession.inputReachesTheProgramReadingTheTerminal();
+            boolean silentAndNoLongerReachable =
+                mHungSessionDetector.isHung(lastOutTimeMillis, nowMillis) && !inputStillReachesTheProgram;
+            if (silentAndNoLongerReachable && running) {
                 silentSessionLastOutTimeMillisByName.put(sessionName, lastOutTimeMillis);
             }
-            boolean hung = silentLongEnough && mHungSessionReconnectBackoff.isReadyToAttemptAgain(
+            boolean hung = silentAndNoLongerReachable && mHungSessionReconnectBackoff.isReadyToAttemptAgain(
                 sessionName, lastOutTimeMillis, nowMillis);
             boolean reconnecting = store != null && store.isReconnecting(sessionName);
             boolean unableToReceiveInputLongEnough =
                 mSessionInputDeliverabilityDwell.hasBeenUnableToReceiveInputLongEnough(
-                    sessionName, terminalSession.inputReachesTheProgramReadingTheTerminal(), nowMillis);
+                    sessionName, inputStillReachesTheProgram, nowMillis);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
                 sessionName, running, current, hung, lastOutTimeMillis, reconnecting,
                 unableToReceiveInputLongEnough));
