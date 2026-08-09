@@ -310,6 +310,12 @@ public final class DiagnosticsReportBuilder {
         builder.append("    Max: ").append(cost.getMaxElapsedMillis()).append(" ms\n");
         builder.append("    Sessions still queued at max: ")
             .append(cost.getSessionsStillQueuedAtMaxElapsed()).append('\n');
+        for (DiagnosticsSessionReconnectCostByReason costByReason : cost.getCostsByReason()) {
+            builder.append("    ").append(costByReason.getReason().getReportLabel()).append('\n');
+            builder.append("      Count: ").append(costByReason.getReconnectCount()).append('\n');
+            builder.append("      Total: ").append(costByReason.getTotalElapsedMillis()).append(" ms\n");
+            builder.append("      Max: ").append(costByReason.getMaxElapsedMillis()).append(" ms\n");
+        }
     }
 
     private void appendSessionsSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {

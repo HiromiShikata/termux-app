@@ -48,7 +48,7 @@ public class HungSessionReconnectBackoffWiringTest {
     public void whichSessionsCountAsSilentIsDecidedBeforeAnyReconnectIsEnqueued() throws IOException {
         String source = readClientSource();
         int decisionIndex = source.indexOf("silentSessionLastOutTimeMillisByName.put(");
-        int enqueueIndex = source.indexOf("mSessionReconnectPacer.enqueueSession(deadSession)");
+        int enqueueIndex = source.indexOf("mSessionReconnectPacer.enqueueSession(deadSession,");
         int recordIndex = source.indexOf("mHungSessionReconnectBackoff.recordAttemptForSilence(");
 
         Assert.assertTrue("the set of silent sessions is not decided anywhere", decisionIndex >= 0);
@@ -63,7 +63,7 @@ public class HungSessionReconnectBackoffWiringTest {
     @Test
     public void aSessionWhoseShellProcessExitedIsNotPacedByTheSilenceBackoff() throws IOException {
         String source = readClientSource();
-        int reconnectPlanningIndex = source.indexOf("planSessionNamesToReconnect(candidateSessions");
+        int reconnectPlanningIndex = source.indexOf("planReconnects(candidateSessions");
         Assert.assertTrue("reconnect planning not found", reconnectPlanningIndex >= 0);
 
         Assert.assertTrue("a dead shell is a different failure from a quiet one and recovers by being"

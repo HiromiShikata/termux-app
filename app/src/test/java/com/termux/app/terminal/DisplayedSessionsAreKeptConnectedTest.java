@@ -44,7 +44,7 @@ public class DisplayedSessionsAreKeptConnectedTest {
         String body = methodBody(
             "private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String>");
 
-        int enqueueIndex = body.indexOf("mSessionReconnectPacer.enqueueSession(deadSession)");
+        int enqueueIndex = body.indexOf("mSessionReconnectPacer.enqueueSession(deadSession,");
         int forgetIndex = body.indexOf("mSessionInputDeliverabilityDwell.forget(sessionName)");
 
         Assert.assertTrue("the reconnect must be enqueued", enqueueIndex >= 0);

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import androidx.annotation.NonNull;
 
+import com.termux.app.sessiondefinition.SessionReconnectReason;
 import com.termux.terminal.TerminalSession;
 
 import org.junit.Test;
@@ -81,8 +82,12 @@ public class SessionReconnectPacerTest {
 
         final List<Integer> sessionsStillQueued = new ArrayList<>();
 
+        final List<SessionReconnectReason> reasons = new ArrayList<>();
+
         @Override
-        public void recordReconnectCost(long elapsedNanos, int sessionsStillQueued) {
+        public void recordReconnectCost(SessionReconnectReason reason, long elapsedNanos,
+                                        int sessionsStillQueued) {
+            this.reasons.add(reason);
             this.elapsedNanos.add(elapsedNanos);
             this.sessionsStillQueued.add(sessionsStillQueued);
         }
@@ -119,7 +124,7 @@ public class SessionReconnectPacerTest {
     public void schedulesTheFirstSessionBehindAFrameYieldInsteadOfReconnectingItImmediately() {
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         assertTrue("a session creation that runs inside the scheduling pass holds the main thread before "
                 + "the drawing thread has had a single frame, which is what leaves the terminal screen on "
@@ -133,9 +138,9 @@ public class SessionReconnectPacerTest {
     public void schedulesOnlyOneMainThreadMessageHoweverManySessionsAreEnqueued() {
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         assertEquals(1, mainThreadMessages.getPendingMessageCount());
     }
@@ -147,9 +152,9 @@ public class SessionReconnectPacerTest {
         TerminalSession third = newDeadSession();
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(first);
-        pacer.enqueueSession(second);
-        pacer.enqueueSession(third);
+        pacer.enqueueSession(first, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(second, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(third, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         mainThreadMessages.runNextMessage();
         assertEquals(List.of(first), reconnectedSessions);
@@ -165,9 +170,9 @@ public class SessionReconnectPacerTest {
     public void schedulesEverySuccessorSessionBehindItsOwnFrameYield() {
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         mainThreadMessages.runUntilNoMessagesRemain();
 
         long frameYield = SessionReconnectPacer.MAIN_THREAD_FRAME_YIELD_INTERVAL_MILLIS;
@@ -182,9 +187,9 @@ public class SessionReconnectPacerTest {
         TerminalSession third = newDeadSession();
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(first);
-        pacer.enqueueSession(second);
-        pacer.enqueueSession(third);
+        pacer.enqueueSession(first, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(second, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(third, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         assertEquals(3, mainThreadMessages.runUntilNoMessagesRemain());
         assertEquals(List.of(first, second, third), reconnectedSessions);
@@ -196,9 +201,9 @@ public class SessionReconnectPacerTest {
         TerminalSession session = newDeadSession();
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(session);
-        pacer.enqueueSession(session);
-        pacer.enqueueSession(session);
+        pacer.enqueueSession(session, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(session, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(session, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         assertEquals(1, mainThreadMessages.runUntilNoMessagesRemain());
         assertEquals(List.of(session), reconnectedSessions);
@@ -211,10 +216,10 @@ public class SessionReconnectPacerTest {
         SessionReconnectPacer[] pacerHolder = new SessionReconnectPacer[1];
         pacerHolder[0] = newPacerReconnectingWith(session -> {
             reconnectedSessions.add(session);
-            if (session == first) pacerHolder[0].enqueueSession(enqueuedDuringFirstUnit);
+            if (session == first) pacerHolder[0].enqueueSession(enqueuedDuringFirstUnit, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         });
 
-        pacerHolder[0].enqueueSession(first);
+        pacerHolder[0].enqueueSession(first, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         mainThreadMessages.runNextMessage();
         assertEquals(List.of(first), reconnectedSessions);
@@ -235,9 +240,9 @@ public class SessionReconnectPacerTest {
             }
         });
 
-        pacer.enqueueSession(failingSession);
-        pacer.enqueueSession(secondSession);
-        pacer.enqueueSession(thirdSession);
+        pacer.enqueueSession(failingSession, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(secondSession, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(thirdSession, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
 
         IllegalStateException thrownByTheFailingUnit =
             assertThrows(IllegalStateException.class, mainThreadMessages::runNextMessage);
@@ -261,8 +266,8 @@ public class SessionReconnectPacerTest {
         TerminalSession sessionQueuedBehindIt = newDeadSession();
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(sessionLeavingTheList);
-        pacer.enqueueSession(sessionQueuedBehindIt);
+        pacer.enqueueSession(sessionLeavingTheList, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(sessionQueuedBehindIt, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         sessionsThatLeftTheReconnectList.add(sessionLeavingTheList);
 
         mainThreadMessages.runUntilNoMessagesRemain();
@@ -277,9 +282,9 @@ public class SessionReconnectPacerTest {
     public void recordsWhatEveryReconnectCostTheMainThreadSoASubThresholdBurstStaysMeasurable() {
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         mainThreadMessages.runUntilNoMessagesRemain();
 
         assertEquals("the stall watchdog only records a stall once the main thread has been blocked "
@@ -295,9 +300,9 @@ public class SessionReconnectPacerTest {
     public void recordsHowManySessionsWereStillQueuedBehindEachReconnect() {
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
-        pacer.enqueueSession(newDeadSession());
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
+        pacer.enqueueSession(newDeadSession(), SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         mainThreadMessages.runUntilNoMessagesRemain();
 
         assertEquals("a single slow reconnect and a burst that occupies the main thread once per "
@@ -314,7 +319,7 @@ public class SessionReconnectPacerTest {
             throw new IllegalStateException("session creation failed");
         });
 
-        pacer.enqueueSession(failingSession);
+        pacer.enqueueSession(failingSession, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         assertThrows(IllegalStateException.class, mainThreadMessages::runNextMessage);
 
         assertEquals("a reconnect that fails has already spent its main-thread time, so dropping its "
@@ -328,7 +333,7 @@ public class SessionReconnectPacerTest {
         TerminalSession sessionLeavingTheList = newDeadSession();
         SessionReconnectPacer pacer = newPacer();
 
-        pacer.enqueueSession(sessionLeavingTheList);
+        pacer.enqueueSession(sessionLeavingTheList, SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN);
         sessionsThatLeftTheReconnectList.add(sessionLeavingTheList);
         mainThreadMessages.runUntilNoMessagesRemain();
 

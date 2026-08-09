@@ -105,6 +105,6 @@ public class ReloadReconnectsEveryDisplayedSessionTest {
 
         Assert.assertTrue("reconnecting a large displayed set must stay paced so the app is not frozen "
                 + "by one reconnect per session at once",
-            body.contains("mSessionReconnectPacer.enqueueSession(deadSession)"));
+            body.contains("mSessionReconnectPacer.enqueueSession(deadSession,"));
     }
 }

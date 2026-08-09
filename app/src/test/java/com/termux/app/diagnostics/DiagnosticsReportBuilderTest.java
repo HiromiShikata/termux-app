@@ -16,7 +16,7 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsMemoryUsage NO_MEMORY_USAGE = new DiagnosticsMemoryUsage(0, 0, 0, 0);
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
     private static final DiagnosticsSessionReconnectCost NO_SESSION_RECONNECT_COST =
-        new DiagnosticsSessionReconnectCost(0, 0, 0, 0);
+        new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList());
     private static final DiagnosticsReplacedSessionShellInput NO_REPLACED_SESSION_SHELL_INPUT =
         new DiagnosticsReplacedSessionShellInput(0, 0L, "", "", "");
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =

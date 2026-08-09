@@ -124,10 +124,23 @@ public final class DeadSessionReconnectPlanner {
                                                     @Nullable String autosshCommandTemplate,
                                                     int maxSessionsToReconnect,
                                                     @NonNull Set<String> userRemovedSessionNames) {
-        if (maxSessionsToReconnect <= 0) {
-            return new ArrayList<>();
-        }
         List<String> sessionNamesToReconnect = new ArrayList<>();
+        for (PlannedSessionReconnect plannedReconnect : planReconnects(candidateSessions,
+            autosshCommandTemplate, maxSessionsToReconnect, userRemovedSessionNames)) {
+            sessionNamesToReconnect.add(plannedReconnect.getSessionName());
+        }
+        return sessionNamesToReconnect;
+    }
+
+    @NonNull
+    public List<PlannedSessionReconnect> planReconnects(@NonNull List<CandidateSession> candidateSessions,
+                                                        @Nullable String autosshCommandTemplate,
+                                                        int maxSessionsToReconnect,
+                                                        @NonNull Set<String> userRemovedSessionNames) {
+        List<PlannedSessionReconnect> plannedReconnects = new ArrayList<>();
+        if (maxSessionsToReconnect <= 0) {
+            return plannedReconnects;
+        }
         List<CandidateSession> hungAliveCandidates = new ArrayList<>();
         for (CandidateSession candidateSession : candidateSessions) {
             if (candidateSession == null) {
@@ -135,10 +148,10 @@ public final class DeadSessionReconnectPlanner {
             }
             if (candidateSession.isDeadProcessReconnectCandidate()
                 || candidateSession.isDetachedInputReconnectCandidate()) {
-                addIfReconnectable(candidateSession, autosshCommandTemplate, userRemovedSessionNames,
-                    sessionNamesToReconnect);
-                if (sessionNamesToReconnect.size() >= maxSessionsToReconnect) {
-                    return sessionNamesToReconnect;
+                addIfReconnectable(candidateSession, reasonThatPlanned(candidateSession),
+                    autosshCommandTemplate, userRemovedSessionNames, plannedReconnects);
+                if (plannedReconnects.size() >= maxSessionsToReconnect) {
+                    return plannedReconnects;
                 }
             } else if (candidateSession.isHungAliveReconnectCandidate()) {
                 hungAliveCandidates.add(candidateSession);
@@ -146,24 +159,33 @@ public final class DeadSessionReconnectPlanner {
         }
         hungAliveCandidates.sort(OLDEST_OUT_FIRST);
         for (CandidateSession hungAliveCandidate : hungAliveCandidates) {
-            addIfReconnectable(hungAliveCandidate, autosshCommandTemplate, userRemovedSessionNames,
-                sessionNamesToReconnect);
-            if (sessionNamesToReconnect.size() >= maxSessionsToReconnect) {
-                return sessionNamesToReconnect;
+            addIfReconnectable(hungAliveCandidate,
+                SessionReconnectReason.SILENT_FOR_LONGER_THAN_THE_STALENESS_THRESHOLD,
+                autosshCommandTemplate, userRemovedSessionNames, plannedReconnects);
+            if (plannedReconnects.size() >= maxSessionsToReconnect) {
+                return plannedReconnects;
             }
         }
-        return sessionNamesToReconnect;
+        return plannedReconnects;
+    }
+
+    @NonNull
+    private static SessionReconnectReason reasonThatPlanned(@NonNull CandidateSession candidateSession) {
+        return candidateSession.isDeadProcessReconnectCandidate()
+            ? SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN
+            : SessionReconnectReason.INPUT_NO_LONGER_REACHES_THE_PROGRAM;
     }
 
     private static void addIfReconnectable(@NonNull CandidateSession candidateSession,
+                                           @NonNull SessionReconnectReason reason,
                                            @Nullable String autosshCommandTemplate,
                                            @NonNull Set<String> userRemovedSessionNames,
-                                           @NonNull List<String> sessionNamesToReconnect) {
+                                           @NonNull List<PlannedSessionReconnect> plannedReconnects) {
         FinishedSessionEnterAction action =
             FinishedSessionEnterAction.decide(candidateSession.getName(), autosshCommandTemplate,
                 userRemovedSessionNames);
         if (action.isReconnect()) {
-            sessionNamesToReconnect.add(candidateSession.getName());
+            plannedReconnects.add(new PlannedSessionReconnect(candidateSession.getName(), reason));
         }
     }
 
