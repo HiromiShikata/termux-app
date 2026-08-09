@@ -253,14 +253,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     private final Set<String> mSessionNamesWhoseReconnectTheOwnerAsked = new HashSet<>();
 
-    /**
-     * The single session a bulk sweep materializes: the one whose unanswered owner call is oldest, so
-     * the session the owner has been kept waiting on longest is the one that is ready to draw. Null
-     * while no session in the sweep carries an unanswered call.
-     */
-    @Nullable
-    private String mSessionNameToMaterializeOnTheNextBulkReconnect;
-
     private static final long MILLIS_PER_MINUTE = 60L * 1000L;
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
@@ -1188,7 +1180,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (session == null) return;
         boolean theOwnerAskedForThisReconnect =
             mSessionNamesWhoseReconnectTheOwnerAsked.contains(sessionName);
-        reconnectDeadSessionPreservingDisplayedSession(session, theOwnerAskedForThisReconnect);
+        reconnectDeadSessionPreservingDisplayedSession(session);
         markSessionReconnecting(sessionName, theOwnerAskedForThisReconnect);
     }
 
@@ -1205,7 +1197,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         store.resetReconnectRetryAttempt(sessionName);
         TerminalSession session = findTerminalSessionByName(sessionName);
         if (session == null) return;
-        reconnectDeadSessionPreservingDisplayedSession(session, true);
+        reconnectDeadSessionPreservingDisplayedSession(session);
         markSessionReconnecting(sessionName, true);
     }
 
@@ -1549,7 +1541,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         unhideOpenedSession(session.mSessionName);
         if (shouldReconnectOnSwitch(session)) {
             TerminalSession reconnectedSession =
-                reconnectDeadSessionPreservingDisplayedSession(session, true);
+                reconnectDeadSessionPreservingDisplayedSession(session);
             if (reconnectedSession != null) {
                 setCurrentSession(reconnectedSession);
                 return;
@@ -2452,8 +2444,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
             sessionNamesToReconnect.add(plannedReconnect.getSessionName());
         }
-        mSessionNameToMaterializeOnTheNextBulkReconnect =
-            oldestPendingCallToUserSessionName(store, sessionNamesToReconnect);
         List<String> reconnectedSessionNames = new ArrayList<>();
         for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
             String sessionName = plannedReconnect.getSessionName();
@@ -2472,22 +2462,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         mHungSessionReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
         mExitedSessionImmediateReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
         return reconnectedSessionNames;
-    }
-
-    @Nullable
-    private String oldestPendingCallToUserSessionName(@Nullable SessionNewActivityStore store,
-                                                      @NonNull List<String> sessionNames) {
-        if (store == null) return null;
-        String oldestPendingCallSessionName = null;
-        long oldestPendingCallTimeMillis = Long.MAX_VALUE;
-        for (String sessionName : sessionNames) {
-            Long pendingCallSinceTimeMillis = store.pendingCallToUserSinceTimeMillis(sessionName);
-            if (pendingCallSinceTimeMillis == null) continue;
-            if (pendingCallSinceTimeMillis >= oldestPendingCallTimeMillis) continue;
-            oldestPendingCallTimeMillis = pendingCallSinceTimeMillis;
-            oldestPendingCallSessionName = sessionName;
-        }
-        return oldestPendingCallSessionName;
     }
 
     private void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
@@ -2587,10 +2561,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private void reconnectThenMarkSessionReconnecting(@NonNull TerminalSession deadSession) {
         String deadSessionName = deadSession.mSessionName;
-        boolean materializeThisReplacement = deadSessionName != null
-            && deadSessionName.equals(mSessionNameToMaterializeOnTheNextBulkReconnect);
         TerminalSession reconnectedSession =
-            reconnectDeadSessionPreservingDisplayedSession(deadSession, materializeThisReplacement);
+            reconnectDeadSessionPreservingDisplayedSession(deadSession);
         if (reconnectedSession == null) return;
         markSessionReconnecting(deadSessionName, false);
     }
@@ -2711,7 +2683,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     @Nullable
     private TerminalSession reconnectDeadSessionPreservingDisplayedSession(
-        @NonNull TerminalSession deadSession, boolean eagerlyInitializeReplacement) {
+        @NonNull TerminalSession deadSession) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
@@ -2778,9 +2750,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             setCurrentSession(newTerminalSession);
             dropToolbarTextInputForSession(deadSession);
         } else {
-            if (eagerlyInitializeReplacement) {
-                eagerInitializeReconnectedBackgroundSessionEmulator(newTerminalSession);
-            }
+            startTheReconnectedBackgroundSessionProcess(newTerminalSession);
             termuxSessionListNotifyUpdated();
         }
         return newTerminalSession;
@@ -2792,7 +2762,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         toolbarAdapter.saveTextInputForSession(reconnectedSession);
     }
 
-    private void eagerInitializeReconnectedBackgroundSessionEmulator(@NonNull TerminalSession session) {
+    private void startTheReconnectedBackgroundSessionProcess(@NonNull TerminalSession session) {
         if (session.getEmulator() != null) return;
         TerminalView terminalView = mActivity.getTerminalView();
         if (terminalView == null) return;

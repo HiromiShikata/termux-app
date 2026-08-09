@@ -101,6 +101,11 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
     private TermuxAppSharedPreferences preferences;
     private TermuxSessionsListViewController listViewController;
 
+    @org.junit.After
+    public void restoreTheDefaultAbsenceOfTheDeviceNativeSubprocessLibrary() {
+        com.termux.terminal.JniSpawnCounter.restoreTheAbsenceOfTheDeviceNativeSubprocessLibrary();
+    }
+
     @Before
     public void setUp() throws Exception {
         activity = Robolectric.buildActivity(TermuxActivity.class).get();
@@ -265,6 +270,7 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
 
     @Test
     public void aSessionThatIsActuallyReconnectedStillAcquiresItsReconnectingMark() throws Exception {
+        com.termux.terminal.JniSpawnCounter.pretendTheDeviceNativeSubprocessLibraryIsPresent();
         set(activity, TermuxActivity.class, "mIsVisible", false);
         TermuxSession deadSession = deadSessionAwaitingReconnect(RECONNECTABLE_SESSION_NAME);
         shellManager.mTermuxSessions.add(deadSession);
@@ -273,10 +279,11 @@ public class HiddenSessionStaysDisconnectedWhileAReconnectIsInFlightTest {
         idlePastThePacedReconnectWindow();
 
         assertNotNull("this assertion only means something if the reconnect genuinely produced a live "
-                + "session object, otherwise it would pass for the same reason the hidden case does. The "
-                + "reconnect is driven with the activity not in the foreground, which is the arrangement "
-                + "in which the replacement session is created without eagerly building its emulator, so "
-                + "the decision under test is reachable without the device-only native library",
+                + "session object, otherwise it would pass for the same reason the hidden case does. A "
+                + "reconnect starts the replacement session's process, so this case declares the "
+                + "device-only native library present for itself; without that declaration the spawn "
+                + "raises its absence, the reconnect never reaches the mark it is being measured on, "
+                + "and the case would fail for a reason that exists only off a device",
             service.getTermuxSessionForSessionName(RECONNECTABLE_SESSION_NAME));
         assertTrue("suppressing the reconnecting mark for a refused reconnect must not suppress it for "
                 + "a reconnect that actually happened; the owner relies on that mark to see which "
