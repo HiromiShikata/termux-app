@@ -45,6 +45,7 @@ import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
+import com.termux.app.sessiondefinition.ExitedSessionImmediateReconnectBackoff;
 import com.termux.app.sessiondefinition.HungSessionReconnectBackoff;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
@@ -287,6 +288,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private final HungSessionReconnectBackoff mHungSessionReconnectBackoff =
         new HungSessionReconnectBackoff();
+
+    private final ExitedSessionImmediateReconnectBackoff mExitedSessionImmediateReconnectBackoff =
+        new ExitedSessionImmediateReconnectBackoff();
 
     private final Runnable mActiveSessionSeenTickRunnable = this::onActiveSessionSeenTick;
 
@@ -895,11 +899,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 Logger.logVerbose(LOG_TAG, "The \"" + finishedSession.mSessionName + "\" session will be force finished automatically since result in pending.");
         }
 
-        if (mActivity.isVisible() && finishedSession != mActivity.getCurrentSession()) {
-            // Show toast for non-current sessions that exit.
-            // Verify that session was not removed before we got told about it finishing:
-            if (index >= 0)
-                mActivity.showToast(toToastTitle(finishedSession) + " - exited", true);
+        String finishedSessionName = finishedSession.mSessionName;
+        long nowMillis = System.currentTimeMillis();
+        if (index >= 0 && finishedSessionName != null
+            && mExitedSessionImmediateReconnectBackoff.isReadyToReconnectImmediately(
+                finishedSessionName, nowMillis)) {
+            mExitedSessionImmediateReconnectBackoff.recordImmediateReconnect(finishedSessionName, nowMillis);
+            mSessionReconnectPacer.enqueueSession(finishedSession);
         }
 
         boolean isAndroidTV = mActivity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
@@ -2431,6 +2437,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             reconnectedSessionNames.add(sessionName);
         }
         mHungSessionReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
+        mExitedSessionImmediateReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
         return reconnectedSessionNames;
     }
 
