@@ -36,16 +36,20 @@ public class HistoryRowRestoreButtonTest {
     }
 
     @Test
-    public void theRestoreIconIsTheFirstThingInTheRowSoTheUserCanReachItAtTheLeftEdge() {
+    public void theRestoreIconSitsAtTheRightEdgeOfTheRowAndTheBookmarkIconAtTheLeftEdge() {
         Context context = themedContext();
         SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
             context, twoEntryHistory(), () -> {}, entry -> {});
 
         ViewGroup row = (ViewGroup) adapter.getView(0, null, new FrameLayout(context));
 
-        Assert.assertEquals("the restore target must be the left-most child of the row, because the"
-                + " user reported that a tap anywhere over the entry text is taken as a scroll",
-            R.id.toolbar_text_input_history_restore_button, row.getChildAt(0).getId());
+        Assert.assertEquals("the restore target is the button the owner reaches on every row, so it"
+                + " belongs at the right edge under the thumb rather than at the left edge",
+            R.id.toolbar_text_input_history_restore_button,
+            row.getChildAt(row.getChildCount() - 1).getId());
+        Assert.assertEquals("the bookmark button is the occasional one and takes the left edge the"
+                + " restore button vacates", R.id.toolbar_text_input_history_pin_button,
+            row.getChildAt(0).getId());
     }
 
     @Test
