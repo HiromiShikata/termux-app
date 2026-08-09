@@ -140,9 +140,8 @@ public final class DiagnosticsReportBuilder {
         builder.append("Input stuck on sessions replaced since the app started\n");
         builder.append("  Sessions replaced with input still undelivered: ")
             .append(replaced.getSessionsReplacedWithInputUndelivered()).append('\n');
-        if (replaced.getSessionsReplacedWithInputUndelivered() == 0) {
-            return;
-        }
+        builder.append("  Sessions replaced after the input writer had already stopped: ")
+            .append(replaced.getSessionsReplacedAfterTheWriterStopped()).append('\n');
         if (replaced.getWorstUndeliveredBytes() > 0) {
             builder.append("  Most left unwritten: ").append(replaced.getWorstUndeliveredBytes())
                 .append("B on ").append(replaced.getWorstUndeliveredSessionName()).append('\n');

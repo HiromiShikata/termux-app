@@ -58,9 +58,24 @@ public class ReplacedSessionShellInputRecorderTest {
         DiagnosticsReplacedSessionShellInput snapshot = recorder.snapshot();
         Assert.assertEquals("a writer that stopped is why later input would go nowhere, so the replacement"
             + " counts even though nothing was outstanding at that instant",
-            1, snapshot.getSessionsReplacedWithInputUndelivered());
+            1, snapshot.getSessionsReplacedAfterTheWriterStopped());
         Assert.assertEquals("host-dead", snapshot.getLastWriterStopSessionName());
         Assert.assertEquals("broken pipe", snapshot.getLastWriterStopReason());
+    }
+
+    @Test
+    public void aReplacementWhoseWriterWasStillRunningIsNotCountedAsAWriterStop() {
+        ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
+
+        recorder.recordSessionBeingReplaced("host-slow", 99L, true, null);
+
+        DiagnosticsReplacedSessionShellInput snapshot = recorder.snapshot();
+        Assert.assertEquals("the writer was still running, so reporting it as one that had stopped would"
+                + " name a failure that did not happen",
+            0, snapshot.getSessionsReplacedAfterTheWriterStopped());
+        Assert.assertEquals("input the session accepted and never wrote is a real loss and is what this"
+                + " figure exists to count",
+            1, snapshot.getSessionsReplacedWithInputUndelivered());
     }
 
     @Test

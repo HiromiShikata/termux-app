@@ -9,6 +9,8 @@ public final class ReplacedSessionShellInputRecorder {
 
     private int mSessionsReplacedWithInputUndelivered;
 
+    private int mSessionsReplacedAfterTheWriterStopped;
+
     private long mWorstUndeliveredBytes;
 
     @NonNull
@@ -25,15 +27,15 @@ public final class ReplacedSessionShellInputRecorder {
                                                         boolean writerRunning,
                                                         @Nullable String writerStoppedReason) {
         String name = shortenedSessionName(sessionName);
-        if (undeliveredBytes <= 0 && writerRunning) {
-            return;
+        if (undeliveredBytes > 0) {
+            mSessionsReplacedWithInputUndelivered++;
         }
-        mSessionsReplacedWithInputUndelivered++;
         if (undeliveredBytes > mWorstUndeliveredBytes) {
             mWorstUndeliveredBytes = undeliveredBytes;
             mWorstUndeliveredSessionName = name;
         }
         if (!writerRunning) {
+            mSessionsReplacedAfterTheWriterStopped++;
             mLastWriterStopSessionName = name;
             mLastWriterStopReason = writerStoppedReason == null ? "" : writerStoppedReason;
         }
@@ -53,6 +55,7 @@ public final class ReplacedSessionShellInputRecorder {
     @NonNull
     public synchronized DiagnosticsReplacedSessionShellInput snapshot() {
         return new DiagnosticsReplacedSessionShellInput(mSessionsReplacedWithInputUndelivered,
+            mSessionsReplacedAfterTheWriterStopped,
             mWorstUndeliveredBytes, mWorstUndeliveredSessionName,
             mLastWriterStopSessionName, mLastWriterStopReason);
     }
