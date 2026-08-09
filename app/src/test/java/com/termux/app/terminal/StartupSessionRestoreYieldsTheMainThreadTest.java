@@ -14,6 +14,7 @@ import com.termux.app.TermuxService;
 import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.TermuxShellManager;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.view.TerminalView;
 
 import org.junit.Before;
@@ -25,6 +26,8 @@ import org.robolectric.RuntimeEnvironment;
 import org.robolectric.shadows.ShadowLooper;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(RobolectricTestRunner.class)
@@ -96,6 +99,46 @@ public class StartupSessionRestoreYieldsTheMainThreadTest {
         assertNotNull(service.getTermuxSessionForSessionName(FIRST_PERSISTED_SESSION_NAME));
         assertNotNull(service.getTermuxSessionForSessionName(SECOND_PERSISTED_SESSION_NAME));
         assertNotNull(service.getTermuxSessionForSessionName(THIRD_PERSISTED_SESSION_NAME));
+    }
+
+    @Test
+    public void anAlwaysPresentSessionStillQueuedForRestoreIsNotCreatedASecondTime() {
+        activity.getPreferences().setAutosshCommand("ssh {name}");
+        activity.getPreferences().setAlwaysNaSessionNames(
+            SECOND_PERSISTED_SESSION_NAME + "\n" + THIRD_PERSISTED_SESSION_NAME);
+
+        activity.getTermuxTerminalSessionClient().restorePersistedSessions();
+        activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions();
+
+        idlePastTheRestorePacer();
+
+        assertEquals("a persisted session that is queued to be restored on a later frame is already"
+                + " accounted for, so the always-present pass that runs straight after the restore must not"
+                + " build a second session under the same name; the live session names were "
+                + liveSessionNames(),
+            3, service.getTermuxSessionsSize());
+        assertEquals("exactly one session may carry each name; the live session names were "
+                + liveSessionNames(),
+            1, liveSessionCountNamed(SECOND_PERSISTED_SESSION_NAME));
+        assertEquals("exactly one session may carry each name; the live session names were "
+                + liveSessionNames(),
+            1, liveSessionCountNamed(THIRD_PERSISTED_SESSION_NAME));
+    }
+
+    private int liveSessionCountNamed(String sessionName) {
+        int count = 0;
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            if (sessionName.equals(termuxSession.getTerminalSession().mSessionName)) count++;
+        }
+        return count;
+    }
+
+    private List<String> liveSessionNames() {
+        List<String> names = new ArrayList<>();
+        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+            names.add(termuxSession.getTerminalSession().mSessionName);
+        }
+        return names;
     }
 
     private void idlePastTheRestorePacer() {
