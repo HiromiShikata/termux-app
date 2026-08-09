@@ -291,6 +291,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final MainThreadUnitPacer mStartupSessionRestorePacer =
         new MainThreadUnitPacer(mMainThreadHandler::postDelayed);
 
+    private StartupSessionRestore mStartupSessionRestoreStillToDrain;
+
     private final HungSessionReconnectBackoff mHungSessionReconnectBackoff =
         new HungSessionReconnectBackoff();
 
@@ -2956,6 +2958,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return true;
     }
 
+    private List<String> sessionNamesQueuedForRestoreOnALaterFrame() {
+        if (mStartupSessionRestoreStillToDrain == null) return Collections.emptyList();
+        return mStartupSessionRestoreStillToDrain.sessionNamesStillToBuild();
+    }
+
     private boolean theSessionTheUserIsShownExists() {
         TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
         if (listViewController == null) return true;
@@ -3017,12 +3024,22 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             return newTerminalSession;
         }
 
+        private List<String> sessionNamesStillToBuild() {
+            List<String> sessionNames = new ArrayList<>();
+            for (PersistedSessionRestoreData persistedSession : sessionsLeft) {
+                String name = persistedSession.getName();
+                if (name != null) sessionNames.add(name);
+            }
+            return sessionNames;
+        }
+
         private void buildTheSessionsLeftOnePerFrame() {
             if (sessionsLeft.isEmpty()) {
                 recordTheRestoredSessions();
                 return;
             }
 
+            mStartupSessionRestoreStillToDrain = this;
             deferredFramesBrowserController = mActivity.getTermuxBrowserController();
             if (deferredFramesBrowserController != null)
                 deferredFramesBrowserController.beginPersistenceBatch();
@@ -3041,12 +3058,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
 
         private void closeTheDeferredFrames() {
+            mStartupSessionRestoreStillToDrain = null;
             service.endSessionCreationBatch();
             if (deferredFramesBrowserController != null)
                 deferredFramesBrowserController.endPersistenceBatch();
 
             notifySessionLimitExceeded(configuredLimit, droppedSessionCount);
             recordTheRestoredSessions();
+            mActivity.eagerLoadAllSessions();
         }
 
         private void recordTheRestoredSessions() {
@@ -3074,6 +3093,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         for (TermuxSession termuxSession : service.getTermuxSessions()) {
             liveSessionNames.add(termuxSession.getTerminalSession().mSessionName);
         }
+        liveSessionNames.addAll(sessionNamesQueuedForRestoreOnALaterFrame());
 
         List<String> alwaysPresentSessionNames = new ArrayList<>(additionalAlwaysPresentSessionNames);
         alwaysPresentSessionNames.addAll(mActivity.getPreferences().getAlwaysNaSessionNames());
