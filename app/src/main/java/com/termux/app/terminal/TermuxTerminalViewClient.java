@@ -22,6 +22,7 @@ import androidx.annotation.Nullable;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.copytag.CopyTagBlocksOnTerminal;
 import com.termux.app.link.NativeAppLink;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
@@ -215,10 +216,17 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public void onSingleTapUp(MotionEvent e) {
         TerminalEmulator term = mActivity.getCurrentSession().getEmulator();
+        int[] columnAndRow = mActivity.getTerminalView().getColumnAndRow(e, true);
+
+        String copyTagContent = CopyTagBlocksOnTerminal.around(term, columnAndRow[1])
+            .contentOfTheBlockCoveringRow(columnAndRow[1]);
+        if (copyTagContent != null && !copyTagContent.isEmpty()) {
+            ShareUtils.copyTextToClipboard(mActivity, copyTagContent,
+                mActivity.getString(R.string.msg_copy_tag_content_copied));
+            return;
+        }
 
         if (mActivity.getProperties().shouldOpenTerminalTranscriptURLOnClick()) {
-            int[] columnAndRow = mActivity.getTerminalView().getColumnAndRow(e, true);
-
             String hyperlinkUri = term.getScreen().getHyperlinkUri(columnAndRow[1], columnAndRow[0]);
             if (hyperlinkUri != null) {
                 openUrlInMatchingAppOrBrowser(hyperlinkUri);
