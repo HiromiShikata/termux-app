@@ -23,6 +23,7 @@ final class PinchGestureFontSizeTestHarness {
     PinchGestureFontSizeTestHarness(Context context) throws Exception {
         TextSizeApplicationRecordingShadowTerminalView.forgetAppliedTextSizes();
         preferences = TermuxAppSharedPreferences.build(context, true);
+        preferences.setFontSize(TermuxAppSharedPreferences.getDefaultFontSizes(context)[0]);
         TermuxActivity activity = Robolectric.buildActivity(TermuxActivity.class).get();
         terminalView = new TerminalView(context, null);
         setActivityField(activity, "mPreferences", preferences);

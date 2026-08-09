@@ -6,6 +6,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
@@ -13,6 +14,17 @@ import org.robolectric.RobolectricTestRunner;
 
 @RunWith(RobolectricTestRunner.class)
 public class BrowserMeetLowPowerVideoSettingsPersistenceTest {
+
+    @Before
+    public void resetBrowserMeetLowPowerVideoSettingsToDefaults() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
+        if (prefs == null) return;
+        prefs.setBrowserMeetLowPowerVideoEnabled(false);
+        prefs.setBrowserMeetLowPowerVideoMaxWidth(TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_WIDTH);
+        prefs.setBrowserMeetLowPowerVideoMaxHeight(TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_HEIGHT);
+        prefs.setBrowserMeetLowPowerVideoMaxFramerate(TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_BROWSER_MEET_LOW_POWER_VIDEO_MAX_FRAMERATE);
+    }
 
     private TermuxAppSharedPreferences buildPreferences() {
         Activity activity = Robolectric.buildActivity(Activity.class).create().get();
