@@ -77,6 +77,30 @@ public class NativeAppLinkTest {
     }
 
     @Test
+    public void chatSpacePermalinkMapsToGoogleChat() {
+        assertTarget("https://chat.google.com/room/AAAAabcdefg/BBBBhijklmn",
+            "Google Chat", "com.google.android.apps.dynamite");
+    }
+
+    @Test
+    public void chatDirectMessageUrlMapsToGoogleChat() {
+        assertTarget("https://chat.google.com/dm/AAAAabcdefg",
+            "Google Chat", "com.google.android.apps.dynamite");
+    }
+
+    @Test
+    public void chatWebClientRootUrlMapsToGoogleChat() {
+        assertTarget("https://chat.google.com/",
+            "Google Chat", "com.google.android.apps.dynamite");
+    }
+
+    @Test
+    public void chatHostMatchingIsCaseInsensitive() {
+        assertTarget("https://Chat.Google.com/room/AAAAabcdefg/BBBBhijklmn",
+            "Google Chat", "com.google.android.apps.dynamite");
+    }
+
+    @Test
     public void photosUrlMapsToPhotos() {
         assertTarget("https://photos.google.com/photo/abc123",
             "Google Photos", "com.google.android.apps.photos");
@@ -206,6 +230,37 @@ public class NativeAppLinkTest {
         NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
 
         Assert.assertTrue("browser fallback must run when Slack is not installed", fallbackRan[0]);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
+    }
+
+    @Test
+    public void openInNativeAppOrElseOpensGoogleChatForASpacePermalink() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://chat.google.com/room/AAAAabcdefg/BBBBhijklmn";
+        boolean[] fallbackRan = {false};
+
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertFalse("browser fallback must not run when Google Chat is installed", fallbackRan[0]);
+        Intent started = shadowApplication.getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.google.android.apps.dynamite", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
+    }
+
+    @Test
+    public void openInNativeAppOrElseFallsBackToBrowserForAGoogleChatUrlWhenGoogleChatIsNotInstalled() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        shadowApplication.checkActivities(true);
+        String url = "https://chat.google.com/room/AAAAabcdefg/BBBBhijklmn";
+        boolean[] fallbackRan = {false};
+
+        NativeAppLink.openInNativeAppOrElse(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertTrue("browser fallback must run when Google Chat is not installed", fallbackRan[0]);
         Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
 
