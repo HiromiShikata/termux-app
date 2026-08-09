@@ -3,9 +3,11 @@ package com.termux.app.copytag;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.os.SystemClock;
 import android.view.MotionEvent;
 
 import androidx.test.core.app.ActivityScenario;
@@ -25,9 +27,14 @@ public class CopyTagTapInstrumentedTest {
 
     private static final String PAYLOAD = "the-copy-tag-payload-value";
 
+    private static final long MILLIS_ALLOWED_FOR_THE_FIRST_SESSION_TO_APPEAR = 30000L;
+
+    private static final long MILLIS_BETWEEN_READINESS_READINGS = 100L;
+
     @Test
     public void tappingInsideACopyTaggedBlockPutsTheWholeBlockOnTheClipboard() {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        awaitATerminalViewShowingASession(scenario);
         scenario.onActivity(activity -> {
             TerminalView terminalView = activity.getTerminalView();
             assertNotNull(terminalView);
@@ -52,6 +59,24 @@ public class CopyTagTapInstrumentedTest {
 
             assertEquals(PAYLOAD, clipboardText(activity));
         });
+    }
+
+    private static void awaitATerminalViewShowingASession(ActivityScenario<TermuxActivity> scenario) {
+        boolean[] readyToBeTapped = new boolean[1];
+        long deadlineMillis =
+            SystemClock.uptimeMillis() + MILLIS_ALLOWED_FOR_THE_FIRST_SESSION_TO_APPEAR;
+        while (SystemClock.uptimeMillis() < deadlineMillis) {
+            scenario.onActivity(activity -> {
+                TerminalView terminalView = activity.getTerminalView();
+                readyToBeTapped[0] = terminalView != null && terminalView.getHeight() > 0
+                    && activity.getCurrentSession() != null
+                    && activity.getCurrentSession().getEmulator() != null;
+            });
+            if (readyToBeTapped[0]) return;
+            SystemClock.sleep(MILLIS_BETWEEN_READINESS_READINGS);
+        }
+        fail("the activity never produced a laid out terminal view showing a session, so no tap could"
+            + " be delivered to one");
     }
 
     private static int rowShowing(TerminalEmulator emulator, String text) {
