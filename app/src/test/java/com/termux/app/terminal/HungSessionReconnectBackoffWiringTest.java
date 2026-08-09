@@ -63,7 +63,7 @@ public class HungSessionReconnectBackoffWiringTest {
     @Test
     public void aSessionWhoseShellProcessExitedIsNotPacedByTheSilenceBackoff() throws IOException {
         String source = readClientSource();
-        int reconnectPlanningIndex = source.indexOf("planSessionNamesToReconnect(candidateSessions");
+        int reconnectPlanningIndex = source.indexOf("planReconnects(candidateSessions");
         Assert.assertTrue("reconnect planning not found", reconnectPlanningIndex >= 0);
 
         Assert.assertTrue("a dead shell is a different failure from a quiet one and recovers by being"
