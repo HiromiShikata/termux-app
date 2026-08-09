@@ -26,10 +26,12 @@ public class SessionReconnectPacerSharedWorkBatchTest {
 
     private final Deque<Runnable> mainThreadMessages = new ArrayDeque<>();
 
+    private final List<TerminalSession> sessionsThatLeftTheReconnectList = new ArrayList<>();
+
     private SessionReconnectPacer newPacer() {
         return new SessionReconnectPacer(
             (runnable, delayMillis) -> mainThreadMessages.add(runnable),
-            session -> true,
+            session -> !sessionsThatLeftTheReconnectList.contains(session),
             session -> whatHappenedInOrder.add("reconnect " + session.mSessionName),
             () -> 0L,
             (reason, elapsedNanos, sessionsStillQueued) -> {
@@ -104,5 +106,21 @@ public class SessionReconnectPacerSharedWorkBatchTest {
         assertEquals("a session found dead while the sweep is already draining belongs to the same"
                 + " sweep, so it must not close the batch early and pay the shared work twice",
             List.of("begin", "reconnect first", "reconnect second", "end"), whatHappenedInOrder);
+    }
+
+    @Test
+    public void anOpenBatchIsClosedEvenWhenTheLastQueuedSessionHasLeftTheReconnectList() {
+        SessionReconnectPacer pacer = newPacer();
+        TerminalSession sessionThatWillLeave = newDeadSessionNamed("leaving");
+        pacer.enqueueSession(newDeadSessionNamed("first"), ANY_REASON);
+        pacer.enqueueSession(sessionThatWillLeave, ANY_REASON);
+        sessionsThatLeftTheReconnectList.add(sessionThatWillLeave);
+
+        runUntilNoMainThreadMessagesRemain();
+
+        assertEquals("a batch that stays open publishes nothing, so the last queued session turning"
+                + " out to need no reconnect must still close it rather than leave the list, the wake lock"
+                + " and the notification waiting for some later sweep",
+            List.of("begin", "reconnect first", "end"), whatHappenedInOrder);
     }
 }
