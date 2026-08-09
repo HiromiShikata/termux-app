@@ -23,8 +23,8 @@ final class JNI {
 
     private static final int STUB_PROCESS_ID_BASE = 10000;
 
-    private static final String SWEEP_EAGER_INIT_METHOD_NAME =
-        "eagerInitializeReconnectedBackgroundSessionEmulator";
+    private static final String RECONNECT_PROCESS_START_METHOD_NAME =
+        "startTheReconnectedBackgroundSessionProcess";
 
     private static final String EAGER_LOAD_ALL_SESSIONS_METHOD_NAME = "eagerLoadSessionEmulator";
 
@@ -60,7 +60,7 @@ final class JNI {
         for (StackTraceElement element : new Throwable().getStackTrace()) {
             String className = element.getClassName();
             if (className.startsWith("com.termux.") && !className.equals("com.termux.terminal.JNI")) {
-                if (SWEEP_EAGER_INIT_METHOD_NAME.equals(element.getMethodName())) {
+                if (RECONNECT_PROCESS_START_METHOD_NAME.equals(element.getMethodName())) {
                     fromEagerInit = true;
                 }
                 if (element.getMethodName().contains(EAGER_LOAD_ALL_SESSIONS_METHOD_NAME)) {

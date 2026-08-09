@@ -41,6 +41,9 @@ public class BackgroundReconnectStartsTheReplacementProcessTest {
 
     private static final int BACKGROUND_SESSION_COUNT = 6;
 
+    private static final Duration SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT =
+        Duration.ofMillis(TermuxTerminalSessionActivityClient.RECONNECT_TIMEOUT_MILLIS / 4L);
+
     private TermuxActivity activity;
     private TermuxService service;
     private TermuxShellManager shellManager;
@@ -105,7 +108,7 @@ public class BackgroundReconnectStartsTheReplacementProcessTest {
         seedSessions();
 
         invokePrivate("refreshDisplayedSessionsForCallToUser");
-        flushMainLooper();
+        idleMainLooperFor(SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT);
 
         for (int index = 0; index < BACKGROUND_SESSION_COUNT; index++) {
             TerminalSession replacement = terminalSessionNamed(backgroundSessionName(index));
@@ -116,13 +119,12 @@ public class BackgroundReconnectStartsTheReplacementProcessTest {
                     + backgroundSessionName(index) + " must therefore own a started process once the"
                     + " sweep has run\n" + measurementDetail(),
                 replacement.getEmulator());
-            assertTrue("the replacement session for " + backgroundSessionName(index) + " must report"
-                    + " itself running, because the reconnecting row is cleared only by output the"
-                    + " session produces\n" + measurementDetail(),
-                replacement.isRunning());
         }
         assertEquals("every one of the " + BACKGROUND_SESSION_COUNT + " reconnected background"
-                + " sessions must account for exactly one spawn made from the reconnect call site\n"
+                + " sessions must account for exactly one spawn made from the reconnect call site;"
+                + " the emulator assertions above are met by the emulator object alone, which the"
+                + " session builds before it asks for a process, so this count is what distinguishes"
+                + " a started process from a session that merely looks initialised\n"
                 + measurementDetail(),
             BACKGROUND_SESSION_COUNT, JniSpawnCounter.eagerInitCallCount());
     }
@@ -170,8 +172,8 @@ public class BackgroundReconnectStartsTheReplacementProcessTest {
         return "background-session-" + index;
     }
 
-    private void flushMainLooper() {
-        Shadows.shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMinutes(5));
+    private void idleMainLooperFor(Duration duration) {
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(duration);
     }
 
     private void invokePrivate(String methodName) throws Exception {

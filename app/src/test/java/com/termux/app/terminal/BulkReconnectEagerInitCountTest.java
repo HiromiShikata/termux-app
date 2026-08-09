@@ -44,14 +44,8 @@ public class BulkReconnectEagerInitCountTest {
 
     private static final int BACKGROUND_SESSION_COUNT = 6;
 
-    private static final long STATUSLINE_CALL_BASE_TIME_MILLIS = 2_000L;
-
-    private static final long STATUSLINE_OUT_TIME_MILLIS = 1_500L;
-
-    private static final long STATUSLINE_REPLY_TIME_MILLIS = 1_000L;
-
-    private static final Duration BEFORE_FIRST_RECONNECT_TIMEOUT =
-        Duration.ofMillis(TermuxTerminalSessionActivityClient.RECONNECT_TIMEOUT_MILLIS - 1L);
+    private static final Duration SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT =
+        Duration.ofMillis(TermuxTerminalSessionActivityClient.RECONNECT_TIMEOUT_MILLIS / 4L);
 
     private TermuxActivity activity;
     private TermuxService service;
@@ -113,86 +107,32 @@ public class BulkReconnectEagerInitCountTest {
     }
 
     @Test
-    public void bulkDisplayedReconnectLeavesEveryBackgroundSessionEmulatorLazy() throws Exception {
+    public void bulkDisplayedReconnectStartsTheProcessOfEveryBackgroundSessionItReconnects()
+        throws Exception {
         seedSessions(Collections.<String>emptySet());
 
         invokePrivate("refreshDisplayedSessionsForCallToUser");
-        flushMainLooper();
+        idleMainLooperFor(SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT);
 
         assertEquals(measurementDetail("a bulk reconnect of " + BACKGROUND_SESSION_COUNT
-                + " dead background sessions must not initialize any of their emulators off-screen, "
-                + "because each initialization spawns the ssh/tmux subprocess on the main thread and "
-                + "doing that once per reconnected session is what freezes the app"),
-            0, JniSpawnCounter.eagerInitCallCount());
-        assertEquals(measurementDetail("a bulk reconnect must spawn no subprocess at all"),
-            0, JniSpawnCounter.createSubprocessCallCount());
+                + " dead background sessions must start the process of every one of them, because a "
+                + "replacement session that owns no process writes no statusline, so its row is never "
+                + "cleared, runs out the retry ladder and settles on the reload button while the next "
+                + "background scan finds the process gone and reconnects it again. The spawns are kept "
+                + "off a single main-thread pass by the reconnect pacer, which runs one reconnect per "
+                + "main-thread message rather than the whole population in one pass"),
+            BACKGROUND_SESSION_COUNT, JniSpawnCounter.eagerInitCallCount());
+        assertEquals(measurementDetail("no spawn may come from anywhere but the reconnect call site"),
+            BACKGROUND_SESSION_COUNT, JniSpawnCounter.createSubprocessCallCount());
         for (int index = 0; index < BACKGROUND_SESSION_COUNT; index++) {
-            assertNull("the replacement session created for " + backgroundSessionName(index)
-                    + " must have no emulator until the owner opens it",
+            assertNotNull("the replacement session created for " + backgroundSessionName(index)
+                    + " must own a started process without the owner opening it",
                 terminalSessionNamed(backgroundSessionName(index)).getEmulator());
         }
     }
 
     @Test
-    public void bulkDisplayedReconnectInitializesOnlyTheSessionCarryingAPendingCall() throws Exception {
-        seedSessions(Collections.<String>emptySet());
-        service.getSessionNewActivityStore()
-            .recordExplicitCall(backgroundSessionName(2), 1_000L, "waiting for the owner");
-
-        invokePrivate("refreshDisplayedSessionsForCallToUser");
-        flushMainLooper();
-
-        assertEquals(measurementDetail("exactly the one background session carrying a pending "
-                + "call-to-user may be initialized off-screen by a bulk reconnect"),
-            1, JniSpawnCounter.eagerInitCallCount());
-    }
-
-    @Test
-    public void bulkDisplayedReconnectWithEverySessionCallingTheOwnerPreLoadsOnlyTheOldestPendingCall()
-        throws Exception {
-        seedSessions(Collections.<String>emptySet());
-        armStatuslinePendingCallOnEveryBackgroundSession();
-
-        invokePrivate("refreshDisplayedSessionsForCallToUser");
-        idleMainLooperFor(BEFORE_FIRST_RECONNECT_TIMEOUT);
-
-        assertEquals(measurementDetail("a bulk reconnect where every one of the "
-                + BACKGROUND_SESSION_COUNT + " dead background sessions carries a pending "
-                + "call-to-user must still pre-load at most one of them, because a dead session that "
-                + "was waiting on the owner can never render a newer reply and so this is the ordinary "
-                + "state of the whole population being bulk-reconnected"),
-            1, JniSpawnCounter.eagerInitCallCount());
-        assertNotNull("the oldest pending call is the one session the sweep pre-loads",
-            terminalSessionNamed(backgroundSessionName(0)).getEmulator());
-        for (int index = 1; index < BACKGROUND_SESSION_COUNT; index++) {
-            assertNull("only the oldest pending call may be pre-loaded, so "
-                    + backgroundSessionName(index) + " must stay lazy",
-                terminalSessionNamed(backgroundSessionName(index)).getEmulator());
-        }
-    }
-
-    @Test
-    public void bulkDisplayedReconnectWithEverySessionCallingTheOwnerStaysBoundedAcrossTheRetryLadder()
-        throws Exception {
-        seedSessions(Collections.<String>emptySet());
-        armStatuslinePendingCallOnEveryBackgroundSession();
-
-        invokePrivate("refreshDisplayedSessionsForCallToUser");
-        flushMainLooper();
-
-        assertEquals(measurementDetail("the reconnect purge preserves the statusline call time, so a "
-                + "pending call-to-user survives into every attempt of the automatic retry ladder; the "
-                + "whole bulk reconnect of " + BACKGROUND_SESSION_COUNT + " dead background sessions "
-                + "must still pre-load one session in total however many attempts it makes"),
-            1, JniSpawnCounter.eagerInitCallCount());
-        assertEquals(measurementDetail("the bounded pre-load must be the only subprocess the whole bulk "
-                + "reconnect spawns"),
-            1, JniSpawnCounter.createSubprocessCallCount());
-    }
-
-    @Test
-    public void eagerLoadAllSessionsAfterTheBoundedSweepStillSpawnsEveryRemainingVisibleBackgroundSession()
-        throws Exception {
+    public void eagerLoadAllSessionsAfterTheSweepAddsNoFurtherSpawn() throws Exception {
         seedSessions(Collections.<String>emptySet());
         assertEquals("this case measures the application-level spawn count for a population in which "
                 + "every one of the " + BACKGROUND_SESSION_COUNT + " background sessions is visible and "
@@ -200,63 +140,31 @@ public class BulkReconnectEagerInitCountTest {
                 + "session would change the number asserted below and the number would no longer stand "
                 + "for the whole population",
             Collections.<String>emptySet(), preferences.getDisabledSessionNames());
-        armStatuslinePendingCallOnEveryBackgroundSession();
 
         invokePrivate("refreshDisplayedSessionsForCallToUser");
-        flushMainLooper();
+        idleMainLooperFor(SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT);
 
-        assertEquals(measurementDetail("the bounded sweep is the only spawn source measured so far"),
-            1, JniSpawnCounter.createSubprocessCallCount());
-        assertEquals(measurementDetail("the one spawn the sweep makes must come from the sweep's own "
-                + "pre-load call site"),
-            1, JniSpawnCounter.eagerInitCallCount());
+        assertEquals(measurementDetail("the sweep is the only spawn source measured so far"),
+            BACKGROUND_SESSION_COUNT, JniSpawnCounter.createSubprocessCallCount());
         assertEquals(measurementDetail("nothing has driven the foreground eager load yet"),
             0, JniSpawnCounter.eagerLoadAllSessionsCallCount());
 
         activity.eagerLoadAllSessions();
-        flushMainLooper();
+        idleMainLooperFor(SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT);
 
-        assertEquals(measurementDetail("bounding the sweep does not remove the main-thread spawns: "
-                + "TermuxActivity.eagerLoadAllSessions runs on every service connection and on every "
-                + "foreground transition, collects the sessions it loads without staggering them, and "
-                + "initializes each one, so the application-level spawn count for this all-visible "
-                + "fixture is the sweep's one plus one per remaining visible background session"),
-            1 + BACKGROUND_SESSION_COUNT, JniSpawnCounter.createSubprocessCallCount());
-        assertEquals(measurementDetail("every spawn added after the sweep must be attributed to "
-                + "TermuxActivity.eagerLoadSessionEmulator, otherwise this case would pass on a "
-                + "count reached from some other call site"),
-            BACKGROUND_SESSION_COUNT, JniSpawnCounter.eagerLoadAllSessionsCallCount());
-        assertEquals(measurementDetail("the sweep's own pre-load count must stay at its bound while the "
-                + "foreground eager load runs"),
-            1, JniSpawnCounter.eagerInitCallCount());
+        assertEquals(measurementDetail("the sweep already started every visible background session's "
+                + "process, so the foreground eager load that runs on every service connection and every "
+                + "foreground transition finds nothing left to initialize and adds no spawn; the "
+                + "application-level count therefore stays at what the paced sweep spent"),
+            BACKGROUND_SESSION_COUNT, JniSpawnCounter.createSubprocessCallCount());
         assertEquals(measurementDetail("no spawn may be left unattributed to one of the two call sites"),
             JniSpawnCounter.createSubprocessCallCount(),
             JniSpawnCounter.eagerInitCallCount() + JniSpawnCounter.eagerLoadAllSessionsCallCount());
-        for (int index = 0; index < BACKGROUND_SESSION_COUNT; index++) {
-            assertNotNull("the visible sessions the bounded sweep left lazy regain their process at the "
-                    + "next foreground transition without the owner tapping anything, so "
-                    + backgroundSessionName(index) + " must be initialized once the foreground eager "
-                    + "load has run",
-                terminalSessionNamed(backgroundSessionName(index)).getEmulator());
-        }
-    }
-
-    private void armStatuslinePendingCallOnEveryBackgroundSession() {
-        SessionNewActivityStore store = service.getSessionNewActivityStore();
-        for (int index = 0; index < BACKGROUND_SESSION_COUNT; index++) {
-            store.recordStatuslineTimes(backgroundSessionName(index),
-                STATUSLINE_CALL_BASE_TIME_MILLIS + index, STATUSLINE_OUT_TIME_MILLIS,
-                STATUSLINE_REPLY_TIME_MILLIS);
-        }
-        for (int index = 0; index < BACKGROUND_SESSION_COUNT; index++) {
-            assertNotNull("every seeded background session must carry a statusline-derived pending "
-                    + "call before the sweep runs, otherwise this case measures nothing",
-                store.statuslineCallPendingTimeMillis(backgroundSessionName(index)));
-        }
     }
 
     @Test
-    public void reloadButtonVisibleSetPathLeavesEveryBackgroundSessionEmulatorLazy() throws Exception {
+    public void reloadButtonVisibleSetPathLeavesEveryHiddenBackgroundSessionUnreconnected()
+        throws Exception {
         seedSessions(allBackgroundSessionNames());
 
         Set<String> visibleSessionNames = allBackgroundSessionNames();
@@ -268,8 +176,9 @@ public class BulkReconnectEagerInitCountTest {
         method.invoke(client, visibleSessionNames);
         flushMainLooper();
 
-        assertEquals(measurementDetail("the reload button sweep must not initialize background session "
-                + "emulators off-screen either, whether or not those sessions are hidden"),
+        assertEquals(measurementDetail("every background session in this fixture is hidden, and a hidden "
+                + "session is refused a reconnect outright, so the reload button sweep must start no "
+                + "process at all"),
             0, JniSpawnCounter.eagerInitCallCount());
     }
 
@@ -278,7 +187,7 @@ public class BulkReconnectEagerInitCountTest {
         seedSessions(Collections.<String>emptySet());
 
         client.retryReconnectAfterFailure(backgroundSessionName(0));
-        idleMainLooperFor(BEFORE_FIRST_RECONNECT_TIMEOUT);
+        idleMainLooperFor(SETTLE_WITHIN_THE_FIRST_RECONNECT_ATTEMPT);
 
         assertEquals(measurementDetail("a failed-row retry the owner tapped must initialize that one "
                 + "session off-screen so its process spawns without a further tap"),
