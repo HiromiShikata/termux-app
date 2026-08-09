@@ -7,13 +7,11 @@ name: Create PR
 
 on:
   push:
-    branches-ignore:
-      - main
 
 jobs:
   create_and_enable_automerge:
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]' && github.ref_name != github.event.repository.default_branch
     steps:
       - uses: step-security/harden-runner@v2
         with:
@@ -35,7 +33,7 @@ jobs:
       - name: Check if PR already exists
         id: check_pr
         run: |
-          EXISTING_PR=$(gh pr list --head "${{ steps.branch_name.outputs.branch }}" --base main --json number --jq '.[0].number // empty')
+          EXISTING_PR=$(gh pr list --head "${{ steps.branch_name.outputs.branch }}" --base "${{ github.event.repository.default_branch }}" --json number --jq '.[0].number // empty')
           echo "existing_pr=$EXISTING_PR" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -46,7 +44,7 @@ jobs:
         uses: repo-sync/pull-request@7e79a9f5dc3ad0ce53138f01df2fad14a04831c5
         with:
           github_token: ${{ steps.app-token.outputs.token }}
-          destination_branch: 'main'
+          destination_branch: '${{ github.event.repository.default_branch }}'
           source_branch: ''
           pr_title: '${{ steps.branch_name.outputs.branch }}'
           pr_body: |
@@ -103,9 +101,16 @@ jobs:
             }" \
             "https://api.github.com/graphql")
           echo "$RESPONSE"
-          if echo "$RESPONSE" | jq -e '.errors' >/dev/null; then
-            echo "Failed to enable auto merge"
-            exit 1
+          if ! echo "$RESPONSE" | jq -e '.errors' >/dev/null 2>&1; then
+            echo "Auto merge enabled successfully"
+            exit 0
           fi
+          ERROR_MSG=$(echo "$RESPONSE" | jq -r '.errors[0].message // ""')
+          if echo "$ERROR_MSG" | grep -qi "unstable\|already.*auto.merge"; then
+            echo "Warning: could not enable auto merge (PR status: $ERROR_MSG). PR remains mergeable manually."
+            exit 0
+          fi
+          echo "Failed to enable auto merge: $ERROR_MSG"
+          exit 1
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
