@@ -101,6 +101,18 @@ jobs:
 
           echo "Resolved ITEM_ID=$ITEM_ID"
 
+          if [ "${{ github.event.action }}" = "opened" ]; then
+            EXISTING_STATUS=$(gh api graphql \
+              -f query='query($itemId:ID!){node(id:$itemId){... on ProjectV2Item{fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}' \
+              -f itemId="$ITEM_ID" \
+              --jq '.data.node.fieldValueByName.name // ""')
+
+            if [ -n "$EXISTING_STATUS" ]; then
+              echo "Status is already $EXISTING_STATUS; keeping it instead of overwriting with ${{ env.unread }}"
+              exit 0
+            fi
+          fi
+
           gh api graphql \
             -f query='mutation($projectId:ID!,$itemId:ID!,$fieldId:ID!,$optionId:String!){updateProjectV2ItemFieldValue(input:{projectId:$projectId,itemId:$itemId,fieldId:$fieldId,value:{singleSelectOptionId:$optionId}}){projectV2Item{id}}}' \
             -f projectId="$PROJECT_V2_ID" \
