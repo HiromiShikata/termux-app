@@ -1,0 +1,135 @@
+package com.termux.app.terminal;
+
+import static org.junit.Assert.assertEquals;
+
+import android.content.Context;
+
+import androidx.drawerlayout.widget.DrawerLayout;
+
+import com.termux.R;
+import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
+import com.termux.shared.shell.command.ExecutionCommand;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.shell.TermuxShellManager;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalSession;
+import com.termux.view.TerminalView;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.shadows.ShadowToast;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+
+@RunWith(RobolectricTestRunner.class)
+public class ExitedSessionExitIsNotAnnouncedTest {
+
+    private static final String DISPLAYED_SESSION_NAME = "displayed-session";
+
+    private static final String BACKGROUND_SESSION_NAME = "background-session";
+
+    private TermuxActivity activity;
+    private TermuxShellManager shellManager;
+
+    @Before
+    public void setUp() throws Exception {
+        activity = Robolectric.buildActivity(TermuxActivity.class).get();
+        Context appContext = RuntimeEnvironment.getApplication();
+
+        TermuxService service = Robolectric.buildService(TermuxService.class).get();
+        shellManager = new TermuxShellManager(appContext);
+        set(service, TermuxService.class, "mShellManager", shellManager);
+        set(service, TermuxService.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
+
+        set(activity, TermuxActivity.class, "mTermuxService", service);
+        set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
+            new TermuxTerminalSessionActivityClient(activity));
+        service.setTermuxTerminalSessionClient(activity.getTermuxTerminalSessionClient());
+
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(appContext, true);
+        set(activity, TermuxActivity.class, "mPreferences", preferences);
+        preferences.setAutosshCommand("ssh {name}");
+        preferences.setSessionDefinitionMaxSessions(10);
+        preferences.setPersistedSessions("");
+
+        set(activity, TermuxActivity.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
+        set(activity, TermuxActivity.class, "mIsVisible", true);
+
+        DrawerLayout drawerLayout = new DrawerLayout(appContext);
+        drawerLayout.setId(R.id.drawer_layout);
+        activity.setContentView(drawerLayout);
+
+        TerminalView terminalView = new TerminalView(appContext, null);
+        set(activity, TermuxActivity.class, "mTerminalView", terminalView);
+
+        TermuxSession displayedSession = liveSession(DISPLAYED_SESSION_NAME);
+        shellManager.mTermuxSessions.add(displayedSession);
+        terminalView.mTermSession = displayedSession.getTerminalSession();
+
+        ShadowToast.reset();
+    }
+
+    @Test
+    public void aSessionWhoseShellExitedIsNotAnnouncedWithAToast() throws Exception {
+        TermuxSession exitedSession = deadSession(BACKGROUND_SESSION_NAME);
+        shellManager.mTermuxSessions.add(exitedSession);
+
+        activity.getTermuxTerminalSessionClient().onSessionFinished(exitedSession.getTerminalSession());
+
+        assertEquals("a session that exits is reconnected by the background scan rather than reported, and"
+                + " the toast covers the terminal output the owner is reading, so nothing may be shown for it",
+            0, ShadowToast.shownToastCount());
+    }
+
+    private TermuxSession liveSession(String name) throws Exception {
+        return termuxSession(name, false);
+    }
+
+    private TermuxSession deadSession(String name) throws Exception {
+        return termuxSession(name, true);
+    }
+
+    private static final int RUNNING_SHELL_PROCESS_PID = 1;
+
+    private void markProcessRunning(TerminalSession terminalSession) throws Exception {
+        shellPidField().setInt(terminalSession, RUNNING_SHELL_PROCESS_PID);
+    }
+
+    private void markProcessExited(TerminalSession terminalSession) throws Exception {
+        shellPidField().setInt(terminalSession, -1);
+    }
+
+    private Field shellPidField() throws Exception {
+        Field shellPid = TerminalSession.class.getDeclaredField("mShellPid");
+        shellPid.setAccessible(true);
+        return shellPid;
+    }
+
+    private TermuxSession termuxSession(String name, boolean exited) throws Exception {
+        TerminalSession terminalSession = new TerminalSession(null, null, null, null, null, null);
+        terminalSession.mSessionName = name;
+        if (exited) {
+            markProcessExited(terminalSession);
+        } else {
+            markProcessRunning(terminalSession);
+        }
+        Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
+            TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class, boolean.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(terminalSession, new ExecutionCommand(), null, false);
+    }
+
+    private void set(Object target, Class<?> declaringClass, String fieldName, Object value) throws Exception {
+        Field field = declaringClass.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+}

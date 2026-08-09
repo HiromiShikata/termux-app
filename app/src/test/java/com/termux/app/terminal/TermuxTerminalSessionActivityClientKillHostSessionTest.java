@@ -201,7 +201,7 @@ public class TermuxTerminalSessionActivityClientKillHostSessionTest {
     }
 
     @Test
-    public void exitedOrdinarySessionStillAnnouncesItsExitAndIsRetainedForItsReconnectPrompt() throws Exception {
+    public void exitedOrdinarySessionAnnouncesNothingAndIsRetainedForItsReconnect() throws Exception {
         set(activity, TermuxActivity.class, "mIsVisible", true);
         TermuxSession exitedOrdinarySession = deadSession("dead-ordinary-session");
         shellManager.mTermuxSessions.add(exitedOrdinarySession);
@@ -210,7 +210,9 @@ public class TermuxTerminalSessionActivityClientKillHostSessionTest {
         activity.getTermuxTerminalSessionClient()
             .onSessionFinished(exitedOrdinarySession.getTerminalSession());
 
-        assertEquals(1, ShadowToast.shownToastCount());
+        assertEquals("an ordinary session that exits is reconnected rather than reported, so it must"
+                + " announce nothing; the announcement used to cover the terminal output being read",
+            0, ShadowToast.shownToastCount());
         assertNotNull("only transient command sessions may be auto-removed on exit",
             service.getTermuxSessionForSessionName("dead-ordinary-session"));
     }
