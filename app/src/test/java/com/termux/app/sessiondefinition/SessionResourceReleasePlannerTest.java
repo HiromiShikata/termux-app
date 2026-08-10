@@ -74,9 +74,21 @@ public class SessionResourceReleasePlannerTest {
     }
 
     @Test
-    public void keepsTheResourcesOfAnUndisplayedSessionWhoseProcessIsStillAlive() {
+    public void releasesARunningSessionTheOwnerClosedTheProjectOf() {
         List<String> released = planner.planSessionNamesToRelease(Collections.singletonList(
-            candidate("session-background", true, false, false, false)));
+            candidate("session-under-a-closed-project", true, false, false, false)));
+
+        Assert.assertEquals("a session under a project the owner closed is out of sight exactly as a"
+                + " hidden session is, and it holds a forked shell process that counts against the"
+                + " number of processes Android lets the app hold, so closing a project has to free"
+                + " that process and the cap slot it occupies",
+            Collections.singletonList("session-under-a-closed-project"), released);
+    }
+
+    @Test
+    public void keepsTheResourcesOfTheCurrentSessionEvenWhenItsProjectIsClosed() {
+        List<String> released = planner.planSessionNamesToRelease(Collections.singletonList(
+            candidate("session-current-under-a-closed-project", true, true, false, false)));
 
         Assert.assertEquals(new ArrayList<String>(), released);
     }
