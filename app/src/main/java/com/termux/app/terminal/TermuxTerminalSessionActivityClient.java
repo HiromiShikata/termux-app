@@ -1119,6 +1119,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             expandedProjectSessionNames);
     }
 
+    @NonNull
+    private Set<String> sessionNamesUnderClosedProjects() {
+        TermuxSessionsListViewController listViewController =
+            mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) {
+            return Collections.emptySet();
+        }
+        return listViewController.getCollapsedProjectSessionNames();
+    }
+
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
         mSessionOutputProgressTracker.forget(sessionName);
@@ -2418,14 +2428,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private List<String> reconnectDeadDisplayedSessionsInBackground(@NonNull Set<String> displayedSessionNames) {
+        releaseRuntimeResourcesOfSessionsThatMustHoldNone();
         return reconnectDeadDefinitionBackedSessionsInBackground(displayedSessionNames);
     }
 
     private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String> reconnectableSessionNames) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return Collections.emptyList();
-
-        releaseRuntimeResourcesOfSessionsThatMustHoldNone();
 
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
@@ -2493,7 +2502,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return reconnectedSessionNames;
     }
 
-    private void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
+    public void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
         if (!mActivity.isVisible()) return;
 
         TermuxService service = mActivity.getTermuxService();
@@ -2502,6 +2511,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String currentSessionName = activeSessionName();
         Set<String> displayedSessionNames = displayedSessionNames();
         Set<String> hiddenSessionNames = hiddenSessionNames();
+        Set<String> sessionNamesUnderClosedProjects = sessionNamesUnderClosedProjects();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
         List<SessionResourceReleasePlanner.CandidateSession> candidateSessions = new ArrayList<>();
@@ -2511,9 +2521,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             String sessionName = terminalSession.mSessionName;
             if (sessionName == null) continue;
             sessionByName.put(sessionName, terminalSession);
+            boolean underAClosedProject = sessionNamesUnderClosedProjects.contains(sessionName);
             candidateSessions.add(new SessionResourceReleasePlanner.CandidateSession(sessionName,
                 terminalSession.isRunning(), sessionName.equals(currentSessionName),
-                displayedSessionNames.contains(sessionName), hiddenSessionNames.contains(sessionName)));
+                displayedSessionNames.contains(sessionName), hiddenSessionNames.contains(sessionName),
+                underAClosedProject));
         }
 
         for (String sessionName : mSessionResourceReleasePlanner.planSessionNamesToRelease(candidateSessions)) {

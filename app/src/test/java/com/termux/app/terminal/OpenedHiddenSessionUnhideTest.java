@@ -113,7 +113,7 @@ public class OpenedHiddenSessionUnhideTest {
 
         open(openedTerminalSession);
         open(currentTerminalSession);
-        activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+        activity.getTermuxTerminalSessionClient().releaseRuntimeResourcesOfSessionsThatMustHoldNone();
 
         assertNotNull("a session the owner opened must keep its terminal emulator and the scrollback "
                 + "buffer it owns across a reclamation sweep tick, even once another session is "
@@ -128,7 +128,7 @@ public class OpenedHiddenSessionUnhideTest {
         throws Exception {
         TerminalSession hiddenSession = addHiddenSession(UNOPENED_HIDDEN_SESSION_NAME);
 
-        activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+        activity.getTermuxTerminalSessionClient().releaseRuntimeResourcesOfSessionsThatMustHoldNone();
 
         assertNull("a session that is still marked hidden must hold no terminal emulator and no "
                 + "scrollback buffer after a reclamation sweep tick", hiddenSession.getEmulator());

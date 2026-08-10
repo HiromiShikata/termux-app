@@ -132,7 +132,7 @@ public class HiddenCurrentSessionReplacementSelectionTest {
         buildSessionList(false);
         collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
 
-        activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+        activity.getTermuxTerminalSessionClient().releaseRuntimeResourcesOfSessionsThatMustHoldNone();
 
         assertNull("test premise: the sweep must have released the dead session inside the collapsed "
                 + "group, otherwise this test is not exercising the released-session case at all",
@@ -154,7 +154,7 @@ public class HiddenCurrentSessionReplacementSelectionTest {
         buildSessionList(false);
         collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
 
-        activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+        activity.getTermuxTerminalSessionClient().releaseRuntimeResourcesOfSessionsThatMustHoldNone();
 
         collapseThroughTheRealProjectHeaderClick(COLLAPSED_PROJECT_LABEL);
 

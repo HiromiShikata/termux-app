@@ -188,4 +188,28 @@ public class SessionRefreshAllStateWiringTest {
         Assert.assertTrue("the heavy transcript read and parse must stay off the main thread",
             methodBody.contains("parseAndApplyStatuslineUpdatesOffThread("));
     }
+
+    @Test
+    public void resourceReleaseRunsOnTheDisplayedSessionCycleAndNotOnTheForcedRescanPath()
+            throws IOException {
+        String source = readSource(CLIENT_RELATIVE_PATH);
+
+        int displayedIdx = source.indexOf(
+            "private List<String> reconnectDeadDisplayedSessionsInBackground(@NonNull Set<String> displayedSessionNames) {");
+        Assert.assertTrue(displayedIdx >= 0);
+        String displayedBody = source.substring(displayedIdx, source.indexOf("\n    }", displayedIdx));
+        Assert.assertTrue("sessions under closed projects must be released during the displayed-session "
+                + "reconnect cycle, which runs on both the periodic tick and the reload path, so that "
+                + "closing a project frees the process slot for another session on the next cycle",
+            displayedBody.contains("releaseRuntimeResourcesOfSessionsThatMustHoldNone()"));
+
+        int baseIdx = source.indexOf(
+            "private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String> reconnectableSessionNames) {");
+        Assert.assertTrue(baseIdx >= 0);
+        String baseBody = source.substring(baseIdx, source.indexOf("\n    }", baseIdx));
+        Assert.assertFalse("the forced-rescan path must not trigger a resource release, because it "
+                + "reads visible sessions' transcripts immediately after the reconnect and releasing "
+                + "their emulators before the read makes those transcripts unreadable",
+            baseBody.contains("releaseRuntimeResourcesOfSessionsThatMustHoldNone()"));
+    }
 }
