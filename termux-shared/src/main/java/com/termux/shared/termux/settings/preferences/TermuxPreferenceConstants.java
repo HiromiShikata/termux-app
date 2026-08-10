@@ -1,7 +1,7 @@
 package com.termux.shared.termux.settings.preferences;
 
 /*
- * Version: v0.24.0
+ * Version: v0.27.0
  *
  * Changelog
  *
@@ -117,6 +117,10 @@ package com.termux.shared.termux.settings.preferences;
  *          `KEY_RESET_SESSION_COMMAND` and `DEFAULT_VALUE_KEY_RESET_SESSION_COMMAND`, which hold the
  *          user-configurable command template run to reset a host session, with `{name}` substituted
  *          by the shell-quoted host session name.
+ *
+ * - 0.27.0 (2026-08-10)
+ *      - Changed `DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS` from 64 to 32 in `TERMUX_APP`
+ *          to cap live sessions within the Android phantom process ceiling.
  */
 
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -255,7 +259,7 @@ public final class TermuxPreferenceConstants {
         public static final int DEFAULT_VALUE_KEY_BACKGROUND_RECONNECT_SCAN_INTERVAL_MINUTES = 1;
 
         public static final String KEY_SESSION_DEFINITION_MAX_SESSIONS = "session_definition_max_sessions";
-        public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 64;
+        public static final int DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 32;
         public static final int MINIMUM_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS = 1;
 
         public static final String KEY_SESSION_DEFINITION_REMOVE_GITHUB_SESSIONS_NOT_IN_LIST = "session_definition_remove_github_sessions_not_in_list";
