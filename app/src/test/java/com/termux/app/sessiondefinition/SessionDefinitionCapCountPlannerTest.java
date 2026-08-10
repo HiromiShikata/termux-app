@@ -15,9 +15,11 @@ public class SessionDefinitionCapCountPlannerTest {
     private final SessionDefinitionCapCountPlanner planner = new SessionDefinitionCapCountPlanner();
 
     @Test
-    public void defaultCapIsSixtyFour() {
-        Assert.assertEquals(64,
-            TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
+    public void theDefaultCapMatchesTheProcessCountAndroidAllowsTheApp() {
+        Assert.assertEquals("every session counted toward this cap holds a forked shell process, and"
+                + " Android kills those processes once their count passes the ceiling it enforces,"
+                + " whose documented default is 32",
+            32, TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS);
     }
 
     @Test
@@ -33,7 +35,7 @@ public class SessionDefinitionCapCountPlannerTest {
     }
 
     @Test
-    public void sixtyFourSessionsFitTheDefaultCapAndTheSixtyFifthIsDropped() {
+    public void sessionsUpToTheDefaultCapFitAndTheNextOneIsDropped() {
         int configuredLimit = TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS;
 
         SessionDefinitionLimitPlan planAtCap = SessionDefinitionLimitPlan.forCapacity(
