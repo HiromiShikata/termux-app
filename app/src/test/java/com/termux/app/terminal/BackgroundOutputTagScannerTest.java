@@ -36,7 +36,7 @@ public class BackgroundOutputTagScannerTest {
             (sessionKey, reason, callCycleKey) ->
                 store.recordExplicitCall(sessionKey, System.currentTimeMillis(), reason, callCycleKey));
         UpdateTagUpdateController updateTagUpdateController = new UpdateTagUpdateController(updateTrigger);
-        return new BackgroundOutputTagScanner(callToUserTagController, updateTagUpdateController);
+        return new BackgroundOutputTagScanner(callToUserTagController, updateTagUpdateController, null);
     }
 
     @Test
@@ -91,7 +91,7 @@ public class BackgroundOutputTagScannerTest {
             (sessionKey, reason, callCycleKey) ->
                 store.recordExplicitCall(sessionKey, System.currentTimeMillis(), reason, callCycleKey));
         BackgroundOutputTagScanner scanner =
-            new BackgroundOutputTagScanner(callToUserTagController, new UpdateTagUpdateController(updateTrigger));
+            new BackgroundOutputTagScanner(callToUserTagController, new UpdateTagUpdateController(updateTrigger), null);
 
         String transcript = "<call-to-user>approval</call-to-user>";
         scanner.scan(CALLED_SESSION, transcript, true);

@@ -129,7 +129,7 @@ public class ConstantMarkerCallToUserCycleTest {
     public void aBackgroundedScanDistinguishesCyclesWithoutAnyStatuslineTimesBeingRecorded() {
         BackgroundOutputTagScanner backgroundScanner =
             new BackgroundOutputTagScanner(controller, new UpdateTagUpdateController(reason -> {
-            }));
+            }), null);
 
         long firstCallSeconds = BASE_CALL_SECONDS + 60L;
         tagScanTimeMillis = firstCallSeconds * 1000L;

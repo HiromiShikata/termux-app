@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import com.termux.app.apkupdate.UpdateTagUpdateController;
+import com.termux.app.diagnostics.DiagnosticsRequestTagController;
 
 /**
  * Feeds a session's terminal transcript to the output tags that MUST be detected for every session,
@@ -21,11 +22,14 @@ public final class BackgroundOutputTagScanner {
 
     private final CallToUserTagController callToUserTagController;
     private final UpdateTagUpdateController updateTagUpdateController;
+    private final DiagnosticsRequestTagController diagnosticsRequestTagController;
 
     public BackgroundOutputTagScanner(CallToUserTagController callToUserTagController,
-                                      UpdateTagUpdateController updateTagUpdateController) {
+                                      UpdateTagUpdateController updateTagUpdateController,
+                                      DiagnosticsRequestTagController diagnosticsRequestTagController) {
         this.callToUserTagController = callToUserTagController;
         this.updateTagUpdateController = updateTagUpdateController;
+        this.diagnosticsRequestTagController = diagnosticsRequestTagController;
     }
 
     /**
@@ -52,5 +56,8 @@ public final class BackgroundOutputTagScanner {
 
         if (updateTagUpdateController != null)
             updateTagUpdateController.onSessionTextChanged(sessionKey, transcript);
+
+        if (diagnosticsRequestTagController != null)
+            diagnosticsRequestTagController.onSessionTextChanged(sessionKey, transcript);
     }
 }

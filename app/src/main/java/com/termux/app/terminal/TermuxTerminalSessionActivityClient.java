@@ -40,6 +40,8 @@ import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.BackgroundOutputScanCostCounterHolder;
 import com.termux.app.diagnostics.ForegroundOpenTagScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
+import com.termux.app.diagnostics.DiagnosticsReportSessionDelivery;
+import com.termux.app.diagnostics.DiagnosticsRequestTagController;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
@@ -136,6 +138,32 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private boolean mStartupDisplayedSessionSelectionPending;
 
     private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
+
+    private final DiagnosticsReportSessionDelivery mDiagnosticsReportSessionDelivery =
+        new DiagnosticsReportSessionDelivery();
+
+    private final DiagnosticsRequestTagController mDiagnosticsRequestTagController =
+        new DiagnosticsRequestTagController(this::sendDiagnosticsReportToSessionWithHandle);
+
+    private void sendDiagnosticsReportToSessionWithHandle(@NonNull String sessionHandle) {
+        mMainThreadHandler.post(() -> {
+            TerminalSession session = terminalSessionWithHandle(sessionHandle);
+            if (session == null) return;
+            mDiagnosticsReportSessionDelivery.deliverTo(mActivity, session);
+        });
+    }
+
+    @Nullable
+    private TerminalSession terminalSessionWithHandle(@NonNull String sessionHandle) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null) continue;
+            if (sessionHandle.equals(terminalSession.mHandle)) return terminalSession;
+        }
+        return null;
+    }
 
     private int maxSessions() {
         return mActivity.getPreferences().getSessionDefinitionMaxSessions();
@@ -538,7 +566,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String transcriptText = scanText.getTranscriptText();
         BackgroundOutputTagScanner scanner = new BackgroundOutputTagScanner(
             mActivity.getCallToUserTagController(),
-            mActivity.getUpdateTagUpdateController());
+            mActivity.getUpdateTagUpdateController(),
+            mDiagnosticsRequestTagController);
         TimeZone timeZone = TimeZone.getDefault();
         statuslineParseHandler().post(() -> {
             List<ParsedStatuslineUpdate> updates =
