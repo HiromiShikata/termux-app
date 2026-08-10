@@ -136,8 +136,8 @@ public class SessionDefinitionCapCountPlannerTest {
     @Test
     public void deadSessionsDoNotBlockCreationWhileLiveSessionsAreUnderTheCap() {
         int configuredLimit = TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_MAX_SESSIONS;
-        int aliveCount = 39;
-        int deadReconnectableCount = 25;
+        int aliveCount = 20;
+        int deadReconnectableCount = 15;
 
         Assert.assertTrue(aliveCount < configuredLimit);
         Assert.assertTrue(configuredLimit <= aliveCount + deadReconnectableCount);
