@@ -9,6 +9,7 @@ import com.termux.BuildConfig;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.process.AppProcessPopulationReader;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionNewActivityTier;
@@ -32,6 +33,9 @@ public final class DiagnosticsReportCollector {
 
     @NonNull
     private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
+
+    @NonNull
+    private final AppProcessPopulationReader mProcessPopulationReader = new AppProcessPopulationReader();
 
     public DiagnosticsReportCollector() {
         this(DiagnosticEventLogHolder.getInstance());
@@ -73,7 +77,7 @@ public final class DiagnosticsReportCollector {
             AppVersionChangeHolder.getInstance(),
             ShellExitStatusRecorderHolder.getInstance().snapshot(),
             PhantomProcessMonitorStateHolder.getInstance().snapshot(),
-            AppProcessPopulationHolder.getInstance().snapshot());
+            mProcessPopulationReader.read());
     }
 
     @NonNull
