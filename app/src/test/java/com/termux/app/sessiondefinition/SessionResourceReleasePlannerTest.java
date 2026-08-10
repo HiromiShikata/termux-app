@@ -18,7 +18,13 @@ public class SessionResourceReleasePlannerTest {
                                                                            boolean displayed,
                                                                            boolean hidden) {
         return new SessionResourceReleasePlanner.CandidateSession(name, running, current, displayed,
-            hidden);
+            hidden, false);
+    }
+
+    private static SessionResourceReleasePlanner.CandidateSession candidateUnderAClosedProject(
+            String name, boolean running, boolean current) {
+        return new SessionResourceReleasePlanner.CandidateSession(name, running, current, false,
+            false, true);
     }
 
     @Test
@@ -76,7 +82,7 @@ public class SessionResourceReleasePlannerTest {
     @Test
     public void releasesARunningSessionTheOwnerClosedTheProjectOf() {
         List<String> released = planner.planSessionNamesToRelease(Collections.singletonList(
-            candidate("session-under-a-closed-project", true, false, false, false)));
+            candidateUnderAClosedProject("session-under-a-closed-project", true, false)));
 
         Assert.assertEquals("a session under a project the owner closed is out of sight exactly as a"
                 + " hidden session is, and it holds a forked shell process that counts against the"
@@ -88,9 +94,21 @@ public class SessionResourceReleasePlannerTest {
     @Test
     public void keepsTheResourcesOfTheCurrentSessionEvenWhenItsProjectIsClosed() {
         List<String> released = planner.planSessionNamesToRelease(Collections.singletonList(
-            candidate("session-current-under-a-closed-project", true, true, false, false)));
+            candidateUnderAClosedProject("session-current-under-a-closed-project", true, true)));
 
         Assert.assertEquals(new ArrayList<String>(), released);
+    }
+
+    @Test
+    public void keepsARunningSessionWhileTheProjectLayoutIsNotKnownYet() {
+        List<String> released = planner.planSessionNamesToRelease(Collections.singletonList(
+            candidate("session-running-out-of-sight", true, false, false, false)));
+
+        Assert.assertEquals("the set of sessions under open projects is empty before the session list"
+                + " has been built, and releasing every running session on that empty set would kill"
+                + " every shell the owner has, so a running session is released only when it is known"
+                + " to sit under a project the owner closed",
+            new ArrayList<String>(), released);
     }
 
     @Test

@@ -1090,6 +1090,16 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             expandedProjectSessionNames);
     }
 
+    @Nullable
+    private Set<String> sessionNamesUnderOpenProjects() {
+        TermuxSessionsListViewController listViewController =
+            mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) {
+            return null;
+        }
+        return listViewController.getExpandedProjectSessionNames();
+    }
+
     private void purgeNewActivityForRemovedSession(@Nullable String sessionName) {
         if (sessionName == null) return;
         mSessionOutputProgressTracker.forget(sessionName);
@@ -2473,6 +2483,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String currentSessionName = activeSessionName();
         Set<String> displayedSessionNames = displayedSessionNames();
         Set<String> hiddenSessionNames = hiddenSessionNames();
+        Set<String> sessionNamesUnderOpenProjects = sessionNamesUnderOpenProjects();
 
         Map<String, TerminalSession> sessionByName = new HashMap<>();
         List<SessionResourceReleasePlanner.CandidateSession> candidateSessions = new ArrayList<>();
@@ -2482,9 +2493,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             String sessionName = terminalSession.mSessionName;
             if (sessionName == null) continue;
             sessionByName.put(sessionName, terminalSession);
+            boolean underAClosedProject = sessionNamesUnderOpenProjects != null
+                && !sessionNamesUnderOpenProjects.contains(sessionName);
             candidateSessions.add(new SessionResourceReleasePlanner.CandidateSession(sessionName,
                 terminalSession.isRunning(), sessionName.equals(currentSessionName),
-                displayedSessionNames.contains(sessionName), hiddenSessionNames.contains(sessionName)));
+                displayedSessionNames.contains(sessionName), hiddenSessionNames.contains(sessionName),
+                underAClosedProject));
         }
 
         for (String sessionName : mSessionResourceReleasePlanner.planSessionNamesToRelease(candidateSessions)) {

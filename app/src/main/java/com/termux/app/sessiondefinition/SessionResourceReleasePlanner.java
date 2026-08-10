@@ -15,14 +15,16 @@ public final class SessionResourceReleasePlanner {
         private final boolean current;
         private final boolean displayed;
         private final boolean hidden;
+        private final boolean underAClosedProject;
 
         public CandidateSession(@Nullable String name, boolean running, boolean current,
-                                boolean displayed, boolean hidden) {
+                                boolean displayed, boolean hidden, boolean underAClosedProject) {
             this.name = name;
             this.running = running;
             this.current = current;
             this.displayed = displayed;
             this.hidden = hidden;
+            this.underAClosedProject = underAClosedProject;
         }
 
         @Nullable
@@ -46,6 +48,10 @@ public final class SessionResourceReleasePlanner {
             return hidden;
         }
 
+        public boolean isUnderAClosedProject() {
+            return underAClosedProject;
+        }
+
         boolean mustReleaseRuntimeResources() {
             if (name == null) {
                 return false;
@@ -56,7 +62,14 @@ public final class SessionResourceReleasePlanner {
             if (hidden) {
                 return true;
             }
-            return !displayed;
+            if (underAClosedProject) {
+                return true;
+            }
+            return hasExitedWhileOutOfSight();
+        }
+
+        private boolean hasExitedWhileOutOfSight() {
+            return !running && !displayed;
         }
     }
 
