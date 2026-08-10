@@ -80,7 +80,8 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
         // records its red dot from the tag as well as from the statusline times recorded above.
         new BackgroundOutputTagScanner(
             mService.getCallToUserTagController(),
-            mService.getUpdateTagUpdateController())
+            mService.getUpdateTagUpdateController(),
+            null)
             .scan(session.mHandle, screen.getTranscriptText(), true);
     }
 
