@@ -2399,14 +2399,13 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     private List<String> reconnectDeadDisplayedSessionsInBackground(@NonNull Set<String> displayedSessionNames) {
+        releaseRuntimeResourcesOfSessionsThatMustHoldNone();
         return reconnectDeadDefinitionBackedSessionsInBackground(displayedSessionNames);
     }
 
     private List<String> reconnectDeadDefinitionBackedSessionsInBackground(@NonNull Set<String> reconnectableSessionNames) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return Collections.emptyList();
-
-        releaseRuntimeResourcesOfSessionsThatMustHoldNone();
 
         String autosshCommandTemplate = mActivity.getPreferences().getAutosshCommand();
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
