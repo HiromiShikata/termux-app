@@ -71,6 +71,7 @@ import com.termux.app.terminal.session.UserRemovedSessionReconnectSuppressionPla
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
+import com.termux.app.terminal.session.RestoredSessionCommandPlanner;
 import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.app.TermuxService;
@@ -111,6 +112,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final TermuxActivity mActivity;
 
     private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
+
+    private final RestoredSessionCommandPlanner mRestoredSessionCommandPlanner =
+        new RestoredSessionCommandPlanner();
 
     private final SessionNameBrowserTabUrlResolver mSessionNameBrowserTabUrlResolver = new SessionNameBrowserTabUrlResolver();
 
@@ -2990,6 +2994,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         int configuredLimit = maxSessions();
         int droppedSessionCount = 0;
+        String configuredCommandTemplate = mActivity.getPreferences().getAutosshCommand();
 
         TermuxBrowserController browserController = mActivity.getTermuxBrowserController();
         if (browserController != null) browserController.beginPersistenceBatch();
@@ -3003,14 +3008,17 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                     continue;
                 }
 
+                String[] arguments = mRestoredSessionCommandPlanner.planArguments(name,
+                    persistedSession.getArguments(), configuredCommandTemplate);
+
                 TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
-                    persistedSession.getArguments(), null, persistedSession.getWorkingDirectory(),
+                    arguments, null, persistedSession.getWorkingDirectory(),
                     persistedSession.isFailSafe(), name);
                 if (newTermuxSession == null) continue;
 
                 TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
                 mPersistedSessionBySession.put(newTerminalSession, new PersistedSession(newTerminalSession.mHandle,
-                    persistedSession.getExecutablePath(), persistedSession.getArguments(),
+                    persistedSession.getExecutablePath(), arguments,
                     persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
                 attachBrowserTabForUrlSessionName(newTerminalSession, name);
                 if (firstRestoredSession == null)
