@@ -26,7 +26,7 @@ public class ShellExitStatusInReportTest {
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
-            shellExits, DiagnosticsPhantomProcessMonitor.UNMEASURED);
+            shellExits, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
         return new DiagnosticsReportBuilder().build(report);
     }
 

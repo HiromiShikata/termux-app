@@ -72,7 +72,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsBackgroundCycle.of(BackgroundCycleIntervalRecorderHolder.getInstance()),
             AppVersionChangeHolder.getInstance(),
             ShellExitStatusRecorderHolder.getInstance().snapshot(),
-            PhantomProcessMonitorStateHolder.getInstance().snapshot());
+            PhantomProcessMonitorStateHolder.getInstance().snapshot(),
+            AppProcessPopulationHolder.getInstance().snapshot());
     }
 
     @NonNull

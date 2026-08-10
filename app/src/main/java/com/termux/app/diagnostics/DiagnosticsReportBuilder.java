@@ -34,6 +34,8 @@ public final class DiagnosticsReportBuilder {
 
     private static final int SECTION_CEILING_HEADROOM_CHARACTERS = 300;
 
+    private static final int MAXIMUM_COMMAND_NAMES_REPORTED = 8;
+
     private static final int MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS =
         PASTE_LIMIT_CHARACTERS - SECTION_CEILING_HEADROOM_CHARACTERS;
 
@@ -61,6 +63,9 @@ public final class DiagnosticsReportBuilder {
 
         builder.append('\n');
         appendPhantomProcessMonitorSection(builder, report);
+
+        builder.append('\n');
+        appendAppProcessPopulationSection(builder, report);
 
         builder.append('\n');
         appendMainThreadCostSection(builder, report);
@@ -181,6 +186,35 @@ public final class DiagnosticsReportBuilder {
             .append(enforcedMaximum == null ? "not readable" : String.valueOf(enforcedMaximum)).append('\n');
         builder.append("  Can be switched off from settings: ")
             .append(monitor.getMonitorCanBeSwitchedOff() ? "yes" : "no").append('\n');
+    }
+
+    private void appendAppProcessPopulationSection(@NonNull StringBuilder builder,
+                                                   @NonNull DiagnosticsReport report) {
+        DiagnosticsAppProcessPopulation population = report.getAppProcessPopulation();
+        builder.append("Processes this app is running\n");
+        if (!population.getWasMeasured()) {
+            String readFailureMessage = population.getReadFailureMessage();
+            builder.append("  Total: ")
+                .append(readFailureMessage == null ? "not measured yet" : "not readable")
+                .append('\n');
+            if (readFailureMessage != null) {
+                builder.append("  Read failed: ").append(readFailureMessage).append('\n');
+            }
+            return;
+        }
+        builder.append("  Total: ").append(population.getTotalProcessCount()).append('\n');
+        List<DiagnosticsProcessCommandCount> counts = population.getCountsByCommandName();
+        int reportedCount = Math.min(counts.size(), MAXIMUM_COMMAND_NAMES_REPORTED);
+        for (int index = 0; index < reportedCount; index++) {
+            DiagnosticsProcessCommandCount count = counts.get(index);
+            builder.append("    ").append(count.getCommandName()).append(": ")
+                .append(count.getProcessCount()).append('\n');
+        }
+        int omittedCount = counts.size() - reportedCount;
+        if (omittedCount > 0) {
+            builder.append("    ").append(omittedCount)
+                .append(" further command names left out so this report survives being pasted\n");
+        }
     }
 
     @NonNull

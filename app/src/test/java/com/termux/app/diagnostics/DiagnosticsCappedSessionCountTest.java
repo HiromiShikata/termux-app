@@ -79,7 +79,7 @@ public class DiagnosticsCappedSessionCountTest {
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
             0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
-            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED);
+            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
 
         // Orphaned is derived from the corrected live count (10), not the total 23 sessions.
         Assert.assertEquals(aliveCount, report.getSessionsCountedTowardCap());
