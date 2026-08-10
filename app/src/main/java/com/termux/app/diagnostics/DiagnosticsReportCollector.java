@@ -71,7 +71,8 @@ public final class DiagnosticsReportCollector {
             ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
             DiagnosticsBackgroundCycle.of(BackgroundCycleIntervalRecorderHolder.getInstance()),
             AppVersionChangeHolder.getInstance(),
-            ShellExitStatusRecorderHolder.getInstance().snapshot());
+            ShellExitStatusRecorderHolder.getInstance().snapshot(),
+            PhantomProcessMonitorStateHolder.getInstance().snapshot());
     }
 
     @NonNull

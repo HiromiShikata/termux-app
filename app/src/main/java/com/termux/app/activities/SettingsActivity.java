@@ -25,8 +25,14 @@ import com.termux.app.apkupdate.ApkUpdateManager;
 import com.termux.app.apkupdate.ApkUpdateSettingsOpenCheckThrottle;
 import com.termux.app.apkupdate.ApkUpdateUiController;
 import com.termux.app.TermuxActivity;
+import com.termux.app.diagnostics.DiagnosticsPhantomProcessMonitor;
 import com.termux.app.diagnostics.DiagnosticsShareAction;
+import com.termux.app.diagnostics.PhantomProcessMonitorStateHolder;
 import com.termux.app.diagnostics.TermuxActivityHolder;
+import com.termux.app.phantomprocess.PhantomProcessMonitorStateReader;
+import com.termux.app.phantomprocess.PhantomProcessMonitorSwitch;
+import com.termux.app.phantomprocess.PhantomProcessMonitorSwitchResult;
+import com.termux.app.phantomprocess.SettingsGlobalStore;
 import com.termux.app.style.TermuxStyleLauncher;
 import com.termux.app.terminal.session.PersistedSessionClearer;
 import com.termux.app.terminal.session.PersistedSessionStore;
@@ -95,6 +101,7 @@ public class SettingsActivity extends AppCompatActivity {
             configureSessionDefinitionConfigPreference(context);
             configureAlwaysNaSessionNamesPreference(context);
             configureShareDiagnosticsPreference(context);
+            configurePhantomProcessMonitorPreference(context);
             configureCrashLogViewerPreference(context);
             configureClearSavedSessionsPreference(context);
             configureUpdateApkPreference(context);
@@ -206,6 +213,54 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 });
             }
+        }
+
+        private void configurePhantomProcessMonitorPreference(@NonNull Context context) {
+            Preference phantomProcessMonitorPreference = findPreference("phantom_process_monitor");
+            if (phantomProcessMonitorPreference == null) return;
+
+            refreshPhantomProcessMonitorSummary(context, phantomProcessMonitorPreference);
+
+            phantomProcessMonitorPreference.setOnPreferenceClickListener(preference -> {
+                new Thread() {
+                    @Override
+                    public void run() {
+                        PhantomProcessMonitorSwitchResult result = new PhantomProcessMonitorSwitch(
+                            new SettingsGlobalStore(context.getContentResolver())).switchTheMonitorOff();
+                        DiagnosticsPhantomProcessMonitor state =
+                            new PhantomProcessMonitorStateReader().readOffTheMainThread(context);
+                        PhantomProcessMonitorStateHolder.getInstance().record(state);
+                        postWhenLayoutIdle(() -> {
+                            Toast.makeText(context, result.describeForTheOwner(), Toast.LENGTH_LONG).show();
+                            preference.setSummary(describePhantomProcessMonitor(state));
+                        });
+                    }
+                }.start();
+                return true;
+            });
+        }
+
+        private void refreshPhantomProcessMonitorSummary(@NonNull Context context,
+                                                         @NonNull Preference preference) {
+            new Thread() {
+                @Override
+                public void run() {
+                    DiagnosticsPhantomProcessMonitor state =
+                        new PhantomProcessMonitorStateReader().readOffTheMainThread(context);
+                    PhantomProcessMonitorStateHolder.getInstance().record(state);
+                    postWhenLayoutIdle(() -> preference.setSummary(describePhantomProcessMonitor(state)));
+                }
+            }.start();
+        }
+
+        @NonNull
+        private String describePhantomProcessMonitor(@NonNull DiagnosticsPhantomProcessMonitor state) {
+            Integer enforcedMaximum = state.getEnforcedMaximumPhantomProcesses();
+            return getString(R.string.phantom_process_monitor_preference_summary,
+                state.getMonitorFlagValue(),
+                enforcedMaximum == null
+                    ? getString(R.string.phantom_process_monitor_limit_not_readable)
+                    : String.valueOf(enforcedMaximum));
         }
 
         private void configureCrashLogViewerPreference(@NonNull Context context) {
