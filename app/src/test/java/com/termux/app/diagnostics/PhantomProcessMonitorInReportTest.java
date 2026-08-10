@@ -25,7 +25,8 @@ public class PhantomProcessMonitorInReportTest {
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
-            DiagnosticsShellExits.NONE, phantomProcessMonitor);
+            DiagnosticsShellExits.NONE, phantomProcessMonitor,
+            DiagnosticsAppProcessPopulation.UNMEASURED);
         return new DiagnosticsReportBuilder().build(report);
     }
 

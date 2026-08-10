@@ -57,6 +57,7 @@ import com.termux.app.sessiondefinition.VisibleSessionSelector;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.session.AlwaysPresentSessionPlanner;
+import com.termux.app.process.AppProcessPopulationRefresher;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartup;
 import com.termux.app.terminal.session.AlwaysPresentSessionStartupPlanner;
 import com.termux.app.terminal.session.DuplicateSessionNameResolution;
@@ -136,6 +137,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private boolean mStartupDisplayedSessionSelectionPending;
 
     private final SessionDefinitionCapCountPlanner mCapCountPlanner = new SessionDefinitionCapCountPlanner();
+
+    private final AppProcessPopulationRefresher mAppProcessPopulationRefresher =
+        new AppProcessPopulationRefresher();
 
     private int maxSessions() {
         return mActivity.getPreferences().getSessionDefinitionMaxSessions();
@@ -1367,6 +1371,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void refreshDisplayedSessionsForCallToUser() {
         BackgroundCycleIntervalRecorderHolder.getInstance().recordCycle(System.currentTimeMillis(),
             displayedSessionCallScanIntervalMillis(), mActivity.isVisible());
+        mAppProcessPopulationRefresher.refreshOffTheMainThread();
 
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
