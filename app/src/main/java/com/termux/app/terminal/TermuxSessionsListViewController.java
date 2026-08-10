@@ -540,6 +540,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     }
 
     @NonNull
+    public Set<String> getCollapsedProjectSessionNames() {
+        return SessionHierarchyBuilder.collapsedProjectSessionNames(buildAllRows(), mCollapsedProjectKeys);
+    }
+
+    @NonNull
     public Set<String> getPendingCallToUserSessionNames() {
         return pendingCallToUserSessionNames(sessionNamesByIndex());
     }

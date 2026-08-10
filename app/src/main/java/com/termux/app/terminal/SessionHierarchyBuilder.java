@@ -533,6 +533,31 @@ public final class SessionHierarchyBuilder {
     }
 
     @NonNull
+    public static Set<String> collapsedProjectSessionNames(
+            @NonNull List<SessionHierarchyRow> rows,
+            @NonNull Set<String> collapsedProjectKeys) {
+        Set<String> collapsedProjectSessionNames = new LinkedHashSet<>();
+        if (collapsedProjectKeys.isEmpty()) {
+            return collapsedProjectSessionNames;
+        }
+        boolean currentProjectCollapsed = false;
+        for (SessionHierarchyRow row : rows) {
+            if (row.getType() == SessionHierarchyRow.Type.PROJECT_HEADER) {
+                currentProjectCollapsed = collapsedProjectKeys.contains(row.getLabel());
+                continue;
+            }
+            if (!currentProjectCollapsed) {
+                continue;
+            }
+            String sessionName = row.getSessionName();
+            if (sessionName != null) {
+                collapsedProjectSessionNames.add(sessionName);
+            }
+        }
+        return collapsedProjectSessionNames;
+    }
+
+    @NonNull
     private Map<String, String> projectLabelByManagerSessionName(@NonNull List<SessionDefinitionEntry> entries) {
         Map<String, String> projectLabelByManagerSessionName = new LinkedHashMap<>();
         for (SessionDefinitionEntry entry : entries) {
