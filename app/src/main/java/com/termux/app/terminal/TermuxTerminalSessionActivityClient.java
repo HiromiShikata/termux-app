@@ -2473,7 +2473,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return reconnectedSessionNames;
     }
 
-    private void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
+    public void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
         if (!mActivity.isVisible()) return;
 
         TermuxService service = mActivity.getTermuxService();
