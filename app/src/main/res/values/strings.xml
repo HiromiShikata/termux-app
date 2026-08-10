@@ -205,6 +205,10 @@
     <string name="msg_diagnostics_copied">Copied</string>
     <string name="msg_diagnostics_unavailable">Open the Termux terminal first, then share diagnostics.</string>
 
+    <string name="phantom_process_monitor_preference_title">Switch off the Android phantom process monitor</string>
+    <string name="phantom_process_monitor_preference_summary">Monitor flag: %1$s. Enforced maximum: %2$s. Android kills app child processes above this maximum, which ends terminal sessions.</string>
+    <string name="phantom_process_monitor_limit_not_readable">not readable</string>
+
     <string name="action_clear_saved_sessions">Clear saved sessions</string>
     <string name="summary_clear_saved_sessions">Delete the saved session list restored on launch.</string>
     <string name="title_confirm_clear_saved_sessions">Clear saved sessions</string>

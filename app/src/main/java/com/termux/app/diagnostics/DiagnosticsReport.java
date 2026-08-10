@@ -51,6 +51,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsVersionChange mVersionChange;
     @NonNull
     private final DiagnosticsShellExits mShellExits;
+    @NonNull
+    private final DiagnosticsPhantomProcessMonitor mPhantomProcessMonitor;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -69,7 +71,8 @@ public final class DiagnosticsReport {
                              long processUptimeMillis,
                              @NonNull DiagnosticsBackgroundCycle backgroundCycle,
                              @NonNull DiagnosticsVersionChange versionChange,
-                             @NonNull DiagnosticsShellExits shellExits) {
+                             @NonNull DiagnosticsShellExits shellExits,
+                             @NonNull DiagnosticsPhantomProcessMonitor phantomProcessMonitor) {
         mVersionName = versionName;
         mVersionCode = versionCode;
         mReportTimestampMillis = reportTimestampMillis;
@@ -94,6 +97,12 @@ public final class DiagnosticsReport {
         mBackgroundCycle = backgroundCycle;
         mVersionChange = versionChange;
         mShellExits = shellExits;
+        mPhantomProcessMonitor = phantomProcessMonitor;
+    }
+
+    @NonNull
+    public DiagnosticsPhantomProcessMonitor getPhantomProcessMonitor() {
+        return mPhantomProcessMonitor;
     }
 
     @NonNull

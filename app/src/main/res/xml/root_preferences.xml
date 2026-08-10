@@ -90,6 +90,11 @@
         app:persistent="false"/>
 
     <Preference
+        app:key="phantom_process_monitor"
+        app:title="@string/phantom_process_monitor_preference_title"
+        app:persistent="false"/>
+
+    <Preference
         app:key="crash_log_viewer"
         app:title="@string/action_open_crash_log_viewer"
         app:summary="@string/summary_crash_log_viewer"

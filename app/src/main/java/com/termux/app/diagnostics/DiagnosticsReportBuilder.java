@@ -60,6 +60,9 @@ public final class DiagnosticsReportBuilder {
         appendShellExitSection(builder, report);
 
         builder.append('\n');
+        appendPhantomProcessMonitorSection(builder, report);
+
+        builder.append('\n');
         appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
@@ -166,6 +169,18 @@ public final class DiagnosticsReportBuilder {
                 + countByExitStatus.getCount());
         }
         appendLinesWithinBudget(builder, exitStatusLines, SHELL_EXIT_STATUS_BUDGET_CHARACTERS);
+    }
+
+    private void appendPhantomProcessMonitorSection(@NonNull StringBuilder builder,
+                                                    @NonNull DiagnosticsReport report) {
+        DiagnosticsPhantomProcessMonitor monitor = report.getPhantomProcessMonitor();
+        builder.append("Android phantom process monitor\n");
+        builder.append("  Monitor flag: ").append(monitor.getMonitorFlagValue()).append('\n');
+        Integer enforcedMaximum = monitor.getEnforcedMaximumPhantomProcesses();
+        builder.append("  Enforced maximum: ")
+            .append(enforcedMaximum == null ? "not readable" : String.valueOf(enforcedMaximum)).append('\n');
+        builder.append("  Can be switched off from settings: ")
+            .append(monitor.getMonitorCanBeSwitchedOff() ? "yes" : "no").append('\n');
     }
 
     @NonNull

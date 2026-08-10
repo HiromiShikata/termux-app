@@ -33,7 +33,7 @@ public class ReplacedSessionShellInputInReportTest {
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
-            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE);
+            DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED);
         return new DiagnosticsReportBuilder().build(report);
     }
 
