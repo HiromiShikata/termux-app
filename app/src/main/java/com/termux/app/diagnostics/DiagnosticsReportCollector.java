@@ -4,6 +4,7 @@ import android.os.Debug;
 import android.os.SystemClock;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.BuildConfig;
 import com.termux.app.TermuxActivity;
@@ -53,7 +54,8 @@ public final class DiagnosticsReportCollector {
         int displayedCount = displayedSessionCount(activity);
         int maxSessionsCap = activity.getPreferences().getSessionDefinitionMaxSessions();
 
-        List<DiagnosticsSessionLine> sessionLines = buildSessionLines(service, nowMillis);
+        List<DiagnosticsSessionLine> sessionLines =
+            buildSessionLines(service, nowMillis, sessionIndexesDisplayedInList(activity));
         int openTabCount = openTabCount(activity);
         int tabHistoryEntryCount = tabHistoryEntryCount(activity);
         boolean wakeLockHeld = service != null && service.isWakeLockHeld();
@@ -123,13 +125,22 @@ public final class DiagnosticsReportCollector {
         return controller != null ? controller.getVisibleSessionCount() : 0;
     }
 
+    @Nullable
+    private List<Integer> sessionIndexesDisplayedInList(@NonNull TermuxActivity activity) {
+        TermuxSessionsListViewController controller = activity.getTermuxSessionListViewController();
+        return controller == null ? null : controller.getSessionIndexesDisplayedInList();
+    }
+
     @NonNull
-    private List<DiagnosticsSessionLine> buildSessionLines(TermuxService service, long nowMillis) {
+    private List<DiagnosticsSessionLine> buildSessionLines(TermuxService service, long nowMillis,
+                                                           @Nullable List<Integer> sessionIndexesDisplayedInList) {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         if (service == null) return lines;
 
         SessionNewActivityStore activityStore = service.getSessionNewActivityStore();
-        for (TermuxSession termuxSession : service.getTermuxSessions()) {
+        List<TermuxSession> termuxSessions = service.getTermuxSessions();
+        for (int sessionIndex = 0; sessionIndex < termuxSessions.size(); sessionIndex++) {
+            TermuxSession termuxSession = termuxSessions.get(sessionIndex);
             TerminalSession terminalSession = termuxSession.getTerminalSession();
             String name = terminalSession.mSessionName == null ? "" : terminalSession.mSessionName;
             boolean alive = terminalSession.isRunning();
@@ -162,7 +173,9 @@ public final class DiagnosticsReportCollector {
                     activityStore.tierFor(name, nowMillis));
 
             lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
-                transcriptRows, columns, shellInputDelivery, statusline));
+                transcriptRows, columns,
+                DiagnosticsSessionListDisplay.ofSessionIndex(sessionIndex, sessionIndexesDisplayedInList),
+                shellInputDelivery, statusline));
         }
         return lines;
     }
