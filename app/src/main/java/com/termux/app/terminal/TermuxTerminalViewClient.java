@@ -21,9 +21,10 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.OpenTagUrlOnTerminal;
 import com.termux.app.browser.TermuxBrowserController;
-import com.termux.app.copytag.CopyTagBlocksOnTerminal;
 import com.termux.app.link.NativeAppLink;
+import com.termux.app.outputtag.OutputTagBlocksOnTerminal;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.interact.ShareUtils;
 import com.termux.shared.shell.ShellUtils;
@@ -79,6 +80,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     private final TypedTerminalLineTracker mTypedTerminalLineTracker = new TypedTerminalLineTracker();
 
     private static final String LOG_TAG = "TermuxTerminalViewClient";
+
+    private static final String COPY_TAG_NAME = "copy";
 
     public TermuxTerminalViewClient(TermuxActivity activity, TermuxTerminalSessionActivityClient termuxTerminalSessionActivityClient) {
         this.mActivity = activity;
@@ -218,7 +221,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         TerminalEmulator term = mActivity.getCurrentSession().getEmulator();
         int[] columnAndRow = mActivity.getTerminalView().getColumnAndRow(e, true);
 
-        String copyTagContent = CopyTagBlocksOnTerminal.around(term, columnAndRow[1])
+        String copyTagContent = OutputTagBlocksOnTerminal.around(COPY_TAG_NAME, term, columnAndRow[1])
             .contentOfTheBlockCoveringRow(columnAndRow[1]);
         if (copyTagContent != null && !copyTagContent.isEmpty()) {
             ShareUtils.copyTextToClipboard(mActivity, copyTagContent,
@@ -461,6 +464,9 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         if (term == null) return null;
 
         int[] columnAndRow = mActivity.getTerminalView().getColumnAndRow(event, true);
+
+        String openTagUrl = OpenTagUrlOnTerminal.urlCoveringRow(term, columnAndRow[1]);
+        if (!DataUtils.isNullOrEmpty(openTagUrl)) return openTagUrl;
 
         String hyperlinkUri = term.getScreen().getHyperlinkUri(columnAndRow[1], columnAndRow[0]);
         String wordAtLongPress = term.getScreen().getWordAtLocation(columnAndRow[0], columnAndRow[1]);

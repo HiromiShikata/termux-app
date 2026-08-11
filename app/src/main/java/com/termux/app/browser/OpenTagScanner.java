@@ -21,10 +21,19 @@ public final class OpenTagScanner {
 
     public static String normalizeUrl(String innerText) {
         if (innerText == null) return null;
-        String sanitized = DetectedUrlSanitizer.sanitize(innerText.trim());
+        String sanitized = DetectedUrlSanitizer.sanitize(urlRebuiltFrom(innerText), innerText);
         if (sanitized == null || sanitized.isEmpty()) return null;
         if (!BrowserLinkLongPress.isOpenableLinkUrl(sanitized)) return null;
         return sanitized;
+    }
+
+    private static String urlRebuiltFrom(String innerText) {
+        StringBuilder rebuilt = new StringBuilder(innerText.length());
+        for (int index = 0; index < innerText.length(); index++) {
+            char character = innerText.charAt(index);
+            if (!Character.isWhitespace(character)) rebuilt.append(character);
+        }
+        return rebuilt.toString();
     }
 
     public List<String> urlsToOpen(String output) {

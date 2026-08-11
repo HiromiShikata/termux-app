@@ -1,4 +1,4 @@
-package com.termux.app.copytag;
+package com.termux.app.outputtag;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -8,7 +8,9 @@ import java.util.List;
 
 import org.junit.Test;
 
-public class CopyTagBlocksOnScreenTest {
+public class OutputTagBlocksOnScreenTest {
+
+    private static final String COPY_TAG_NAME = "copy";
 
     private static ScreenRow row(String text) {
         return new ScreenRow(text, false);
@@ -18,13 +20,26 @@ public class CopyTagBlocksOnScreenTest {
         return new ScreenRow(text, true);
     }
 
-    private static CopyTagBlocksOnScreen screenOf(List<ScreenRow> rows) {
-        return CopyTagBlocksOnScreen.of(rows, 0);
+    private static OutputTagBlocksOnScreen screenOf(List<ScreenRow> rows) {
+        return OutputTagBlocksOnScreen.of(COPY_TAG_NAME, rows, 0);
+    }
+
+    @Test
+    public void theTagNameDecidesWhichBlocksAreFound() {
+        List<ScreenRow> rows = Arrays.asList(
+            row("<open>"),
+            row("https://example.com/tagged"),
+            row("</open>"));
+
+        assertEquals("https://example.com/tagged",
+            OutputTagBlocksOnScreen.of("open", rows, 0).contentOfTheBlockCoveringRow(1));
+        assertNull("a block of another tag must stay invisible to this scanner",
+            OutputTagBlocksOnScreen.of(COPY_TAG_NAME, rows, 0).contentOfTheBlockCoveringRow(1));
     }
 
     @Test
     public void tappingARowInsideABlockReturnsEveryLineOfThatBlock() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("before the block"),
             row("<copy>"),
             row("first line"),
@@ -38,7 +53,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void tappingTheRowHoldingTheOpeningTagReturnsTheBlock() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("<copy>"),
             row("the payload"),
             row("</copy>")));
@@ -49,7 +64,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void tappingARowOutsideEveryBlockReturnsNothing() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("plain output"),
             row("<copy>"),
             row("the payload"),
@@ -62,7 +77,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void aRowThatWrapsOntoTheNextIsJoinedWithoutANewline() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("<copy>"),
             wrappedRow("a very long value that ran off"),
             row(" the edge of the screen"),
@@ -74,7 +89,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void blankLinesAroundTheContentAreTrimmed() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("<copy>"),
             row(""),
             row("the payload"),
@@ -86,7 +101,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void contentSharingTheRowWithTheTagsIsReturnedWithoutThem() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("prompt <copy>the payload</copy> trailing")));
 
         assertEquals("the payload", screen.contentOfTheBlockCoveringRow(0));
@@ -94,7 +109,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void aBlockLeftUnclosedIsNotOfferedForCopying() {
-        CopyTagBlocksOnScreen screen = screenOf(Arrays.asList(
+        OutputTagBlocksOnScreen screen = screenOf(Arrays.asList(
             row("<copy>"),
             row("still being written")));
 
@@ -103,7 +118,7 @@ public class CopyTagBlocksOnScreenTest {
 
     @Test
     public void rowsAreAddressedByTheirTerminalRowNumber() {
-        CopyTagBlocksOnScreen screen = CopyTagBlocksOnScreen.of(Arrays.asList(
+        OutputTagBlocksOnScreen screen = OutputTagBlocksOnScreen.of(COPY_TAG_NAME, Arrays.asList(
             row("<copy>"),
             row("the payload"),
             row("</copy>")), -3);
@@ -121,7 +136,7 @@ public class CopyTagBlocksOnScreenTest {
             return row("unrelated output");
         });
 
-        CopyTagBlocksOnScreen screen = new CopyTagBlocksOnScreen(rows, -400, 400);
+        OutputTagBlocksOnScreen screen = new OutputTagBlocksOnScreen(COPY_TAG_NAME, rows, -400, 400);
 
         assertEquals("the payload", screen.contentOfTheBlockCoveringRow(0));
         assertEquals(3, rows.numberOfRowsRead());
@@ -132,7 +147,7 @@ public class CopyTagBlocksOnScreenTest {
         CountingScreenRows rows = new CountingScreenRows(rowNumber ->
             rowNumber == -1 ? row("</copy>") : row("unrelated output"));
 
-        CopyTagBlocksOnScreen screen = new CopyTagBlocksOnScreen(rows, -400, 400);
+        OutputTagBlocksOnScreen screen = new OutputTagBlocksOnScreen(COPY_TAG_NAME, rows, -400, 400);
 
         assertNull(screen.contentOfTheBlockCoveringRow(0));
         assertEquals(2, rows.numberOfRowsRead());
