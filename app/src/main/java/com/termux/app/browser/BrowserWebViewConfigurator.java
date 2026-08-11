@@ -16,7 +16,7 @@ public final class BrowserWebViewConfigurator {
     public static void apply(
             @NonNull WebView webView,
             @NonNull BrowserViewMode viewMode,
-            @Nullable String defaultUserAgent) {
+            @Nullable String engineUserAgent) {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -29,8 +29,22 @@ public final class BrowserWebViewConfigurator {
         settings.setLoadWithOverviewMode(viewMode.isDesktop());
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
-        settings.setUserAgentString(BrowserUserAgent.resolve(viewMode.isDesktop(), defaultUserAgent));
+        applyDesktopUserAgent(settings, viewMode, engineUserAgent);
         BrowserWebAuthentication.apply(webView);
         BrowserRequestedWithHeader.apply(settings);
+    }
+
+    private static void applyDesktopUserAgent(
+            @NonNull WebSettings settings,
+            @NonNull BrowserViewMode viewMode,
+            @Nullable String engineUserAgent) {
+        if (!viewMode.isDesktop()) {
+            return;
+        }
+        String desktopUserAgent = BrowserUserAgent.desktopUserAgentFrom(engineUserAgent);
+        if (desktopUserAgent == null) {
+            return;
+        }
+        settings.setUserAgentString(desktopUserAgent);
     }
 }

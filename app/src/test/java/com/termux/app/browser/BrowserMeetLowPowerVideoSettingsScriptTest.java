@@ -61,7 +61,7 @@ public class BrowserMeetLowPowerVideoSettingsScriptTest {
 
         Assert.assertTrue(script.startsWith("(function(){try{"));
         Assert.assertTrue(script.endsWith("catch(e){}})();"));
-        Assert.assertTrue(script.contains("if(window.__termuxMeetLowPowerApplied){return;}"));
+        Assert.assertTrue(script.contains("if(Object.getOwnPropertyDescriptor(window,appliedName)){return;}"));
     }
 
     @Test

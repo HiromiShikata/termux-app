@@ -1,32 +1,37 @@
 package com.termux.app.browser;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class BrowserUserAgent {
 
-    public static final String DESKTOP_USER_AGENT =
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36";
+    private static final Pattern ENGINE_MAJOR_VERSION = Pattern.compile("Chrome/(\\d+)\\.");
 
-    public static final String MOBILE_USER_AGENT =
-        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) "
-            + "Chrome/150.0.0.0 Mobile Safari/537.36";
+    private static final String DESKTOP_USER_AGENT_PREFIX =
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/";
 
-    private static final String WEB_VIEW_MARKER_PATTERN = "\\s*;\\s*\\bwv\\b|\\s+\\bwv\\b";
+    private static final String DESKTOP_USER_AGENT_SUFFIX = ".0.0.0 Safari/537.36";
 
     private BrowserUserAgent() {
     }
 
-    @NonNull
-    public static String resolve(boolean desktopMode, @Nullable String defaultUserAgent) {
-        return desktopMode ? DESKTOP_USER_AGENT : MOBILE_USER_AGENT;
+    @Nullable
+    public static String engineMajorVersion(@Nullable String engineUserAgent) {
+        if (engineUserAgent == null) {
+            return null;
+        }
+        Matcher matcher = ENGINE_MAJOR_VERSION.matcher(engineUserAgent);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     @Nullable
-    public static String normalizeDefault(@Nullable String defaultUserAgent) {
-        if (defaultUserAgent == null) {
+    public static String desktopUserAgentFrom(@Nullable String engineUserAgent) {
+        String engineMajorVersion = engineMajorVersion(engineUserAgent);
+        if (engineMajorVersion == null) {
             return null;
         }
-        return defaultUserAgent.replaceFirst(WEB_VIEW_MARKER_PATTERN, "");
+        return DESKTOP_USER_AGENT_PREFIX + engineMajorVersion + DESKTOP_USER_AGENT_SUFFIX;
     }
 }

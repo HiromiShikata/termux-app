@@ -47,7 +47,7 @@ public class BrowserNewTabWindowOpenInstrumentedTest {
         runOnMainSync(() -> {
             WebView openerWebView = new WebView(targetContext());
             BrowserWebViewConfigurator.apply(openerWebView, BrowserViewMode.DESKTOP,
-                BrowserUserAgent.normalizeDefault(openerWebView.getSettings().getUserAgentString()));
+                openerWebView.getSettings().getUserAgentString());
             openerWebView.setWebChromeClient(new WebChromeClient() {
                 @Override
                 public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,

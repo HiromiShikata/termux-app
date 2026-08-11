@@ -107,8 +107,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private static final int TAB_CLOSED_UNDO_SNACKBAR_DURATION_MS = 5000;
 
-    private static final int PASSKEY_OPEN_IN_CHROME_SNACKBAR_DURATION_MS = 7000;
-
     private static final float HEADER_SECONDARY_TEXT_SCALE = 0.85f;
 
     private static final int HEADER_SECONDARY_TEXT_ALPHA = 0xB3;
@@ -201,7 +199,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private BrowserFindInPageController mFindController;
 
-    private String mDefaultUserAgent;
+    private String mEngineUserAgent;
 
     private BrowserTabsListViewController mTabsListViewController;
 
@@ -851,19 +849,15 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private WebView createWebViewForTab(@NonNull BrowserTab tab) {
         WebView webView = new BrowserAssistStructureFreeWebView(mActivity);
         WebSettings settings = webView.getSettings();
-        if (mDefaultUserAgent == null) {
-            mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
+        if (mEngineUserAgent == null) {
+            mEngineUserAgent = settings.getUserAgentString();
         }
-        BrowserWebViewConfigurator.apply(webView, tab.getViewMode(), mDefaultUserAgent);
+        BrowserWebViewConfigurator.apply(webView, tab.getViewMode(), mEngineUserAgent);
 
         applyDarkModeRendering(settings);
         BrowserWebViewAutofill.apply(webView, Build.VERSION.SDK_INT);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         BrowserMeetLowPowerVideoInjector.applyDocumentStart(webView, resolveMeetLowPowerVideoSettings());
-        webView.addJavascriptInterface(
-            new BrowserPasskeyBridge(mMainHandler, this::showPasskeyOpenInChromeHint),
-            BrowserPasskeyDetectionScript.BRIDGE_NAME);
-        BrowserPasskeyDetectionInjector.applyDocumentStart(webView);
         String documentStartViewportScript =
             BrowserViewportInjector.applyDocumentStart(webView, tab.getViewMode(), false);
 
@@ -890,7 +884,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 mScrollTracker.resetToTop(view);
                 BrowserMeetLowPowerVideoInjector.injectAtPageStartFallback(
                     view, url, resolveMeetLowPowerVideoSettings());
-                BrowserPasskeyDetectionInjector.injectAtPageStartFallback(view, url);
                 tab.setUrl(url);
                 if (isDisplayedTab(tab)) {
                     if (BrowserPageTransition.requiresCoverWhileLoading(
@@ -1553,8 +1546,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private void applyUserAgent(@NonNull BrowserTab tab) {
         WebView displayedWebView = currentWebView();
         if (displayedWebView == null) return;
-        displayedWebView.getSettings().setUserAgentString(
-            BrowserUserAgent.resolve(tab.getViewMode().isDesktop(), mDefaultUserAgent));
+        String userAgentForViewMode = tab.getViewMode().isDesktop()
+            ? BrowserUserAgent.desktopUserAgentFrom(mEngineUserAgent)
+            : mEngineUserAgent;
+        if (userAgentForViewMode == null) return;
+        displayedWebView.getSettings().setUserAgentString(userAgentForViewMode);
     }
 
     private void updateDesktopModeToggleState() {
@@ -1868,33 +1864,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             snackbar.setAnchorView(tabBarAnchor);
         }
         snackbar.show();
-    }
-
-    private void showPasskeyOpenInChromeHint() {
-        View snackbarRoot = mActivity.findViewById(R.id.browser_content_coordinator);
-        if (snackbarRoot == null) snackbarRoot = mActivity.findViewById(android.R.id.content);
-        if (snackbarRoot == null) return;
-        BrowserPasskeyOpenInChromeAction openAction = new BrowserPasskeyOpenInChromeAction(
-            this::currentTrustedPageUrl,
-            url -> ShareUtils.openUrlInChrome(mActivity, url));
-        Snackbar snackbar = Snackbar.make(
-            snackbarRoot,
-            mActivity.getString(R.string.msg_browser_passkey_open_in_chrome),
-            PASSKEY_OPEN_IN_CHROME_SNACKBAR_DURATION_MS);
-        snackbar.setAction(
-            mActivity.getString(R.string.action_browser_passkey_open_in_chrome),
-            view -> openAction.openTrustedCurrentUrlInChrome());
-        View tabBarAnchor = mActivity.findViewById(R.id.browser_tab_bar);
-        if (tabBarAnchor != null && tabBarAnchor.isShown()) {
-            snackbar.setAnchorView(tabBarAnchor);
-        }
-        snackbar.show();
-    }
-
-    @Nullable
-    private String currentTrustedPageUrl() {
-        WebView displayedWebView = currentWebView();
-        return displayedWebView == null ? null : displayedWebView.getUrl();
     }
 
     public void reopenLastClosedTab() {
