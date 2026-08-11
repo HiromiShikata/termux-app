@@ -13,6 +13,9 @@ public final class DiagnosticsSessionLine {
     private final int mColumns;
 
     @NonNull
+    private final DiagnosticsSessionListDisplay mListDisplay;
+
+    @NonNull
     private final DiagnosticsShellInputDelivery mShellInputDelivery;
 
     @NonNull
@@ -20,6 +23,7 @@ public final class DiagnosticsSessionLine {
 
     public DiagnosticsSessionLine(@NonNull String name, boolean alive, long secondsSinceLastActivity,
                                   boolean hasLastActivity, int transcriptRows, int columns,
+                                  @NonNull DiagnosticsSessionListDisplay listDisplay,
                                   @NonNull DiagnosticsShellInputDelivery shellInputDelivery,
                                   @NonNull DiagnosticsSessionStatusline statusline) {
         mName = name;
@@ -28,6 +32,7 @@ public final class DiagnosticsSessionLine {
         mHasLastActivity = hasLastActivity;
         mTranscriptRows = transcriptRows;
         mColumns = columns;
+        mListDisplay = listDisplay;
         mShellInputDelivery = shellInputDelivery;
         mStatusline = statusline;
     }
@@ -55,6 +60,11 @@ public final class DiagnosticsSessionLine {
 
     public int getColumns() {
         return mColumns;
+    }
+
+    @NonNull
+    public DiagnosticsSessionListDisplay getListDisplay() {
+        return mListDisplay;
     }
 
     @NonNull

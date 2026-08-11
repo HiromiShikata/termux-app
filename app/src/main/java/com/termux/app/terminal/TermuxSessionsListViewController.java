@@ -460,6 +460,11 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         return mVisibleSessionCount;
     }
 
+    @NonNull
+    public List<Integer> getSessionIndexesDisplayedInList() {
+        return SessionHierarchyBuilder.visibleSessionIndexes(mRows);
+    }
+
     public boolean isHidingHiddenSessions() {
         return shouldHideHiddenSessions();
     }
