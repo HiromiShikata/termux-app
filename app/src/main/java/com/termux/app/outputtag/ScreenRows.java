@@ -1,4 +1,4 @@
-package com.termux.app.copytag;
+package com.termux.app.outputtag;
 
 public interface ScreenRows {
 

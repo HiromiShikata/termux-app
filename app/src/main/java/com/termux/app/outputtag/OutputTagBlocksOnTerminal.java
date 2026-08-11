@@ -1,16 +1,16 @@
-package com.termux.app.copytag;
+package com.termux.app.outputtag;
 
 import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalEmulator;
 
-public final class CopyTagBlocksOnTerminal {
+public final class OutputTagBlocksOnTerminal {
 
     private static final int MAX_ROWS_SCANNED_IN_EACH_DIRECTION = 400;
 
-    private CopyTagBlocksOnTerminal() {
+    private OutputTagBlocksOnTerminal() {
     }
 
-    public static CopyTagBlocksOnScreen around(TerminalEmulator emulator, int row) {
+    public static OutputTagBlocksOnScreen around(String tagName, TerminalEmulator emulator, int row) {
         TerminalBuffer screen = emulator.getScreen();
         int lastColumn = emulator.mColumns - 1;
         int topmostRow = Math.max(-screen.getActiveTranscriptRows(), row - MAX_ROWS_SCANNED_IN_EACH_DIRECTION);
@@ -21,6 +21,6 @@ public final class CopyTagBlocksOnTerminal {
             String text = screen.getSelectedText(0, rowNumber, lastColumn, rowNumber, false, false);
             return new ScreenRow(text, screen.getLineWrap(rowNumber));
         };
-        return new CopyTagBlocksOnScreen(rows, topmostRow, bottommostRow);
+        return new OutputTagBlocksOnScreen(tagName, rows, topmostRow, bottommostRow);
     }
 }

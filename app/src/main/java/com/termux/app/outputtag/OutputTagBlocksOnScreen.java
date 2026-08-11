@@ -1,15 +1,15 @@
-package com.termux.app.copytag;
+package com.termux.app.outputtag;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class CopyTagBlocksOnScreen {
+public final class OutputTagBlocksOnScreen {
 
-    private static final String OPENING_TAG = "<copy>";
+    private final String openingTag;
 
-    private static final String CLOSING_TAG = "</copy>";
+    private final String closingTag;
 
     private final ScreenRows rows;
 
@@ -19,19 +19,21 @@ public final class CopyTagBlocksOnScreen {
 
     private final Map<Integer, ScreenRow> alreadyRead = new HashMap<>();
 
-    public CopyTagBlocksOnScreen(ScreenRows rows, int topmostRowNumber, int bottommostRowNumber) {
+    public OutputTagBlocksOnScreen(String tagName, ScreenRows rows, int topmostRowNumber, int bottommostRowNumber) {
+        this.openingTag = "<" + tagName + ">";
+        this.closingTag = "</" + tagName + ">";
         this.rows = rows;
         this.topmostRowNumber = topmostRowNumber;
         this.bottommostRowNumber = bottommostRowNumber;
     }
 
-    public static CopyTagBlocksOnScreen of(List<ScreenRow> rows, int firstRowNumber) {
+    public static OutputTagBlocksOnScreen of(String tagName, List<ScreenRow> rows, int firstRowNumber) {
         List<ScreenRow> copied = rows == null ? new ArrayList<>() : new ArrayList<>(rows);
         ScreenRows readable = rowNumber -> {
             int index = rowNumber - firstRowNumber;
             return index < 0 || index >= copied.size() ? null : copied.get(index);
         };
-        return new CopyTagBlocksOnScreen(readable, firstRowNumber, firstRowNumber + copied.size() - 1);
+        return new OutputTagBlocksOnScreen(tagName, readable, firstRowNumber, firstRowNumber + copied.size() - 1);
     }
 
     public String contentOfTheBlockCoveringRow(int rowNumber) {
@@ -49,8 +51,8 @@ public final class CopyTagBlocksOnScreen {
     private int openingRowAtOrAbove(int rowNumber) {
         for (int row = rowNumber; row >= topmostRowNumber; row--) {
             String text = textAt(row);
-            if (text.contains(OPENING_TAG)) return row;
-            if (row < rowNumber && text.contains(CLOSING_TAG)) return Integer.MIN_VALUE;
+            if (text.contains(openingTag)) return row;
+            if (row < rowNumber && text.contains(closingTag)) return Integer.MIN_VALUE;
         }
         return Integer.MIN_VALUE;
     }
@@ -58,8 +60,8 @@ public final class CopyTagBlocksOnScreen {
     private int closingRowAtOrBelow(int openingRowNumber) {
         for (int row = openingRowNumber; row <= bottommostRowNumber; row++) {
             String text = textAt(row);
-            int searchFrom = row == openingRowNumber ? text.indexOf(OPENING_TAG) + OPENING_TAG.length() : 0;
-            if (text.indexOf(CLOSING_TAG, searchFrom) >= 0) return row;
+            int searchFrom = row == openingRowNumber ? text.indexOf(openingTag) + openingTag.length() : 0;
+            if (text.indexOf(closingTag, searchFrom) >= 0) return row;
         }
         return Integer.MIN_VALUE;
     }
@@ -75,10 +77,10 @@ public final class CopyTagBlocksOnScreen {
 
     private String contentOfRow(String text, boolean holdsTheOpeningTag, boolean holdsTheClosingTag) {
         int from = 0;
-        if (holdsTheOpeningTag) from = text.indexOf(OPENING_TAG) + OPENING_TAG.length();
+        if (holdsTheOpeningTag) from = text.indexOf(openingTag) + openingTag.length();
         int to = text.length();
         if (holdsTheClosingTag) {
-            int closingAt = text.indexOf(CLOSING_TAG, from);
+            int closingAt = text.indexOf(closingTag, from);
             if (closingAt >= 0) to = closingAt;
         }
         return from <= to ? text.substring(from, to) : "";
