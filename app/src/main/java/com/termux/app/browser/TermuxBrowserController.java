@@ -849,7 +849,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     @SuppressLint("SetJavaScriptEnabled")
     @NonNull
     private WebView createWebViewForTab(@NonNull BrowserTab tab) {
-        WebView webView = new WebView(mActivity);
+        WebView webView = new BrowserAssistStructureFreeWebView(mActivity);
         WebSettings settings = webView.getSettings();
         if (mDefaultUserAgent == null) {
             mDefaultUserAgent = BrowserUserAgent.normalizeDefault(settings.getUserAgentString());
