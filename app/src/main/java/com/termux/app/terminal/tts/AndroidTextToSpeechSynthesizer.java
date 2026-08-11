@@ -13,6 +13,10 @@ import java.util.concurrent.Executors;
 
 final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesizer {
 
+    private interface EngineWork {
+        void runOn(TextToSpeech textToSpeech);
+    }
+
     private final Context mContext;
 
     private final TtsEngineReadyPlanner mReadyPlanner = new TtsEngineReadyPlanner();
@@ -21,7 +25,9 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     private final Executor mSpeechQueueExecutor;
 
-    private TextToSpeech mTextToSpeech;
+    private volatile TextToSpeech mTextToSpeech;
+
+    private volatile boolean mEngineWorkerStopped;
 
     AndroidTextToSpeechSynthesizer(Context context) {
         this(context, engineWorkExecutor(), runnable -> new Handler(Looper.getMainLooper()).post(runnable));
@@ -60,20 +66,29 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
         textToSpeech.setLanguage(Locale.getDefault());
     }
 
+    private void onTheEngineWorkThread(EngineWork engineWork) {
+        if (mEngineWorkerStopped) return;
+        mEngineWorkExecutor.execute(() -> {
+            TextToSpeech textToSpeech = mTextToSpeech;
+            if (textToSpeech == null) return;
+            engineWork.runOn(textToSpeech);
+        });
+    }
+
     @Override
     public void speak(String text, int queueMode, String utteranceId) {
-        if (mTextToSpeech == null) return;
-        mTextToSpeech.speak(text, queueMode, null, utteranceId);
+        onTheEngineWorkThread(textToSpeech -> textToSpeech.speak(text, queueMode, null, utteranceId));
     }
 
     @Override
     public void stop() {
-        if (mTextToSpeech != null) mTextToSpeech.stop();
+        onTheEngineWorkThread(TextToSpeech::stop);
     }
 
     @Override
     public void shutdown() {
-        if (mTextToSpeech != null) mTextToSpeech.shutdown();
+        onTheEngineWorkThread(TextToSpeech::shutdown);
+        mEngineWorkerStopped = true;
         mEngineWorkExecutor.shutdown();
     }
 }
