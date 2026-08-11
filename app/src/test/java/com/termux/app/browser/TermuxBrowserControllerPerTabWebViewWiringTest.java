@@ -39,7 +39,8 @@ public class TermuxBrowserControllerPerTabWebViewWiringTest {
             "new BrowserTabWebViewHost(mWebViewContainer, this::createWebViewForTab)"));
         Assert.assertTrue(source.contains(
             "private WebView createWebViewForTab(@NonNull BrowserTab tab)"));
-        Assert.assertTrue(source.contains("WebView webView = new WebView(mActivity)"));
+        Assert.assertTrue(source.contains(
+            "WebView webView = new BrowserAssistStructureFreeWebView(mActivity)"));
     }
 
     @Test
