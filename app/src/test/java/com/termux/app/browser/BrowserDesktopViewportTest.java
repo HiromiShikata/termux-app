@@ -52,7 +52,7 @@ public class BrowserDesktopViewportTest {
     @Test
     public void injectionScriptReturnsEarlyWhenAlreadyInstalledForTheDocument() {
         Assert.assertTrue(BrowserDesktopViewport.INJECTION_SCRIPT
-            .contains("if(window.__termuxDesktopViewportObserver){return;}"));
+            .contains("if(Object.getOwnPropertyDescriptor(window,observerName)){return;}"));
     }
 
     @Test

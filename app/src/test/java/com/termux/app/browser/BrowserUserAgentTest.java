@@ -5,96 +5,47 @@ import org.junit.Test;
 
 public class BrowserUserAgentTest {
 
-    private static final String DEFAULT_USER_AGENT =
-        "Mozilla/5.0 (Linux; Android 13; Pixel) AppleWebKit/537.36 Mobile Safari/537.36";
+    private static final String ENGINE_USER_AGENT =
+        "Mozilla/5.0 (Linux; Android 13; Pixel 6 Build/TQ3A.230805.001; wv) "
+            + "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/123.0.6312.80 Mobile Safari/537.36";
 
     @Test
-    public void resolvesDesktopUserAgentWhenDesktopModeEnabled() {
-        Assert.assertEquals(BrowserUserAgent.DESKTOP_USER_AGENT,
-            BrowserUserAgent.resolve(true, DEFAULT_USER_AGENT));
+    public void theEngineMajorVersionIsReadOutOfTheEngineOwnUserAgent() {
+        Assert.assertEquals("123", BrowserUserAgent.engineMajorVersion(ENGINE_USER_AGENT));
     }
 
     @Test
-    public void resolvesCleanMobileUserAgentWhenDesktopModeDisabled() {
-        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
-            BrowserUserAgent.resolve(false, DEFAULT_USER_AGENT));
+    public void theEngineMajorVersionIsAbsentWhenTheUserAgentNamesNoEngineVersion() {
+        Assert.assertNull(BrowserUserAgent.engineMajorVersion("Mozilla/5.0 (Linux; Android 13; Pixel 6)"));
+        Assert.assertNull(BrowserUserAgent.engineMajorVersion(null));
     }
 
     @Test
-    public void resolvesCleanMobileUserAgentWhenDesktopModeDisabledAndDefaultIsNull() {
-        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
-            BrowserUserAgent.resolve(false, null));
-    }
+    public void theDesktopUserAgentCarriesTheVersionTheEngineItselfReports() {
+        String desktopUserAgent = BrowserUserAgent.desktopUserAgentFrom(ENGINE_USER_AGENT);
 
-    @Test
-    public void mobileUserAgentAdvertisesChromeOnAndroidWithoutWebViewMarker() {
-        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Chrome/"));
-        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Android"));
-        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Mobile"));
-        Assert.assertFalse(BrowserUserAgent.MOBILE_USER_AGENT.contains("wv"));
-        Assert.assertFalse(BrowserUserAgent.MOBILE_USER_AGENT.contains("Version/4.0"));
-    }
-
-    @Test
-    public void desktopUserAgentAdvertisesChromeWithoutWebViewMarker() {
-        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/"));
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Mobile"));
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Android"));
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("wv"));
-    }
-
-    @Test
-    public void bothUserAgentsAdvertiseCurrentChromeVersionAndNotTheStaleOne() {
-        Assert.assertTrue(BrowserUserAgent.MOBILE_USER_AGENT.contains("Chrome/150.0.0.0"));
-        Assert.assertTrue(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/150.0.0.0"));
-        Assert.assertFalse(BrowserUserAgent.MOBILE_USER_AGENT.contains("Chrome/120.0.0.0"));
-        Assert.assertFalse(BrowserUserAgent.DESKTOP_USER_AGENT.contains("Chrome/120.0.0.0"));
-    }
-
-    @Test
-    public void normalizeDefaultRemovesSemicolonWebViewMarker() {
-        String webViewUserAgent =
-            "Mozilla/5.0 (Linux; Android 13; Pixel; wv) AppleWebKit/537.36 (KHTML, like Gecko) "
-                + "Version/4.0 Chrome/120.0.0.0 Mobile Safari/537.36";
-        String normalized = BrowserUserAgent.normalizeDefault(webViewUserAgent);
         Assert.assertEquals(
-            "Mozilla/5.0 (Linux; Android 13; Pixel) AppleWebKit/537.36 (KHTML, like Gecko) "
-                + "Version/4.0 Chrome/120.0.0.0 Mobile Safari/537.36",
-            normalized);
-        Assert.assertFalse(normalized.contains("wv"));
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                + " Chrome/123.0.0.0 Safari/537.36",
+            desktopUserAgent);
     }
 
     @Test
-    public void normalizeDefaultRemovesStandaloneWebViewMarker() {
-        Assert.assertEquals(
-            "Mozilla/5.0 (Linux; Android 13; Pixel) AppleWebKit/537.36",
-            BrowserUserAgent.normalizeDefault(
-                "Mozilla/5.0 (Linux; Android 13; Pixel wv) AppleWebKit/537.36"));
+    public void theDesktopUserAgentDropsTheMobileAndWebViewTokensTheEngineSends() {
+        String desktopUserAgent = BrowserUserAgent.desktopUserAgentFrom(ENGINE_USER_AGENT);
+
+        Assert.assertFalse("requesting the desktop layout means asking for the desktop platform token: "
+            + desktopUserAgent, desktopUserAgent.contains("Mobile"));
+        Assert.assertFalse("requesting the desktop layout means asking for the desktop platform token: "
+            + desktopUserAgent, desktopUserAgent.contains("Android"));
+        Assert.assertFalse(desktopUserAgent.contains("wv"));
     }
 
     @Test
-    public void normalizeDefaultReturnsNullForNullInput() {
-        Assert.assertNull(BrowserUserAgent.normalizeDefault(null));
-    }
-
-    @Test
-    public void normalizeDefaultLeavesUserAgentWithoutMarkerUnchanged() {
-        Assert.assertEquals(DEFAULT_USER_AGENT, BrowserUserAgent.normalizeDefault(DEFAULT_USER_AGENT));
-    }
-
-    @Test
-    public void normalizeDefaultDoesNotRemoveSubstringsContainingMarkerLetters() {
-        String userAgent =
-            "Mozilla/5.0 (Linux; Android 13; WebViewer Pixel) AppleWebKit/537.36 review Safari/537.36";
-        Assert.assertEquals(userAgent, BrowserUserAgent.normalizeDefault(userAgent));
-    }
-
-    @Test
-    public void resolveIgnoresWebViewMarkedDefaultAndReturnsCleanMobileUserAgent() {
-        String webViewDefaultUserAgent =
-            "Mozilla/5.0 (Linux; Android 13; Pixel; wv) AppleWebKit/537.36 Mobile Safari/537.36";
-        Assert.assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
-            BrowserUserAgent.resolve(false, webViewDefaultUserAgent));
-        Assert.assertFalse(BrowserUserAgent.resolve(false, webViewDefaultUserAgent).contains("wv"));
+    public void thereIsNoDesktopUserAgentToDeriveWhenTheEngineNamesNoVersion() {
+        Assert.assertNull("a version that cannot be read must not be replaced with a made-up one, because a"
+                + " version that disagrees with the engine is exactly what this class exists to stop sending",
+            BrowserUserAgent.desktopUserAgentFrom("Mozilla/5.0 (Linux; Android 13; Pixel 6)"));
+        Assert.assertNull(BrowserUserAgent.desktopUserAgentFrom(null));
     }
 }

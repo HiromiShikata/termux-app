@@ -26,6 +26,10 @@ public class TermuxBrowserControllerInstrumentedTest {
     @Rule
     public final RetryRule retryRule = new RetryRule();
 
+    private static final String ENGINE_USER_AGENT =
+        "Mozilla/5.0 (Linux; Android 13; Pixel 6 Build/TQ3A.230805.001; wv) "
+            + "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/123.0.6312.80 Mobile Safari/537.36";
+
     private static final String LOOPBACK_TAB_URL = "http://127.0.0.1/";
 
     private static final String SECONDARY_LOOPBACK_TAB_URL = "http://127.0.0.1/second";
@@ -95,12 +99,13 @@ public class TermuxBrowserControllerInstrumentedTest {
             BrowserTab activeTab = browserController.getActiveTab();
             assertNotNull(activeTab);
             assertTrue(activeTab.isDesktopMode());
-            assertEquals(BrowserUserAgent.DESKTOP_USER_AGENT,
-                BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
+            assertEquals(
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                    + " Chrome/123.0.0.0 Safari/537.36",
+                BrowserUserAgent.desktopUserAgentFrom(ENGINE_USER_AGENT));
 
             activeTab.setDesktopMode(false);
-            assertEquals(BrowserUserAgent.MOBILE_USER_AGENT,
-                BrowserUserAgent.resolve(activeTab.isDesktopMode(), "default-mobile-user-agent"));
+            assertFalse(activeTab.isDesktopMode());
         });
     }
 

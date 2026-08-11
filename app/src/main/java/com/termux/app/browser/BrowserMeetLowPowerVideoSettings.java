@@ -11,6 +11,8 @@ public final class BrowserMeetLowPowerVideoSettings {
     public static final int DEFAULT_MAX_HEIGHT = 360;
     public static final int DEFAULT_MAX_FRAMERATE = 15;
 
+    public static final String APPLIED_PROPERTY_NAME = "meetLowPowerVideoApplied";
+
     private final boolean enabled;
     private final int maxWidth;
     private final int maxHeight;
@@ -54,8 +56,10 @@ public final class BrowserMeetLowPowerVideoSettings {
 
     public String toDocumentStartScript() {
         return "(function(){try{"
-            + "if(window.__termuxMeetLowPowerApplied){return;}"
-            + "window.__termuxMeetLowPowerApplied=true;"
+            + "var appliedName='" + APPLIED_PROPERTY_NAME + "';"
+            + "if(Object.getOwnPropertyDescriptor(window,appliedName)){return;}"
+            + "Object.defineProperty(window,appliedName,"
+            + "{value:true,enumerable:false,configurable:true,writable:true});"
             + "var ENABLED=" + (enabled ? "true" : "false") + ";"
             + "var MAX_WIDTH=" + maxWidth + ";"
             + "var MAX_HEIGHT=" + maxHeight + ";"

@@ -35,6 +35,6 @@ public class BrowserMobileViewportTest {
     @Test
     public void injectionScriptReturnsEarlyWhenAlreadyInstalledForTheDocument() {
         Assert.assertTrue(BrowserMobileViewport.INJECTION_SCRIPT
-            .contains("if(window.__termuxMobileViewportObserver){return;}"));
+            .contains("if(Object.getOwnPropertyDescriptor(window,observerName)){return;}"));
     }
 }
