@@ -210,6 +210,24 @@ public class OpenTagScannerTest {
     }
 
     @Test
+    public void rebuildsTheUrlWhenTheProgramWritingTheTagBrokeItAcrossRows() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open> https://example.com/projects/AAAAAAAAAAAAAAAAAAAAAAAAAAAA\n  BBBBBBBBBBBB/ </open>");
+        assertEquals(
+            List.of("https://example.com/projects/AAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBB/"),
+            openUrls);
+    }
+
+    @Test
+    public void rebuildsTheUrlCarryingAQueryStringBrokenAcrossRows() {
+        List<String> openUrls = OpenTagScanner.extractOpenUrls(
+            "<open> https://example.com/search?q=hello+world&am\n  p;page=7#section </open>");
+        assertEquals(
+            List.of("https://example.com/search?q=hello+world&amp;page=7#section"),
+            openUrls);
+    }
+
+    @Test
     public void taggedUrlWithAsciiQueryAndFragmentIsPreserved() {
         List<String> openUrls = OpenTagScanner.extractOpenUrls(
             "<open>https://example.com/search?q=hello+world&x=1#section</open>");
