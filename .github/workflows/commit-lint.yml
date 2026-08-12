@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   commit-lint:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
     permissions:
       issues: read
       pull-requests: write
