@@ -35,13 +35,14 @@ public class ParsedTextStoreTest {
         RecordingTextAccess access = new RecordingTextAccess("[{\"url\":");
         ParsedTextStore<String> store = new ParsedTextStore<>(access);
 
+        JSONException failure = new JSONException("unterminated object");
         try {
             store.load(text -> {
-                throw new JSONException("unterminated object");
+                throw failure;
             });
             Assert.fail("the parse failure has to reach the caller instead of being turned into an empty value");
-        } catch (JSONException expected) {
-            Assert.assertEquals("unterminated object", expected.getMessage());
+        } catch (JSONException thrown) {
+            Assert.assertSame("the caller has to receive the parse failure itself", failure, thrown);
         }
 
         Assert.assertEquals("the stored text has to survive a parse failure", "[{\"url\":", access.mText);
@@ -53,13 +54,14 @@ public class ParsedTextStoreTest {
         RecordingTextAccess access = new RecordingTextAccess("[{\"url\":");
         ParsedTextStore<String> store = new ParsedTextStore<>(access);
 
+        JSONException failure = new JSONException("unterminated object");
         try {
             store.load(text -> {
-                throw new JSONException("unterminated object");
+                throw failure;
             });
             Assert.fail("the parse failure has to reach the caller instead of being turned into an empty value");
-        } catch (JSONException expected) {
-            Assert.assertEquals("unterminated object", expected.getMessage());
+        } catch (JSONException thrown) {
+            Assert.assertSame("the caller has to receive the parse failure itself", failure, thrown);
         }
 
         Assert.assertFalse("a write has to be refused while the stored text could not be parsed", store.write("[]"));
@@ -83,13 +85,14 @@ public class ParsedTextStoreTest {
         RecordingTextAccess access = new RecordingTextAccess("[{\"url\":");
         ParsedTextStore<String> store = new ParsedTextStore<>(access);
 
+        JSONException failure = new JSONException("unterminated object");
         try {
             store.load(text -> {
-                throw new JSONException("unterminated object");
+                throw failure;
             });
             Assert.fail("the parse failure has to reach the caller instead of being turned into an empty value");
-        } catch (JSONException expected) {
-            Assert.assertEquals("unterminated object", expected.getMessage());
+        } catch (JSONException thrown) {
+            Assert.assertSame("the caller has to receive the parse failure itself", failure, thrown);
         }
 
         access.mText = "[]";
