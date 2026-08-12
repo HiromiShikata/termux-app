@@ -29,6 +29,9 @@ public final class MainThreadStallRecorder {
     private long mMaxStallMillis;
     private String mMaxStallStackTrace = "";
 
+    private long mStackSampleAttemptCount;
+    private long mEmptyStackSampleCount;
+
     public MainThreadStallRecorder(long stallThresholdMillis) {
         mStallThresholdMillis = stallThresholdMillis;
     }
@@ -51,7 +54,21 @@ public final class MainThreadStallRecorder {
                 || sampledAtMillis - mHeartbeatPostedAtMillis < mStallThresholdMillis) {
             return;
         }
-        mOutstandingStackTrace = formatStackTrace(mainThreadStackTrace);
+        mStackSampleAttemptCount++;
+        String formatted = formatStackTrace(mainThreadStackTrace);
+        if (STACK_TRACE_NOT_SAMPLED.equals(formatted)) {
+            mEmptyStackSampleCount++;
+            return;
+        }
+        mOutstandingStackTrace = formatted;
+    }
+
+    public synchronized long getStackSampleAttemptCount() {
+        return mStackSampleAttemptCount;
+    }
+
+    public synchronized long getEmptyStackSampleCount() {
+        return mEmptyStackSampleCount;
     }
 
     public synchronized void heartbeatRan(long ranAtMillis) {

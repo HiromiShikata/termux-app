@@ -21,7 +21,7 @@ public class PhantomProcessMonitorInReportTest {
             NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList()),
             new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", ""),
-            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList(), 0L, 0L),
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),

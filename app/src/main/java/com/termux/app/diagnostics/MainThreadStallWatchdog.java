@@ -10,7 +10,10 @@ public final class MainThreadStallWatchdog {
 
     private static final long STALL_THRESHOLD_MILLIS = 80L;
     private static final long HEARTBEAT_INTERVAL_MILLIS = 200L;
-    private static final long SAMPLE_INTERVAL_MILLIS = 50L;
+    private static final long SAMPLE_POLL_INTERVAL_MILLIS = 20L;
+
+    private static final MainThreadStallSampleSchedule SAMPLE_SCHEDULE =
+        new MainThreadStallSampleSchedule(STALL_THRESHOLD_MILLIS, SAMPLE_POLL_INTERVAL_MILLIS);
 
     private static final MainThreadStallRecorder RECORDER =
         new MainThreadStallRecorder(STALL_THRESHOLD_MILLIS);
@@ -55,13 +58,15 @@ public final class MainThreadStallWatchdog {
                 }
                 recorder.heartbeatRan(SystemClock.uptimeMillis());
             });
+            long heartbeatPostedAtMillis = SystemClock.uptimeMillis();
             while (!isAnswered(heartbeatAnswered)) {
-                if (!sleep(SAMPLE_INTERVAL_MILLIS)) {
-                    return;
-                }
                 long sampledAtMillis = SystemClock.uptimeMillis();
                 if (recorder.needsStackSample(sampledAtMillis)) {
                     recorder.sampleWhileOutstanding(sampledAtMillis, mainThread.getStackTrace());
+                }
+                if (!sleep(SAMPLE_SCHEDULE.sleepMillisAfterAttemptAt(
+                        sampledAtMillis - heartbeatPostedAtMillis))) {
+                    return;
                 }
             }
             if (!sleep(HEARTBEAT_INTERVAL_MILLIS)) {

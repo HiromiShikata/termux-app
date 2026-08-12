@@ -308,6 +308,9 @@ public final class DiagnosticsReportBuilder {
                                             @NonNull DiagnosticsMainThreadStalls stalls) {
         builder.append("  Stalls over ").append(stalls.getThresholdMillis()).append(" ms\n");
         builder.append("    Count: ").append(stalls.getStallCount()).append('\n');
+        builder.append("    Stack sample attempts: ").append(stalls.getStackSampleAttemptCount())
+            .append(", of which the runtime returned no frames: ")
+            .append(stalls.getEmptyStackSampleCount()).append('\n');
         if (stalls.getStallCount() == 0) {
             builder.append("    Longest: n/a\n");
             return;
