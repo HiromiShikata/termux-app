@@ -44,6 +44,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsMainThreadStalls mMainThreadStalls;
     @NonNull
     private final DiagnosticsMainLooperQueue mMainLooperQueue;
+    @NonNull
+    private final ScrollbarViewCensus mScrollbarViewCensus;
     private final long mProcessUptimeMillis;
     @NonNull
     private final DiagnosticsBackgroundCycle mBackgroundCycle;
@@ -70,6 +72,7 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsReplacedSessionShellInput replacedSessionShellInput,
                              @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
+                             @NonNull ScrollbarViewCensus scrollbarViewCensus,
                              long processUptimeMillis,
                              @NonNull DiagnosticsBackgroundCycle backgroundCycle,
                              @NonNull DiagnosticsVersionChange versionChange,
@@ -96,6 +99,7 @@ public final class DiagnosticsReport {
         mReplacedSessionShellInput = replacedSessionShellInput;
         mMainThreadStalls = mainThreadStalls;
         mMainLooperQueue = mainLooperQueue;
+        mScrollbarViewCensus = scrollbarViewCensus;
         mProcessUptimeMillis = processUptimeMillis;
         mBackgroundCycle = backgroundCycle;
         mVersionChange = versionChange;
@@ -223,6 +227,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsMainLooperQueue getMainLooperQueue() {
         return mMainLooperQueue;
+    }
+
+    @NonNull
+    public ScrollbarViewCensus getScrollbarViewCensus() {
+        return mScrollbarViewCensus;
     }
 
     public long getProcessUptimeMillis() {

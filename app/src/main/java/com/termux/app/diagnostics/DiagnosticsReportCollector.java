@@ -2,6 +2,7 @@ package com.termux.app.diagnostics;
 
 import android.os.Debug;
 import android.os.SystemClock;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -74,12 +75,20 @@ public final class DiagnosticsReportCollector {
             ReplacedSessionShellInputRecorderHolder.getInstance().snapshot(),
             DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder()),
             MainLooperQueueSnapshot.take(),
+            scrollbarViewCensus(activity),
             ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
             DiagnosticsBackgroundCycle.of(BackgroundCycleIntervalRecorderHolder.getInstance()),
             AppVersionChangeHolder.getInstance(),
             ShellExitStatusRecorderHolder.getInstance().snapshot(),
             PhantomProcessMonitorStateHolder.getInstance().snapshot(),
             mProcessPopulationReader.read());
+    }
+
+    @NonNull
+    private ScrollbarViewCensus scrollbarViewCensus(@NonNull TermuxActivity activity) {
+        View decorView = activity.getWindow() == null ? null : activity.getWindow().getDecorView();
+        if (decorView == null) return ScrollbarViewCensus.empty();
+        return ScrollbarViewCensus.take(new AndroidScrollbarViewNode(decorView));
     }
 
     @NonNull

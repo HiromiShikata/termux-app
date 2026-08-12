@@ -169,7 +169,7 @@ public class DiagnosticsReportBuilderTest {
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, events,
             memoryUsage, backgroundOutputScanCost, NO_WORK_COST, bufferReflowCost,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, mainThreadStalls,
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()),
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(),
             processUptimeMillis, backgroundCycle, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
     }
 
@@ -179,7 +179,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, NO_BACKGROUND_CYCLE,
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE,
             versionChange, DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
     }
 
@@ -210,7 +210,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
-            mainLooperQueue, 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
+            mainLooperQueue, ScrollbarViewCensus.empty(), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
     }
 
@@ -220,7 +220,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, cost, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
     }
 
@@ -842,7 +842,7 @@ public class DiagnosticsReportBuilderTest {
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
             Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
             NO_WORK_COST, NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
-            DiagnosticsMainLooperQueue.parse(looperDumpLines), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED));
+            DiagnosticsMainLooperQueue.parse(looperDumpLines), ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
                 + " truncation never happens and this test proves nothing, but it is only "
@@ -919,7 +919,7 @@ public class DiagnosticsReportBuilderTest {
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
-            looperQueue, 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
+            looperQueue, ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
     }
 
     private static DiagnosticsShellInputDelivery deliveringEverything() {
