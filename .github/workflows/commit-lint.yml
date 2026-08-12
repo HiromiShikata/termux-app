@@ -53,7 +53,7 @@ jobs:
           exclude-branches: 'release/**, dependabot/**, project-common/**'
           loose-matching: true
       - name: Check PR title follows conventional commit format
-        uses: amannn/action-semantic-pull-request@v5
+        uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
