@@ -235,6 +235,22 @@ public final class DiagnosticsReportBuilder {
         appendSessionReconnectCostLines(builder, report.getSessionReconnectCost());
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());
+        appendScrollbarViewCensusLines(builder, report.getScrollbarViewCensus());
+    }
+
+    private void appendScrollbarViewCensusLines(@NonNull StringBuilder builder,
+                                                @NonNull ScrollbarViewCensus census) {
+        builder.append("  Views that can hold a scrollbar fade callback\n");
+        builder.append("    Total: ").append(census.getScrollbarViewCount()).append('\n');
+        if (census.getBusiestClasses().isEmpty()) {
+            builder.append("    Busiest classes: none\n");
+            return;
+        }
+        builder.append("    Busiest classes:\n");
+        for (ScrollbarViewCensusEntry entry : census.getBusiestClasses()) {
+            builder.append("      ").append(entry.getViewCount()).append(" x ")
+                .append(entry.getClassName()).append('\n');
+        }
     }
 
     private void appendMainLooperQueueLines(@NonNull StringBuilder builder,

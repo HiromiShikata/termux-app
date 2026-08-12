@@ -44,6 +44,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsMainThreadStalls mMainThreadStalls;
     @NonNull
     private final DiagnosticsMainLooperQueue mMainLooperQueue;
+
+    private final ScrollbarViewCensus mScrollbarViewCensus;
     private final long mProcessUptimeMillis;
     @NonNull
     private final DiagnosticsBackgroundCycle mBackgroundCycle;
@@ -55,6 +57,10 @@ public final class DiagnosticsReport {
     private final DiagnosticsPhantomProcessMonitor mPhantomProcessMonitor;
     @NonNull
     private final DiagnosticsAppProcessPopulation mAppProcessPopulation;
+
+    public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis, int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap, @NonNull List<DiagnosticsSessionLine> sessionLines, int openTabCount, int tabHistoryEntryCount, boolean wakeLockHeld, boolean foreground, @NonNull List<DiagnosticEvent> recentEvents, @NonNull DiagnosticsMemoryUsage memoryUsage, @NonNull DiagnosticsWorkCostLine backgroundOutputScanCost, @NonNull DiagnosticsWorkCostLine foregroundOpenTagScanCost, @NonNull DiagnosticsWorkCostLine bufferReflowCost, @NonNull DiagnosticsSessionReconnectCost sessionReconnectCost, @NonNull DiagnosticsReplacedSessionShellInput replacedSessionShellInput, @NonNull DiagnosticsMainThreadStalls mainThreadStalls, @NonNull DiagnosticsMainLooperQueue mainLooperQueue, long processUptimeMillis, @NonNull DiagnosticsBackgroundCycle backgroundCycle, @NonNull DiagnosticsVersionChange versionChange, @NonNull DiagnosticsShellExits shellExits, @NonNull DiagnosticsPhantomProcessMonitor phantomProcessMonitor, @NonNull DiagnosticsAppProcessPopulation appProcessPopulation) {
+        this(versionName, versionCode, reportTimestampMillis, sessionsCountedTowardCap, sessionsDisplayedCount, maxSessionsCap, sessionLines, openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, recentEvents, memoryUsage, backgroundOutputScanCost, foregroundOpenTagScanCost, bufferReflowCost, sessionReconnectCost, replacedSessionShellInput, mainThreadStalls, mainLooperQueue, ScrollbarViewCensus.empty(), processUptimeMillis, backgroundCycle, versionChange, shellExits, phantomProcessMonitor, appProcessPopulation);
+    }
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -70,6 +76,7 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsReplacedSessionShellInput replacedSessionShellInput,
                              @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
                              @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
+                             @NonNull ScrollbarViewCensus scrollbarViewCensus,
                              long processUptimeMillis,
                              @NonNull DiagnosticsBackgroundCycle backgroundCycle,
                              @NonNull DiagnosticsVersionChange versionChange,
@@ -96,6 +103,7 @@ public final class DiagnosticsReport {
         mReplacedSessionShellInput = replacedSessionShellInput;
         mMainThreadStalls = mainThreadStalls;
         mMainLooperQueue = mainLooperQueue;
+        mScrollbarViewCensus = scrollbarViewCensus;
         mProcessUptimeMillis = processUptimeMillis;
         mBackgroundCycle = backgroundCycle;
         mVersionChange = versionChange;
@@ -223,6 +231,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsMainLooperQueue getMainLooperQueue() {
         return mMainLooperQueue;
+    }
+
+    @NonNull
+    public ScrollbarViewCensus getScrollbarViewCensus() {
+        return mScrollbarViewCensus;
     }
 
     public long getProcessUptimeMillis() {
