@@ -31,7 +31,7 @@ public class SessionReconnectCostInReportTest {
             sessionReconnectCost,
             new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", ""),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
         return new DiagnosticsReportBuilder().build(report);

@@ -1,8 +1,8 @@
 package com.termux.app.diagnostics;
 
 import android.os.Debug;
-import android.view.View;
 import android.os.SystemClock;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

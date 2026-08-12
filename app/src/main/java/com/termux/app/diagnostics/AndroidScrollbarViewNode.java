@@ -27,7 +27,7 @@ public final class AndroidScrollbarViewNode implements ScrollbarViewCensus.ViewN
     @Override
     @NonNull
     public String getClassName() {
-        return mView.getClass().getSimpleName();
+        return mView.getClass().getName();
     }
 
     @Override

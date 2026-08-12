@@ -23,7 +23,7 @@ public class ShellExitStatusInReportTest {
             new DiagnosticsSessionReconnectCost(0, 0, 0, 0, Collections.emptyList()),
             new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", ""),
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", Collections.emptyList()),
-            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), 0L,
+            DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
             shellExits, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED);
