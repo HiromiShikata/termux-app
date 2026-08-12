@@ -22,7 +22,7 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsReplacedSessionShellInput NO_REPLACED_SESSION_SHELL_INPUT =
         new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", "");
     private static final DiagnosticsMainThreadStalls NO_MAIN_THREAD_STALLS =
-        new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList());
+        new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList(), 0L, 0L);
     private static final DiagnosticsBackgroundCycle NO_BACKGROUND_CYCLE =
         new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList());
     private static final DiagnosticsSessionStatusline NO_STATUSLINE_HELD =
@@ -91,7 +91,7 @@ public class DiagnosticsReportBuilderTest {
             stackTraceLedBy(longestBlocker), Arrays.asList(
                 hotPathLedBy(longestBlocker, 2130L, 13L, 711L),
                 hotPathLedBy(secondBlocker, 402L, 7L, 96L),
-                hotPathLedBy(thirdBlocker, 188L, 4L, 55L)));
+                hotPathLedBy(thirdBlocker, 188L, 4L, 55L)), 0L, 0L);
 
         String text = new DiagnosticsReportBuilder().build(reportWith(
             Collections.<DiagnosticsSessionLine>emptyList(), 0, 0, 32, 0, 0, false, true,
@@ -115,7 +115,7 @@ public class DiagnosticsReportBuilderTest {
         }
         DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(80L, 3L, 240L,
             platformOnlyTrace.toString(), Arrays.asList(
-                new MainThreadStallHotPath(platformOnlyTrace.toString(), 3L, 640L, 240L)));
+                new MainThreadStallHotPath(platformOnlyTrace.toString(), 3L, 640L, 240L)), 0L, 0L);
 
         String text = new DiagnosticsReportBuilder().build(reportWith(
             Collections.<DiagnosticsSessionLine>emptyList(), 0, 0, 32, 0, 0, false, true,
@@ -625,7 +625,7 @@ public class DiagnosticsReportBuilderTest {
                     new MainThreadStallHotPath(
                         "com.termux.app.Frequent.everyFrame(Frequent.java:7)", 30L, 3000L, 140L),
                     new MainThreadStallHotPath(
-                        "com.termux.app.Rare.once(Rare.java:1)", 1L, 900L, 900L))),
+                        "com.termux.app.Rare.once(Rare.java:1)", 1L, 900L, 900L)), 0L, 0L),
             0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
@@ -651,7 +651,7 @@ public class DiagnosticsReportBuilderTest {
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
             new DiagnosticsMainThreadStalls(250L, 12L, 4300L,
                 "com.termux.app.SlowThing.doWork(SlowThing.java:42)\nandroid.os.Looper.loop(Looper.java:223)",
-                Collections.emptyList()),
+                Collections.emptyList(), 0L, 0L),
             0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
@@ -678,7 +678,7 @@ public class DiagnosticsReportBuilderTest {
         DiagnosticsReport report = reportWith(Collections.emptyList(), 0, 0, 32,
             0, 0, false, true, Collections.emptyList(),
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
-            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList()),
+            new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList(), 0L, 0L),
             0L);
 
         String text = new DiagnosticsReportBuilder().build(report);
@@ -778,7 +778,7 @@ public class DiagnosticsReportBuilderTest {
                 37L, 98765L, 4321L));
         }
         DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(250L, 987L, 4321L,
-            stackTraceOf("com.termux.app.terminal.LongestStall.method", 16), hotPaths);
+            stackTraceOf("com.termux.app.terminal.LongestStall.method", 16), hotPaths, 0L, 0L);
 
         List<String> looperDumpLines = new ArrayList<>();
         for (int messageIndex = 0; messageIndex < 200; messageIndex++) {
@@ -818,7 +818,7 @@ public class DiagnosticsReportBuilderTest {
                 37L, 98765L, 4321L));
         }
         DiagnosticsMainThreadStalls stalls = new DiagnosticsMainThreadStalls(250L, 987L, 4321L,
-            stackTraceOf("com.termux.app.terminal.LongestStall.method", 16), hotPaths);
+            stackTraceOf("com.termux.app.terminal.LongestStall.method", 16), hotPaths, 0L, 0L);
 
         List<String> looperDumpLines = new ArrayList<>();
         for (int messageIndex = 0; messageIndex < 200; messageIndex++) {
