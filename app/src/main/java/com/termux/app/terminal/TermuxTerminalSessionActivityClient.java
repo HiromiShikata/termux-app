@@ -37,6 +37,7 @@ import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.store.ParsedTextStore;
 import com.termux.app.diagnostics.BackgroundOutputScanCostCounterHolder;
 import com.termux.app.diagnostics.ForegroundOpenTagScanCostCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
@@ -112,6 +113,20 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private final TermuxActivity mActivity;
 
     private final PersistedSessionSerializer mPersistedSessionSerializer = new PersistedSessionSerializer();
+
+    private final ParsedTextStore<List<PersistedSessionRestoreData>> mPersistedSessionStore =
+        new ParsedTextStore<>(new ParsedTextStore.TextAccess() {
+
+            @Override
+            public String read() {
+                return mActivity.getPreferences().getPersistedSessions();
+            }
+
+            @Override
+            public void write(@NonNull String text) {
+                mActivity.getPreferences().setPersistedSessions(text);
+            }
+        });
 
     private final RestoredSessionCommandPlanner mRestoredSessionCommandPlanner =
         new RestoredSessionCommandPlanner();
@@ -2962,7 +2977,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                     persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
             }
             String serialized = mPersistedSessionSerializer.serialize(restoreData);
-            mActivity.getPreferences().setPersistedSessions(serialized);
+            if (!mPersistedSessionStore.write(serialized)) {
+                Logger.logError(LOG_TAG, "Refused to overwrite persisted sessions that could not be read");
+            }
         } catch (JSONException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize persisted sessions", e);
         }
@@ -2970,10 +2987,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
     private List<PersistedSessionRestoreData> loadPersistedSessions() {
         try {
-            return mPersistedSessionSerializer.deserialize(mActivity.getPreferences().getPersistedSessions());
+            return mPersistedSessionStore.load(mPersistedSessionSerializer::deserialize);
         } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to deserialize persisted sessions, clearing the store", e);
-            mActivity.getPreferences().setPersistedSessions(null);
+            Logger.logStackTraceWithMessage(LOG_TAG,
+                "Failed to deserialize persisted sessions, keeping the stored text so the sessions are not lost", e);
             return new ArrayList<>();
         }
     }

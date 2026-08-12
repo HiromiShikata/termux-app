@@ -127,6 +127,7 @@
     <string name="msg_browser_bookmarked">Bookmarked</string>
     <string name="title_browser_bookmarks">Bookmarks</string>
     <string name="msg_browser_no_bookmarks">No bookmarks yet.</string>
+    <string name="msg_browser_bookmarks_unreadable">The stored bookmarks could not be read, so they were left untouched instead of being overwritten.</string>
     <string name="title_browser_bookmark_delete">Delete bookmark?</string>
     <string name="action_browser_bookmark_delete">Delete</string>
     <string name="action_browser_open_all_tasks">All</string>

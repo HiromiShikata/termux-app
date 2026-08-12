@@ -55,6 +55,7 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.link.NativeAppLink;
+import com.termux.app.store.ParsedTextStore;
 import com.termux.app.terminal.SessionInfoHorizontalBounds;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
@@ -126,6 +127,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     private final BrowserOpenSessionNamesSerializer mOpenSessionNamesSerializer = new BrowserOpenSessionNamesSerializer();
 
     private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
+
+    private final ParsedTextStore<List<BrowserBookmark>> mBookmarkStore =
+        new ParsedTextStore<>(new ParsedTextStore.TextAccess() {
+
+            @Override
+            public String read() {
+                return mActivity.getPreferences().getBrowserBookmarks();
+            }
+
+            @Override
+            public void write(@NonNull String text) {
+                mActivity.getPreferences().setBrowserBookmarks(text);
+            }
+        });
 
     private final BrowserUrlActions mUrlActions;
 
@@ -627,18 +642,20 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     @NonNull
     private BrowserBookmarkCollection loadBookmarks() {
         try {
-            return new BrowserBookmarkCollection(
-                mBookmarkSerializer.deserialize(mActivity.getPreferences().getBrowserBookmarks()));
+            return new BrowserBookmarkCollection(mBookmarkStore.load(mBookmarkSerializer::deserialize));
         } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to deserialize browser bookmarks, clearing the store", e);
-            mActivity.getPreferences().setBrowserBookmarks(null);
+            Logger.logStackTraceWithMessage(LOG_TAG,
+                "Failed to deserialize browser bookmarks, keeping the stored text so the bookmarks are not lost", e);
             return new BrowserBookmarkCollection(new ArrayList<>());
         }
     }
 
     private void saveBookmarks(@NonNull BrowserBookmarkCollection bookmarks) {
         try {
-            mActivity.getPreferences().setBrowserBookmarks(mBookmarkSerializer.serialize(bookmarks.getBookmarks()));
+            if (!mBookmarkStore.write(mBookmarkSerializer.serialize(bookmarks.getBookmarks()))) {
+                Logger.logError(LOG_TAG, "Refused to overwrite browser bookmarks that could not be read");
+                mActivity.showToast(mActivity.getString(R.string.msg_browser_bookmarks_unreadable), true);
+            }
         } catch (JSONException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize browser bookmarks", e);
         }
