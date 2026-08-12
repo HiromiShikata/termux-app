@@ -14,7 +14,7 @@ public final class ScrollbarViewCensus {
 
     public interface ViewNode {
 
-        boolean hasScrollbars();
+        boolean canHoldScrollbarFadeCallback();
 
         @NonNull
         String getClassName();
@@ -56,7 +56,7 @@ public final class ScrollbarViewCensus {
 
     private static int count(@NonNull ViewNode node, @NonNull Map<String, Integer> countsByClassName) {
         int scrollbarViewCount = 0;
-        if (node.hasScrollbars()) {
+        if (node.canHoldScrollbarFadeCallback()) {
             scrollbarViewCount++;
             String className = node.getClassName();
             Integer previousCount = countsByClassName.get(className);

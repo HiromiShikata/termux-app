@@ -19,7 +19,8 @@ public final class AndroidScrollbarViewNode implements ScrollbarViewCensus.ViewN
     }
 
     @Override
-    public boolean hasScrollbars() {
+    public boolean canHoldScrollbarFadeCallback() {
+        if (!mView.isScrollbarFadingEnabled()) return false;
         return mView.isVerticalScrollBarEnabled() || mView.isHorizontalScrollBarEnabled();
     }
 

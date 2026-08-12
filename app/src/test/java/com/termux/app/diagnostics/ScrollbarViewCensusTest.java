@@ -12,18 +12,18 @@ public class ScrollbarViewCensusTest {
     private static final class FakeViewNode implements ScrollbarViewCensus.ViewNode {
 
         private final String mClassName;
-        private final boolean mHasScrollbars;
+        private final boolean mCanHoldScrollbarFadeCallback;
         private final List<ScrollbarViewCensus.ViewNode> mChildren;
 
-        FakeViewNode(String className, boolean hasScrollbars, ScrollbarViewCensus.ViewNode... children) {
+        FakeViewNode(String className, boolean canHoldScrollbarFadeCallback, ScrollbarViewCensus.ViewNode... children) {
             mClassName = className;
-            mHasScrollbars = hasScrollbars;
+            mCanHoldScrollbarFadeCallback = canHoldScrollbarFadeCallback;
             mChildren = new ArrayList<>(Arrays.asList(children));
         }
 
         @Override
-        public boolean hasScrollbars() {
-            return mHasScrollbars;
+        public boolean canHoldScrollbarFadeCallback() {
+            return mCanHoldScrollbarFadeCallback;
         }
 
         @Override
