@@ -34,8 +34,15 @@ public class OpenTagAutoOpenEligibilityTest {
     }
 
     @Test
-    public void withoutAnOutputTimeThereIsNothingToCallUnseen() {
+    public void aSessionAlreadySeenWithNoOutputTimeHasNothingToCallUnseen() {
         Assert.assertFalse(OpenTagAutoOpenEligibility.shouldAutoOpen(SEEN_AT, null));
-        Assert.assertFalse(OpenTagAutoOpenEligibility.shouldAutoOpen(null, null));
+    }
+
+    @Test
+    public void aSessionCreatedJustNowHasNeitherTimeAndStillOpensItsFirstTag() {
+        Assert.assertTrue("a session the app has recorded nothing about has never been looked at, so"
+                + " the first tag it prints has never been opened and must not be swallowed as a"
+                + " backlog the owner has already read",
+            OpenTagAutoOpenEligibility.shouldAutoOpen(null, null));
     }
 }

@@ -9,11 +9,11 @@ public final class OpenTagAutoOpenEligibility {
 
     public static boolean shouldAutoOpen(@Nullable Long lastSeenTimeMillis,
                                          @Nullable Long outputTimeMillis) {
-        if (outputTimeMillis == null) {
-            return false;
-        }
         if (lastSeenTimeMillis == null) {
             return true;
+        }
+        if (outputTimeMillis == null) {
+            return false;
         }
         return lastSeenTimeMillis < outputTimeMillis;
     }
