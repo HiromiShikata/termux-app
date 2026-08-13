@@ -2509,7 +2509,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
                 mExitedSessionImmediateReconnectBackoff.isReadyToReconnectImmediately(sessionName, nowMillis);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
                 sessionName, running, current, hung, lastOutTimeMillis, reconnecting,
-                unableToReceiveInputLongEnough, readyToReconnectAfterExit));
+                readyToReconnectAfterExit, unableToReceiveInputLongEnough));
         }
 
         List<PlannedSessionReconnect> plannedReconnects =

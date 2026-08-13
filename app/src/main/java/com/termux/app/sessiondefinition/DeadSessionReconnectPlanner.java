@@ -41,14 +41,14 @@ public final class DeadSessionReconnectPlanner {
         public CandidateSession(String name, boolean running, boolean current, boolean hung,
                                 @Nullable Long lastOutTimeMillis, boolean reconnecting,
                                 boolean unableToReceiveInputLongEnough) {
-            this(name, running, current, hung, lastOutTimeMillis, reconnecting,
-                unableToReceiveInputLongEnough, true);
+            this(name, running, current, hung, lastOutTimeMillis, reconnecting, true,
+                unableToReceiveInputLongEnough);
         }
 
         public CandidateSession(String name, boolean running, boolean current, boolean hung,
                                 @Nullable Long lastOutTimeMillis, boolean reconnecting,
-                                boolean unableToReceiveInputLongEnough,
-                                boolean readyToReconnectAfterExit) {
+                                boolean readyToReconnectAfterExit,
+                                boolean unableToReceiveInputLongEnough) {
             this.name = name;
             this.running = running;
             this.current = current;

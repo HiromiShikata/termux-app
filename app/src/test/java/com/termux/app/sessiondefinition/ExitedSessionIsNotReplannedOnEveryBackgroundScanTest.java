@@ -20,7 +20,7 @@ public class ExitedSessionIsNotReplannedOnEveryBackgroundScanTest {
     private static DeadSessionReconnectPlanner.CandidateSession deadSession(
             String sessionName, boolean readyToReconnectAfterExit) {
         return new DeadSessionReconnectPlanner.CandidateSession(sessionName, false, false, false,
-            null, false, false, readyToReconnectAfterExit);
+            null, false, readyToReconnectAfterExit, false);
     }
 
     @Test
@@ -50,7 +50,7 @@ public class ExitedSessionIsNotReplannedOnEveryBackgroundScanTest {
     public void aDeadSessionInsideItsWaitIsNotPlannedThroughTheUndeliverableInputPathEither() {
         DeadSessionReconnectPlanner.CandidateSession deadSessionWhoseInputAlsoGoesNowhere =
             new DeadSessionReconnectPlanner.CandidateSession(SESSION_THAT_KEEPS_DYING, false, false,
-                false, null, false, true, false);
+                false, null, false, false, true);
 
         List<String> plannedSessionNames = planner.planSessionNamesToReconnect(
             Collections.singletonList(deadSessionWhoseInputAlsoGoesNowhere), AUTOSSH_COMMAND_TEMPLATE);
