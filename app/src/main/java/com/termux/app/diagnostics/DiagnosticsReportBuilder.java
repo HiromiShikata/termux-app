@@ -688,11 +688,21 @@ public final class DiagnosticsReportBuilder {
     private void appendShellInputDelivery(@NonNull DiagnosticsReportText builder,
                                           @NonNull DiagnosticsShellInputDelivery delivery) {
         builder.append("      shell input: accepted ").append(delivery.getBytesAcceptedForDelivery())
-            .append("B, written to the shell ").append(delivery.getBytesWrittenToTheShell())
+            .append('B');
+        appendTimeOfLastBytes(builder, delivery.getLastBytesAcceptedAtMillis());
+        builder.append(", written to the shell ").append(delivery.getBytesWrittenToTheShell())
             .append("B, still undelivered ").append(delivery.getBytesAcceptedButNotWrittenYet())
             .append("B, discarded before the queue ")
-            .append(delivery.getBytesDiscardedBeforeDelivery()).append("B\n");
+            .append(delivery.getBytesDiscardedBeforeDelivery()).append('B');
+        appendTimeOfLastBytes(builder, delivery.getLastBytesDiscardedAtMillis());
+        builder.append('\n');
         builder.append("      shell input writer: ").append(describeWriterState(delivery)).append('\n');
+    }
+
+    private void appendTimeOfLastBytes(@NonNull DiagnosticsReportText builder,
+                                       @Nullable Long timeMillis) {
+        if (timeMillis == null) return;
+        builder.append(" at ").append(formatTimestamp(timeMillis));
     }
 
     @NonNull

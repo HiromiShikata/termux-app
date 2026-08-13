@@ -93,7 +93,7 @@ public class ReportCharacterCeilingAllocatedByPriorityTest {
         for (int sessionIndex = 0; sessionIndex < sessionCount; sessionIndex++) {
             sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex, true,
                 4000, 108, DiagnosticsSessionListDisplay.DISPLAYED,
-                new DiagnosticsShellInputDelivery(acceptedButNotWritten, 0L, 0L, true, null),
+                new DiagnosticsShellInputDelivery(acceptedButNotWritten, 0L, 0L, true, null, null, null),
                 new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.NONE),
                 DiagnosticsScrollGestureRouting.ofEmulatorState(false, false),
                 DiagnosticsSessionListAbsence.presentInTheList()));

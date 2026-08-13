@@ -714,7 +714,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
             DiagnosticsSessionListDisplay.DISPLAYED,
-            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
+            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null, null, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -739,7 +739,7 @@ public class DiagnosticsReportBuilderTest {
         lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(4096L, 0L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe", null, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -854,7 +854,7 @@ public class DiagnosticsReportBuilderTest {
         sessionLines.add(new DiagnosticsSessionLine("host-stuck", true, 3, true, 4000, 108,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(4096L, 1000L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe", null, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
 
         String text = new DiagnosticsReportBuilder().build(new DiagnosticsReport("0.119.0", 119,
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
@@ -907,7 +907,7 @@ public class DiagnosticsReportBuilderTest {
         sessionLines.add(new DiagnosticsSessionLine("host-drained", true, 3, true, 100, 80,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(2048L, 2048L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe", null, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(sessionLines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -947,6 +947,6 @@ public class DiagnosticsReportBuilderTest {
     }
 
     private static DiagnosticsShellInputDelivery deliveringEverything() {
-        return new DiagnosticsShellInputDelivery(0L, 0L, 0L, true, null);
+        return new DiagnosticsShellInputDelivery(0L, 0L, 0L, true, null, null, null);
     }
 }

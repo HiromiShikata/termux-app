@@ -12,14 +12,24 @@ public final class DiagnosticsShellInputDelivery {
     @Nullable
     private final String mWriterStoppedReason;
 
+    @Nullable
+    private final Long mLastBytesAcceptedAtMillis;
+
+    @Nullable
+    private final Long mLastBytesDiscardedAtMillis;
+
     public DiagnosticsShellInputDelivery(long bytesAcceptedForDelivery, long bytesWrittenToTheShell,
                                          long bytesDiscardedBeforeDelivery, boolean writerRunning,
-                                         @Nullable String writerStoppedReason) {
+                                         @Nullable String writerStoppedReason,
+                                         @Nullable Long lastBytesAcceptedAtMillis,
+                                         @Nullable Long lastBytesDiscardedAtMillis) {
         mBytesAcceptedForDelivery = bytesAcceptedForDelivery;
         mBytesWrittenToTheShell = bytesWrittenToTheShell;
         mBytesDiscardedBeforeDelivery = bytesDiscardedBeforeDelivery;
         mWriterRunning = writerRunning;
         mWriterStoppedReason = writerStoppedReason;
+        mLastBytesAcceptedAtMillis = lastBytesAcceptedAtMillis;
+        mLastBytesDiscardedAtMillis = lastBytesDiscardedAtMillis;
     }
 
     public long getBytesAcceptedForDelivery() {
@@ -36,6 +46,16 @@ public final class DiagnosticsShellInputDelivery {
 
     public long getBytesAcceptedButNotWrittenYet() {
         return Math.max(0L, mBytesAcceptedForDelivery - mBytesWrittenToTheShell);
+    }
+
+    @Nullable
+    public Long getLastBytesAcceptedAtMillis() {
+        return mLastBytesAcceptedAtMillis;
+    }
+
+    @Nullable
+    public Long getLastBytesDiscardedAtMillis() {
+        return mLastBytesDiscardedAtMillis;
     }
 
     public boolean isWriterRunning() {

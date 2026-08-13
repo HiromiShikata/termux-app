@@ -18,6 +18,12 @@ public final class ShellInputDeliveryRecord {
     @Nullable
     private volatile String mWriterStoppedReason;
 
+    @Nullable
+    private volatile Long mLastBytesAcceptedAtMillis;
+
+    @Nullable
+    private volatile Long mLastBytesDiscardedAtMillis;
+
     public void recordWriterStarted() {
         mWriterStoppedReason = null;
         mWriterRunning = true;
@@ -28,16 +34,18 @@ public final class ShellInputDeliveryRecord {
         mWriterRunning = false;
     }
 
-    public void recordBytesAcceptedForDelivery(int count) {
+    public void recordBytesAcceptedForDelivery(int count, long acceptedAtMillis) {
         mBytesAcceptedForDelivery.addAndGet(count);
+        mLastBytesAcceptedAtMillis = acceptedAtMillis;
     }
 
     public void recordBytesWrittenToTheShell(int count) {
         mBytesWrittenToTheShell.addAndGet(count);
     }
 
-    public void recordBytesDiscardedBeforeDelivery(int count) {
+    public void recordBytesDiscardedBeforeDelivery(int count, long discardedAtMillis) {
         mBytesDiscardedBeforeDelivery.addAndGet(count);
+        mLastBytesDiscardedAtMillis = discardedAtMillis;
     }
 
     public long getBytesAcceptedForDelivery() {
@@ -54,6 +62,16 @@ public final class ShellInputDeliveryRecord {
 
     public long getBytesAcceptedButNotWrittenYet() {
         return Math.max(0L, getBytesAcceptedForDelivery() - getBytesWrittenToTheShell());
+    }
+
+    @Nullable
+    public Long getLastBytesAcceptedAtMillis() {
+        return mLastBytesAcceptedAtMillis;
+    }
+
+    @Nullable
+    public Long getLastBytesDiscardedAtMillis() {
+        return mLastBytesDiscardedAtMillis;
     }
 
     public boolean isWriterRunning() {
