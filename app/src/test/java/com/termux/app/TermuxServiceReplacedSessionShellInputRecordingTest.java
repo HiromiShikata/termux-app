@@ -15,6 +15,8 @@ import java.nio.file.Paths;
 
 public class TermuxServiceReplacedSessionShellInputRecordingTest {
 
+    private static final long WRITE_MILLIS = 1783216800000L;
+
     private static final String SERVICE_RELATIVE_PATH =
         "src/main/java/com/termux/app/TermuxService.java";
 
@@ -31,7 +33,7 @@ public class TermuxServiceReplacedSessionShellInputRecordingTest {
     public void whatTheReplacedSessionNeverWroteIsCarriedOverBeforeTheSessionIsDiscarded() {
         ShellInputDeliveryRecord deliveryRecord = new ShellInputDeliveryRecord();
         deliveryRecord.recordWriterStarted();
-        deliveryRecord.recordBytesAcceptedForDelivery(4096);
+        deliveryRecord.recordBytesAcceptedForDelivery(4096, WRITE_MILLIS);
         deliveryRecord.recordBytesWrittenToTheShell(1000);
         deliveryRecord.recordWriterStopped("broken pipe");
         ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
@@ -51,7 +53,7 @@ public class TermuxServiceReplacedSessionShellInputRecordingTest {
     public void aReplacedSessionThatWroteEverythingItAcceptedIsNotCountedAsAnEpisode() {
         ShellInputDeliveryRecord deliveryRecord = new ShellInputDeliveryRecord();
         deliveryRecord.recordWriterStarted();
-        deliveryRecord.recordBytesAcceptedForDelivery(512);
+        deliveryRecord.recordBytesAcceptedForDelivery(512, WRITE_MILLIS);
         deliveryRecord.recordBytesWrittenToTheShell(512);
         ReplacedSessionShellInputRecorder recorder = new ReplacedSessionShellInputRecorder();
 

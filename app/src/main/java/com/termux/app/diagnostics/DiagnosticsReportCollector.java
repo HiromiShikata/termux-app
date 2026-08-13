@@ -195,7 +195,9 @@ public final class DiagnosticsReportCollector {
                 deliveryRecord.getBytesWrittenToTheShell(),
                 deliveryRecord.getBytesDiscardedBeforeDelivery(),
                 deliveryRecord.isWriterRunning(),
-                deliveryRecord.getWriterStoppedReason());
+                deliveryRecord.getWriterStoppedReason(),
+                deliveryRecord.getLastBytesAcceptedAtMillis(),
+                deliveryRecord.getLastBytesDiscardedAtMillis());
 
             DiagnosticsSessionStatusline statusline = activityStore == null
                 ? new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.NONE)

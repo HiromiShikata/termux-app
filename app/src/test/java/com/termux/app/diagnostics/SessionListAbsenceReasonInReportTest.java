@@ -18,7 +18,7 @@ public class SessionListAbsenceReasonInReportTest {
                                            DiagnosticsSessionListAbsence listAbsence) {
         DiagnosticsSessionLine sessionLine = new DiagnosticsSessionLine("host-a", true, 12, true, 0, 98,
             listDisplay,
-            new DiagnosticsShellInputDelivery(88, 88, 0, true, ""),
+            new DiagnosticsShellInputDelivery(88, 88, 0, true, "", null, null),
             new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY),
             DiagnosticsScrollGestureRouting.ofEmulatorState(false, false), listAbsence);
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,

@@ -19,7 +19,7 @@ public class ScrollGestureRoutingInReportTest {
     private static String renderedReportOf(DiagnosticsScrollGestureRouting scrollGestureRouting) {
         DiagnosticsSessionLine sessionLine = new DiagnosticsSessionLine("host-a", true, 12, true, 0, 98,
             DiagnosticsSessionListDisplay.DISPLAYED,
-            new DiagnosticsShellInputDelivery(88, 88, 0, true, ""),
+            new DiagnosticsShellInputDelivery(88, 88, 0, true, "", null, null),
             new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY),
             scrollGestureRouting, PRESENT_IN_THE_LIST);
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,

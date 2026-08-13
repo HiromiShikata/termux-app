@@ -228,18 +228,19 @@ public final class TerminalSession extends TerminalOutput {
     /** Write data to the shell process. */
     @Override
     public void write(byte[] data, int offset, int count) {
+        long writtenAtMillis = System.currentTimeMillis();
         if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()) {
             if (holdsInputUntilTheShellStarts() && mShellStartupInputBuffer.hold(data, offset, count)) {
                 return;
             }
-            mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count);
+            mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count, writtenAtMillis);
             return;
         }
         mInputEchoFilter.recordUserInput(data, offset, count);
         if (mTerminalToProcessIOQueue.write(data, offset, count)) {
-            mShellInputDeliveryRecord.recordBytesAcceptedForDelivery(count);
+            mShellInputDeliveryRecord.recordBytesAcceptedForDelivery(count, writtenAtMillis);
         } else {
-            mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count);
+            mShellInputDeliveryRecord.recordBytesDiscardedBeforeDelivery(count, writtenAtMillis);
         }
     }
 
