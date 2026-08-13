@@ -6,7 +6,6 @@ import androidx.annotation.NonNull;
 
 import com.termux.app.TermuxService;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
-import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
@@ -15,7 +14,7 @@ import com.termux.terminal.TerminalSessionClient;
 import java.util.TimeZone;
 
 /** The {@link TerminalSessionClient} implementation that may require a {@link Service} for its interface methods. */
-public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionClientBase {
+public class TermuxTerminalSessionServiceClient extends ShellExitCountingTerminalSessionClient {
 
     private static final String LOG_TAG = "TermuxTerminalSessionServiceClient";
 
