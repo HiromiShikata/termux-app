@@ -55,6 +55,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final String SCREENSHOT_DIRECTORY_NAME = "termux-instrumentation-screenshots";
     private static final String SCREENSHOT_FILE_NAME = "owner-call-dialog-device.png";
     private static final int TERMINAL_BACKGROUND_COLOR = 0xFF000000;
+    private static final long DIALOG_LAYOUT_TIMEOUT_MILLIS = 10_000L;
+    private static final long POLL_INTERVAL_MILLIS = 50L;
     private static final String INDEX_DOCUMENT =
         "{\"version\":5,\"projects\":[{\"name\":\"demo\",\"path\":\"/demo.v5.json\"}]}";
     private static final String PROJECT_DOCUMENT = "{"
@@ -118,8 +120,10 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             assertEquals(activity.getResources().getDisplayMetrics().heightPixels
                     / QUARTER_OF_THE_SCREEN,
                 dialog.getLayoutParams().height);
-            renderedScreenshot[0] = renderScreenshot(activity);
         });
+
+        awaitDialogOccupiesScreenArea(scenario);
+        scenario.onActivity(activity -> renderedScreenshot[0] = renderScreenshot(activity));
 
         assertNotNull("a device screenshot of the dialog over the terminal must be written where "
             + "the workflow pulls it from", renderedScreenshot[0]);
@@ -151,6 +155,29 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         }
         assertTrue("the session definition document served over http must reach the app, but the "
             + "local document server reported " + documentServer.describeFailure(), loaded[0]);
+    }
+
+    private void awaitDialogOccupiesScreenArea(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        long deadline = System.currentTimeMillis() + DIALOG_LAYOUT_TIMEOUT_MILLIS;
+        int[] laidOutSize = new int[2];
+        while (System.currentTimeMillis() < deadline
+            && (laidOutSize[0] == 0 || laidOutSize[1] == 0)) {
+            scenario.onActivity(activity -> {
+                View dialog = activity.findViewById(R.id.owner_call_dialog);
+                laidOutSize[0] = dialog.getWidth();
+                laidOutSize[1] = dialog.getHeight();
+            });
+            if (laidOutSize[0] == 0 || laidOutSize[1] == 0) {
+                Thread.sleep(POLL_INTERVAL_MILLIS);
+            }
+        }
+        assertEquals("the dialog must be laid out at a quarter of the screen height before it is "
+                + "captured, so the captured image really shows it",
+            InstrumentationRegistry.getInstrumentation().getTargetContext().getResources()
+                .getDisplayMetrics().heightPixels / QUARTER_OF_THE_SCREEN, laidOutSize[1]);
+        assertTrue("the dialog must span the terminal area width before it is captured",
+            laidOutSize[0] > 0);
     }
 
     private static void displaySession(TermuxActivity activity, String sessionName) {
