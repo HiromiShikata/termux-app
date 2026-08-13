@@ -44,7 +44,7 @@ public class MainThreadStallRecorderTest {
     }
 
     @Test
-    public void oneStackSampleIsEnoughForASingleStall() {
+    public void aStallIsSampledAgainOnlyAfterItHasBlockedForAnotherThreshold() {
         MainThreadStallRecorder recorder = new MainThreadStallRecorder(STALL_THRESHOLD_MILLIS);
 
         recorder.heartbeatPosted(1000L);
@@ -56,8 +56,12 @@ public class MainThreadStallRecorderTest {
 
         recorder.sampleWhileOutstanding(1300L, stackNaming("reflowBuffer"));
 
-        Assert.assertFalse("re-sampling one stall only adds load to an already blocked main thread",
-            recorder.needsStackSample(1600L));
+        Assert.assertFalse("sampling again within one threshold only adds load to an already blocked main"
+                + " thread",
+            recorder.needsStackSample(1500L));
+        Assert.assertTrue("a stall that goes on blocking for another threshold must be sampled again,"
+                + " otherwise everything the main thread does after the first sample is credited to it",
+            recorder.needsStackSample(1550L));
     }
 
     @Test
