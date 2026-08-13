@@ -35,7 +35,7 @@ public class TermuxSessionRestoreBatchesSharedWorkTest {
     @Test
     public void creatingASessionPublishesItsSharedStateThroughTheBatch() throws IOException {
         String creation = blockStartingAt(readModuleSource(SERVICE_PATH),
-            "public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {",
+            "public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand,",
             "\n    }");
 
         Assert.assertTrue("the work every created session shares must go through the batch, so that"

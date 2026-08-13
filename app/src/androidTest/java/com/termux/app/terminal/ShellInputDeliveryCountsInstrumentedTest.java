@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.diagnostics.SessionCreationPath;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.ShellInputDeliveryRecord;
@@ -139,7 +140,8 @@ public class ShellInputDeliveryCountsInstrumentedTest {
         TerminalSession createdSession = readOnMainThread(activity -> {
             TermuxService service = activity.getTermuxService();
             TermuxSession termuxSession = service.createTermuxSession(SYSTEM_SHELL_PATH, new String[0], null,
-                ROOT_WORKING_DIRECTORY, true, SESSION_UNDER_TEST_NAME);
+                ROOT_WORKING_DIRECTORY, true, SESSION_UNDER_TEST_NAME,
+                SessionCreationPath.NEW_SESSION_THE_OWNER_ASKED_FOR);
             return termuxSession == null ? null : termuxSession.getTerminalSession();
         });
         assertNotNull("the service must create the session under test", createdSession);

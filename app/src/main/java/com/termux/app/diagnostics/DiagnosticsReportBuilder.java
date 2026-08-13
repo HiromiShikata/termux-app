@@ -62,6 +62,9 @@ public final class DiagnosticsReportBuilder {
         appendShellExitSection(builder, report);
 
         builder.append('\n');
+        appendSessionCreationPathSection(builder, report);
+
+        builder.append('\n');
         appendPhantomProcessMonitorSection(builder, report);
 
         builder.append('\n');
@@ -174,6 +177,21 @@ public final class DiagnosticsReportBuilder {
                 + countByExitStatus.getCount());
         }
         appendLinesWithinBudget(builder, exitStatusLines, SHELL_EXIT_STATUS_BUDGET_CHARACTERS);
+    }
+
+    private void appendSessionCreationPathSection(@NonNull StringBuilder builder,
+                                                  @NonNull DiagnosticsReport report) {
+        DiagnosticsSessionCreationPaths creationPaths = report.getSessionCreationPaths();
+        builder.append("Sessions created since the app started\n");
+        if (creationPaths.getCountsByPath().isEmpty()) {
+            builder.append("  None: no session has been created since the app started\n");
+            return;
+        }
+        builder.append("  Total: ").append(creationPaths.getTotalCreationCount()).append('\n');
+        for (DiagnosticsSessionCreationPathCount countByPath : creationPaths.getCountsByPath()) {
+            builder.append("  ").append(countByPath.getPath().getReportLabel()).append(": ")
+                .append(countByPath.getCreationCount()).append('\n');
+        }
     }
 
     private void appendPhantomProcessMonitorSection(@NonNull StringBuilder builder,

@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.diagnostics.SessionCreationPath;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -152,7 +153,8 @@ public class OpeningASessionThatIsNotLiveDisplaysItInstrumentedTest {
             TermuxService service = activity.getTermuxService();
             if (service == null) return null;
             TermuxSession termuxSession = service.createTermuxSession(SYSTEM_SHELL_PATH, new String[0], null,
-                ROOT_WORKING_DIRECTORY, true, sessionName);
+                ROOT_WORKING_DIRECTORY, true, sessionName,
+                SessionCreationPath.NEW_SESSION_THE_OWNER_ASKED_FOR);
             return termuxSession == null ? null : termuxSession.getTerminalSession();
         });
         assertNotNull("the service must create the session named " + sessionName, createdSession);

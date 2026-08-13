@@ -18,7 +18,9 @@ public enum SessionCreationPath {
 
     RESET_OF_A_HOST_SESSION("Reset of a host session"),
 
-    KILL_OF_A_HOST_SESSION("Kill of a host session");
+    KILL_OF_A_HOST_SESSION("Kill of a host session"),
+
+    SESSION_STARTED_BY_AN_INTENT("Session started by an intent");
 
     @NonNull
     private final String mReportLabel;
