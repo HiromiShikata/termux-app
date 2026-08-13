@@ -15,6 +15,7 @@ public final class ExitedSessionImmediateReconnectBackoff {
     private static final class DeathAttempts {
         private int consecutiveReconnects;
         private long lastReconnectTimeMillis;
+        private boolean seenRunningLongEnoughAfterTheReconnect;
     }
 
     private final Map<String, DeathAttempts> mAttemptsBySessionName = new HashMap<>();
@@ -29,7 +30,7 @@ public final class ExitedSessionImmediateReconnectBackoff {
 
     public synchronized void recordImmediateReconnect(@NonNull String sessionName, long nowMillis) {
         DeathAttempts attempts = mAttemptsBySessionName.get(sessionName);
-        if (attempts == null || stayedConnectedLongEnoughToBeAFreshFailure(attempts, nowMillis)) {
+        if (attempts == null || attempts.seenRunningLongEnoughAfterTheReconnect) {
             attempts = new DeathAttempts();
             mAttemptsBySessionName.put(sessionName, attempts);
         }
@@ -37,13 +38,18 @@ public final class ExitedSessionImmediateReconnectBackoff {
         attempts.lastReconnectTimeMillis = nowMillis;
     }
 
-    public synchronized void forgetSessionsOtherThan(@NonNull Set<String> sessionNamesToKeep) {
-        mAttemptsBySessionName.keySet().retainAll(sessionNamesToKeep);
+    public synchronized void recordObservedRunning(@NonNull String sessionName, long nowMillis) {
+        DeathAttempts attempts = mAttemptsBySessionName.get(sessionName);
+        if (attempts == null) {
+            return;
+        }
+        if (nowMillis - attempts.lastReconnectTimeMillis > LONGEST_WAIT_MILLIS) {
+            attempts.seenRunningLongEnoughAfterTheReconnect = true;
+        }
     }
 
-    private static boolean stayedConnectedLongEnoughToBeAFreshFailure(@NonNull DeathAttempts attempts,
-                                                                     long nowMillis) {
-        return nowMillis - attempts.lastReconnectTimeMillis > LONGEST_WAIT_MILLIS;
+    public synchronized void forgetSessionsOtherThan(@NonNull Set<String> sessionNamesToKeep) {
+        mAttemptsBySessionName.keySet().retainAll(sessionNamesToKeep);
     }
 
     static long waitMillis(int consecutiveReconnects) {

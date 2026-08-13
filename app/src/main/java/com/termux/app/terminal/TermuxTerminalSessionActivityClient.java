@@ -2491,6 +2491,9 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             sessionByName.put(sessionName, terminalSession);
             boolean current = sessionName.equals(currentSessionName);
             boolean running = terminalSession.isRunning();
+            if (running) {
+                mExitedSessionImmediateReconnectBackoff.recordObservedRunning(sessionName, nowMillis);
+            }
             Long lastOutTimeMillis = store == null ? null : store.getStatuslineOutTimeMillis(sessionName);
             boolean inputStillReachesTheProgram =
                 terminalSession.inputReachesTheProgramReadingTheTerminal();

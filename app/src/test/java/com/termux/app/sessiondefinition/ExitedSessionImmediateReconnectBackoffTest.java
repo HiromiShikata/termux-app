@@ -61,11 +61,29 @@ public class ExitedSessionImmediateReconnectBackoffTest {
     public void aSessionThatStayedConnectedLongerThanTheLongestWaitStartsFromTheShortestWaitAgain() {
         ExitedSessionImmediateReconnectBackoff backoff = new ExitedSessionImmediateReconnectBackoff();
         backoff.recordImmediateReconnect(SESSION_NAME, START_TIME_MILLIS);
+        backoff.recordObservedRunning(SESSION_NAME, START_TIME_MILLIS
+            + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L);
         backoff.recordImmediateReconnect(SESSION_NAME, START_TIME_MILLIS
             + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L);
 
-        assertTrue("a session that ran for longer than the longest wait failed freshly rather than looping,"
-                + " so it must not carry the wait accumulated by an earlier run",
+        assertTrue("a session seen running for longer than the longest wait failed freshly rather than"
+                + " looping, so it must not carry the wait accumulated by an earlier run",
+            backoff.isReadyToReconnectImmediately(SESSION_NAME,
+                START_TIME_MILLIS + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L
+                    + ExitedSessionImmediateReconnectBackoff.SHORTEST_WAIT_MILLIS));
+    }
+
+    @Test
+    public void aSessionSeenRunningOnlyBrieflyAfterItsReconnectKeepsTheWaitItAccumulated() {
+        ExitedSessionImmediateReconnectBackoff backoff = new ExitedSessionImmediateReconnectBackoff();
+        backoff.recordImmediateReconnect(SESSION_NAME, START_TIME_MILLIS);
+        backoff.recordObservedRunning(SESSION_NAME, START_TIME_MILLIS
+            + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS);
+        backoff.recordImmediateReconnect(SESSION_NAME, START_TIME_MILLIS
+            + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L);
+
+        assertFalse("being seen running no longer than the longest wait is the session dying again rather"
+                + " than staying up, so the wait must keep growing",
             backoff.isReadyToReconnectImmediately(SESSION_NAME,
                 START_TIME_MILLIS + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L
                     + ExitedSessionImmediateReconnectBackoff.SHORTEST_WAIT_MILLIS));
