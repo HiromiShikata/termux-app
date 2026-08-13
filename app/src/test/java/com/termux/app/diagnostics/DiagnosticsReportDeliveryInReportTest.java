@@ -29,7 +29,7 @@ public class DiagnosticsReportDeliveryInReportTest {
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, delivery,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 

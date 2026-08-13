@@ -32,7 +32,7 @@ public class ScrollStepsInReportTest {
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST, NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE,
             DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, scrollSteps);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, scrollSteps, DiagnosticsTouchEvents.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 

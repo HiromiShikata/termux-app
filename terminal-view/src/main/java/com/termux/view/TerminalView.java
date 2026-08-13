@@ -47,6 +47,8 @@ import com.termux.view.scroll.TerminalScrollController;
 import com.termux.view.scroll.TerminalScrollEvent;
 import com.termux.view.scroll.TerminalScrollStepCounterHolder;
 import com.termux.view.textselection.TextSelectionCursorController;
+import com.termux.view.touch.TerminalTouchCounterHolder;
+import com.termux.view.touch.TerminalTouchKind;
 import com.termux.view.url.TerminalUrlExtractor;
 
 /** View displaying and interacting with a {@link TerminalSession}. */
@@ -712,6 +714,7 @@ public final class TerminalView extends View {
     @Override
     @TargetApi(23)
     public boolean onTouchEvent(MotionEvent event) {
+        TerminalTouchCounterHolder.getInstance().record(touchKindOf(event.getActionMasked()), System.currentTimeMillis());
         if (mEmulator == null) return true;
         final int action = event.getAction();
 
@@ -752,6 +755,22 @@ public final class TerminalView extends View {
 
         mGestureRecognizer.onTouchEvent(event);
         return true;
+    }
+
+    private TerminalTouchKind touchKindOf(int maskedAction) {
+        switch (maskedAction) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN:
+                return TerminalTouchKind.GESTURE_START;
+            case MotionEvent.ACTION_MOVE:
+                return TerminalTouchKind.GESTURE_MOVEMENT;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_CANCEL:
+                return TerminalTouchKind.GESTURE_END;
+            default:
+                return TerminalTouchKind.ANOTHER_KIND;
+        }
     }
 
     @Override

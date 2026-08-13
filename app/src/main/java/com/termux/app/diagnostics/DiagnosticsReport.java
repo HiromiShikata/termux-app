@@ -71,6 +71,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsMainLooperQueuePeak mMainLooperQueuePeak;
     @NonNull
     private final DiagnosticsScrollSteps mScrollSteps;
+    @NonNull
+    private final DiagnosticsTouchEvents mTouchEvents;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -99,8 +101,10 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsActivityWindows activityWindows,
                              @NonNull DiagnosticsReportDelivery lastReportDelivery,
                              @NonNull DiagnosticsMainLooperQueuePeak mainLooperQueuePeak,
-                             @NonNull DiagnosticsScrollSteps scrollSteps) {
+                             @NonNull DiagnosticsScrollSteps scrollSteps,
+                             @NonNull DiagnosticsTouchEvents touchEvents) {
         mScrollSteps = scrollSteps;
+        mTouchEvents = touchEvents;
         mSessionCreationPaths = sessionCreationPaths;
         mActivityWindows = activityWindows;
         mLastReportDelivery = lastReportDelivery;
@@ -154,6 +158,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsScrollSteps getScrollSteps() {
         return mScrollSteps;
+    }
+
+    @NonNull
+    public DiagnosticsTouchEvents getTouchEvents() {
+        return mTouchEvents;
     }
 
     @NonNull

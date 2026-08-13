@@ -201,7 +201,7 @@ public class MainLooperQueueBudgetInReportTest {
             creationPaths,
             new DiagnosticsActivityWindows(7, 3),
             DiagnosticsReportDelivery.of("host-0", 11023, 842L, 4096L, 4097L, true),
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 
