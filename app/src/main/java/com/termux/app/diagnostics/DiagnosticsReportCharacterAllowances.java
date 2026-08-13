@@ -46,6 +46,13 @@ public final class DiagnosticsReportCharacterAllowances {
                 subsection.getLargestUsefulCharacters());
         }
 
+        for (String measuredName : measuredOffsetByName.keySet()) {
+            if (!subsectionNamesInPrintOrder.contains(measuredName)) {
+                throw new IllegalArgumentException("The report subsection " + measuredName
+                    + " was rendered without being declared in the print order it is allocated from");
+            }
+        }
+
         List<String> renderedNamesInPrintOrder = new ArrayList<>();
         for (String subsectionName : subsectionNamesInPrintOrder) {
             if (measuredOffsetByName.containsKey(subsectionName)) {
