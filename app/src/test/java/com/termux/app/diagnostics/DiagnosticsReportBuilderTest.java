@@ -15,6 +15,9 @@ public class DiagnosticsReportBuilderTest {
     private static final DiagnosticsScrollGestureRouting SCROLLS_THE_VIEW =
         DiagnosticsScrollGestureRouting.ofEmulatorState(false, false);
 
+    private static final DiagnosticsSessionListAbsence PRESENT_IN_THE_LIST =
+        DiagnosticsSessionListAbsence.presentInTheList();
+
     private static final long REPORT_MILLIS = 1783216800000L;
     private static final long EVENT_MILLIS = 1783216770000L;
 
@@ -333,8 +336,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsNameAliveStateAndSecondsSinceActivity() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
-        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
+        lines.add(new DiagnosticsSessionLine("host-b", false, 0, false, 0, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -349,7 +352,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(),
             new DiagnosticsSessionStatusline(CALL_MILLIS, CALL_MILLIS, REPLY_MILLIS,
-                SessionNewActivityTier.RED), SCROLLS_THE_VIEW));
+                SessionNewActivityTier.RED), SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -367,7 +370,7 @@ public class DiagnosticsReportBuilderTest {
     public void aSessionTheAppHoldsNoStatuslineForSaysSoInsteadOfShowingAFabricatedTime() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(),
-            NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+            NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -478,7 +481,7 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionLineShowsTranscriptRowsAndColumns() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 4213, 92, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -493,9 +496,9 @@ public class DiagnosticsReportBuilderTest {
     public void eachSessionLineStatesWhetherTheSessionListShowsThatSession() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-on-screen", false, 0, false, 0, 0,
-            DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+            DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         lines.add(new DiagnosticsSessionLine("host-off-screen", false, 0, false, 0, 0,
-            DiagnosticsSessionListDisplay.NOT_DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+            DiagnosticsSessionListDisplay.NOT_DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 2, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -518,7 +521,7 @@ public class DiagnosticsReportBuilderTest {
     public void aReadingTakenBeforeTheSessionListExistedSaysTheDisplayedStateIsNotKnown() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 12, true, 0, 80,
-            DiagnosticsSessionListDisplay.NOT_KNOWN, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+            DiagnosticsSessionListDisplay.NOT_KNOWN, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 0, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -535,8 +538,8 @@ public class DiagnosticsReportBuilderTest {
     @Test
     public void sessionsSectionShowsTotalTranscriptRowsAcrossAllSessions() {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
-        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
-        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+        lines.add(new DiagnosticsSessionLine("host-a", true, 1, true, 4213, 92, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
+        lines.add(new DiagnosticsSessionLine("host-b", true, 2, true, 1787, 92, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 2, 2, 32,
             0, 0, false, true, Collections.emptyList());
 
@@ -707,7 +710,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
             DiagnosticsSessionListDisplay.DISPLAYED,
-            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+            new DiagnosticsShellInputDelivery(4096L, 3000L, 64L, true, null), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -732,7 +735,7 @@ public class DiagnosticsReportBuilderTest {
         lines.add(new DiagnosticsSessionLine("host-a", true, 3, true, 100, 80,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(4096L, 0L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(lines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 
@@ -750,7 +753,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < 19; sessionIndex++) {
             lines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex, true,
-                0, 108, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+                0, 108, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         }
         List<DiagnosticEvent> events = new ArrayList<>();
         for (int eventIndex = 0; eventIndex < 50; eventIndex++) {
@@ -842,12 +845,12 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < 18; sessionIndex++) {
             sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex,
-                true, 4000, 108, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+                true, 4000, 108, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         }
         sessionLines.add(new DiagnosticsSessionLine("host-stuck", true, 3, true, 4000, 108,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(4096L, 1000L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
 
         String text = new DiagnosticsReportBuilder().build(new DiagnosticsReport("0.119.0", 119,
             REPORT_MILLIS, 19, 19, 64, sessionLines, 0, 0, false, true,
@@ -881,7 +884,7 @@ public class DiagnosticsReportBuilderTest {
         List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < 3; sessionIndex++) {
             sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex,
-                true, 100, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+                true, 100, 80, DiagnosticsSessionListDisplay.DISPLAYED, deliveringEverything(), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         }
         DiagnosticsReport report = reportWith(sessionLines, 3, 3, 32, 0, 0, false, true,
             Collections.emptyList());
@@ -899,7 +902,7 @@ public class DiagnosticsReportBuilderTest {
         sessionLines.add(new DiagnosticsSessionLine("host-drained", true, 3, true, 100, 80,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(2048L, 2048L, 0L, false,
-                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW));
+                "writing to the pseudo terminal failed: java.io.IOException: broken pipe"), NO_STATUSLINE_HELD, SCROLLS_THE_VIEW, PRESENT_IN_THE_LIST));
         DiagnosticsReport report = reportWith(sessionLines, 1, 1, 32, 0, 0, false, true,
             Collections.emptyList());
 

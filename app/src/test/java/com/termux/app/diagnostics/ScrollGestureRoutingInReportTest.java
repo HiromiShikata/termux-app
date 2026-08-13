@@ -13,12 +13,15 @@ public class ScrollGestureRoutingInReportTest {
 
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
 
+    private static final DiagnosticsSessionListAbsence PRESENT_IN_THE_LIST =
+        DiagnosticsSessionListAbsence.presentInTheList();
+
     private static String renderedReportOf(DiagnosticsScrollGestureRouting scrollGestureRouting) {
         DiagnosticsSessionLine sessionLine = new DiagnosticsSessionLine("host-a", true, 12, true, 0, 98,
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(88, 88, 0, true, ""),
             new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY),
-            scrollGestureRouting);
+            scrollGestureRouting, PRESENT_IN_THE_LIST);
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             1, 1, 32, Collections.singletonList(sessionLine),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),

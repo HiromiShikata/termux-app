@@ -432,10 +432,17 @@ public final class DiagnosticsReportBuilder {
                 .append(" | columns: ").append(line.getColumns())
                 .append(" | ").append(line.getListDisplay().getReportLabel())
                 .append('\n');
+            appendListAbsence(builder, line.getListAbsence());
             appendScrollGestureRouting(builder, line.getScrollGestureRouting());
             appendShellInputDelivery(builder, line.getShellInputDelivery());
             appendStatusline(builder, line.getStatusline());
         }
+    }
+
+    private void appendListAbsence(@NonNull StringBuilder builder,
+                                   @NonNull DiagnosticsSessionListAbsence listAbsence) {
+        if (!listAbsence.hasReason()) return;
+        builder.append("      ").append(listAbsence.getReportLabel()).append('\n');
     }
 
     private void appendScrollGestureRouting(@NonNull StringBuilder builder,
