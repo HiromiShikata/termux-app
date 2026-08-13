@@ -229,7 +229,8 @@ public final class TerminalSession extends TerminalOutput {
     @Override
     public void write(byte[] data, int offset, int count) {
         long writtenAtMillis = System.currentTimeMillis();
-        if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()) {
+        if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()
+                || !mShellInputDeliveryRecord.isWriterRunning()) {
             if (holdsInputUntilTheShellStarts() && mShellStartupInputBuffer.hold(data, offset, count)) {
                 return;
             }
