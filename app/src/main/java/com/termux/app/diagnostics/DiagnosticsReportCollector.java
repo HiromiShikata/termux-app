@@ -87,7 +87,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsWorkCostLine.of(TerminalDrawCostCounterHolder.getInstance()),
             DiagnosticsWorkCostLine.of(ShellOutputParseCostCounterHolder.getInstance()),
             DiagnosticsSessionCreationPaths.of(SessionCreationPathCounterHolder.getInstance()),
-            ActivityWindowRecorderHolder.getInstance().snapshot());
+            ActivityWindowRecorderHolder.getInstance().snapshot(),
+            DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot());
     }
 
     @NonNull
