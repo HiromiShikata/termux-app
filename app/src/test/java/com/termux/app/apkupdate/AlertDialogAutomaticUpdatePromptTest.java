@@ -1,7 +1,10 @@
 package com.termux.app.apkupdate;
 
+import static org.robolectric.Shadows.shadowOf;
+
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.os.Looper;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,6 +44,7 @@ public class AlertDialogAutomaticUpdatePromptTest {
         openPromptOn(newActivity());
 
         ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        shadowOf(Looper.getMainLooper()).idle();
 
         Assert.assertEquals(1, choices.size());
         Assert.assertEquals("install", choices.get(0));
@@ -51,6 +55,7 @@ public class AlertDialogAutomaticUpdatePromptTest {
         openPromptOn(newActivity());
 
         ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+        shadowOf(Looper.getMainLooper()).idle();
 
         Assert.assertEquals(1, choices.size());
         Assert.assertEquals("cancel", choices.get(0));
@@ -61,6 +66,7 @@ public class AlertDialogAutomaticUpdatePromptTest {
         openPromptOn(newActivity());
 
         ShadowAlertDialog.getLatestAlertDialog().cancel();
+        shadowOf(Looper.getMainLooper()).idle();
 
         Assert.assertEquals(1, choices.size());
         Assert.assertEquals("cancel", choices.get(0));
