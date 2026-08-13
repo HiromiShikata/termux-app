@@ -18,6 +18,7 @@ import com.termux.app.terminal.SessionNewActivityTier;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalBuffer;
+import com.termux.shared.termux.terminal.ShellOutputParseCostCounterHolder;
 import com.termux.terminal.TerminalBufferReflowCostCounterHolder;
 import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
@@ -82,7 +83,8 @@ public final class DiagnosticsReportCollector {
             ShellExitStatusRecorderHolder.getInstance().snapshot(),
             PhantomProcessMonitorStateHolder.getInstance().snapshot(),
             mProcessPopulationReader.read(),
-            DiagnosticsWorkCostLine.of(TerminalDrawCostCounterHolder.getInstance()));
+            DiagnosticsWorkCostLine.of(TerminalDrawCostCounterHolder.getInstance()),
+            DiagnosticsWorkCostLine.of(ShellOutputParseCostCounterHolder.getInstance()));
     }
 
     @NonNull

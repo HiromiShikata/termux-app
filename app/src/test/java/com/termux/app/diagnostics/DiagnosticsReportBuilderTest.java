@@ -171,6 +171,7 @@ public class DiagnosticsReportBuilderTest {
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, mainThreadStalls,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(),
             processUptimeMillis, backgroundCycle, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
     }
 
@@ -182,6 +183,7 @@ public class DiagnosticsReportBuilderTest {
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE,
             versionChange, DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
     }
 
@@ -214,6 +216,7 @@ public class DiagnosticsReportBuilderTest {
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             mainLooperQueue, ScrollbarViewCensus.empty(), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
     }
 
@@ -225,6 +228,7 @@ public class DiagnosticsReportBuilderTest {
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, NO_MAIN_THREAD_STALLS,
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
     }
 
@@ -847,6 +851,7 @@ public class DiagnosticsReportBuilderTest {
             Collections.<DiagnosticEvent>emptyList(), NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST,
             NO_WORK_COST, NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
             DiagnosticsMainLooperQueue.parse(looperDumpLines), ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
@@ -925,6 +930,7 @@ public class DiagnosticsReportBuilderTest {
             NO_MEMORY_USAGE, NO_WORK_COST, NO_WORK_COST, NO_WORK_COST,
             NO_SESSION_RECONNECT_COST, NO_REPLACED_SESSION_SHELL_INPUT, stalls,
             looperQueue, ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
     }
 

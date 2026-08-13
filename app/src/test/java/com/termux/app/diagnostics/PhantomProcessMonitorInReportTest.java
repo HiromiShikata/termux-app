@@ -27,6 +27,7 @@ public class PhantomProcessMonitorInReportTest {
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
             DiagnosticsShellExits.NONE, phantomProcessMonitor,
             DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
         return new DiagnosticsReportBuilder().build(report);
     }

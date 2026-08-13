@@ -567,10 +567,13 @@ public final class TerminalSession extends TerminalOutput {
                 return;
             }
             mTotalBytesProcessed += bytesRead;
+            long parseStartNanos = System.nanoTime();
             int genuineOffset = mInputEchoFilter.consumeEchoPrefixReturningGenuineOffset(mReceiveBuffer, 0, bytesRead);
             if (genuineOffset > 0) mEmulator.append(mReceiveBuffer, genuineOffset);
             int genuineByteCount = bytesRead - genuineOffset;
             mEmulator.appendGenuineOutput(mReceiveBuffer, genuineOffset, genuineByteCount);
+            mClient.onShellOutputParsed(System.nanoTime() - parseStartNanos,
+                mEmulator.getScreen().getActiveTranscriptRows());
             notifyScreenUpdate();
             if (genuineByteCount > 0) notifyGenuineOutput();
         }
