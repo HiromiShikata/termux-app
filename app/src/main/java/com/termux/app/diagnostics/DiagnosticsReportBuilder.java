@@ -68,6 +68,9 @@ public final class DiagnosticsReportBuilder {
         appendActivityWindowSection(builder, report);
 
         builder.append('\n');
+        appendReportDeliverySection(builder, report);
+
+        builder.append('\n');
         appendPhantomProcessMonitorSection(builder, report);
 
         builder.append('\n');
@@ -208,6 +211,23 @@ public final class DiagnosticsReportBuilder {
         builder.append("  Built: ").append(activityWindows.getCreatedCount()).append('\n');
         builder.append("  Torn down: ").append(activityWindows.getDestroyedCount()).append('\n');
         builder.append("  Teardown not run: ").append(activityWindows.getTeardownNotRunCount()).append('\n');
+    }
+
+    private void appendReportDeliverySection(@NonNull StringBuilder builder,
+                                             @NonNull DiagnosticsReport report) {
+        DiagnosticsReportDelivery delivery = report.getLastReportDelivery();
+        builder.append("Last diagnostics report delivery\n");
+        if (!delivery.wasAttempted()) {
+            builder.append("  None: no report has been delivered to a session yet\n");
+            return;
+        }
+        builder.append("  Session: ").append(delivery.getSessionName()).append('\n');
+        builder.append("  Pasted: ").append(delivery.getPastedCharacters()).append(" characters in ")
+            .append(delivery.getPasteMillis()).append(" ms\n");
+        builder.append("  Enter accepted for delivery: ")
+            .append(delivery.wasEnterAcceptedForDelivery() ? "yes" : "no").append('\n');
+        builder.append("  Input reached the program after the paste: ")
+            .append(delivery.didInputReachTheProgramAfterThePaste() ? "yes" : "no").append('\n');
     }
 
     private void appendPhantomProcessMonitorSection(@NonNull StringBuilder builder,
