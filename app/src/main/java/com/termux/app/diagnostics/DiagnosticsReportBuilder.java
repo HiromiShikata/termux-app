@@ -65,6 +65,9 @@ public final class DiagnosticsReportBuilder {
         appendSessionCreationPathSection(builder, report);
 
         builder.append('\n');
+        appendActivityWindowSection(builder, report);
+
+        builder.append('\n');
         appendPhantomProcessMonitorSection(builder, report);
 
         builder.append('\n');
@@ -192,6 +195,19 @@ public final class DiagnosticsReportBuilder {
             builder.append("  ").append(countByPath.getPath().getReportLabel()).append(": ")
                 .append(countByPath.getCreationCount()).append('\n');
         }
+    }
+
+    private void appendActivityWindowSection(@NonNull StringBuilder builder,
+                                             @NonNull DiagnosticsReport report) {
+        DiagnosticsActivityWindows activityWindows = report.getActivityWindows();
+        builder.append("Activity window builds since the app started\n");
+        if (activityWindows.getCreatedCount() == 0) {
+            builder.append("  None: the activity window has not been built yet\n");
+            return;
+        }
+        builder.append("  Built: ").append(activityWindows.getCreatedCount()).append('\n');
+        builder.append("  Torn down: ").append(activityWindows.getDestroyedCount()).append('\n');
+        builder.append("  Teardown not run: ").append(activityWindows.getTeardownNotRunCount()).append('\n');
     }
 
     private void appendPhantomProcessMonitorSection(@NonNull StringBuilder builder,

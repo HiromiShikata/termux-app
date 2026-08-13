@@ -49,6 +49,7 @@ import com.termux.app.browser.BrowserInboundViewUrl;
 import com.termux.app.link.NativeAppLink;
 import com.termux.app.link.OpenTagUrlNativeAppOpener;
 import com.termux.app.browser.OpenTagBrowserController;
+import com.termux.app.diagnostics.ActivityWindowRecorderHolder;
 import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
@@ -342,6 +343,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Logger.logDebug(LOG_TAG, "onCreate");
+        ActivityWindowRecorderHolder.getInstance().recordActivityCreated();
         mIsOnResumeAfterOnCreate = true;
 
         if (savedInstanceState != null)
@@ -669,6 +671,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTtsManager.shutdown();
 
         TermuxActivityHolder.clear(this);
+        ActivityWindowRecorderHolder.getInstance().recordActivityDestroyed();
 
         if (mIsInvalidState) return;
 
