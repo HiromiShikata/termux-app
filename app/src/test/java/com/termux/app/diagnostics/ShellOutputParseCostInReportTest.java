@@ -27,7 +27,7 @@ public class ShellOutputParseCostInReportTest {
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST,
-            shellOutputParseCost, DiagnosticsSessionCreationPaths.NONE);
+            shellOutputParseCost, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 

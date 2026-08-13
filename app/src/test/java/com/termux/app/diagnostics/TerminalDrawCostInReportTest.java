@@ -27,7 +27,7 @@ public class TerminalDrawCostInReportTest {
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             DiagnosticsAppProcessPopulation.UNMEASURED,
             terminalDrawCost,
-            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE);
+            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 
