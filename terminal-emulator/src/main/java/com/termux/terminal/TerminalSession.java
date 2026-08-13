@@ -253,6 +253,7 @@ public final class TerminalSession extends TerminalOutput {
 
     void stopDeliveringShellInput(@NonNull ByteQueue terminalToProcessIOQueue, @NonNull String reason) {
         mShellInputDeliveryRecord.recordWriterStopped(reason);
+        terminalToProcessIOQueue.close();
     }
 
     private void deliverInputHeldUntilTheShellStarted() {
