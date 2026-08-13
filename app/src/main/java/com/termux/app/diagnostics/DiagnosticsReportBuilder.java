@@ -296,8 +296,8 @@ public final class DiagnosticsReportBuilder {
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());
         appendScrollbarViewCensusLines(builder, report.getScrollbarViewCensus());
         appendMainLooperQueuePeakLines(builder, report.getMainLooperQueuePeak());
-        appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendPendingMessageLines(builder, report.getMainLooperQueue());
+        appendMainThreadStallLines(builder, report.getMainThreadStalls());
     }
 
     private void appendScrollbarViewCensusLines(@NonNull StringBuilder builder,
