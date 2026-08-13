@@ -111,7 +111,7 @@ public class UpdateTagUpdateRunnerTest {
     }
 
     @Test
-    public void updateTagAutoDownloadsAndSurfacesButtonWithoutBlockingDialog() throws IOException {
+    public void updateTagAutoDownloadsFirstAndOnlyThenOffersTheDialog() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -122,7 +122,8 @@ public class UpdateTagUpdateRunnerTest {
 
         runner.onUpdateRequested("security fix");
 
-        Assert.assertNull("the update tag must not force a blocking dialog", ShadowAlertDialog.getLatestAlertDialog());
+        Assert.assertNotNull("the update tag must offer the dialog once the APK is ready",
+            ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the update tag must auto-download the APK", 1, manager.downloadCount);
         Assert.assertEquals("the floating install button must surface directly", 1, indicatorView.shownVersions.size());
         Assert.assertEquals("1.2.3", indicatorView.shownVersions.get(0));

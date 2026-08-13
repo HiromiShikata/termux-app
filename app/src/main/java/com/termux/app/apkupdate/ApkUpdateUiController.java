@@ -35,6 +35,8 @@ public final class ApkUpdateUiController {
     private final ApkUpdatePendingState pendingState;
     private final ApkUpdateInstallResumeRequest pendingInstallResume;
     private final ApkUpdateCachedFileResolver cachedFileResolver;
+    private final DeclinedUpdateVersion declinedUpdateVersion;
+    private final AutomaticUpdatePromptController.Dialog automaticUpdatePrompt;
 
     public ApkUpdateUiController(Activity activity) {
         this(activity, new ApkUpdateManager(activity), new ApkInstaller(activity));
@@ -49,6 +51,8 @@ public final class ApkUpdateUiController {
         this.pendingState = new ApkUpdatePendingState(store);
         this.pendingInstallResume = new ApkUpdateInstallResumeRequest(store);
         this.cachedFileResolver = new ApkUpdateCachedFileResolver();
+        this.declinedUpdateVersion = new DeclinedUpdateVersion(store);
+        this.automaticUpdatePrompt = new AlertDialogAutomaticUpdatePrompt(activity);
     }
 
     public void checkAndPrompt(boolean userInitiated) {
@@ -68,7 +72,7 @@ public final class ApkUpdateUiController {
             indicatorView.hide();
             return;
         }
-        ApkUpdateFloatingIndicatorController indicatorController = newIndicatorController(indicatorView);
+        AutomaticUpdatePromptController promptController = newPromptController(indicatorView);
         updateManager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
@@ -76,13 +80,13 @@ public final class ApkUpdateUiController {
                     return;
                 }
                 pendingState.save(availability);
-                preDownloadThenShowIndicator(availability, indicatorController);
+                preDownloadThenShowIndicator(availability, promptController);
             }
 
             @Override
             public void onUpToDate(String latestVersionName) {
                 pendingState.clear();
-                indicatorController.onUpToDate();
+                promptController.onUpToDate();
                 if (notificationPolicy.shouldNotifyUpToDate(userInitiated)) {
                     Logger.showToast(activity,
                         activity.getString(R.string.apk_update_up_to_date, latestVersionName), false);
@@ -124,11 +128,11 @@ public final class ApkUpdateUiController {
             indicatorView.hide();
             return;
         }
-        newIndicatorController(indicatorView).onUpdateAvailable(availability);
+        newPromptController(indicatorView).onUpdateAvailable(availability);
     }
 
     private void preDownloadThenShowIndicator(ApkUpdateAvailability availability,
-                                              ApkUpdateFloatingIndicatorController indicatorController) {
+                                              AutomaticUpdatePromptController promptController) {
         if (!DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
             Logger.logInfo(LOG_TAG, "An APK update is already being prepared, so no indicator is offered yet");
             return;
@@ -144,7 +148,7 @@ public final class ApkUpdateUiController {
                         availability.withDownloadedFilePath(apkFile.getAbsolutePath());
                     pendingState.save(downloadedAvailability);
                     if (activity.isFinishing()) return;
-                    indicatorController.onUpdateAvailable(downloadedAvailability);
+                    promptController.onUpdateAvailable(downloadedAvailability);
                 }
 
                 @Override
@@ -154,14 +158,16 @@ public final class ApkUpdateUiController {
                     ApkUpdateAvailability withoutDownloadedFile = availability.withDownloadedFilePath(null);
                     pendingState.save(withoutDownloadedFile);
                     if (activity.isFinishing()) return;
-                    indicatorController.onUpdateAvailable(withoutDownloadedFile);
+                    promptController.onUpdateAvailable(withoutDownloadedFile);
                 }
             });
     }
 
-    private ApkUpdateFloatingIndicatorController newIndicatorController(
+    private AutomaticUpdatePromptController newPromptController(
         ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
-        return new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall);
+        return new AutomaticUpdatePromptController(automaticUpdatePrompt,
+            new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall),
+            declinedUpdateVersion);
     }
 
     private void startDownloadAndInstall(ApkUpdateAvailability availability) {
