@@ -80,11 +80,19 @@ public class MainLooperQueueBudgetInReportTest {
     }
 
     private static List<DiagnosticsSessionLine> sessionLinesThatDeliveredEverything(int sessionCount) {
+        return sessionLines(sessionCount, 0L);
+    }
+
+    private static List<DiagnosticsSessionLine> sessionLinesWithInputStillUndelivered(int sessionCount) {
+        return sessionLines(sessionCount, 4096L);
+    }
+
+    private static List<DiagnosticsSessionLine> sessionLines(int sessionCount, long acceptedButNotWritten) {
         List<DiagnosticsSessionLine> sessionLines = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < sessionCount; sessionIndex++) {
             sessionLines.add(new DiagnosticsSessionLine("host-" + sessionIndex, true, sessionIndex, true,
                 4000, 108, DiagnosticsSessionListDisplay.DISPLAYED,
-                new DiagnosticsShellInputDelivery(0L, 0L, 0L, true, null),
+                new DiagnosticsShellInputDelivery(acceptedButNotWritten, 0L, 0L, true, null),
                 new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.NONE),
                 DiagnosticsScrollGestureRouting.ofEmulatorState(false, false),
                 DiagnosticsSessionListAbsence.presentInTheList()));
@@ -92,43 +100,123 @@ public class MainLooperQueueBudgetInReportTest {
         return sessionLines;
     }
 
-    private static String reportOfTheShapeTheDeviceProduces(DiagnosticsMainThreadStalls stalls) {
+    private static DiagnosticsShellExits shellExitsOfTheShapeTheDeviceReported() {
+        return new DiagnosticsShellExits(Arrays.asList(
+            new DiagnosticsShellExitCount(255, 18),
+            new DiagnosticsShellExitCount(0, 2)));
+    }
+
+    private static DiagnosticsShellExits shellExitsOfEveryStatusTheShellCanReport() {
+        List<DiagnosticsShellExitCount> exitCounts = new ArrayList<>();
+        for (int exitStatus = 0; exitStatus < 64; exitStatus++) {
+            exitCounts.add(new DiagnosticsShellExitCount(exitStatus, 64 - exitStatus));
+        }
+        return new DiagnosticsShellExits(exitCounts);
+    }
+
+    private static DiagnosticsSessionCreationPaths creationPathsOfTheShapeTheDeviceReported() {
+        return new DiagnosticsSessionCreationPaths(Arrays.asList(
+            new DiagnosticsSessionCreationPathCount(SessionCreationPath.RESTORE_OF_A_PERSISTED_SESSION, 19),
+            new DiagnosticsSessionCreationPathCount(SessionCreationPath.RECONNECT_OF_A_DEAD_SESSION, 3),
+            new DiagnosticsSessionCreationPathCount(SessionCreationPath.NEW_AUTOSSH_SESSION, 2)));
+    }
+
+    private static DiagnosticsSessionCreationPaths creationPathsOfEveryPathTheAppHas() {
+        List<DiagnosticsSessionCreationPathCount> pathCounts = new ArrayList<>();
+        for (SessionCreationPath path : SessionCreationPath.values()) {
+            pathCounts.add(new DiagnosticsSessionCreationPathCount(path, 19));
+        }
+        return new DiagnosticsSessionCreationPaths(pathCounts);
+    }
+
+    private static DiagnosticsAppProcessPopulation processPopulationOfTheShapeTheDeviceReported() {
+        return DiagnosticsAppProcessPopulation.measured(49, Arrays.asList(
+            new DiagnosticsProcessCommandCount("ssh", 24),
+            new DiagnosticsProcessCommandCount("sh", 24),
+            new DiagnosticsProcessCommandCount("com.termux", 1)));
+    }
+
+    private static DiagnosticsAppProcessPopulation processPopulationOfMoreCommandsThanFit() {
+        List<DiagnosticsProcessCommandCount> commandCounts = new ArrayList<>();
+        for (int commandIndex = 0; commandIndex < 40; commandIndex++) {
+            commandCounts.add(new DiagnosticsProcessCommandCount(
+                "com.termux.process.with.a.long.command.name." + commandIndex, 40 - commandIndex));
+        }
+        return DiagnosticsAppProcessPopulation.measured(820, commandCounts);
+    }
+
+    private static DiagnosticsSessionReconnectCost reconnectCostOfTheShapeTheDeviceReported() {
+        return new DiagnosticsSessionReconnectCost(3, 812, 604, 2, Arrays.asList(
+            new DiagnosticsSessionReconnectCostByReason(
+                SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN, 2, 508, 407),
+            new DiagnosticsSessionReconnectCostByReason(
+                SessionReconnectReason.SHELL_PROCESS_EXITED, 1, 304, 304)));
+    }
+
+    private static DiagnosticsSessionReconnectCost reconnectCostOfEveryReasonTheAppHas() {
+        List<DiagnosticsSessionReconnectCostByReason> costsByReason = new ArrayList<>();
+        for (SessionReconnectReason reason : SessionReconnectReason.values()) {
+            costsByReason.add(new DiagnosticsSessionReconnectCostByReason(reason, 19, 8123, 4071));
+        }
+        return new DiagnosticsSessionReconnectCost(76, 32492, 4071, 19, costsByReason);
+    }
+
+    private static DiagnosticsReplacedSessionShellInput replacedSessionInputThatLostNothing() {
+        return new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", "");
+    }
+
+    private static DiagnosticsReplacedSessionShellInput replacedSessionInputWithEveryLineItCanRender() {
+        return new DiagnosticsReplacedSessionShellInput(19, 17, 40960L,
+            "host-with-a-long-session-name-0", "host-with-a-long-session-name-1",
+            "the shell process the writer was writing to had already gone");
+    }
+
+    private static String renderedReport(DiagnosticsMainThreadStalls stalls,
+                                         List<DiagnosticsSessionLine> sessionLines,
+                                         DiagnosticsShellExits shellExits,
+                                         DiagnosticsSessionCreationPaths creationPaths,
+                                         DiagnosticsAppProcessPopulation processPopulation,
+                                         DiagnosticsSessionReconnectCost reconnectCost,
+                                         DiagnosticsReplacedSessionShellInput replacedSessionInput) {
         DiagnosticsReport report = new DiagnosticsReport("0.119.3771", 3771, REPORT_MILLIS,
-            19, 19, 64, sessionLinesThatDeliveredEverything(19),
+            sessionLines.size(), sessionLines.size(), 64, sessionLines,
             4, 37, true, true, Collections.<DiagnosticEvent>emptyList(),
             new DiagnosticsMemoryUsage(212, 384, 512, 96),
             new DiagnosticsWorkCostLine(27, 28, 6, 4000),
             new DiagnosticsWorkCostLine(7, 16, 5, 4000),
             new DiagnosticsWorkCostLine(6, 39, 21, 4000),
-            new DiagnosticsSessionReconnectCost(3, 812, 604, 2, Arrays.asList(
-                new DiagnosticsSessionReconnectCostByReason(
-                    SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN, 2, 508, 407),
-                new DiagnosticsSessionReconnectCostByReason(
-                    SessionReconnectReason.SHELL_PROCESS_EXITED, 1, 304, 304))),
-            new DiagnosticsReplacedSessionShellInput(0, 0, 0L, "", "", ""),
+            reconnectCost,
+            replacedSessionInput,
             stalls,
             looperQueueOfTheShapeTheDeviceReported(),
             censusOfTheShapeTheDeviceReported(),
             106000L,
             new DiagnosticsBackgroundCycle(60000L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
-            new DiagnosticsShellExits(Arrays.asList(
-                new DiagnosticsShellExitCount(255, 18),
-                new DiagnosticsShellExitCount(0, 2))),
+            shellExits,
             new DiagnosticsPhantomProcessMonitor("true", 32, true),
-            DiagnosticsAppProcessPopulation.measured(49, Arrays.asList(
-                new DiagnosticsProcessCommandCount("ssh", 24),
-                new DiagnosticsProcessCommandCount("sh", 24),
-                new DiagnosticsProcessCommandCount("com.termux", 1))),
+            processPopulation,
             new DiagnosticsWorkCostLine(184, 96, 12, 4000),
             new DiagnosticsWorkCostLine(902, 141, 9, 4000),
-            new DiagnosticsSessionCreationPaths(Arrays.asList(
-                new DiagnosticsSessionCreationPathCount(SessionCreationPath.RESTORE_OF_A_PERSISTED_SESSION, 19),
-                new DiagnosticsSessionCreationPathCount(SessionCreationPath.RECONNECT_OF_A_DEAD_SESSION, 3),
-                new DiagnosticsSessionCreationPathCount(SessionCreationPath.NEW_AUTOSSH_SESSION, 2))),
+            creationPaths,
             new DiagnosticsActivityWindows(7, 3),
             DiagnosticsReportDelivery.of("host-0", 11023, 842L, 4096L, 4097L, true));
         return new DiagnosticsReportBuilder().build(report);
+    }
+
+    private static String reportOfTheShapeTheDeviceProduces(DiagnosticsMainThreadStalls stalls) {
+        return renderedReport(stalls, sessionLinesThatDeliveredEverything(19),
+            shellExitsOfTheShapeTheDeviceReported(), creationPathsOfTheShapeTheDeviceReported(),
+            processPopulationOfTheShapeTheDeviceReported(), reconnectCostOfTheShapeTheDeviceReported(),
+            replacedSessionInputThatLostNothing());
+    }
+
+    private static String reportWithEverySectionAheadOfTheQueueAtItsLargest() {
+        return renderedReport(stallsLargeEnoughToFillTheCeilingAlone(),
+            sessionLinesWithInputStillUndelivered(19),
+            shellExitsOfEveryStatusTheShellCanReport(), creationPathsOfEveryPathTheAppHas(),
+            processPopulationOfMoreCommandsThanFit(), reconnectCostOfEveryReasonTheAppHas(),
+            replacedSessionInputWithEveryLineItCanRender());
     }
 
     private static String windowTheReportSurvivesIn(String report) {
@@ -177,6 +265,18 @@ public class MainLooperQueueBudgetInReportTest {
             survivingWindow.contains("Views that can hold a scrollbar fade callback"));
         Assert.assertTrue("the total is the number the count is compared against. Actual window the report"
             + " survives in:\n" + survivingWindow, survivingWindow.contains("Total: 7"));
+    }
+
+    @Test
+    public void theScrollbarFadeCallbackCountSurvivesWithEverySectionAheadOfItAtItsLargest() {
+        String report = reportWithEverySectionAheadOfTheQueueAtItsLargest();
+
+        String survivingWindow = windowTheReportSurvivesIn(report);
+        Assert.assertTrue("every section ahead of the main looper queue is bounded, so their largest"
+                + " renderings together are what the queue measurement has to survive, and this is the"
+                + " case that fails first when a section is added ahead of it. Actual window the report"
+                + " survives in:\n" + survivingWindow,
+            survivingWindow.contains(SCROLLBAR_FADE_TARGET_LINE));
     }
 
     private static final class CensusNode implements ScrollbarViewCensus.ViewNode {
