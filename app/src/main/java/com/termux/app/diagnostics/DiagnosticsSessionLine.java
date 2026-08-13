@@ -24,12 +24,17 @@ public final class DiagnosticsSessionLine {
     @NonNull
     private final DiagnosticsScrollGestureRouting mScrollGestureRouting;
 
+    @NonNull
+    private final DiagnosticsSessionListAbsence mListAbsence;
+
     public DiagnosticsSessionLine(@NonNull String name, boolean alive, long secondsSinceLastActivity,
                                   boolean hasLastActivity, int transcriptRows, int columns,
                                   @NonNull DiagnosticsSessionListDisplay listDisplay,
                                   @NonNull DiagnosticsShellInputDelivery shellInputDelivery,
                                   @NonNull DiagnosticsSessionStatusline statusline,
-                                  @NonNull DiagnosticsScrollGestureRouting scrollGestureRouting) {
+                                  @NonNull DiagnosticsScrollGestureRouting scrollGestureRouting,
+                                  @NonNull DiagnosticsSessionListAbsence listAbsence) {
+        mListAbsence = listAbsence;
         mName = name;
         mAlive = alive;
         mSecondsSinceLastActivity = secondsSinceLastActivity;
@@ -85,5 +90,10 @@ public final class DiagnosticsSessionLine {
     @NonNull
     public DiagnosticsScrollGestureRouting getScrollGestureRouting() {
         return mScrollGestureRouting;
+    }
+
+    @NonNull
+    public DiagnosticsSessionListAbsence getListAbsence() {
+        return mListAbsence;
     }
 }

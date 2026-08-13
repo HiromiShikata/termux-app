@@ -57,7 +57,8 @@ public final class DiagnosticsReportCollector {
         int maxSessionsCap = activity.getPreferences().getSessionDefinitionMaxSessions();
 
         List<DiagnosticsSessionLine> sessionLines =
-            buildSessionLines(service, nowMillis, sessionIndexesDisplayedInList(activity));
+            buildSessionLines(service, nowMillis, sessionIndexesDisplayedInList(activity),
+                collapsedProjectSessionNames(activity), hiddenSessionNamesBeingHidden(activity));
         int openTabCount = openTabCount(activity);
         int tabHistoryEntryCount = tabHistoryEntryCount(activity);
         boolean wakeLockHeld = service != null && service.isWakeLockHeld();
@@ -144,8 +145,23 @@ public final class DiagnosticsReportCollector {
     }
 
     @NonNull
+    private Set<String> collapsedProjectSessionNames(@NonNull TermuxActivity activity) {
+        TermuxSessionsListViewController controller = activity.getTermuxSessionListViewController();
+        return controller == null ? Collections.emptySet() : controller.getCollapsedProjectSessionNames();
+    }
+
+    @NonNull
+    private Set<String> hiddenSessionNamesBeingHidden(@NonNull TermuxActivity activity) {
+        TermuxSessionsListViewController controller = activity.getTermuxSessionListViewController();
+        if (controller == null || !controller.isHidingHiddenSessions()) return Collections.emptySet();
+        return hiddenSessionNames(activity);
+    }
+
+    @NonNull
     private List<DiagnosticsSessionLine> buildSessionLines(TermuxService service, long nowMillis,
-                                                           @Nullable List<Integer> sessionIndexesDisplayedInList) {
+                                                           @Nullable List<Integer> sessionIndexesDisplayedInList,
+                                                           @NonNull Set<String> collapsedProjectSessionNames,
+                                                           @NonNull Set<String> hiddenSessionNames) {
         List<DiagnosticsSessionLine> lines = new ArrayList<>();
         if (service == null) return lines;
 
@@ -189,10 +205,14 @@ public final class DiagnosticsReportCollector {
                 : DiagnosticsScrollGestureRouting.ofEmulatorState(
                     emulator.isMouseTrackingActive(), emulator.isAlternateBufferActive());
 
+            DiagnosticsSessionListDisplay listDisplay =
+                DiagnosticsSessionListDisplay.ofSessionIndex(sessionIndex, sessionIndexesDisplayedInList);
+
             lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
-                transcriptRows, columns,
-                DiagnosticsSessionListDisplay.ofSessionIndex(sessionIndex, sessionIndexesDisplayedInList),
-                shellInputDelivery, statusline, scrollGestureRouting));
+                transcriptRows, columns, listDisplay,
+                shellInputDelivery, statusline, scrollGestureRouting,
+                DiagnosticsSessionListAbsence.ofListState(listDisplay, name,
+                    collapsedProjectSessionNames, hiddenSessionNames)));
         }
         return lines;
     }
