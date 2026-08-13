@@ -62,15 +62,7 @@ public final class DiagnosticsScrollGestureRouting {
 
     @NonNull
     private String destinationLabel() {
-        switch (mFingerGestureDestination) {
-            case MOUSE_WHEEL:
-                return "the shell as a mouse wheel";
-            case ARROW_KEY:
-                return "the shell as arrow keys";
-            case LOCAL_SCROLLBACK:
-                return "the view's own scrollback";
-        }
-        throw new IllegalStateException("unhandled scroll gesture destination " + mFingerGestureDestination);
+        return DiagnosticsScrollDestinationLabel.of(mFingerGestureDestination);
     }
 
     @NonNull

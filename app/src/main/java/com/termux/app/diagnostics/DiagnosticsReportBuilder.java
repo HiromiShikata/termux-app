@@ -162,6 +162,9 @@ public final class DiagnosticsReportBuilder {
         appendWakeLockSection(builder, report);
 
         builder.append('\n');
+        appendScrollStepSection(builder, report);
+
+        builder.append('\n');
         appendSessionsSection(builder, report);
 
         builder.append('\n');
@@ -270,6 +273,23 @@ public final class DiagnosticsReportBuilder {
                 + countByPath.getCreationCount());
         }
         appendLinesWithinBudget(builder, countByPathLines, SESSION_CREATION_PATHS);
+    }
+
+    private void appendScrollStepSection(@NonNull DiagnosticsReportText builder,
+                                         @NonNull DiagnosticsReport report) {
+        DiagnosticsScrollSteps scrollSteps = report.getScrollSteps();
+        builder.append("Scroll steps since the app started\n");
+        if (scrollSteps.getCountsByDestination().isEmpty()) {
+            builder.append("  None: no scroll gesture has reached the terminal view yet\n");
+            return;
+        }
+        builder.append("  Total: ").append(scrollSteps.getTotalStepCount()).append('\n');
+        for (DiagnosticsScrollStepCount countByDestination : scrollSteps.getCountsByDestination()) {
+            builder.append("  To ").append(countByDestination.getDestinationLabel())
+                .append(": ").append(countByDestination.getStepCount())
+                .append(", most recent ")
+                .append(formatTimestamp(countByDestination.getLastStepAtMillis())).append('\n');
+        }
     }
 
     private void appendActivityWindowSection(@NonNull DiagnosticsReportText builder,

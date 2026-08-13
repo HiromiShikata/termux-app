@@ -22,6 +22,7 @@ import com.termux.terminal.TerminalBufferReflowCostCounterHolder;
 import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
+import com.termux.view.scroll.TerminalScrollStepCounterHolder;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -93,7 +94,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsSessionCreationPaths.of(SessionCreationPathCounterHolder.getInstance()),
             ActivityWindowRecorderHolder.getInstance().snapshot(),
             DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot(),
-            MainLooperQueuePeakRecorderHolder.getInstance().snapshot());
+            MainLooperQueuePeakRecorderHolder.getInstance().snapshot(),
+            DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()));
     }
 
     @NonNull
