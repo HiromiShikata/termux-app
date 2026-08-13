@@ -112,9 +112,6 @@ public final class TerminalScrollController {
     }
 
     public TerminalScrollEvent scrollEventType(boolean mouseTrackingActive, boolean alternateScreenActive, boolean fromScrollControl) {
-        if (mouseTrackingActive) return TerminalScrollEvent.MOUSE_WHEEL;
-        if (fromScrollControl && alternateScreenActive) return TerminalScrollEvent.MOUSE_WHEEL;
-        if (alternateScreenActive) return TerminalScrollEvent.ARROW_KEY;
-        return TerminalScrollEvent.LOCAL_SCROLLBACK;
+        return TerminalScrollEvent.ofEmulatorState(mouseTrackingActive, alternateScreenActive, fromScrollControl);
     }
 }

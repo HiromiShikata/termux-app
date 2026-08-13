@@ -431,6 +431,8 @@ public final class DiagnosticsReportBuilder {
                 .append(" | transcript rows: ").append(line.getTranscriptRows())
                 .append(" | columns: ").append(line.getColumns())
                 .append(" | ").append(line.getListDisplay().getReportLabel())
+                .append(" | a scroll gesture goes to ")
+                .append(line.getScrollGestureRouting().getReportLabel())
                 .append('\n');
             appendShellInputDelivery(builder, line.getShellInputDelivery());
             appendStatusline(builder, line.getStatusline());
