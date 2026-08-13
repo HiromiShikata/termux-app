@@ -6,6 +6,8 @@ import androidx.annotation.Nullable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
@@ -16,36 +18,100 @@ public final class DiagnosticsReportBuilder {
 
     private static final String TIMESTAMP_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'";
 
-    private static final int LONGEST_STALL_STACK_TRACE_BUDGET_CHARACTERS = 1200;
+    private static final String LONGEST_STALL_STACK_TRACE = "longest stall stack trace";
 
-    private static final int STALL_HOT_PATH_RANKING_BUDGET_CHARACTERS = 900;
+    private static final String STALL_HOT_PATH_RANKING = "stall hot path ranking";
 
-    private static final int STALL_HOT_PATH_STACK_TRACE_BUDGET_CHARACTERS = 600;
+    private static final String STALL_HOT_PATH_STACK_TRACES = "stall hot path stack traces";
 
-    private static final int BUSIEST_TARGET_BUDGET_CHARACTERS = 500;
+    private static final String BUSIEST_TARGETS = "main looper queue busiest targets";
 
-    private static final int PEAK_BUSIEST_TARGET_BUDGET_CHARACTERS = 500;
+    private static final String PEAK_BUSIEST_TARGETS = "peak main looper queue busiest targets";
 
-    private static final int PEAK_SCROLLBAR_VIEW_CLASS_BUDGET_CHARACTERS = 500;
+    private static final String PEAK_SCROLLBAR_VIEW_CLASSES = "peak scrollbar view classes";
 
-    private static final int PENDING_MESSAGE_LINE_BUDGET_CHARACTERS = 1000;
+    private static final String PENDING_MESSAGE_LINES = "pending main looper message lines";
 
-    private static final int UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS = 600;
+    private static final String UNDELIVERED_SHELL_INPUT = "undelivered shell input";
 
-    private static final int SHELL_EXIT_STATUS_BUDGET_CHARACTERS = 400;
+    private static final String SHELL_EXIT_STATUSES = "shell exit statuses";
 
-    private static final int OMISSION_NOTE_BUDGET_CHARACTERS = 96;
+    private static final String SESSION_RECONNECT_COST_BY_REASON = "session reconnect cost by reason";
 
-    private static final int SECTION_CEILING_HEADROOM_CHARACTERS = 300;
+    private static final String SESSION_CREATION_PATHS = "session creation paths";
+
+    private static final String APP_PROCESS_COMMAND_NAMES = "app process command names";
+
+    private static final String LIVE_SCROLLBAR_VIEW_CLASSES = "live scrollbar view classes";
+
+    private static final String OMISSION_NOTE_PREFIX = "      ... ";
+
+    private static final String OMISSION_NOTE_SUFFIX =
+        " further lines left out so this report survives being pasted\n";
+
+    private static final int LONGEST_OMITTED_LINE_COUNT_DIGITS = 6;
+
+    private static final int OMISSION_NOTE_CHARACTERS = OMISSION_NOTE_PREFIX.length()
+        + LONGEST_OMITTED_LINE_COUNT_DIGITS + OMISSION_NOTE_SUFFIX.length();
+
+    private static final int REPORT_CEILING_HEADROOM_CHARACTERS = 300;
 
     private static final int MAXIMUM_COMMAND_NAMES_REPORTED = 8;
 
-    private static final int MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS =
-        PASTE_LIMIT_CHARACTERS - SECTION_CEILING_HEADROOM_CHARACTERS;
+    private static final int REPORT_CEILING_CHARACTERS =
+        PASTE_LIMIT_CHARACTERS - REPORT_CEILING_HEADROOM_CHARACTERS;
+
+    private static final List<DiagnosticsReportSubsection> SUBSECTIONS_IN_PRIORITY_ORDER =
+        Collections.unmodifiableList(Arrays.asList(
+            new DiagnosticsReportSubsection(PENDING_MESSAGE_LINES, 1000),
+            new DiagnosticsReportSubsection(BUSIEST_TARGETS, 500),
+            new DiagnosticsReportSubsection(LIVE_SCROLLBAR_VIEW_CLASSES, 500),
+            new DiagnosticsReportSubsection(UNDELIVERED_SHELL_INPUT, 600),
+            new DiagnosticsReportSubsection(SHELL_EXIT_STATUSES, 400),
+            new DiagnosticsReportSubsection(LONGEST_STALL_STACK_TRACE, 1200),
+            new DiagnosticsReportSubsection(STALL_HOT_PATH_RANKING, 900),
+            new DiagnosticsReportSubsection(SESSION_RECONNECT_COST_BY_REASON, 600),
+            new DiagnosticsReportSubsection(PEAK_BUSIEST_TARGETS, 500),
+            new DiagnosticsReportSubsection(PEAK_SCROLLBAR_VIEW_CLASSES, 500),
+            new DiagnosticsReportSubsection(SESSION_CREATION_PATHS, 500),
+            new DiagnosticsReportSubsection(APP_PROCESS_COMMAND_NAMES, 500),
+            new DiagnosticsReportSubsection(STALL_HOT_PATH_STACK_TRACES, 600)));
+
+    private static final List<String> SUBSECTION_NAMES_IN_PRINT_ORDER =
+        Collections.unmodifiableList(Arrays.asList(
+            UNDELIVERED_SHELL_INPUT,
+            SHELL_EXIT_STATUSES,
+            SESSION_CREATION_PATHS,
+            APP_PROCESS_COMMAND_NAMES,
+            SESSION_RECONNECT_COST_BY_REASON,
+            BUSIEST_TARGETS,
+            LIVE_SCROLLBAR_VIEW_CLASSES,
+            PEAK_BUSIEST_TARGETS,
+            PEAK_SCROLLBAR_VIEW_CLASSES,
+            PENDING_MESSAGE_LINES,
+            LONGEST_STALL_STACK_TRACE,
+            STALL_HOT_PATH_RANKING,
+            STALL_HOT_PATH_STACK_TRACES));
 
     @NonNull
     public String build(@NonNull DiagnosticsReport report) {
-        StringBuilder builder = new StringBuilder();
+        DiagnosticsReportText measuredText = render(report,
+            DiagnosticsReportCharacterAllowances.unlimited());
+        DiagnosticsReportCharacterAllowances allowances =
+            DiagnosticsReportCharacterAllowances.allocatedByPriority(REPORT_CEILING_CHARACTERS,
+                OMISSION_NOTE_CHARACTERS, SUBSECTIONS_IN_PRIORITY_ORDER,
+                SUBSECTION_NAMES_IN_PRINT_ORDER, measuredText.getMeasuredOffsetByName(),
+                measuredText.getMeasuredCharactersByName());
+        if (allowances.grantsEveryWantedCharacter()) {
+            return measuredText.toString();
+        }
+        return render(report, allowances).toString();
+    }
+
+    @NonNull
+    private DiagnosticsReportText render(@NonNull DiagnosticsReport report,
+                                         @NonNull DiagnosticsReportCharacterAllowances allowances) {
+        DiagnosticsReportText builder = new DiagnosticsReportText(allowances);
 
         builder.append("Termux diagnostics report\n");
         builder.append("Generated: ").append(formatTimestamp(report.getReportTimestampMillis())).append('\n');
@@ -101,10 +167,10 @@ public final class DiagnosticsReportBuilder {
         builder.append('\n');
         appendEventsSection(builder, report);
 
-        return builder.toString();
+        return builder;
     }
 
-    private void appendVersionChangeLine(@NonNull StringBuilder builder,
+    private void appendVersionChangeLine(@NonNull DiagnosticsReportText builder,
                                          @NonNull DiagnosticsVersionChange versionChange) {
         if (!versionChange.isFirstLaunchOfThisVersion()) return;
         if (versionChange.hasPreviousVersionCode()) {
@@ -124,7 +190,7 @@ public final class DiagnosticsReportBuilder {
         return hours + "h " + minutes + "m " + seconds + "s";
     }
 
-    private void appendMemorySection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendMemorySection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         DiagnosticsMemoryUsage memoryUsage = report.getMemoryUsage();
         builder.append("Memory\n");
         builder.append("  Java heap used: ").append(memoryUsage.getJavaHeapUsedMegabytes()).append(" MB\n");
@@ -134,7 +200,7 @@ public final class DiagnosticsReportBuilder {
             .append(memoryUsage.getNativeHeapAllocatedMegabytes()).append(" MB\n");
     }
 
-    private void appendUndeliveredShellInputSection(@NonNull StringBuilder builder,
+    private void appendUndeliveredShellInputSection(@NonNull DiagnosticsReportText builder,
                                                     @NonNull DiagnosticsReport report) {
         builder.append("Input accepted from the user that never reached the shell\n");
         List<String> undeliveredLines = new ArrayList<>();
@@ -152,10 +218,10 @@ public final class DiagnosticsReportBuilder {
             builder.append("  None: every session wrote everything it accepted\n");
             return;
         }
-        appendLinesWithinBudget(builder, undeliveredLines, UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, undeliveredLines, UNDELIVERED_SHELL_INPUT);
     }
 
-    private void appendReplacedSessionShellInputSection(@NonNull StringBuilder builder,
+    private void appendReplacedSessionShellInputSection(@NonNull DiagnosticsReportText builder,
                                                         @NonNull DiagnosticsReport report) {
         DiagnosticsReplacedSessionShellInput replaced = report.getReplacedSessionShellInput();
         builder.append("Input stuck on sessions replaced since the app started\n");
@@ -173,7 +239,7 @@ public final class DiagnosticsReportBuilder {
         }
     }
 
-    private void appendShellExitSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendShellExitSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         DiagnosticsShellExits shellExits = report.getShellExits();
         builder.append("Shell exits since the app started\n");
         if (shellExits.getCountsByExitStatus().isEmpty()) {
@@ -186,10 +252,10 @@ public final class DiagnosticsReportBuilder {
             exitStatusLines.add("  Exit status " + countByExitStatus.getExitStatus() + ": "
                 + countByExitStatus.getCount());
         }
-        appendLinesWithinBudget(builder, exitStatusLines, SHELL_EXIT_STATUS_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, exitStatusLines, SHELL_EXIT_STATUSES);
     }
 
-    private void appendSessionCreationPathSection(@NonNull StringBuilder builder,
+    private void appendSessionCreationPathSection(@NonNull DiagnosticsReportText builder,
                                                   @NonNull DiagnosticsReport report) {
         DiagnosticsSessionCreationPaths creationPaths = report.getSessionCreationPaths();
         builder.append("Sessions created since the app started\n");
@@ -198,13 +264,15 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("  Total: ").append(creationPaths.getTotalCreationCount()).append('\n');
+        List<String> countByPathLines = new ArrayList<>();
         for (DiagnosticsSessionCreationPathCount countByPath : creationPaths.getCountsByPath()) {
-            builder.append("  ").append(countByPath.getPath().getReportLabel()).append(": ")
-                .append(countByPath.getCreationCount()).append('\n');
+            countByPathLines.add("  " + countByPath.getPath().getReportLabel() + ": "
+                + countByPath.getCreationCount());
         }
+        appendLinesWithinBudget(builder, countByPathLines, SESSION_CREATION_PATHS);
     }
 
-    private void appendActivityWindowSection(@NonNull StringBuilder builder,
+    private void appendActivityWindowSection(@NonNull DiagnosticsReportText builder,
                                              @NonNull DiagnosticsReport report) {
         DiagnosticsActivityWindows activityWindows = report.getActivityWindows();
         builder.append("Activity window builds since the app started\n");
@@ -217,7 +285,7 @@ public final class DiagnosticsReportBuilder {
         builder.append("  Teardown not run: ").append(activityWindows.getTeardownNotRunCount()).append('\n');
     }
 
-    private void appendReportDeliverySection(@NonNull StringBuilder builder,
+    private void appendReportDeliverySection(@NonNull DiagnosticsReportText builder,
                                              @NonNull DiagnosticsReport report) {
         DiagnosticsReportDelivery delivery = report.getLastReportDelivery();
         builder.append("Last diagnostics report delivery\n");
@@ -234,7 +302,7 @@ public final class DiagnosticsReportBuilder {
             .append(delivery.didInputReachTheProgramAfterThePaste() ? "yes" : "no").append('\n');
     }
 
-    private void appendPhantomProcessMonitorSection(@NonNull StringBuilder builder,
+    private void appendPhantomProcessMonitorSection(@NonNull DiagnosticsReportText builder,
                                                     @NonNull DiagnosticsReport report) {
         DiagnosticsPhantomProcessMonitor monitor = report.getPhantomProcessMonitor();
         builder.append("Android phantom process monitor\n");
@@ -246,7 +314,7 @@ public final class DiagnosticsReportBuilder {
             .append(monitor.getMonitorCanBeSwitchedOff() ? "yes" : "no").append('\n');
     }
 
-    private void appendAppProcessPopulationSection(@NonNull StringBuilder builder,
+    private void appendAppProcessPopulationSection(@NonNull DiagnosticsReportText builder,
                                                    @NonNull DiagnosticsReport report) {
         DiagnosticsAppProcessPopulation population = report.getAppProcessPopulation();
         builder.append("Processes this app is running\n");
@@ -263,11 +331,12 @@ public final class DiagnosticsReportBuilder {
         builder.append("  Total: ").append(population.getTotalProcessCount()).append('\n');
         List<DiagnosticsProcessCommandCount> counts = population.getCountsByCommandName();
         int reportedCount = Math.min(counts.size(), MAXIMUM_COMMAND_NAMES_REPORTED);
+        List<String> commandCountLines = new ArrayList<>();
         for (int index = 0; index < reportedCount; index++) {
             DiagnosticsProcessCommandCount count = counts.get(index);
-            builder.append("    ").append(count.getCommandName()).append(": ")
-                .append(count.getProcessCount()).append('\n');
+            commandCountLines.add("    " + count.getCommandName() + ": " + count.getProcessCount());
         }
+        appendLinesWithinBudget(builder, commandCountLines, APP_PROCESS_COMMAND_NAMES);
         int omittedCount = counts.size() - reportedCount;
         if (omittedCount > 0) {
             builder.append("    ").append(omittedCount)
@@ -284,7 +353,7 @@ public final class DiagnosticsReportBuilder {
         return "stopped" + (writerStoppedReason == null ? "" : " (" + writerStoppedReason + ")");
     }
 
-    private void appendMainThreadCostSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendMainThreadCostSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         builder.append("Main-thread cost\n");
         appendWorkCostLines(builder, "Background output tag scan", report.getBackgroundOutputScanCost());
         appendWorkCostLines(builder, "Open-tag scan on the viewed session",
@@ -300,7 +369,7 @@ public final class DiagnosticsReportBuilder {
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
     }
 
-    private void appendScrollbarViewCensusLines(@NonNull StringBuilder builder,
+    private void appendScrollbarViewCensusLines(@NonNull DiagnosticsReportText builder,
                                                 @NonNull ScrollbarViewCensus census) {
         builder.append("  Views that can hold a scrollbar fade callback\n");
         builder.append("    Total: ").append(census.getScrollbarViewCount()).append('\n');
@@ -309,13 +378,14 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("    Busiest classes:\n");
+        List<String> classLines = new ArrayList<>();
         for (ScrollbarViewCensusEntry entry : census.getBusiestClasses()) {
-            builder.append("      ").append(entry.getViewCount()).append(" x ")
-                .append(entry.getClassName()).append('\n');
+            classLines.add("      " + entry.getViewCount() + " x " + entry.getClassName());
         }
+        appendLinesWithinBudget(builder, classLines, LIVE_SCROLLBAR_VIEW_CLASSES);
     }
 
-    private void appendMainLooperQueuePeakLines(@NonNull StringBuilder builder,
+    private void appendMainLooperQueuePeakLines(@NonNull DiagnosticsReportText builder,
                                                 @NonNull DiagnosticsMainLooperQueuePeak peak) {
         builder.append("  Highest main looper queue observed since the process started\n");
         if (!peak.wasObserved()) {
@@ -328,7 +398,7 @@ public final class DiagnosticsReportBuilder {
         appendPeakScrollbarViewCensusLines(builder, peak.getScrollbarViewCensus());
     }
 
-    private void appendPeakBusiestTargetLines(@NonNull StringBuilder builder,
+    private void appendPeakBusiestTargetLines(@NonNull DiagnosticsReportText builder,
                                               @NonNull List<DiagnosticsMainLooperQueueTarget> busiestTargets) {
         if (busiestTargets.isEmpty()) {
             builder.append("    Busiest targets then: none\n");
@@ -339,10 +409,10 @@ public final class DiagnosticsReportBuilder {
         for (DiagnosticsMainLooperQueueTarget target : busiestTargets) {
             targetLines.add("      " + target.getPendingMessageCount() + " x " + target.getDescription());
         }
-        appendLinesWithinBudget(builder, targetLines, PEAK_BUSIEST_TARGET_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, targetLines, PEAK_BUSIEST_TARGETS);
     }
 
-    private void appendPeakScrollbarViewCensusLines(@NonNull StringBuilder builder,
+    private void appendPeakScrollbarViewCensusLines(@NonNull DiagnosticsReportText builder,
                                                     @NonNull ScrollbarViewCensus census) {
         builder.append("    Views that could hold a scrollbar fade callback then: ")
             .append(census.getScrollbarViewCount()).append('\n');
@@ -352,10 +422,10 @@ public final class DiagnosticsReportBuilder {
         for (ScrollbarViewCensusEntry entry : census.getBusiestClasses()) {
             classLines.add("      " + entry.getViewCount() + " x " + entry.getClassName());
         }
-        appendLinesWithinBudget(builder, classLines, PEAK_SCROLLBAR_VIEW_CLASS_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, classLines, PEAK_SCROLLBAR_VIEW_CLASSES);
     }
 
-    private void appendMainLooperQueueLines(@NonNull StringBuilder builder,
+    private void appendMainLooperQueueLines(@NonNull DiagnosticsReportText builder,
                                             @NonNull DiagnosticsMainLooperQueue looperQueue) {
         builder.append("  Main looper queue\n");
         builder.append("    Pending messages: ").append(looperQueue.getPendingMessageCount()).append('\n');
@@ -368,10 +438,10 @@ public final class DiagnosticsReportBuilder {
         for (DiagnosticsMainLooperQueueTarget target : looperQueue.getBusiestTargets()) {
             targetLines.add("      " + target.getPendingMessageCount() + " x " + target.getDescription());
         }
-        appendLinesWithinBudget(builder, targetLines, BUSIEST_TARGET_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, targetLines, BUSIEST_TARGETS);
     }
 
-    private void appendPendingMessageLines(@NonNull StringBuilder builder,
+    private void appendPendingMessageLines(@NonNull DiagnosticsReportText builder,
                                            @NonNull DiagnosticsMainLooperQueue looperQueue) {
         if (looperQueue.getPendingMessageLines().isEmpty()) {
             return;
@@ -382,15 +452,18 @@ public final class DiagnosticsReportBuilder {
         for (String pendingMessageLine : looperQueue.getPendingMessageLines()) {
             pendingMessageLines.add("    " + pendingMessageLine);
         }
-        appendLinesWithinBudget(builder, pendingMessageLines, PENDING_MESSAGE_LINE_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, pendingMessageLines, PENDING_MESSAGE_LINES);
     }
 
-    private static void appendLinesWithinBudget(@NonNull StringBuilder builder,
-                                                @NonNull List<String> lines, int budgetCharacters) {
-        int remainingToSectionCeiling =
-            MAIN_THREAD_COST_SECTION_CEILING_CHARACTERS - builder.length() - OMISSION_NOTE_BUDGET_CHARACTERS;
-        int allowedCharacters =
-            Math.min(budgetCharacters - OMISSION_NOTE_BUDGET_CHARACTERS, remainingToSectionCeiling);
+    private static void appendLinesWithinBudget(@NonNull DiagnosticsReportText builder,
+                                                @NonNull List<String> lines,
+                                                @NonNull String subsectionName) {
+        int measuredCharacters = 0;
+        for (String line : lines) {
+            measuredCharacters += line.length() + 1;
+        }
+        builder.recordSubsection(subsectionName, measuredCharacters);
+        int allowedCharacters = builder.getAllowedCharactersOf(subsectionName);
         int spentCharacters = 0;
         int appendedLineCount = 0;
         for (String line : lines) {
@@ -401,11 +474,11 @@ public final class DiagnosticsReportBuilder {
             appendedLineCount++;
         }
         if (appendedLineCount == lines.size()) return;
-        builder.append("      ... ").append(lines.size() - appendedLineCount)
-            .append(" further lines left out so this report survives being pasted\n");
+        builder.append(OMISSION_NOTE_PREFIX).append(lines.size() - appendedLineCount)
+            .append(OMISSION_NOTE_SUFFIX);
     }
 
-    private void appendMainThreadStallLines(@NonNull StringBuilder builder,
+    private void appendMainThreadStallLines(@NonNull DiagnosticsReportText builder,
                                             @NonNull DiagnosticsMainThreadStalls stalls) {
         builder.append("  Stalls over ").append(stalls.getThresholdMillis()).append(" ms\n");
         builder.append("    Count: ").append(stalls.getStallCount()).append('\n');
@@ -422,11 +495,11 @@ public final class DiagnosticsReportBuilder {
         for (String frame : stalls.getMaxStallStackTrace().split("\n")) {
             frameLines.add("      " + frame);
         }
-        appendLinesWithinBudget(builder, frameLines, LONGEST_STALL_STACK_TRACE_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, frameLines, LONGEST_STALL_STACK_TRACE);
         appendMainThreadStallHotPathLines(builder, stalls.getHotPaths());
     }
 
-    private void appendMainThreadStallHotPathLines(@NonNull StringBuilder builder,
+    private void appendMainThreadStallHotPathLines(@NonNull DiagnosticsReportText builder,
                                                    @NonNull List<MainThreadStallHotPath> hotPaths) {
         if (hotPaths.isEmpty()) {
             return;
@@ -439,11 +512,11 @@ public final class DiagnosticsReportBuilder {
                 + " stalls, longest " + hotPath.getMaxBlockedMillis() + " ms: "
                 + hotPath.getIdentifyingFrame());
         }
-        appendLinesWithinBudget(builder, rankingLines, STALL_HOT_PATH_RANKING_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, rankingLines, STALL_HOT_PATH_RANKING);
         appendMainThreadStallHotPathStackTraceLines(builder, hotPaths);
     }
 
-    private void appendMainThreadStallHotPathStackTraceLines(@NonNull StringBuilder builder,
+    private void appendMainThreadStallHotPathStackTraceLines(@NonNull DiagnosticsReportText builder,
                                                              @NonNull List<MainThreadStallHotPath> hotPaths) {
         builder.append("    Caller chain of each path blocking the main thread\n");
         List<String> stackTraceLines = new ArrayList<>();
@@ -453,10 +526,10 @@ public final class DiagnosticsReportBuilder {
                 stackTraceLines.add("        " + frame);
             }
         }
-        appendLinesWithinBudget(builder, stackTraceLines, STALL_HOT_PATH_STACK_TRACE_BUDGET_CHARACTERS);
+        appendLinesWithinBudget(builder, stackTraceLines, STALL_HOT_PATH_STACK_TRACES);
     }
 
-    private void appendBackgroundCycleSection(@NonNull StringBuilder builder,
+    private void appendBackgroundCycleSection(@NonNull DiagnosticsReportText builder,
                                               @NonNull DiagnosticsReport report) {
         DiagnosticsBackgroundCycle backgroundCycle = report.getBackgroundCycle();
         builder.append("Background cycle\n");
@@ -475,7 +548,7 @@ public final class DiagnosticsReportBuilder {
         }
     }
 
-    private void appendWorkCostLines(@NonNull StringBuilder builder, @NonNull String label,
+    private void appendWorkCostLines(@NonNull DiagnosticsReportText builder, @NonNull String label,
                                      @NonNull DiagnosticsWorkCostLine cost) {
         builder.append("  ").append(label).append('\n');
         builder.append("    Count: ").append(cost.getSampleCount()).append('\n');
@@ -488,7 +561,7 @@ public final class DiagnosticsReportBuilder {
         builder.append("    Transcript rows at max: ").append(cost.getTranscriptRowsAtMaxElapsed()).append('\n');
     }
 
-    private void appendSessionReconnectCostLines(@NonNull StringBuilder builder,
+    private void appendSessionReconnectCostLines(@NonNull DiagnosticsReportText builder,
                                                  @NonNull DiagnosticsSessionReconnectCost cost) {
         builder.append("  Dead session reconnect on the main thread\n");
         builder.append("    Count: ").append(cost.getReconnectCount()).append('\n');
@@ -500,15 +573,17 @@ public final class DiagnosticsReportBuilder {
         builder.append("    Max: ").append(cost.getMaxElapsedMillis()).append(" ms\n");
         builder.append("    Sessions still queued at max: ")
             .append(cost.getSessionsStillQueuedAtMaxElapsed()).append('\n');
+        List<String> costByReasonLines = new ArrayList<>();
         for (DiagnosticsSessionReconnectCostByReason costByReason : cost.getCostsByReason()) {
-            builder.append("    ").append(costByReason.getReason().getReportLabel()).append('\n');
-            builder.append("      Count: ").append(costByReason.getReconnectCount()).append('\n');
-            builder.append("      Total: ").append(costByReason.getTotalElapsedMillis()).append(" ms\n");
-            builder.append("      Max: ").append(costByReason.getMaxElapsedMillis()).append(" ms\n");
+            costByReasonLines.add("    " + costByReason.getReason().getReportLabel());
+            costByReasonLines.add("      Count: " + costByReason.getReconnectCount());
+            costByReasonLines.add("      Total: " + costByReason.getTotalElapsedMillis() + " ms");
+            costByReasonLines.add("      Max: " + costByReason.getMaxElapsedMillis() + " ms");
         }
+        appendLinesWithinBudget(builder, costByReasonLines, SESSION_RECONNECT_COST_BY_REASON);
     }
 
-    private void appendSessionsSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendSessionsSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         builder.append("Sessions\n");
         builder.append("  Counted toward cap: ").append(report.getSessionsCountedTowardCap()).append('\n');
         builder.append("  Displayed in list: ").append(report.getSessionsDisplayedCount()).append('\n');
@@ -538,18 +613,18 @@ public final class DiagnosticsReportBuilder {
         }
     }
 
-    private void appendListAbsence(@NonNull StringBuilder builder,
+    private void appendListAbsence(@NonNull DiagnosticsReportText builder,
                                    @NonNull DiagnosticsSessionListAbsence listAbsence) {
         if (!listAbsence.hasReason()) return;
         builder.append("      ").append(listAbsence.getReportLabel()).append('\n');
     }
 
-    private void appendScrollGestureRouting(@NonNull StringBuilder builder,
+    private void appendScrollGestureRouting(@NonNull DiagnosticsReportText builder,
                                             @NonNull DiagnosticsScrollGestureRouting routing) {
         builder.append("      a scroll gesture goes to ").append(routing.getReportLabel()).append('\n');
     }
 
-    private void appendStatusline(@NonNull StringBuilder builder,
+    private void appendStatusline(@NonNull DiagnosticsReportText builder,
                                   @NonNull DiagnosticsSessionStatusline statusline) {
         builder.append("      statusline held by the app: ");
         if (statusline.isHeld()) {
@@ -559,7 +634,7 @@ public final class DiagnosticsReportBuilder {
         } else {
             builder.append("none");
         }
-        builder.append(", dot ").append(statusline.getTier()).append('\n');
+        builder.append(", dot ").append(statusline.getTier().name()).append('\n');
     }
 
     @NonNull
@@ -570,7 +645,7 @@ public final class DiagnosticsReportBuilder {
         return formatTimestamp(timeMillis);
     }
 
-    private void appendShellInputDelivery(@NonNull StringBuilder builder,
+    private void appendShellInputDelivery(@NonNull DiagnosticsReportText builder,
                                           @NonNull DiagnosticsShellInputDelivery delivery) {
         builder.append("      shell input: accepted ").append(delivery.getBytesAcceptedForDelivery())
             .append("B, written to the shell ").append(delivery.getBytesWrittenToTheShell())
@@ -588,19 +663,19 @@ public final class DiagnosticsReportBuilder {
         return line.getSecondsSinceLastActivity() + "s ago";
     }
 
-    private void appendBrowserSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendBrowserSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         builder.append("Browser\n");
         builder.append("  Open tabs: ").append(report.getOpenTabCount()).append('\n');
         builder.append("  Tab-history entries: ").append(report.getTabHistoryEntryCount()).append('\n');
     }
 
-    private void appendWakeLockSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendWakeLockSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         builder.append("Wake lock\n");
         builder.append("  Held: ").append(report.isWakeLockHeld() ? "yes" : "no").append('\n');
         builder.append("  App state: ").append(report.isForeground() ? "foreground" : "background").append('\n');
     }
 
-    private void appendEventsSection(@NonNull StringBuilder builder, @NonNull DiagnosticsReport report) {
+    private void appendEventsSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
         builder.append("Recent events\n");
         List<DiagnosticEvent> events = report.getRecentEvents();
         if (events.isEmpty()) {
