@@ -17,6 +17,12 @@ public class SessionExitDiagnosticEventTest {
             StandardCharsets.UTF_8);
     }
 
+    private static String shellEndingRecorderSource() throws IOException {
+        return new String(Files.readAllBytes(Paths.get(
+                "src/main/java/com/termux/app/terminal/ShellExitCountingTerminalSessionClient.java")),
+            StandardCharsets.UTF_8);
+    }
+
     private static String exitCallbackBody() throws IOException {
         String source = serviceSource();
         int start = source.indexOf("public void onTermuxSessionExited(");
@@ -34,37 +40,43 @@ public class SessionExitDiagnosticEventTest {
     }
 
     @Test
-    public void theExitCallbackRecordsTheExitSoTheReportShowsTheFullSessionCycle() throws IOException {
-        String body = exitCallbackBody();
+    public void theShellEndingRecordsTheExitSoTheReportShowsTheFullSessionCycle() throws IOException {
+        String source = shellEndingRecorderSource();
 
-        Assert.assertTrue("Without this record a session whose shell exits on its own vanishes from the diagnostics"
-                + " report, so a create-exit-recreate loop is indistinguishable from a single healthy session: "
-                + body,
-            body.contains("DiagnosticEventType.SESSION_EXITED"));
+        Assert.assertTrue("Without this record a session whose shell exits vanishes from the diagnostics report,"
+                + " so a create-exit-recreate loop is indistinguishable from a single healthy session: " + source,
+            source.contains("DiagnosticEventType.SESSION_EXITED"));
     }
 
     @Test
     public void theRecordedExitNamesTheSessionThatExited() throws IOException {
-        String body = exitCallbackBody();
+        String source = shellEndingRecorderSource();
 
         Assert.assertTrue("An exit recorded without the session name cannot be matched against the create and remove"
-                + " entries of the same session, which is the whole point of recording it: " + body,
-            body.contains("diagnosticSessionName(termuxSession.getTerminalSession())"));
+                + " entries of the same session, which is the whole point of recording it: " + source,
+            source.contains("finishedSession.mSessionName"));
     }
 
     @Test
-    public void theExitIsRecordedOnlyWhenTheSessionWasStillInTheSessionList() throws IOException {
+    public void theExitIsRecordedWhereTheShellEndingIsObservedRatherThanWhereTheSessionLeavesTheList()
+        throws IOException {
         String body = exitCallbackBody();
 
-        int removeIndex = body.indexOf("mShellManager.mTermuxSessions.remove(termuxSession)");
-        int recordIndex = body.indexOf("DiagnosticEventType.SESSION_EXITED");
-        Assert.assertTrue("The removal must still happen: " + body, removeIndex >= 0);
-        Assert.assertTrue("The record must be placed after the removal is attempted so its result can guard it: "
-                + body,
-            recordIndex > removeIndex);
-        Assert.assertTrue("The removal result must guard the record, otherwise a callback for a session the app had"
-                + " already removed would log a second exit for the same session and inflate the cycle count: "
-                + body,
-            body.contains("if (mShellManager.mTermuxSessions.remove(termuxSession))"));
+        Assert.assertTrue("The removal must still happen: " + body,
+            body.contains("mShellManager.mTermuxSessions.remove(termuxSession)"));
+        Assert.assertFalse("A session is taken off the list before its shell finishes ending on every reconnect, so"
+                + " an exit recorded here is recorded only for the sessions that were removed after their process"
+                + " had already ended, and every other ending is lost: " + body,
+            body.contains("DiagnosticEventType.SESSION_EXITED"));
+    }
+
+    @Test
+    public void aClientCannotObserveAShellEndingWithoutTheEndingBeingRecorded() throws IOException {
+        String source = shellEndingRecorderSource();
+
+        Assert.assertTrue("The recording is what makes the session population accountable, so a client that"
+                + " overrides the callback must not be able to take the recording out with it, and a client that"
+                + " returns early must not be able to skip it: " + source,
+            source.contains("public final void onSessionFinished("));
     }
 }

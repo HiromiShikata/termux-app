@@ -75,7 +75,6 @@ import com.termux.app.terminal.session.PersistedSessionRestoreData;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.app.terminal.session.RestoredSessionCommandPlanner;
-import com.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
 import com.termux.shared.termux.TermuxConstants;
 import com.termux.app.TermuxService;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
@@ -110,7 +109,7 @@ import java.util.Set;
 import java.util.TimeZone;
 
 /** The {@link TerminalSessionClient} implementation that may require an {@link Activity} for its interface methods. */
-public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionClientBase {
+public class TermuxTerminalSessionActivityClient extends ShellExitCountingTerminalSessionClient {
 
     private final TermuxActivity mActivity;
 
@@ -920,7 +919,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Override
-    public void onSessionFinished(@NonNull TerminalSession finishedSession) {
+    protected void onShellProcessEnded(@NonNull TerminalSession finishedSession) {
         TermuxService service = mActivity.getTermuxService();
 
         if (service == null || service.wantsToStop()) {
