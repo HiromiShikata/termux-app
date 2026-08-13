@@ -23,13 +23,11 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     private final TtsEngineReadyPlanner mReadyPlanner = new TtsEngineReadyPlanner();
 
-    private final ExecutorService mEngineWorkExecutor;
+    private final TtsEngineWorkExecutor mEngineWorkExecutor;
 
     private final Executor mSpeechQueueExecutor;
 
     private volatile TextToSpeech mTextToSpeech;
-
-    private volatile boolean mEngineWorkerStopped;
 
     AndroidTextToSpeechSynthesizer(Context context) {
         this(context, engineWorkExecutor(), runnable -> new Handler(Looper.getMainLooper()).post(runnable));
@@ -38,7 +36,7 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     AndroidTextToSpeechSynthesizer(Context context, ExecutorService engineWorkExecutor,
                                    Executor speechQueueExecutor) {
         mContext = context;
-        mEngineWorkExecutor = engineWorkExecutor;
+        mEngineWorkExecutor = new TtsEngineWorkExecutor(engineWorkExecutor);
         mSpeechQueueExecutor = speechQueueExecutor;
     }
 
@@ -72,7 +70,6 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     }
 
     private void onTheEngineWorkThread(EngineWork engineWork) {
-        if (mEngineWorkerStopped) return;
         mEngineWorkExecutor.execute(() -> {
             TextToSpeech textToSpeech = mTextToSpeech;
             if (textToSpeech == null) return;
@@ -93,7 +90,6 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     @Override
     public void shutdown() {
         onTheEngineWorkThread(TextToSpeech::shutdown);
-        mEngineWorkerStopped = true;
-        mEngineWorkExecutor.shutdown();
+        mEngineWorkExecutor.stop();
     }
 }
