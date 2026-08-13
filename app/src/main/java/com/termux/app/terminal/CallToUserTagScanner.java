@@ -17,9 +17,7 @@ public final class CallToUserTagScanner {
 
     public static String normalizeReason(String innerText) {
         if (innerText == null) return null;
-        String trimmed = innerText.trim();
-        if (trimmed.isEmpty()) return null;
-        return trimmed;
+        return innerText.trim();
     }
 
     public List<OutputTagOccurrence> newCalls(String output) {

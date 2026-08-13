@@ -53,15 +53,15 @@ public class CallToUserTagScannerTest {
     }
 
     @Test
-    public void ignoresEmptyBlock() {
+    public void extractsAnEmptyReasonFromABlockThatCarriesNoBody() {
         List<String> reasons = CallToUserTagScanner.extractReasons("<call-to-user>   </call-to-user>");
-        assertTrue(reasons.isEmpty());
+        assertEquals(List.of(""), reasons);
     }
 
     @Test
-    public void normalizeReturnsNullForBlankAndNull() {
+    public void normalizeReturnsNullOnlyForNullAndAnEmptyStringForBlank() {
         assertNull(CallToUserTagScanner.normalizeReason(null));
-        assertNull(CallToUserTagScanner.normalizeReason("   "));
+        assertEquals("", CallToUserTagScanner.normalizeReason("   "));
         assertEquals("done", CallToUserTagScanner.normalizeReason("  done  "));
     }
 
