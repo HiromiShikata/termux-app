@@ -44,7 +44,9 @@ public final class OwnerCallDialogBinder {
             return paging;
         }
         if (calls.isEmpty()) {
-            dialog.setVisibility(View.GONE);
+            if (dialog.getVisibility() != View.GONE) {
+                dialog.setVisibility(View.GONE);
+            }
             return paging;
         }
 
@@ -61,6 +63,12 @@ public final class OwnerCallDialogBinder {
                                       @NonNull OwnerCallDialogGeometry geometry) {
         ViewGroup.MarginLayoutParams layoutParams =
             (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+        if (layoutParams.width == geometry.getWidthPixels()
+            && layoutParams.height == geometry.getHeightPixels()
+            && layoutParams.leftMargin == geometry.getLeftMarginPixels()
+            && layoutParams.bottomMargin == geometry.getBottomMarginPixels()) {
+            return;
+        }
         layoutParams.width = geometry.getWidthPixels();
         layoutParams.height = geometry.getHeightPixels();
         layoutParams.leftMargin = geometry.getLeftMarginPixels();
@@ -70,11 +78,10 @@ public final class OwnerCallDialogBinder {
 
     private static void bindHeader(@NonNull View root, @NonNull UnansweredOwnerCall call,
                                    @NonNull OwnerCallDialogPaging paging, long nowMillis) {
-        TextView relativeTime = root.findViewById(R.id.owner_call_dialog_relative_time);
-        relativeTime.setText(OwnerCallCalledAt.describe(call.getCalledAt(), nowMillis));
-
-        TextView position = root.findViewById(R.id.owner_call_dialog_position);
-        position.setText(paging.getPositionLabel());
+        setTextIfChanged(root.findViewById(R.id.owner_call_dialog_relative_time),
+            OwnerCallCalledAt.describe(call.getCalledAt(), nowMillis));
+        setTextIfChanged(root.findViewById(R.id.owner_call_dialog_position),
+            paging.getPositionLabel());
 
         applyEnabledState(root.findViewById(R.id.owner_call_dialog_previous_button),
             paging.isPreviousEnabled());
@@ -87,10 +94,21 @@ public final class OwnerCallDialogBinder {
         button.setAlpha(enabled ? ENABLED_BUTTON_ALPHA : DISABLED_BUTTON_ALPHA);
     }
 
+    private static void setTextIfChanged(@NonNull TextView view, @NonNull String text) {
+        if (text.contentEquals(view.getText())) {
+            return;
+        }
+        view.setText(text);
+    }
+
     private static void bindBody(@NonNull View root, @NonNull UnansweredOwnerCall call) {
+        ScrollView bodyScroll = root.findViewById(R.id.owner_call_dialog_body_scroll);
+        if (call.getCalledAt().equals(bodyScroll.getTag(R.id.owner_call_dialog_body_scroll))) {
+            return;
+        }
         TextView body = root.findViewById(R.id.owner_call_dialog_body);
         body.setText(call.getBody());
-        ScrollView bodyScroll = root.findViewById(R.id.owner_call_dialog_body_scroll);
+        bodyScroll.setTag(R.id.owner_call_dialog_body_scroll, call.getCalledAt());
         bodyScroll.scrollTo(0, 0);
     }
 

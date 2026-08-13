@@ -186,6 +186,49 @@ public class OwnerCallDialogProductionRenderTest {
     }
 
     @Test
+    public void leavesTheTerminalAloneWhenTheDisplayedCallDidNotChange() {
+        View root = inflateActivityLayout();
+
+        OwnerCallDialogBinder.bind(root, THREE_CALLS, 0, NOW, PORTRAIT_GEOMETRY, null);
+        View dialog = layoutDialog(root);
+        OwnerCallDialogBinder.bind(root, THREE_CALLS, 0, NOW, PORTRAIT_GEOMETRY, null);
+
+        Assert.assertFalse("re-binding an unchanged call must not force a layout pass",
+            dialog.isLayoutRequested());
+    }
+
+    @Test
+    public void keepsTheReadingPositionOfALongCallBodyAcrossRefreshes() {
+        View root = inflateActivityLayout();
+        UnansweredOwnerCall longCall = new UnansweredOwnerCall("2027-01-15T08:00:00.000Z",
+            repeat("クロネコ住所録の旧住所の一括削除を実行してよいかご判断ください\n", 40));
+        List<UnansweredOwnerCall> oneCall = Collections.singletonList(longCall);
+
+        OwnerCallDialogBinder.bind(root, oneCall, 0, NOW, PORTRAIT_GEOMETRY, null);
+        layoutDialog(root);
+        ScrollView bodyScroll = root.findViewById(R.id.owner_call_dialog_body_scroll);
+        bodyScroll.scrollTo(0, 120);
+
+        OwnerCallDialogBinder.bind(root, oneCall, 0, NOW + 60_000L, PORTRAIT_GEOMETRY, null);
+
+        Assert.assertEquals(120, bodyScroll.getScrollY());
+    }
+
+    @Test
+    public void returnsToTheTopOfTheBodyWhenAnotherCallIsShown() {
+        View root = inflateActivityLayout();
+
+        OwnerCallDialogBinder.bind(root, THREE_CALLS, 0, NOW, PORTRAIT_GEOMETRY, null);
+        layoutDialog(root);
+        ScrollView bodyScroll = root.findViewById(R.id.owner_call_dialog_body_scroll);
+        bodyScroll.scrollTo(0, 90);
+
+        OwnerCallDialogBinder.bind(root, THREE_CALLS, 1, NOW, PORTRAIT_GEOMETRY, null);
+
+        Assert.assertEquals(0, bodyScroll.getScrollY());
+    }
+
+    @Test
     public void rendersOnlyTheElapsedTimeThePositionAndTheCallBody() {
         View root = inflateActivityLayout();
 
