@@ -1,5 +1,6 @@
 package com.termux.app.sessiondefinition;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ public final class SessionDefinitionEntry {
     private final String overviewUrl;
     private final String tdpmConsoleUrl;
     private final String newIssueUrl;
+    private final Map<String, List<UnansweredOwnerCall>> unansweredCallsByUrl;
 
     public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls) {
         this(groupLabel, entryLabel, urls, Collections.emptyMap());
@@ -41,6 +43,14 @@ public final class SessionDefinitionEntry {
     public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls,
                                   Map<String, String> titlesByUrl, @Nullable String overviewUrl,
                                   @Nullable String tdpmConsoleUrl, @Nullable String newIssueUrl) {
+        this(groupLabel, entryLabel, urls, titlesByUrl, overviewUrl, tdpmConsoleUrl, newIssueUrl,
+            Collections.emptyMap());
+    }
+
+    public SessionDefinitionEntry(String groupLabel, String entryLabel, List<String> urls,
+                                  Map<String, String> titlesByUrl, @Nullable String overviewUrl,
+                                  @Nullable String tdpmConsoleUrl, @Nullable String newIssueUrl,
+                                  Map<String, List<UnansweredOwnerCall>> unansweredCallsByUrl) {
         this.groupLabel = groupLabel;
         this.entryLabel = entryLabel;
         this.urls = Collections.unmodifiableList(new ArrayList<>(urls));
@@ -48,6 +58,12 @@ public final class SessionDefinitionEntry {
         this.overviewUrl = overviewUrl;
         this.tdpmConsoleUrl = tdpmConsoleUrl;
         this.newIssueUrl = newIssueUrl;
+        Map<String, List<UnansweredOwnerCall>> copiedCalls = new HashMap<>();
+        for (Map.Entry<String, List<UnansweredOwnerCall>> callsOfUrl : unansweredCallsByUrl.entrySet()) {
+            copiedCalls.put(callsOfUrl.getKey(),
+                Collections.unmodifiableList(new ArrayList<>(callsOfUrl.getValue())));
+        }
+        this.unansweredCallsByUrl = Collections.unmodifiableMap(copiedCalls);
     }
 
     public String getGroupLabel() {
@@ -80,6 +96,12 @@ public final class SessionDefinitionEntry {
     @Nullable
     public String getNewIssueUrl() {
         return newIssueUrl;
+    }
+
+    @NonNull
+    public List<UnansweredOwnerCall> getUnansweredCallsForUrl(String url) {
+        List<UnansweredOwnerCall> calls = unansweredCallsByUrl.get(url);
+        return calls == null ? Collections.emptyList() : calls;
     }
 
     public String getSessionName() {
