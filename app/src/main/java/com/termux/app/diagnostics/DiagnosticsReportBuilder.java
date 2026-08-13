@@ -289,9 +289,10 @@ public final class DiagnosticsReportBuilder {
         appendWorkCostLines(builder, "Terminal draw", report.getTerminalDrawCost());
         appendWorkCostLines(builder, "Shell output parse", report.getShellOutputParseCost());
         appendSessionReconnectCostLines(builder, report.getSessionReconnectCost());
-        appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());
         appendScrollbarViewCensusLines(builder, report.getScrollbarViewCensus());
+        appendMainThreadStallLines(builder, report.getMainThreadStalls());
+        appendPendingMessageLines(builder, report.getMainLooperQueue());
     }
 
     private void appendScrollbarViewCensusLines(@NonNull StringBuilder builder,
@@ -323,7 +324,6 @@ public final class DiagnosticsReportBuilder {
             targetLines.add("      " + target.getPendingMessageCount() + " x " + target.getDescription());
         }
         appendLinesWithinBudget(builder, targetLines, BUSIEST_TARGET_BUDGET_CHARACTERS);
-        appendPendingMessageLines(builder, looperQueue);
     }
 
     private void appendPendingMessageLines(@NonNull StringBuilder builder,
@@ -331,11 +331,11 @@ public final class DiagnosticsReportBuilder {
         if (looperQueue.getPendingMessageLines().isEmpty()) {
             return;
         }
-        builder.append("    Pending messages, oldest first (up to ")
+        builder.append("  Pending main looper messages, oldest first (up to ")
             .append(DiagnosticsMainLooperQueue.MAX_REPORTED_MESSAGE_LINES).append("):\n");
         List<String> pendingMessageLines = new ArrayList<>();
         for (String pendingMessageLine : looperQueue.getPendingMessageLines()) {
-            pendingMessageLines.add("      " + pendingMessageLine);
+            pendingMessageLines.add("    " + pendingMessageLine);
         }
         appendLinesWithinBudget(builder, pendingMessageLines, PENDING_MESSAGE_LINE_BUDGET_CHARACTERS);
     }
