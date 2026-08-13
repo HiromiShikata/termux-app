@@ -28,7 +28,8 @@ public class DiagnosticsReportDeliveryInReportTest {
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST,
-            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, delivery);
+            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, delivery,
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED);
         return new DiagnosticsReportBuilder().build(report);
     }
 

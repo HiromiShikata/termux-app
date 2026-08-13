@@ -24,6 +24,10 @@ public final class DiagnosticsReportBuilder {
 
     private static final int BUSIEST_TARGET_BUDGET_CHARACTERS = 500;
 
+    private static final int PEAK_BUSIEST_TARGET_BUDGET_CHARACTERS = 500;
+
+    private static final int PEAK_SCROLLBAR_VIEW_CLASS_BUDGET_CHARACTERS = 500;
+
     private static final int PENDING_MESSAGE_LINE_BUDGET_CHARACTERS = 1000;
 
     private static final int UNDELIVERED_SHELL_INPUT_BUDGET_CHARACTERS = 600;
@@ -291,6 +295,7 @@ public final class DiagnosticsReportBuilder {
         appendSessionReconnectCostLines(builder, report.getSessionReconnectCost());
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());
         appendScrollbarViewCensusLines(builder, report.getScrollbarViewCensus());
+        appendMainLooperQueuePeakLines(builder, report.getMainLooperQueuePeak());
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendPendingMessageLines(builder, report.getMainLooperQueue());
     }
@@ -308,6 +313,46 @@ public final class DiagnosticsReportBuilder {
             builder.append("      ").append(entry.getViewCount()).append(" x ")
                 .append(entry.getClassName()).append('\n');
         }
+    }
+
+    private void appendMainLooperQueuePeakLines(@NonNull StringBuilder builder,
+                                                @NonNull DiagnosticsMainLooperQueuePeak peak) {
+        builder.append("  Highest main looper queue observed since the process started\n");
+        if (!peak.wasObserved()) {
+            builder.append("    Not sampled yet\n");
+            return;
+        }
+        builder.append("    Pending messages: ").append(peak.getPendingMessageCount())
+            .append(" at ").append(formatTimestamp(peak.getObservedAtMillis())).append('\n');
+        appendPeakBusiestTargetLines(builder, peak.getBusiestTargets());
+        appendPeakScrollbarViewCensusLines(builder, peak.getScrollbarViewCensus());
+    }
+
+    private void appendPeakBusiestTargetLines(@NonNull StringBuilder builder,
+                                              @NonNull List<DiagnosticsMainLooperQueueTarget> busiestTargets) {
+        if (busiestTargets.isEmpty()) {
+            builder.append("    Busiest targets then: none\n");
+            return;
+        }
+        builder.append("    Busiest targets then:\n");
+        List<String> targetLines = new ArrayList<>();
+        for (DiagnosticsMainLooperQueueTarget target : busiestTargets) {
+            targetLines.add("      " + target.getPendingMessageCount() + " x " + target.getDescription());
+        }
+        appendLinesWithinBudget(builder, targetLines, PEAK_BUSIEST_TARGET_BUDGET_CHARACTERS);
+    }
+
+    private void appendPeakScrollbarViewCensusLines(@NonNull StringBuilder builder,
+                                                    @NonNull ScrollbarViewCensus census) {
+        builder.append("    Views that could hold a scrollbar fade callback then: ")
+            .append(census.getScrollbarViewCount()).append('\n');
+        if (census.getBusiestClasses().isEmpty()) return;
+        builder.append("    Busiest classes then:\n");
+        List<String> classLines = new ArrayList<>();
+        for (ScrollbarViewCensusEntry entry : census.getBusiestClasses()) {
+            classLines.add("      " + entry.getViewCount() + " x " + entry.getClassName());
+        }
+        appendLinesWithinBudget(builder, classLines, PEAK_SCROLLBAR_VIEW_CLASS_BUDGET_CHARACTERS);
     }
 
     private void appendMainLooperQueueLines(@NonNull StringBuilder builder,
