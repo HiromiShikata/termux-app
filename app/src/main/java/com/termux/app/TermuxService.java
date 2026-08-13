@@ -30,8 +30,9 @@ import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
 import com.termux.app.terminal.CallToUserTagController;
-import com.termux.app.terminal.PendingCallNotificationText;
+import com.termux.app.terminal.NotificationRepostDecision;
 import com.termux.app.terminal.SessionNewActivityStore;
+import com.termux.app.terminal.TermuxForegroundNotificationContent;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
 import com.termux.app.terminal.session.FileSessionNewActivityPersistence;
@@ -95,6 +96,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private final IBinder mBinder = new LocalBinder();
 
     private final Handler mHandler = new Handler();
+
+    private final NotificationRepostDecision<TermuxForegroundNotificationContent>
+        mForegroundNotificationRepostDecision = new NotificationRepostDecision<>();
+
+    private final NotificationRepostDecision<Integer> mPendingCallNotificationRepostDecision =
+        new NotificationRepostDecision<>();
 
 
     /** The full implementation of the {@link TerminalSessionClient} interface to be used by {@link TerminalSession}
@@ -1025,30 +1032,26 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
 
 
+    @NonNull
+    private TermuxForegroundNotificationContent foregroundNotificationContent() {
+        return new TermuxForegroundNotificationContent(getTermuxSessionsSize(),
+            mShellManager.mTermuxTasks.size(), mSessionNewActivityStore.pendingCallToUserSessionCount(),
+            mWakeLock != null);
+    }
+
     private Notification buildNotification() {
+        return buildNotification(foregroundNotificationContent());
+    }
+
+    private Notification buildNotification(@NonNull TermuxForegroundNotificationContent content) {
         Resources res = getResources();
 
         // Set pending intent to be launched when notification is clicked
         Intent notificationIntent = TermuxActivity.newInstance(this);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-
-        // Set notification text
-        int sessionCount = getTermuxSessionsSize();
-        int taskCount = mShellManager.mTermuxTasks.size();
-        String notificationText = sessionCount + " session" + (sessionCount == 1 ? "" : "s");
-        if (taskCount > 0) {
-            notificationText += ", " + taskCount + " task" + (taskCount == 1 ? "" : "s");
-        }
-
-        String pendingCallFractionSuffix = PendingCallNotificationText.fractionSuffix(
-            mSessionNewActivityStore.pendingCallToUserSessionCount(), sessionCount);
-        if (!pendingCallFractionSuffix.isEmpty()) {
-            notificationText += ", " + pendingCallFractionSuffix;
-        }
-
-        final boolean wakeLockHeld = mWakeLock != null;
-        if (wakeLockHeld) notificationText += " (wake lock held)";
+        String notificationText = content.getText();
+        final boolean wakeLockHeld = content.isWakeLockHeld();
 
 
         // Set notification priority
@@ -1105,9 +1108,13 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (mWakeLock == null && mShellManager.mTermuxSessions.isEmpty() && mShellManager.mTermuxTasks.isEmpty()) {
             // Exit if we are updating after the user disabled all locks with no sessions or tasks running.
             requestStopService();
-        } else {
-            ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, buildNotification());
+            return;
         }
+        TermuxForegroundNotificationContent content = foregroundNotificationContent();
+        if (!mForegroundNotificationRepostDecision.isNeededFor(content)) {
+            return;
+        }
+        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).notify(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, buildNotification(content));
     }
 
     private void setupPendingCallNotificationChannel() {
@@ -1129,6 +1136,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (notificationManager == null) return;
         int pendingCallSessionCount = mSessionNewActivityStore.pendingCallToUserSessionCount();
+        if (!mPendingCallNotificationRepostDecision.isNeededFor(pendingCallSessionCount)) {
+            return;
+        }
         if (pendingCallSessionCount <= 0) {
             notificationManager.cancel(TermuxConstants.TERMUX_APP_PENDING_CALL_NOTIFICATION_ID);
             return;
