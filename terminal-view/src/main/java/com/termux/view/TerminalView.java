@@ -45,6 +45,7 @@ import com.termux.terminal.TerminalSession;
 import com.termux.terminal.WrappedLineLocation;
 import com.termux.view.scroll.TerminalScrollController;
 import com.termux.view.scroll.TerminalScrollEvent;
+import com.termux.view.scroll.TerminalScrollStepCounterHolder;
 import com.termux.view.textselection.TextSelectionCursorController;
 import com.termux.view.url.TerminalUrlExtractor;
 
@@ -678,6 +679,7 @@ public final class TerminalView extends View {
         int amount = Math.abs(rowsDown);
         for (int i = 0; i < amount; i++) {
             TerminalScrollEvent scrollEvent = mScrollController.scrollEventType(mEmulator.isMouseTrackingActive(), mEmulator.isAlternateBufferActive(), fromScrollControl);
+            TerminalScrollStepCounterHolder.getInstance().record(scrollEvent, System.currentTimeMillis());
             switch (scrollEvent) {
                 case MOUSE_WHEEL:
                     sendMouseEventCode(event, up ? TerminalEmulator.MOUSE_WHEELUP_BUTTON : TerminalEmulator.MOUSE_WHEELDOWN_BUTTON, true);
