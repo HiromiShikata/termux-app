@@ -38,15 +38,15 @@ public class ScrollGestureRoutingInReportTest {
     }
 
     @Test
-    public void aSessionWhoseGestureReachesTheViewSaysSoOnItsOwnLine() {
+    public void aSessionWhoseGestureReachesTheViewSaysSoUnderItsOwnLine() {
         String report = renderedReportOf(DiagnosticsScrollGestureRouting.ofEmulatorState(false, false));
 
         Assert.assertTrue("without this the owner cannot tell a session that scrolls from one that only"
                 + " looks like it should\n" + report,
-            report.contains("- host-a | alive | last activity: 12s ago | transcript rows: 0 | columns: 98"
-                + " | a scroll gesture goes to the view's own scrollback"
-                + " (mouse tracking off, alternate screen off)"
-                + " | displayed in list\n"));
+            report.contains("  - host-a | alive | last activity: 12s ago | transcript rows: 0"
+                + " | columns: 98 | displayed in list\n"
+                + "      a scroll gesture goes to the view's own scrollback"
+                + " (mouse tracking off, alternate screen off)\n"));
     }
 
     @Test
@@ -55,9 +55,8 @@ public class ScrollGestureRoutingInReportTest {
 
         Assert.assertTrue("a gesture turned into arrow keys moves nothing when the program on the other"
                 + " end ignores them, and that is indistinguishable from a slow view\n" + report,
-            report.contains("| a scroll gesture goes to the shell as arrow keys"
-                + " (mouse tracking off, alternate screen on)"
-                + " | displayed in list\n"));
+            report.contains("      a scroll gesture goes to the shell as arrow keys"
+                + " (mouse tracking off, alternate screen on)\n"));
     }
 
     @Test
@@ -66,9 +65,8 @@ public class ScrollGestureRoutingInReportTest {
 
         Assert.assertTrue("nothing clears mouse tracking when a program dies with it on, so the report"
                 + " has to show a session stuck in that state\n" + report,
-            report.contains("| a scroll gesture goes to the shell as a mouse wheel"
-                + " (mouse tracking on, alternate screen on)"
-                + " | displayed in list\n"));
+            report.contains("      a scroll gesture goes to the shell as a mouse wheel"
+                + " (mouse tracking on, alternate screen on)\n"));
     }
 
     @Test
@@ -77,7 +75,7 @@ public class ScrollGestureRoutingInReportTest {
 
         Assert.assertTrue("a dead session has no emulator to route a gesture at all, and reporting the"
                 + " default routing there would be a made-up answer\n" + report,
-            report.contains("| a scroll gesture goes to no emulator | displayed in list\n"));
+            report.contains("      a scroll gesture goes to no emulator\n"));
     }
 
     @Test

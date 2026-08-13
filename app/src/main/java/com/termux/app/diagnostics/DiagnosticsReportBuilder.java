@@ -430,13 +430,17 @@ public final class DiagnosticsReportBuilder {
                 .append(" | last activity: ").append(formatSecondsSinceLastActivity(line))
                 .append(" | transcript rows: ").append(line.getTranscriptRows())
                 .append(" | columns: ").append(line.getColumns())
-                .append(" | a scroll gesture goes to ")
-                .append(line.getScrollGestureRouting().getReportLabel())
                 .append(" | ").append(line.getListDisplay().getReportLabel())
                 .append('\n');
+            appendScrollGestureRouting(builder, line.getScrollGestureRouting());
             appendShellInputDelivery(builder, line.getShellInputDelivery());
             appendStatusline(builder, line.getStatusline());
         }
+    }
+
+    private void appendScrollGestureRouting(@NonNull StringBuilder builder,
+                                            @NonNull DiagnosticsScrollGestureRouting routing) {
+        builder.append("      a scroll gesture goes to ").append(routing.getReportLabel()).append('\n');
     }
 
     private void appendStatusline(@NonNull StringBuilder builder,
