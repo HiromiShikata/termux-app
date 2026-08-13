@@ -184,10 +184,15 @@ public final class DiagnosticsReportCollector {
                     activityStore.getStatuslineReplyTimeMillis(name),
                     activityStore.tierFor(name, nowMillis));
 
+            DiagnosticsScrollGestureRouting scrollGestureRouting = emulator == null
+                ? DiagnosticsScrollGestureRouting.withoutAnEmulator()
+                : DiagnosticsScrollGestureRouting.ofEmulatorState(
+                    emulator.isMouseTrackingActive(), emulator.isAlternateBufferActive());
+
             lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
                 transcriptRows, columns,
                 DiagnosticsSessionListDisplay.ofSessionIndex(sessionIndex, sessionIndexesDisplayedInList),
-                shellInputDelivery, statusline));
+                shellInputDelivery, statusline, scrollGestureRouting));
         }
         return lines;
     }
