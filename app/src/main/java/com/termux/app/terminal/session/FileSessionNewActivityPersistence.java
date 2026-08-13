@@ -29,25 +29,31 @@ public final class FileSessionNewActivityPersistence implements SessionNewActivi
     private final ExecutorService mWriteExecutor;
 
     @NonNull
-    private final SessionNewActivityStateSerializer mSerializer = new SessionNewActivityStateSerializer();
+    private final SessionNewActivityStateSerialization mSerialization;
 
     @Nullable
-    private volatile String mPendingSerialized;
+    private volatile List<SessionNewActivityState> mPendingStates;
 
     public FileSessionNewActivityPersistence(@NonNull File file) {
-        this(file, Executors.newSingleThreadExecutor());
+        this(file, Executors.newSingleThreadExecutor(), new SessionNewActivityStateSerializer());
     }
 
     public FileSessionNewActivityPersistence(@NonNull File file, @NonNull ExecutorService writeExecutor) {
+        this(file, writeExecutor, new SessionNewActivityStateSerializer());
+    }
+
+    public FileSessionNewActivityPersistence(@NonNull File file, @NonNull ExecutorService writeExecutor,
+                                             @NonNull SessionNewActivityStateSerialization serialization) {
         mFile = file;
         mWriteExecutor = writeExecutor;
+        mSerialization = serialization;
     }
 
     @NonNull
     @Override
     public List<SessionNewActivityState> load() {
         try {
-            return mSerializer.deserialize(readFile());
+            return mSerialization.deserialize(readFile());
         } catch (JSONException error) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to deserialize cached session activity state", error);
             return new ArrayList<>();
@@ -56,15 +62,8 @@ public final class FileSessionNewActivityPersistence implements SessionNewActivi
 
     @Override
     public void save(@NonNull List<SessionNewActivityState> states) {
-        final String serialized;
-        try {
-            serialized = mSerializer.serialize(states);
-        } catch (JSONException error) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize session activity state", error);
-            return;
-        }
-        boolean writeAlreadyScheduled = mPendingSerialized != null;
-        mPendingSerialized = serialized;
+        boolean writeAlreadyScheduled = mPendingStates != null;
+        mPendingStates = new ArrayList<>(states);
         if (writeAlreadyScheduled) {
             return;
         }
@@ -73,19 +72,23 @@ public final class FileSessionNewActivityPersistence implements SessionNewActivi
 
     public void saveBlocking(@NonNull List<SessionNewActivityState> states) {
         try {
-            writeFile(mSerializer.serialize(states));
+            writeFile(mSerialization.serialize(states));
         } catch (JSONException error) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize session activity state", error);
         }
     }
 
     private void flushPending() {
-        String serialized = mPendingSerialized;
-        mPendingSerialized = null;
-        if (serialized == null) {
+        List<SessionNewActivityState> states = mPendingStates;
+        mPendingStates = null;
+        if (states == null) {
             return;
         }
-        writeFile(serialized);
+        try {
+            writeFile(mSerialization.serialize(states));
+        } catch (JSONException error) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize session activity state", error);
+        }
     }
 
     @Nullable

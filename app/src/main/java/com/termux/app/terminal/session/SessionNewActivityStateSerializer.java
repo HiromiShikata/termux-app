@@ -9,7 +9,7 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SessionNewActivityStateSerializer {
+public final class SessionNewActivityStateSerializer implements SessionNewActivityStateSerialization {
 
     private static final String KEY_SESSION_NAME = "sessionName";
     private static final String KEY_LAST_OUTPUT_ACTIVITY_TIME_MILLIS = "lastOutputActivityTimeMillis";
@@ -25,6 +25,7 @@ public final class SessionNewActivityStateSerializer {
     private static final String KEY_SUBAGENT_COUNT = "subagentCount";
     private static final String KEY_GENUINE_APP_REPLY_TIME_MILLIS = "genuineAppReplyTimeMillis";
 
+    @Override
     public String serialize(List<SessionNewActivityState> states) throws JSONException {
         JSONArray array = new JSONArray();
         for (SessionNewActivityState state : SessionNewActivityStateCaps.capStates(states)) {
@@ -61,6 +62,7 @@ public final class SessionNewActivityStateSerializer {
         return array.toString();
     }
 
+    @Override
     public List<SessionNewActivityState> deserialize(String serialized) throws JSONException {
         List<SessionNewActivityState> states = new ArrayList<>();
         if (serialized == null || serialized.isEmpty())
