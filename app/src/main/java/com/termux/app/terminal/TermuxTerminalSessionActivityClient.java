@@ -518,7 +518,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
-        boolean outputNotYetSeenByTheOwner = outputNotYetSeenByTheOwner(session.mSessionName);
+        SessionNewActivityStore sessionNewActivityStore = mActivity.getSessionNewActivityStore();
+        boolean outputNotYetSeenByTheOwner = sessionNewActivityStore == null
+            || OpenTagAutoOpenEligibility.shouldAutoOpen(
+                sessionNewActivityStore.getLastSeenTimeMillis(session.mSessionName),
+                sessionNewActivityStore.outActivityTimeMillisForDotTier(session.mSessionName));
 
         long scanStartNanos = System.nanoTime();
         int transcriptRows = screen.getActiveTranscriptRows();
@@ -536,13 +540,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
         ForegroundOpenTagScanCostCounterHolder.getInstance()
             .record(System.nanoTime() - scanStartNanos, transcriptRows);
-    }
-
-    private boolean outputNotYetSeenByTheOwner(@NonNull String sessionName) {
-        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
-        if (store == null) return true;
-        return OpenTagAutoOpenEligibility.shouldAutoOpen(store.getLastSeenTimeMillis(sessionName),
-            store.outActivityTimeMillisForDotTier(sessionName));
     }
 
     private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {
