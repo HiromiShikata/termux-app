@@ -127,7 +127,7 @@ public class ApkUpdateUiControllerTest {
     }
 
     @Test
-    public void checkAndShowFloatingIndicatorAutoDownloadsAndSurfacesButtonWithoutDialog() throws IOException {
+    public void checkAndShowFloatingIndicatorAutoDownloadsFirstAndOnlyThenOffersTheDialog() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -137,7 +137,8 @@ public class ApkUpdateUiControllerTest {
 
         controller.checkAndShowFloatingIndicator(indicatorView);
 
-        Assert.assertNull("no blocking dialog must be shown", ShadowAlertDialog.getLatestAlertDialog());
+        Assert.assertNotNull("the dialog must be offered once the APK is ready, without any tap",
+            ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the update APK must auto-download without any tap", 1, manager.downloadCount);
         Assert.assertEquals("the floating install button must surface directly", 1, indicatorView.shownVersions.size());
         Assert.assertEquals("1.2.3", indicatorView.shownVersions.get(0));
@@ -183,7 +184,7 @@ public class ApkUpdateUiControllerTest {
     }
 
     @Test
-    public void userInitiatedSettingsCheckAutoDownloadsWithoutBlockingDialog() throws IOException {
+    public void userInitiatedSettingsCheckAutoDownloadsFirstAndOnlyThenOffersTheDialog() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -192,7 +193,8 @@ public class ApkUpdateUiControllerTest {
 
         controller.checkAndPrompt(true);
 
-        Assert.assertNull("the settings check must not force a blocking dialog", ShadowAlertDialog.getLatestAlertDialog());
+        Assert.assertNotNull("the settings check must offer the dialog once the APK is ready",
+            ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the settings check must auto-download in the background", 1, manager.downloadCount);
         Assert.assertTrue("the settings check must not install without a tap", installer.installedFiles.isEmpty());
     }
