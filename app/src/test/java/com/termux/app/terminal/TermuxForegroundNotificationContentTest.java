@@ -7,21 +7,27 @@ public class TermuxForegroundNotificationContentTest {
 
     @Test
     public void aSingleSessionIsCountedInTheSingular() {
-        Assert.assertEquals("1 session",
+        Assert.assertEquals("1 session, 0/1 calls",
             new TermuxForegroundNotificationContent(1, 0, 0, false).getText());
     }
 
     @Test
     public void severalSessionsAreCountedInThePlural() {
-        Assert.assertEquals("19 sessions",
+        Assert.assertEquals("19 sessions, 0/19 calls",
             new TermuxForegroundNotificationContent(19, 0, 0, false).getText());
     }
 
     @Test
+    public void withoutASessionThereIsNoFractionToShow() {
+        Assert.assertEquals("0 sessions",
+            new TermuxForegroundNotificationContent(0, 0, 0, false).getText());
+    }
+
+    @Test
     public void runningTasksAreNamedAfterTheSessions() {
-        Assert.assertEquals("19 sessions, 1 task",
+        Assert.assertEquals("19 sessions, 1 task, 0/19 calls",
             new TermuxForegroundNotificationContent(19, 1, 0, false).getText());
-        Assert.assertEquals("19 sessions, 2 tasks",
+        Assert.assertEquals("19 sessions, 2 tasks, 0/19 calls",
             new TermuxForegroundNotificationContent(19, 2, 0, false).getText());
     }
 
