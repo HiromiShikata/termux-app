@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +22,12 @@ public final class MainThreadStallRecorder {
 
     private final long mStallThresholdMillis;
 
+    private final Map<String, Long> mOutstandingMillisByStackTrace = new LinkedHashMap<>();
+
     private boolean mHeartbeatOutstanding;
     private long mHeartbeatPostedAtMillis;
+    private long mOutstandingSegmentStartMillis;
+    private long mLastStackSampleAtMillis;
     private String mOutstandingStackTrace = STACK_TRACE_NOT_SAMPLED;
 
     private long mStallCount;
@@ -39,13 +44,21 @@ public final class MainThreadStallRecorder {
     public synchronized void heartbeatPosted(long postedAtMillis) {
         mHeartbeatOutstanding = true;
         mHeartbeatPostedAtMillis = postedAtMillis;
+        mOutstandingSegmentStartMillis = postedAtMillis;
+        mLastStackSampleAtMillis = postedAtMillis;
         mOutstandingStackTrace = STACK_TRACE_NOT_SAMPLED;
+        mOutstandingMillisByStackTrace.clear();
     }
 
     public synchronized boolean needsStackSample(long sampledAtMillis) {
-        return mHeartbeatOutstanding
-            && sampledAtMillis - mHeartbeatPostedAtMillis >= mStallThresholdMillis
-            && STACK_TRACE_NOT_SAMPLED.equals(mOutstandingStackTrace);
+        if (!mHeartbeatOutstanding
+                || sampledAtMillis - mHeartbeatPostedAtMillis < mStallThresholdMillis) {
+            return false;
+        }
+        if (STACK_TRACE_NOT_SAMPLED.equals(mOutstandingStackTrace)) {
+            return true;
+        }
+        return sampledAtMillis - mLastStackSampleAtMillis >= mStallThresholdMillis;
     }
 
     public synchronized void sampleWhileOutstanding(long sampledAtMillis,
@@ -60,7 +73,20 @@ public final class MainThreadStallRecorder {
             mEmptyStackSampleCount++;
             return;
         }
+        closeOutstandingSegmentAt(sampledAtMillis);
+        mLastStackSampleAtMillis = sampledAtMillis;
         mOutstandingStackTrace = formatted;
+    }
+
+    private void closeOutstandingSegmentAt(long untilMillis) {
+        if (STACK_TRACE_NOT_SAMPLED.equals(mOutstandingStackTrace)) {
+            return;
+        }
+        long heldMillis = untilMillis - mOutstandingSegmentStartMillis;
+        Long alreadyHeldMillis = mOutstandingMillisByStackTrace.get(mOutstandingStackTrace);
+        mOutstandingMillisByStackTrace.put(mOutstandingStackTrace,
+            alreadyHeldMillis == null ? heldMillis : alreadyHeldMillis + heldMillis);
+        mOutstandingSegmentStartMillis = untilMillis;
     }
 
     public synchronized long getStackSampleAttemptCount() {
@@ -78,14 +104,35 @@ public final class MainThreadStallRecorder {
         mHeartbeatOutstanding = false;
         long stallMillis = ranAtMillis - mHeartbeatPostedAtMillis;
         if (stallMillis < mStallThresholdMillis) {
+            mOutstandingMillisByStackTrace.clear();
             return;
+        }
+        closeOutstandingSegmentAt(ranAtMillis);
+        if (mOutstandingMillisByStackTrace.isEmpty()) {
+            mOutstandingMillisByStackTrace.put(STACK_TRACE_NOT_SAMPLED, stallMillis);
         }
         mStallCount++;
         if (stallMillis > mMaxStallMillis) {
             mMaxStallMillis = stallMillis;
-            mMaxStallStackTrace = mOutstandingStackTrace;
+            mMaxStallStackTrace = stackTraceHoldingTheMainThreadLongest();
         }
-        recordHotPath(mOutstandingStackTrace, stallMillis);
+        for (Map.Entry<String, Long> heldEntry : mOutstandingMillisByStackTrace.entrySet()) {
+            recordHotPath(heldEntry.getKey(), heldEntry.getValue());
+        }
+        mOutstandingMillisByStackTrace.clear();
+    }
+
+    @NonNull
+    private String stackTraceHoldingTheMainThreadLongest() {
+        String longestHoldingStackTrace = STACK_TRACE_NOT_SAMPLED;
+        long longestHeldMillis = -1L;
+        for (Map.Entry<String, Long> heldEntry : mOutstandingMillisByStackTrace.entrySet()) {
+            if (heldEntry.getValue() > longestHeldMillis) {
+                longestHeldMillis = heldEntry.getValue();
+                longestHoldingStackTrace = heldEntry.getKey();
+            }
+        }
+        return longestHoldingStackTrace;
     }
 
     private void recordHotPath(@NonNull String stackTrace, long blockedMillis) {
