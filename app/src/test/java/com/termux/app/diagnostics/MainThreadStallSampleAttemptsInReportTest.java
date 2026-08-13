@@ -27,7 +27,8 @@ public class MainThreadStallSampleAttemptsInReportTest {
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
-            DiagnosticsAppProcessPopulation.UNMEASURED);
+            DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST);
         return new DiagnosticsReportBuilder().build(report);
     }
 

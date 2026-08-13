@@ -1141,6 +1141,19 @@ public final class TerminalView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        long drawStartNanos = System.nanoTime();
+        drawTerminal(canvas);
+        if (mClient != null) {
+            mClient.onTerminalDrawn(System.nanoTime() - drawStartNanos, drawnTranscriptRows());
+        }
+    }
+
+    private int drawnTranscriptRows() {
+        if (mEmulator == null) return 0;
+        return mEmulator.getScreen().getActiveTranscriptRows();
+    }
+
+    private void drawTerminal(Canvas canvas) {
         if (mEmulator == null) {
             canvas.drawColor(0XFF000000);
         } else {
