@@ -1679,6 +1679,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             updateSessionProjectStoryBar(currentSessionRow);
         }
         updateSessionInfoBottomBars(sessionName);
+        mActivity.showUnansweredOwnerCallsOfDisplayedSession();
     }
 
     private void updateSessionInfoBottomBars(@Nullable String sessionName) {

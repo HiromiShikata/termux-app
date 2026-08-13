@@ -500,4 +500,8 @@
     <string name="apk_revert_install_success">Reverted to the selected build</string>
     <string name="apk_revert_install_failed">Revert install failed: %1$s</string>
 
+    <string name="owner_call_dialog_previous_content_description">前の呼び出し</string>
+    <string name="owner_call_dialog_next_content_description">次の呼び出し</string>
+    <string name="owner_call_dialog_close_content_description">閉じる</string>
+
 </resources>

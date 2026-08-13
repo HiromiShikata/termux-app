@@ -63,7 +63,12 @@ import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.sessiondefinition.SessionDefinitionAutoReloadScheduler;
 import com.termux.app.sessiondefinition.SessionReconnectScheduler;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
+import com.termux.app.ownercall.OwnerCallDialogController;
+import com.termux.app.ownercall.OwnerCallDialogGeometry;
+import com.termux.app.ownercall.OwnerCallDialogViewport;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
+import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
+import com.termux.app.sessiondefinition.UnansweredOwnerCall;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.activities.SettingsActivity;
@@ -218,6 +223,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final SessionDefinitionRepository mSessionDefinitionRepository =
         new SessionDefinitionRepository();
+
+    private OwnerCallDialogController mOwnerCallDialogController;
 
     private final SessionDefinitionPrewarm mSessionDefinitionPrewarm = new SessionDefinitionPrewarm(
         new SessionDefinitionPrewarm.DocumentLoadState() {
@@ -893,6 +900,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mTerminalView = findViewById(R.id.terminal_view);
         mTerminalView.setTerminalViewClient(mTermuxTerminalViewClient);
 
+        mOwnerCallDialogController = new OwnerCallDialogController(
+            findViewById(R.id.activity_termux_root_relative_layout),
+            this::unansweredOwnerCallsForSession,
+            this::currentOwnerCallDialogGeometry);
+
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onCreate();
 
@@ -1110,6 +1122,31 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.reapplyStartupDisplayedSessionAfterEntriesLoaded(!entries.isEmpty());
+        showUnansweredOwnerCallsOfDisplayedSession();
+    }
+
+    public void showUnansweredOwnerCallsOfDisplayedSession() {
+        if (mOwnerCallDialogController == null) return;
+
+        TerminalSession session = getCurrentSession();
+        mOwnerCallDialogController.showCallsForSession(session == null ? null : session.mSessionName,
+            System.currentTimeMillis());
+    }
+
+    @NonNull
+    private List<UnansweredOwnerCall> unansweredOwnerCallsForSession(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return Collections.emptyList();
+
+        SessionDefinitionEntry entry = new SessionDefinitionEntryMatcher()
+            .findEntryForSessionName(mSessionDefinitionRepository.getCachedEntries(), sessionName);
+        return entry == null ? Collections.emptyList() : entry.getUnansweredCallsForUrl(sessionName);
+    }
+
+    @NonNull
+    private OwnerCallDialogGeometry currentOwnerCallDialogGeometry() {
+        return OwnerCallDialogViewport.resolve(findViewById(R.id.activity_termux_root_relative_layout),
+            mTerminalView, getResources().getDisplayMetrics().heightPixels,
+            mTerminalView.mRenderer == null ? 0 : mTerminalView.mRenderer.getFontLineSpacing());
     }
 
     public void promptAndCreateNewSession() {
