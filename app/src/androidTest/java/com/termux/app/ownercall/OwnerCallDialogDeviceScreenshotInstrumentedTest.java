@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.os.Environment;
 import android.view.View;
 import android.widget.TextView;
@@ -12,7 +14,6 @@ import android.widget.TextView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-import androidx.test.uiautomator.UiDevice;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -27,6 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -52,6 +54,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final int QUARTER_OF_THE_SCREEN = 4;
     private static final String SCREENSHOT_DIRECTORY_NAME = "termux-instrumentation-screenshots";
     private static final String SCREENSHOT_FILE_NAME = "owner-call-dialog-device.png";
+    private static final int TERMINAL_BACKGROUND_COLOR = 0xFF000000;
     private static final String INDEX_DOCUMENT =
         "{\"version\":5,\"projects\":[{\"name\":\"demo\",\"path\":\"/demo.v5.json\"}]}";
     private static final String PROJECT_DOCUMENT = "{"
@@ -100,6 +103,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         awaitLoadedEntries(scenario);
 
+        File[] renderedScreenshot = new File[1];
         scenario.onActivity(activity -> {
             displaySession(activity, SESSION_URL);
             activity.showUnansweredOwnerCallsOfDisplayedSession();
@@ -114,10 +118,11 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             assertEquals(activity.getResources().getDisplayMetrics().heightPixels
                     / QUARTER_OF_THE_SCREEN,
                 dialog.getLayoutParams().height);
+            renderedScreenshot[0] = renderScreenshot(activity);
         });
 
         assertNotNull("a device screenshot of the dialog over the terminal must be written where "
-            + "the workflow pulls it from", captureScreenshot());
+            + "the workflow pulls it from", renderedScreenshot[0]);
 
         scenario.onActivity(activity -> {
             activity.findViewById(R.id.owner_call_dialog_next_button).performClick();
@@ -162,12 +167,23 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         return ((TextView) activity.findViewById(viewId)).getText().toString();
     }
 
-    private static File captureScreenshot() {
+    private static File renderScreenshot(Activity activity) {
+        View root = activity.findViewById(R.id.activity_termux_root_relative_layout);
+        Bitmap bitmap = Bitmap.createBitmap(Math.max(1, root.getWidth()),
+            Math.max(1, root.getHeight()), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(TERMINAL_BACKGROUND_COLOR);
+        root.draw(canvas);
+
         File written = null;
         for (File directory : screenshotTargetDirectories()) {
             File output = new File(directory, SCREENSHOT_FILE_NAME);
-            if (UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-                .takeScreenshot(output) && output.length() > 0) {
+            try (FileOutputStream stream = new FileOutputStream(output)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            } catch (IOException unwritableScreenshot) {
+                continue;
+            }
+            if (output.length() > 0) {
                 written = output;
             }
         }
