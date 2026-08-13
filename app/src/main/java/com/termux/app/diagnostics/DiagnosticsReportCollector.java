@@ -85,7 +85,8 @@ public final class DiagnosticsReportCollector {
             PhantomProcessMonitorStateHolder.getInstance().snapshot(),
             mProcessPopulationReader.read(),
             DiagnosticsWorkCostLine.of(TerminalDrawCostCounterHolder.getInstance()),
-            DiagnosticsWorkCostLine.of(ShellOutputParseCostCounterHolder.getInstance()));
+            DiagnosticsWorkCostLine.of(ShellOutputParseCostCounterHolder.getInstance()),
+            DiagnosticsSessionCreationPaths.of(SessionCreationPathCounterHolder.getInstance()));
     }
 
     @NonNull
