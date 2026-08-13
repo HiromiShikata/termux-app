@@ -28,7 +28,7 @@ public class ShellExitStatusInReportTest {
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
             shellExits, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST,
-            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE);
+            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 
