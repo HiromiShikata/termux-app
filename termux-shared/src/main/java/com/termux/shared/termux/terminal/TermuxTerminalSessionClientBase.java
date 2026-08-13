@@ -21,6 +21,11 @@ public class TermuxTerminalSessionClientBase implements TerminalSessionClient {
     }
 
     @Override
+    public void onShellOutputParsed(long elapsedNanos, int transcriptRows) {
+        ShellOutputParseCostCounterHolder.getInstance().record(elapsedNanos, transcriptRows);
+    }
+
+    @Override
     public void onTitleChanged(@NonNull TerminalSession updatedSession) {
     }
 

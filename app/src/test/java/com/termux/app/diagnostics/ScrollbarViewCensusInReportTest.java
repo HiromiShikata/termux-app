@@ -59,6 +59,7 @@ public class ScrollbarViewCensusInReportTest {
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
         return new DiagnosticsReportBuilder().build(report);
     }

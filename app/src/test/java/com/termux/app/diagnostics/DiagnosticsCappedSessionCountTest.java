@@ -80,6 +80,7 @@ public class DiagnosticsCappedSessionCountTest {
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(),
             0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0));
 
         // Orphaned is derived from the corrected live count (10), not the total 23 sessions.

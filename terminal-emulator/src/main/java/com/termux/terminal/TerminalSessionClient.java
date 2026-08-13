@@ -14,6 +14,9 @@ public interface TerminalSessionClient {
 
     void onGenuineOutput(@NonNull TerminalSession changedSession);
 
+    default void onShellOutputParsed(long elapsedNanos, int transcriptRows) {
+    }
+
     void onTitleChanged(@NonNull TerminalSession changedSession);
 
     void onSessionFinished(@NonNull TerminalSession finishedSession);

@@ -35,6 +35,7 @@ public class SessionReconnectCostPerReasonInReportTest {
             DiagnosticsMainLooperQueue.parse(Collections.<String>emptyList()), ScrollbarViewCensus.empty(), 0L,
             new DiagnosticsBackgroundCycle(0L, Collections.<BackgroundCycleInterval>emptyList()),
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
+            NO_WORK_COST,
             NO_WORK_COST);
         return new DiagnosticsReportBuilder().build(report);
     }

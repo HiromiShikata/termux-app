@@ -28,6 +28,7 @@ public class AppProcessPopulationInReportTest {
             DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(),
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             appProcessPopulation,
+            NO_WORK_COST,
             NO_WORK_COST);
         return new DiagnosticsReportBuilder().build(report);
     }
