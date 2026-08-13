@@ -11,7 +11,7 @@ public class ActivityWindowsInReportTest {
 
     private static final DiagnosticsWorkCostLine NO_WORK_COST = new DiagnosticsWorkCostLine(0, 0, 0, 0);
 
-    private static final String SECTION_HEADING = "Activity windows since the app started";
+    private static final String SECTION_HEADING = "Activity window builds since the app started";
 
     private static String renderedReportOf(DiagnosticsActivityWindows activityWindows) {
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
@@ -33,58 +33,61 @@ public class ActivityWindowsInReportTest {
     }
 
     @Test
-    public void aWindowTheProcessNeverDestroyedIsNamedAsStillHeld() {
+    public void aWindowBuiltRepeatedlyIsReportedWithTheNumberOfBuilds() {
         String report = renderedReportOf(new DiagnosticsActivityWindows(7, 3));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
-        Assert.assertTrue("every window in the process posts its scrollbar fade callbacks to the same main"
-                + " looper, so a reading showing far more of those callbacks than one window can hold cannot"
-                + " be told apart from a wrong reading without this. Actual report:\n" + report,
+        Assert.assertTrue("the longest main thread stalls in the readings are view inflation and first"
+                + " draw, which are the cost of building the activity window, and paying them once at"
+                + " start up cannot be told apart from paying them repeatedly without this count."
+                + " Actual report:\n" + report,
             sectionIndex >= 0);
 
         String section = report.substring(sectionIndex);
-        Assert.assertTrue("the number still held is the finding a reader acts on. Actual report:\n" + report,
-            section.contains("Still held: 4"));
+        Assert.assertTrue("Actual report:\n" + report, section.contains("Built: 7"));
     }
 
     @Test
-    public void theCreatedAndDestroyedCountsAreBothShownSoTheDifferenceCanBeChecked() {
+    public void theTeardownCountIsShownBesideTheBuildCount() {
         String report = renderedReportOf(new DiagnosticsActivityWindows(7, 3));
 
         String section = report.substring(report.indexOf(SECTION_HEADING));
-        Assert.assertTrue("a difference with no terms behind it cannot be checked against the rest of the"
-            + " reading. Actual report:\n" + report, section.contains("Created: 7"));
-        Assert.assertTrue("without the destroyed count a process that recreates its window often looks the"
-            + " same as one that leaks them. Actual report:\n" + report, section.contains("Destroyed: 3"));
+        Assert.assertTrue("a build count on its own cannot distinguish an application that is recreating"
+            + " its window from one that was rebuilt after being torn down. Actual report:\n" + report,
+            section.contains("Torn down: 3"));
+        Assert.assertTrue("a build whose teardown never ran leaves that window's views attached, which is"
+            + " a different fact from an activity retained after its teardown ran, and only the first of"
+            + " those two is visible here. Actual report:\n" + report,
+            section.contains("Teardown not run: 4"));
     }
 
     @Test
-    public void aProcessHoldingExactlyOneWindowSaysSoRatherThanBeingLeftBlank() {
+    public void aProcessThatBuiltItsWindowOnceSaysSoRatherThanBeingLeftBlank() {
         String report = renderedReportOf(new DiagnosticsActivityWindows(1, 0));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
-        Assert.assertTrue("one held window is the healthy state, and a reader must be able to confirm it"
-                + " rather than infer it from an absent section. Actual report:\n" + report,
+        Assert.assertTrue("one build and no teardown is the healthy state, and a reader must be able to"
+                + " confirm it rather than infer it from an absent section. Actual report:\n" + report,
             sectionIndex >= 0);
         Assert.assertTrue("Actual report:\n" + report,
-            report.substring(sectionIndex).contains("Still held: 1"));
+            report.substring(sectionIndex).contains("Built: 1"));
     }
 
     @Test
-    public void aReadingTakenBeforeAnyWindowWasCreatedIsReportedAsMeasuredRatherThanOmitted() {
+    public void aReadingTakenBeforeTheWindowWasBuiltIsReportedAsMeasuredRatherThanOmitted() {
         String report = renderedReportOf(DiagnosticsActivityWindows.NONE);
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("an absent section reads as an unmeasured application, which is exactly the state"
                 + " a reader must be able to rule out. Actual report:\n" + report,
             sectionIndex >= 0);
-        Assert.assertTrue("no window having been created is itself a finding and has to be stated. Actual"
+        Assert.assertTrue("no build having happened is itself a finding and has to be stated. Actual"
                 + " report:\n" + report,
-            report.substring(sectionIndex).contains("None: no activity window has been created yet"));
+            report.substring(sectionIndex).contains("None: the activity window has not been built yet"));
     }
 
     @Test
-    public void theActivityWindowCountSitsInsideTheWindowTheReportSurvives() {
+    public void theBuildCountSitsInsideTheWindowTheReportSurvives() {
         String report = renderedReportOf(new DiagnosticsActivityWindows(7, 3));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);

@@ -21,7 +21,7 @@ public final class DiagnosticsActivityWindows {
         return mDestroyedCount;
     }
 
-    public int getUndestroyedCount() {
+    public int getTeardownNotRunCount() {
         return mCreatedCount - mDestroyedCount;
     }
 }

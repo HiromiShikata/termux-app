@@ -6,17 +6,17 @@ import org.junit.Test;
 public class ActivityWindowRecorderTest {
 
     @Test
-    public void aProcessThatHasNotCreatedAnActivityReportsNothingOutstanding() {
+    public void aProcessThatHasNotBuiltTheActivityWindowReportsNothingBuilt() {
         DiagnosticsActivityWindows windows = new ActivityWindowRecorder().snapshot();
 
-        Assert.assertEquals("no activity has been created yet", 0, windows.getCreatedCount());
-        Assert.assertEquals("no activity has been destroyed yet", 0, windows.getDestroyedCount());
-        Assert.assertEquals("nothing can be outstanding before anything was created",
-            0, windows.getUndestroyedCount());
+        Assert.assertEquals("the activity window has not been built yet", 0, windows.getCreatedCount());
+        Assert.assertEquals("nothing has been torn down yet", 0, windows.getDestroyedCount());
+        Assert.assertEquals("no teardown can be outstanding before anything was built",
+            0, windows.getTeardownNotRunCount());
     }
 
     @Test
-    public void anActivityThatWasCreatedAndNotDestroyedIsCountedAsOutstanding() {
+    public void anActivityWindowThatWasBuiltAndNotTornDownHasItsTeardownOutstanding() {
         ActivityWindowRecorder recorder = new ActivityWindowRecorder();
         recorder.recordActivityCreated();
 
@@ -24,12 +24,12 @@ public class ActivityWindowRecorderTest {
 
         Assert.assertEquals(1, windows.getCreatedCount());
         Assert.assertEquals(0, windows.getDestroyedCount());
-        Assert.assertEquals("the created activity has not been destroyed",
-            1, windows.getUndestroyedCount());
+        Assert.assertEquals("the window on screen has been built and not torn down",
+            1, windows.getTeardownNotRunCount());
     }
 
     @Test
-    public void anActivityThatWasCreatedAndDestroyedLeavesNothingOutstanding() {
+    public void anActivityWindowThatWasBuiltAndTornDownLeavesNoTeardownOutstanding() {
         ActivityWindowRecorder recorder = new ActivityWindowRecorder();
         recorder.recordActivityCreated();
         recorder.recordActivityDestroyed();
@@ -38,23 +38,24 @@ public class ActivityWindowRecorderTest {
 
         Assert.assertEquals(1, windows.getCreatedCount());
         Assert.assertEquals(1, windows.getDestroyedCount());
-        Assert.assertEquals(0, windows.getUndestroyedCount());
+        Assert.assertEquals(0, windows.getTeardownNotRunCount());
     }
 
     @Test
-    public void recreatingTheActivityRepeatedlyWithoutDestroyingLeavesEveryOneOutstanding() {
+    public void rebuildingTheActivityWindowRepeatedlyIsCountedEveryTime() {
         ActivityWindowRecorder recorder = new ActivityWindowRecorder();
-        for (int creation = 0; creation < 10; creation++) {
+        for (int build = 0; build < 10; build++) {
             recorder.recordActivityCreated();
         }
         recorder.recordActivityDestroyed();
 
         DiagnosticsActivityWindows windows = recorder.snapshot();
 
-        Assert.assertEquals(10, windows.getCreatedCount());
+        Assert.assertEquals("every build costs the inflation and first draw of the whole view tree,"
+                + " so the number of builds is the reading that matters", 10, windows.getCreatedCount());
         Assert.assertEquals(1, windows.getDestroyedCount());
-        Assert.assertEquals("nine activities were created and never destroyed",
-            9, windows.getUndestroyedCount());
+        Assert.assertEquals("nine builds have not had their teardown run",
+            9, windows.getTeardownNotRunCount());
     }
 
     @Test
