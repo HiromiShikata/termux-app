@@ -29,7 +29,7 @@ public class AppProcessPopulationInReportTest {
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             appProcessPopulation,
             NO_WORK_COST,
-            NO_WORK_COST);
+            NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE);
         return new DiagnosticsReportBuilder().build(report);
     }
 

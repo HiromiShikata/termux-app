@@ -61,6 +61,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsWorkCostLine mTerminalDrawCost;
     @NonNull
     private final DiagnosticsWorkCostLine mShellOutputParseCost;
+    @NonNull
+    private final DiagnosticsSessionCreationPaths mSessionCreationPaths;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -84,7 +86,9 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsPhantomProcessMonitor phantomProcessMonitor,
                              @NonNull DiagnosticsAppProcessPopulation appProcessPopulation,
                              @NonNull DiagnosticsWorkCostLine terminalDrawCost,
-                             @NonNull DiagnosticsWorkCostLine shellOutputParseCost) {
+                             @NonNull DiagnosticsWorkCostLine shellOutputParseCost,
+                             @NonNull DiagnosticsSessionCreationPaths sessionCreationPaths) {
+        mSessionCreationPaths = sessionCreationPaths;
         mVersionName = versionName;
         mVersionCode = versionCode;
         mReportTimestampMillis = reportTimestampMillis;
@@ -124,6 +128,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsWorkCostLine getShellOutputParseCost() {
         return mShellOutputParseCost;
+    }
+
+    @NonNull
+    public DiagnosticsSessionCreationPaths getSessionCreationPaths() {
+        return mSessionCreationPaths;
     }
 
     @NonNull

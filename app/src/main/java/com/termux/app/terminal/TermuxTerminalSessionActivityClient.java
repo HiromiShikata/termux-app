@@ -46,6 +46,7 @@ import com.termux.app.diagnostics.DiagnosticsReportSessionDelivery;
 import com.termux.app.diagnostics.DiagnosticsRequestTagController;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
+import com.termux.app.diagnostics.SessionCreationPath;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
@@ -1868,7 +1869,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
                 String[] arguments = new String[]{"-c", hostKillCommand};
                 return service.createTermuxSession(shellPath, arguments, null,
-                    workingDirectoryForNewSession(), false, commandSessionName) != null;
+                    workingDirectoryForNewSession(), false, commandSessionName,
+                    SessionCreationPath.KILL_OF_A_HOST_SESSION) != null;
             }
 
             @Override
@@ -1934,7 +1936,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
         String[] arguments = new String[]{"-c", plan.getCommand()};
         TermuxSession resetTermuxSession = service.createTermuxSession(shellPath, arguments, null,
-            mActivity.getProperties().getDefaultWorkingDirectory(), false, resetSessionName);
+            mActivity.getProperties().getDefaultWorkingDirectory(), false, resetSessionName,
+            SessionCreationPath.RESET_OF_A_HOST_SESSION);
         if (resetTermuxSession == null) return;
 
         setCurrentSession(resetTermuxSession.getTerminalSession());
@@ -1997,7 +2000,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 workingDirectory = currentSession.getCwd();
             }
 
-            TermuxSession newTermuxSession = service.createTermuxSession(null, null, null, workingDirectory, isFailSafe, sessionName);
+            TermuxSession newTermuxSession = service.createTermuxSession(null, null, null, workingDirectory, isFailSafe, sessionName,
+                SessionCreationPath.NEW_SESSION_THE_OWNER_ASKED_FOR);
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
@@ -2078,7 +2082,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
             String shellPath = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
             String[] arguments = new String[]{"-c", command};
-            TermuxSession newTermuxSession = service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
+            TermuxSession newTermuxSession = service.createTermuxSession(shellPath, arguments, null,
+                workingDirectory, false, sessionName, SessionCreationPath.NEW_AUTOSSH_SESSION);
             if (newTermuxSession == null) return;
 
             TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
@@ -2394,7 +2399,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         service.removeTermuxSession(finishedSession);
 
         TermuxSession newTermuxSession =
-            service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
+            service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName,
+                SessionCreationPath.RECONNECT_OF_A_FINISHED_SESSION_IN_PLACE);
         if (newTermuxSession == null) {
             Logger.logError(LOG_TAG, "Failed to reconnect session \"" + sessionName
                 + "\" in place; live session count delta "
@@ -2793,7 +2799,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
 
         TermuxSession newTermuxSession =
-            service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName);
+            service.createTermuxSession(shellPath, arguments, null, workingDirectory, false, sessionName,
+                SessionCreationPath.RECONNECT_OF_A_DEAD_SESSION);
         if (newTermuxSession == null) {
             DiagnosticEventLogHolder.record(DiagnosticEventType.RECONNECT_FAILED,
                 sessionName == null ? "" : sessionName);
@@ -3038,7 +3045,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
 
                 TermuxSession newTermuxSession = service.createTermuxSession(persistedSession.getExecutablePath(),
                     arguments, null, persistedSession.getWorkingDirectory(),
-                    persistedSession.isFailSafe(), name);
+                    persistedSession.isFailSafe(), name,
+                    SessionCreationPath.RESTORE_OF_A_PERSISTED_SESSION);
                 if (newTermuxSession == null) continue;
 
                 TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();
@@ -3115,7 +3123,8 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 AlwaysPresentSessionStartup startup =
                     mAlwaysPresentSessionStartupPlanner.planStartup(sessionName, commandTemplate, shellPath);
                 TermuxSession newTermuxSession = service.createTermuxSession(startup.getExecutablePath(),
-                    startup.getArguments(), null, workingDirectory, false, sessionName);
+                    startup.getArguments(), null, workingDirectory, false, sessionName,
+                    SessionCreationPath.RESTORE_OF_AN_ALWAYS_PRESENT_SESSION);
                 if (newTermuxSession == null) continue;
 
                 TerminalSession newTerminalSession = newTermuxSession.getTerminalSession();

@@ -25,6 +25,8 @@ import com.termux.app.apkupdate.UpdateTagUpdateController;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.DiagnosticEventLogHolder;
+import com.termux.app.diagnostics.SessionCreationPath;
+import com.termux.app.diagnostics.SessionCreationPathCounterHolder;
 import com.termux.app.diagnostics.ShellExitStatusRecorderHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
@@ -740,7 +742,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         }
 
         if (newTermuxSession == null)
-            newTermuxSession = createTermuxSession(executionCommand);
+            newTermuxSession = createTermuxSession(executionCommand,
+                SessionCreationPath.SESSION_STARTED_BY_AN_INTENT);
         if (newTermuxSession == null) return;
 
         handleSessionAction(DataUtils.getIntFromString(executionCommand.sessionAction,
@@ -754,16 +757,18 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      */
     @Nullable
     public TermuxSession createTermuxSession(String executablePath, String[] arguments, String stdin,
-                                             String workingDirectory, boolean isFailSafe, String sessionName) {
+                                             String workingDirectory, boolean isFailSafe, String sessionName,
+                                             @NonNull SessionCreationPath creationPath) {
         ExecutionCommand executionCommand = new ExecutionCommand(TermuxShellManager.getNextShellId(),
             executablePath, arguments, stdin, workingDirectory, Runner.TERMINAL_SESSION.getName(), isFailSafe);
         executionCommand.shellName = sessionName;
-        return createTermuxSession(executionCommand);
+        return createTermuxSession(executionCommand, creationPath);
     }
 
     /** Create a {@link TermuxSession}. */
     @Nullable
-    public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {
+    public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand,
+                                                          @NonNull SessionCreationPath creationPath) {
         if (executionCommand == null) return null;
 
         Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
@@ -797,6 +802,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         }
 
         mShellManager.mTermuxSessions.add(newTermuxSession);
+
+        SessionCreationPathCounterHolder.getInstance().record(creationPath);
 
         DiagnosticEventLogHolder.record(DiagnosticEventType.SESSION_CREATED,
             diagnosticSessionName(newTermuxSession.getTerminalSession()));
