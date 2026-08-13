@@ -23,6 +23,7 @@ import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.scroll.TerminalScrollStepCounterHolder;
+import com.termux.view.touch.TerminalTouchCounterHolder;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,7 +96,8 @@ public final class DiagnosticsReportCollector {
             ActivityWindowRecorderHolder.getInstance().snapshot(),
             DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot(),
             MainLooperQueuePeakRecorderHolder.getInstance().snapshot(),
-            DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()));
+            DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()),
+            DiagnosticsTouchEvents.of(TerminalTouchCounterHolder.getInstance()));
     }
 
     @NonNull

@@ -165,6 +165,9 @@ public final class DiagnosticsReportBuilder {
         appendScrollStepSection(builder, report);
 
         builder.append('\n');
+        appendTouchEventSection(builder, report);
+
+        builder.append('\n');
         appendSessionsSection(builder, report);
 
         builder.append('\n');
@@ -289,6 +292,23 @@ public final class DiagnosticsReportBuilder {
                 .append(": ").append(countByDestination.getStepCount())
                 .append(", most recent ")
                 .append(formatTimestamp(countByDestination.getLastStepAtMillis())).append('\n');
+        }
+    }
+
+    private void appendTouchEventSection(@NonNull DiagnosticsReportText builder,
+                                         @NonNull DiagnosticsReport report) {
+        DiagnosticsTouchEvents touchEvents = report.getTouchEvents();
+        builder.append("Touch events the terminal view received since the app started\n");
+        if (touchEvents.getCountsByKind().isEmpty()) {
+            builder.append("  None: the terminal view has received no touch at all\n");
+            return;
+        }
+        builder.append("  Total: ").append(touchEvents.getTotalTouchCount()).append('\n');
+        for (DiagnosticsTouchCount countByKind : touchEvents.getCountsByKind()) {
+            builder.append("  Of ").append(countByKind.getKindLabel())
+                .append(": ").append(countByKind.getTouchCount())
+                .append(", most recent ")
+                .append(formatTimestamp(countByKind.getLastTouchAtMillis())).append('\n');
         }
     }
 
