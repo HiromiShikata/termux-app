@@ -63,6 +63,20 @@ public class OwnerCallDialogProductionRenderTest {
     }
 
     @Test
+    public void staysBehindTheSessionListSoTheOwnerCanStillReachIt() {
+        View root = inflateActivityLayout();
+
+        OwnerCallDialogBinder.bind(root, THREE_CALLS, 0, NOW, PORTRAIT_GEOMETRY, null);
+
+        float dialogElevation = root.findViewById(R.id.owner_call_dialog).getElevation();
+        Assert.assertTrue("the dialog must not cover the session list bottom sheet",
+            dialogElevation < root.findViewById(R.id.session_list_bottom_sheet).getElevation());
+        Assert.assertTrue("the dialog must not cover the session list scrim",
+            dialogElevation
+                < root.findViewById(R.id.session_list_bottom_sheet_scrim).getElevation());
+    }
+
+    @Test
     public void placesTheDialogOverTheTerminalLeavingFiveTerminalRowsVisibleBelowIt() {
         View root = inflateActivityLayout();
 

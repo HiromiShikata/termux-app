@@ -65,6 +65,7 @@ import com.termux.app.sessiondefinition.SessionReconnectScheduler;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
 import com.termux.app.ownercall.OwnerCallDialogController;
 import com.termux.app.ownercall.OwnerCallDialogGeometry;
+import com.termux.app.ownercall.OwnerCallDialogRelayoutWatcher;
 import com.termux.app.ownercall.OwnerCallDialogViewport;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
@@ -904,6 +905,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             findViewById(R.id.activity_termux_root_relative_layout),
             this::unansweredOwnerCallsForSession,
             this::currentOwnerCallDialogGeometry);
+        OwnerCallDialogRelayoutWatcher.watchTerminalArea(mTerminalView,
+            this::showUnansweredOwnerCallsOfDisplayedSession);
 
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onCreate();

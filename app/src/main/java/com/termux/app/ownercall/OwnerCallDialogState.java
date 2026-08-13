@@ -1,6 +1,7 @@
 package com.termux.app.ownercall;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.app.sessiondefinition.UnansweredOwnerCall;
 
@@ -11,39 +12,64 @@ import java.util.Set;
 
 public final class OwnerCallDialogState {
 
-    private final Set<String> mDismissedCalledAt = new HashSet<>();
+    private static final String SESSION_AND_CALL_SEPARATOR = "\n";
 
-    private int mIndex;
+    private final Set<String> mDismissedCallKeys = new HashSet<>();
+
+    @Nullable
+    private String mSessionName;
+
+    @Nullable
+    private String mDisplayedCalledAt;
+
+    public void displaySession(@Nullable String sessionName) {
+        if (sessionName == null ? mSessionName == null : sessionName.equals(mSessionName)) {
+            return;
+        }
+        mSessionName = sessionName;
+        mDisplayedCalledAt = null;
+    }
+
+    @Nullable
+    public String getSessionName() {
+        return mSessionName;
+    }
 
     @NonNull
     public List<UnansweredOwnerCall> visibleCalls(@NonNull List<UnansweredOwnerCall> calls) {
         List<UnansweredOwnerCall> visible = new ArrayList<>();
         for (UnansweredOwnerCall call : calls) {
-            if (!mDismissedCalledAt.contains(call.getCalledAt())) {
+            if (!mDismissedCallKeys.contains(dismissalKey(call))) {
                 visible.add(call);
             }
         }
         return visible;
     }
 
-    public int getIndex() {
-        return mIndex;
+    public int indexOfDisplayedCall(@NonNull List<UnansweredOwnerCall> visibleCalls) {
+        if (mDisplayedCalledAt == null) {
+            return 0;
+        }
+        for (int index = 0; index < visibleCalls.size(); index++) {
+            if (mDisplayedCalledAt.equals(visibleCalls.get(index).getCalledAt())) {
+                return index;
+            }
+        }
+        return 0;
     }
 
-    public void showPreviousCall() {
-        mIndex = mIndex - 1;
-    }
-
-    public void showNextCall() {
-        mIndex = mIndex + 1;
-    }
-
-    public void applyResolvedIndex(int resolvedIndex) {
-        mIndex = resolvedIndex;
+    public void displayCallAt(@NonNull List<UnansweredOwnerCall> visibleCalls, int index) {
+        mDisplayedCalledAt = index < 0 || index >= visibleCalls.size()
+            ? null : visibleCalls.get(index).getCalledAt();
     }
 
     public void dismiss(@NonNull UnansweredOwnerCall call) {
-        mDismissedCalledAt.add(call.getCalledAt());
-        mIndex = 0;
+        mDismissedCallKeys.add(dismissalKey(call));
+        mDisplayedCalledAt = null;
+    }
+
+    @NonNull
+    private String dismissalKey(@NonNull UnansweredOwnerCall call) {
+        return mSessionName + SESSION_AND_CALL_SEPARATOR + call.getCalledAt();
     }
 }

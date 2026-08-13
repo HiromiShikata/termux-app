@@ -33,6 +33,10 @@ public class OwnerCallDialogControllerTest {
         new UnansweredOwnerCall("2027-01-15T08:04:00.000Z", "同じ本文の呼び出し");
     private static final UnansweredOwnerCall OTHER_SESSION_CALL =
         new UnansweredOwnerCall("2027-01-15T08:02:00.000Z", "別セッションの呼び出し");
+    private static final UnansweredOwnerCall OTHER_SESSION_SECOND_CALL =
+        new UnansweredOwnerCall("2027-01-15T08:06:00.000Z", "別セッションの二件目の呼び出し");
+    private static final UnansweredOwnerCall OTHER_SESSION_THIRD_CALL =
+        new UnansweredOwnerCall("2027-01-15T08:08:00.000Z", "別セッションの三件目の呼び出し");
     private static final long NOW = 1_800_000_000_000L;
     private static final OwnerCallDialogGeometry GEOMETRY =
         OwnerCallDialogGeometry.resolve(2400, 0, 1080, 120, 36);
@@ -120,14 +124,49 @@ public class OwnerCallDialogControllerTest {
 
         controller.showCallsForSession(SECOND_SESSION, NOW);
 
-        Assert.assertEquals("1 / 1", positionText(root));
+        Assert.assertEquals("1 / 3", positionText(root));
         Assert.assertEquals(OTHER_SESSION_CALL.getBody(), bodyText(root));
+    }
+
+    @Test
+    public void closingACallOfOneSessionLeavesTheCallsOfTheOtherSessionAlone() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        root.findViewById(R.id.owner_call_dialog_close_button).performClick();
+
+        controller.showCallsForSession(SECOND_SESSION, NOW);
+
+        Assert.assertEquals("1 / 3", positionText(root));
+    }
+
+    @Test
+    public void keepsShowingTheCallTheOwnerIsReadingWhenAnEarlierCallIsAnswered() {
+        View root = inflateActivityLayout();
+        Map<String, List<UnansweredOwnerCall>> callsBySession = new HashMap<>();
+        callsBySession.put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
+        OwnerCallDialogController controller = controllerFor(root, callsBySession);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        root.findViewById(R.id.owner_call_dialog_next_button).performClick();
+        Assert.assertEquals("2 / 2", positionText(root));
+
+        callsBySession.put(FIRST_SESSION, Collections.singletonList(LATER_CALL));
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+
+        Assert.assertEquals("1 / 1", positionText(root));
+        Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
     }
 
     private static OwnerCallDialogController controllerFor(View root) {
         Map<String, List<UnansweredOwnerCall>> callsBySession = new HashMap<>();
         callsBySession.put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
-        callsBySession.put(SECOND_SESSION, Collections.singletonList(OTHER_SESSION_CALL));
+        callsBySession.put(SECOND_SESSION, Arrays.asList(OTHER_SESSION_CALL,
+            OTHER_SESSION_SECOND_CALL, OTHER_SESSION_THIRD_CALL));
+        return controllerFor(root, callsBySession);
+    }
+
+    private static OwnerCallDialogController controllerFor(View root,
+                                                           Map<String, List<UnansweredOwnerCall>> callsBySession) {
         return new OwnerCallDialogController(root,
             sessionName -> {
                 List<UnansweredOwnerCall> calls = callsBySession.get(sessionName);

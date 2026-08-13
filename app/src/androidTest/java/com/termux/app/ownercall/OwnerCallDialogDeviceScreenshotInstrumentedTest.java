@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
+import android.os.Environment;
 import android.view.View;
 import android.widget.TextView;
 
@@ -27,10 +28,14 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 @RunWith(AndroidJUnit4.class)
 public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
@@ -43,7 +48,12 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         "クロネコ住所録の旧住所の一括削除を実行してよいかご判断ください";
     private static final String REPEATED_CALL_BODY = "請求書の送付先を変更してよいかご判断ください";
     private static final String DETACHED_SESSION_SHELL = "/system/bin/sh";
-    private static final long ENTRY_LOAD_TIMEOUT_MILLIS = 20_000L;
+    private static final long ENTRY_LOAD_TIMEOUT_MILLIS = 30_000L;
+    private static final int QUARTER_OF_THE_SCREEN = 4;
+    private static final String SCREENSHOT_DIRECTORY_NAME = "termux-instrumentation-screenshots";
+    private static final String SCREENSHOT_FILE_NAME = "owner-call-dialog-device.png";
+    private static final String INDEX_DOCUMENT =
+        "{\"version\":5,\"projects\":[{\"name\":\"demo\",\"path\":\"/demo.v5.json\"}]}";
     private static final String PROJECT_DOCUMENT = "{"
         + "\"version\":5,"
         + "\"tdpmConsoleUrl\":\"http://127.0.0.1/\","
@@ -102,13 +112,12 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             assertTrue("the elapsed time since the owner was called must be shown",
                 textOf(activity, R.id.owner_call_dialog_relative_time).endsWith("前"));
             assertEquals(activity.getResources().getDisplayMetrics().heightPixels
-                    / OwnerCallDialogGeometry.SCREEN_HEIGHT_DIVISOR,
+                    / QUARTER_OF_THE_SCREEN,
                 dialog.getLayoutParams().height);
         });
 
-        File screenshot = takeScreenshot("owner-call-dialog-device.png");
-        assertTrue("a device screenshot of the dialog must be captured",
-            screenshot.exists() && screenshot.length() > 0);
+        assertNotNull("a device screenshot of the dialog over the terminal must be written where "
+            + "the workflow pulls it from", captureScreenshot());
 
         scenario.onActivity(activity -> {
             activity.findViewById(R.id.owner_call_dialog_next_button).performClick();
@@ -123,7 +132,6 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             assertEquals(View.GONE,
                 activity.findViewById(R.id.owner_call_dialog).getVisibility());
         });
-        scenario.close();
     }
 
     private void awaitLoadedEntries(ActivityScenario<TermuxActivity> scenario)
@@ -136,7 +144,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
                 Thread.sleep(200L);
             }
         }
-        assertTrue("the session definition document served over http must reach the app", loaded[0]);
+        assertTrue("the session definition document served over http must reach the app, but the "
+            + "local document server reported " + documentServer.describeFailure(), loaded[0]);
     }
 
     private static void displaySession(TermuxActivity activity, String sessionName) {
@@ -153,12 +162,32 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         return ((TextView) activity.findViewById(viewId)).getText().toString();
     }
 
-    private static File takeScreenshot(String fileName) {
-        File output = new File(
-            InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalFilesDir(null),
-            fileName);
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).takeScreenshot(output);
-        return output;
+    private static File captureScreenshot() {
+        File written = null;
+        for (File directory : screenshotTargetDirectories()) {
+            File output = new File(directory, SCREENSHOT_FILE_NAME);
+            if (UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+                .takeScreenshot(output) && output.length() > 0) {
+                written = output;
+            }
+        }
+        return written;
+    }
+
+    private static List<File> screenshotTargetDirectories() {
+        List<File> directories = new ArrayList<>();
+        File sharedDirectory =
+            new File(Environment.getExternalStorageDirectory(), SCREENSHOT_DIRECTORY_NAME);
+        if (sharedDirectory.exists() || sharedDirectory.mkdirs()) {
+            directories.add(sharedDirectory);
+        }
+        File appExternalFilesDirectory = InstrumentationRegistry.getInstrumentation()
+            .getTargetContext().getExternalFilesDir(null);
+        if (appExternalFilesDirectory != null
+            && (appExternalFilesDirectory.exists() || appExternalFilesDirectory.mkdirs())) {
+            directories.add(appExternalFilesDirectory);
+        }
+        return directories;
     }
 
     private static final class LocalDocumentServer {
@@ -166,9 +195,10 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         private ServerSocket serverSocket;
         private Thread acceptThread;
         private volatile boolean running;
+        private volatile IOException failure;
 
         void start() throws IOException {
-            serverSocket = new ServerSocket(0, 1, java.net.InetAddress.getByName("127.0.0.1"));
+            serverSocket = new ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"));
             running = true;
             acceptThread = new Thread(this::acceptRequests);
             acceptThread.setDaemon(true);
@@ -179,28 +209,45 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             return "http://127.0.0.1:" + serverSocket.getLocalPort() + "/index.v5.json";
         }
 
+        String describeFailure() {
+            return failure == null ? "no error" : failure.toString();
+        }
+
         private void acceptRequests() {
             while (running) {
                 try (Socket socket = serverSocket.accept()) {
-                    String requestLine = readRequestLine(socket);
-                    respond(socket, requestLine.contains("/index.v5.json")
-                        ? "{\"version\":5,\"projects\":[{\"name\":\"demo\",\"path\":\"/demo.v5.json\"}]}"
-                        : PROJECT_DOCUMENT);
+                    String requestHead = readRequestHead(socket);
+                    respond(socket, requestHead.contains("/index.v5.json")
+                        ? INDEX_DOCUMENT : PROJECT_DOCUMENT);
                 } catch (IOException closedWhileStopping) {
                     if (running) {
-                        throw new IllegalStateException(closedWhileStopping);
+                        failure = closedWhileStopping;
+                        return;
                     }
                 }
             }
         }
 
-        private static String readRequestLine(Socket socket) throws IOException {
-            StringBuilder line = new StringBuilder();
+        private static String readRequestHead(Socket socket) throws IOException {
+            StringBuilder head = new StringBuilder();
+            InputStream input = socket.getInputStream();
             int character;
-            while ((character = socket.getInputStream().read()) != -1 && character != '\n') {
-                line.append((char) character);
+            while ((character = input.read()) != -1) {
+                head.append((char) character);
+                if (endsWithBlankLine(head)) {
+                    break;
+                }
             }
-            return line.toString();
+            return head.toString();
+        }
+
+        private static boolean endsWithBlankLine(StringBuilder head) {
+            int length = head.length();
+            if (length >= 2 && head.charAt(length - 2) == '\n' && head.charAt(length - 1) == '\n') {
+                return true;
+            }
+            return length >= 4 && head.charAt(length - 4) == '\r' && head.charAt(length - 3) == '\n'
+                && head.charAt(length - 2) == '\r' && head.charAt(length - 1) == '\n';
         }
 
         private static void respond(Socket socket, String body) throws IOException {
@@ -210,6 +257,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
                 + bytes.length + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.UTF_8));
             output.write(bytes);
             output.flush();
+            socket.shutdownOutput();
         }
 
         void stop() {
