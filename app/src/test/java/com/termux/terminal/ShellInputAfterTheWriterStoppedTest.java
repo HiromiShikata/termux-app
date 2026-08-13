@@ -23,19 +23,29 @@ public class ShellInputAfterTheWriterStoppedTest {
         TerminalSession session = sessionWhoseWriterStopped();
         fillTheQueueNothingDrains(session);
 
-        Thread writingThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                session.write(oneByte(), 0, 1);
-            }
-        });
-        writingThread.setDaemon(true);
-        writingThread.start();
+        Thread writingThread = writeOneByteOnAnotherThread(session);
         writingThread.join(LONGEST_WAIT_FOR_THE_WRITE_MILLIS);
 
         Assert.assertFalse("the terminal-to-process queue is drained only by the writer thread, so input"
                 + " written once that thread has gone waits on a reader that will never arrive, and a"
                 + " scroll gesture is written on the same thread that draws the application",
+            writingThread.isAlive());
+    }
+
+    @Test
+    public void inputAlreadyWaitingWhenTheWriterStopsIsReleasedRatherThanWaitingForTheProcessToExit()
+            throws InterruptedException {
+        TerminalSession session = sessionWhoseWriterIsRunning();
+        fillTheQueueNothingDrains(session);
+        Thread writingThread = writeOneByteOnAnotherThread(session);
+        waitUntilTheWriteIsParked(writingThread);
+
+        session.stopDeliveringShellInput(session.mTerminalToProcessIOQueue, WRITER_FAILURE);
+        writingThread.join(LONGEST_WAIT_FOR_THE_WRITE_MILLIS);
+
+        Assert.assertFalse("input already waiting on a full terminal-to-process queue when the writer"
+                + " stops is released only by closing that queue, and the message that closes it when the"
+                + " shell process exits is delivered to the very thread the waiting write parked",
             writingThread.isAlive());
     }
 
@@ -74,8 +84,31 @@ public class ShellInputAfterTheWriterStoppedTest {
 
     private static TerminalSession sessionWhoseWriterStopped() {
         TerminalSession session = sessionWhoseWriterIsRunning();
-        session.getShellInputDeliveryRecord().recordWriterStopped(WRITER_FAILURE);
+        session.stopDeliveringShellInput(session.mTerminalToProcessIOQueue, WRITER_FAILURE);
         return session;
+    }
+
+    private static Thread writeOneByteOnAnotherThread(TerminalSession session) {
+        Thread writingThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                session.write(oneByte(), 0, 1);
+            }
+        });
+        writingThread.setDaemon(true);
+        writingThread.start();
+        return writingThread;
+    }
+
+    private static void waitUntilTheWriteIsParked(Thread writingThread) throws InterruptedException {
+        long giveUpAtMillis = System.currentTimeMillis() + LONGEST_WAIT_FOR_THE_WRITE_MILLIS;
+        while (writingThread.getState() != Thread.State.WAITING
+                && System.currentTimeMillis() < giveUpAtMillis) {
+            Thread.sleep(1L);
+        }
+        Assert.assertEquals("the write has to be waiting on the full queue before the writer stops,"
+                + " otherwise this test does not exercise the case it is named for",
+            Thread.State.WAITING, writingThread.getState());
     }
 
     private static void fillTheQueueNothingDrains(TerminalSession session) {

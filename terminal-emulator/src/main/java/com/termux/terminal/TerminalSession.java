@@ -199,7 +199,7 @@ public final class TerminalSession extends TerminalOutput {
                     while (true) {
                         int bytesToWrite = terminalToProcessIOQueue.read(buffer, true);
                         if (bytesToWrite == -1) {
-                            shellInputDeliveryRecord.recordWriterStopped(
+                            stopDeliveringShellInput(terminalToProcessIOQueue,
                                 "the terminal-to-process queue was closed");
                             return;
                         }
@@ -207,7 +207,7 @@ public final class TerminalSession extends TerminalOutput {
                         shellInputDeliveryRecord.recordBytesWrittenToTheShell(bytesToWrite);
                     }
                 } catch (IOException e) {
-                    shellInputDeliveryRecord.recordWriterStopped(
+                    stopDeliveringShellInput(terminalToProcessIOQueue,
                         "writing to the pseudo terminal failed: " + e);
                 }
             }
@@ -229,8 +229,7 @@ public final class TerminalSession extends TerminalOutput {
     @Override
     public void write(byte[] data, int offset, int count) {
         long writtenAtMillis = System.currentTimeMillis();
-        if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()
-                || !mShellInputDeliveryRecord.isWriterRunning()) {
+        if (mShellPid <= 0 || !inputReachesTheProgramReadingTheTerminal()) {
             if (holdsInputUntilTheShellStarts() && mShellStartupInputBuffer.hold(data, offset, count)) {
                 return;
             }
@@ -250,6 +249,10 @@ public final class TerminalSession extends TerminalOutput {
             && mEmulator == null
             && !mRuntimeResourcesReleased
             && mShellProcessGeneration == 0;
+    }
+
+    void stopDeliveringShellInput(@NonNull ByteQueue terminalToProcessIOQueue, @NonNull String reason) {
+        mShellInputDeliveryRecord.recordWriterStopped(reason);
     }
 
     private void deliverInputHeldUntilTheShellStarted() {
