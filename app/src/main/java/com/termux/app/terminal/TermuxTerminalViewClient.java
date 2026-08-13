@@ -23,6 +23,7 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.OpenTagUrlOnTerminal;
 import com.termux.app.browser.TermuxBrowserController;
+import com.termux.app.diagnostics.TerminalDrawCostCounterHolder;
 import com.termux.app.link.NativeAppLink;
 import com.termux.app.outputtag.OutputTagBlocksOnTerminal;
 import com.termux.shared.interact.DialogUtils;
@@ -181,6 +182,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     }
 
 
+
+    @Override
+    public void onTerminalDrawn(long elapsedNanos, int transcriptRows) {
+        TerminalDrawCostCounterHolder.getInstance().record(elapsedNanos, transcriptRows);
+    }
 
     @Override
     public float onScale(float scale) {

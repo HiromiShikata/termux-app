@@ -232,6 +232,7 @@ public final class DiagnosticsReportBuilder {
         appendWorkCostLines(builder, "Open-tag scan on the viewed session",
             report.getForegroundOpenTagScanCost());
         appendWorkCostLines(builder, "Buffer reflow on column-changing resize", report.getBufferReflowCost());
+        appendWorkCostLines(builder, "Terminal draw", report.getTerminalDrawCost());
         appendSessionReconnectCostLines(builder, report.getSessionReconnectCost());
         appendMainThreadStallLines(builder, report.getMainThreadStalls());
         appendMainLooperQueueLines(builder, report.getMainLooperQueue());

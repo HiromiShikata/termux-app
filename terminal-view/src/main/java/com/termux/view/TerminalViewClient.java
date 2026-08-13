@@ -109,4 +109,7 @@ public interface TerminalViewClient {
 
     void logStackTrace(String tag, Exception e);
 
+    default void onTerminalDrawn(long elapsedNanos, int transcriptRows) {
+    }
+
 }

@@ -57,6 +57,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsPhantomProcessMonitor mPhantomProcessMonitor;
     @NonNull
     private final DiagnosticsAppProcessPopulation mAppProcessPopulation;
+    @NonNull
+    private final DiagnosticsWorkCostLine mTerminalDrawCost;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -78,7 +80,8 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsVersionChange versionChange,
                              @NonNull DiagnosticsShellExits shellExits,
                              @NonNull DiagnosticsPhantomProcessMonitor phantomProcessMonitor,
-                             @NonNull DiagnosticsAppProcessPopulation appProcessPopulation) {
+                             @NonNull DiagnosticsAppProcessPopulation appProcessPopulation,
+                             @NonNull DiagnosticsWorkCostLine terminalDrawCost) {
         mVersionName = versionName;
         mVersionCode = versionCode;
         mReportTimestampMillis = reportTimestampMillis;
@@ -106,6 +109,12 @@ public final class DiagnosticsReport {
         mShellExits = shellExits;
         mPhantomProcessMonitor = phantomProcessMonitor;
         mAppProcessPopulation = appProcessPopulation;
+        mTerminalDrawCost = terminalDrawCost;
+    }
+
+    @NonNull
+    public DiagnosticsWorkCostLine getTerminalDrawCost() {
+        return mTerminalDrawCost;
     }
 
     @NonNull

@@ -81,7 +81,8 @@ public final class DiagnosticsReportCollector {
             AppVersionChangeHolder.getInstance(),
             ShellExitStatusRecorderHolder.getInstance().snapshot(),
             PhantomProcessMonitorStateHolder.getInstance().snapshot(),
-            mProcessPopulationReader.read());
+            mProcessPopulationReader.read(),
+            DiagnosticsWorkCostLine.of(TerminalDrawCostCounterHolder.getInstance()));
     }
 
     @NonNull
