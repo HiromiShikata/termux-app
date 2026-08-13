@@ -6,6 +6,8 @@ import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 
+import androidx.annotation.VisibleForTesting;
+
 import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -21,13 +23,11 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     private final TtsEngineReadyPlanner mReadyPlanner = new TtsEngineReadyPlanner();
 
-    private final ExecutorService mEngineWorkExecutor;
+    private final TtsEngineWorkExecutor mEngineWorkExecutor;
 
     private final Executor mSpeechQueueExecutor;
 
     private volatile TextToSpeech mTextToSpeech;
-
-    private volatile boolean mEngineWorkerStopped;
 
     AndroidTextToSpeechSynthesizer(Context context) {
         this(context, engineWorkExecutor(), runnable -> new Handler(Looper.getMainLooper()).post(runnable));
@@ -36,7 +36,7 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     AndroidTextToSpeechSynthesizer(Context context, ExecutorService engineWorkExecutor,
                                    Executor speechQueueExecutor) {
         mContext = context;
-        mEngineWorkExecutor = engineWorkExecutor;
+        mEngineWorkExecutor = new TtsEngineWorkExecutor(engineWorkExecutor);
         mSpeechQueueExecutor = speechQueueExecutor;
     }
 
@@ -50,14 +50,17 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     @Override
     public void initialize(Runnable onReady) {
-        mTextToSpeech = new TextToSpeech(mContext, status -> {
-            boolean engineInitializedSuccessfully = status == TextToSpeech.SUCCESS;
-            if (!engineInitializedSuccessfully) {
-                Log.w(TtsManager.LOG_TAG, "TextToSpeech engine failed to initialize with status " + status);
-            }
-            mReadyPlanner.onEngineInitialized(engineInitializedSuccessfully, mEngineWorkExecutor,
-                mSpeechQueueExecutor, this::applyDefaultLanguage, onReady);
-        });
+        mTextToSpeech = new TextToSpeech(mContext, status -> onEngineInitialized(status, onReady));
+    }
+
+    @VisibleForTesting
+    void onEngineInitialized(int status, Runnable onReady) {
+        boolean engineInitializedSuccessfully = status == TextToSpeech.SUCCESS;
+        if (!engineInitializedSuccessfully) {
+            Log.w(TtsManager.LOG_TAG, "TextToSpeech engine failed to initialize with status " + status);
+        }
+        mReadyPlanner.onEngineInitialized(engineInitializedSuccessfully, mEngineWorkExecutor,
+            mSpeechQueueExecutor, this::applyDefaultLanguage, onReady);
     }
 
     private void applyDefaultLanguage() {
@@ -67,7 +70,6 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     }
 
     private void onTheEngineWorkThread(EngineWork engineWork) {
-        if (mEngineWorkerStopped) return;
         mEngineWorkExecutor.execute(() -> {
             TextToSpeech textToSpeech = mTextToSpeech;
             if (textToSpeech == null) return;
@@ -88,7 +90,6 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     @Override
     public void shutdown() {
         onTheEngineWorkThread(TextToSpeech::shutdown);
-        mEngineWorkerStopped = true;
-        mEngineWorkExecutor.shutdown();
+        mEngineWorkExecutor.stop();
     }
 }
