@@ -200,7 +200,8 @@ public class MainLooperQueueBudgetInReportTest {
             new DiagnosticsWorkCostLine(902, 141, 9, 4000),
             creationPaths,
             new DiagnosticsActivityWindows(7, 3),
-            DiagnosticsReportDelivery.of("host-0", 11023, 842L, 4096L, 4097L, true));
+            DiagnosticsReportDelivery.of("host-0", 11023, 842L, 4096L, 4097L, true),
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED);
         return new DiagnosticsReportBuilder().build(report);
     }
 

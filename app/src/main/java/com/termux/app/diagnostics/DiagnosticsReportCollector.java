@@ -2,7 +2,6 @@ package com.termux.app.diagnostics;
 
 import android.os.Debug;
 import android.os.SystemClock;
-import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,6 +65,11 @@ public final class DiagnosticsReportCollector {
 
         List<DiagnosticEvent> recentEvents = mEventLog.tail(50);
 
+        DiagnosticsMainLooperQueue mainLooperQueue = MainLooperQueueSnapshot.take();
+        ScrollbarViewCensus scrollbarViewCensus = ScrollbarViewCensusSnapshot.take(activity);
+        MainLooperQueuePeakRecorderHolder.getInstance().recordObservation(mainLooperQueue, nowMillis,
+            () -> scrollbarViewCensus);
+
         return new DiagnosticsReport(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, nowMillis,
             countedTowardCap, displayedCount, maxSessionsCap, sessionLines,
             openTabCount, tabHistoryEntryCount, wakeLockHeld, foreground, recentEvents,
@@ -76,8 +80,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsSessionReconnectCost.of(SessionReconnectCostCounterHolder.getInstance()),
             ReplacedSessionShellInputRecorderHolder.getInstance().snapshot(),
             DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder()),
-            MainLooperQueueSnapshot.take(),
-            scrollbarViewCensus(activity),
+            mainLooperQueue,
+            scrollbarViewCensus,
             ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
             DiagnosticsBackgroundCycle.of(BackgroundCycleIntervalRecorderHolder.getInstance()),
             AppVersionChangeHolder.getInstance(),
@@ -88,14 +92,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsWorkCostLine.of(ShellOutputParseCostCounterHolder.getInstance()),
             DiagnosticsSessionCreationPaths.of(SessionCreationPathCounterHolder.getInstance()),
             ActivityWindowRecorderHolder.getInstance().snapshot(),
-            DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot());
-    }
-
-    @NonNull
-    private ScrollbarViewCensus scrollbarViewCensus(@NonNull TermuxActivity activity) {
-        View decorView = activity.getWindow() == null ? null : activity.getWindow().getDecorView();
-        if (decorView == null) return ScrollbarViewCensus.empty();
-        return ScrollbarViewCensus.take(new AndroidScrollbarViewNode(decorView));
+            DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot(),
+            MainLooperQueuePeakRecorderHolder.getInstance().snapshot());
     }
 
     @NonNull
