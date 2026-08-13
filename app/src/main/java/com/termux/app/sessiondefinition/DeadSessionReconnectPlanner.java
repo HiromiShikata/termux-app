@@ -93,11 +93,11 @@ public final class DeadSessionReconnectPlanner {
         }
 
         boolean isDeadProcessReconnectCandidate() {
-            return !running && !reconnecting;
+            return !running && !reconnecting && readyToReconnectAfterExit;
         }
 
         boolean isDetachedInputReconnectCandidate() {
-            return unableToReceiveInputLongEnough && !reconnecting;
+            return running && unableToReceiveInputLongEnough && !reconnecting;
         }
 
         boolean isHungAliveReconnectCandidate() {

@@ -2505,9 +2505,11 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             boolean unableToReceiveInputLongEnough =
                 mSessionInputDeliverabilityDwell.hasBeenUnableToReceiveInputLongEnough(
                     sessionName, inputStillReachesTheProgram, nowMillis);
+            boolean readyToReconnectAfterExit =
+                mExitedSessionImmediateReconnectBackoff.isReadyToReconnectImmediately(sessionName, nowMillis);
             candidateSessions.add(new DeadSessionReconnectPlanner.CandidateSession(
                 sessionName, running, current, hung, lastOutTimeMillis, reconnecting,
-                unableToReceiveInputLongEnough));
+                unableToReceiveInputLongEnough, readyToReconnectAfterExit));
         }
 
         List<PlannedSessionReconnect> plannedReconnects =
@@ -2527,6 +2529,10 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             }
             mSessionReconnectPacer.enqueueSession(deadSession, plannedReconnect.getReason());
             mSessionInputDeliverabilityDwell.forget(sessionName);
+            if (plannedReconnect.getReason()
+                == SessionReconnectReason.SHELL_PROCESS_GONE_AT_THE_BACKGROUND_SCAN) {
+                mExitedSessionImmediateReconnectBackoff.recordImmediateReconnect(sessionName, nowMillis);
+            }
             if (silentSessionLastOutTimeMillisByName.containsKey(sessionName)) {
                 mHungSessionReconnectBackoff.recordAttemptForSilence(sessionName,
                     silentSessionLastOutTimeMillisByName.get(sessionName), nowMillis);

@@ -47,6 +47,22 @@ public class ExitedSessionIsNotReplannedOnEveryBackgroundScanTest {
     }
 
     @Test
+    public void aDeadSessionInsideItsWaitIsNotPlannedThroughTheUndeliverableInputPathEither() {
+        DeadSessionReconnectPlanner.CandidateSession deadSessionWhoseInputAlsoGoesNowhere =
+            new DeadSessionReconnectPlanner.CandidateSession(SESSION_THAT_KEEPS_DYING, false, false,
+                false, null, false, true, false);
+
+        List<String> plannedSessionNames = planner.planSessionNamesToReconnect(
+            Collections.singletonList(deadSessionWhoseInputAlsoGoesNowhere), AUTOSSH_COMMAND_TEMPLATE);
+
+        Assert.assertEquals("input stops reaching a program whose process is gone, so the"
+                + " undeliverable input path would plan the same dead session the growing wait is"
+                + " holding back and the loop would continue at the dwell interval instead. Planned: "
+                + plannedSessionNames,
+            Collections.emptyList(), plannedSessionNames);
+    }
+
+    @Test
     public void onlyTheSessionInsideItsWaitIsHeldBack() {
         List<String> plannedSessionNames = planner.planSessionNamesToReconnect(Arrays.asList(
             deadSession(SESSION_THAT_KEEPS_DYING, false),
