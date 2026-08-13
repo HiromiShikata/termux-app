@@ -6,6 +6,8 @@ import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 
+import androidx.annotation.VisibleForTesting;
+
 import java.util.Locale;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -50,14 +52,17 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     @Override
     public void initialize(Runnable onReady) {
-        mTextToSpeech = new TextToSpeech(mContext, status -> {
-            boolean engineInitializedSuccessfully = status == TextToSpeech.SUCCESS;
-            if (!engineInitializedSuccessfully) {
-                Log.w(TtsManager.LOG_TAG, "TextToSpeech engine failed to initialize with status " + status);
-            }
-            mReadyPlanner.onEngineInitialized(engineInitializedSuccessfully, mEngineWorkExecutor,
-                mSpeechQueueExecutor, this::applyDefaultLanguage, onReady);
-        });
+        mTextToSpeech = new TextToSpeech(mContext, status -> onEngineInitialized(status, onReady));
+    }
+
+    @VisibleForTesting
+    void onEngineInitialized(int status, Runnable onReady) {
+        boolean engineInitializedSuccessfully = status == TextToSpeech.SUCCESS;
+        if (!engineInitializedSuccessfully) {
+            Log.w(TtsManager.LOG_TAG, "TextToSpeech engine failed to initialize with status " + status);
+        }
+        mReadyPlanner.onEngineInitialized(engineInitializedSuccessfully, mEngineWorkExecutor,
+            mSpeechQueueExecutor, this::applyDefaultLanguage, onReady);
     }
 
     private void applyDefaultLanguage() {
