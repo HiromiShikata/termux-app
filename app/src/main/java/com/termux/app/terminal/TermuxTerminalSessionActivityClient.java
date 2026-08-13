@@ -2125,7 +2125,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
 
         boolean hiddenSessionIsDisplayed = mActivity.getCurrentSession() == hiddenSession;
         TerminalSession sessionToRenderInstead = hiddenSessionIsDisplayed
-            ? topmostSessionTheOwnerCanSee(sessionName)
+            ? nearestSessionTheOwnerCanSee(sessionName)
             : null;
         if (hiddenSessionIsDisplayed && sessionToRenderInstead == null) {
             return;
@@ -2158,7 +2158,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         if (sessionName == null || sessionName.isEmpty()) return true;
         TerminalSession currentSession = mActivity.getCurrentSession();
         if (currentSession == null || !sessionName.equals(currentSession.mSessionName)) return true;
-        return topmostSessionTheOwnerCanSee(sessionName) != null;
+        return nearestSessionTheOwnerCanSee(sessionName) != null;
     }
 
     public boolean hidingCanReleaseWhateverIsLiveForTheName(@Nullable String sessionName) {
@@ -2331,6 +2331,9 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         boolean finishedSessionWasCurrent = currentSession != null && currentSession == finishedSession;
 
         TermuxSession neighborOfFinishedSession = resolveNeighborSessionBeforeRemoval(finishedSession);
+        DisplayedSessionOrderBeforeRebuild orderBeforeRemoval = DisplayedSessionOrderBeforeRebuild.of(
+            sessionNamesOf(service, displayedSessionIndexesOrEmpty()),
+            finishedSession == null ? null : finishedSession.mSessionName);
 
         service.removeTermuxSession(finishedSession);
 
@@ -2343,7 +2346,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             if (shouldReselectCurrentSessionAfterRemoval(finishedSessionWasCurrent, currentSessionStillPresent)) {
                 TermuxSession nextSession = neighborStillPresent(service, neighborOfFinishedSession)
                     ? neighborOfFinishedSession
-                    : selectNextVisibleSession();
+                    : nearestSurvivingSessionOrFirstVisible(orderBeforeRemoval);
                 if (nextSession != null)
                     setCurrentSession(nextSession.getTerminalSession());
             } else {
@@ -2590,15 +2593,21 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
     }
 
     @Nullable
-    private TerminalSession topmostSessionTheOwnerCanSee(@Nullable String sessionNameToLeaveOut) {
+    private TerminalSession nearestSessionTheOwnerCanSee(@Nullable String sessionNameToLeaveOut) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return null;
 
         TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
         if (listViewController == null) return null;
 
-        TerminalSession topmostSessionHoldingNoRuntime = null;
-        for (int sessionIndex : listViewController.getSessionIndexesOfRowsTheOwnerCanSee()) {
+        List<Integer> displayedSessionIndexes = listViewController.getSessionIndexesDisplayedInList();
+        List<Integer> nearestFirstSessionIndexes = NearestNeighborSessionOrder.orderCandidatesNearestFirst(
+            displayedSessionIndexes,
+            positionOfSessionNamedInDisplayedList(service, displayedSessionIndexes, sessionNameToLeaveOut),
+            listViewController.getSessionIndexesOfRowsTheOwnerCanSee());
+
+        TerminalSession nearestSessionHoldingNoRuntime = null;
+        for (int sessionIndex : nearestFirstSessionIndexes) {
             TermuxSession termuxSession = service.getTermuxSession(sessionIndex);
             if (termuxSession == null) continue;
 
@@ -2610,11 +2619,86 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             if (terminalSession.getEmulator() != null || terminalSession.isRunning()) {
                 return terminalSession;
             }
-            if (topmostSessionHoldingNoRuntime == null) {
-                topmostSessionHoldingNoRuntime = terminalSession;
+            if (nearestSessionHoldingNoRuntime == null) {
+                nearestSessionHoldingNoRuntime = terminalSession;
             }
         }
-        return topmostSessionHoldingNoRuntime;
+        return nearestSessionHoldingNoRuntime;
+    }
+
+    private static int positionOfSessionNamedInDisplayedList(@NonNull TermuxService service,
+                                                             @NonNull List<Integer> displayedSessionIndexes,
+                                                             @Nullable String sessionName) {
+        if (sessionName == null) return NearestNeighborSessionOrder.NO_POSITION;
+        for (int position = 0; position < displayedSessionIndexes.size(); position++) {
+            TermuxSession termuxSession = service.getTermuxSession(displayedSessionIndexes.get(position));
+            if (termuxSession == null) continue;
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession != null && sessionName.equals(terminalSession.mSessionName)) return position;
+        }
+        return NearestNeighborSessionOrder.NO_POSITION;
+    }
+
+    @NonNull
+    public DisplayedSessionOrderBeforeRebuild captureDisplayedSessionOrderBeforeRebuild() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return DisplayedSessionOrderBeforeRebuild.NOT_CAPTURED;
+
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return DisplayedSessionOrderBeforeRebuild.NOT_CAPTURED;
+
+        TerminalSession currentSession = mActivity.getCurrentSession();
+        return DisplayedSessionOrderBeforeRebuild.of(
+            sessionNamesOf(service, listViewController.getSessionIndexesDisplayedInList()),
+            currentSession == null ? null : currentSession.mSessionName);
+    }
+
+    @NonNull
+    private static List<String> sessionNamesOf(@NonNull TermuxService service,
+                                               @NonNull List<Integer> sessionIndexes) {
+        List<String> sessionNames = new ArrayList<>(sessionIndexes.size());
+        for (int sessionIndex : sessionIndexes) {
+            TermuxSession termuxSession = service.getTermuxSession(sessionIndex);
+            if (termuxSession == null) continue;
+            TerminalSession terminalSession = termuxSession.getTerminalSession();
+            if (terminalSession == null || terminalSession.mSessionName == null) continue;
+            sessionNames.add(terminalSession.mSessionName);
+        }
+        return sessionNames;
+    }
+
+    @NonNull
+    private List<Integer> displayedSessionIndexesOrEmpty() {
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return new ArrayList<>();
+        return listViewController.getSessionIndexesDisplayedInList();
+    }
+
+    @Nullable
+    private TermuxSession nearestSurvivingSessionOrFirstVisible(
+            @NonNull DisplayedSessionOrderBeforeRebuild orderBeforeRebuild) {
+        TermuxSession nearestSurvivingSession = nearestSurvivingSession(orderBeforeRebuild);
+        return nearestSurvivingSession != null ? nearestSurvivingSession : selectNextVisibleSession();
+    }
+
+    @Nullable
+    private TermuxSession nearestSurvivingSession(@NonNull DisplayedSessionOrderBeforeRebuild orderBeforeRebuild) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return null;
+
+        TermuxSessionsListViewController listViewController = mActivity.getTermuxSessionListViewController();
+        if (listViewController == null) return null;
+
+        List<String> nearestFirstSessionNames = NearestNeighborSessionOrder.orderCandidatesNearestFirst(
+            orderBeforeRebuild.getDisplayedSessionNames(),
+            orderBeforeRebuild.getPositionOfDisplayedSession(),
+            sessionNamesOf(service, listViewController.getSessionIndexesDisplayedInList()));
+
+        for (String sessionName : nearestFirstSessionNames) {
+            TermuxSession survivingSession = service.getTermuxSessionForSessionName(sessionName);
+            if (survivingSession != null && survivingSession.getTerminalSession() != null) return survivingSession;
+        }
+        return null;
     }
 
     private boolean isSessionStillInTheReconnectList(@NonNull TerminalSession session) {
@@ -2952,7 +3036,8 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             && service.getIndexOfSession(neighborSession.getTerminalSession()) >= 0;
     }
 
-    public void ensureCurrentSessionValidAfterRebuild() {
+    public void ensureCurrentSessionValidAfterRebuild(
+            @NonNull DisplayedSessionOrderBeforeRebuild orderBeforeRebuild) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
 
@@ -2960,7 +3045,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         boolean currentSessionStillPresent = currentSession != null && service.getIndexOfSession(currentSession) >= 0;
         if (!shouldSwitchSessionAfterRebuild(currentSessionStillPresent)) return;
 
-        TermuxSession nextSession = selectNextVisibleSession();
+        TermuxSession nextSession = nearestSurvivingSessionOrFirstVisible(orderBeforeRebuild);
         if (nextSession != null)
             setCurrentSession(nextSession.getTerminalSession());
     }

@@ -10,6 +10,7 @@ import android.content.Context;
 
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.DisplayedSessionOrderBeforeRebuild;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.shell.command.ExecutionCommand;
@@ -259,7 +260,7 @@ public class SessionDefinitionControllerWashReplaceTest {
         attachCurrentSession(adHoc.getTerminalSession());
 
         invokeRemoveSessionsWithDisappearedDefinition(entries);
-        activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
+        activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild(DisplayedSessionOrderBeforeRebuild.NOT_CAPTURED);
 
         assertSame(adHoc.getTerminalSession(), activity.getCurrentSession());
         assertEquals(Arrays.asList("adhoc-local", "https://example.test/a"), remainingSessionNames());

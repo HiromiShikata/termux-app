@@ -8,6 +8,7 @@ import androidx.annotation.NonNull;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.DisplayedSessionOrderBeforeRebuild;
 import com.termux.shared.logger.Logger;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
@@ -136,6 +137,8 @@ public final class SessionDefinitionController {
                 userRemovedSessionTimes(), System.currentTimeMillis());
 
         TerminalSession displayedSessionBeforeReload = activity.getCurrentSession();
+        DisplayedSessionOrderBeforeRebuild displayedSessionOrderBeforeReload =
+            activity.getTermuxTerminalSessionClient().captureDisplayedSessionOrderBeforeRebuild();
 
         if (authoritativeLoad) {
             removeSessionsWithDisappearedDefinition(entries);
@@ -166,7 +169,8 @@ public final class SessionDefinitionController {
         activity.getTermuxTerminalSessionClient()
             .restoreAlwaysPresentSessions(defaultProjectManagerSessionPlanner.planSessionNames(entries));
 
-        activity.getTermuxTerminalSessionClient().ensureCurrentSessionValidAfterRebuild();
+        activity.getTermuxTerminalSessionClient()
+            .ensureCurrentSessionValidAfterRebuild(displayedSessionOrderBeforeReload);
 
         activity.getTermuxTerminalSessionClient()
             .restoreDisplayedSessionAfterReloadIfStillLive(displayedSessionBeforeReload);
