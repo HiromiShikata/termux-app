@@ -45,7 +45,7 @@ public class AppOpenTagControllerTest {
         RecordingAppLauncher launcher = new RecordingAppLauncher();
         AppOpenTagController controller = new AppOpenTagController(preferences, launcher);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
 
         Assert.assertEquals(List.of(PACKAGE_A), launcher.launchedPackageIds);
     }
@@ -55,8 +55,8 @@ public class AppOpenTagControllerTest {
         RecordingAppLauncher launcher = new RecordingAppLauncher();
         AppOpenTagController controller = new AppOpenTagController(preferences, launcher);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
 
         Assert.assertEquals(1, launcher.launchedPackageIds.size());
     }
@@ -67,16 +67,15 @@ public class AppOpenTagControllerTest {
         AppOpenTagController controller = new AppOpenTagController(preferences, launcher);
 
         String transcriptWithFirstPackage = "<app-open>" + PACKAGE_A + "</app-open>";
-        controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstPackage);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstPackage, true);
         Assert.assertEquals(1, launcher.launchedPackageIds.size());
 
         for (int reScan = 0; reScan < 5; reScan++) {
-            controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstPackage);
+            controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstPackage, true);
         }
         Assert.assertEquals(1, launcher.launchedPackageIds.size());
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE,
-            "<app-open>" + PACKAGE_A + "</app-open>\noutput\n<app-open>" + PACKAGE_B + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>\noutput\n<app-open>" + PACKAGE_B + "</app-open>", true);
 
         Assert.assertEquals(List.of(PACKAGE_A, PACKAGE_B), launcher.launchedPackageIds);
     }
@@ -86,8 +85,8 @@ public class AppOpenTagControllerTest {
         RecordingAppLauncher launcher = new RecordingAppLauncher();
         AppOpenTagController controller = new AppOpenTagController(preferences, launcher);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
-        controller.onSessionTextChanged(SESSION_B_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
+        controller.onSessionTextChanged(SESSION_B_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
 
         Assert.assertEquals(List.of(PACKAGE_A, PACKAGE_A), launcher.launchedPackageIds);
     }
@@ -99,13 +98,13 @@ public class AppOpenTagControllerTest {
 
         RecordingAppLauncher firstActivityLauncher = new RecordingAppLauncher();
         controller.setAppLauncher(firstActivityLauncher);
-        controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript, true);
 
         for (int activityRecreation = 0; activityRecreation < 5; activityRecreation++) {
             controller.setAppLauncher(null);
             RecordingAppLauncher recreatedActivityLauncher = new RecordingAppLauncher();
             controller.setAppLauncher(recreatedActivityLauncher);
-            controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript);
+            controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript, true);
             Assert.assertTrue(recreatedActivityLauncher.launchedPackageIds.isEmpty());
         }
 
@@ -116,11 +115,11 @@ public class AppOpenTagControllerTest {
     public void doesNotScanWhileNoForegroundLauncherIsRegistered() {
         AppOpenTagController controller = new AppOpenTagController(preferences, null);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
 
         RecordingAppLauncher launcher = new RecordingAppLauncher();
         controller.setAppLauncher(launcher);
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
 
         Assert.assertEquals(List.of(PACKAGE_A), launcher.launchedPackageIds);
     }
@@ -131,7 +130,7 @@ public class AppOpenTagControllerTest {
         RecordingAppLauncher launcher = new RecordingAppLauncher();
         AppOpenTagController controller = new AppOpenTagController(preferences, launcher);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, "<app-open>" + PACKAGE_A + "</app-open>", true);
 
         Assert.assertTrue(launcher.launchedPackageIds.isEmpty());
     }

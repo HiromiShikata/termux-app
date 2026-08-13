@@ -7,6 +7,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public final class OpenTagBrowserController {
 
@@ -16,7 +17,7 @@ public final class OpenTagBrowserController {
 
     private final TermuxAppSharedPreferences mPreferences;
 
-    private final Map<String, OpenTagScanner> mScannerBySessionKey = new HashMap<>();
+    private final Map<String, OpenTagScanner> mScannerBySessionName = new HashMap<>();
 
     private UrlOpener mUrlOpener;
 
@@ -33,30 +34,30 @@ public final class OpenTagBrowserController {
         return mPreferences.isOpenTagAutoOpenEnabled();
     }
 
-    public void onSessionTextChanged(String sessionKey, String screenText) {
+    public void onSessionTextChanged(String sessionName, String sessionKey, String screenText,
+                                     boolean outputNotYetSeenByTheOwner) {
+        if (sessionName == null) return;
         if (sessionKey == null) return;
         if (!isAutoOpenEnabled()) return;
 
         UrlOpener urlOpener = mUrlOpener;
         if (urlOpener == null) return;
 
-        OpenTagScanner scanner = scannerForSession(sessionKey);
+        OpenTagScanner scanner = mScannerBySessionName.get(sessionName);
+        if (scanner == null) {
+            scanner = new OpenTagScanner();
+            mScannerBySessionName.put(sessionName, scanner);
+            if (!outputNotYetSeenByTheOwner) {
+                scanner.rememberWithoutOpening(screenText);
+                return;
+            }
+        }
         for (String openUrl : scanner.urlsToOpen(screenText)) {
             urlOpener.openUrlInTabForSession(sessionKey, openUrl);
         }
     }
 
-    public void forgetSession(String sessionKey) {
-        if (sessionKey == null) return;
-        mScannerBySessionKey.remove(sessionKey);
-    }
-
-    private OpenTagScanner scannerForSession(String sessionKey) {
-        OpenTagScanner scanner = mScannerBySessionKey.get(sessionKey);
-        if (scanner == null) {
-            scanner = new OpenTagScanner();
-            mScannerBySessionKey.put(sessionKey, scanner);
-        }
-        return scanner;
+    public void forgetSessionsOtherThan(@NonNull Set<String> sessionNamesToKeep) {
+        mScannerBySessionName.keySet().retainAll(sessionNamesToKeep);
     }
 }

@@ -55,7 +55,7 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
 
         Assert.assertEquals(1, opener.opens.size());
         Assert.assertEquals(SESSION_A_HANDLE, opener.opens.get(0).sessionHandle);
@@ -67,8 +67,8 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
-        controller.onSessionTextChanged(SESSION_B_HANDLE, "<open>" + URL_B + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
+        controller.onSessionTextChanged(SESSION_B_HANDLE, SESSION_B_HANDLE, "<open>" + URL_B + "</open>", true);
 
         Assert.assertEquals(2, opener.opens.size());
         Assert.assertEquals(SESSION_A_HANDLE, opener.opens.get(0).sessionHandle);
@@ -82,8 +82,8 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
 
         Assert.assertEquals(1, opener.opens.size());
     }
@@ -94,16 +94,15 @@ public class OpenTagBrowserControllerTest {
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
         String transcriptWithFirstUrl = "<open>" + URL_A + "</open>";
-        controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstUrl);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, transcriptWithFirstUrl, true);
         Assert.assertEquals(1, opener.opens.size());
 
         for (int bottomSheetOpen = 0; bottomSheetOpen < 5; bottomSheetOpen++) {
-            controller.onSessionTextChanged(SESSION_A_HANDLE, transcriptWithFirstUrl);
+            controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, transcriptWithFirstUrl, true);
         }
         Assert.assertEquals(1, opener.opens.size());
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE,
-            "<open>" + URL_A + "</open>\noutput\n<open>" + URL_B + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>\noutput\n<open>" + URL_B + "</open>", true);
 
         Assert.assertEquals(2, opener.opens.size());
         Assert.assertEquals(URL_B, opener.opens.get(1).url);
@@ -114,12 +113,11 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "header\n<open>" + URL_A + "</open>\n");
-        controller.onSessionTextChanged(SESSION_A_HANDLE,
-            "<open>" + URL_A + "</open>\nmid\n<open>" + URL_B + "</open>\n");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "header\n<open>" + URL_A + "</open>\n", true);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>\nmid\n<open>" + URL_B + "</open>\n", true);
         Assert.assertEquals(2, opener.opens.size());
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "old\n<open>" + URL_A + "</open>\nold2\n");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "old\n<open>" + URL_A + "</open>\nold2\n", true);
 
         Assert.assertEquals(2, opener.opens.size());
     }
@@ -129,8 +127,8 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
-        controller.onSessionTextChanged(SESSION_B_HANDLE, "<open>" + URL_A + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
+        controller.onSessionTextChanged(SESSION_B_HANDLE, SESSION_B_HANDLE, "<open>" + URL_A + "</open>", true);
 
         Assert.assertEquals(2, opener.opens.size());
         Assert.assertEquals(SESSION_A_HANDLE, opener.opens.get(0).sessionHandle);
@@ -145,13 +143,13 @@ public class OpenTagBrowserControllerTest {
 
         RecordingUrlOpener firstActivityOpener = new RecordingUrlOpener();
         controller.setUrlOpener(firstActivityOpener);
-        controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript);
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, stillVisibleTranscript, true);
 
         for (int activityRecreation = 0; activityRecreation < 5; activityRecreation++) {
             controller.setUrlOpener(null);
             RecordingUrlOpener recreatedActivityOpener = new RecordingUrlOpener();
             controller.setUrlOpener(recreatedActivityOpener);
-            controller.onSessionTextChanged(SESSION_A_HANDLE, stillVisibleTranscript);
+            controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, stillVisibleTranscript, true);
             Assert.assertTrue(recreatedActivityOpener.opens.isEmpty());
         }
 
@@ -163,11 +161,11 @@ public class OpenTagBrowserControllerTest {
     public void doesNotScanWhileNoForegroundOpenerIsRegistered() {
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, null);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
 
         RecordingUrlOpener opener = new RecordingUrlOpener();
         controller.setUrlOpener(opener);
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
 
         Assert.assertEquals(1, opener.opens.size());
         Assert.assertEquals(URL_A, opener.opens.get(0).url);
@@ -178,7 +176,7 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "please open " + URL_A + " to continue\n");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "please open " + URL_A + " to continue\n", true);
 
         Assert.assertTrue(opener.opens.isEmpty());
     }
@@ -189,7 +187,7 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "log\n" + URL_A + "\n");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "log\n" + URL_A + "\n", true);
 
         Assert.assertTrue(opener.opens.isEmpty());
     }
@@ -200,7 +198,7 @@ public class OpenTagBrowserControllerTest {
         RecordingUrlOpener opener = new RecordingUrlOpener();
         OpenTagBrowserController controller = new OpenTagBrowserController(preferences, opener);
 
-        controller.onSessionTextChanged(SESSION_A_HANDLE, "<open>" + URL_A + "</open>");
+        controller.onSessionTextChanged(SESSION_A_HANDLE, SESSION_A_HANDLE, "<open>" + URL_A + "</open>", true);
 
         Assert.assertTrue(opener.opens.isEmpty());
     }

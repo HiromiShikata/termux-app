@@ -34,6 +34,7 @@ import com.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import com.termux.app.browser.BrowserSessionRemovalReason;
 import com.termux.app.appopen.AppOpenTagController;
+import com.termux.app.browser.OpenTagAutoOpenEligibility;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.browser.SessionNameBrowserTabUrlResolver;
 import com.termux.app.browser.TermuxBrowserController;
@@ -505,6 +506,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void openTagsForSession(TerminalSession session,
                                     @Nullable String transcriptTextAlreadyMaterialized) {
         if (session == null) return;
+        if (session.mSessionName == null) return;
 
         OpenTagBrowserController openTagBrowserController = mActivity.getOpenTagBrowserController();
         if (openTagBrowserController == null) return;
@@ -516,20 +518,31 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         TerminalBuffer screen = emulator.getScreen();
         if (screen == null) return;
 
+        boolean outputNotYetSeenByTheOwner = outputNotYetSeenByTheOwner(session.mSessionName);
+
         long scanStartNanos = System.nanoTime();
         int transcriptRows = screen.getActiveTranscriptRows();
 
         String transcriptText = transcriptTextAlreadyMaterialized != null
             ? transcriptTextAlreadyMaterialized
             : screen.getTranscriptText();
-        openTagBrowserController.onSessionTextChanged(session.mHandle, transcriptText);
+        openTagBrowserController.onSessionTextChanged(session.mSessionName, session.mHandle,
+            transcriptText, outputNotYetSeenByTheOwner);
 
         AppOpenTagController appOpenTagController = mActivity.getAppOpenTagController();
         if (appOpenTagController != null && appOpenTagController.isAutoOpenEnabled())
-            appOpenTagController.onSessionTextChanged(session.mHandle, transcriptText);
+            appOpenTagController.onSessionTextChanged(session.mSessionName, transcriptText,
+                outputNotYetSeenByTheOwner);
 
         ForegroundOpenTagScanCostCounterHolder.getInstance()
             .record(System.nanoTime() - scanStartNanos, transcriptRows);
+    }
+
+    private boolean outputNotYetSeenByTheOwner(@NonNull String sessionName) {
+        SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
+        if (store == null) return true;
+        return OpenTagAutoOpenEligibility.shouldAutoOpen(store.getLastSeenTimeMillis(sessionName),
+            store.outActivityTimeMillisForDotTier(sessionName));
     }
 
     private boolean shouldRunBackgroundOutputScan(@Nullable TerminalSession session) {
@@ -917,12 +930,6 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
             mActivity.finishActivityIfNotFinishing();
             return;
         }
-
-        if (mActivity.getOpenTagBrowserController() != null)
-            mActivity.getOpenTagBrowserController().forgetSession(finishedSession.mHandle);
-
-        if (mActivity.getAppOpenTagController() != null)
-            mActivity.getAppOpenTagController().forgetSession(finishedSession.mHandle);
 
         if (mActivity.getUpdateTagUpdateController() != null)
             mActivity.getUpdateTagUpdateController().forgetSession(finishedSession.mHandle);
@@ -2518,6 +2525,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         }
         mHungSessionReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
         mExitedSessionImmediateReconnectBackoff.forgetSessionsOtherThan(presentSessionNames);
+        if (mActivity.getOpenTagBrowserController() != null)
+            mActivity.getOpenTagBrowserController().forgetSessionsOtherThan(presentSessionNames);
+        if (mActivity.getAppOpenTagController() != null)
+            mActivity.getAppOpenTagController().forgetSessionsOtherThan(presentSessionNames);
         return reconnectedSessionNames;
     }
 

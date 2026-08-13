@@ -28,4 +28,8 @@ public final class AppOpenTagScanner {
     public List<String> packageIdsToLaunch(String output) {
         return outputTagScanner.newValues(output);
     }
+
+    public void rememberWithoutLaunching(String output) {
+        outputTagScanner.newValues(output);
+    }
 }

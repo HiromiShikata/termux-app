@@ -45,4 +45,8 @@ public final class OpenTagScanner {
         }
         return urlsToOpen;
     }
+
+    public void rememberWithoutOpening(String output) {
+        openedUrls.addAll(outputTagScanner.extractValues(output));
+    }
 }
