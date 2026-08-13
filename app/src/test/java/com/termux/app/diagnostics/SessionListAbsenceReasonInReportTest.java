@@ -68,6 +68,18 @@ public class SessionListAbsenceReasonInReportTest {
     }
 
     @Test
+    public void aHiddenSessionInsideACollapsedGroupSaysItIsHiddenRatherThanCollapsed() {
+        String report = renderedReportOf(DiagnosticsSessionListDisplay.NOT_DISPLAYED,
+            absenceOf(Arrays.asList("host-a"), Arrays.asList("host-a")));
+
+        Assert.assertTrue("a hidden name is excluded from the count of sessions held against the cap"
+                + " while a collapsed one is not, so calling this session collapsed would put it in a"
+                + " gap it cannot be part of\n" + report,
+            report.contains("      not displayed because its name is hidden and hidden sessions are being"
+                + " hidden\n"));
+    }
+
+    @Test
     public void aSessionTheListBuiltNoRowForSaysSo() {
         String report = renderedReportOf(DiagnosticsSessionListDisplay.NOT_DISPLAYED,
             absenceOf(Collections.<String>emptyList(), Collections.<String>emptyList()));

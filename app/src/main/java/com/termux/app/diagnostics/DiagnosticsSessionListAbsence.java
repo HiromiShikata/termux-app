@@ -46,11 +46,11 @@ public final class DiagnosticsSessionListAbsence {
         if (listDisplay != DiagnosticsSessionListDisplay.NOT_DISPLAYED) {
             return presentInTheList();
         }
-        if (collapsedProjectSessionNames.contains(sessionName)) {
-            return new DiagnosticsSessionListAbsence(Reason.PROJECT_GROUP_COLLAPSED);
-        }
         if (hiddenSessionNames.contains(sessionName)) {
             return new DiagnosticsSessionListAbsence(Reason.SESSION_NAME_HIDDEN);
+        }
+        if (collapsedProjectSessionNames.contains(sessionName)) {
+            return new DiagnosticsSessionListAbsence(Reason.PROJECT_GROUP_COLLAPSED);
         }
         return new DiagnosticsSessionListAbsence(Reason.NO_ROW_BUILT);
     }
