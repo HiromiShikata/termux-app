@@ -1,0 +1,48 @@
+# DO NOT EDIT DIRECTLY.
+# This file is auto-synchronized from HiromiShikata/repositories-management.
+# Direct edits in downstream repositories will be overwritten by the next sync.
+# Update the source file in HiromiShikata/repositories-management instead.
+
+name: CI Failure Issue Creator
+
+on:
+  check_suite:
+    types:
+      - completed
+
+jobs:
+  create-or-comment-issue:
+    if: github.event.check_suite.conclusion == 'failure' && github.event.check_suite.head_branch == github.event.repository.default_branch
+    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
+    permissions:
+      issues: write
+    steps:
+      - uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+      - name: Create or comment on CI failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_TITLE="[CI] Default branch CI failure"
+          REPO="${{ github.repository }}"
+          COMMIT_CHECKS_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.check_suite.head_sha }}/checks"
+
+          EXISTING_ISSUE_NUMBER=$(gh issue list \
+            --repo "$REPO" \
+            --state open \
+            --search "$ISSUE_TITLE in:title" \
+            --json number,title \
+            --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number" \
+            | head -n1)
+
+          if [ -n "$EXISTING_ISSUE_NUMBER" ]; then
+            gh issue comment "$EXISTING_ISSUE_NUMBER" \
+              --repo "$REPO" \
+              --body "CI failed on the default branch. [View failed checks]($COMMIT_CHECKS_URL)"
+          else
+            gh issue create \
+              --repo "$REPO" \
+              --title "$ISSUE_TITLE" \
+              --body "CI failed on the default branch. [View failed checks]($COMMIT_CHECKS_URL)"
+          fi
