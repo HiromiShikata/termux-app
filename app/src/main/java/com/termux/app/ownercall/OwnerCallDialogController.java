@@ -61,17 +61,22 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
     }
 
     @Override
-    public void onCallDismissed(@NonNull OwnerCall call) {
-        mState.dismiss(call);
+    public void onDialogCloseRequested() {
+        mState.closeDialog();
         render(KEEP_DISPLAYED_CALL, System.currentTimeMillis());
     }
 
+    public void reopenDialog(long nowMillis) {
+        mState.reopenDialog();
+        render(KEEP_DISPLAYED_CALL, nowMillis);
+    }
+
     private void render(int offsetFromDisplayedCall, long nowMillis) {
-        List<OwnerCall> visibleCalls =
-            mState.visibleCalls(mCallSource.callsForSession(mState.getSessionName()));
-        int requestedIndex = mState.indexOfDisplayedCall(visibleCalls) + offsetFromDisplayedCall;
-        OwnerCallDialogPaging paging = OwnerCallDialogBinder.bind(mRoot, visibleCalls,
+        List<OwnerCall> calls =
+            mCallSource.callsForSession(mState.getSessionName());
+        int requestedIndex = mState.indexOfDisplayedCall(calls) + offsetFromDisplayedCall;
+        OwnerCallDialogPaging paging = OwnerCallDialogBinder.bind(mRoot, calls,
             requestedIndex, nowMillis, mGeometrySource.currentGeometry(), this);
-        mState.displayCallAt(visibleCalls, paging.getIndex());
+        mState.displayCallAt(calls, paging.getIndex());
     }
 }

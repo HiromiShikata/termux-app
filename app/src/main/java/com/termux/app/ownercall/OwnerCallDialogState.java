@@ -3,17 +3,13 @@ package com.termux.app.ownercall;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public final class OwnerCallDialogState {
 
-    private static final String SESSION_AND_CALL_SEPARATOR = "\n";
     private static final int OLDEST_CALL = 0;
 
-    private final Set<String> mDismissedCallKeys = new HashSet<>();
+    private boolean mIsDialogClosed;
 
     @Nullable
     private String mSessionName;
@@ -27,6 +23,7 @@ public final class OwnerCallDialogState {
         }
         mSessionName = sessionName;
         mDisplayedCalledAt = null;
+        mIsDialogClosed = false;
     }
 
     @Nullable
@@ -34,41 +31,30 @@ public final class OwnerCallDialogState {
         return mSessionName;
     }
 
-    @NonNull
-    public List<OwnerCall> visibleCalls(@NonNull List<OwnerCall> calls) {
-        List<OwnerCall> visibleCalls = new ArrayList<>();
-        for (OwnerCall call : calls) {
-            if (!mDismissedCallKeys.contains(dismissalKey(call))) {
-                visibleCalls.add(call);
-            }
-        }
-        return visibleCalls;
-    }
-
-    public int indexOfDisplayedCall(@NonNull List<OwnerCall> visibleCalls) {
+    public int indexOfDisplayedCall(@NonNull List<OwnerCall> calls) {
         if (mDisplayedCalledAt == null) {
             return OLDEST_CALL;
         }
-        for (int index = 0; index < visibleCalls.size(); index++) {
-            if (mDisplayedCalledAt.equals(visibleCalls.get(index).getCalledAt())) {
+        for (int index = 0; index < calls.size(); index++) {
+            if (mDisplayedCalledAt.equals(calls.get(index).getCalledAt())) {
                 return index;
             }
         }
         return OLDEST_CALL;
     }
 
-    public void displayCallAt(@NonNull List<OwnerCall> visibleCalls, int index) {
-        mDisplayedCalledAt = index < 0 || index >= visibleCalls.size()
-            ? null : visibleCalls.get(index).getCalledAt();
+    public void displayCallAt(@NonNull List<OwnerCall> calls, int index) {
+        mDisplayedCalledAt = index < 0 || index >= calls.size()
+            ? null : calls.get(index).getCalledAt();
     }
 
-    public void dismiss(@NonNull OwnerCall call) {
-        mDismissedCallKeys.add(dismissalKey(call));
-        mDisplayedCalledAt = null;
+    public void closeDialog() {
     }
 
-    @NonNull
-    private String dismissalKey(@NonNull OwnerCall call) {
-        return mSessionName + SESSION_AND_CALL_SEPARATOR + call.getCalledAt();
+    public boolean isDialogClosed() {
+        return false;
+    }
+
+    public void reopenDialog() {
     }
 }

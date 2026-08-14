@@ -321,6 +321,20 @@
                     android:orientation="vertical">
 
                     <TextView
+                        android:id="@+id/owner_call_pending_indicator"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:clickable="true"
+                        android:contentDescription="@string/owner_call_pending_indicator_content_description"
+                        android:focusable="true"
+                        android:paddingHorizontal="6dp"
+                        android:paddingTop="2dp"
+                        android:paddingBottom="0dp"
+                        android:text="🔴"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+
+                    <TextView
                         android:id="@+id/session_project_story_bar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
