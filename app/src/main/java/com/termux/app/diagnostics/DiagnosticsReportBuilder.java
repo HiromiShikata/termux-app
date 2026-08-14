@@ -155,6 +155,9 @@ public final class DiagnosticsReportBuilder {
         appendMainThreadCostSection(builder, report);
 
         builder.append('\n');
+        appendRenderThreadSection(builder, report);
+
+        builder.append('\n');
         appendBackgroundCycleSection(builder, report);
 
         builder.append('\n');
@@ -383,6 +386,30 @@ public final class DiagnosticsReportBuilder {
             .append(enforcedMaximum == null ? "not readable" : String.valueOf(enforcedMaximum)).append('\n');
         builder.append("  Can be switched off from settings: ")
             .append(monitor.getMonitorCanBeSwitchedOff() ? "yes" : "no").append('\n');
+    }
+
+    private void appendRenderThreadSection(@NonNull DiagnosticsReportText builder,
+                                           @NonNull DiagnosticsReport report) {
+        DiagnosticsRenderThread renderThread = report.getMainThreadStalls().getRenderThread();
+        builder.append("Render thread\n");
+        switch (renderThread.getReading()) {
+            case NOT_TAKEN:
+                builder.append("  Not measured yet\n");
+                return;
+            case READ_FAILED:
+                builder.append("  Not measured: ").append(renderThread.getReadFailureMessage())
+                    .append('\n');
+                return;
+            case THREAD_ABSENT:
+                builder.append("  Not measured: this process is running no thread named ")
+                    .append(DiagnosticsRenderThread.THREAD_NAME).append('\n');
+                return;
+            default:
+                builder.append("  Processor time: ").append(renderThread.getUserTimeMillis())
+                    .append(" ms user, ").append(renderThread.getSystemTimeMillis())
+                    .append(" ms system\n");
+                builder.append("  State: ").append(renderThread.getSchedulerState()).append('\n');
+        }
     }
 
     private void appendAppProcessPopulationSection(@NonNull DiagnosticsReportText builder,

@@ -79,6 +79,36 @@ public class RenderThreadInReportTest {
     }
 
     @Test
+    public void aMeasuredRenderThreadIsPrintedWithItsProcessorTimeAndItsState() {
+        String report = renderedReportOf(stallsWithoutARenderThreadReading()
+            .withRenderThread(DiagnosticsRenderThread.measured("R", 190120L, 4210L)));
+
+        int sectionIndex = report.indexOf(SECTION_HEADING);
+        Assert.assertTrue("the section has to be present before its content can be judged. Actual"
+            + " report:\n" + report, sectionIndex >= 0);
+        String section = report.substring(sectionIndex);
+        Assert.assertTrue("the processor time against the process uptime is what says whether the"
+                + " thread the main thread waited on was saturated or was itself blocked. Actual"
+                + " report:\n" + report,
+            section.contains("190120 ms user, 4210 ms system"));
+        Assert.assertTrue("the state at the moment of the reading separates a thread that is running"
+            + " from one that is parked. Actual report:\n" + report, section.contains("State: R"));
+    }
+
+    @Test
+    public void aRenderThreadReadingThatFailedPrintsWhyRatherThanReadingAsNoProcessorTime() {
+        String report = renderedReportOf(stallsWithoutARenderThreadReading()
+            .withRenderThread(DiagnosticsRenderThread.readFailed("the thread table could not be listed")));
+
+        int sectionIndex = report.indexOf(SECTION_HEADING);
+        Assert.assertTrue("the section has to be present before its content can be judged. Actual"
+            + " report:\n" + report, sectionIndex >= 0);
+        Assert.assertTrue("a failure printed as a blank or a zero would have the reader rule out a"
+                + " saturated render thread on a reading that never happened. Actual report:\n" + report,
+            report.substring(sectionIndex).contains("the thread table could not be listed"));
+    }
+
+    @Test
     public void theRenderThreadSitsInsideTheWindowTheReportSurvives() {
         String report = renderedReportOf(stallsWithoutARenderThreadReading());
 

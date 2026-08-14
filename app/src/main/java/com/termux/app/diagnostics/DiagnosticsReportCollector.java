@@ -2,6 +2,8 @@ package com.termux.app.diagnostics;
 
 import android.os.Debug;
 import android.os.SystemClock;
+import android.system.Os;
+import android.system.OsConstants;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -11,6 +13,8 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.process.AppProcessPopulationReader;
+import com.termux.app.process.ProcFileSystemThreadTable;
+import com.termux.app.process.RenderThreadReader;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.SessionNewActivityTier;
@@ -40,6 +44,10 @@ public final class DiagnosticsReportCollector {
 
     @NonNull
     private final AppProcessPopulationReader mProcessPopulationReader = new AppProcessPopulationReader();
+
+    @NonNull
+    private final RenderThreadReader mRenderThreadReader = new RenderThreadReader(
+        new ProcFileSystemThreadTable(), Os.sysconf(OsConstants._SC_CLK_TCK));
 
     public DiagnosticsReportCollector() {
         this(DiagnosticEventLogHolder.getInstance());
@@ -81,7 +89,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsWorkCostLine.of(TerminalBufferReflowCostCounterHolder.getInstance()),
             DiagnosticsSessionReconnectCost.of(SessionReconnectCostCounterHolder.getInstance()),
             ReplacedSessionShellInputRecorderHolder.getInstance().snapshot(),
-            DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder()),
+            DiagnosticsMainThreadStalls.of(MainThreadStallWatchdog.getRecorder())
+                .withRenderThread(mRenderThreadReader.read()),
             mainLooperQueue,
             scrollbarViewCensus,
             ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
