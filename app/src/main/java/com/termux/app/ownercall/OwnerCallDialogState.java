@@ -49,12 +49,14 @@ public final class OwnerCallDialogState {
     }
 
     public void closeDialog() {
+        mIsDialogClosed = true;
     }
 
     public boolean isDialogClosed() {
-        return false;
+        return mIsDialogClosed;
     }
 
     public void reopenDialog() {
+        mIsDialogClosed = false;
     }
 }

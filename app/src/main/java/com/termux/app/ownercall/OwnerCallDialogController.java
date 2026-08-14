@@ -5,6 +5,8 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.R;
+
 import java.util.List;
 
 public final class OwnerCallDialogController implements OwnerCallDialogBinder.OwnerCallDialogActions {
@@ -63,7 +65,7 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
     @Override
     public void onDialogCloseRequested() {
         mState.closeDialog();
-        render(KEEP_DISPLAYED_CALL, System.currentTimeMillis());
+        hideDialog();
     }
 
     public void reopenDialog(long nowMillis) {
@@ -71,7 +73,18 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
         render(KEEP_DISPLAYED_CALL, nowMillis);
     }
 
+    private void hideDialog() {
+        View dialog = mRoot.findViewById(R.id.owner_call_dialog);
+        if (dialog != null && dialog.getVisibility() != View.GONE) {
+            dialog.setVisibility(View.GONE);
+        }
+    }
+
     private void render(int offsetFromDisplayedCall, long nowMillis) {
+        if (mState.isDialogClosed()) {
+            hideDialog();
+            return;
+        }
         List<OwnerCall> calls =
             mCallSource.callsForSession(mState.getSessionName());
         int requestedIndex = mState.indexOfDisplayedCall(calls) + offsetFromDisplayedCall;
