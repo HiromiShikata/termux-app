@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
