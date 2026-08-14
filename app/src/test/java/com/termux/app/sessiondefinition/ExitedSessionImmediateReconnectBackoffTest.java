@@ -78,14 +78,14 @@ public class ExitedSessionImmediateReconnectBackoffTest {
         ExitedSessionImmediateReconnectBackoff backoff = new ExitedSessionImmediateReconnectBackoff();
         backoff.recordImmediateReconnect(SESSION_NAME, START_TIME_MILLIS);
         backoff.recordObservedRunning(SESSION_NAME, START_TIME_MILLIS
-            + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS);
+            + ExitedSessionImmediateReconnectBackoff.SHORTEST_WAIT_MILLIS);
         backoff.recordImmediateReconnect(SESSION_NAME, START_TIME_MILLIS
-            + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L);
+            + ExitedSessionImmediateReconnectBackoff.SHORTEST_WAIT_MILLIS + 1L);
 
-        assertFalse("being seen running no longer than the longest wait is the session dying again rather"
+        assertFalse("being seen running no longer than the shortest wait is the session dying again rather"
                 + " than staying up, so the wait must keep growing",
             backoff.isReadyToReconnectImmediately(SESSION_NAME,
-                START_TIME_MILLIS + ExitedSessionImmediateReconnectBackoff.LONGEST_WAIT_MILLIS + 1L
+                START_TIME_MILLIS + ExitedSessionImmediateReconnectBackoff.SHORTEST_WAIT_MILLIS + 1L
                     + ExitedSessionImmediateReconnectBackoff.SHORTEST_WAIT_MILLIS));
     }
 
