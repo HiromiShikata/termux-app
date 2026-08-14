@@ -6,7 +6,7 @@ import androidx.annotation.NonNull;
 
 import com.termux.app.TermuxActivity;
 import com.termux.view.TerminalView;
-import com.termux.view.scroll.TerminalScrollEvent;
+import com.termux.view.scroll.LatestTerminalScrollStep;
 import com.termux.view.scroll.TerminalScrollStepCounter;
 import com.termux.view.scroll.TerminalScrollStepCounterHolder;
 
@@ -19,11 +19,12 @@ public final class ScrollWithoutDrawEpisodeCheck {
         TerminalView terminalView = activity.getTerminalView();
         if (terminalView == null) return;
         TerminalScrollStepCounter scrollStepCounter = TerminalScrollStepCounterHolder.getInstance();
-        if (scrollStepCounter.getTotalStepCount() == 0) return;
+        LatestTerminalScrollStep latestScrollStep = LatestTerminalScrollStep.of(scrollStepCounter);
+        if (!latestScrollStep.hasStepped()) return;
         DiagnosticsDrawTime terminalDrawTime = TerminalDrawTimeRecorderHolder.getInstance()
             .snapshot(terminalView, SystemClock.elapsedRealtime());
         if (!terminalDrawTime.hasDrawn()) return;
-        long lastScrollStepAtMillis = lastScrollStepAtMillis(scrollStepCounter);
+        long lastScrollStepAtMillis = latestScrollStep.getSteppedAtMillis();
         long lastTerminalDrawAtMillis = nowMillis - terminalDrawTime.getMillisSinceLastDraw();
         if (!ScrollWithoutDrawEpisodeRecorderHolder.getInstance()
                 .recordEpisode(lastScrollStepAtMillis, lastTerminalDrawAtMillis)) {
@@ -33,17 +34,5 @@ public final class ScrollWithoutDrawEpisodeCheck {
             "terminal last drew " + (lastScrollStepAtMillis - lastTerminalDrawAtMillis)
                 + " ms before the most recent scroll step, after "
                 + scrollStepCounter.getTotalStepCount() + " scroll steps");
-    }
-
-    private static long lastScrollStepAtMillis(@NonNull TerminalScrollStepCounter scrollStepCounter) {
-        long lastStepAtMillis = Long.MIN_VALUE;
-        for (TerminalScrollEvent destination : TerminalScrollEvent.values()) {
-            if (scrollStepCounter.getStepCount(destination) == 0) continue;
-            long destinationLastStepAtMillis = scrollStepCounter.getLastStepAtMillis(destination);
-            if (destinationLastStepAtMillis > lastStepAtMillis) {
-                lastStepAtMillis = destinationLastStepAtMillis;
-            }
-        }
-        return lastStepAtMillis;
     }
 }
