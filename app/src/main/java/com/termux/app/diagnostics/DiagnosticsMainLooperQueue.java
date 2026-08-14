@@ -16,10 +16,20 @@ public final class DiagnosticsMainLooperQueue {
 
     private static final String MESSAGE_LINE_PREFIX = "Message ";
     private static final String MESSAGE_LINE_MARKER = "{ when=";
+    private static final String WHEN_PREFIX = "when=";
     private static final String TARGET_PREFIX = "target=";
     private static final String CALLBACK_PREFIX = "callback=";
+    private static final String BARRIER_PREFIX = "barrier=";
+    private static final String SYNCHRONIZATION_BARRIER_DESCRIPTION = "synchronization barrier";
 
     private final int mPendingMessageCount;
+
+    private final int mSynchronizationBarrierCount;
+
+    private final int mMessageCountBehindFirstSynchronizationBarrier;
+
+    @NonNull
+    private final String mFirstSynchronizationBarrierDueDescription;
 
     @NonNull
     private final List<DiagnosticsMainLooperQueueTarget> mBusiestTargets;
@@ -28,9 +38,15 @@ public final class DiagnosticsMainLooperQueue {
     private final List<String> mPendingMessageLines;
 
     private DiagnosticsMainLooperQueue(int pendingMessageCount,
+                                       int synchronizationBarrierCount,
+                                       int messageCountBehindFirstSynchronizationBarrier,
+                                       @NonNull String firstSynchronizationBarrierDueDescription,
                                        @NonNull List<DiagnosticsMainLooperQueueTarget> busiestTargets,
                                        @NonNull List<String> pendingMessageLines) {
         mPendingMessageCount = pendingMessageCount;
+        mSynchronizationBarrierCount = synchronizationBarrierCount;
+        mMessageCountBehindFirstSynchronizationBarrier = messageCountBehindFirstSynchronizationBarrier;
+        mFirstSynchronizationBarrierDueDescription = firstSynchronizationBarrierDueDescription;
         mBusiestTargets = Collections.unmodifiableList(new ArrayList<>(busiestTargets));
         mPendingMessageLines = Collections.unmodifiableList(new ArrayList<>(pendingMessageLines));
     }
@@ -40,9 +56,21 @@ public final class DiagnosticsMainLooperQueue {
         Map<String, Integer> countsByTarget = new LinkedHashMap<>();
         List<String> pendingMessageLines = new ArrayList<>();
         int pendingMessageCount = 0;
+        int synchronizationBarrierCount = 0;
+        int messageCountBehindFirstSynchronizationBarrier = 0;
+        String firstSynchronizationBarrierDueDescription = "";
+        boolean firstSynchronizationBarrierSeen = false;
         for (String line : looperDumpLines) {
             if (!isMessageLine(line)) continue;
             pendingMessageCount++;
+            boolean isSynchronizationBarrier = isSynchronizationBarrierLine(line);
+            if (isSynchronizationBarrier) synchronizationBarrierCount++;
+            if (isSynchronizationBarrier && !firstSynchronizationBarrierSeen) {
+                firstSynchronizationBarrierSeen = true;
+                firstSynchronizationBarrierDueDescription = valueAfter(line, WHEN_PREFIX);
+            } else if (firstSynchronizationBarrierSeen) {
+                messageCountBehindFirstSynchronizationBarrier++;
+            }
             if (pendingMessageLines.size() < MAX_REPORTED_MESSAGE_LINES) {
                 pendingMessageLines.add(line.trim());
             }
@@ -50,12 +78,26 @@ public final class DiagnosticsMainLooperQueue {
             Integer previousCount = countsByTarget.get(target);
             countsByTarget.put(target, previousCount == null ? 1 : previousCount + 1);
         }
-        return new DiagnosticsMainLooperQueue(pendingMessageCount, busiestTargets(countsByTarget),
-            pendingMessageLines);
+        return new DiagnosticsMainLooperQueue(pendingMessageCount, synchronizationBarrierCount,
+            messageCountBehindFirstSynchronizationBarrier, firstSynchronizationBarrierDueDescription,
+            busiestTargets(countsByTarget), pendingMessageLines);
     }
 
     public int getPendingMessageCount() {
         return mPendingMessageCount;
+    }
+
+    public int getSynchronizationBarrierCount() {
+        return mSynchronizationBarrierCount;
+    }
+
+    public int getMessageCountBehindFirstSynchronizationBarrier() {
+        return mMessageCountBehindFirstSynchronizationBarrier;
+    }
+
+    @NonNull
+    public String getFirstSynchronizationBarrierDueDescription() {
+        return mFirstSynchronizationBarrierDueDescription;
     }
 
     @NonNull
@@ -88,8 +130,13 @@ public final class DiagnosticsMainLooperQueue {
         return trimmed.startsWith(MESSAGE_LINE_PREFIX) && trimmed.contains(MESSAGE_LINE_MARKER);
     }
 
+    private static boolean isSynchronizationBarrierLine(@NonNull String line) {
+        return line.contains(BARRIER_PREFIX) && !line.contains(TARGET_PREFIX);
+    }
+
     @NonNull
     private static String describeTarget(@NonNull String messageLine) {
+        if (isSynchronizationBarrierLine(messageLine)) return SYNCHRONIZATION_BARRIER_DESCRIPTION;
         String target = valueAfter(messageLine, TARGET_PREFIX);
         String callback = valueAfter(messageLine, CALLBACK_PREFIX);
         if (target.isEmpty() && callback.isEmpty()) return "unknown";
