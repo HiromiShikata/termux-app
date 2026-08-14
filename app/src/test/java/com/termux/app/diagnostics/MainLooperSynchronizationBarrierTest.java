@@ -90,6 +90,26 @@ public class MainLooperSynchronizationBarrierTest {
     }
 
     @Test
+    public void aBarrierBehindOtherMessagesHoldsOnlyWhatIsQueuedAfterIt() {
+        List<String> dumpLines = Arrays.asList(
+            LOOPER_HEADER,
+            messageLine(0, "-9ms", "com.termux.app.SessionSweep", "android.os.Handler"),
+            barrierLine(1, "-2ms", 2372),
+            messageLine(2, "+425ms", "android.view.View$ScrollabilityCache",
+                "android.view.ViewRootImpl$ViewRootHandler"));
+
+        DiagnosticsMainLooperQueue queue = DiagnosticsMainLooperQueue.parse(dumpLines);
+
+        assertEquals(1, queue.getSynchronizationBarrierCount());
+        assertEquals("a barrier the looper has not reached yet is described by its own due time, not by"
+            + " the age of the queue in front of it", "-2ms",
+            queue.getFirstSynchronizationBarrierDueDescription());
+        assertEquals("the messages ahead of a barrier still run, so counting them as held would overstate"
+            + " what the interface owes", 1,
+            queue.getMessageCountBehindFirstSynchronizationBarrier());
+    }
+
+    @Test
     public void aSecondBarrierIsCountedWhileTheDueTimeStaysThatOfTheOldest() {
         List<String> dumpLines = Arrays.asList(
             LOOPER_HEADER,
