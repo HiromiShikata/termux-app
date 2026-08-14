@@ -34,6 +34,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -1961,6 +1962,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         View dialogView = LayoutInflater.from(mActivity).inflate(R.layout.dialog_browser_new_tab, null);
         EditText urlInput = dialogView.findViewById(R.id.browser_new_tab_url_input);
         ListView listView = dialogView.findViewById(R.id.browser_new_tab_entry_list);
+        Button clipboardUrlButton = dialogView.findViewById(R.id.browser_new_tab_clipboard_url_button);
+        BrowserClipboardUrlOffer clipboardUrlOffer =
+            BrowserClipboardUrlOffer.of(ShareUtils.getTextFromClipboard(mActivity, false));
 
         List<BrowserBookmark> allBookmarks = loadBookmarks().getBookmarks();
         List<BrowserTabHistoryEntry> allHistoryEntries = mTabHistory.getEntries();
@@ -1994,6 +1998,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             .setNegativeButton(android.R.string.cancel, null)
             .create();
         dialog.setCanceledOnTouchOutside(true);
+
+        if (clipboardUrlOffer.isOffered()) {
+            clipboardUrlButton.setText(mActivity.getString(
+                R.string.action_browser_new_tab_open_clipboard_url, clipboardUrlOffer.getUrl()));
+            clipboardUrlButton.setVisibility(View.VISIBLE);
+            clipboardUrlButton.setOnClickListener(v -> {
+                dialog.dismiss();
+                openTypedUrlInNewTab(clipboardUrlOffer.getUrl());
+            });
+        }
 
         urlInput.addTextChangedListener(new TextWatcher() {
             @Override
