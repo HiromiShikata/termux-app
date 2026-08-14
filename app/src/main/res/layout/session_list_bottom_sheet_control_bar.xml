@@ -55,7 +55,12 @@
     </LinearLayout>
 
     <com.termux.app.terminal.ShortcutFlowLayout
-        android:id="@+id/session_list_bottom_sheet_shortcuts_container"
+        android:id="@+id/session_list_bottom_sheet_always_session_shortcuts_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <com.termux.app.terminal.ShortcutFlowLayout
+        android:id="@+id/session_list_bottom_sheet_project_manager_session_shortcuts_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

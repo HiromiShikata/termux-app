@@ -30,7 +30,19 @@ public final class SessionShortcutBarPlanner {
     public List<SessionShortcut> planRightToLeftShortcuts(@NonNull Set<String> alwaysNaSessionNames,
                                                           @NonNull List<SessionDefinitionEntry> entries,
                                                           @NonNull List<String> liveSessionNames) {
-        List<SessionShortcut> rightToLeftShortcuts = new ArrayList<>();
+        SessionShortcutRows rows = planRightToLeftShortcutRows(alwaysNaSessionNames, entries,
+            liveSessionNames);
+        List<SessionShortcut> rightToLeftShortcuts = new ArrayList<>(rows.getAlwaysSessionShortcuts());
+        rightToLeftShortcuts.addAll(rows.getProjectManagerSessionShortcuts());
+        return rightToLeftShortcuts;
+    }
+
+    @NonNull
+    public SessionShortcutRows planRightToLeftShortcutRows(
+            @NonNull Set<String> alwaysNaSessionNames,
+            @NonNull List<SessionDefinitionEntry> entries,
+            @NonNull List<String> liveSessionNames) {
+        List<SessionShortcut> alwaysSessionShortcuts = new ArrayList<>();
         Set<String> seenAlwaysNaTargets = new LinkedHashSet<>();
         Set<String> configuredNames = trimmedNonEmptyNames(alwaysNaSessionNames);
         for (String trimmedName : configuredNames) {
@@ -39,8 +51,9 @@ public final class SessionShortcutBarPlanner {
             if (!seenAlwaysNaTargets.add(targetSessionName)) {
                 continue;
             }
-            rightToLeftShortcuts.add(new SessionShortcut(trimmedName, targetSessionName));
+            alwaysSessionShortcuts.add(new SessionShortcut(trimmedName, targetSessionName));
         }
+        List<SessionShortcut> projectManagerSessionShortcuts = new ArrayList<>();
         Set<String> seenProjectLabels = new LinkedHashSet<>();
         for (SessionDefinitionEntry entry : entries) {
             String projectLabel = entry.getGroupLabel();
@@ -51,9 +64,9 @@ public final class SessionShortcutBarPlanner {
             if (!seenProjectLabels.add(projectLabel)) {
                 continue;
             }
-            rightToLeftShortcuts.add(new SessionShortcut(projectLabel.trim(), pmSessionName));
+            projectManagerSessionShortcuts.add(new SessionShortcut(projectLabel.trim(), pmSessionName));
         }
-        return rightToLeftShortcuts;
+        return new SessionShortcutRows(alwaysSessionShortcuts, projectManagerSessionShortcuts);
     }
 
     @NonNull

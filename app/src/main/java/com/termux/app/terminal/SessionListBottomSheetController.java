@@ -56,7 +56,8 @@ public class SessionListBottomSheetController {
     private final View mLoadSessionButton;
     private final View mGoogleButton;
     private final ImageButton mHiddenToggleButton;
-    private final ShortcutFlowLayout mShortcutsContainer;
+    private final ShortcutFlowLayout mAlwaysSessionShortcutsContainer;
+    private final ShortcutFlowLayout mProjectManagerSessionShortcutsContainer;
     private final SessionShortcutBarPlanner mSessionShortcutBarPlanner =
         new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
 
@@ -86,7 +87,10 @@ public class SessionListBottomSheetController {
         this.mLoadSessionButton = activity.findViewById(R.id.session_list_bottom_sheet_load_session_button);
         this.mGoogleButton = activity.findViewById(R.id.session_list_bottom_sheet_google_button);
         this.mHiddenToggleButton = activity.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button);
-        this.mShortcutsContainer = activity.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
+        this.mAlwaysSessionShortcutsContainer =
+            activity.findViewById(R.id.session_list_bottom_sheet_always_session_shortcuts_container);
+        this.mProjectManagerSessionShortcutsContainer =
+            activity.findViewById(R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
         bindActionButtons();
         bindHiddenToggleButton();
         bindDragToDismiss();
@@ -464,20 +468,31 @@ public class SessionListBottomSheetController {
     }
 
     private void rebuildSessionShortcuts(@NonNull TermuxSessionsListViewController listController) {
-        mShortcutsContainer.removeAllViews();
+        mAlwaysSessionShortcutsContainer.removeAllViews();
+        mProjectManagerSessionShortcutsContainer.removeAllViews();
         TermuxService service = mActivity.getTermuxService();
         if (service == null) {
             return;
         }
         Set<String> alwaysNaSessionNames = mActivity.getPreferences().getAlwaysNaSessionNames();
-        List<SessionShortcut> rightToLeftShortcuts =
-            mSessionShortcutBarPlanner.planRightToLeftShortcuts(alwaysNaSessionNames,
+        SessionShortcutRows rightToLeftShortcutRows =
+            mSessionShortcutBarPlanner.planRightToLeftShortcutRows(alwaysNaSessionNames,
                 listController.getEntries(), liveSessionNames(service));
+        fillShortcutRow(mAlwaysSessionShortcutsContainer,
+            rightToLeftShortcutRows.getAlwaysSessionShortcuts(), service, listController);
+        fillShortcutRow(mProjectManagerSessionShortcutsContainer,
+            rightToLeftShortcutRows.getProjectManagerSessionShortcuts(), service, listController);
+    }
+
+    private void fillShortcutRow(@NonNull ShortcutFlowLayout row,
+                                 @NonNull List<SessionShortcut> rightToLeftShortcuts,
+                                 @NonNull TermuxService service,
+                                 @NonNull TermuxSessionsListViewController listController) {
         List<SessionShortcut> renderOrderShortcuts =
             SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
         for (SessionShortcut shortcut : renderOrderShortcuts) {
             TermuxSession targetSession = service.getTermuxSessionForSessionName(shortcut.getTargetSessionName());
-            mShortcutsContainer.addView(createShortcutButton(shortcut, targetSession, listController));
+            row.addView(createShortcutButton(shortcut, targetSession, listController));
         }
     }
 

@@ -26,7 +26,7 @@ public class SessionShortcutBarControlBarLayoutTest {
         ViewGroup controlBar = inflateControlBar(context);
         View controlsGroup = controlBar.findViewById(R.id.session_list_bottom_sheet_controls_group);
         ShortcutFlowLayout shortcutsContainer =
-            controlBar.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
+            controlBar.findViewById(R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
         addShortcutButtons(context, shortcutsContainer);
 
         measureAndLayout(controlBar, BAR_WIDTH_PIXELS);
@@ -43,7 +43,7 @@ public class SessionShortcutBarControlBarLayoutTest {
         Context context = themedContext();
         ViewGroup controlBar = inflateControlBar(context);
         ShortcutFlowLayout shortcutsContainer =
-            controlBar.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
+            controlBar.findViewById(R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
         addShortcutButtons(context, shortcutsContainer);
 
         measureAndLayout(controlBar, BAR_WIDTH_PIXELS);
@@ -70,7 +70,7 @@ public class SessionShortcutBarControlBarLayoutTest {
         ViewGroup controlBar = inflateControlBar(context);
         ViewGroup controlsGroup = controlBar.findViewById(R.id.session_list_bottom_sheet_controls_group);
         ShortcutFlowLayout shortcutsContainer =
-            controlBar.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
+            controlBar.findViewById(R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
         addShortcutButtons(context, shortcutsContainer);
 
         measureAndLayout(controlBar, BAR_WIDTH_PIXELS);
@@ -89,7 +89,7 @@ public class SessionShortcutBarControlBarLayoutTest {
         Context context = themedContext();
         ViewGroup controlBar = inflateControlBar(context);
         ShortcutFlowLayout shortcutsContainer =
-            controlBar.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
+            controlBar.findViewById(R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
         addShortcutButtons(context, shortcutsContainer);
 
         measureAndLayout(controlBar, BAR_WIDTH_PIXELS);
