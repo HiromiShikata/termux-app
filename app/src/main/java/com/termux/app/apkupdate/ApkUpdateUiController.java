@@ -35,8 +35,6 @@ public final class ApkUpdateUiController {
     private final ApkUpdatePendingState pendingState;
     private final ApkUpdateInstallResumeRequest pendingInstallResume;
     private final ApkUpdateCachedFileResolver cachedFileResolver;
-    private final DeclinedUpdateVersion declinedUpdateVersion;
-    private final AutomaticUpdatePromptController.Dialog automaticUpdatePrompt;
 
     public ApkUpdateUiController(Activity activity) {
         this(activity, new ApkUpdateManager(activity), new ApkInstaller(activity));
@@ -51,8 +49,6 @@ public final class ApkUpdateUiController {
         this.pendingState = new ApkUpdatePendingState(store);
         this.pendingInstallResume = new ApkUpdateInstallResumeRequest(store);
         this.cachedFileResolver = new ApkUpdateCachedFileResolver();
-        this.declinedUpdateVersion = new DeclinedUpdateVersion(store);
-        this.automaticUpdatePrompt = new AlertDialogAutomaticUpdatePrompt(activity);
     }
 
     public void checkAndPrompt(boolean userInitiated) {
@@ -128,7 +124,7 @@ public final class ApkUpdateUiController {
             indicatorView.hide();
             return;
         }
-        newPromptController(indicatorView).onUpdateAvailable(availability);
+        newIndicatorController(indicatorView).onUpdateAvailable(availability);
     }
 
     private void preDownloadThenShowIndicator(ApkUpdateAvailability availability,
@@ -165,9 +161,13 @@ public final class ApkUpdateUiController {
 
     private AutomaticUpdatePromptController newPromptController(
         ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
-        return new AutomaticUpdatePromptController(automaticUpdatePrompt,
-            new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall),
-            declinedUpdateVersion);
+        return new AutomaticUpdatePromptController(newIndicatorController(indicatorView),
+            this::startDownloadAndInstall);
+    }
+
+    private ApkUpdateFloatingIndicatorController newIndicatorController(
+        ApkUpdateFloatingIndicatorController.IndicatorView indicatorView) {
+        return new ApkUpdateFloatingIndicatorController(indicatorView, this::startDownloadAndInstall);
     }
 
     private void startDownloadAndInstall(ApkUpdateAvailability availability) {
