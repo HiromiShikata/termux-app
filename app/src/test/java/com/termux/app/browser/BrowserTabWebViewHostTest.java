@@ -9,6 +9,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.lang.ref.WeakReference;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 
@@ -296,6 +298,20 @@ public class BrowserTabWebViewHostTest {
         host.removeTab(firstTab);
 
         Assert.assertFalse(host.canRunLifecycleCallOn(webView));
+    }
+
+    @Test
+    public void destroyedWebViewsAreNotRetainedAfterAllExternalReferencesAreDropped() {
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new WebView(mActivity), 1);
+        BrowserTab firstTab = tab(SESSION_A, "https://a.example/first");
+        host.showTab(firstTab);
+        WeakReference<WebView> weakRef = new WeakReference<>(host.getDisplayedWebView());
+
+        host.showTab(tab(SESSION_A, "https://a.example/second"));
+        System.gc();
+
+        Assert.assertNull(weakRef.get());
     }
 
     private static final class DestroyRecordingWebView extends WebView {
