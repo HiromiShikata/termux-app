@@ -8,6 +8,12 @@ buildscript {
     }
 }
 
+def availableProcessors = Runtime.runtime.availableProcessors()
+def continuousIntegrationTestJvmCount = Math.max(1, availableProcessors)
+def developerMachineTestJvmCount = Math.max(1, availableProcessors.intdiv(2))
+def runningOnContinuousIntegration = System.getenv("CI") != null
+ext.testJvmCount = runningOnContinuousIntegration ? continuousIntegrationTestJvmCount : developerMachineTestJvmCount
+
 allprojects {
     repositories {
         google()
@@ -16,7 +22,7 @@ allprojects {
     }
 
     tasks.withType(Test).configureEach {
-        maxParallelForks = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+        maxParallelForks = rootProject.ext.testJvmCount
 
         testLogging {
             events "failed"
