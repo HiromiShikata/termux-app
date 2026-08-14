@@ -5,6 +5,7 @@ import android.view.View;
 import androidx.annotation.NonNull;
 
 import com.termux.app.TermuxActivity;
+import com.termux.view.TerminalView;
 
 public final class WindowConditionSnapshot {
 
@@ -13,11 +14,16 @@ public final class WindowConditionSnapshot {
 
     @NonNull
     public static DiagnosticsWindowCondition take(@NonNull TermuxActivity activity,
-                                                  @NonNull DiagnosticsDrawTime windowDrawTime,
-                                                  @NonNull DiagnosticsDrawTime terminalDrawTime) {
+                                                  @NonNull DrawTimeRecorder windowDrawTimeRecorder,
+                                                  @NonNull DrawTimeRecorder terminalDrawTimeRecorder,
+                                                  long elapsedRealtimeMillis) {
         View decorView = activity.getWindow() == null ? null : activity.getWindow().getDecorView();
         if (decorView == null) return DiagnosticsWindowCondition.UNMEASURED;
-        return DiagnosticsWindowCondition.measured(windowDrawTime, terminalDrawTime,
+        TerminalView terminalView = activity.getTerminalView();
+        if (terminalView == null) return DiagnosticsWindowCondition.UNMEASURED;
+        return DiagnosticsWindowCondition.measured(
+            windowDrawTimeRecorder.snapshot(decorView, elapsedRealtimeMillis),
+            terminalDrawTimeRecorder.snapshot(terminalView, elapsedRealtimeMillis),
             describeWindowVisibility(decorView.getWindowVisibility()),
             decorView.isAttachedToWindow(), decorView.hasWindowFocus());
     }
