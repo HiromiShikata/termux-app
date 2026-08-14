@@ -109,15 +109,21 @@ public class RenderThreadReaderTest {
     }
 
     @Test
-    public void aClockTickRateThatCannotConvertProcessorTimeIsRejectedRatherThanUsedAsIs() {
-        try {
-            new RenderThreadReader(new FixedThreadTable(Arrays.asList(
-                new ProcessThread("2482", "RenderThread", "R", 19012L, 421L))), 0L);
-            Assert.fail("a zero tick rate would either divide by zero or be quietly replaced by a"
-                + " guessed rate, and a guessed rate produces a processor time that looks measured");
-        } catch (IllegalArgumentException expected) {
-            Assert.assertTrue("the failure has to name the rate it was given. Actual: "
-                + expected.getMessage(), expected.getMessage().contains("0"));
-        }
+    public void aClockTickRateThatCannotConvertProcessorTimeIsReportedAsAFailedReading() {
+        DiagnosticsRenderThread renderThread = new RenderThreadReader(new FixedThreadTable(Arrays.asList(
+            new ProcessThread("2482", "RenderThread", "R", 19012L, 421L))), -1L).read();
+
+        Assert.assertEquals("a rate that cannot convert processor time would either divide by zero or"
+                + " be quietly replaced by a guessed rate, and a guessed rate produces a processor time"
+                + " that looks measured",
+            DiagnosticsRenderThread.Reading.READ_FAILED, renderThread.getReading());
+        Assert.assertTrue("the failure has to name the rate it was given. Actual: "
+            + renderThread.getReadFailureMessage(), renderThread.getReadFailureMessage().contains("-1"));
+    }
+
+    @Test
+    public void aPlatformThatCannotReportAClockTickRateStillLetsTheApplicationStart() {
+        new RenderThreadReader(new FixedThreadTable(Arrays.asList(
+            new ProcessThread("2482", "RenderThread", "R", 19012L, 421L))), -1L);
     }
 }

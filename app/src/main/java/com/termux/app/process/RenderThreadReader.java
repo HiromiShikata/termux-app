@@ -16,17 +16,17 @@ public final class RenderThreadReader {
     private final long mClockTicksPerSecond;
 
     public RenderThreadReader(@NonNull ThreadTable threadTable, long clockTicksPerSecond) {
-        if (clockTicksPerSecond <= 0L) {
-            throw new IllegalArgumentException(
-                "The clock tick rate has to be positive to convert processor time, and was "
-                    + clockTicksPerSecond);
-        }
         mThreadTable = threadTable;
         mClockTicksPerSecond = clockTicksPerSecond;
     }
 
     @NonNull
     public DiagnosticsRenderThread read() {
+        if (mClockTicksPerSecond <= 0L) {
+            return DiagnosticsRenderThread.readFailed(
+                "the clock tick rate this platform reported cannot convert processor time, and was "
+                    + mClockTicksPerSecond);
+        }
         List<ProcessThread> threads;
         try {
             threads = mThreadTable.threads();
