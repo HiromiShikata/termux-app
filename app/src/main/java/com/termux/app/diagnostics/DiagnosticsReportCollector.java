@@ -93,7 +93,9 @@ public final class DiagnosticsReportCollector {
             DiagnosticsWorkCostLine.of(TerminalDrawCostCounterHolder.getInstance()),
             DiagnosticsWorkCostLine.of(ShellOutputParseCostCounterHolder.getInstance()),
             DiagnosticsSessionCreationPaths.of(SessionCreationPathCounterHolder.getInstance()),
-            ActivityWindowRecorderHolder.getInstance().snapshot(),
+            ActivityWindowRecorderHolder.getInstance().snapshot().withCondition(
+                WindowConditionSnapshot.take(activity, TerminalDrawTimeRecorderHolder.getInstance()
+                    .snapshot(SystemClock.elapsedRealtime()))),
             DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot(),
             MainLooperQueuePeakRecorderHolder.getInstance().snapshot(),
             DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()),

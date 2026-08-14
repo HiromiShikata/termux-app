@@ -138,6 +138,9 @@ public final class DiagnosticsReportBuilder {
         appendActivityWindowSection(builder, report);
 
         builder.append('\n');
+        appendWindowConditionSection(builder, report);
+
+        builder.append('\n');
         appendReportDeliverySection(builder, report);
 
         builder.append('\n');
@@ -323,6 +326,28 @@ public final class DiagnosticsReportBuilder {
         builder.append("  Built: ").append(activityWindows.getCreatedCount()).append('\n');
         builder.append("  Torn down: ").append(activityWindows.getDestroyedCount()).append('\n');
         builder.append("  Teardown not run: ").append(activityWindows.getTeardownNotRunCount()).append('\n');
+    }
+
+    private void appendWindowConditionSection(@NonNull DiagnosticsReportText builder,
+                                              @NonNull DiagnosticsReport report) {
+        DiagnosticsWindowCondition condition = report.getActivityWindows().getCondition();
+        builder.append("Activity window condition when this reading was taken\n");
+        if (!condition.wasMeasured()) {
+            builder.append("  Not measured\n");
+            return;
+        }
+        DiagnosticsTerminalDrawTime drawTime = condition.getTerminalDrawTime();
+        if (drawTime.hasDrawn()) {
+            builder.append("  Terminal last drew: ").append(drawTime.getMillisSinceLastDraw())
+                .append(" ms ago\n");
+        } else {
+            builder.append("  Terminal last drew: not since the process started\n");
+        }
+        builder.append("  Window visibility: ").append(condition.getWindowVisibility()).append('\n');
+        builder.append("  Attached to a window: ")
+            .append(condition.isAttachedToWindow() ? "yes" : "no").append('\n');
+        builder.append("  Has window focus: ")
+            .append(condition.hasWindowFocus() ? "yes" : "no").append('\n');
     }
 
     private void appendReportDeliverySection(@NonNull DiagnosticsReportText builder,
