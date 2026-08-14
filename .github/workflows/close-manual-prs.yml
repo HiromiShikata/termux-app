@@ -16,7 +16,7 @@ on:
 
 jobs:
   close-manual-pr:
-    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.user.type != 'Bot'
     steps:
       - uses: step-security/harden-runner@v2

@@ -57,7 +57,7 @@ jobs:
          contains(github.event.comment.body, '/movenextactiondateto') ||
          contains(github.event.comment.body, '/changeassignee ')))) &&
       github.event.action != 'labeled'
-    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: step-security/harden-runner@v2
         with:
@@ -281,7 +281,7 @@ jobs:
           repo-token: ${{ steps.app-token.outputs.token }}
 
   check_pull_requests_to_link_issues:
-    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     name: Check linked issues in pull requests
     if: >-
       github.repository != 'HiromiShikata/test-repository' &&
