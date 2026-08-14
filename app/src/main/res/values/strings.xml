@@ -501,4 +501,8 @@
     <string name="apk_revert_install_success">Reverted to the selected build</string>
     <string name="apk_revert_install_failed">Revert install failed: %1$s</string>
 
+    <string name="owner_call_dialog_previous_content_description">Previous owner call</string>
+    <string name="owner_call_dialog_next_content_description">Next owner call</string>
+    <string name="owner_call_dialog_close_content_description">Close the owner call</string>
+
 </resources>
