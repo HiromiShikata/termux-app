@@ -10,11 +10,11 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 public final class BrowserTabWebViewHost {
 
@@ -38,7 +38,7 @@ public final class BrowserTabWebViewHost {
 
     private final Map<BrowserTab, WebView> mWebViewByTab = new LinkedHashMap<>();
 
-    private final Set<WebView> mDestroyedWebViews = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<WebView> mDestroyedWebViews = Collections.newSetFromMap(new WeakHashMap<>());
 
     private BrowserTab mDisplayedTab;
 
