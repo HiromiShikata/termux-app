@@ -1,0 +1,524 @@
+package com.termux.app.ownercall;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import android.app.Activity;
+import android.app.Instrumentation;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.os.Environment;
+import android.view.View;
+import android.widget.TextView;
+
+import androidx.test.core.app.ActivityScenario;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+
+import com.termux.R;
+import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionNewActivityStore;
+import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.app.terminal.TermuxTerminalViewClient;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.terminal.TerminalSession;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+@RunWith(AndroidJUnit4.class)
+public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
+
+    private static final String PROJECT_CODE = "umino";
+    private static final String SESSION_URL =
+        "https://github.com/HiromiShikata/termux-app/issues/1884";
+    private static final String OWNER_CALL_FILE_PATH = "/in-tmux-by-human/call-to-user/umino/"
+        + "https___github_com_HiromiShikata_termux-app_issues_1884.yaml";
+    private static final String INDEX_PATH = "/in-tmux-by-human/index.v4.json";
+    private static final String PROJECT_PATH = "/in-tmux-by-human/umino.v4.json";
+    private static final String ACCESS_TOKEN = "device-test-token";
+    private static final String OLDEST_CALL_BODY =
+        "Decide whether the previous addresses may be deleted in bulk.";
+    private static final String REPEATED_CALL_BODY =
+        "Decide whether the invoice recipient may be changed.";
+    private static final String CALL_REASON = "the owner is being called";
+
+    private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
+    private static final long SESSION_READY_TIMEOUT_MILLIS = 30_000L;
+    private static final long DIALOG_TIMEOUT_MILLIS = 30_000L;
+    private static final long POLL_INTERVAL_MILLIS = 100L;
+    private static final int QUARTER_OF_THE_SCREEN = 4;
+    private static final String SCREENSHOT_DIRECTORY_NAME = "termux-instrumentation-screenshots";
+    private static final int TERMINAL_BACKGROUND_COLOR = 0xFF000000;
+
+    private static final String INDEX_DOCUMENT = "{\"version\":4,\"projects\":[{\"name\":\""
+        + PROJECT_CODE + "\",\"path\":\"" + PROJECT_PATH + "?k=" + ACCESS_TOKEN + "\"}]}";
+    private static final String PROJECT_DOCUMENT = "{\"version\":4,"
+        + "\"groups\":[{\"story\":\"owner call dialog\",\"sessions\":[{\"name\":\"" + SESSION_URL
+        + "\",\"description\":\"waiting on the owner\"}]}]}";
+    private static final String OWNER_CALL_FILE =
+        ownerCallDocument("2026-08-14T04:22:28Z", OLDEST_CALL_BODY)
+            + ownerCallDocument("2026-08-14T04:25:00Z", REPEATED_CALL_BODY)
+            + ownerCallDocument("2026-08-14T04:27:00Z", REPEATED_CALL_BODY);
+
+    private static String ownerCallDocument(String calledAt, String body) {
+        return "---\nsessionName: \"https_//github_com/HiromiShikata/termux-app/issues/1884\"\n"
+            + "calledAt: \"" + calledAt + "\"\nbody: |2\n  " + body + "\n";
+    }
+
+    private LocalOwnerCallServer server;
+    private String previousSessionDefinitionUrl;
+
+    @Before
+    public void startTheOwnerCallServer() throws IOException {
+        previousSessionDefinitionUrl = preferences().getSessionDefinitionUrl();
+        server = new LocalOwnerCallServer();
+        server.start();
+    }
+
+    @After
+    public void stopTheOwnerCallServer() throws InterruptedException {
+        preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
+        if (server != null) {
+            server.stop();
+        }
+    }
+
+    private static TermuxAppSharedPreferences preferences() {
+        return TermuxAppSharedPreferences.build(
+            InstrumentationRegistry.getInstrumentation().getTargetContext());
+    }
+
+    @Test
+    public void theWaitingOwnerCallStaysReadableOverTheTerminalInPortraitAndInLandscape()
+        throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+
+        setOrientation(scenario, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
+            Configuration.ORIENTATION_PORTRAIT);
+        awaitDialogShowing(scenario, "1 / 3");
+        assertDialogMatchesTheSpecification(scenario);
+        assertNotNull("the portrait device screenshot must reach the directory the workflow pulls",
+            captureScreenshot(scenario, "owner-call-dialog-device-portrait.png"));
+
+        setOrientation(scenario, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
+            Configuration.ORIENTATION_LANDSCAPE);
+        awaitDialogShowing(scenario, "1 / 3");
+        assertDialogMatchesTheSpecification(scenario);
+        assertNotNull("the landscape device screenshot must reach the directory the workflow pulls",
+            captureScreenshot(scenario, "owner-call-dialog-device-landscape.png"));
+
+        scenario.onActivity(activity -> {
+            activity.findViewById(R.id.owner_call_dialog_next_button).performClick();
+            assertEquals("2 / 3", textOf(activity, R.id.owner_call_dialog_position));
+            assertEquals(REPEATED_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
+
+            activity.findViewById(R.id.owner_call_dialog_close_button).performClick();
+            assertEquals("1 / 2", textOf(activity, R.id.owner_call_dialog_position));
+        });
+    }
+
+    @Test
+    public void replyingToTheSessionDeletesItsOwnerCallFileAndClosesTheDialog() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+
+        scenario.onActivity(activity -> {
+            TerminalSession session = activity.getCurrentSession();
+            assertNotNull(session);
+            assertTrue("the reply must be typed into a live session", session.isRunning());
+            TermuxTerminalViewClient viewClient = activity.getTermuxTerminalViewClient();
+            assertNotNull(viewClient);
+            viewClient.onCodePoint('y', false, session);
+            viewClient.onCodePoint('\n', false, session);
+        });
+
+        awaitDeleteRequest();
+        awaitDialogGone(scenario);
+
+        assertEquals(Collections.singletonList(OWNER_CALL_FILE_PATH), server.deletedPaths());
+        assertFalse("the answered owner call file must no longer be served",
+            server.holdsTheOwnerCallFile());
+    }
+
+    private ActivityScenario<TermuxActivity> launchWithACallingSession() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        awaitServiceConnected(scenario);
+
+        scenario.onActivity(activity -> {
+            activity.getPreferences().setSessionDefinitionUrl(server.indexUrl());
+            activity.loadSessionsFromDefinition();
+        });
+        awaitLoadedEntries(scenario);
+
+        scenario.onActivity(activity -> {
+            TermuxTerminalSessionActivityClient sessionClient =
+                activity.getTermuxTerminalSessionClient();
+            assertNotNull(sessionClient);
+            sessionClient.addNewSession(true, SESSION_URL);
+        });
+        awaitRunningDisplayedSession(scenario);
+
+        scenario.onActivity(activity -> {
+            SessionNewActivityStore store = activity.getSessionNewActivityStore();
+            assertNotNull(store);
+            store.recordExplicitCall(SESSION_URL, System.currentTimeMillis(), CALL_REASON);
+            activity.showUnansweredOwnerCallsOfDisplayedSession();
+        });
+        return scenario;
+    }
+
+    private static void assertDialogMatchesTheSpecification(
+        ActivityScenario<TermuxActivity> scenario) {
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            View terminalArea = activity.getTerminalView();
+            assertEquals(View.VISIBLE, dialog.getVisibility());
+            assertEquals(OLDEST_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
+            assertTrue("the elapsed time since the owner was called must be shown",
+                textOf(activity, R.id.owner_call_dialog_relative_time).matches("\\d+[smh]"));
+            assertEquals("the dialog must occupy a quarter of the screen height",
+                activity.getResources().getDisplayMetrics().heightPixels / QUARTER_OF_THE_SCREEN,
+                dialog.getHeight());
+            assertEquals("the dialog must span the terminal area width",
+                terminalArea.getWidth(), dialog.getWidth());
+            assertTrue("terminal rows must stay readable below the dialog",
+                dialog.getBottom() < terminalArea.getBottom());
+        });
+    }
+
+    private static void awaitDialogShowing(ActivityScenario<TermuxActivity> scenario,
+                                           String expectedPosition) throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        AtomicReference<String> position = new AtomicReference<>("");
+        AtomicInteger laidOutHeight = new AtomicInteger();
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> {
+                View dialog = activity.findViewById(R.id.owner_call_dialog);
+                position.set(dialog.getVisibility() == View.VISIBLE
+                    ? textOf(activity, R.id.owner_call_dialog_position) : "");
+                laidOutHeight.set(dialog.getHeight());
+            });
+            if (expectedPosition.equals(position.get()) && laidOutHeight.get() > 0) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the owner call dialog never showed " + expectedPosition
+            + " over the terminal; it showed \"" + position.get() + "\" laid out at "
+            + laidOutHeight.get() + " pixels high, and the owner call server reported "
+            + server().describeFailure());
+    }
+
+    private static void awaitDialogGone(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        AtomicInteger visibility = new AtomicInteger(View.VISIBLE);
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> visibility.set(
+                activity.findViewById(R.id.owner_call_dialog).getVisibility()));
+            if (visibility.get() == View.GONE) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the owner call dialog stayed on screen after the owner replied");
+    }
+
+    private void awaitDeleteRequest() throws InterruptedException {
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        while (System.currentTimeMillis() < deadline) {
+            if (!server.deletedPaths().isEmpty()) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the app never asked the server to delete the answered owner "
+            + "calls; the server reported " + server.describeFailure());
+    }
+
+    private static void setOrientation(ActivityScenario<TermuxActivity> scenario,
+                                       int requestedOrientation, int expectedOrientation)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        scenario.onActivity(activity -> activity.setRequestedOrientation(requestedOrientation));
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        AtomicInteger orientation = new AtomicInteger();
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity ->
+                orientation.set(activity.getResources().getConfiguration().orientation));
+            if (orientation.get() == expectedOrientation) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the device never reached the requested orientation "
+            + expectedOrientation + "; it stayed at " + orientation.get());
+    }
+
+    private static void awaitServiceConnected(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + SERVICE_READY_TIMEOUT_MILLIS;
+        AtomicBoolean ready = new AtomicBoolean();
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> ready.set(activity.getTermuxService() != null
+                && activity.getTermuxTerminalSessionClient() != null
+                && activity.getSessionNewActivityStore() != null));
+            if (ready.get()) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the termux service did not connect within "
+            + SERVICE_READY_TIMEOUT_MILLIS + "ms");
+    }
+
+    private void awaitLoadedEntries(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        long deadline = System.currentTimeMillis() + SERVICE_READY_TIMEOUT_MILLIS;
+        AtomicBoolean loaded = new AtomicBoolean();
+        while (System.currentTimeMillis() < deadline) {
+            scenario.onActivity(activity ->
+                loaded.set(!activity.getSessionDefinitionEntries().isEmpty()));
+            if (loaded.get()) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the session definition document served over http must reach the "
+            + "app, but the owner call server reported " + server.describeFailure());
+    }
+
+    private static void awaitRunningDisplayedSession(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + SESSION_READY_TIMEOUT_MILLIS;
+        AtomicBoolean running = new AtomicBoolean();
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> {
+                TerminalSession session = activity.getCurrentSession();
+                running.set(session != null && SESSION_URL.equals(session.mSessionName)
+                    && session.isRunning() && session.getEmulator() != null);
+            });
+            if (running.get()) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("the session the owner call belongs to never started");
+    }
+
+    private static File captureScreenshot(ActivityScenario<TermuxActivity> scenario,
+                                          String fileName) {
+        AtomicReference<File> written = new AtomicReference<>();
+        scenario.onActivity(activity -> written.set(renderScreenshot(activity, fileName)));
+        return written.get();
+    }
+
+    private static File renderScreenshot(Activity activity, String fileName) {
+        View root = activity.findViewById(R.id.activity_termux_root_relative_layout);
+        Bitmap bitmap = Bitmap.createBitmap(Math.max(1, root.getWidth()),
+            Math.max(1, root.getHeight()), Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(TERMINAL_BACKGROUND_COLOR);
+        root.draw(canvas);
+
+        File written = null;
+        for (File directory : screenshotTargetDirectories()) {
+            File output = new File(directory, fileName);
+            try (FileOutputStream stream = new FileOutputStream(output)) {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            } catch (IOException unwritableScreenshot) {
+                continue;
+            }
+            if (output.length() > 0) {
+                written = output;
+            }
+        }
+        return written;
+    }
+
+    private static List<File> screenshotTargetDirectories() {
+        List<File> directories = new ArrayList<>();
+        File sharedDirectory =
+            new File(Environment.getExternalStorageDirectory(), SCREENSHOT_DIRECTORY_NAME);
+        if (sharedDirectory.exists() || sharedDirectory.mkdirs()) {
+            directories.add(sharedDirectory);
+        }
+        File appExternalFilesDirectory = InstrumentationRegistry.getInstrumentation()
+            .getTargetContext().getExternalFilesDir(null);
+        if (appExternalFilesDirectory != null
+            && (appExternalFilesDirectory.exists() || appExternalFilesDirectory.mkdirs())) {
+            directories.add(appExternalFilesDirectory);
+        }
+        return directories;
+    }
+
+    private static String textOf(Activity activity, int viewId) {
+        return ((TextView) activity.findViewById(viewId)).getText().toString();
+    }
+
+    private static LocalOwnerCallServer server() {
+        return RUNNING_SERVER.get();
+    }
+
+    private static final AtomicReference<LocalOwnerCallServer> RUNNING_SERVER =
+        new AtomicReference<>();
+
+    private static final class LocalOwnerCallServer {
+
+        private ServerSocket serverSocket;
+        private static final long STOP_TIMEOUT_MILLIS = 5000L;
+
+        private Thread acceptThread;
+        private volatile boolean running;
+        private volatile IOException failure;
+        private volatile boolean ownerCallFileExists = true;
+        private final List<String> deletedPaths = Collections.synchronizedList(new ArrayList<>());
+
+        void start() throws IOException {
+            serverSocket = new ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"));
+            running = true;
+            RUNNING_SERVER.set(this);
+            acceptThread = new Thread(this::acceptRequests);
+            acceptThread.setDaemon(true);
+            acceptThread.start();
+        }
+
+        String indexUrl() {
+            return "http://127.0.0.1:" + serverSocket.getLocalPort() + INDEX_PATH
+                + "?k=" + ACCESS_TOKEN;
+        }
+
+        List<String> deletedPaths() {
+            return new ArrayList<>(deletedPaths);
+        }
+
+        boolean holdsTheOwnerCallFile() {
+            return ownerCallFileExists;
+        }
+
+        String describeFailure() {
+            return failure == null ? "no error" : failure.toString();
+        }
+
+        private void acceptRequests() {
+            while (running) {
+                try (Socket socket = serverSocket.accept()) {
+                    respondTo(socket, readRequestHead(socket));
+                } catch (IOException closedWhileStopping) {
+                    if (running) {
+                        failure = closedWhileStopping;
+                        return;
+                    }
+                }
+            }
+        }
+
+        private void respondTo(Socket socket, String requestHead) throws IOException {
+            String requestLine = requestHead.split("\r\n", 2)[0];
+            String[] requestLineParts = requestLine.split(" ");
+            String method = requestLineParts.length > 0 ? requestLineParts[0] : "";
+            String target = requestLineParts.length > 1 ? requestLineParts[1] : "";
+            String path = target.split("\\?", 2)[0];
+            if (!target.contains("k=" + ACCESS_TOKEN)) {
+                respond(socket, 401, "");
+                return;
+            }
+            if (OWNER_CALL_FILE_PATH.equals(path) && "DELETE".equals(method)) {
+                deletedPaths.add(path);
+                ownerCallFileExists = false;
+                respond(socket, 204, "");
+                return;
+            }
+            if (OWNER_CALL_FILE_PATH.equals(path)) {
+                respond(socket, ownerCallFileExists ? 200 : 404,
+                    ownerCallFileExists ? OWNER_CALL_FILE : "");
+                return;
+            }
+            if (INDEX_PATH.equals(path)) {
+                respond(socket, 200, INDEX_DOCUMENT);
+                return;
+            }
+            if (PROJECT_PATH.equals(path)) {
+                respond(socket, 200, PROJECT_DOCUMENT);
+                return;
+            }
+            respond(socket, 404, "");
+        }
+
+        private static String readRequestHead(Socket socket) throws IOException {
+            StringBuilder head = new StringBuilder();
+            InputStream input = socket.getInputStream();
+            int character;
+            while ((character = input.read()) != -1) {
+                head.append((char) character);
+                if (endsWithBlankLine(head)) {
+                    break;
+                }
+            }
+            return head.toString();
+        }
+
+        private static boolean endsWithBlankLine(StringBuilder head) {
+            int length = head.length();
+            if (length >= 2 && head.charAt(length - 2) == '\n' && head.charAt(length - 1) == '\n') {
+                return true;
+            }
+            return length >= 4 && head.charAt(length - 4) == '\r' && head.charAt(length - 3) == '\n'
+                && head.charAt(length - 2) == '\r' && head.charAt(length - 1) == '\n';
+        }
+
+        private static void respond(Socket socket, int statusCode, String body) throws IOException {
+            byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+            OutputStream output = socket.getOutputStream();
+            output.write(("HTTP/1.1 " + statusCode + " \r\nContent-Type: text/plain\r\n"
+                + "Content-Length: " + bytes.length + "\r\nConnection: close\r\n\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+            output.write(bytes);
+            output.flush();
+            socket.shutdownOutput();
+        }
+
+        void stop() throws InterruptedException {
+            running = false;
+            RUNNING_SERVER.set(null);
+            try {
+                serverSocket.close();
+            } catch (IOException alreadyClosed) {
+                throw new IllegalStateException(alreadyClosed);
+            }
+            acceptThread.join(STOP_TIMEOUT_MILLIS);
+        }
+    }
+}
