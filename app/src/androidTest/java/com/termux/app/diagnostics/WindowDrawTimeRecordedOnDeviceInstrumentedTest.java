@@ -23,25 +23,24 @@ public class WindowDrawTimeRecordedOnDeviceInstrumentedTest {
     public void theWindowDrawTimeRecordsADrawThatHappensAfterTheActivityIsLaunched() {
         long launchStartedAtElapsedRealtimeMillis = SystemClock.elapsedRealtime();
 
-        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
-            awaitDrawRecordedAfter(launchStartedAtElapsedRealtimeMillis);
+        ActivityScenario.launch(TermuxActivity.class);
+        awaitDrawRecordedAfter(launchStartedAtElapsedRealtimeMillis);
 
-            long readAtElapsedRealtimeMillis = SystemClock.elapsedRealtime();
-            DiagnosticsDrawTime drawTime =
-                WindowDrawTimeRecorderHolder.getInstance().snapshot(readAtElapsedRealtimeMillis);
+        long readAtElapsedRealtimeMillis = SystemClock.elapsedRealtime();
+        DiagnosticsDrawTime drawTime =
+            WindowDrawTimeRecorderHolder.getInstance().snapshot(readAtElapsedRealtimeMillis);
 
-            assertTrue("the reading states how long ago the activity window last completed a draw"
-                    + " pass, so an on-draw listener that never fires makes every reading say the"
-                    + " window never drew while the window was in fact drawing",
-                drawTime.hasDrawn());
-            assertTrue("a draw recorded before this activity was launched would let one draw taken at"
-                    + " process start stand in for a window that has since stopped drawing, recorded "
-                    + drawTime.getMillisSinceLastDraw() + " ms before a read taken "
-                    + (readAtElapsedRealtimeMillis - launchStartedAtElapsedRealtimeMillis)
-                    + " ms after the launch began",
-                lastDrawAtElapsedRealtimeMillis(readAtElapsedRealtimeMillis, drawTime)
-                    >= launchStartedAtElapsedRealtimeMillis);
-        }
+        assertTrue("the reading states how long ago the activity window last completed a draw"
+                + " pass, so an on-draw listener that never fires makes every reading say the"
+                + " window never drew while the window was in fact drawing",
+            drawTime.hasDrawn());
+        assertTrue("a draw recorded before this activity was launched would let one draw taken at"
+                + " process start stand in for a window that has since stopped drawing, recorded "
+                + drawTime.getMillisSinceLastDraw() + " ms before a read taken "
+                + (readAtElapsedRealtimeMillis - launchStartedAtElapsedRealtimeMillis)
+                + " ms after the launch began",
+            lastDrawAtElapsedRealtimeMillis(readAtElapsedRealtimeMillis, drawTime)
+                >= launchStartedAtElapsedRealtimeMillis);
     }
 
     private static long lastDrawAtElapsedRealtimeMillis(long readAtElapsedRealtimeMillis,
