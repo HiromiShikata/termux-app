@@ -5,14 +5,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Environment;
+import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
@@ -175,50 +177,110 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             captureScreenshot(scenario, "owner-call-dialog-device-before-drag.png"));
 
         AtomicInteger initialBottom = new AtomicInteger();
+        AtomicInteger headerScreenX = new AtomicInteger();
+        AtomicInteger headerScreenY = new AtomicInteger();
+        AtomicInteger headerWidth = new AtomicInteger();
+        AtomicInteger headerHeight = new AtomicInteger();
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
             initialBottom.set(p.bottomMargin);
+            View header = activity.findViewById(R.id.owner_call_dialog_header);
+            int[] location = new int[2];
+            header.getLocationOnScreen(location);
+            headerScreenX.set(location[0]);
+            headerScreenY.set(location[1]);
+            headerWidth.set(header.getWidth());
+            headerHeight.set(header.getHeight());
         });
 
-        int targetBottomMargin = initialBottom.get() + 300;
-        scenario.onActivity(activity -> {
-            OwnerCallDialogController controller = activity.getOwnerCallDialogController();
-            assertNotNull(controller);
-            controller.onDragPositionChanged(targetBottomMargin);
-        });
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        int tapX = headerScreenX.get() + headerWidth.get() / 2;
+        int tapY = headerScreenY.get() + headerHeight.get() / 2;
+        long downTime = SystemClock.uptimeMillis();
+        MotionEvent downEvent = MotionEvent.obtain(downTime, downTime,
+            MotionEvent.ACTION_DOWN, tapX, tapY, 0);
+        instrumentation.sendPointerSync(downEvent);
+        downEvent.recycle();
+
+        Thread.sleep(ViewConfiguration.getLongPressTimeout() + 200);
+        instrumentation.waitForIdleSync();
+
+        int moveY = tapY - 300;
+        long moveTime = SystemClock.uptimeMillis();
+        MotionEvent moveEvent = MotionEvent.obtain(downTime, moveTime,
+            MotionEvent.ACTION_MOVE, tapX, moveY, 0);
+        instrumentation.sendPointerSync(moveEvent);
+        moveEvent.recycle();
+        instrumentation.waitForIdleSync();
+
+        long upTime = SystemClock.uptimeMillis();
+        MotionEvent upEvent = MotionEvent.obtain(downTime, upTime,
+            MotionEvent.ACTION_UP, tapX, moveY, 0);
+        instrumentation.sendPointerSync(upEvent);
+        upEvent.recycle();
+        instrumentation.waitForIdleSync();
 
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
-            assertEquals("dialog must be at the dragged position", targetBottomMargin, p.bottomMargin);
+            assertTrue("the real drag gesture must move the dialog upward",
+                p.bottomMargin > initialBottom.get());
         });
         assertNotNull("portrait screenshot after drag must reach the artifact directory",
             captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png"));
 
-        scenario.onActivity(Activity::recreate);
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-        awaitDialogShowing(scenario, "1 / 3");
-
-        scenario.onActivity(activity -> {
-            OwnerCallDialogController controller = activity.getOwnerCallDialogController();
-            assertNotNull(controller);
-            controller.onDragPositionChanged(targetBottomMargin);
-        });
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
         scenario.onActivity(activity -> activity.showUnansweredOwnerCallsOfDisplayedSession());
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        instrumentation.waitForIdleSync();
 
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
-            assertEquals("position must survive a terminal screen update re-bind",
-                targetBottomMargin, p.bottomMargin);
+            assertTrue("position must survive a terminal screen update re-bind",
+                p.bottomMargin > initialBottom.get());
         });
         assertNotNull("portrait screenshot after re-bind must reach the artifact directory",
             captureScreenshot(scenario, "owner-call-dialog-device-after-rebind.png"));
+    }
+
+    @Test
+    public void aShortTapOnTheNextButtonStillPagesAfterTheDragListenerIsAttached() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+
+        AtomicInteger buttonScreenX = new AtomicInteger();
+        AtomicInteger buttonScreenY = new AtomicInteger();
+        AtomicInteger buttonWidth = new AtomicInteger();
+        AtomicInteger buttonHeight = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View nextButton = activity.findViewById(R.id.owner_call_dialog_next_button);
+            int[] location = new int[2];
+            nextButton.getLocationOnScreen(location);
+            buttonScreenX.set(location[0]);
+            buttonScreenY.set(location[1]);
+            buttonWidth.set(nextButton.getWidth());
+            buttonHeight.set(nextButton.getHeight());
+        });
+
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        int tapX = buttonScreenX.get() + buttonWidth.get() / 2;
+        int tapY = buttonScreenY.get() + buttonHeight.get() / 2;
+        long downTime = SystemClock.uptimeMillis();
+        MotionEvent downEvent = MotionEvent.obtain(downTime, downTime,
+            MotionEvent.ACTION_DOWN, tapX, tapY, 0);
+        instrumentation.sendPointerSync(downEvent);
+        downEvent.recycle();
+        long upTime = SystemClock.uptimeMillis();
+        MotionEvent upEvent = MotionEvent.obtain(downTime, upTime,
+            MotionEvent.ACTION_UP, tapX, tapY, 0);
+        instrumentation.sendPointerSync(upEvent);
+        upEvent.recycle();
+        instrumentation.waitForIdleSync();
+
+        scenario.onActivity(activity ->
+            assertEquals("next button tap must page to the second call even after drag listener is "
+                    + "attached to the header",
+                "2 / 3", textOf(activity, R.id.owner_call_dialog_position)));
     }
 
     @Test
