@@ -111,7 +111,7 @@ public class UpdateTagUpdateRunnerTest {
     }
 
     @Test
-    public void updateTagAutoDownloadsFirstAndOnlyThenOffersTheDialog() throws IOException {
+    public void updateTagAutoDownloadsThenStartsTheSystemInstallerWithoutAnyTap() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -122,12 +122,13 @@ public class UpdateTagUpdateRunnerTest {
 
         runner.onUpdateRequested("security fix");
 
-        Assert.assertNotNull("the update tag must offer the dialog once the APK is ready",
+        Assert.assertNull("no dialog of our own may stand in front of the system installer",
             ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the update tag must auto-download the APK", 1, manager.downloadCount);
         Assert.assertEquals("the floating install button must surface directly", 1, indicatorView.shownVersions.size());
         Assert.assertEquals("1.2.3", indicatorView.shownVersions.get(0));
-        Assert.assertTrue("nothing is installed until the button is tapped", installer.installedFiles.isEmpty());
+        Assert.assertEquals("the ready APK must reach the system installer without any tap",
+            1, installer.installedFiles.size());
     }
 
     @Test

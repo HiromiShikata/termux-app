@@ -6,7 +6,7 @@ import androidx.annotation.Nullable;
 public final class AutomaticUpdatePromptPlanner {
 
     public enum Outcome {
-        OPEN_THE_DIALOG,
+        START_THE_SYSTEM_INSTALLER,
         SHOW_THE_FLOATING_BUTTON_ONLY,
         SHOW_NOTHING
     }
@@ -15,14 +15,13 @@ public final class AutomaticUpdatePromptPlanner {
     }
 
     @NonNull
-    public static Outcome plan(@Nullable ApkUpdateAvailability availability,
-                               @Nullable String versionNameAlreadyDeclined) {
+    public static Outcome plan(@Nullable ApkUpdateAvailability availability) {
         if (availability == null || !availability.isUpdateAvailable()) {
             return Outcome.SHOW_NOTHING;
         }
-        if (availability.getLatestVersionName().equals(versionNameAlreadyDeclined)) {
+        if (!availability.hasDownloadedFilePath()) {
             return Outcome.SHOW_THE_FLOATING_BUTTON_ONLY;
         }
-        return Outcome.OPEN_THE_DIALOG;
+        return Outcome.START_THE_SYSTEM_INSTALLER;
     }
 }
