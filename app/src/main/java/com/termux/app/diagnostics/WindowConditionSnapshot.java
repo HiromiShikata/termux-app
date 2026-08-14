@@ -13,10 +13,11 @@ public final class WindowConditionSnapshot {
 
     @NonNull
     public static DiagnosticsWindowCondition take(@NonNull TermuxActivity activity,
-                                                  @NonNull DiagnosticsTerminalDrawTime terminalDrawTime) {
+                                                  @NonNull DiagnosticsDrawTime windowDrawTime,
+                                                  @NonNull DiagnosticsDrawTime terminalDrawTime) {
         View decorView = activity.getWindow() == null ? null : activity.getWindow().getDecorView();
         if (decorView == null) return DiagnosticsWindowCondition.UNMEASURED;
-        return DiagnosticsWindowCondition.measured(terminalDrawTime,
+        return DiagnosticsWindowCondition.measured(windowDrawTime, terminalDrawTime,
             describeWindowVisibility(decorView.getWindowVisibility()),
             decorView.isAttachedToWindow(), decorView.hasWindowFocus());
     }

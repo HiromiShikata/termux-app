@@ -39,7 +39,8 @@ public class WindowConditionInReportTest {
     public void aReadingStatesHowLongAgoTheTerminalDrewAndWhatConditionTheWindowWasIn() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(2, 1)
             .withCondition(DiagnosticsWindowCondition.measured(
-                DiagnosticsTerminalDrawTime.drawnMillisAgo(1_843L), "VISIBLE", true, true));
+                DiagnosticsDrawTime.drawnMillisAgo(4_120L),
+                DiagnosticsDrawTime.drawnMillisAgo(1_843L), "VISIBLE", true, true));
 
         String report = renderedReport(activityWindows);
 
@@ -65,7 +66,8 @@ public class WindowConditionInReportTest {
     public void aWindowThatIsNotVisibleAndNotFocusedIsStatedAsSuchRatherThanOmitted() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(2, 1)
             .withCondition(DiagnosticsWindowCondition.measured(
-                DiagnosticsTerminalDrawTime.drawnMillisAgo(94_002L), "GONE", true, false));
+                DiagnosticsDrawTime.drawnMillisAgo(94_002L),
+                DiagnosticsDrawTime.drawnMillisAgo(94_002L), "GONE", true, false));
 
         String report = renderedReport(activityWindows);
 
@@ -81,7 +83,8 @@ public class WindowConditionInReportTest {
     public void aTerminalThatHasNotDrawnYetSaysSoRatherThanReportingNoDelay() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(1, 0)
             .withCondition(DiagnosticsWindowCondition.measured(
-                DiagnosticsTerminalDrawTime.NEVER_DRAWN, "VISIBLE", true, false));
+                DiagnosticsDrawTime.NEVER_DRAWN, DiagnosticsDrawTime.NEVER_DRAWN, "VISIBLE", true,
+                false));
 
         String report = renderedReport(activityWindows);
 
@@ -107,7 +110,8 @@ public class WindowConditionInReportTest {
     public void theWindowConditionSurvivesInsideThePasteWindow() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(2, 1)
             .withCondition(DiagnosticsWindowCondition.measured(
-                DiagnosticsTerminalDrawTime.drawnMillisAgo(1_843L), "VISIBLE", true, true));
+                DiagnosticsDrawTime.drawnMillisAgo(4_120L),
+                DiagnosticsDrawTime.drawnMillisAgo(1_843L), "VISIBLE", true, true));
 
         String report = renderedReport(activityWindows);
 

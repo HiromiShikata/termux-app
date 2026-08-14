@@ -50,6 +50,8 @@ import com.termux.app.link.NativeAppLink;
 import com.termux.app.link.OpenTagUrlNativeAppOpener;
 import com.termux.app.browser.OpenTagBrowserController;
 import com.termux.app.diagnostics.ActivityWindowRecorderHolder;
+import com.termux.app.diagnostics.WindowDrawTimeObserver;
+import com.termux.app.diagnostics.WindowDrawTimeRecorderHolder;
 import com.termux.app.diagnostics.TermuxActivityHolder;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
@@ -236,6 +238,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
+    private final WindowDrawTimeObserver mWindowDrawTimeObserver =
+        new WindowDrawTimeObserver(WindowDrawTimeRecorderHolder.getInstance());
+
     private final SessionDefinitionAutoReloadScheduler mSessionDefinitionAutoReloadScheduler =
         new SessionDefinitionAutoReloadScheduler(this::loadSessionsFromDefinition);
 
@@ -361,6 +366,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_termux);
+
+        mWindowDrawTimeObserver.observe(getWindow().getDecorView());
 
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
@@ -671,6 +678,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTtsManager.shutdown();
 
         TermuxActivityHolder.clear(this);
+        mWindowDrawTimeObserver.stop();
         ActivityWindowRecorderHolder.getInstance().recordActivityDestroyed();
 
         if (mIsInvalidState) return;

@@ -5,12 +5,15 @@ import androidx.annotation.NonNull;
 public final class DiagnosticsWindowCondition {
 
     public static final DiagnosticsWindowCondition UNMEASURED = new DiagnosticsWindowCondition(false,
-        DiagnosticsTerminalDrawTime.NEVER_DRAWN, "", false, false);
+        DiagnosticsDrawTime.NEVER_DRAWN, DiagnosticsDrawTime.NEVER_DRAWN, "", false, false);
 
     private final boolean mMeasured;
 
     @NonNull
-    private final DiagnosticsTerminalDrawTime mTerminalDrawTime;
+    private final DiagnosticsDrawTime mWindowDrawTime;
+
+    @NonNull
+    private final DiagnosticsDrawTime mTerminalDrawTime;
 
     @NonNull
     private final String mWindowVisibility;
@@ -20,11 +23,13 @@ public final class DiagnosticsWindowCondition {
     private final boolean mHasWindowFocus;
 
     private DiagnosticsWindowCondition(boolean measured,
-                                       @NonNull DiagnosticsTerminalDrawTime terminalDrawTime,
+                                       @NonNull DiagnosticsDrawTime windowDrawTime,
+                                       @NonNull DiagnosticsDrawTime terminalDrawTime,
                                        @NonNull String windowVisibility,
                                        boolean attachedToWindow,
                                        boolean hasWindowFocus) {
         mMeasured = measured;
+        mWindowDrawTime = windowDrawTime;
         mTerminalDrawTime = terminalDrawTime;
         mWindowVisibility = windowVisibility;
         mAttachedToWindow = attachedToWindow;
@@ -33,12 +38,18 @@ public final class DiagnosticsWindowCondition {
 
     @NonNull
     public static DiagnosticsWindowCondition measured(
-            @NonNull DiagnosticsTerminalDrawTime terminalDrawTime,
+            @NonNull DiagnosticsDrawTime windowDrawTime,
+            @NonNull DiagnosticsDrawTime terminalDrawTime,
             @NonNull String windowVisibility,
             boolean attachedToWindow,
             boolean hasWindowFocus) {
-        return new DiagnosticsWindowCondition(true, terminalDrawTime, windowVisibility,
+        return new DiagnosticsWindowCondition(true, windowDrawTime, terminalDrawTime, windowVisibility,
             attachedToWindow, hasWindowFocus);
+    }
+
+    @NonNull
+    public DiagnosticsDrawTime getWindowDrawTime() {
+        return mWindowDrawTime;
     }
 
     public boolean wasMeasured() {
@@ -46,7 +57,7 @@ public final class DiagnosticsWindowCondition {
     }
 
     @NonNull
-    public DiagnosticsTerminalDrawTime getTerminalDrawTime() {
+    public DiagnosticsDrawTime getTerminalDrawTime() {
         return mTerminalDrawTime;
     }
 

@@ -2,7 +2,7 @@ package com.termux.app.diagnostics;
 
 import androidx.annotation.NonNull;
 
-public final class TerminalDrawTimeRecorder {
+public final class DrawTimeRecorder {
 
     private boolean mHasDrawn;
 
@@ -14,9 +14,9 @@ public final class TerminalDrawTimeRecorder {
     }
 
     @NonNull
-    public synchronized DiagnosticsTerminalDrawTime snapshot(long elapsedRealtimeMillis) {
-        if (!mHasDrawn) return DiagnosticsTerminalDrawTime.NEVER_DRAWN;
-        return DiagnosticsTerminalDrawTime.drawnMillisAgo(
+    public synchronized DiagnosticsDrawTime snapshot(long elapsedRealtimeMillis) {
+        if (!mHasDrawn) return DiagnosticsDrawTime.NEVER_DRAWN;
+        return DiagnosticsDrawTime.drawnMillisAgo(
             elapsedRealtimeMillis - mLastDrawElapsedRealtimeMillis);
     }
 }
