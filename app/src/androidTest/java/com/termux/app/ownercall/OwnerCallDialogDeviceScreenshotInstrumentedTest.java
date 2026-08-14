@@ -183,10 +183,20 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         awaitDeleteRequest();
         awaitDialogGone(scenario);
+        awaitIndicatorGone(scenario);
 
         assertEquals(Collections.singletonList(OWNER_CALL_FILE_PATH), server.deletedPaths());
         assertFalse("the answered owner call file must no longer be served",
             server.holdsTheOwnerCallFile());
+    }
+
+    @Test
+    public void indicatorIsHiddenWhenTheSessionHasNoOwnerCall() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        awaitServiceConnected(scenario);
+
+        scenario.onActivity(activity -> assertEquals(View.GONE,
+            activity.findViewById(R.id.owner_call_pending_indicator).getVisibility()));
     }
 
     private ActivityScenario<TermuxActivity> launchWithACallingSession() throws Exception {
@@ -275,6 +285,24 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             Thread.sleep(POLL_INTERVAL_MILLIS);
         }
         throw new AssertionError("the owner call dialog stayed on screen after the owner replied");
+    }
+
+    private static void awaitIndicatorGone(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        AtomicInteger visibility = new AtomicInteger(View.VISIBLE);
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> visibility.set(
+                activity.findViewById(R.id.owner_call_pending_indicator).getVisibility()));
+            if (visibility.get() == View.GONE) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError(
+            "the pending indicator stayed visible after the owner calls were cleared");
     }
 
     private void awaitDeleteRequest() throws InterruptedException {
