@@ -9,6 +9,10 @@ import java.util.List;
 
 public final class OwnerCallDialogController implements OwnerCallDialogBinder.OwnerCallDialogActions {
 
+    private static final int KEEP_DISPLAYED_CALL = 0;
+    private static final int PREVIOUS_CALL = -1;
+    private static final int NEXT_CALL = 1;
+
     public interface OwnerCallSource {
 
         @NonNull
@@ -21,28 +25,53 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
         OwnerCallDialogGeometry currentGeometry();
     }
 
+    @NonNull
+    private final View mRoot;
+
+    @NonNull
+    private final OwnerCallSource mCallSource;
+
+    @NonNull
+    private final OwnerCallDialogGeometrySource mGeometrySource;
+
+    @NonNull
+    private final OwnerCallDialogState mState = new OwnerCallDialogState();
+
     public OwnerCallDialogController(@NonNull View root,
                                      @NonNull OwnerCallSource callSource,
                                      @NonNull OwnerCallDialogGeometrySource geometrySource) {
-        throw new UnsupportedOperationException();
+        mRoot = root;
+        mCallSource = callSource;
+        mGeometrySource = geometrySource;
     }
 
     public void showCallsForSession(@Nullable String sessionName, long nowMillis) {
-        throw new UnsupportedOperationException();
+        mState.displaySession(sessionName);
+        render(KEEP_DISPLAYED_CALL, nowMillis);
     }
 
     @Override
     public void onPreviousCallRequested() {
-        throw new UnsupportedOperationException();
+        render(PREVIOUS_CALL, System.currentTimeMillis());
     }
 
     @Override
     public void onNextCallRequested() {
-        throw new UnsupportedOperationException();
+        render(NEXT_CALL, System.currentTimeMillis());
     }
 
     @Override
     public void onCallDismissed(@NonNull OwnerCall call) {
-        throw new UnsupportedOperationException();
+        mState.dismiss(call);
+        render(KEEP_DISPLAYED_CALL, System.currentTimeMillis());
+    }
+
+    private void render(int offsetFromDisplayedCall, long nowMillis) {
+        List<OwnerCall> visibleCalls =
+            mState.visibleCalls(mCallSource.callsForSession(mState.getSessionName()));
+        int requestedIndex = mState.indexOfDisplayedCall(visibleCalls) + offsetFromDisplayedCall;
+        OwnerCallDialogPaging paging = OwnerCallDialogBinder.bind(mRoot, visibleCalls,
+            requestedIndex, nowMillis, mGeometrySource.currentGeometry(), this);
+        mState.displayCallAt(visibleCalls, paging.getIndex());
     }
 }

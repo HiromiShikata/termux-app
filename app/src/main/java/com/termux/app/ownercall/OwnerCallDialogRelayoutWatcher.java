@@ -11,6 +11,12 @@ public final class OwnerCallDialogRelayoutWatcher {
 
     public static void watchTerminalArea(@NonNull View terminalArea,
                                          @NonNull Runnable onTerminalAreaBoundsChanged) {
-        throw new UnsupportedOperationException();
+        terminalArea.addOnLayoutChangeListener(
+            (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                if (left == oldLeft && top == oldTop && right == oldRight && bottom == oldBottom) {
+                    return;
+                }
+                onTerminalAreaBoundsChanged.run();
+            });
     }
 }

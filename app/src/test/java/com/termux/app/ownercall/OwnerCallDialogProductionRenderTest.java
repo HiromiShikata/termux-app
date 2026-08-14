@@ -228,10 +228,13 @@ public class OwnerCallDialogProductionRenderTest {
         layoutDialog(root);
         ScrollView bodyScroll = root.findViewById(R.id.owner_call_dialog_body_scroll);
         bodyScroll.scrollTo(0, 120);
+        int readingPosition = bodyScroll.getScrollY();
+        Assert.assertTrue("the owner must have scrolled away from the top of the body",
+            readingPosition > 0);
 
         OwnerCallDialogBinder.bind(root, oneCall, 0, NOW + 60_000L, PORTRAIT_GEOMETRY, null);
 
-        Assert.assertEquals(120, bodyScroll.getScrollY());
+        Assert.assertEquals(readingPosition, bodyScroll.getScrollY());
     }
 
     @Test

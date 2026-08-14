@@ -648,6 +648,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         if (!new SessionReplyTimeRecorder(store).recordReplyOnSubmit(session, System.currentTimeMillis())) {
             return;
         }
+        mActivity.deleteAnsweredOwnerCallsOfSession(session.mSessionName);
         if (mTermuxTerminalSessionActivityClient != null
             && session == mActivity.getCurrentSession()) {
             mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();

@@ -1,5 +1,6 @@
 package com.termux.app.ownercall;
 
+import com.termux.app.terminal.HostTmuxSessionKillCommand;
 import com.termux.app.terminal.HostTmuxSessionName;
 
 import org.junit.Assert;
@@ -21,6 +22,17 @@ public class OwnerCallFilePathTest {
     public void filesACallOfASessionThatBelongsToNoProjectUnderNA() {
         Assert.assertEquals("call-to-user/NA/secretary.yaml",
             OwnerCallFilePath.of(null, HostTmuxSessionName.normalize("secretary")));
+    }
+
+    @Test
+    public void keysTheFileByTheSameSessionNameTheHostTmuxCommandsTarget() {
+        String hostTmuxSessionName = HostTmuxSessionName.normalize(SESSION_URL);
+
+        Assert.assertTrue("the host commands address the session by the shared normalization",
+            HostTmuxSessionKillCommand.forSessionName(SESSION_URL,
+                "ssh host tmux kill-session -t {name}").contains("'" + hostTmuxSessionName + "'"));
+        Assert.assertEquals("call-to-user/umino/" + hostTmuxSessionName.replace('/', '_') + ".yaml",
+            OwnerCallFilePath.of("umino", hostTmuxSessionName));
     }
 
     @Test

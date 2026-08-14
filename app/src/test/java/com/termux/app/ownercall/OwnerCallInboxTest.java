@@ -14,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(RobolectricTestRunner.class)
@@ -24,10 +26,10 @@ public class OwnerCallInboxTest {
     private static final String OTHER_SESSION_URL =
         "https://github.com/HiromiShikata/termux-app/issues/1885";
     private static final String SESSION_FILE_URL =
-        "https://calls.example.test/call-to-user/umino/"
+        "https://calls.example.test/in-tmux-by-human/call-to-user/umino/"
             + "https___github_com_HiromiShikata_termux-app_issues_1884.yaml?k=token";
     private static final String OTHER_SESSION_FILE_URL =
-        "https://calls.example.test/call-to-user/umino/"
+        "https://calls.example.test/in-tmux-by-human/call-to-user/umino/"
             + "https___github_com_HiromiShikata_termux-app_issues_1885.yaml?k=token";
 
     private static final String TWO_CALLS = document(
@@ -50,9 +52,14 @@ public class OwnerCallInboxTest {
         private final Map<String, String> filesByUrl = new HashMap<>();
         private final List<String> fetchedUrls = Collections.synchronizedList(new ArrayList<>());
         private final List<String> deletedUrls = Collections.synchronizedList(new ArrayList<>());
+        private boolean deletionFails;
 
         void register(String url, String file) {
             filesByUrl.put(url, file);
+        }
+
+        void refuseDeletion() {
+            deletionFails = true;
         }
 
         @Override
@@ -66,7 +73,10 @@ public class OwnerCallInboxTest {
         }
 
         @Override
-        public void delete(String url) {
+        public void delete(String url) throws IOException {
+            if (deletionFails) {
+                throw new IOException("Unexpected HTTP response code 500 for " + url);
+            }
             deletedUrls.add(url);
             filesByUrl.remove(url);
         }
@@ -202,14 +212,129 @@ public class OwnerCallInboxTest {
     }
 
     @Test
-    public void holdsNoCallWhenTheFileCannotBeRead() throws Exception {
-        RecordingTransport transport = new RecordingTransport();
-        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+    public void showsNothingWhenTheOwnerCallFileCannotBeReached() throws Exception {
+        AtomicInteger changes = new AtomicInteger();
+        OwnerCallInbox inbox = new OwnerCallInbox(
+            failingTransport(new IOException("failed to connect to calls.example.test")));
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
-        });
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
         flushMainLooper();
 
         Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
+        Assert.assertEquals(0, changes.get());
+    }
+
+    @Test
+    public void showsNothingWhenTheServerRejectsTheAccessToken() throws Exception {
+        AtomicInteger changes = new AtomicInteger();
+        OwnerCallInbox inbox = new OwnerCallInbox(
+            failingTransport(new IOException("Unexpected HTTP response code 401")));
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        flushMainLooper();
+
+        Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
+        Assert.assertEquals(0, changes.get());
+    }
+
+    @Test
+    public void showsNothingWhenTheServerAnswersWithSomethingOtherThanOwnerCallDocuments()
+        throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, "<html><body>Not Found</body></html>\n");
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+        AtomicInteger changes = new AtomicInteger();
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        flushMainLooper();
+
+        Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
+        Assert.assertEquals(0, changes.get());
+    }
+
+    @Test
+    public void readsTheFileAgainWhenTheServerDidNotServeItYet() throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, "");
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+        AtomicInteger changes = new AtomicInteger();
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        flushMainLooper();
+        Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
+        Assert.assertEquals(0, changes.get());
+
+        transport.register(SESSION_FILE_URL, TWO_CALLS);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        flushMainLooper();
+
+        Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
+        Assert.assertEquals(1, changes.get());
+    }
+
+    @Test
+    public void opensTheSessionWithoutWaitingForTheOwnerCallFile() throws Exception {
+        CountDownLatch fetchStarted = new CountDownLatch(1);
+        CountDownLatch fetchMayFinish = new CountDownLatch(1);
+        OwnerCallInbox inbox = new OwnerCallInbox(new OwnerCallFileTransport() {
+            @Override
+            public String fetch(String url) throws IOException {
+                fetchStarted.countDown();
+                try {
+                    fetchMayFinish.await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException interruptedFetch) {
+                    throw new IOException(interruptedFetch);
+                }
+                return TWO_CALLS;
+            }
+
+            @Override
+            public void delete(String url) {
+            }
+        });
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        });
+
+        Assert.assertTrue("the file is read off the thread that opens the session",
+            fetchStarted.await(5, TimeUnit.SECONDS));
+        Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
+
+        fetchMayFinish.countDown();
+        flushMainLooper();
+
+        Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
+    }
+
+    @Test
+    public void closesTheAnsweredCallsEvenWhenTheServerCannotDeleteTheFile() throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, TWO_CALLS);
+        transport.refuseDeletion();
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        });
+        flushMainLooper();
+        AtomicInteger changes = new AtomicInteger();
+
+        inbox.deleteAnsweredCalls(SESSION_URL, SESSION_FILE_URL, changes::incrementAndGet);
+        flushMainLooper();
+
+        Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
+        Assert.assertEquals(1, changes.get());
+    }
+
+    private static OwnerCallFileTransport failingTransport(IOException failure) {
+        return new OwnerCallFileTransport() {
+            @Override
+            public String fetch(String url) throws IOException {
+                throw failure;
+            }
+
+            @Override
+            public void delete(String url) throws IOException {
+                throw failure;
+            }
+        };
     }
 }

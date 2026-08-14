@@ -4,28 +4,40 @@ import androidx.annotation.NonNull;
 
 public final class OwnerCallDialogPaging {
 
-    private OwnerCallDialogPaging() {
+    private static final String POSITION_SEPARATOR = " / ";
+
+    private final int mIndex;
+    private final int mTotal;
+
+    private OwnerCallDialogPaging(int index, int total) {
+        mIndex = index;
+        mTotal = total;
     }
 
     @NonNull
     public static OwnerCallDialogPaging resolve(int index, int total) {
-        throw new UnsupportedOperationException();
+        int waitingCallCount = Math.max(0, total);
+        if (waitingCallCount == 0) {
+            return new OwnerCallDialogPaging(0, 0);
+        }
+        return new OwnerCallDialogPaging(Math.min(Math.max(0, index), waitingCallCount - 1),
+            waitingCallCount);
     }
 
     public int getIndex() {
-        throw new UnsupportedOperationException();
+        return mIndex;
     }
 
     @NonNull
     public String getPositionLabel() {
-        throw new UnsupportedOperationException();
+        return (mTotal == 0 ? 0 : mIndex + 1) + POSITION_SEPARATOR + mTotal;
     }
 
     public boolean isPreviousEnabled() {
-        throw new UnsupportedOperationException();
+        return mIndex > 0;
     }
 
     public boolean isNextEnabled() {
-        throw new UnsupportedOperationException();
+        return mIndex + 1 < mTotal;
     }
 }
