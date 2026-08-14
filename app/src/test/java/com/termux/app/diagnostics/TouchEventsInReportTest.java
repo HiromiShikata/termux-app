@@ -32,7 +32,8 @@ public class TouchEventsInReportTest {
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST, NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE,
             DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, touchEvents);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, touchEvents,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
         return new DiagnosticsReportBuilder().build(report);
     }
 

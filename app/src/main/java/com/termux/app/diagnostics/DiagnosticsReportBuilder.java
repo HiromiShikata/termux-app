@@ -44,6 +44,8 @@ public final class DiagnosticsReportBuilder {
 
     private static final String LIVE_SCROLLBAR_VIEW_CLASSES = "live scrollbar view classes";
 
+    private static final String PREVIOUS_PROCESS_EXITS = "previous process exits";
+
     private static final String OMISSION_NOTE_PREFIX = "      ... ";
 
     private static final String OMISSION_NOTE_SUFFIX =
@@ -63,12 +65,13 @@ public final class DiagnosticsReportBuilder {
 
     private static final List<DiagnosticsReportSubsection> SUBSECTIONS_IN_PRIORITY_ORDER =
         Collections.unmodifiableList(Arrays.asList(
+            new DiagnosticsReportSubsection(PREVIOUS_PROCESS_EXITS, 800),
             new DiagnosticsReportSubsection(PENDING_MESSAGE_LINES, 1000),
             new DiagnosticsReportSubsection(BUSIEST_TARGETS, 500),
             new DiagnosticsReportSubsection(LIVE_SCROLLBAR_VIEW_CLASSES, 500),
             new DiagnosticsReportSubsection(UNDELIVERED_SHELL_INPUT, 600),
             new DiagnosticsReportSubsection(SHELL_EXIT_STATUSES, 400),
-            new DiagnosticsReportSubsection(LONGEST_STALL_STACK_TRACE, 1200),
+            new DiagnosticsReportSubsection(LONGEST_STALL_STACK_TRACE, 1140),
             new DiagnosticsReportSubsection(STALL_HOT_PATH_RANKING, 900),
             new DiagnosticsReportSubsection(SESSION_RECONNECT_COST_BY_REASON, 600),
             new DiagnosticsReportSubsection(PEAK_BUSIEST_TARGETS, 500),
@@ -79,6 +82,7 @@ public final class DiagnosticsReportBuilder {
 
     private static final List<String> SUBSECTION_NAMES_IN_PRINT_ORDER =
         Collections.unmodifiableList(Arrays.asList(
+            PREVIOUS_PROCESS_EXITS,
             UNDELIVERED_SHELL_INPUT,
             SHELL_EXIT_STATUSES,
             SESSION_CREATION_PATHS,
@@ -121,6 +125,9 @@ public final class DiagnosticsReportBuilder {
         appendVersionChangeLine(builder, report.getVersionChange());
 
         builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
+
+        builder.append('\n');
+        appendPreviousProcessExitSection(builder, report);
 
         builder.append('\n');
         appendUndeliveredShellInputSection(builder, report);
@@ -251,6 +258,36 @@ public final class DiagnosticsReportBuilder {
             builder.append("  Last writer stop: ").append(replaced.getLastWriterStopSessionName())
                 .append(" (").append(replaced.getLastWriterStopReason()).append(")\n");
         }
+    }
+
+    private void appendPreviousProcessExitSection(@NonNull DiagnosticsReportText builder,
+                                                  @NonNull DiagnosticsReport report) {
+        DiagnosticsPreviousProcessExits previousProcessExits = report.getPreviousProcessExits();
+        builder.append("Why the recent processes of this app ended\n");
+        switch (previousProcessExits.getReading()) {
+            case NOT_TAKEN:
+                builder.append("  Not measured\n");
+                return;
+            case NOT_KEPT_BY_THIS_ANDROID:
+                builder.append("  This version of Android does not keep a record of why a process ended\n");
+                return;
+            default:
+                break;
+        }
+        if (previousProcessExits.getExits().isEmpty()) {
+            builder.append("  None: the system holds no record of a process of this app ending\n");
+            return;
+        }
+        List<String> endingLines = new ArrayList<>();
+        for (DiagnosticsPreviousProcessExit previousProcessExit : previousProcessExits.getExits()) {
+            endingLines.add("  " + formatTimestamp(previousProcessExit.getEndedAtMillis())
+                + ": " + previousProcessExit.getReasonLabel()
+                + ", while " + previousProcessExit.getImportanceLabel());
+            String description = previousProcessExit.getDescription();
+            if (description == null || description.isEmpty()) continue;
+            endingLines.add("    Described by the system as: " + description);
+        }
+        appendLinesWithinBudget(builder, endingLines, PREVIOUS_PROCESS_EXITS);
     }
 
     private void appendShellExitSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {

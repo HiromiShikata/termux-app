@@ -104,7 +104,8 @@ public class MainLooperQueuePeakInReportTest {
             DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED,
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST, NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE,
-            DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE, peak, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE);
+            DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE, peak, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
         return new DiagnosticsReportBuilder().build(report);
     }
 

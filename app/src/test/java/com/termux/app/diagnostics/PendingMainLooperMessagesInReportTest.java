@@ -130,7 +130,8 @@ public class PendingMainLooperMessagesInReportTest {
                     SessionCreationPath.RESTORE_OF_A_PERSISTED_SESSION, 19))),
             new DiagnosticsActivityWindows(7, 3),
             DiagnosticsReportDelivery.of("host-0", 11023, 842L, 4096L, 4097L, true),
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
         return new DiagnosticsReportBuilder().build(report);
     }
 
