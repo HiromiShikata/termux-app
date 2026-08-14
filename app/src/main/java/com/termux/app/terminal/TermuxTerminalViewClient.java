@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.media.AudioManager;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.InputDevice;
@@ -24,6 +25,7 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.browser.OpenTagUrlOnTerminal;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.TerminalDrawCostCounterHolder;
+import com.termux.app.diagnostics.TerminalDrawTimeRecorderHolder;
 import com.termux.app.link.NativeAppLink;
 import com.termux.app.outputtag.OutputTagBlocksOnTerminal;
 import com.termux.shared.interact.DialogUtils;
@@ -186,6 +188,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public void onTerminalDrawn(long elapsedNanos, int transcriptRows) {
         TerminalDrawCostCounterHolder.getInstance().record(elapsedNanos, transcriptRows);
+        TerminalDrawTimeRecorderHolder.getInstance().record(SystemClock.elapsedRealtime());
     }
 
     @Override
