@@ -469,6 +469,7 @@ public final class DiagnosticsReportBuilder {
                                             @NonNull DiagnosticsMainLooperQueue looperQueue) {
         builder.append("  Main looper queue\n");
         builder.append("    Pending messages: ").append(looperQueue.getPendingMessageCount()).append('\n');
+        appendSynchronizationBarrierLines(builder, looperQueue);
         if (looperQueue.getBusiestTargets().isEmpty()) {
             builder.append("    Busiest targets: none\n");
             return;
@@ -479,6 +480,17 @@ public final class DiagnosticsReportBuilder {
             targetLines.add("      " + target.getPendingMessageCount() + " x " + target.getDescription());
         }
         appendLinesWithinBudget(builder, targetLines, BUSIEST_TARGETS);
+    }
+
+    private void appendSynchronizationBarrierLines(@NonNull DiagnosticsReportText builder,
+                                                   @NonNull DiagnosticsMainLooperQueue looperQueue) {
+        builder.append("    Synchronization barriers in the queue: ")
+            .append(looperQueue.getSynchronizationBarrierCount()).append('\n');
+        if (looperQueue.getSynchronizationBarrierCount() == 0) return;
+        builder.append("    Oldest barrier due ")
+            .append(looperQueue.getFirstSynchronizationBarrierDueDescription())
+            .append(", with ").append(looperQueue.getMessageCountBehindFirstSynchronizationBarrier())
+            .append(" messages queued behind it\n");
     }
 
     private void appendPendingMessageLines(@NonNull DiagnosticsReportText builder,
