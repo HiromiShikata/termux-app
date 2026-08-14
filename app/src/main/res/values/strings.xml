@@ -107,6 +107,7 @@
     <string name="title_browser_new_tab">New tab</string>
     <string name="hint_browser_omnibox">Search bookmarks or history, or enter URL</string>
     <string name="action_browser_new_tab_open">Open</string>
+    <string name="action_browser_new_tab_open_clipboard_url">Open copied link\n%1$s</string>
     <string name="label_browser_new_tab_bookmark_badge">★</string>
     <string name="hint_browser_url">https://example.com</string>
     <string name="title_browser_edit_url">Edit URL</string>
