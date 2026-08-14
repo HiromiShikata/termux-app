@@ -338,7 +338,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         scenario.onActivity(activity -> {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();
             assertNotNull(store);
-            store.recordExplicitCall(SESSION_URL, System.currentTimeMillis(), CALL_REASON);
+            store.recordExplicitCall(SESSION_URL, System.currentTimeMillis(), CALL_REASON,
+                CALL_REASON + "-" + System.nanoTime());
             activity.showUnansweredOwnerCallsOfDisplayedSession();
         });
         return scenario;
