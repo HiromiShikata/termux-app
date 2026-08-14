@@ -10,7 +10,7 @@ on:
 
 jobs:
   create_and_enable_automerge:
-    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     if: github.ref_name != github.event.repository.default_branch
     steps:
       - uses: step-security/harden-runner@v2

@@ -18,7 +18,7 @@ env:
 
 jobs:
   add-to-project:
-    runs-on: ${{ github.event.repository.private && 'blacksmith-2vcpu-ubuntu-2204' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: step-security/harden-runner@v2
         with:
