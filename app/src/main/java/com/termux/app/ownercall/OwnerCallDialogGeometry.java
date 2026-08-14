@@ -48,4 +48,17 @@ public final class OwnerCallDialogGeometry {
     public int getBottomMarginPixels() {
         return mBottomMarginPixels;
     }
+
+    public int getMinBottomMarginPixels() {
+        return 0;
+    }
+
+    public int getMaxBottomMarginPixels() {
+        return 0;
+    }
+
+    @NonNull
+    public OwnerCallDialogGeometry withBottomMargin(int bottomMarginPixels) {
+        return this;
+    }
 }

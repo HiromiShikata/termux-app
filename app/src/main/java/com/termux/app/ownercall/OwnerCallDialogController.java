@@ -80,6 +80,10 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
         }
     }
 
+    @Override
+    public void onDragPositionChanged(int bottomMarginPixels) {
+    }
+
     private void render(int offsetFromDisplayedCall, long nowMillis) {
         if (mState.isDialogClosed()) {
             hideDialog();

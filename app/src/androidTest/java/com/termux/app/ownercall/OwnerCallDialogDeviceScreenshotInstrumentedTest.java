@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Environment;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -164,6 +165,60 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         assertNotNull("the reopened-dialog device screenshot must reach the directory the workflow pulls",
             captureScreenshot(scenario, "owner-call-dialog-reopened-from-indicator.png"));
+    }
+
+    @Test
+    public void theDragMovesTheDialogAndThePositionSurvivesATerminalScreenUpdate() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+        assertNotNull("portrait screenshot before drag must reach the artifact directory",
+            captureScreenshot(scenario, "owner-call-dialog-device-before-drag.png"));
+
+        AtomicInteger initialBottom = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+            initialBottom.set(p.bottomMargin);
+        });
+
+        int targetBottomMargin = initialBottom.get() + 300;
+        scenario.onActivity(activity -> {
+            OwnerCallDialogController controller = activity.getOwnerCallDialogController();
+            assertNotNull(controller);
+            controller.onDragPositionChanged(targetBottomMargin);
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+            assertEquals("dialog must be at the dragged position", targetBottomMargin, p.bottomMargin);
+        });
+        assertNotNull("portrait screenshot after drag must reach the artifact directory",
+            captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png"));
+
+        scenario.onActivity(Activity::recreate);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        awaitDialogShowing(scenario, "1 / 3");
+
+        scenario.onActivity(activity -> {
+            OwnerCallDialogController controller = activity.getOwnerCallDialogController();
+            assertNotNull(controller);
+            controller.onDragPositionChanged(targetBottomMargin);
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+        scenario.onActivity(activity -> activity.showUnansweredOwnerCallsOfDisplayedSession());
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+            assertEquals("position must survive a terminal screen update re-bind",
+                targetBottomMargin, p.bottomMargin);
+        });
+        assertNotNull("portrait screenshot after re-bind must reach the artifact directory",
+            captureScreenshot(scenario, "owner-call-dialog-device-after-rebind.png"));
     }
 
     @Test

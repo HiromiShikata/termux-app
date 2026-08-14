@@ -4,6 +4,7 @@ import android.content.Context;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -20,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith(RobolectricTestRunner.class)
 public class OwnerCallDialogControllerTest {
@@ -172,6 +174,62 @@ public class OwnerCallDialogControllerTest {
 
         Assert.assertEquals("1 / 1", positionText(root));
         Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
+    }
+
+    @Test
+    public void movesTheDialogToThePositionRequestedByADrag() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        int requestedBottomMargin = GEOMETRY.getMinBottomMarginPixels() + 200;
+
+        controller.onDragPositionChanged(requestedBottomMargin);
+
+        ViewGroup.MarginLayoutParams layoutParams =
+            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
+        Assert.assertEquals(requestedBottomMargin, layoutParams.bottomMargin);
+    }
+
+    @Test
+    public void theChosenPositionSurvivesAReBindFromATerminalScreenUpdate() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        int requestedBottomMargin = GEOMETRY.getMinBottomMarginPixels() + 200;
+        controller.onDragPositionChanged(requestedBottomMargin);
+
+        controller.showCallsForSession(FIRST_SESSION, NOW + 1000);
+
+        ViewGroup.MarginLayoutParams layoutParams =
+            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
+        Assert.assertEquals(requestedBottomMargin, layoutParams.bottomMargin);
+    }
+
+    @Test
+    public void aLayoutChangeThatMakesTheChosenPositionInvalidClampsItBackInsideTheAllowedArea() {
+        View root = inflateActivityLayout();
+        AtomicReference<OwnerCallDialogGeometry> geometryRef =
+            new AtomicReference<>(GEOMETRY);
+        OwnerCallDialogController controller = new OwnerCallDialogController(root,
+            sessionName -> {
+                List<OwnerCall> calls = new HashMap<String, List<OwnerCall>>() {{
+                    put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
+                }}.get(sessionName);
+                return calls == null ? Collections.emptyList() : calls;
+            },
+            geometryRef::get);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        controller.onDragPositionChanged(GEOMETRY.getMaxBottomMarginPixels());
+
+        OwnerCallDialogGeometry reducedGeometry =
+            OwnerCallDialogGeometry.resolve(1000, 0, 1080, 120, 36);
+        geometryRef.set(reducedGeometry);
+        controller.showCallsForSession(FIRST_SESSION, NOW + 1000);
+
+        ViewGroup.MarginLayoutParams layoutParams =
+            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
+        Assert.assertTrue("position must be clamped to fit the reduced layout",
+            layoutParams.bottomMargin <= reducedGeometry.getMaxBottomMarginPixels());
     }
 
     private static OwnerCallDialogController controllerFor(View root) {
