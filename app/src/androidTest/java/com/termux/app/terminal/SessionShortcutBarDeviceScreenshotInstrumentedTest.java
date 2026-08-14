@@ -26,6 +26,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,35 +42,43 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
     @Test
-    public void renderedControlBarPlacesShortcutsOnAFullWidthRowBelowTheControls() throws Exception {
+    public void renderedControlBarPlacesAlwaysSessionShortcutsAboveProjectManagerSessionShortcuts()
+            throws Exception {
         Context appContext = ApplicationProvider.getApplicationContext();
         Context context = new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
 
         View controlBar = View.inflate(context, R.layout.session_list_bottom_sheet_control_bar, null);
-        ShortcutFlowLayout shortcutsContainer =
-            controlBar.findViewById(R.id.session_list_bottom_sheet_shortcuts_container);
+        ShortcutFlowLayout alwaysSessionShortcutsContainer =
+            controlBar.findViewById(R.id.session_list_bottom_sheet_always_session_shortcuts_container);
+        ShortcutFlowLayout projectManagerSessionShortcutsContainer = controlBar.findViewById(
+            R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
 
         Set<String> alwaysNaSessionNames = new LinkedHashSet<>(Arrays.asList("inbox", "review"));
         List<SessionDefinitionEntry> entries = Arrays.asList(
             new SessionDefinitionEntry("alpha", "storyA",
-                java.util.Collections.singletonList("https://example.test/a1")),
+                Collections.singletonList("https://example.test/a1")),
             new SessionDefinitionEntry("beta", "storyB",
-                java.util.Collections.singletonList("https://example.test/b1")));
+                Collections.singletonList("https://example.test/b1")));
 
         SessionShortcutBarPlanner planner =
             new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
-        List<SessionShortcut> rightToLeftShortcuts =
-            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
-        List<SessionShortcut> renderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
+        SessionShortcutRows rightToLeftShortcutRows = planner.planRightToLeftShortcutRows(
+            alwaysNaSessionNames, entries, Collections.emptyList());
+        List<SessionShortcut> alwaysSessionRenderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderShortcuts(
+                rightToLeftShortcutRows.getAlwaysSessionShortcuts());
+        List<SessionShortcut> projectManagerRenderOrderShortcuts =
+            SessionShortcutBarPlanner.renderOrderShortcuts(
+                rightToLeftShortcutRows.getProjectManagerSessionShortcuts());
 
-        assertEquals(Arrays.asList("betapm", "alphapm", "review", "inbox"),
-            targetSessionNames(renderOrderShortcuts));
+        assertEquals(Arrays.asList("review", "inbox"),
+            targetSessionNames(alwaysSessionRenderOrderShortcuts));
+        assertEquals(Arrays.asList("betapm", "alphapm"),
+            targetSessionNames(projectManagerRenderOrderShortcuts));
 
-        for (SessionShortcut shortcut : renderOrderShortcuts) {
-            shortcutsContainer.addView(
-                SessionListBottomSheetController.newShortcutButtonView(context, shortcut.getLabel()));
-        }
+        addShortcutButtons(context, alwaysSessionShortcutsContainer, alwaysSessionRenderOrderShortcuts);
+        addShortcutButtons(context, projectManagerSessionShortcutsContainer,
+            projectManagerRenderOrderShortcuts);
 
         int widthSpec = View.MeasureSpec.makeMeasureSpec(BAR_WIDTH, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
@@ -91,26 +100,23 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
             lastControlButton.getRight() >= controlsGroupRightEdge - 1);
         assertTrue("the control icon buttons must be right-aligned, leaving free space on the left",
             firstControlButton.getLeft() > controlsGroup.getPaddingLeft());
-        int shortcutsTopInBar = topInBar(controlBar, shortcutsContainer);
-        assertTrue("session shortcuts must sit on their own row below the controls",
-            shortcutsTopInBar >= controlsGroupBottomInBar);
-        int shortcutsLeftInBar = leftInBar(controlBar, shortcutsContainer);
-        assertTrue("the session shortcut row must span the full bar width",
-            shortcutsContainer.getWidth() >= BAR_WIDTH - controlBar.getPaddingLeft() - controlBar.getPaddingRight());
-        int visibleRightEdge = BAR_WIDTH - controlBar.getPaddingRight();
-        for (int index = 0; index < shortcutsContainer.getChildCount(); index++) {
-            View shortcut = shortcutsContainer.getChildAt(index);
-            assertTrue("every shortcut right edge must stay within the visible bar width",
-                shortcutsLeftInBar + shortcut.getRight() <= visibleRightEdge);
-        }
-        View rightmostShortcut = shortcutsContainer.getChildAt(shortcutsContainer.getChildCount() - 1);
-        int rightmostShortcutRightEdgeInBar = shortcutsLeftInBar + rightmostShortcut.getRight();
-        int shortcutRightMargin =
-            ((ViewGroup.MarginLayoutParams) rightmostShortcut.getLayoutParams()).rightMargin;
-        assertTrue("the rightmost shortcut must be right-justified to end at the visible right edge",
-            rightmostShortcutRightEdgeInBar >= visibleRightEdge - shortcutRightMargin - 1);
-        assertEquals("all four present shortcuts must be rendered",
-            4, shortcutsContainer.getChildCount());
+
+        int alwaysSessionRowTopInBar = topInBar(controlBar, alwaysSessionShortcutsContainer);
+        int projectManagerRowTopInBar = topInBar(controlBar, projectManagerSessionShortcutsContainer);
+        assertTrue("the always-on session shortcuts must sit on their own row below the controls",
+            alwaysSessionRowTopInBar >= controlsGroupBottomInBar);
+        assertTrue("the project manager session shortcuts must sit on a row below the always-on session"
+                + " shortcuts",
+            projectManagerRowTopInBar
+                >= alwaysSessionRowTopInBar + alwaysSessionShortcutsContainer.getHeight());
+
+        assertRowFillsBarAndStaysWithinIt(controlBar, alwaysSessionShortcutsContainer);
+        assertRowFillsBarAndStaysWithinIt(controlBar, projectManagerSessionShortcutsContainer);
+
+        assertEquals("both always-on session shortcuts must be rendered on the upper row",
+            2, alwaysSessionShortcutsContainer.getChildCount());
+        assertEquals("both project manager session shortcuts must be rendered on the lower row",
+            2, projectManagerSessionShortcutsContainer.getChildCount());
 
         File outDir = sharedScreenshotDirectory();
         File out = new File(outDir, "session-shortcut-bar.png");
@@ -118,6 +124,32 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
         }
         assertTrue(out.exists() && out.length() > 0);
+    }
+
+    private static void addShortcutButtons(Context context, ShortcutFlowLayout row,
+                                           List<SessionShortcut> renderOrderShortcuts) {
+        for (SessionShortcut shortcut : renderOrderShortcuts) {
+            row.addView(SessionListBottomSheetController.newShortcutButtonView(context,
+                shortcut.getLabel()));
+        }
+    }
+
+    private static void assertRowFillsBarAndStaysWithinIt(View controlBar, ShortcutFlowLayout row) {
+        assertTrue("a session shortcut row must span the full bar width",
+            row.getWidth() >= BAR_WIDTH - controlBar.getPaddingLeft() - controlBar.getPaddingRight());
+        int rowLeftInBar = leftInBar(controlBar, row);
+        int visibleRightEdge = BAR_WIDTH - controlBar.getPaddingRight();
+        for (int index = 0; index < row.getChildCount(); index++) {
+            View shortcut = row.getChildAt(index);
+            assertTrue("every shortcut right edge must stay within the visible bar width",
+                rowLeftInBar + shortcut.getRight() <= visibleRightEdge);
+        }
+        View rightmostShortcut = row.getChildAt(row.getChildCount() - 1);
+        int rightmostShortcutRightEdgeInBar = rowLeftInBar + rightmostShortcut.getRight();
+        int shortcutRightMargin =
+            ((ViewGroup.MarginLayoutParams) rightmostShortcut.getLayoutParams()).rightMargin;
+        assertTrue("the rightmost shortcut of a row must be right-justified to end at the visible right edge",
+            rightmostShortcutRightEdgeInBar >= visibleRightEdge - shortcutRightMargin - 1);
     }
 
     private static View firstVisibleChild(ViewGroup parent) {
