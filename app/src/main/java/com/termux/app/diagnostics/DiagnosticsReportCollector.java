@@ -97,7 +97,9 @@ public final class DiagnosticsReportCollector {
                 WindowConditionSnapshot.take(activity,
                     WindowDrawTimeRecorderHolder.getInstance(),
                     TerminalDrawTimeRecorderHolder.getInstance(),
-                    SystemClock.elapsedRealtime())),
+                    SystemClock.elapsedRealtime()))
+                .withScrollWithoutDrawEpisodes(
+                    ScrollWithoutDrawEpisodeRecorderHolder.getInstance().getEpisodes()),
             DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot(),
             MainLooperQueuePeakRecorderHolder.getInstance().snapshot(),
             DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()),

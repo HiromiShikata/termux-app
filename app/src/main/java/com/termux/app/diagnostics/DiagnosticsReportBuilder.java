@@ -140,6 +140,8 @@ public final class DiagnosticsReportBuilder {
         builder.append('\n');
         appendWindowConditionSection(builder, report);
 
+        appendScrollWithoutDrawSection(builder, report);
+
         builder.append('\n');
         appendReportDeliverySection(builder, report);
 
@@ -764,6 +766,22 @@ public final class DiagnosticsReportBuilder {
         builder.append("Wake lock\n");
         builder.append("  Held: ").append(report.isWakeLockHeld() ? "yes" : "no").append('\n');
         builder.append("  App state: ").append(report.isForeground() ? "foreground" : "background").append('\n');
+    }
+
+    private void appendScrollWithoutDrawSection(@NonNull DiagnosticsReportText builder,
+                                               @NonNull DiagnosticsReport report) {
+        List<ScrollWithoutDrawEpisode> episodes =
+            report.getActivityWindows().getScrollWithoutDrawEpisodes();
+        builder.append("Scrolled without the terminal drawing\n");
+        if (episodes.isEmpty()) {
+            builder.append("  None: the terminal has drawn since it was last scrolled\n");
+            return;
+        }
+        for (ScrollWithoutDrawEpisode episode : episodes) {
+            builder.append("  ").append(formatTimestamp(episode.getScrolledAtMillis()))
+                .append(" scrolled ").append(episode.getUndrawnForMillis())
+                .append(" ms after the terminal last drew\n");
+        }
     }
 
     private void appendEventsSection(@NonNull DiagnosticsReportText builder, @NonNull DiagnosticsReport report) {
