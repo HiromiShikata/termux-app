@@ -2,21 +2,24 @@ package com.termux.app.diagnostics;
 
 import androidx.annotation.NonNull;
 
+import java.util.Map;
+import java.util.WeakHashMap;
+
 public final class DrawTimeRecorder {
 
-    private boolean mHasDrawn;
+    @NonNull
+    private final Map<Object, Long> mLastDrawElapsedRealtimeMillisByDrawnBy = new WeakHashMap<>();
 
-    private long mLastDrawElapsedRealtimeMillis;
-
-    public synchronized void record(long elapsedRealtimeMillis) {
-        mHasDrawn = true;
-        mLastDrawElapsedRealtimeMillis = elapsedRealtimeMillis;
+    public synchronized void record(@NonNull Object drawnBy, long elapsedRealtimeMillis) {
+        mLastDrawElapsedRealtimeMillisByDrawnBy.put(drawnBy, elapsedRealtimeMillis);
     }
 
     @NonNull
-    public synchronized DiagnosticsDrawTime snapshot(long elapsedRealtimeMillis) {
-        if (!mHasDrawn) return DiagnosticsDrawTime.NEVER_DRAWN;
+    public synchronized DiagnosticsDrawTime snapshot(@NonNull Object drawnBy,
+                                                     long elapsedRealtimeMillis) {
+        Long lastDrawElapsedRealtimeMillis = mLastDrawElapsedRealtimeMillisByDrawnBy.get(drawnBy);
+        if (lastDrawElapsedRealtimeMillis == null) return DiagnosticsDrawTime.NEVER_DRAWN;
         return DiagnosticsDrawTime.drawnMillisAgo(
-            elapsedRealtimeMillis - mLastDrawElapsedRealtimeMillis);
+            elapsedRealtimeMillis - lastDrawElapsedRealtimeMillis);
     }
 }

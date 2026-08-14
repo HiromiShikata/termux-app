@@ -188,7 +188,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public void onTerminalDrawn(long elapsedNanos, int transcriptRows) {
         TerminalDrawCostCounterHolder.getInstance().record(elapsedNanos, transcriptRows);
-        TerminalDrawTimeRecorderHolder.getInstance().record(SystemClock.elapsedRealtime());
+        TerminalDrawTimeRecorderHolder.getInstance()
+            .record(mActivity.getTerminalView(), SystemClock.elapsedRealtime());
     }
 
     @Override

@@ -12,16 +12,11 @@ public final class WindowDrawTimeObserver {
     @NonNull
     private final DrawTimeRecorder mRecorder;
 
-    @NonNull
-    private final ViewTreeObserver.OnDrawListener mOnDrawListener = new ViewTreeObserver.OnDrawListener() {
-        @Override
-        public void onDraw() {
-            mRecorder.record(SystemClock.elapsedRealtime());
-        }
-    };
-
     @Nullable
     private View mObservedDecorView;
+
+    @Nullable
+    private ViewTreeObserver.OnDrawListener mOnDrawListener;
 
     public WindowDrawTimeObserver(@NonNull DrawTimeRecorder recorder) {
         mRecorder = recorder;
@@ -29,8 +24,11 @@ public final class WindowDrawTimeObserver {
 
     public void observe(@NonNull View decorView) {
         stop();
+        ViewTreeObserver.OnDrawListener onDrawListener =
+            () -> mRecorder.record(decorView, SystemClock.elapsedRealtime());
         mObservedDecorView = decorView;
-        decorView.getViewTreeObserver().addOnDrawListener(mOnDrawListener);
+        mOnDrawListener = onDrawListener;
+        decorView.getViewTreeObserver().addOnDrawListener(onDrawListener);
     }
 
     public void stop() {
@@ -39,5 +37,6 @@ public final class WindowDrawTimeObserver {
         }
         mObservedDecorView.getViewTreeObserver().removeOnDrawListener(mOnDrawListener);
         mObservedDecorView = null;
+        mOnDrawListener = null;
     }
 }
