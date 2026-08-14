@@ -47,6 +47,7 @@ import com.termux.app.diagnostics.DiagnosticsRequestTagController;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.diagnostics.MainLooperQueuePeakRecorderHolder;
+import com.termux.app.diagnostics.ScrollWithoutDrawEpisodeCheck;
 import com.termux.app.diagnostics.MainLooperQueueSnapshot;
 import com.termux.app.diagnostics.ScrollbarViewCensusSnapshot;
 import com.termux.app.diagnostics.SessionCreationPath;
@@ -1434,6 +1435,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             displayedSessionCallScanIntervalMillis(), mActivity.isVisible());
         MainLooperQueuePeakRecorderHolder.getInstance().recordObservation(MainLooperQueueSnapshot.take(),
             System.currentTimeMillis(), () -> ScrollbarViewCensusSnapshot.take(mActivity));
+        ScrollWithoutDrawEpisodeCheck.run(mActivity, System.currentTimeMillis());
 
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;
