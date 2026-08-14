@@ -30,7 +30,8 @@ public class PendingMainLooperMessageLinesTest {
             new DiagnosticsMainThreadStalls(250L, 0L, 0L, "", java.util.Collections.emptyList(), 0L, 0L), mainLooperQueue, ScrollbarViewCensus.empty(), 0L, new DiagnosticsBackgroundCycle(0L, java.util.Collections.<BackgroundCycleInterval>emptyList()), DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0), DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
     }
 
     private static List<String> looperDumpWithMessages(String... whenValues) {

@@ -30,7 +30,8 @@ public class MainThreadStallSampleAttemptsInReportTest {
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
         return new DiagnosticsReportBuilder().build(report);
     }
 

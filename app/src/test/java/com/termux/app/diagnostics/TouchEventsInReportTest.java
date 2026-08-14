@@ -32,7 +32,8 @@ public class TouchEventsInReportTest {
             DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST, NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE,
             DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, touchEvents);
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, touchEvents,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
         return new DiagnosticsReportBuilder().build(report);
     }
 
@@ -80,7 +81,8 @@ public class TouchEventsInReportTest {
 
     @Test
     public void aRunInWhichTheViewWasNeverTouchedIsReportedAsMeasuredRatherThanOmitted() {
-        String report = renderedReportOf(DiagnosticsTouchEvents.NONE);
+        String report = renderedReportOf(DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("an absent section reads as an unmeasured application, which is the state a"

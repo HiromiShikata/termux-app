@@ -123,6 +123,9 @@ public final class DiagnosticsReportBuilder {
         builder.append("Process uptime: ").append(formatUptime(report.getProcessUptimeMillis())).append('\n');
 
         builder.append('\n');
+        appendPreviousProcessExitSection(builder, report);
+
+        builder.append('\n');
         appendUndeliveredShellInputSection(builder, report);
 
         builder.append('\n');
@@ -250,6 +253,34 @@ public final class DiagnosticsReportBuilder {
         if (!replaced.getLastWriterStopSessionName().isEmpty()) {
             builder.append("  Last writer stop: ").append(replaced.getLastWriterStopSessionName())
                 .append(" (").append(replaced.getLastWriterStopReason()).append(")\n");
+        }
+    }
+
+    private void appendPreviousProcessExitSection(@NonNull DiagnosticsReportText builder,
+                                                  @NonNull DiagnosticsReport report) {
+        DiagnosticsPreviousProcessExits previousProcessExits = report.getPreviousProcessExits();
+        builder.append("Why the recent processes of this app ended\n");
+        switch (previousProcessExits.getReading()) {
+            case NOT_TAKEN:
+                builder.append("  Not measured\n");
+                return;
+            case NOT_KEPT_BY_THIS_ANDROID:
+                builder.append("  This version of Android does not keep a record of why a process ended\n");
+                return;
+            default:
+                break;
+        }
+        if (previousProcessExits.getExits().isEmpty()) {
+            builder.append("  None: the system holds no record of a process of this app ending\n");
+            return;
+        }
+        for (DiagnosticsPreviousProcessExit previousProcessExit : previousProcessExits.getExits()) {
+            builder.append("  ").append(formatTimestamp(previousProcessExit.getEndedAtMillis()))
+                .append(": ").append(previousProcessExit.getReasonLabel())
+                .append(", while ").append(previousProcessExit.getImportanceLabel()).append('\n');
+            String description = previousProcessExit.getDescription();
+            if (description == null || description.isEmpty()) continue;
+            builder.append("    Described by the system as: ").append(description).append('\n');
         }
     }
 

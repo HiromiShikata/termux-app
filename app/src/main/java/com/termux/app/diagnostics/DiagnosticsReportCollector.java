@@ -1,5 +1,6 @@
 package com.termux.app.diagnostics;
 
+import android.os.Build;
 import android.os.Debug;
 import android.os.SystemClock;
 import android.system.Os;
@@ -44,6 +45,9 @@ public final class DiagnosticsReportCollector {
 
     @NonNull
     private final AppProcessPopulationReader mProcessPopulationReader = new AppProcessPopulationReader();
+
+    @NonNull
+    private final PreviousProcessExitReader mPreviousProcessExitReader = new PreviousProcessExitReader();
 
     @NonNull
     private final RenderThreadReader mRenderThreadReader = new RenderThreadReader(
@@ -112,7 +116,8 @@ public final class DiagnosticsReportCollector {
             DiagnosticsReportDeliveryRecorderHolder.getInstance().snapshot(),
             MainLooperQueuePeakRecorderHolder.getInstance().snapshot(),
             DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()),
-            DiagnosticsTouchEvents.of(TerminalTouchCounterHolder.getInstance()));
+            DiagnosticsTouchEvents.of(TerminalTouchCounterHolder.getInstance()),
+            mPreviousProcessExitReader.read(activity, Build.VERSION.SDK_INT));
     }
 
     @NonNull

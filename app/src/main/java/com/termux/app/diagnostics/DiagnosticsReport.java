@@ -73,6 +73,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsScrollSteps mScrollSteps;
     @NonNull
     private final DiagnosticsTouchEvents mTouchEvents;
+    @NonNull
+    private final DiagnosticsPreviousProcessExits mPreviousProcessExits;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -102,9 +104,11 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsReportDelivery lastReportDelivery,
                              @NonNull DiagnosticsMainLooperQueuePeak mainLooperQueuePeak,
                              @NonNull DiagnosticsScrollSteps scrollSteps,
-                             @NonNull DiagnosticsTouchEvents touchEvents) {
+                             @NonNull DiagnosticsTouchEvents touchEvents,
+                             @NonNull DiagnosticsPreviousProcessExits previousProcessExits) {
         mScrollSteps = scrollSteps;
         mTouchEvents = touchEvents;
+        mPreviousProcessExits = previousProcessExits;
         mSessionCreationPaths = sessionCreationPaths;
         mActivityWindows = activityWindows;
         mLastReportDelivery = lastReportDelivery;
@@ -163,6 +167,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsTouchEvents getTouchEvents() {
         return mTouchEvents;
+    }
+
+    @NonNull
+    public DiagnosticsPreviousProcessExits getPreviousProcessExits() {
+        return mPreviousProcessExits;
     }
 
     @NonNull

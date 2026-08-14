@@ -33,7 +33,8 @@ public class RenderThreadInReportTest {
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, new DiagnosticsActivityWindows(1, 0),
             DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE,
-            DiagnosticsTouchEvents.NONE);
+            DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN);
         return new DiagnosticsReportBuilder().build(report);
     }
 
