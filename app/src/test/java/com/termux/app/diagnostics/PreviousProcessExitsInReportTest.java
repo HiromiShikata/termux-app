@@ -3,8 +3,10 @@ package com.termux.app.diagnostics;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 public class PreviousProcessExitsInReportTest {
 
@@ -104,6 +106,35 @@ public class PreviousProcessExitsInReportTest {
             + report, sectionIndex >= 0);
         Assert.assertTrue("an unread state must not be presentable as a measured one. Actual report:\n"
             + report, report.substring(sectionIndex).contains("Not measured"));
+    }
+
+    @Test
+    public void endingsTheSystemDescribedAtLengthAreCutRatherThanSwallowingTheRestOfTheReport() {
+        StringBuilder longDescription = new StringBuilder();
+        while (longDescription.length() < 3000) {
+            longDescription.append("the system said a great deal about this ending. ");
+        }
+        List<DiagnosticsPreviousProcessExit> endings = new ArrayList<>();
+        for (int endingIndex = 0; endingIndex < 5; endingIndex++) {
+            endings.add(new DiagnosticsPreviousProcessExit(1783216740000L - endingIndex * 60000L,
+                4, 100, longDescription.toString()));
+        }
+
+        String report = renderedReportOf(DiagnosticsPreviousProcessExits.recorded(endings));
+
+        int sectionIndex = report.indexOf(SECTION_HEADING);
+        Assert.assertTrue("the section has to be present for its size to matter. Actual report:\n"
+            + report, sectionIndex >= 0);
+        Assert.assertTrue("a section that prints whatever the system happened to write pushes every"
+                + " measurement after it out of the window the report survives, so it has to be cut and"
+                + " say that it was cut. Actual report:\n" + report,
+            report.substring(sectionIndex).contains("further lines left out"));
+        int mainThreadCostIndex = report.indexOf("Main-thread cost");
+        Assert.assertTrue("the main-thread cost block is the evidence this report exists to carry, and it"
+                + " has to stay inside the first " + DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS
+                + " characters however much the system wrote about an ending. It currently begins at"
+                + " character " + mainThreadCostIndex + ". Actual report:\n" + report,
+            mainThreadCostIndex >= 0 && mainThreadCostIndex < DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS);
     }
 
     @Test
