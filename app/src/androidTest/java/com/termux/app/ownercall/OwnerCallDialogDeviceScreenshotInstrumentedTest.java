@@ -22,6 +22,7 @@ import android.widget.TextView;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -33,6 +34,7 @@ import com.termux.terminal.TerminalSession;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -91,6 +93,10 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         return "---\nsessionName: \"https_//github_com/HiromiShikata/termux-app/issues/1884\"\n"
             + "calledAt: \"" + calledAt + "\"\nbody: |2\n  " + body + "\n";
     }
+
+    @Rule
+    public GrantPermissionRule writeExternalStoragePermissionRule =
+        GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
