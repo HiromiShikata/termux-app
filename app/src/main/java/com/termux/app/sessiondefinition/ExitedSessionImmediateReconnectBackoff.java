@@ -43,7 +43,7 @@ public final class ExitedSessionImmediateReconnectBackoff {
         if (attempts == null) {
             return;
         }
-        if (nowMillis - attempts.lastReconnectTimeMillis > LONGEST_WAIT_MILLIS) {
+        if (nowMillis - attempts.lastReconnectTimeMillis > SHORTEST_WAIT_MILLIS) {
             attempts.seenRunningLongEnoughAfterTheReconnect = true;
         }
     }
