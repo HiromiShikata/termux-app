@@ -232,6 +232,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private OwnerCallDialogController mOwnerCallDialogController;
 
+    @Nullable
+    public OwnerCallDialogController getOwnerCallDialogController() {
+        return mOwnerCallDialogController;
+    }
+
     private final SessionDefinitionPrewarm mSessionDefinitionPrewarm = new SessionDefinitionPrewarm(
         new SessionDefinitionPrewarm.DocumentLoadState() {
             @Override

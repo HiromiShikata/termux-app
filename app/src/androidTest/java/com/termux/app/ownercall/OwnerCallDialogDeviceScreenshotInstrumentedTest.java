@@ -12,12 +12,17 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Environment;
+import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
@@ -29,6 +34,7 @@ import com.termux.terminal.TerminalSession;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -88,6 +94,10 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             + "calledAt: \"" + calledAt + "\"\nbody: |2\n  " + body + "\n";
     }
 
+    @Rule
+    public GrantPermissionRule writeExternalStoragePermissionRule =
+        GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
 
@@ -120,15 +130,21 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             Configuration.ORIENTATION_PORTRAIT);
         awaitDialogShowing(scenario, "1 / 3");
         assertDialogMatchesTheSpecification(scenario);
+        File portraitScreenshot = captureScreenshot(scenario, "owner-call-dialog-device-portrait.png");
         assertNotNull("the portrait device screenshot must reach the directory the workflow pulls",
-            captureScreenshot(scenario, "owner-call-dialog-device-portrait.png"));
+            portraitScreenshot);
+        assertTrue("the portrait device screenshot must be non-empty",
+            portraitScreenshot.exists() && portraitScreenshot.length() > 0);
 
         setOrientation(scenario, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             Configuration.ORIENTATION_LANDSCAPE);
         awaitDialogShowing(scenario, "1 / 3");
         assertDialogMatchesTheSpecification(scenario);
+        File landscapeScreenshot = captureScreenshot(scenario, "owner-call-dialog-device-landscape.png");
         assertNotNull("the landscape device screenshot must reach the directory the workflow pulls",
-            captureScreenshot(scenario, "owner-call-dialog-device-landscape.png"));
+            landscapeScreenshot);
+        assertTrue("the landscape device screenshot must be non-empty",
+            landscapeScreenshot.exists() && landscapeScreenshot.length() > 0);
 
         scenario.onActivity(activity -> {
             activity.findViewById(R.id.owner_call_dialog_next_button).performClick();
@@ -164,6 +180,129 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         assertNotNull("the reopened-dialog device screenshot must reach the directory the workflow pulls",
             captureScreenshot(scenario, "owner-call-dialog-reopened-from-indicator.png"));
+    }
+
+    @Test
+    public void theDragMovesTheDialogAndThePositionSurvivesATerminalScreenUpdate() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+        File screenshotBeforeDrag = captureScreenshot(scenario, "owner-call-dialog-device-before-drag.png");
+        assertNotNull("portrait screenshot before drag must reach the directory the workflow pulls",
+            screenshotBeforeDrag);
+        assertTrue("portrait screenshot before drag must be non-empty",
+            screenshotBeforeDrag.exists() && screenshotBeforeDrag.length() > 0);
+
+        AtomicInteger initialBottom = new AtomicInteger();
+        AtomicInteger headerScreenX = new AtomicInteger();
+        AtomicInteger headerScreenY = new AtomicInteger();
+        AtomicInteger headerWidth = new AtomicInteger();
+        AtomicInteger headerHeight = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+            initialBottom.set(p.bottomMargin);
+            View header = activity.findViewById(R.id.owner_call_dialog_header);
+            int[] location = new int[2];
+            header.getLocationOnScreen(location);
+            headerScreenX.set(location[0]);
+            headerScreenY.set(location[1]);
+            headerWidth.set(header.getWidth());
+            headerHeight.set(header.getHeight());
+        });
+
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        int tapX = headerScreenX.get() + headerWidth.get() / 2;
+        int tapY = headerScreenY.get() + headerHeight.get() / 2;
+        long downTime = SystemClock.uptimeMillis();
+        MotionEvent downEvent = MotionEvent.obtain(downTime, downTime,
+            MotionEvent.ACTION_DOWN, tapX, tapY, 0);
+        instrumentation.sendPointerSync(downEvent);
+        downEvent.recycle();
+
+        Thread.sleep(ViewConfiguration.getLongPressTimeout() + 200);
+        instrumentation.waitForIdleSync();
+
+        int moveY = tapY - 300;
+        long moveTime = SystemClock.uptimeMillis();
+        MotionEvent moveEvent = MotionEvent.obtain(downTime, moveTime,
+            MotionEvent.ACTION_MOVE, tapX, moveY, 0);
+        instrumentation.sendPointerSync(moveEvent);
+        moveEvent.recycle();
+        instrumentation.waitForIdleSync();
+
+        long upTime = SystemClock.uptimeMillis();
+        MotionEvent upEvent = MotionEvent.obtain(downTime, upTime,
+            MotionEvent.ACTION_UP, tapX, moveY, 0);
+        instrumentation.sendPointerSync(upEvent);
+        upEvent.recycle();
+        instrumentation.waitForIdleSync();
+
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+            assertTrue("the real drag gesture must move the dialog upward",
+                p.bottomMargin > initialBottom.get());
+        });
+        File screenshotAfterDrag = captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png");
+        assertNotNull("portrait screenshot after drag must reach the directory the workflow pulls",
+            screenshotAfterDrag);
+        assertTrue("portrait screenshot after drag must be non-empty",
+            screenshotAfterDrag.exists() && screenshotAfterDrag.length() > 0);
+
+        scenario.onActivity(activity -> activity.showUnansweredOwnerCallsOfDisplayedSession());
+        instrumentation.waitForIdleSync();
+
+        scenario.onActivity(activity -> {
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
+            assertTrue("position must survive a terminal screen update re-bind",
+                p.bottomMargin > initialBottom.get());
+        });
+        File screenshotAfterRebind = captureScreenshot(scenario, "owner-call-dialog-device-after-rebind.png");
+        assertNotNull("portrait screenshot after re-bind must reach the directory the workflow pulls",
+            screenshotAfterRebind);
+        assertTrue("portrait screenshot after re-bind must be non-empty",
+            screenshotAfterRebind.exists() && screenshotAfterRebind.length() > 0);
+    }
+
+    @Test
+    public void aShortTapOnTheNextButtonStillPagesAfterTheDragListenerIsAttached() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+
+        AtomicInteger buttonScreenX = new AtomicInteger();
+        AtomicInteger buttonScreenY = new AtomicInteger();
+        AtomicInteger buttonWidth = new AtomicInteger();
+        AtomicInteger buttonHeight = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View nextButton = activity.findViewById(R.id.owner_call_dialog_next_button);
+            int[] location = new int[2];
+            nextButton.getLocationOnScreen(location);
+            buttonScreenX.set(location[0]);
+            buttonScreenY.set(location[1]);
+            buttonWidth.set(nextButton.getWidth());
+            buttonHeight.set(nextButton.getHeight());
+        });
+
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        int tapX = buttonScreenX.get() + buttonWidth.get() / 2;
+        int tapY = buttonScreenY.get() + buttonHeight.get() / 2;
+        long downTime = SystemClock.uptimeMillis();
+        MotionEvent downEvent = MotionEvent.obtain(downTime, downTime,
+            MotionEvent.ACTION_DOWN, tapX, tapY, 0);
+        instrumentation.sendPointerSync(downEvent);
+        downEvent.recycle();
+        long upTime = SystemClock.uptimeMillis();
+        MotionEvent upEvent = MotionEvent.obtain(downTime, upTime,
+            MotionEvent.ACTION_UP, tapX, tapY, 0);
+        instrumentation.sendPointerSync(upEvent);
+        upEvent.recycle();
+        instrumentation.waitForIdleSync();
+
+        scenario.onActivity(activity ->
+            assertEquals("next button tap must page to the second call even after drag listener is "
+                    + "attached to the header",
+                "2 / 3", textOf(activity, R.id.owner_call_dialog_position)));
     }
 
     @Test
@@ -220,7 +359,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         scenario.onActivity(activity -> {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();
             assertNotNull(store);
-            store.recordExplicitCall(SESSION_URL, System.currentTimeMillis(), CALL_REASON);
+            store.recordExplicitCall(SESSION_URL, System.currentTimeMillis(), CALL_REASON,
+                CALL_REASON + "-" + System.nanoTime());
             activity.showUnansweredOwnerCallsOfDisplayedSession();
         });
         return scenario;
@@ -406,36 +546,23 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(TERMINAL_BACKGROUND_COLOR);
         root.draw(canvas);
-
-        File written = null;
-        for (File directory : screenshotTargetDirectories()) {
-            File output = new File(directory, fileName);
-            try (FileOutputStream stream = new FileOutputStream(output)) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-            } catch (IOException unwritableScreenshot) {
-                continue;
-            }
-            if (output.length() > 0) {
-                written = output;
-            }
+        File output = new File(sharedScreenshotDirectory(), fileName);
+        try (FileOutputStream stream = new FileOutputStream(output)) {
+            assertTrue("PNG compression must succeed for " + fileName,
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream));
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
         }
-        return written;
+        return output;
     }
 
-    private static List<File> screenshotTargetDirectories() {
-        List<File> directories = new ArrayList<>();
-        File sharedDirectory =
-            new File(Environment.getExternalStorageDirectory(), SCREENSHOT_DIRECTORY_NAME);
-        if (sharedDirectory.exists() || sharedDirectory.mkdirs()) {
-            directories.add(sharedDirectory);
+    private static File sharedScreenshotDirectory() {
+        File directory = new File(Environment.getExternalStorageDirectory(), SCREENSHOT_DIRECTORY_NAME);
+        if (!directory.exists()) {
+            assertTrue("shared screenshot directory must be creatable so screenshots reach the "
+                + "directory the workflow pulls", directory.mkdirs());
         }
-        File appExternalFilesDirectory = InstrumentationRegistry.getInstrumentation()
-            .getTargetContext().getExternalFilesDir(null);
-        if (appExternalFilesDirectory != null
-            && (appExternalFilesDirectory.exists() || appExternalFilesDirectory.mkdirs())) {
-            directories.add(appExternalFilesDirectory);
-        }
-        return directories;
+        return directory;
     }
 
     private static String textOf(Activity activity, int viewId) {

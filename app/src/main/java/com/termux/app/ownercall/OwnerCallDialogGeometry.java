@@ -11,13 +11,18 @@ public final class OwnerCallDialogGeometry {
     private final int mHeightPixels;
     private final int mLeftMarginPixels;
     private final int mBottomMarginPixels;
+    private final int mMinBottomMarginPixels;
+    private final int mMaxBottomMarginPixels;
 
     private OwnerCallDialogGeometry(int widthPixels, int heightPixels, int leftMarginPixels,
-                                    int bottomMarginPixels) {
+                                    int bottomMarginPixels, int minBottomMarginPixels,
+                                    int maxBottomMarginPixels) {
         mWidthPixels = widthPixels;
         mHeightPixels = heightPixels;
         mLeftMarginPixels = leftMarginPixels;
         mBottomMarginPixels = bottomMarginPixels;
+        mMinBottomMarginPixels = minBottomMarginPixels;
+        mMaxBottomMarginPixels = maxBottomMarginPixels;
     }
 
     @NonNull
@@ -25,12 +30,17 @@ public final class OwnerCallDialogGeometry {
                                                   int terminalAreaWidthPixels,
                                                   int terminalAreaBottomInsetPixels,
                                                   int terminalRowHeightPixels) {
-        return new OwnerCallDialogGeometry(
-            Math.max(0, terminalAreaWidthPixels),
-            Math.max(0, screenHeightPixels) / SCREEN_HEIGHT_DIVISOR,
-            Math.max(0, terminalAreaLeftPixels),
-            Math.max(0, terminalAreaBottomInsetPixels)
-                + Math.max(0, terminalRowHeightPixels) * VISIBLE_TERMINAL_ROWS_BELOW);
+        int width = Math.max(0, terminalAreaWidthPixels);
+        int height = Math.max(0, screenHeightPixels) / SCREEN_HEIGHT_DIVISOR;
+        int leftMargin = Math.max(0, terminalAreaLeftPixels);
+        int inset = Math.max(0, terminalAreaBottomInsetPixels);
+        int defaultBottomMargin = inset
+            + Math.max(0, terminalRowHeightPixels) * VISIBLE_TERMINAL_ROWS_BELOW;
+        int minBottomMargin = inset;
+        int maxBottomMargin = Math.max(minBottomMargin,
+            Math.max(0, screenHeightPixels) - height);
+        return new OwnerCallDialogGeometry(width, height, leftMargin, defaultBottomMargin,
+            minBottomMargin, maxBottomMargin);
     }
 
     public int getWidthPixels() {
@@ -47,5 +57,19 @@ public final class OwnerCallDialogGeometry {
 
     public int getBottomMarginPixels() {
         return mBottomMarginPixels;
+    }
+
+    public int getMinBottomMarginPixels() {
+        return mMinBottomMarginPixels;
+    }
+
+    public int getMaxBottomMarginPixels() {
+        return mMaxBottomMarginPixels;
+    }
+
+    @NonNull
+    public OwnerCallDialogGeometry withBottomMargin(int bottomMarginPixels) {
+        return new OwnerCallDialogGeometry(mWidthPixels, mHeightPixels, mLeftMarginPixels,
+            bottomMarginPixels, mMinBottomMarginPixels, mMaxBottomMarginPixels);
     }
 }

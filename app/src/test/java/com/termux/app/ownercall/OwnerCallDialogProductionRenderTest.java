@@ -179,6 +179,10 @@ public class OwnerCallDialogProductionRenderTest {
                 public void onDialogCloseRequested() {
                     closedCalled[0] = true;
                 }
+
+                @Override
+                public void onDragPositionChanged(int bottomMarginPixels) {
+                }
             });
         root.findViewById(R.id.owner_call_dialog_close_button).performClick();
 
