@@ -1,9 +1,12 @@
 package com.termux.app.diagnostics;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+
+import java.util.List;
 
 public class ScrollWithoutDrawEpisodeRecorderTest {
 
@@ -70,5 +73,40 @@ public class ScrollWithoutDrawEpisodeRecorderTest {
                 + " suppressing it would report a defect that happens repeatedly as if it had"
                 + " happened once",
             recordedAfterRecovery);
+    }
+
+    @Test
+    public void theRecordedEpisodeCarriesHowLongTheTerminalHadNotDrawn() {
+        ScrollWithoutDrawEpisodeRecorder recorder = new ScrollWithoutDrawEpisodeRecorder();
+
+        recorder.recordEpisode(20_000L, 10_000L);
+        List<ScrollWithoutDrawEpisode> episodes = recorder.getEpisodes();
+
+        assertEquals(1, episodes.size());
+        assertEquals("a report read after the application recovered can only name the episode if"
+                + " the gap between the scroll and the last draw was kept with it",
+            10_000L, episodes.get(0).getUndrawnForMillis());
+        assertEquals(20_000L, episodes.get(0).getScrolledAtMillis());
+    }
+
+    @Test
+    public void onlyTheMostRecentEpisodesAreRetained() {
+        ScrollWithoutDrawEpisodeRecorder recorder = new ScrollWithoutDrawEpisodeRecorder();
+
+        int recordedEpisodes = ScrollWithoutDrawEpisodeRecorder.MAX_RETAINED_EPISODES + 1;
+        long lastScrolledAtMillis = 0L;
+        for (int episodeIndex = 0; episodeIndex < recordedEpisodes; episodeIndex++) {
+            long drawAtMillis = 10_000L + episodeIndex * 100_000L;
+            lastScrolledAtMillis = drawAtMillis + 10_000L;
+            recorder.recordEpisode(lastScrolledAtMillis, drawAtMillis);
+        }
+        List<ScrollWithoutDrawEpisode> episodes = recorder.getEpisodes();
+
+        assertEquals("the section that prints these episodes is a fixed part of a report with a"
+                + " character ceiling, so an unbounded list would push the evidence around it out",
+            ScrollWithoutDrawEpisodeRecorder.MAX_RETAINED_EPISODES, episodes.size());
+        assertEquals("dropping the newest instead of the oldest would keep the first episode after"
+                + " a restart and lose the one the owner is asking about",
+            lastScrolledAtMillis, episodes.get(episodes.size() - 1).getScrolledAtMillis());
     }
 }
