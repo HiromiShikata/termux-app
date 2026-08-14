@@ -9,6 +9,9 @@ public final class OwnerCallDialogPositionResolver {
 
     public static int resolve(@Nullable Integer requestedBottomMargin, int defaultBottomMargin,
                                int minBottomMargin, int maxBottomMargin) {
-        return -1;
+        if (requestedBottomMargin == null) {
+            return defaultBottomMargin;
+        }
+        return Math.max(minBottomMargin, Math.min(maxBottomMargin, requestedBottomMargin));
     }
 }
