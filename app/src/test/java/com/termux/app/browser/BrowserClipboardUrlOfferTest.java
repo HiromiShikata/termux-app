@@ -1,0 +1,83 @@
+package com.termux.app.browser;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+public class BrowserClipboardUrlOfferTest {
+
+    @Test
+    public void aClipboardHoldingASecureAddressIsOfferedCarryingThatAddress() {
+        BrowserClipboardUrlOffer offer = BrowserClipboardUrlOffer.of("https://example.com/a/page?q=1");
+
+        Assert.assertTrue("a copied web address is the whole reason the owner opens a new tab, so it has"
+                + " to be offered", offer.isOffered());
+        Assert.assertEquals("the offer opens what was copied, not a rewritten form of it",
+            "https://example.com/a/page?q=1", offer.getUrl());
+    }
+
+    @Test
+    public void aClipboardHoldingAPlainAddressIsOfferedToo() {
+        Assert.assertTrue("an address that is not served over a secure connection is still an address the"
+                + " owner copied in order to open it",
+            BrowserClipboardUrlOffer.of("http://example.com").isOffered());
+    }
+
+    @Test
+    public void surroundingWhitespaceIsRemovedFromTheOfferedAddress() {
+        BrowserClipboardUrlOffer offer = BrowserClipboardUrlOffer.of("  https://example.com/page\n");
+
+        Assert.assertTrue("selecting a link on a page routinely takes the newline after it with it, and"
+                + " that is still the address the owner copied", offer.isOffered());
+        Assert.assertEquals("the trailing newline would be sent to the network as part of the path",
+            "https://example.com/page", offer.getUrl());
+    }
+
+    @Test
+    public void theSchemeIsReadWithoutRegardToItsCase() {
+        Assert.assertTrue("a scheme is case insensitive, so an address copied from a source that upper"
+                + " cases it is the same address",
+            BrowserClipboardUrlOffer.of("HTTPS://example.com").isOffered());
+    }
+
+    @Test
+    public void aClipboardHoldingPlainTextIsNotOffered() {
+        Assert.assertFalse("offering a control that opens ordinary copied text would send whatever the"
+                + " owner last copied to a search engine on a single tap",
+            BrowserClipboardUrlOffer.of("the meeting is at four").isOffered());
+    }
+
+    @Test
+    public void anEmptyClipboardIsNotOffered() {
+        Assert.assertFalse("nothing was copied, so there is nothing to open",
+            BrowserClipboardUrlOffer.of("   ").isOffered());
+        Assert.assertFalse("a clipboard the platform reports as absent is not an address either",
+            BrowserClipboardUrlOffer.of(null).isOffered());
+    }
+
+    @Test
+    public void anAddressWithWhitespaceInsideItIsNotOffered() {
+        Assert.assertFalse("a copied sentence that happens to start with an address is not one address,"
+                + " and opening its first part would take the owner somewhere he did not copy",
+            BrowserClipboardUrlOffer.of("https://example.com and then call me").isOffered());
+    }
+
+    @Test
+    public void aSchemeWithNoAddressBehindItIsNotOffered() {
+        Assert.assertFalse("a scheme on its own names no page, so there is nothing to open",
+            BrowserClipboardUrlOffer.of("https://").isOffered());
+    }
+
+    @Test
+    public void anOfferThatWasNotMadeRefusesToNameAnAddress() {
+        BrowserClipboardUrlOffer offer = BrowserClipboardUrlOffer.of("the meeting is at four");
+
+        try {
+            offer.getUrl();
+            Assert.fail("returning an empty address here would be opened as a blank page rather than"
+                + " reported as the absence it is");
+        } catch (IllegalStateException expected) {
+            Assert.assertTrue("the refusal has to say what was asked for. Actual: " + expected.getMessage(),
+                expected.getMessage().contains("clipboard"));
+        }
+    }
+}
