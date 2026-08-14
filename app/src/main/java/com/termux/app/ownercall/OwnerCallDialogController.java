@@ -5,6 +5,8 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.R;
+
 import java.util.List;
 
 public final class OwnerCallDialogController implements OwnerCallDialogBinder.OwnerCallDialogActions {
@@ -61,17 +63,33 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
     }
 
     @Override
-    public void onCallDismissed(@NonNull OwnerCall call) {
-        mState.dismiss(call);
-        render(KEEP_DISPLAYED_CALL, System.currentTimeMillis());
+    public void onDialogCloseRequested() {
+        mState.closeDialog();
+        hideDialog();
+    }
+
+    public void reopenDialog(long nowMillis) {
+        mState.reopenDialog();
+        render(KEEP_DISPLAYED_CALL, nowMillis);
+    }
+
+    private void hideDialog() {
+        View dialog = mRoot.findViewById(R.id.owner_call_dialog);
+        if (dialog != null && dialog.getVisibility() != View.GONE) {
+            dialog.setVisibility(View.GONE);
+        }
     }
 
     private void render(int offsetFromDisplayedCall, long nowMillis) {
-        List<OwnerCall> visibleCalls =
-            mState.visibleCalls(mCallSource.callsForSession(mState.getSessionName()));
-        int requestedIndex = mState.indexOfDisplayedCall(visibleCalls) + offsetFromDisplayedCall;
-        OwnerCallDialogPaging paging = OwnerCallDialogBinder.bind(mRoot, visibleCalls,
+        if (mState.isDialogClosed()) {
+            hideDialog();
+            return;
+        }
+        List<OwnerCall> calls =
+            mCallSource.callsForSession(mState.getSessionName());
+        int requestedIndex = mState.indexOfDisplayedCall(calls) + offsetFromDisplayedCall;
+        OwnerCallDialogPaging paging = OwnerCallDialogBinder.bind(mRoot, calls,
             requestedIndex, nowMillis, mGeometrySource.currentGeometry(), this);
-        mState.displayCallAt(visibleCalls, paging.getIndex());
+        mState.displayCallAt(calls, paging.getIndex());
     }
 }

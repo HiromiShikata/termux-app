@@ -161,9 +161,9 @@ public class OwnerCallDialogProductionRenderTest {
     }
 
     @Test
-    public void closingTheDialogReportsExactlyTheCallThatWasOnScreen() {
+    public void closingTheDialogCallsOnDialogCloseRequested() {
         View root = inflateActivityLayout();
-        List<OwnerCall> dismissed = new ArrayList<>();
+        boolean[] closedCalled = {false};
 
         OwnerCallDialogBinder.bind(root, THREE_CALLS, 2, NOW, PORTRAIT_GEOMETRY,
             new OwnerCallDialogBinder.OwnerCallDialogActions() {
@@ -176,14 +176,13 @@ public class OwnerCallDialogProductionRenderTest {
                 }
 
                 @Override
-                public void onCallDismissed(OwnerCall call) {
-                    dismissed.add(call);
+                public void onDialogCloseRequested() {
+                    closedCalled[0] = true;
                 }
             });
         root.findViewById(R.id.owner_call_dialog_close_button).performClick();
 
-        Assert.assertEquals(Collections.singletonList(THIRD_CALL), dismissed);
-        Assert.assertEquals(THIRD_CALL.getCalledAt(), dismissed.get(0).getCalledAt());
+        Assert.assertTrue("close button must invoke onDialogCloseRequested", closedCalled[0]);
     }
 
     @Test

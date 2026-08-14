@@ -24,7 +24,7 @@ public final class OwnerCallDialogBinder {
 
         void onNextCallRequested();
 
-        void onCallDismissed(@NonNull OwnerCall call);
+        void onDialogCloseRequested();
     }
 
     private OwnerCallDialogBinder() {
@@ -127,6 +127,6 @@ public final class OwnerCallDialogBinder {
             ? view -> actions.onPreviousCallRequested() : null);
         nextButton.setOnClickListener(paging.isNextEnabled()
             ? view -> actions.onNextCallRequested() : null);
-        closeButton.setOnClickListener(view -> actions.onCallDismissed(call));
+        closeButton.setOnClickListener(view -> actions.onDialogCloseRequested());
     }
 }

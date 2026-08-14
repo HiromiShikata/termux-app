@@ -78,32 +78,32 @@ public class OwnerCallDialogControllerTest {
     }
 
     @Test
-    public void closingOneCallLeavesTheOtherCallThatCarriesTheSameBody() {
+    public void closingTheDialogHidesTheWholeDialogNotJustOneCall() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
 
-        root.findViewById(R.id.owner_call_dialog_close_button).performClick();
-
-        Assert.assertEquals(View.VISIBLE, dialog(root).getVisibility());
-        Assert.assertEquals("1 / 1", positionText(root));
-        Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
-    }
-
-    @Test
-    public void hidesTheDialogOnceEveryWaitingCallIsClosed() {
-        View root = inflateActivityLayout();
-        OwnerCallDialogController controller = controllerFor(root);
-        controller.showCallsForSession(FIRST_SESSION, NOW);
-
-        root.findViewById(R.id.owner_call_dialog_close_button).performClick();
         root.findViewById(R.id.owner_call_dialog_close_button).performClick();
 
         Assert.assertEquals(View.GONE, dialog(root).getVisibility());
     }
 
     @Test
-    public void keepsAClosedCallClosedWhenTheSameSessionIsShownAgain() {
+    public void reopeningAfterCloseShowsAllCallsUnchanged() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        root.findViewById(R.id.owner_call_dialog_close_button).performClick();
+
+        controller.reopenDialog(NOW);
+
+        Assert.assertEquals(View.VISIBLE, dialog(root).getVisibility());
+        Assert.assertEquals("1 / 2", positionText(root));
+        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
+    }
+
+    @Test
+    public void switchingToAnotherSessionAndReturningShowsAllCallsAgainAfterClose() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
@@ -112,8 +112,24 @@ public class OwnerCallDialogControllerTest {
         controller.showCallsForSession(SECOND_SESSION, NOW);
         controller.showCallsForSession(FIRST_SESSION, NOW);
 
-        Assert.assertEquals("1 / 1", positionText(root));
-        Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
+        Assert.assertEquals(View.VISIBLE, dialog(root).getVisibility());
+        Assert.assertEquals("1 / 2", positionText(root));
+        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
+    }
+
+    @Test
+    public void callListIsUnchangedAfterCloseAndReopen() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        String positionBeforeClose = positionText(root);
+        String bodyBeforeClose = bodyText(root);
+
+        root.findViewById(R.id.owner_call_dialog_close_button).performClick();
+        controller.reopenDialog(NOW);
+
+        Assert.assertEquals(positionBeforeClose, positionText(root));
+        Assert.assertEquals(bodyBeforeClose, bodyText(root));
     }
 
     @Test
@@ -130,7 +146,7 @@ public class OwnerCallDialogControllerTest {
     }
 
     @Test
-    public void closingACallOfOneSessionLeavesTheCallsOfTheOtherSessionAlone() {
+    public void closingForOneSessionDoesNotAffectTheCallsOfAnotherSession() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);

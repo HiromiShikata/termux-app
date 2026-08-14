@@ -919,6 +919,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         OwnerCallDialogRelayoutWatcher.watchTerminalArea(mTerminalView,
             this::renderUnansweredOwnerCallsOfDisplayedSession);
 
+        View ownerCallPendingIndicator = findViewById(R.id.owner_call_pending_indicator);
+        if (ownerCallPendingIndicator != null) {
+            OwnerCallDialogController controller = mOwnerCallDialogController;
+            ownerCallPendingIndicator.setOnClickListener(
+                v -> controller.reopenDialog(System.currentTimeMillis()));
+        }
+
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onCreate();
 
@@ -1157,8 +1164,19 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void renderUnansweredOwnerCallsOfDisplayedSession() {
         if (mOwnerCallDialogController == null) return;
 
-        mOwnerCallDialogController.showCallsForSession(displayedSessionName(),
-            System.currentTimeMillis());
+        String sessionName = displayedSessionName();
+        mOwnerCallDialogController.showCallsForSession(sessionName, System.currentTimeMillis());
+        updateOwnerCallPendingIndicator(sessionName);
+    }
+
+    private void updateOwnerCallPendingIndicator(@Nullable String sessionName) {
+        View indicator = findViewById(R.id.owner_call_pending_indicator);
+        if (indicator == null) return;
+        boolean hasCalls = !mOwnerCallInbox.callsFor(sessionName).isEmpty();
+        int newVisibility = hasCalls ? View.VISIBLE : View.GONE;
+        if (indicator.getVisibility() != newVisibility) {
+            indicator.setVisibility(newVisibility);
+        }
     }
 
     @Nullable
