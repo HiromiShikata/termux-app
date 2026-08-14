@@ -336,18 +336,22 @@ public final class DiagnosticsReportBuilder {
             builder.append("  Not measured\n");
             return;
         }
-        DiagnosticsTerminalDrawTime drawTime = condition.getTerminalDrawTime();
-        if (drawTime.hasDrawn()) {
-            builder.append("  Terminal last drew: ").append(drawTime.getMillisSinceLastDraw())
-                .append(" ms ago\n");
-        } else {
-            builder.append("  Terminal last drew: not since the process started\n");
-        }
+        appendDrawTimeLine(builder, "  Window last drew: ", condition.getWindowDrawTime());
+        appendDrawTimeLine(builder, "  Terminal last drew: ", condition.getTerminalDrawTime());
         builder.append("  Window visibility: ").append(condition.getWindowVisibility()).append('\n');
         builder.append("  Attached to a window: ")
             .append(condition.isAttachedToWindow() ? "yes" : "no").append('\n');
         builder.append("  Has window focus: ")
             .append(condition.hasWindowFocus() ? "yes" : "no").append('\n');
+    }
+
+    private void appendDrawTimeLine(@NonNull DiagnosticsReportText builder, @NonNull String label,
+                                    @NonNull DiagnosticsDrawTime drawTime) {
+        if (drawTime.hasDrawn()) {
+            builder.append(label).append(drawTime.getMillisSinceLastDraw()).append(" ms ago\n");
+            return;
+        }
+        builder.append(label).append("not since the process started\n");
     }
 
     private void appendReportDeliverySection(@NonNull DiagnosticsReportText builder,

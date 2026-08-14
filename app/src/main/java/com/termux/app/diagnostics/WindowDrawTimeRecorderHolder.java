@@ -2,11 +2,11 @@ package com.termux.app.diagnostics;
 
 import androidx.annotation.NonNull;
 
-public final class TerminalDrawTimeRecorderHolder {
+public final class WindowDrawTimeRecorderHolder {
 
     private static final DrawTimeRecorder INSTANCE = new DrawTimeRecorder();
 
-    private TerminalDrawTimeRecorderHolder() {
+    private WindowDrawTimeRecorderHolder() {
     }
 
     @NonNull

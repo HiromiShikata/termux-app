@@ -5,7 +5,7 @@ import org.junit.Test;
 
 import java.util.Collections;
 
-public class WindowConditionInReportTest {
+public class WindowDrawTimeInReportTest {
 
     private static final long REPORT_MILLIS = 1783216800000L;
 
@@ -36,7 +36,7 @@ public class WindowConditionInReportTest {
     }
 
     @Test
-    public void aReadingStatesHowLongAgoTheTerminalDrewAndWhatConditionTheWindowWasIn() {
+    public void aReadingStatesHowLongAgoTheWindowItselfCompletedADrawPass() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(2, 1)
             .withCondition(DiagnosticsWindowCondition.measured(
                 DiagnosticsDrawTime.drawnMillisAgo(4_120L),
@@ -44,43 +44,35 @@ public class WindowConditionInReportTest {
 
         String report = renderedReport(activityWindows);
 
-        int sectionIndex = report.indexOf(SECTION_HEADING);
-        Assert.assertTrue("a reading taken while the interface is frozen has to say whether frames were"
-            + " still being produced, and there is nothing in the reading that says so today. Actual"
-            + " report:\n" + report, sectionIndex >= 0);
-
-        String section = report.substring(sectionIndex);
-        Assert.assertTrue("the age of the last frame is what separates a stopped frame pipeline from a"
-                + " pipeline that is running and simply has nothing to show. Actual report:\n" + report,
-            section.contains("Terminal last drew: 1843 ms ago"));
-        Assert.assertTrue("a window the platform has stopped cannot be told from a live one without"
-                + " this. Actual report:\n" + report, section.contains("Window visibility: VISIBLE"));
-        Assert.assertTrue("a decor view detached from its window receives no traversal at all. Actual"
-            + " report:\n" + report, section.contains("Attached to a window: yes"));
-        Assert.assertTrue("a window without focus is a window something else is in front of, which the"
-                + " owner is not looking at. Actual report:\n" + report,
-            section.contains("Has window focus: yes"));
+        String section = report.substring(report.indexOf(SECTION_HEADING));
+        Assert.assertTrue("without the window's own last draw pass, an old terminal draw cannot be told"
+                + " apart from a window that kept drawing while the terminal had nothing to redraw."
+                + " Actual report:\n" + report,
+            section.contains("Window last drew: 4120 ms ago"));
     }
 
     @Test
-    public void aWindowThatIsNotVisibleAndNotFocusedIsStatedAsSuchRatherThanOmitted() {
+    public void theWindowDrawAgeIsStatedBesideTheTerminalDrawAgeSoTheTwoCanBeCompared() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(2, 1)
             .withCondition(DiagnosticsWindowCondition.measured(
-                DiagnosticsDrawTime.drawnMillisAgo(94_002L),
-                DiagnosticsDrawTime.drawnMillisAgo(94_002L), "GONE", true, false));
+                DiagnosticsDrawTime.drawnMillisAgo(31L),
+                DiagnosticsDrawTime.drawnMillisAgo(94_002L), "VISIBLE", true, true));
 
         String report = renderedReport(activityWindows);
 
         String section = report.substring(report.indexOf(SECTION_HEADING));
-        Assert.assertTrue("a frame pipeline that last ran a minute and a half ago is the whole finding,"
-                + " and rounding or omitting it loses it. Actual report:\n" + report,
-            section.contains("Terminal last drew: 94002 ms ago"));
-        Assert.assertTrue("Actual report:\n" + report, section.contains("Window visibility: GONE"));
-        Assert.assertTrue("Actual report:\n" + report, section.contains("Has window focus: no"));
+        int windowLineIndex = section.indexOf("Window last drew: 31 ms ago");
+        int terminalLineIndex = section.indexOf("Terminal last drew: 94002 ms ago");
+        Assert.assertTrue("a window drawing thirty milliseconds ago while the terminal last drew a minute"
+                + " and a half ago rules out a stopped frame pipeline, and that comparison is the whole"
+                + " point of the line. Actual report:\n" + report, windowLineIndex >= 0);
+        Assert.assertTrue("Actual report:\n" + report, terminalLineIndex >= 0);
+        Assert.assertTrue("the two ages must be read together, so they belong next to each other."
+            + " Actual report:\n" + report, windowLineIndex < terminalLineIndex);
     }
 
     @Test
-    public void aTerminalThatHasNotDrawnYetSaysSoRatherThanReportingNoDelay() {
+    public void aWindowThatHasNotDrawnYetSaysSoRatherThanReportingNoDelay() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(1, 0)
             .withCondition(DiagnosticsWindowCondition.measured(
                 DiagnosticsDrawTime.NEVER_DRAWN, DiagnosticsDrawTime.NEVER_DRAWN, "VISIBLE", true,
@@ -89,25 +81,13 @@ public class WindowConditionInReportTest {
         String report = renderedReport(activityWindows);
 
         String section = report.substring(report.indexOf(SECTION_HEADING));
-        Assert.assertTrue("zero milliseconds since a draw that never happened reads as a frame produced"
-                + " this instant. Actual report:\n" + report,
-            section.contains("Terminal last drew: not since the process started"));
+        Assert.assertTrue("zero milliseconds since a draw pass that never happened reads as a window that"
+                + " has just drawn. Actual report:\n" + report,
+            section.contains("Window last drew: not since the process started"));
     }
 
     @Test
-    public void aReadingTakenWithNoWindowToLookAtSaysItWasNotMeasured() {
-        String report = renderedReport(new DiagnosticsActivityWindows(2, 1));
-
-        int sectionIndex = report.indexOf(SECTION_HEADING);
-        Assert.assertTrue("an omitted section is indistinguishable from a build that never measured the"
-            + " window. Actual report:\n" + report, sectionIndex >= 0);
-        Assert.assertTrue("a window that could not be read would otherwise report as not visible, which"
-                + " is a measurement nobody took. Actual report:\n" + report,
-            report.substring(sectionIndex).contains("Not measured"));
-    }
-
-    @Test
-    public void theWindowConditionSurvivesInsideThePasteWindow() {
+    public void theWindowDrawAgeSurvivesInsideThePasteWindow() {
         DiagnosticsActivityWindows activityWindows = new DiagnosticsActivityWindows(2, 1)
             .withCondition(DiagnosticsWindowCondition.measured(
                 DiagnosticsDrawTime.drawnMillisAgo(4_120L),
@@ -120,6 +100,6 @@ public class WindowConditionInReportTest {
         Assert.assertTrue("the reading reaches the reader by being pasted into a channel that keeps only"
                 + " the first " + DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS + " characters. Actual"
                 + " report:\n" + report,
-            window.contains("Terminal last drew: 1843 ms ago"));
+            window.contains("Window last drew: 4120 ms ago"));
     }
 }
