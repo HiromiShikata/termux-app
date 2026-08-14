@@ -19,10 +19,22 @@ public final class DiagnosticsMainThreadStalls {
     private final long mStackSampleAttemptCount;
     private final long mEmptyStackSampleCount;
 
+    @NonNull
+    private final DiagnosticsRenderThread mRenderThread;
+
     public DiagnosticsMainThreadStalls(long thresholdMillis, long stallCount, long maxStallMillis,
                                        @NonNull String maxStallStackTrace,
                                        @NonNull List<MainThreadStallHotPath> hotPaths,
                                        long stackSampleAttemptCount, long emptyStackSampleCount) {
+        this(thresholdMillis, stallCount, maxStallMillis, maxStallStackTrace, hotPaths,
+            stackSampleAttemptCount, emptyStackSampleCount, DiagnosticsRenderThread.NOT_TAKEN);
+    }
+
+    private DiagnosticsMainThreadStalls(long thresholdMillis, long stallCount, long maxStallMillis,
+                                        @NonNull String maxStallStackTrace,
+                                        @NonNull List<MainThreadStallHotPath> hotPaths,
+                                        long stackSampleAttemptCount, long emptyStackSampleCount,
+                                        @NonNull DiagnosticsRenderThread renderThread) {
         mThresholdMillis = thresholdMillis;
         mStallCount = stallCount;
         mMaxStallMillis = maxStallMillis;
@@ -30,6 +42,20 @@ public final class DiagnosticsMainThreadStalls {
         mHotPaths = hotPaths;
         mStackSampleAttemptCount = stackSampleAttemptCount;
         mEmptyStackSampleCount = emptyStackSampleCount;
+        mRenderThread = renderThread;
+    }
+
+    @NonNull
+    public DiagnosticsMainThreadStalls withRenderThread(
+        @NonNull DiagnosticsRenderThread renderThread) {
+        return new DiagnosticsMainThreadStalls(mThresholdMillis, mStallCount, mMaxStallMillis,
+            mMaxStallStackTrace, mHotPaths, mStackSampleAttemptCount, mEmptyStackSampleCount,
+            renderThread);
+    }
+
+    @NonNull
+    public DiagnosticsRenderThread getRenderThread() {
+        return mRenderThread;
     }
 
     @NonNull
