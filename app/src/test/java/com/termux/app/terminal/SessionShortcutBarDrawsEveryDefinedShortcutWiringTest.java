@@ -43,16 +43,27 @@ public class SessionShortcutBarDrawsEveryDefinedShortcutWiringTest {
         String source = readSource(CONTROLLER_RELATIVE_PATH);
 
         String rebuildBody = methodBody(source, "private void rebuildSessionShortcuts(");
+        String fillShortcutRowBody = methodBody(source, "private void fillShortcutRow(");
 
+        Assert.assertTrue("both rows must be planned by the planner alone, so no runtime state decides"
+                + " whether a configured shortcut exists. Actual body:\n" + rebuildBody,
+            rebuildBody.contains("mSessionShortcutBarPlanner.planRightToLeftShortcutRows("));
+        Assert.assertTrue("the upper row must be filled from the planned always-on session list."
+                + " Actual body:\n" + rebuildBody,
+            rebuildBody.contains("rightToLeftShortcutRows.getAlwaysSessionShortcuts()"));
+        Assert.assertTrue("the lower row must be filled from the planned project manager session list."
+                + " Actual body:\n" + rebuildBody,
+            rebuildBody.contains("rightToLeftShortcutRows.getProjectManagerSessionShortcuts()"));
         Assert.assertTrue("the shortcut bar must render every planned shortcut, so the render list must"
-                + " come from the planned list alone. Actual body:\n" + rebuildBody,
-            rebuildBody.contains("SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts)"));
+                + " come from the planned list alone. Actual body:\n" + fillShortcutRowBody,
+            fillShortcutRowBody.contains(
+                "SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts)"));
         Assert.assertFalse("no shortcut may be dropped because its target session does not exist yet."
-                + " Actual body:\n" + rebuildBody,
-            rebuildBody.contains("renderOrderPresentShortcuts"));
+                + " Actual source:\n" + source,
+            source.contains("renderOrderPresentShortcuts"));
         Assert.assertFalse("the render loop must not skip a shortcut whose target session is absent."
-                + " Actual body:\n" + rebuildBody,
-            rebuildBody.contains("if (targetSession == null)"));
+                + " Actual source:\n" + source,
+            source.contains("if (targetSession == null)"));
     }
 
     @Test
