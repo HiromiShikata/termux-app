@@ -124,15 +124,21 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             Configuration.ORIENTATION_PORTRAIT);
         awaitDialogShowing(scenario, "1 / 3");
         assertDialogMatchesTheSpecification(scenario);
+        File portraitScreenshot = captureScreenshot(scenario, "owner-call-dialog-device-portrait.png");
         assertNotNull("the portrait device screenshot must reach the directory the workflow pulls",
-            captureScreenshot(scenario, "owner-call-dialog-device-portrait.png"));
+            portraitScreenshot);
+        assertTrue("the portrait device screenshot must be non-empty",
+            portraitScreenshot.exists() && portraitScreenshot.length() > 0);
 
         setOrientation(scenario, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             Configuration.ORIENTATION_LANDSCAPE);
         awaitDialogShowing(scenario, "1 / 3");
         assertDialogMatchesTheSpecification(scenario);
+        File landscapeScreenshot = captureScreenshot(scenario, "owner-call-dialog-device-landscape.png");
         assertNotNull("the landscape device screenshot must reach the directory the workflow pulls",
-            captureScreenshot(scenario, "owner-call-dialog-device-landscape.png"));
+            landscapeScreenshot);
+        assertTrue("the landscape device screenshot must be non-empty",
+            landscapeScreenshot.exists() && landscapeScreenshot.length() > 0);
 
         scenario.onActivity(activity -> {
             activity.findViewById(R.id.owner_call_dialog_next_button).performClick();
@@ -174,8 +180,11 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     public void theDragMovesTheDialogAndThePositionSurvivesATerminalScreenUpdate() throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
         awaitDialogShowing(scenario, "1 / 3");
-        assertNotNull("portrait screenshot before drag must reach the artifact directory",
-            captureScreenshot(scenario, "owner-call-dialog-device-before-drag.png"));
+        File screenshotBeforeDrag = captureScreenshot(scenario, "owner-call-dialog-device-before-drag.png");
+        assertNotNull("portrait screenshot before drag must reach the directory the workflow pulls",
+            screenshotBeforeDrag);
+        assertTrue("portrait screenshot before drag must be non-empty",
+            screenshotBeforeDrag.exists() && screenshotBeforeDrag.length() > 0);
 
         AtomicInteger initialBottom = new AtomicInteger();
         AtomicInteger headerScreenX = new AtomicInteger();
@@ -228,8 +237,11 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             assertTrue("the real drag gesture must move the dialog upward",
                 p.bottomMargin > initialBottom.get());
         });
-        assertNotNull("portrait screenshot after drag must reach the artifact directory",
-            captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png"));
+        File screenshotAfterDrag = captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png");
+        assertNotNull("portrait screenshot after drag must reach the directory the workflow pulls",
+            screenshotAfterDrag);
+        assertTrue("portrait screenshot after drag must be non-empty",
+            screenshotAfterDrag.exists() && screenshotAfterDrag.length() > 0);
 
         scenario.onActivity(activity -> activity.showUnansweredOwnerCallsOfDisplayedSession());
         instrumentation.waitForIdleSync();
@@ -240,8 +252,11 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             assertTrue("position must survive a terminal screen update re-bind",
                 p.bottomMargin > initialBottom.get());
         });
-        assertNotNull("portrait screenshot after re-bind must reach the artifact directory",
-            captureScreenshot(scenario, "owner-call-dialog-device-after-rebind.png"));
+        File screenshotAfterRebind = captureScreenshot(scenario, "owner-call-dialog-device-after-rebind.png");
+        assertNotNull("portrait screenshot after re-bind must reach the directory the workflow pulls",
+            screenshotAfterRebind);
+        assertTrue("portrait screenshot after re-bind must be non-empty",
+            screenshotAfterRebind.exists() && screenshotAfterRebind.length() > 0);
     }
 
     @Test
@@ -525,36 +540,23 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         Canvas canvas = new Canvas(bitmap);
         canvas.drawColor(TERMINAL_BACKGROUND_COLOR);
         root.draw(canvas);
-
-        File written = null;
-        for (File directory : screenshotTargetDirectories()) {
-            File output = new File(directory, fileName);
-            try (FileOutputStream stream = new FileOutputStream(output)) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-            } catch (IOException unwritableScreenshot) {
-                continue;
-            }
-            if (output.length() > 0) {
-                written = output;
-            }
+        File output = new File(sharedScreenshotDirectory(), fileName);
+        try (FileOutputStream stream = new FileOutputStream(output)) {
+            assertTrue("PNG compression must succeed for " + fileName,
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream));
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
         }
-        return written;
+        return output;
     }
 
-    private static List<File> screenshotTargetDirectories() {
-        List<File> directories = new ArrayList<>();
-        File sharedDirectory =
-            new File(Environment.getExternalStorageDirectory(), SCREENSHOT_DIRECTORY_NAME);
-        if (sharedDirectory.exists() || sharedDirectory.mkdirs()) {
-            directories.add(sharedDirectory);
+    private static File sharedScreenshotDirectory() {
+        File directory = new File(Environment.getExternalStorageDirectory(), SCREENSHOT_DIRECTORY_NAME);
+        if (!directory.exists()) {
+            assertTrue("shared screenshot directory must be creatable so screenshots reach the "
+                + "directory the workflow pulls", directory.mkdirs());
         }
-        File appExternalFilesDirectory = InstrumentationRegistry.getInstrumentation()
-            .getTargetContext().getExternalFilesDir(null);
-        if (appExternalFilesDirectory != null
-            && (appExternalFilesDirectory.exists() || appExternalFilesDirectory.mkdirs())) {
-            directories.add(appExternalFilesDirectory);
-        }
-        return directories;
+        return directory;
     }
 
     private static String textOf(Activity activity, int viewId) {
