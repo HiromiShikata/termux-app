@@ -81,8 +81,7 @@ public class TouchEventsInReportTest {
 
     @Test
     public void aRunInWhichTheViewWasNeverTouchedIsReportedAsMeasuredRatherThanOmitted() {
-        String report = renderedReportOf(DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+        String report = renderedReportOf(DiagnosticsTouchEvents.NONE);
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("an absent section reads as an unmeasured application, which is the state a"

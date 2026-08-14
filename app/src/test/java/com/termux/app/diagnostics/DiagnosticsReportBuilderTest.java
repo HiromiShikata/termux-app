@@ -867,7 +867,8 @@ public class DiagnosticsReportBuilderTest {
             DiagnosticsMainLooperQueue.parse(looperDumpLines), ScrollbarViewCensus.empty(), 0L, NO_BACKGROUND_CYCLE, DiagnosticsVersionChange.sameVersionAsThePreviousLaunch(), DiagnosticsShellExits.NONE, DiagnosticsPhantomProcessMonitor.UNMEASURED, DiagnosticsAppProcessPopulation.UNMEASURED,
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
-            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE));
+            DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
+            DiagnosticsPreviousProcessExits.NOT_TAKEN));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
                 + " truncation never happens and this test proves nothing, but it is only "
