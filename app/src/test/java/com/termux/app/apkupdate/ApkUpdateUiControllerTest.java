@@ -26,6 +26,7 @@ public class ApkUpdateUiControllerTest {
     private static final class FakeUpdateManager extends ApkUpdateManager {
         boolean reportAvailable = true;
         boolean autoCompleteDownload = true;
+        boolean downloadFails;
         int checkCount;
         int downloadCount;
         File downloadedFile;
@@ -49,6 +50,10 @@ public class ApkUpdateUiControllerTest {
         public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes,
                                 DownloadListener listener) {
             downloadCount++;
+            if (downloadFails) {
+                listener.onDownloadFailed("the release host could not be reached");
+                return;
+            }
             if (autoCompleteDownload) {
                 listener.onDownloaded(downloadedFile);
             } else {
@@ -127,7 +132,8 @@ public class ApkUpdateUiControllerTest {
     }
 
     @Test
-    public void checkAndShowFloatingIndicatorAutoDownloadsFirstAndOnlyThenOffersTheDialog() throws IOException {
+    public void checkAndShowFloatingIndicatorAutoDownloadsThenStartsTheSystemInstallerWithoutAnyTap()
+        throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -137,35 +143,35 @@ public class ApkUpdateUiControllerTest {
 
         controller.checkAndShowFloatingIndicator(indicatorView);
 
-        Assert.assertNotNull("the dialog must be offered once the APK is ready, without any tap",
+        Assert.assertNull("no dialog of our own may stand in front of the system installer",
             ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the update APK must auto-download without any tap", 1, manager.downloadCount);
         Assert.assertEquals("the floating install button must surface directly", 1, indicatorView.shownVersions.size());
         Assert.assertEquals("1.2.3", indicatorView.shownVersions.get(0));
-        Assert.assertTrue("nothing must be installed until the button is tapped", installer.installedFiles.isEmpty());
+        Assert.assertEquals("the ready APK must reach the system installer without any tap",
+            1, installer.installedFiles.size());
     }
 
     @Test
-    public void deferringKeepsTheDownloadedApkReadyForALaterInstall() throws IOException {
+    public void aFailedPreDownloadSurfacesTheButtonAndStartsNoInstaller() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
+        manager.downloadFails = true;
         FakeApkInstaller installer = new FakeApkInstaller(activity);
+        RecordingIndicatorView indicatorView = new RecordingIndicatorView();
         ApkUpdateUiController controller = new ApkUpdateUiController(activity, manager, installer);
 
-        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+        controller.checkAndShowFloatingIndicator(indicatorView);
 
-        RecordingIndicatorView reopenedIndicatorView = new RecordingIndicatorView();
-        controller.showPendingIndicatorIfAny(reopenedIndicatorView);
-
-        Assert.assertEquals("the downloaded APK is kept ready so the button re-surfaces without re-downloading",
-            1, reopenedIndicatorView.shownVersions.size());
-        Assert.assertEquals("deferring the install must never trigger a re-download", 1, manager.downloadCount);
-        Assert.assertTrue("deferring must never install", installer.installedFiles.isEmpty());
+        Assert.assertEquals("a failed download still has to leave the button to retry from",
+            1, indicatorView.shownVersions.size());
+        Assert.assertTrue("without an APK on the device the system installer must not be started",
+            installer.installedFiles.isEmpty());
     }
 
     @Test
-    public void tappingTheButtonInstallsTheKeptApkWithoutReDownloading() throws IOException {
+    public void tappingTheButtonAfterACancelledInstallReusesTheKeptApkWithoutReDownloading() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         File cachedApk = newValidApkFile();
@@ -175,16 +181,19 @@ public class ApkUpdateUiControllerTest {
         ApkUpdateUiController controller = new ApkUpdateUiController(activity, manager, installer);
 
         controller.checkAndShowFloatingIndicator(indicatorView);
+        Assert.assertEquals("the ready APK must reach the system installer without any tap",
+            1, installer.installedFiles.size());
         Assert.assertNotNull(indicatorView.lastTapAction);
         indicatorView.lastTapAction.run();
 
-        Assert.assertEquals("tapping installs the update", 1, installer.installedFiles.size());
-        Assert.assertEquals(cachedApk.getAbsolutePath(), installer.installedFiles.get(0).getAbsolutePath());
+        Assert.assertEquals("tapping the button after a cancelled install starts the installer again",
+            2, installer.installedFiles.size());
+        Assert.assertEquals(cachedApk.getAbsolutePath(), installer.installedFiles.get(1).getAbsolutePath());
         Assert.assertEquals("the kept APK is reused, not downloaded again", 1, manager.downloadCount);
     }
 
     @Test
-    public void userInitiatedSettingsCheckAutoDownloadsFirstAndOnlyThenOffersTheDialog() throws IOException {
+    public void userInitiatedSettingsCheckAutoDownloadsThenStartsTheSystemInstaller() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -193,10 +202,11 @@ public class ApkUpdateUiControllerTest {
 
         controller.checkAndPrompt(true);
 
-        Assert.assertNotNull("the settings check must offer the dialog once the APK is ready",
+        Assert.assertNull("no dialog of our own may stand in front of the system installer",
             ShadowAlertDialog.getLatestAlertDialog());
         Assert.assertEquals("the settings check must auto-download in the background", 1, manager.downloadCount);
-        Assert.assertTrue("the settings check must not install without a tap", installer.installedFiles.isEmpty());
+        Assert.assertEquals("the settings check must reach the system installer once the APK is ready",
+            1, installer.installedFiles.size());
     }
 
     @Test
@@ -215,7 +225,7 @@ public class ApkUpdateUiControllerTest {
             1, manager.downloadCount);
 
         manager.completePendingDownload();
-        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+        controller.checkAndPrompt(true);
 
         Assert.assertEquals("once the in-progress download completes the guard is cleared so a later event may download",
             2, manager.downloadCount);
@@ -272,10 +282,8 @@ public class ApkUpdateUiControllerTest {
     private ApkUpdateUiController controllerWithACancelledInstallBehind(Activity activity,
                                                                        FakeUpdateManager manager,
                                                                        FakeApkInstaller installer) {
-        RecordingIndicatorView indicatorView = new RecordingIndicatorView();
         ApkUpdateUiController controller = new ApkUpdateUiController(activity, manager, installer);
-        controller.checkAndShowFloatingIndicator(indicatorView);
-        indicatorView.lastTapAction.run();
+        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
         Assert.assertEquals("the install must have been launched before it is cancelled",
             1, installer.installedFiles.size());
         return controller;
@@ -297,7 +305,7 @@ public class ApkUpdateUiControllerTest {
     }
 
     @Test
-    public void aCheckTheUserAsksForAfterCancellingAnInstallBringsTheUpdateButtonBack() throws IOException {
+    public void aCheckTheUserAsksForAfterCancellingAnInstallStartsTheSystemInstallerAgain() throws IOException {
         Activity activity = newActivity();
         FakeUpdateManager manager = new FakeUpdateManager(activity);
         manager.downloadedFile = newValidApkFile();
@@ -306,12 +314,8 @@ public class ApkUpdateUiControllerTest {
 
         controller.checkAndPrompt(true);
 
-        RecordingIndicatorView reopenedIndicatorView = new RecordingIndicatorView();
-        controller.showPendingIndicatorIfAny(reopenedIndicatorView);
-
-        Assert.assertEquals("the update button must surface again once the user asked for a check",
-            1, reopenedIndicatorView.shownVersions.size());
-        Assert.assertEquals("1.2.3", reopenedIndicatorView.shownVersions.get(0));
+        Assert.assertEquals("a check the user asks for has to reach the system installer again",
+            2, installer.installedFiles.size());
     }
 
     @Test
