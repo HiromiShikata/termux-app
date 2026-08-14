@@ -21,6 +21,7 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 public class HttpOwnerCallFileTransportTest {
 
+    private static final String ACCESS_TOKEN = "test-access-token";
     private static final String OWNER_CALL_FILE =
         "---\nsessionName: \"secretary\"\ncalledAt: \"2026-08-14T04:22:28Z\"\n"
             + "body: |2\n  Decide whether the previous addresses may be deleted in bulk.\n";
@@ -35,7 +36,7 @@ public class HttpOwnerCallFileTransportTest {
     }
 
     @After
-    public void stopTheServer() throws IOException {
+    public void stopTheServer() throws IOException, InterruptedException {
         server.stop();
     }
 
@@ -57,22 +58,38 @@ public class HttpOwnerCallFileTransportTest {
     public void reportsThatTheFileCannotBeReadWhenTheServerRejectsTheAccessToken() {
         server.answerWith(401, "");
 
-        Assert.assertThrows(IOException.class, () -> transport.fetch(server.url()));
+        IOException unreadableFile = Assert.assertThrows(IOException.class,
+            () -> transport.fetch(server.url()));
+
+        assertCarriesNoAccessToken(unreadableFile);
     }
 
     @Test
     public void reportsThatTheFileCannotBeReadWhenTheServerFails() {
         server.answerWith(500, "");
 
-        Assert.assertThrows(IOException.class, () -> transport.fetch(server.url()));
+        IOException unreadableFile = Assert.assertThrows(IOException.class,
+            () -> transport.fetch(server.url()));
+
+        assertCarriesNoAccessToken(unreadableFile);
     }
 
     @Test
     public void reportsThatTheFileCannotBeReadWhenNothingAnswers() throws IOException {
-        String unusedUrl = server.url();
-        server.stop();
+        String urlOfAPortNothingEverListenedOn = ownerCallFileUrlOfPort(portNothingListensOn());
 
-        Assert.assertThrows(IOException.class, () -> transport.fetch(unusedUrl));
+        IOException unreachableServer = Assert.assertThrows(IOException.class,
+            () -> transport.fetch(urlOfAPortNothingEverListenedOn));
+
+        assertCarriesNoAccessToken(unreachableServer);
+    }
+
+    @Test
+    public void reportsThatTheFileCannotBeReadOverAProtocolItDoesNotSpeak() {
+        IOException unusableUrl = Assert.assertThrows(IOException.class, () -> transport.fetch(
+            "ftp://127.0.0.1/in-tmux-by-human/call-to-user/NA/secretary.yaml?k=" + ACCESS_TOKEN));
+
+        assertCarriesNoAccessToken(unusableUrl);
     }
 
     @Test
@@ -95,19 +112,45 @@ public class HttpOwnerCallFileTransportTest {
     public void reportsThatTheFileCannotBeDeletedWhenTheServerFails() {
         server.answerWith(500, "");
 
-        Assert.assertThrows(IOException.class, () -> transport.delete(server.url()));
+        IOException undeletableFile = Assert.assertThrows(IOException.class,
+            () -> transport.delete(server.url()));
+
+        assertCarriesNoAccessToken(undeletableFile);
+    }
+
+    private static void assertCarriesNoAccessToken(IOException failure) {
+        Assert.assertFalse("a failure the app logs must not carry the access token: "
+            + failure.getMessage(), failure.getMessage().contains(ACCESS_TOKEN));
+    }
+
+    private static int portNothingListensOn() throws IOException {
+        try (ServerSocket probe = new ServerSocket(0, 0, InetAddress.getByName("127.0.0.1"))) {
+            return probe.getLocalPort();
+        }
+    }
+
+    private static String ownerCallFileUrl(ServerSocket serverSocket) {
+        return ownerCallFileUrlOfPort(serverSocket.getLocalPort());
+    }
+
+    private static String ownerCallFileUrlOfPort(int port) {
+        return "http://127.0.0.1:" + port
+            + "/in-tmux-by-human/call-to-user/NA/secretary.yaml?k=" + ACCESS_TOKEN;
     }
 
     private static final class AnsweringServer {
 
+        private static final long STOP_TIMEOUT_MILLIS = 5000L;
+
         private ServerSocket serverSocket;
+        private Thread acceptThread;
         private volatile int statusCode = 200;
         private volatile String body = "";
         private final List<String> receivedMethods = Collections.synchronizedList(new ArrayList<>());
 
         void start() throws IOException {
             serverSocket = new ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"));
-            Thread acceptThread = new Thread(this::acceptRequests);
+            acceptThread = new Thread(this::acceptRequests);
             acceptThread.setDaemon(true);
             acceptThread.start();
         }
@@ -118,8 +161,7 @@ public class HttpOwnerCallFileTransportTest {
         }
 
         String url() {
-            return "http://127.0.0.1:" + serverSocket.getLocalPort()
-                + "/in-tmux-by-human/call-to-user/NA/secretary.yaml?k=token";
+            return ownerCallFileUrl(serverSocket);
         }
 
         List<String> receivedMethods() {
@@ -161,8 +203,13 @@ public class HttpOwnerCallFileTransportTest {
             return head.toString();
         }
 
-        void stop() throws IOException {
+        void stop() throws IOException, InterruptedException {
             serverSocket.close();
+            acceptThread.join(STOP_TIMEOUT_MILLIS);
+            if (acceptThread.isAlive()) {
+                throw new IllegalStateException("the local server kept accepting requests after "
+                    + "it was stopped");
+            }
         }
     }
 }

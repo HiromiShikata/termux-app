@@ -19,6 +19,8 @@ public final class OwnerCallInbox {
         void onOwnerCallsChanged();
     }
 
+    public static final long MINIMUM_READ_INTERVAL_MILLIS = 60000L;
+
     private static final String LOG_TAG = "OwnerCallInbox";
 
     @NonNull
@@ -39,6 +41,11 @@ public final class OwnerCallInbox {
     @Nullable
     private String mFileUrlBeingRead;
 
+    @Nullable
+    private String mLastReadFileUrl;
+
+    private long mLastReadAtMillis;
+
     public OwnerCallInbox() {
         this(new HttpOwnerCallFileTransport());
     }
@@ -50,18 +57,30 @@ public final class OwnerCallInbox {
     public void refreshFor(@Nullable String sessionName,
                            boolean sessionHasUnansweredCall,
                            @Nullable String fileUrl,
+                           long nowMillis,
                            @NonNull OnOwnerCallsChangedListener listener) {
         if (sessionName == null || sessionName.isEmpty() || !sessionHasUnansweredCall
             || fileUrl == null) {
             forget();
             return;
         }
-        if (fileUrl.equals(mReadFileUrl) || fileUrl.equals(mFileUrlBeingRead)) {
+        if (fileUrl.equals(mReadFileUrl) || fileUrl.equals(mFileUrlBeingRead)
+            || wasReadWithinTheMinimumInterval(fileUrl, nowMillis)) {
             return;
         }
         forget();
         mFileUrlBeingRead = fileUrl;
+        mLastReadFileUrl = fileUrl;
+        mLastReadAtMillis = nowMillis;
         readFile(sessionName, fileUrl, listener);
+    }
+
+    private boolean wasReadWithinTheMinimumInterval(@NonNull String fileUrl, long nowMillis) {
+        if (!fileUrl.equals(mLastReadFileUrl)) {
+            return false;
+        }
+        long sinceLastRead = nowMillis - mLastReadAtMillis;
+        return sinceLastRead >= 0 && sinceLastRead < MINIMUM_READ_INTERVAL_MILLIS;
     }
 
     @NonNull
@@ -147,5 +166,7 @@ public final class OwnerCallInbox {
         mHeldSessionName = null;
         mReadFileUrl = null;
         mFileUrlBeingRead = null;
+        mLastReadFileUrl = null;
+        mLastReadAtMillis = 0;
     }
 }

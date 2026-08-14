@@ -99,7 +99,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     }
 
     @After
-    public void stopTheOwnerCallServer() {
+    public void stopTheOwnerCallServer() throws InterruptedException {
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
             server.stop();
@@ -398,6 +398,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final class LocalOwnerCallServer {
 
         private ServerSocket serverSocket;
+        private static final long STOP_TIMEOUT_MILLIS = 5000L;
+
         private Thread acceptThread;
         private volatile boolean running;
         private volatile IOException failure;
@@ -508,7 +510,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             socket.shutdownOutput();
         }
 
-        void stop() {
+        void stop() throws InterruptedException {
             running = false;
             RUNNING_SERVER.set(null);
             try {
@@ -516,6 +518,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             } catch (IOException alreadyClosed) {
                 throw new IllegalStateException(alreadyClosed);
             }
+            acceptThread.join(STOP_TIMEOUT_MILLIS);
         }
     }
 }

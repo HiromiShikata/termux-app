@@ -21,6 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RunWith(RobolectricTestRunner.class)
 public class OwnerCallInboxTest {
 
+    private static final long NOW = 1786681348000L;
+    private static final long MINIMUM_READ_INTERVAL_MILLIS =
+        OwnerCallInbox.MINIMUM_READ_INTERVAL_MILLIS;
+
     private static final String SESSION_URL =
         "https://github.com/HiromiShikata/termux-app/issues/1884";
     private static final String OTHER_SESSION_URL =
@@ -96,7 +100,7 @@ public class OwnerCallInboxTest {
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
         AtomicInteger changes = new AtomicInteger();
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, changes::incrementAndGet);
         flushMainLooper();
 
         Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
@@ -112,7 +116,7 @@ public class OwnerCallInboxTest {
         transport.register(SESSION_FILE_URL, TWO_CALLS);
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
 
-        inbox.refreshFor(SESSION_URL, false, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, false, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
 
@@ -127,11 +131,12 @@ public class OwnerCallInboxTest {
         transport.register(OTHER_SESSION_FILE_URL, FOREIGN_CALL);
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
-        });
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL,
+            NOW + MINIMUM_READ_INTERVAL_MILLIS * 3, () -> {
+            });
         flushMainLooper();
 
         Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
@@ -145,7 +150,7 @@ public class OwnerCallInboxTest {
         transport.register(SESSION_FILE_URL, FOREIGN_CALL);
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
 
@@ -161,10 +166,10 @@ public class OwnerCallInboxTest {
             "Decide whether the branch may be deleted."));
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
-        inbox.refreshFor(OTHER_SESSION_URL, true, OTHER_SESSION_FILE_URL, () -> {
+        inbox.refreshFor(OTHER_SESSION_URL, true, OTHER_SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
 
@@ -177,7 +182,7 @@ public class OwnerCallInboxTest {
         RecordingTransport transport = new RecordingTransport();
         transport.register(SESSION_FILE_URL, TWO_CALLS);
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
         AtomicInteger changes = new AtomicInteger();
@@ -197,13 +202,13 @@ public class OwnerCallInboxTest {
         transport.register(SESSION_FILE_URL, TWO_CALLS);
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
-        inbox.refreshFor(SESSION_URL, false, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, false, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
 
@@ -217,7 +222,7 @@ public class OwnerCallInboxTest {
         OwnerCallInbox inbox = new OwnerCallInbox(
             failingTransport(new IOException("failed to connect to calls.example.test")));
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, changes::incrementAndGet);
         flushMainLooper();
 
         Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
@@ -230,7 +235,7 @@ public class OwnerCallInboxTest {
         OwnerCallInbox inbox = new OwnerCallInbox(
             failingTransport(new IOException("Unexpected HTTP response code 401")));
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, changes::incrementAndGet);
         flushMainLooper();
 
         Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
@@ -245,7 +250,7 @@ public class OwnerCallInboxTest {
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
         AtomicInteger changes = new AtomicInteger();
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, changes::incrementAndGet);
         flushMainLooper();
 
         Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
@@ -259,17 +264,64 @@ public class OwnerCallInboxTest {
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
         AtomicInteger changes = new AtomicInteger();
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, changes::incrementAndGet);
         flushMainLooper();
         Assert.assertTrue(inbox.callsFor(SESSION_URL).isEmpty());
         Assert.assertEquals(0, changes.get());
 
         transport.register(SESSION_FILE_URL, TWO_CALLS);
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, changes::incrementAndGet);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + MINIMUM_READ_INTERVAL_MILLIS,
+            changes::incrementAndGet);
         flushMainLooper();
 
         Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
         Assert.assertEquals(1, changes.get());
+    }
+
+    @Test
+    public void readsTheFileAtMostOnceInTheMinimumIntervalWhileItHoldsNoCall() throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, "");
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
+        });
+        flushMainLooper();
+        for (long screenUpdate = 1; screenUpdate < MINIMUM_READ_INTERVAL_MILLIS;
+             screenUpdate += MINIMUM_READ_INTERVAL_MILLIS / 10) {
+            inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + screenUpdate, () -> {
+            });
+        }
+        flushMainLooper();
+
+        Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + MINIMUM_READ_INTERVAL_MILLIS,
+            () -> {
+            });
+        flushMainLooper();
+
+        Assert.assertEquals(2, transport.fetchedUrls.size());
+    }
+
+    @Test
+    public void readsTheFileOnceWhileItHoldsTheCallsItFound() throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, TWO_CALLS);
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
+        });
+        flushMainLooper();
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + 1, () -> {
+        });
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL,
+            NOW + MINIMUM_READ_INTERVAL_MILLIS * 5, () -> {
+            });
+        flushMainLooper();
+
+        Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
+        Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
     }
 
     @Test
@@ -293,7 +345,7 @@ public class OwnerCallInboxTest {
             }
         });
 
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
 
         Assert.assertTrue("the file is read off the thread that opens the session",
@@ -312,7 +364,7 @@ public class OwnerCallInboxTest {
         transport.register(SESSION_FILE_URL, TWO_CALLS);
         transport.refuseDeletion();
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
-        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, () -> {
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
         });
         flushMainLooper();
         AtomicInteger changes = new AtomicInteger();

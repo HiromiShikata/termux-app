@@ -1144,7 +1144,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         String sessionName = displayedSessionName();
         mOwnerCallInbox.refreshFor(sessionName, sessionIsCallingTheOwner(sessionName),
-            ownerCallFileUrlForSession(sessionName),
+            ownerCallFileUrlForSession(sessionName), System.currentTimeMillis(),
             this::renderUnansweredOwnerCallsOfDisplayedSession);
         renderUnansweredOwnerCallsOfDisplayedSession();
     }
