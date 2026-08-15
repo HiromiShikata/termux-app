@@ -83,7 +83,8 @@ public class DiagnosticsCappedSessionCountTest {
             new DiagnosticsWorkCostLine(0, 0, 0, 0),
             new DiagnosticsWorkCostLine(0, 0, 0, 0), DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
 
         // Orphaned is derived from the corrected live count (10), not the total 23 sessions.
         Assert.assertEquals(aliveCount, report.getSessionsCountedTowardCap());

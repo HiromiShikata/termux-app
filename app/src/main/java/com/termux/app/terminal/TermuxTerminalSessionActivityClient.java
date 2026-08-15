@@ -13,6 +13,7 @@ import android.media.SoundPool;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
@@ -49,6 +50,12 @@ import com.termux.app.diagnostics.BackgroundCycleIntervalRecorderHolder;
 import com.termux.app.diagnostics.MainLooperQueuePeakRecorderHolder;
 import com.termux.app.diagnostics.ScrollWithoutDrawEpisodeCheck;
 import com.termux.app.diagnostics.MainLooperQueueSnapshot;
+import com.termux.app.diagnostics.DiagnosticsMainLooperQueue;
+import com.termux.app.diagnostics.DiagnosticsMainLooperQueuePeak;
+import com.termux.app.diagnostics.ProcessConditionSnapshot;
+import com.termux.app.diagnostics.ProcessConditionSnapshotHolder;
+import com.termux.app.diagnostics.ProcessUptimeTracker;
+import com.termux.app.diagnostics.ScrollWithoutDrawEpisodeRecorderHolder;
 import com.termux.app.diagnostics.ScrollbarViewCensusSnapshot;
 import com.termux.app.diagnostics.SessionCreationPath;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
@@ -1430,12 +1437,30 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         scheduleDisplayedSessionCallScanTick();
     }
 
+    private void recordProcessConditionOfThisProcess(@NonNull DiagnosticsMainLooperQueue mainLooperQueue,
+                                                     long nowMillis) {
+        DiagnosticsMainLooperQueuePeak peak = MainLooperQueuePeakRecorderHolder.getInstance().snapshot();
+        if (!peak.wasObserved()) return;
+        ProcessConditionSnapshotHolder.getInstance().recordCurrentCondition(
+            ProcessConditionSnapshot.recorded(nowMillis,
+                ProcessUptimeTracker.uptimeMillis(SystemClock.elapsedRealtime()),
+                mainLooperQueue.getPendingMessageCount(),
+                mainLooperQueue.getSynchronizationBarrierCount(),
+                peak.getPendingMessageCount(),
+                peak.getObservedAtMillis(),
+                peak.getScrollbarViewCensus().getScrollbarViewCount(),
+                ScrollWithoutDrawEpisodeRecorderHolder.getInstance().getEpisodes().size()));
+    }
+
     private void refreshDisplayedSessionsForCallToUser() {
-        BackgroundCycleIntervalRecorderHolder.getInstance().recordCycle(System.currentTimeMillis(),
+        long nowMillis = System.currentTimeMillis();
+        BackgroundCycleIntervalRecorderHolder.getInstance().recordCycle(nowMillis,
             displayedSessionCallScanIntervalMillis(), mActivity.isVisible());
-        MainLooperQueuePeakRecorderHolder.getInstance().recordObservation(MainLooperQueueSnapshot.take(),
-            System.currentTimeMillis(), ScrollbarViewCensusSnapshot::take);
-        ScrollWithoutDrawEpisodeCheck.run(mActivity, System.currentTimeMillis());
+        DiagnosticsMainLooperQueue mainLooperQueue = MainLooperQueueSnapshot.take();
+        MainLooperQueuePeakRecorderHolder.getInstance().recordObservation(mainLooperQueue,
+            nowMillis, ScrollbarViewCensusSnapshot::take);
+        ScrollWithoutDrawEpisodeCheck.run(mActivity, nowMillis);
+        recordProcessConditionOfThisProcess(mainLooperQueue, nowMillis);
 
         TermuxService service = mActivity.getTermuxService();
         if (service == null) return;

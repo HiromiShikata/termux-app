@@ -34,7 +34,8 @@ public class PreviousProcessExitsInReportTest {
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE,
             DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE,
-            DiagnosticsTouchEvents.NONE, previousProcessExits);
+            DiagnosticsTouchEvents.NONE, previousProcessExits,
+            ProcessConditionSnapshot.NOT_RECORDED);
         return new DiagnosticsReportBuilder().build(report);
     }
 
