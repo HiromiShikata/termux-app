@@ -908,7 +908,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         dialog.show();
     }
 
-    private void showUrlOpenChoice(String url) {
+    public void showUrlOpenChoice(String url) {
         CharSequence[] actions = {
             mActivity.getString(R.string.action_open_url_in_app),
             mActivity.getString(R.string.action_browser_open_in_chrome),

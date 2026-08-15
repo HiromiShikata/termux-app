@@ -318,66 +318,74 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_gravity="start"
-                    android:orientation="vertical">
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:id="@+id/session_info_bars_column"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/session_project_story_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="false"
+                            android:ellipsize="end"
+                            android:focusable="false"
+                            android:longClickable="false"
+                            android:maxLines="1"
+                            android:paddingHorizontal="6dp"
+                            android:paddingTop="2dp"
+                            android:paddingBottom="0dp"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="9sp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/session_name_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="false"
+                            android:ellipsize="end"
+                            android:focusable="false"
+                            android:longClickable="false"
+                            android:paddingHorizontal="6dp"
+                            android:paddingVertical="2dp"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="11sp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/session_last_reply_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="false"
+                            android:ellipsize="end"
+                            android:focusable="false"
+                            android:longClickable="false"
+                            android:maxLines="1"
+                            android:paddingHorizontal="6dp"
+                            android:paddingTop="0dp"
+                            android:paddingBottom="2dp"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="9sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
 
                     <TextView
                         android:id="@+id/owner_call_pending_indicator"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
                         android:clickable="true"
                         android:contentDescription="@string/owner_call_pending_indicator_content_description"
                         android:focusable="true"
                         android:paddingHorizontal="6dp"
-                        android:paddingTop="2dp"
-                        android:paddingBottom="0dp"
+                        android:paddingVertical="0dp"
                         android:text="🔴"
                         android:textSize="12sp"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/session_project_story_bar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="false"
-                        android:ellipsize="end"
-                        android:focusable="false"
-                        android:longClickable="false"
-                        android:maxLines="1"
-                        android:paddingHorizontal="6dp"
-                        android:paddingTop="2dp"
-                        android:paddingBottom="0dp"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="9sp"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/session_name_bar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="false"
-                        android:ellipsize="end"
-                        android:focusable="false"
-                        android:longClickable="false"
-                        android:paddingHorizontal="6dp"
-                        android:paddingVertical="2dp"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"
-                        android:visibility="gone" />
-
-                    <TextView
-                        android:id="@+id/session_last_reply_bar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:clickable="false"
-                        android:ellipsize="end"
-                        android:focusable="false"
-                        android:longClickable="false"
-                        android:maxLines="1"
-                        android:paddingHorizontal="6dp"
-                        android:paddingTop="0dp"
-                        android:paddingBottom="2dp"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="9sp"
                         android:visibility="gone" />
                 </LinearLayout>
             </LinearLayout>
@@ -854,7 +862,7 @@
                     android:ellipsize="end"
                     android:singleLine="true"
                     android:textColor="@color/white"
-                    android:textSize="13sp" />
+                    android:textSize="11sp" />
 
                 <TextView
                     android:id="@+id/owner_call_dialog_position"
@@ -863,7 +871,7 @@
                     android:layout_marginEnd="2dp"
                     android:singleLine="true"
                     android:textColor="@color/white"
-                    android:textSize="13sp" />
+                    android:textSize="11sp" />
 
                 <ImageButton
                     android:id="@+id/owner_call_dialog_previous_button"
@@ -914,7 +922,7 @@
                     android:layout_height="wrap_content"
                     android:paddingEnd="6dp"
                     android:textColor="@color/white"
-                    android:textSize="14sp" />
+                    android:textSize="12sp" />
 
             </ScrollView>
 

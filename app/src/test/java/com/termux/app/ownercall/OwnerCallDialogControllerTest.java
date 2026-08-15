@@ -1,6 +1,8 @@
 package com.termux.app.ownercall;
 
 import android.content.Context;
+import android.text.Spanned;
+import android.text.style.ClickableSpan;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,6 +18,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -238,7 +241,8 @@ public class OwnerCallDialogControllerTest {
                 }}.get(sessionName);
                 return calls == null ? Collections.emptyList() : calls;
             },
-            geometryRef::get);
+            geometryRef::get,
+            new RecordedBodyTaps());
         controller.showCallsForSession(FIRST_SESSION, NOW);
         controller.onDragPositionChanged(GEOMETRY.getMaxBottomMarginPixels());
 
@@ -253,6 +257,38 @@ public class OwnerCallDialogControllerTest {
             layoutParams.bottomMargin <= reducedGeometry.getMaxBottomMarginPixels());
     }
 
+    @Test
+    public void rendersTheBodyWithoutTheMarkerLineAndMakesItsCopyTextAndUrlTappable() {
+        View root = inflateActivityLayout();
+        Map<String, List<OwnerCall>> callsBySession = new HashMap<>();
+        callsBySession.put(FIRST_SESSION, Collections.singletonList(
+            new OwnerCall(FIRST_SESSION, "2026-08-14T08:10:00Z",
+                "🔴\n\nRun <copy>termux-reload-settings</copy> then open "
+                    + "https://github.com/HiromiShikata/termux-app/pull/1925")));
+        RecordedBodyTaps bodyTaps = new RecordedBodyTaps();
+        OwnerCallDialogController controller = controllerFor(root, callsBySession, bodyTaps);
+
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+
+        Assert.assertEquals("Run termux-reload-settings then open "
+            + "https://github.com/HiromiShikata/termux-app/pull/1925", bodyText(root));
+        ClickableSpan[] tappableRanges = renderedBodyTappableRanges(root);
+        Assert.assertEquals(2, tappableRanges.length);
+        for (ClickableSpan tappableRange : tappableRanges) {
+            tappableRange.onClick(root);
+        }
+        Assert.assertEquals(Collections.singletonList("termux-reload-settings"),
+            bodyTaps.copiedTexts);
+        Assert.assertEquals(Collections.singletonList(
+            "https://github.com/HiromiShikata/termux-app/pull/1925"), bodyTaps.openedUrls);
+    }
+
+    private static ClickableSpan[] renderedBodyTappableRanges(View root) {
+        Spanned renderedBody =
+            (Spanned) ((TextView) root.findViewById(R.id.owner_call_dialog_body)).getText();
+        return renderedBody.getSpans(0, renderedBody.length(), ClickableSpan.class);
+    }
+
     private static OwnerCallDialogController controllerFor(View root) {
         Map<String, List<OwnerCall>> callsBySession = new HashMap<>();
         callsBySession.put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
@@ -263,12 +299,36 @@ public class OwnerCallDialogControllerTest {
 
     private static OwnerCallDialogController controllerFor(View root,
                                                            Map<String, List<OwnerCall>> callsBySession) {
+        return controllerFor(root, callsBySession, new RecordedBodyTaps());
+    }
+
+    private static OwnerCallDialogController controllerFor(View root,
+                                                           Map<String, List<OwnerCall>> callsBySession,
+                                                           RecordedBodyTaps bodyTaps) {
         return new OwnerCallDialogController(root,
             sessionName -> {
                 List<OwnerCall> calls = callsBySession.get(sessionName);
                 return calls == null ? Collections.emptyList() : calls;
             },
-            () -> GEOMETRY);
+            () -> GEOMETRY,
+            bodyTaps);
+    }
+
+    private static final class RecordedBodyTaps
+        implements OwnerCallBodySpannedText.OwnerCallBodyTapActions {
+
+        private final List<String> copiedTexts = new ArrayList<>();
+        private final List<String> openedUrls = new ArrayList<>();
+
+        @Override
+        public void onCopyableTextTapped(String text) {
+            copiedTexts.add(text);
+        }
+
+        @Override
+        public void onUrlTapped(String url) {
+            openedUrls.add(url);
+        }
     }
 
     private static View dialog(View root) {
