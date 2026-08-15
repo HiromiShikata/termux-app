@@ -74,6 +74,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long DIALOG_TIMEOUT_MILLIS = 30_000L;
+    private static final long TAP_SETTLE_MILLIS = 500L;
     private static final long POLL_INTERVAL_MILLIS = 100L;
     private static final int QUARTER_OF_THE_SCREEN = 4;
     private static final String SCREENSHOT_DIRECTORY_NAME = "termux-instrumentation-screenshots";
@@ -303,8 +304,19 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         instrumentation.sendPointerSync(upEvent);
         upEvent.recycle();
         instrumentation.waitForIdleSync();
+        Thread.sleep(TAP_SETTLE_MILLIS);
+        instrumentation.waitForIdleSync();
 
-        awaitDialogShowing(scenario, "2 / 3");
+        AtomicReference<String> positionAfterTheTap = new AtomicReference<>("");
+        scenario.onActivity(activity ->
+            positionAfterTheTap.set(textOf(activity, R.id.owner_call_dialog_position)));
+
+        assertEquals("a short tap at " + tapX + "," + tapY + " on the previous button, which is "
+                + buttonWidth.get() + " by " + buttonHeight.get() + " pixels at "
+                + buttonScreenX.get() + "," + buttonScreenY.get()
+                + ", must page back to the second call even after the drag listener is attached "
+                + "to the header",
+            "2 / 3", positionAfterTheTap.get());
     }
 
     @Test
