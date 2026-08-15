@@ -533,19 +533,17 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();
             assertNotNull(store);
             store.purgeSession(SESSION_URL);
-            activity.getPreferences().setSessionDefinitionUrl(server.indexUrl());
-            activity.loadSessionsFromDefinition();
-        });
-        awaitLoadedEntries(scenario);
-
-        scenario.onActivity(activity -> {
             TermuxTerminalSessionActivityClient sessionClient =
                 activity.getTermuxTerminalSessionClient();
             assertNotNull(sessionClient);
+            // Start the session before loading the definition so the session list is never
+            // empty during the definition rebuild that removes the default startup session.
             sessionClient.addNewSession(true, SESSION_URL);
+            activity.getPreferences().setSessionDefinitionUrl(server.indexUrl());
+            activity.loadSessionsFromDefinition();
         });
         awaitRunningDisplayedSession(scenario);
-        awaitServiceConnected(scenario);
+        awaitLoadedEntries(scenario);
 
         scenario.onActivity(activity -> {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();
