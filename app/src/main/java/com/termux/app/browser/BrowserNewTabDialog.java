@@ -3,7 +3,6 @@ package com.termux.app.browser;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 
 import androidx.annotation.NonNull;
@@ -25,27 +24,24 @@ public final class BrowserNewTabDialog {
                                      @NonNull BrowserClipboardUrlOffer clipboardUrlOffer,
                                      @NonNull UrlOpener urlOpener) {
         EditText urlInput = dialogView.findViewById(R.id.browser_new_tab_url_input);
-        AlertDialog dialog = new AlertDialog.Builder(context)
+        AlertDialog.Builder builder = new AlertDialog.Builder(context)
             .setTitle(R.string.title_browser_new_tab)
             .setView(dialogView)
             .setPositiveButton(R.string.action_browser_new_tab_open, (d, which) -> {
                 String typed = urlInput.getText().toString().trim();
                 if (!typed.isEmpty()) urlOpener.openUrlInNewTab(typed);
             })
-            .setNegativeButton(android.R.string.cancel, null)
-            .create();
-        dialog.setCanceledOnTouchOutside(true);
+            .setNegativeButton(android.R.string.cancel, null);
 
         if (clipboardUrlOffer.isOffered()) {
-            Button clipboardUrlButton = dialogView.findViewById(R.id.browser_new_tab_clipboard_url_button);
-            clipboardUrlButton.setText(context.getString(
-                R.string.action_browser_new_tab_open_clipboard_url, clipboardUrlOffer.getUrl()));
-            clipboardUrlButton.setVisibility(View.VISIBLE);
-            clipboardUrlButton.setOnClickListener(v -> {
-                dialog.dismiss();
-                urlOpener.openUrlInNewTab(clipboardUrlOffer.getUrl());
-            });
+            builder.setNeutralButton(
+                context.getString(R.string.action_browser_new_tab_open_clipboard_url,
+                    clipboardUrlOffer.getHost()),
+                (d, which) -> urlOpener.openUrlInNewTab(clipboardUrlOffer.getUrl()));
         }
+
+        AlertDialog dialog = builder.create();
+        dialog.setCanceledOnTouchOutside(true);
         return dialog;
     }
 }

@@ -3,6 +3,7 @@ package com.termux.app.browser;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Shadows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +66,7 @@ public class BrowserNewTabDialogCopiedLinkButtonTest {
 
         AlertDialog dialog = shownDialogFor(activity, COPIED_ADDRESS, openedUrls);
         dialog.getButton(DialogInterface.BUTTON_NEUTRAL).performClick();
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
 
         Assert.assertEquals("the press has to open the address that was copied, whole, not the site it"
                 + " names on the button", java.util.Collections.singletonList(COPIED_ADDRESS), openedUrls);

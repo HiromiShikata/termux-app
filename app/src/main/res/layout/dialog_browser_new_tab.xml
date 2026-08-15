@@ -3,18 +3,6 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <Button
-        android:id="@+id/browser_new_tab_clipboard_url_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="16dp"
-        android:ellipsize="middle"
-        android:gravity="start|center_vertical"
-        android:maxLines="2"
-        android:textAllCaps="false"
-        android:visibility="gone" />
-
     <EditText
         android:id="@+id/browser_new_tab_url_input"
         android:layout_width="match_parent"
