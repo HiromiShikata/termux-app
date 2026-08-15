@@ -285,6 +285,10 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             buttonHeight.set(previousButton.getHeight());
         });
 
+        scenario.onActivity(activity -> assertTrue(
+            "the previous button must be enabled while the newest call is displayed",
+            activity.findViewById(R.id.owner_call_dialog_previous_button).isEnabled()));
+
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         int tapX = buttonScreenX.get() + buttonWidth.get() / 2;
         int tapY = buttonScreenY.get() + buttonHeight.get() / 2;
@@ -300,10 +304,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         upEvent.recycle();
         instrumentation.waitForIdleSync();
 
-        scenario.onActivity(activity ->
-            assertEquals("previous button tap must page back to the second call even after the drag "
-                    + "listener is attached to the header",
-                "2 / 3", textOf(activity, R.id.owner_call_dialog_position)));
+        awaitDialogShowing(scenario, "2 / 3");
     }
 
     @Test
