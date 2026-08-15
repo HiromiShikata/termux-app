@@ -668,6 +668,26 @@ public final class DiagnosticsReportBuilder {
             .append(OMISSION_NOTE_SUFFIX);
     }
 
+    private void appendMaxStallRenderThreadLine(@NonNull DiagnosticsReportText builder,
+                                               @NonNull DiagnosticsRenderThread renderThread) {
+        switch (renderThread.getReading()) {
+            case NOT_TAKEN:
+                return;
+            case READ_FAILED:
+                builder.append("    Render thread when sampled: not readable (")
+                    .append(renderThread.getReadFailureMessage()).append(")\n");
+                return;
+            case THREAD_ABSENT:
+                builder.append("    Render thread when sampled: thread absent\n");
+                return;
+            default:
+                builder.append("    Render thread when sampled: ")
+                    .append(renderThread.getUserTimeMillis()).append(" ms user, ")
+                    .append(renderThread.getSystemTimeMillis()).append(" ms system, state ")
+                    .append(renderThread.getSchedulerState()).append('\n');
+        }
+    }
+
     private void appendMainThreadStallLines(@NonNull DiagnosticsReportText builder,
                                             @NonNull DiagnosticsMainThreadStalls stalls) {
         builder.append("  Stalls over ").append(stalls.getThresholdMillis()).append(" ms\n");
@@ -680,6 +700,7 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("    Longest: ").append(stalls.getMaxStallMillis()).append(" ms\n");
+        appendMaxStallRenderThreadLine(builder, stalls.getMaxStallRenderThread());
         builder.append("    Longest stall main thread was running:\n");
         List<String> frameLines = new ArrayList<>();
         for (String frame : stalls.getMaxStallStackTrace().split("\n")) {
