@@ -36,9 +36,6 @@ public final class OwnerCallInbox {
     private String mHeldSessionName;
 
     @Nullable
-    private String mReadFileUrl;
-
-    @Nullable
     private String mFileUrlBeingRead;
 
     @Nullable
@@ -64,11 +61,10 @@ public final class OwnerCallInbox {
             forget();
             return;
         }
-        if (fileUrl.equals(mReadFileUrl) || fileUrl.equals(mFileUrlBeingRead)
+        if (fileUrl.equals(mFileUrlBeingRead)
             || wasReadWithinTheMinimumInterval(fileUrl, nowMillis)) {
             return;
         }
-        forget();
         mFileUrlBeingRead = fileUrl;
         mLastReadFileUrl = fileUrl;
         mLastReadAtMillis = nowMillis;
@@ -135,11 +131,10 @@ public final class OwnerCallInbox {
                     return;
                 }
                 mFileUrlBeingRead = null;
-                if (calls.isEmpty()) {
+                if (calls.isEmpty() && mCalls.isEmpty()) {
                     return;
                 }
-                mReadFileUrl = fileUrl;
-                mHeldSessionName = sessionName;
+                mHeldSessionName = calls.isEmpty() ? null : sessionName;
                 mCalls = calls;
                 listener.onOwnerCallsChanged();
             });
@@ -164,7 +159,6 @@ public final class OwnerCallInbox {
     private void forget() {
         mCalls = Collections.emptyList();
         mHeldSessionName = null;
-        mReadFileUrl = null;
         mFileUrlBeingRead = null;
         mLastReadFileUrl = null;
         mLastReadAtMillis = 0;

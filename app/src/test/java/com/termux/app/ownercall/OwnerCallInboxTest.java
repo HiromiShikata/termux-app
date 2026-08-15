@@ -125,7 +125,7 @@ public class OwnerCallInboxTest {
     }
 
     @Test
-    public void fetchesTheFileOfOneSessionOnlyAndOnlyOncePerOpening() throws Exception {
+    public void fetchesTheFileOfTheOpenedSessionOnly() throws Exception {
         RecordingTransport transport = new RecordingTransport();
         transport.register(SESSION_FILE_URL, TWO_CALLS);
         transport.register(OTHER_SESSION_FILE_URL, FOREIGN_CALL);
@@ -139,9 +139,53 @@ public class OwnerCallInboxTest {
             });
         flushMainLooper();
 
-        Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
+        Assert.assertFalse(transport.fetchedUrls.contains(OTHER_SESSION_FILE_URL));
         Assert.assertTrue("only the opened session holds calls",
             inbox.callsFor(OTHER_SESSION_URL).isEmpty());
+    }
+
+    @Test
+    public void stopsShowingTheCallsOnceTheFileNoLongerHoldsThem() throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, TWO_CALLS);
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
+        });
+        flushMainLooper();
+        Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
+        AtomicInteger changes = new AtomicInteger();
+
+        transport.register(SESSION_FILE_URL, "");
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + MINIMUM_READ_INTERVAL_MILLIS,
+            changes::incrementAndGet);
+        flushMainLooper();
+
+        Assert.assertTrue("the answered calls stop being shown once the file is emptied",
+            inbox.callsFor(SESSION_URL).isEmpty());
+        Assert.assertEquals(1, changes.get());
+    }
+
+    @Test
+    public void showsACallAppendedAfterTheFileWasAlreadyRead() throws Exception {
+        RecordingTransport transport = new RecordingTransport();
+        transport.register(SESSION_FILE_URL, TWO_CALLS);
+        OwnerCallInbox inbox = new OwnerCallInbox(transport);
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW, () -> {
+        });
+        flushMainLooper();
+        Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
+
+        transport.register(SESSION_FILE_URL, TWO_CALLS
+            + document("https_//github_com/HiromiShikata/termux-app/issues/1884",
+            "2026-08-14T05:10:00Z", "Decide whether the release may go out today."));
+        inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + MINIMUM_READ_INTERVAL_MILLIS,
+            () -> {
+            });
+        flushMainLooper();
+
+        Assert.assertEquals(3, inbox.callsFor(SESSION_URL).size());
+        Assert.assertEquals("Decide whether the release may go out today.",
+            inbox.callsFor(SESSION_URL).get(2).getBody());
     }
 
     @Test
@@ -305,7 +349,7 @@ public class OwnerCallInboxTest {
     }
 
     @Test
-    public void readsTheFileOnceWhileItHoldsTheCallsItFound() throws Exception {
+    public void readsTheFileAtMostOnceInTheMinimumIntervalWhileItHoldsCalls() throws Exception {
         RecordingTransport transport = new RecordingTransport();
         transport.register(SESSION_FILE_URL, TWO_CALLS);
         OwnerCallInbox inbox = new OwnerCallInbox(transport);
@@ -315,12 +359,16 @@ public class OwnerCallInboxTest {
         flushMainLooper();
         inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL, NOW + 1, () -> {
         });
+        flushMainLooper();
+
+        Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
+
         inbox.refreshFor(SESSION_URL, true, SESSION_FILE_URL,
             NOW + MINIMUM_READ_INTERVAL_MILLIS * 5, () -> {
             });
         flushMainLooper();
 
-        Assert.assertEquals(Collections.singletonList(SESSION_FILE_URL), transport.fetchedUrls);
+        Assert.assertEquals(2, transport.fetchedUrls.size());
         Assert.assertEquals(2, inbox.callsFor(SESSION_URL).size());
     }
 
