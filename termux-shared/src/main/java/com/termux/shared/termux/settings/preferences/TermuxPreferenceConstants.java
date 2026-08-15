@@ -240,6 +240,19 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_LAST_NOTIFICATION_ID = "last_notification_id";
         public static final int DEFAULT_VALUE_KEY_LAST_NOTIFICATION_ID = 0;
 
+        /**
+         * Defines the keys for the position and the size the owner chose for the owner call
+         * dialog. {@link #VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET} means the owner has not moved
+         * or resized the dialog yet, so the default placement is used.
+         */
+        public static final int VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET = -1;
+        public static final String KEY_OWNER_CALL_DIALOG_LEFT_MARGIN =
+            "owner_call_dialog_left_margin";
+        public static final String KEY_OWNER_CALL_DIALOG_BOTTOM_MARGIN =
+            "owner_call_dialog_bottom_margin";
+        public static final String KEY_OWNER_CALL_DIALOG_WIDTH = "owner_call_dialog_width";
+        public static final String KEY_OWNER_CALL_DIALOG_HEIGHT = "owner_call_dialog_height";
+
         public static final String KEY_AUTOSSH_COMMAND = "autossh_command";
         public static final String DEFAULT_VALUE_KEY_AUTOSSH_COMMAND = "";
 

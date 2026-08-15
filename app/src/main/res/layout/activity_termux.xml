@@ -926,6 +926,17 @@
 
             </ScrollView>
 
+            <ImageView
+                android:id="@+id/owner_call_dialog_resize_handle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:contentDescription="@string/owner_call_dialog_resize_content_description"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:src="@drawable/ic_owner_call_resize"
+                android:tint="@color/white" />
+
         </LinearLayout>
 
     </RelativeLayout>

@@ -213,36 +213,15 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         });
 
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        int tapX = headerScreenX.get() + headerWidth.get() / 2;
-        int tapY = headerScreenY.get() + headerHeight.get() / 2;
-        long downTime = SystemClock.uptimeMillis();
-        MotionEvent downEvent = MotionEvent.obtain(downTime, downTime,
-            MotionEvent.ACTION_DOWN, tapX, tapY, 0);
-        instrumentation.sendPointerSync(downEvent);
-        downEvent.recycle();
-
-        Thread.sleep(ViewConfiguration.getLongPressTimeout() + 200);
-        instrumentation.waitForIdleSync();
-
-        int moveY = tapY - 300;
-        long moveTime = SystemClock.uptimeMillis();
-        MotionEvent moveEvent = MotionEvent.obtain(downTime, moveTime,
-            MotionEvent.ACTION_MOVE, tapX, moveY, 0);
-        instrumentation.sendPointerSync(moveEvent);
-        moveEvent.recycle();
-        instrumentation.waitForIdleSync();
-
-        long upTime = SystemClock.uptimeMillis();
-        MotionEvent upEvent = MotionEvent.obtain(downTime, upTime,
-            MotionEvent.ACTION_UP, tapX, moveY, 0);
-        instrumentation.sendPointerSync(upEvent);
-        upEvent.recycle();
+        int dragX = headerScreenX.get() + headerWidth.get() / 2;
+        int dragY = headerScreenY.get() + headerHeight.get() / 2;
+        dragBy(scenario, dragX, dragY, 0, -300);
         instrumentation.waitForIdleSync();
 
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
-            assertTrue("the real drag gesture must move the dialog upward",
+            assertTrue("a drag on the header with no long press must move the dialog upward",
                 p.bottomMargin > initialBottom.get());
         });
         File screenshotAfterDrag = captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png");
@@ -265,6 +244,75 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             screenshotAfterRebind);
         assertTrue("portrait screenshot after re-bind must be non-empty",
             screenshotAfterRebind.exists() && screenshotAfterRebind.length() > 0);
+    }
+
+    @Test
+    public void theHeaderDragMovesTheDialogSidewaysAndTheHandleDragResizesIt() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+
+        AtomicInteger handleX = new AtomicInteger();
+        AtomicInteger handleY = new AtomicInteger();
+        AtomicInteger widthBeforeTheResize = new AtomicInteger();
+        AtomicInteger heightBeforeTheResize = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View handle = activity.findViewById(R.id.owner_call_dialog_resize_handle);
+            int[] location = new int[2];
+            handle.getLocationOnScreen(location);
+            handleX.set(location[0] + handle.getWidth() / 2);
+            handleY.set(location[1] + handle.getHeight() / 2);
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
+                activity.findViewById(R.id.owner_call_dialog).getLayoutParams();
+            widthBeforeTheResize.set(p.width);
+            heightBeforeTheResize.set(p.height);
+        });
+
+        dragBy(scenario, handleX.get(), handleY.get(), -200, 0);
+        instrumentation.waitForIdleSync();
+
+        AtomicInteger leftBeforeTheMove = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
+                activity.findViewById(R.id.owner_call_dialog).getLayoutParams();
+            assertTrue("dragging the resize handle left must narrow the dialog",
+                p.width < widthBeforeTheResize.get());
+            leftBeforeTheMove.set(p.leftMargin);
+        });
+
+        AtomicInteger headerX = new AtomicInteger();
+        AtomicInteger headerY = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View header = activity.findViewById(R.id.owner_call_dialog_header);
+            int[] location = new int[2];
+            header.getLocationOnScreen(location);
+            headerX.set(location[0] + header.getWidth() / 2);
+            headerY.set(location[1] + header.getHeight() / 2);
+        });
+
+        dragBy(scenario, headerX.get(), headerY.get(), 120, 0);
+        instrumentation.waitForIdleSync();
+
+        scenario.onActivity(activity -> {
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
+                activity.findViewById(R.id.owner_call_dialog).getLayoutParams();
+            assertTrue("a drag on the header must move the narrowed dialog sideways",
+                p.leftMargin > leftBeforeTheMove.get());
+        });
+    }
+
+    private static void dragBy(ActivityScenario<TermuxActivity> scenario, int startX, int startY,
+                               int horizontalPixels, int verticalPixels) {
+        int slop = ViewConfiguration.get(
+            InstrumentationRegistry.getInstrumentation().getTargetContext()).getScaledTouchSlop();
+        long downTime = SystemClock.uptimeMillis();
+        dispatchToWindow(scenario, MotionEvent.ACTION_DOWN, downTime, downTime, startX, startY);
+        dispatchToWindow(scenario, MotionEvent.ACTION_MOVE, downTime, downTime + 20,
+            startX + slop + 1, startY + slop + 1);
+        dispatchToWindow(scenario, MotionEvent.ACTION_MOVE, downTime, downTime + 40,
+            startX + slop + 1 + horizontalPixels, startY + slop + 1 + verticalPixels);
+        dispatchToWindow(scenario, MotionEvent.ACTION_UP, downTime, downTime + 60,
+            startX + slop + 1 + horizontalPixels, startY + slop + 1 + verticalPixels);
     }
 
     @Test

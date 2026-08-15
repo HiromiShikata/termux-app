@@ -27,8 +27,6 @@ public final class OwnerCallDialogBinder {
         void onNextCallRequested();
 
         void onDialogCloseRequested();
-
-        void onDragPositionChanged(int bottomMarginPixels);
     }
 
     private OwnerCallDialogBinder() {

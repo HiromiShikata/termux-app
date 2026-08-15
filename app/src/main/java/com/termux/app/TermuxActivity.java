@@ -66,6 +66,8 @@ import com.termux.shared.interact.ShareUtils;
 import com.termux.app.ownercall.OwnerCallBodySpannedText;
 import com.termux.app.ownercall.OwnerCallDialogController;
 import com.termux.app.ownercall.OwnerCallDialogGeometry;
+import com.termux.app.ownercall.OwnerCallDialogPlacement;
+import com.termux.app.ownercall.OwnerCallDialogStoredPlacement;
 import com.termux.app.ownercall.OwnerCallDialogRelayoutWatcher;
 import com.termux.app.ownercall.OwnerCallDialogViewport;
 import com.termux.app.ownercall.OwnerCallFileUrl;
@@ -935,6 +937,20 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     if (mTermuxTerminalViewClient != null) {
                         mTermuxTerminalViewClient.showUrlOpenChoice(url);
                     }
+                }
+            },
+            new OwnerCallDialogController.OwnerCallDialogPlacementStore() {
+                @Override
+                @Nullable
+                public OwnerCallDialogPlacement loadPlacement() {
+                    return OwnerCallDialogStoredPlacement.of(getPreferences());
+                }
+
+                @Override
+                public void savePlacement(@NonNull OwnerCallDialogPlacement placement) {
+                    getPreferences().setOwnerCallDialogPlacement(placement.getLeftMarginPixels(),
+                        placement.getBottomMarginPixels(), placement.getWidthPixels(),
+                        placement.getHeightPixels());
                 }
             });
         OwnerCallDialogRelayoutWatcher.watchTerminalArea(mTerminalView,
