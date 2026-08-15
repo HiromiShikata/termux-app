@@ -24,6 +24,8 @@ public final class MainThreadStallRecorder {
 
     private final Map<String, Long> mOutstandingMillisByStackTrace = new LinkedHashMap<>();
 
+    private final Map<String, DiagnosticsRenderThread> mRenderThreadByStackTrace = new HashMap<>();
+
     private boolean mHeartbeatOutstanding;
     private long mHeartbeatPostedAtMillis;
     private long mOutstandingSegmentStartMillis;
@@ -33,6 +35,7 @@ public final class MainThreadStallRecorder {
     private long mStallCount;
     private long mMaxStallMillis;
     private String mMaxStallStackTrace = "";
+    private DiagnosticsRenderThread mMaxStallRenderThread = DiagnosticsRenderThread.NOT_TAKEN;
 
     private long mStackSampleAttemptCount;
     private long mEmptyStackSampleCount;
@@ -48,6 +51,7 @@ public final class MainThreadStallRecorder {
         mLastStackSampleAtMillis = postedAtMillis;
         mOutstandingStackTrace = STACK_TRACE_NOT_SAMPLED;
         mOutstandingMillisByStackTrace.clear();
+        mRenderThreadByStackTrace.clear();
     }
 
     public synchronized boolean needsStackSample(long sampledAtMillis) {
@@ -63,6 +67,12 @@ public final class MainThreadStallRecorder {
 
     public synchronized void sampleWhileOutstanding(long sampledAtMillis,
                                                     @Nullable StackTraceElement[] mainThreadStackTrace) {
+        sampleWhileOutstanding(sampledAtMillis, mainThreadStackTrace, DiagnosticsRenderThread.NOT_TAKEN);
+    }
+
+    public synchronized void sampleWhileOutstanding(long sampledAtMillis,
+                                                    @Nullable StackTraceElement[] mainThreadStackTrace,
+                                                    @NonNull DiagnosticsRenderThread renderThread) {
         if (!mHeartbeatOutstanding
                 || sampledAtMillis - mHeartbeatPostedAtMillis < mStallThresholdMillis) {
             return;
@@ -73,6 +83,7 @@ public final class MainThreadStallRecorder {
             mEmptyStackSampleCount++;
             return;
         }
+        mRenderThreadByStackTrace.put(formatted, renderThread);
         closeOutstandingSegmentAt(sampledAtMillis);
         mLastStackSampleAtMillis = sampledAtMillis;
         mOutstandingStackTrace = formatted;
@@ -115,6 +126,8 @@ public final class MainThreadStallRecorder {
         if (stallMillis > mMaxStallMillis) {
             mMaxStallMillis = stallMillis;
             mMaxStallStackTrace = stackTraceHoldingTheMainThreadLongest();
+            DiagnosticsRenderThread rt = mRenderThreadByStackTrace.get(mMaxStallStackTrace);
+            mMaxStallRenderThread = rt != null ? rt : DiagnosticsRenderThread.NOT_TAKEN;
         }
         for (Map.Entry<String, Long> heldEntry : mOutstandingMillisByStackTrace.entrySet()) {
             recordHotPath(heldEntry.getKey(), heldEntry.getValue());
@@ -199,6 +212,11 @@ public final class MainThreadStallRecorder {
     @NonNull
     public synchronized String getMaxStallStackTrace() {
         return mMaxStallStackTrace;
+    }
+
+    @NonNull
+    public synchronized DiagnosticsRenderThread getMaxStallRenderThread() {
+        return mMaxStallRenderThread;
     }
 
     public long getStallThresholdMillis() {

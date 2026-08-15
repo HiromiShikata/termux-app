@@ -22,19 +22,24 @@ public final class DiagnosticsMainThreadStalls {
     @NonNull
     private final DiagnosticsRenderThread mRenderThread;
 
+    @NonNull
+    private final DiagnosticsRenderThread mMaxStallRenderThread;
+
     public DiagnosticsMainThreadStalls(long thresholdMillis, long stallCount, long maxStallMillis,
                                        @NonNull String maxStallStackTrace,
                                        @NonNull List<MainThreadStallHotPath> hotPaths,
                                        long stackSampleAttemptCount, long emptyStackSampleCount) {
         this(thresholdMillis, stallCount, maxStallMillis, maxStallStackTrace, hotPaths,
-            stackSampleAttemptCount, emptyStackSampleCount, DiagnosticsRenderThread.NOT_TAKEN);
+            stackSampleAttemptCount, emptyStackSampleCount, DiagnosticsRenderThread.NOT_TAKEN,
+            DiagnosticsRenderThread.NOT_TAKEN);
     }
 
     private DiagnosticsMainThreadStalls(long thresholdMillis, long stallCount, long maxStallMillis,
                                         @NonNull String maxStallStackTrace,
                                         @NonNull List<MainThreadStallHotPath> hotPaths,
                                         long stackSampleAttemptCount, long emptyStackSampleCount,
-                                        @NonNull DiagnosticsRenderThread renderThread) {
+                                        @NonNull DiagnosticsRenderThread renderThread,
+                                        @NonNull DiagnosticsRenderThread maxStallRenderThread) {
         mThresholdMillis = thresholdMillis;
         mStallCount = stallCount;
         mMaxStallMillis = maxStallMillis;
@@ -43,6 +48,7 @@ public final class DiagnosticsMainThreadStalls {
         mStackSampleAttemptCount = stackSampleAttemptCount;
         mEmptyStackSampleCount = emptyStackSampleCount;
         mRenderThread = renderThread;
+        mMaxStallRenderThread = maxStallRenderThread;
     }
 
     @NonNull
@@ -50,7 +56,15 @@ public final class DiagnosticsMainThreadStalls {
         @NonNull DiagnosticsRenderThread renderThread) {
         return new DiagnosticsMainThreadStalls(mThresholdMillis, mStallCount, mMaxStallMillis,
             mMaxStallStackTrace, mHotPaths, mStackSampleAttemptCount, mEmptyStackSampleCount,
-            renderThread);
+            renderThread, mMaxStallRenderThread);
+    }
+
+    @NonNull
+    public DiagnosticsMainThreadStalls withMaxStallRenderThread(
+        @NonNull DiagnosticsRenderThread maxStallRenderThread) {
+        return new DiagnosticsMainThreadStalls(mThresholdMillis, mStallCount, mMaxStallMillis,
+            mMaxStallStackTrace, mHotPaths, mStackSampleAttemptCount, mEmptyStackSampleCount,
+            mRenderThread, maxStallRenderThread);
     }
 
     @NonNull
@@ -59,11 +73,17 @@ public final class DiagnosticsMainThreadStalls {
     }
 
     @NonNull
+    public DiagnosticsRenderThread getMaxStallRenderThread() {
+        return mMaxStallRenderThread;
+    }
+
+    @NonNull
     public static DiagnosticsMainThreadStalls of(@NonNull MainThreadStallRecorder recorder) {
         return new DiagnosticsMainThreadStalls(recorder.getStallThresholdMillis(),
             recorder.getStallCount(), recorder.getMaxStallMillis(), recorder.getMaxStallStackTrace(),
             recorder.getHotPathsByTotalBlockedMillis(),
-            recorder.getStackSampleAttemptCount(), recorder.getEmptyStackSampleCount());
+            recorder.getStackSampleAttemptCount(), recorder.getEmptyStackSampleCount())
+            .withMaxStallRenderThread(recorder.getMaxStallRenderThread());
     }
 
     public long getStackSampleAttemptCount() {
