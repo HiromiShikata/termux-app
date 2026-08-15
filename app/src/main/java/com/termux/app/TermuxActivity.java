@@ -934,9 +934,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
                 @Override
                 public void onUrlTapped(@NonNull String url) {
-                    if (mTermuxTerminalViewClient != null) {
-                        mTermuxTerminalViewClient.showUrlOpenChoice(url);
-                    }
+                    TermuxBrowserController browserController = getTermuxBrowserController();
+                    if (browserController == null) return;
+                    browserController.openUrlInNewTab(url);
                 }
             },
             new OwnerCallDialogController.OwnerCallDialogPlacementStore() {
