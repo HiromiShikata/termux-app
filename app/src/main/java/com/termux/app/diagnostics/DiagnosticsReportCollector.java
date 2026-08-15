@@ -80,7 +80,7 @@ public final class DiagnosticsReportCollector {
         List<DiagnosticEvent> recentEvents = mEventLog.tail(50);
 
         DiagnosticsMainLooperQueue mainLooperQueue = MainLooperQueueSnapshot.take();
-        ScrollbarViewCensus scrollbarViewCensus = ScrollbarViewCensusSnapshot.take(activity);
+        ScrollbarViewCensus scrollbarViewCensus = ScrollbarViewCensusSnapshot.take();
         MainLooperQueuePeakRecorderHolder.getInstance().recordObservation(mainLooperQueue, nowMillis,
             () -> scrollbarViewCensus);
 

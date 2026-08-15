@@ -62,9 +62,10 @@ public class ReportCharacterCeilingAllocatedByPriorityTest {
     }
 
     private static ScrollbarViewCensus censusOfOneWindow() {
-        return ScrollbarViewCensus.take(new CensusNode("android.widget.FrameLayout", false,
-            new CensusNode("com.termux.view.TerminalView", true),
-            new CensusNode("androidx.recyclerview.widget.RecyclerView", true)));
+        return ScrollbarViewCensus.take(Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+            new CensusNode("android.widget.FrameLayout", false,
+                new CensusNode("com.termux.view.TerminalView", true),
+                new CensusNode("androidx.recyclerview.widget.RecyclerView", true))), 0);
     }
 
     private static ScrollbarViewCensus censusOfMoreClassesThanFit() {
@@ -73,8 +74,9 @@ public class ReportCharacterCeilingAllocatedByPriorityTest {
             children.add(new CensusNode(
                 "com.termux.app.browser.BrowserAssistStructureFreeWebViewOfKind" + classIndex, true));
         }
-        return ScrollbarViewCensus.take(new CensusNode("android.widget.FrameLayout", false,
-            children.toArray(new ScrollbarViewCensus.ViewNode[0])));
+        return ScrollbarViewCensus.take(Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+            new CensusNode("android.widget.FrameLayout", false,
+                children.toArray(new ScrollbarViewCensus.ViewNode[0]))), 0);
     }
 
     private static DiagnosticsMainLooperQueuePeak peakLargeEnoughToCrowdOutWhatFollowsIt() {

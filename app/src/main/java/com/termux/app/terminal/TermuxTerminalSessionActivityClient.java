@@ -1434,7 +1434,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         BackgroundCycleIntervalRecorderHolder.getInstance().recordCycle(System.currentTimeMillis(),
             displayedSessionCallScanIntervalMillis(), mActivity.isVisible());
         MainLooperQueuePeakRecorderHolder.getInstance().recordObservation(MainLooperQueueSnapshot.take(),
-            System.currentTimeMillis(), () -> ScrollbarViewCensusSnapshot.take(mActivity));
+            System.currentTimeMillis(), ScrollbarViewCensusSnapshot::take);
         ScrollWithoutDrawEpisodeCheck.run(mActivity, System.currentTimeMillis());
 
         TermuxService service = mActivity.getTermuxService();
