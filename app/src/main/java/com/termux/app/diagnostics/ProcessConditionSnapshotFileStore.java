@@ -12,6 +12,8 @@ import java.util.Scanner;
 
 public final class ProcessConditionSnapshotFileStore implements ProcessConditionSnapshotStore {
 
+    public static final String RECORD_FILE_NAME = "process-condition-snapshot.txt";
+
     private static final String PENDING_WRITE_SUFFIX = ".writing";
 
     private static final Charset RECORD_CHARSET = Charset.forName("UTF-8");
@@ -21,6 +23,11 @@ public final class ProcessConditionSnapshotFileStore implements ProcessCondition
 
     public ProcessConditionSnapshotFileStore(@NonNull File recordFile) {
         mRecordFile = recordFile;
+    }
+
+    @NonNull
+    public static ProcessConditionSnapshotFileStore inFilesDirectory(@NonNull File filesDirectory) {
+        return new ProcessConditionSnapshotFileStore(new File(filesDirectory, RECORD_FILE_NAME));
     }
 
     @Override

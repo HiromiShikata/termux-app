@@ -30,13 +30,9 @@ import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 import com.termux.shared.termux.theme.TermuxThemeUtils;
 
-import java.io.File;
-
 public class TermuxApplication extends Application implements Configuration.Provider {
 
     private static final String LOG_TAG = "TermuxApplication";
-
-    private static final String PROCESS_CONDITION_RECORD_FILE_NAME = "process-condition-snapshot.txt";
 
     @NonNull
     @Override
@@ -62,8 +58,8 @@ public class TermuxApplication extends Application implements Configuration.Prov
 
         recordVersionChangeOfThisLaunch(context);
 
-        ProcessConditionSnapshotHolder.getInstance().useStore(new ProcessConditionSnapshotFileStore(
-            new File(context.getFilesDir(), PROCESS_CONDITION_RECORD_FILE_NAME)));
+        ProcessConditionSnapshotHolder.getInstance().useStore(
+            ProcessConditionSnapshotFileStore.inFilesDirectory(context.getFilesDir()));
 
         Logger.logDebug("Starting Application");
 
