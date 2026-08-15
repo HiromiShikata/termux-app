@@ -30,6 +30,7 @@ import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
 import com.termux.terminal.TerminalSession;
 
 import org.junit.After;
@@ -105,6 +106,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     @Before
     public void startTheOwnerCallServer() throws IOException {
+        forgetTheStoredDialogPlacement();
         previousSessionDefinitionUrl = preferences().getSessionDefinitionUrl();
         server = new LocalOwnerCallServer();
         server.start();
@@ -112,10 +114,16 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
+        forgetTheStoredDialogPlacement();
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
             server.stop();
         }
+    }
+
+    private static void forgetTheStoredDialogPlacement() {
+        int unset = TermuxPreferenceConstants.TERMUX_APP.VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET;
+        preferences().setOwnerCallDialogPlacement(unset, unset, unset, unset);
     }
 
     private static TermuxAppSharedPreferences preferences() {
@@ -205,7 +213,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             initialBottom.set(p.bottomMargin);
             View header = activity.findViewById(R.id.owner_call_dialog_header);
             int[] location = new int[2];
-            header.getLocationOnScreen(location);
+            header.getLocationInWindow(location);
             headerScreenX.set(location[0]);
             headerScreenY.set(location[1]);
             headerWidth.set(header.getWidth());
@@ -221,7 +229,12 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
-            assertTrue("a drag on the header with no long press must move the dialog upward",
+            assertTrue("a drag on the header from " + dragX + "," + dragY
+                    + " with no long press must move the dialog upward, but the bottom margin went"
+                    + " from " + initialBottom.get() + " to " + p.bottomMargin
+                    + " with the dialog " + p.width + " by " + p.height
+                    + " and the header " + headerWidth.get() + " by " + headerHeight.get()
+                    + " at " + headerScreenX.get() + "," + headerScreenY.get(),
                 p.bottomMargin > initialBottom.get());
         });
         File screenshotAfterDrag = captureScreenshot(scenario, "owner-call-dialog-device-after-drag.png");
@@ -249,7 +262,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     @Test
     public void theHeaderDragMovesTheDialogSidewaysAndTheHandleDragResizesIt() throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
 
         AtomicInteger handleX = new AtomicInteger();
@@ -259,7 +272,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         scenario.onActivity(activity -> {
             View handle = activity.findViewById(R.id.owner_call_dialog_resize_handle);
             int[] location = new int[2];
-            handle.getLocationOnScreen(location);
+            handle.getLocationInWindow(location);
             handleX.set(location[0] + handle.getWidth() / 2);
             handleY.set(location[1] + handle.getHeight() / 2);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
@@ -285,7 +298,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         scenario.onActivity(activity -> {
             View header = activity.findViewById(R.id.owner_call_dialog_header);
             int[] location = new int[2];
-            header.getLocationOnScreen(location);
+            header.getLocationInWindow(location);
             headerX.set(location[0] + header.getWidth() / 2);
             headerY.set(location[1] + header.getHeight() / 2);
         });
