@@ -6,17 +6,21 @@
 #
 #  1. Selective tests: the select-tests job diffs the pull request against its
 #     base (origin/main) and maps each changed app source package to the
-#     androidTest classes in the same package, then runs those classes plus the
-#     cross-cutting root tests (TermuxActivityLaunch, TermuxServiceBind,
-#     BrowserTabsDrawer, TerminalToolbarToggle) via the AndroidJUnitRunner
-#     `android.testInstrumentationRunnerArguments.class` filter (the connected
-#     instrumentation task does not accept gradle's `--tests` option, which only
-#     works for JVM `test` tasks) so central regressions are always exercised.
-#     Coverage is never silently
-#     dropped: it falls back to the FULL suite when the change is broad or core
-#     (build files, manifest, resources, shared library modules, the androidTest
-#     harness itself, or shared base test classes), when nothing maps, or when
-#     ANY changed app source package has no same-package androidTest class.
+#     androidTest classes in the same package and all its subpackages, then runs
+#     those classes plus the cross-cutting root tests (TermuxActivityLaunch,
+#     TermuxServiceBind, BrowserTabsDrawer, TerminalToolbarToggle) via the
+#     AndroidJUnitRunner `android.testInstrumentationRunnerArguments.class`
+#     filter (the connected instrumentation task does not accept gradle's
+#     `--tests` option, which only works for JVM `test` tasks) so central
+#     regressions are always exercised. Subpackage inclusion matters for root
+#     package changes: a change to TermuxActivity.java (com.termux.app) must
+#     also select tests in com.termux.app.diagnostics whose subject is a line in
+#     TermuxActivity. Coverage is never silently dropped: it falls back to the
+#     FULL suite when the change is broad or core (build files, manifest,
+#     resources, shared library modules, the androidTest harness itself, or
+#     shared base test classes), when nothing maps, or when ANY changed app
+#     source package has no androidTest class in the same package or its
+#     subpackages.
 #
 #  2. Sharding: the emulator job runs as a matrix of shards, each on its own
 #     emulator, using AndroidJUnitRunner numShards/shardIndex so even the full
@@ -70,6 +74,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify subpackage test collection includes diagnostics tests for root package changes
+        run: |
+          set -euo pipefail
+          app_test_root="app/src/androidTest/java"
+          collect_tests_with_subpackages() {
+            local dir="$1"
+            [ -d "$dir" ] || return 0
+            find "$dir" -name "*InstrumentedTest.java" | sed -E "s#^$app_test_root/##; s#/#.#g; s#\.java\$##"
+          }
+          result=$(collect_tests_with_subpackages "$app_test_root/com/termux/app")
+          expected="com.termux.app.diagnostics.WindowDrawTimeRecordedOnDeviceInstrumentedTest"
+          if ! echo "$result" | grep -qF "$expected"; then
+            echo "FAIL: $expected was not found when collecting from com/termux/app"
+            echo "Collected classes:"
+            echo "$result"
+            exit 1
+          fi
+          echo "PASS: $expected found in subpackage collection from com/termux/app"
+
       - name: Determine affected test classes
         id: select
         env:
@@ -119,11 +142,17 @@ jobs:
             done
           }
 
+          collect_tests_with_subpackages() {
+            local dir="$1"
+            [ -d "$dir" ] || return 0
+            find "$dir" -name "*InstrumentedTest.java" | sed -E "s#^$app_test_root/##; s#/#.#g; s#\.java\$##"
+          }
+
           test_classes=""
           for pkg_path in $packages; do
-            pkg_tests=$(collect_tests "$app_test_root/$pkg_path")
+            pkg_tests=$(collect_tests_with_subpackages "$app_test_root/$pkg_path")
             if [ -z "$pkg_tests" ]; then
-              emit_full "Changed package '$pkg_path' has no same-package androidTest class; running the full suite so coverage is never skipped." "package without matching test ($pkg_path)"
+              emit_full "Changed package '$pkg_path' has no androidTest class in the same package or its subpackages; running the full suite so coverage is never skipped." "package without matching test ($pkg_path)"
             fi
             test_classes="$test_classes
           $pkg_tests"
