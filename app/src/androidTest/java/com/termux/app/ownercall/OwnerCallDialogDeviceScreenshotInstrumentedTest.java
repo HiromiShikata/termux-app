@@ -128,7 +128,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         setOrientation(scenario, ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
             Configuration.ORIENTATION_PORTRAIT);
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
         assertDialogMatchesTheSpecification(scenario);
         File portraitScreenshot = captureScreenshot(scenario, "owner-call-dialog-device-portrait.png");
         assertNotNull("the portrait device screenshot must reach the directory the workflow pulls",
@@ -138,7 +138,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         setOrientation(scenario, ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             Configuration.ORIENTATION_LANDSCAPE);
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
         assertDialogMatchesTheSpecification(scenario);
         File landscapeScreenshot = captureScreenshot(scenario, "owner-call-dialog-device-landscape.png");
         assertNotNull("the landscape device screenshot must reach the directory the workflow pulls",
@@ -147,7 +147,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             landscapeScreenshot.exists() && landscapeScreenshot.length() > 0);
 
         scenario.onActivity(activity -> {
-            activity.findViewById(R.id.owner_call_dialog_next_button).performClick();
+            activity.findViewById(R.id.owner_call_dialog_previous_button).performClick();
             assertEquals("2 / 3", textOf(activity, R.id.owner_call_dialog_position));
             assertEquals(REPEATED_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
         });
@@ -157,7 +157,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     public void closingTheDialogHidesItAndThePendingIndicatorRemainsAndReopensIt()
         throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
 
         scenario.onActivity(activity -> {
             activity.findViewById(R.id.owner_call_dialog_close_button).performClick();
@@ -174,8 +174,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             activity.findViewById(R.id.owner_call_pending_indicator).performClick();
             assertEquals(View.VISIBLE,
                 activity.findViewById(R.id.owner_call_dialog).getVisibility());
-            assertEquals("1 / 3", textOf(activity, R.id.owner_call_dialog_position));
-            assertEquals(OLDEST_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
+            assertEquals("3 / 3", textOf(activity, R.id.owner_call_dialog_position));
+            assertEquals(REPEATED_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
         });
 
         assertNotNull("the reopened-dialog device screenshot must reach the directory the workflow pulls",
@@ -185,7 +185,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     @Test
     public void theDragMovesTheDialogAndThePositionSurvivesATerminalScreenUpdate() throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
         File screenshotBeforeDrag = captureScreenshot(scenario, "owner-call-dialog-device-before-drag.png");
         assertNotNull("portrait screenshot before drag must reach the directory the workflow pulls",
             screenshotBeforeDrag);
@@ -266,22 +266,23 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     }
 
     @Test
-    public void aShortTapOnTheNextButtonStillPagesAfterTheDragListenerIsAttached() throws Exception {
+    public void aShortTapOnThePreviousButtonStillPagesAfterTheDragListenerIsAttached()
+        throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
 
         AtomicInteger buttonScreenX = new AtomicInteger();
         AtomicInteger buttonScreenY = new AtomicInteger();
         AtomicInteger buttonWidth = new AtomicInteger();
         AtomicInteger buttonHeight = new AtomicInteger();
         scenario.onActivity(activity -> {
-            View nextButton = activity.findViewById(R.id.owner_call_dialog_next_button);
+            View previousButton = activity.findViewById(R.id.owner_call_dialog_previous_button);
             int[] location = new int[2];
-            nextButton.getLocationOnScreen(location);
+            previousButton.getLocationOnScreen(location);
             buttonScreenX.set(location[0]);
             buttonScreenY.set(location[1]);
-            buttonWidth.set(nextButton.getWidth());
-            buttonHeight.set(nextButton.getHeight());
+            buttonWidth.set(previousButton.getWidth());
+            buttonHeight.set(previousButton.getHeight());
         });
 
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
@@ -300,15 +301,15 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         instrumentation.waitForIdleSync();
 
         scenario.onActivity(activity ->
-            assertEquals("next button tap must page to the second call even after drag listener is "
-                    + "attached to the header",
+            assertEquals("previous button tap must page back to the second call even after the drag "
+                    + "listener is attached to the header",
                 "2 / 3", textOf(activity, R.id.owner_call_dialog_position)));
     }
 
     @Test
     public void replyingToTheSessionDeletesItsOwnerCallFileAndClosesTheDialog() throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
-        awaitDialogShowing(scenario, "1 / 3");
+        awaitDialogShowing(scenario, "3 / 3");
 
         scenario.onActivity(activity -> {
             TerminalSession session = activity.getCurrentSession();
@@ -372,7 +373,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             View terminalArea = activity.getTerminalView();
             assertEquals(View.VISIBLE, dialog.getVisibility());
-            assertEquals(OLDEST_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
+            assertEquals(REPEATED_CALL_BODY, textOf(activity, R.id.owner_call_dialog_body));
             assertTrue("the elapsed time since the owner was called must be shown",
                 textOf(activity, R.id.owner_call_dialog_relative_time).matches("\\d+[smh]"));
             assertEquals("the dialog must occupy a quarter of the screen height",
