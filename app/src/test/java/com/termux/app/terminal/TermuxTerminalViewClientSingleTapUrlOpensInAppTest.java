@@ -126,7 +126,7 @@ public class TermuxTerminalViewClientSingleTapUrlOpensInAppTest {
     @Test
     public void selectUrlDialogOpenInChromeStillLaunchesTheExternalBrowser() throws IOException {
         String methodBody = methodBody(
-            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "private void showUrlOpenChoice(");
+            readModuleFile(VIEW_CLIENT_RELATIVE_PATH), "public void showUrlOpenChoice(");
 
         Assert.assertTrue("Select-URL dialog Open in Chrome must still launch the external browser",
             methodBody.contains("ShareUtils.openUrlInChrome(mActivity, url)"));
