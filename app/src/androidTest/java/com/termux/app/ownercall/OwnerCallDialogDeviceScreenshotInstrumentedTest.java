@@ -530,6 +530,9 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> {
+            SessionNewActivityStore store = activity.getSessionNewActivityStore();
+            assertNotNull(store);
+            store.purgeSession(SESSION_URL);
             activity.getPreferences().setSessionDefinitionUrl(server.indexUrl());
             activity.loadSessionsFromDefinition();
         });
