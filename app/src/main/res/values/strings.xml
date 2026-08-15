@@ -505,7 +505,6 @@
     <string name="owner_call_dialog_previous_content_description">Previous owner call</string>
     <string name="owner_call_dialog_next_content_description">Next owner call</string>
     <string name="owner_call_dialog_close_content_description">Close the owner call dialog</string>
-    <string name="owner_call_dialog_resize_content_description">Drag to resize the owner call dialog</string>
     <string name="owner_call_pending_indicator_content_description">Owner call pending — tap to show</string>
 
 </resources>
