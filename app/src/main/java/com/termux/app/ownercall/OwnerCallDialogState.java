@@ -7,7 +7,7 @@ import java.util.List;
 
 public final class OwnerCallDialogState {
 
-    private static final int OLDEST_CALL = 0;
+    private static final int NO_WAITING_CALL = 0;
 
     private boolean mIsDialogClosed;
 
@@ -32,15 +32,18 @@ public final class OwnerCallDialogState {
     }
 
     public int indexOfDisplayedCall(@NonNull List<OwnerCall> calls) {
-        if (mDisplayedCalledAt == null) {
-            return OLDEST_CALL;
-        }
-        for (int index = 0; index < calls.size(); index++) {
-            if (mDisplayedCalledAt.equals(calls.get(index).getCalledAt())) {
-                return index;
+        if (mDisplayedCalledAt != null) {
+            for (int index = 0; index < calls.size(); index++) {
+                if (mDisplayedCalledAt.equals(calls.get(index).getCalledAt())) {
+                    return index;
+                }
             }
         }
-        return OLDEST_CALL;
+        return indexOfNewestCall(calls);
+    }
+
+    private static int indexOfNewestCall(@NonNull List<OwnerCall> calls) {
+        return calls.isEmpty() ? NO_WAITING_CALL : calls.size() - 1;
     }
 
     public void displayCallAt(@NonNull List<OwnerCall> calls, int index) {
