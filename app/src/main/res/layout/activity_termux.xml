@@ -830,7 +830,7 @@
             app:srcCompat="@drawable/ic_apk_update_available"
             android:visibility="gone" />
 
-        <LinearLayout
+        <com.termux.app.ownercall.OwnerCallDialogFrame
             android:id="@+id/owner_call_dialog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -937,7 +937,7 @@
                 android:src="@drawable/ic_owner_call_resize"
                 android:tint="@color/white" />
 
-        </LinearLayout>
+        </com.termux.app.ownercall.OwnerCallDialogFrame>
 
     </RelativeLayout>
 
