@@ -75,6 +75,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final long SESSION_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long DIALOG_TIMEOUT_MILLIS = 30_000L;
     private static final long TAP_SETTLE_MILLIS = 500L;
+    private static final long TAP_DURATION_MILLIS = 50L;
     private static final long POLL_INTERVAL_MILLIS = 100L;
     private static final int QUARTER_OF_THE_SCREEN = 4;
     private static final String SCREENSHOT_DIRECTORY_NAME = "termux-instrumentation-screenshots";
@@ -272,14 +273,51 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
         awaitDialogShowing(scenario, "3 / 3");
 
-        scenario.onActivity(activity -> assertTrue(
-            "the previous button must be enabled while the newest call is displayed",
-            activity.findViewById(R.id.owner_call_dialog_previous_button).isEnabled()));
+        AtomicInteger tapX = new AtomicInteger();
+        AtomicInteger tapY = new AtomicInteger();
+        AtomicInteger buttonWidth = new AtomicInteger();
+        AtomicInteger buttonHeight = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            View previousButton = activity.findViewById(R.id.owner_call_dialog_previous_button);
+            assertTrue("the previous button must be enabled while the newest call is displayed",
+                previousButton.isEnabled());
+            int[] location = new int[2];
+            previousButton.getLocationInWindow(location);
+            buttonWidth.set(previousButton.getWidth());
+            buttonHeight.set(previousButton.getHeight());
+            tapX.set(location[0] + previousButton.getWidth() / 2);
+            tapY.set(location[1] + previousButton.getHeight() / 2);
+        });
 
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long downTime = SystemClock.uptimeMillis();
+        dispatchToWindow(scenario, MotionEvent.ACTION_DOWN, downTime, downTime,
+            tapX.get(), tapY.get());
+        dispatchToWindow(scenario, MotionEvent.ACTION_UP, downTime,
+            downTime + TAP_DURATION_MILLIS, tapX.get(), tapY.get());
+        instrumentation.waitForIdleSync();
+        Thread.sleep(TAP_SETTLE_MILLIS);
+        instrumentation.waitForIdleSync();
+
+        AtomicReference<String> positionAfterTheTap = new AtomicReference<>("");
         scenario.onActivity(activity ->
-            activity.findViewById(R.id.owner_call_dialog_previous_button).performClick());
+            positionAfterTheTap.set(textOf(activity, R.id.owner_call_dialog_position)));
 
-        awaitDialogShowing(scenario, "2 / 3");
+        assertEquals("a short tap at " + tapX.get() + "," + tapY.get()
+                + " on the previous button, which is " + buttonWidth.get() + " by "
+                + buttonHeight.get()
+                + " pixels, must page back to the second call even after the drag listener is "
+                + "attached to the header",
+            "2 / 3", positionAfterTheTap.get());
+    }
+
+    private static void dispatchToWindow(ActivityScenario<TermuxActivity> scenario, int action,
+                                         long downTime, long eventTime, int x, int y) {
+        scenario.onActivity(activity -> {
+            MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
+            activity.getWindow().getDecorView().dispatchTouchEvent(event);
+            event.recycle();
+        });
     }
 
     @Test
