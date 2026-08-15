@@ -15,7 +15,6 @@ public class OwnerCallDialogDragGestureTest {
 
         Assert.assertNull("a tap that never leaves the touch slop must not move the dialog",
             gesture.onTouchMoved(110f, 210f));
-        Assert.assertFalse(gesture.isDragging());
         Assert.assertFalse("a tap must not be reported as a finished drag",
             gesture.onTouchFinished());
     }
@@ -34,7 +33,6 @@ public class OwnerCallDialogDragGestureTest {
         Assert.assertNotNull(secondStep);
         Assert.assertEquals(10, secondStep.getHorizontalPixels());
         Assert.assertEquals(30, secondStep.getVerticalPixels());
-        Assert.assertTrue(gesture.isDragging());
         Assert.assertTrue("a drag that moved must be reported as a finished drag",
             gesture.onTouchFinished());
     }

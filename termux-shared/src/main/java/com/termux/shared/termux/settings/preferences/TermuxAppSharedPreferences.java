@@ -204,7 +204,6 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
             TERMUX_APP.KEY_OWNER_CALL_DIALOG_HEIGHT, heightPixels, false);
     }
 
-
     public static int[] getDefaultFontSizes(Context context) {
         float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, context.getResources().getDisplayMetrics());
 

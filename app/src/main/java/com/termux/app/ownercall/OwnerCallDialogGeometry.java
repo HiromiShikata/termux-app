@@ -61,11 +61,6 @@ public final class OwnerCallDialogGeometry {
     }
 
     @NonNull
-    public OwnerCallDialogPlacement getPlacement() {
-        return mPlacement;
-    }
-
-    @NonNull
     public OwnerCallDialogPlacement getDefaultPlacement() {
         return mDefaultPlacement;
     }

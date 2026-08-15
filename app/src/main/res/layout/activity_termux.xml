@@ -932,8 +932,8 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
                 android:contentDescription="@string/owner_call_dialog_resize_content_description"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="2dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
                 android:src="@drawable/ic_owner_call_resize"
                 android:tint="@color/white" />
 

@@ -52,8 +52,4 @@ public final class OwnerCallDialogDragGesture {
         mDragging = false;
         return wasDragging;
     }
-
-    public boolean isDragging() {
-        return mDragging;
-    }
 }
