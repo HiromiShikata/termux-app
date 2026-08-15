@@ -1,11 +1,14 @@
 package com.termux.app.ownercall;
 
 import android.content.Context;
+import android.os.SystemClock;
 import android.text.Spanned;
 import android.text.style.ClickableSpan;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -234,6 +237,131 @@ public class OwnerCallDialogControllerTest {
         Assert.assertEquals("the top edge must stay where it was while the bottom edge is dragged",
             placementBeforeTheDrag.getBottomMarginPixels() - 150,
             placement.getBottomMarginPixels());
+    }
+
+    @Test
+    public void draggingTheLeftEdgeOutwardWidensTheDialogWithoutMovingItsRightEdge() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        controller.onDialogResizedBy(-300, 0);
+        controller.onDialogMovedBy(200, 0);
+        OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
+
+        controller.onDialogResizedBy(leftEdge(), -120, 0);
+
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertEquals(placementBeforeTheDrag.getLeftMarginPixels() - 120,
+            placement.getLeftMarginPixels());
+        Assert.assertEquals(placementBeforeTheDrag.getWidthPixels() + 120,
+            placement.getWidthPixels());
+        Assert.assertEquals("the right edge must stay where it was while the left edge is dragged",
+            placementBeforeTheDrag.getLeftMarginPixels() + placementBeforeTheDrag.getWidthPixels(),
+            placement.getLeftMarginPixels() + placement.getWidthPixels());
+    }
+
+    @Test
+    public void draggingTheTopEdgeUpwardGrowsTheDialogUpwardWithoutMovingItsBottomEdge() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
+
+        controller.onDialogResizedBy(topEdge(), 0, -250);
+
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertEquals(placementBeforeTheDrag.getHeightPixels() + 250,
+            placement.getHeightPixels());
+        Assert.assertEquals("the bottom edge must stay where it was while the top edge is dragged",
+            placementBeforeTheDrag.getBottomMarginPixels(), placement.getBottomMarginPixels());
+    }
+
+    @Test
+    public void draggingTheBottomEdgeDownwardGrowsTheDialogDownward() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
+
+        controller.onDialogResizedBy(bottomEdge(), 0, 100);
+
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertEquals(placementBeforeTheDrag.getHeightPixels() + 100,
+            placement.getHeightPixels());
+        Assert.assertEquals(placementBeforeTheDrag.getBottomMarginPixels() - 100,
+            placement.getBottomMarginPixels());
+    }
+
+    @Test
+    public void aDragThatStartsOnTheFrameEdgeResizesTheDialogAndStoresThePlacement() {
+        RecordedPlacementStore store = new RecordedPlacementStore();
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller =
+            controllerFor(root, allCallsBySession(), new RecordedBodyTaps(), store);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        OwnerCallDialogFrame frame = (OwnerCallDialogFrame) dialog(root);
+        layOutDialog(root, frame);
+        OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
+
+        int grabY = frame.getHeight() - 1;
+        int slop = ViewConfiguration.get(root.getContext()).getScaledTouchSlop();
+        long downTime = SystemClock.uptimeMillis();
+        dispatchToFrame(frame, MotionEvent.ACTION_DOWN, downTime, downTime,
+            frame.getWidth() / 2, grabY);
+        dispatchToFrame(frame, MotionEvent.ACTION_MOVE, downTime, downTime + 20,
+            frame.getWidth() / 2, grabY + slop + 1);
+        dispatchToFrame(frame, MotionEvent.ACTION_MOVE, downTime, downTime + 40,
+            frame.getWidth() / 2, grabY + slop + 1 + 90);
+        dispatchToFrame(frame, MotionEvent.ACTION_UP, downTime, downTime + 60,
+            frame.getWidth() / 2, grabY + slop + 1 + 90);
+
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertEquals("dragging the bottom frame edge downward must grow the dialog",
+            placementBeforeTheDrag.getHeightPixels() + 90, placement.getHeightPixels());
+        Assert.assertEquals(placement, store.loadPlacement());
+    }
+
+    @Test
+    public void aDragThatStartsInTheMiddleOfTheHeaderStillMovesTheDialogInsteadOfResizingIt() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        OwnerCallDialogFrame frame = (OwnerCallDialogFrame) dialog(root);
+        layOutDialog(root, frame);
+        View header = root.findViewById(R.id.owner_call_dialog_header);
+
+        Assert.assertFalse("the middle of the header must not grip any frame edge",
+            frame.gripAt(frame.getWidth() / 2, header.getBottom() / 2).isAnyEdgeGripped());
+    }
+
+    private static void layOutDialog(View root, OwnerCallDialogFrame frame) {
+        root.measure(View.MeasureSpec.makeMeasureSpec(GEOMETRY.getAvailableWidthPixels(),
+                View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(GEOMETRY.getAvailableHeightPixels(),
+                View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, GEOMETRY.getAvailableWidthPixels(),
+            GEOMETRY.getAvailableHeightPixels());
+        Assert.assertTrue("the dialog must have been laid out before the drag",
+            frame.getWidth() > 0 && frame.getHeight() > 0);
+    }
+
+    private static void dispatchToFrame(OwnerCallDialogFrame frame, int action, long downTime,
+                                        long eventTime, int x, int y) {
+        MotionEvent event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0);
+        frame.dispatchTouchEvent(event);
+        event.recycle();
+    }
+
+    private static OwnerCallDialogEdgeGrip leftEdge() {
+        return OwnerCallDialogEdgeGrip.resolve(0, 500, 1000, 1000, 60, 0);
+    }
+
+    private static OwnerCallDialogEdgeGrip topEdge() {
+        return OwnerCallDialogEdgeGrip.resolve(500, 0, 1000, 1000, 60, 0);
+    }
+
+    private static OwnerCallDialogEdgeGrip bottomEdge() {
+        return OwnerCallDialogEdgeGrip.resolve(500, 1000, 1000, 1000, 60, 0);
     }
 
     @Test

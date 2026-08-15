@@ -12,7 +12,9 @@ import com.termux.R;
 
 import java.util.List;
 
-public final class OwnerCallDialogController implements OwnerCallDialogBinder.OwnerCallDialogActions {
+public final class OwnerCallDialogController
+    implements OwnerCallDialogBinder.OwnerCallDialogActions,
+    OwnerCallDialogFrame.OwnerCallDialogFrameResizeActions {
 
     private static final int KEEP_DISPLAYED_CALL = 0;
     private static final int PREVIOUS_CALL = -1;
@@ -123,9 +125,17 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
     }
 
     public void onDialogResizedBy(int horizontalPixels, int verticalPixels) {
-        applyPlacement(currentPlacement().resizedBy(horizontalPixels, verticalPixels));
+        onDialogResizedBy(OwnerCallDialogEdgeGrip.bottomRightCorner(), horizontalPixels,
+            verticalPixels);
     }
 
+    @Override
+    public void onDialogResizedBy(@NonNull OwnerCallDialogEdgeGrip grip, int horizontalPixels,
+                                  int verticalPixels) {
+        applyPlacement(currentPlacement().resizedBy(grip, horizontalPixels, verticalPixels));
+    }
+
+    @Override
     public void onDialogPlacementCommitted() {
         if (mChosenPlacement != null) {
             mPlacementStore.savePlacement(mChosenPlacement);
@@ -198,11 +208,13 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
         }
         View header = mRoot.findViewById(R.id.owner_call_dialog_header);
         View resizeHandle = mRoot.findViewById(R.id.owner_call_dialog_resize_handle);
-        if (header == null || resizeHandle == null) {
+        View dialog = mRoot.findViewById(R.id.owner_call_dialog);
+        if (header == null || resizeHandle == null || !(dialog instanceof OwnerCallDialogFrame)) {
             return;
         }
         attachDragListenerTo(header, this::onDialogMovedBy);
         attachDragListenerTo(resizeHandle, this::onDialogResizedBy);
+        ((OwnerCallDialogFrame) dialog).setResizeActions(this);
         mDragListenersAttached = true;
     }
 

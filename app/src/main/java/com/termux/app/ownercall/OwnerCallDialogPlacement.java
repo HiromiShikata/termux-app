@@ -40,10 +40,28 @@ public final class OwnerCallDialogPlacement {
     }
 
     @NonNull
-    public OwnerCallDialogPlacement resizedBy(int horizontalPixels, int verticalPixels) {
-        return new OwnerCallDialogPlacement(mLeftMarginPixels,
-            mBottomMarginPixels - verticalPixels, mWidthPixels + horizontalPixels,
-            mHeightPixels + verticalPixels);
+    public OwnerCallDialogPlacement resizedBy(@NonNull OwnerCallDialogEdgeGrip grip,
+                                              int horizontalPixels, int verticalPixels) {
+        int leftMarginPixels = mLeftMarginPixels;
+        int bottomMarginPixels = mBottomMarginPixels;
+        int widthPixels = mWidthPixels;
+        int heightPixels = mHeightPixels;
+        if (grip.isLeftEdgeGripped()) {
+            leftMarginPixels += horizontalPixels;
+            widthPixels -= horizontalPixels;
+        }
+        if (grip.isRightEdgeGripped()) {
+            widthPixels += horizontalPixels;
+        }
+        if (grip.isTopEdgeGripped()) {
+            heightPixels -= verticalPixels;
+        }
+        if (grip.isBottomEdgeGripped()) {
+            bottomMarginPixels -= verticalPixels;
+            heightPixels += verticalPixels;
+        }
+        return new OwnerCallDialogPlacement(leftMarginPixels, bottomMarginPixels, widthPixels,
+            heightPixels);
     }
 
     @Override

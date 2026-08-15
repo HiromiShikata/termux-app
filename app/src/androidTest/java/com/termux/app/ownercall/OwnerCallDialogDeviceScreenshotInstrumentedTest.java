@@ -314,6 +314,51 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         });
     }
 
+    @Test
+    public void theTopFrameEdgeDragGrowsTheDialogUpwardAndTheBottomEdgeStaysPut() throws Exception {
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 3");
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+
+        AtomicInteger grabX = new AtomicInteger();
+        AtomicInteger grabY = new AtomicInteger();
+        AtomicInteger heightBeforeTheDrag = new AtomicInteger();
+        AtomicInteger bottomBeforeTheDrag = new AtomicInteger();
+        AtomicInteger edgeBand = new AtomicInteger();
+        scenario.onActivity(activity -> {
+            OwnerCallDialogFrame frame = activity.findViewById(R.id.owner_call_dialog);
+            int[] location = new int[2];
+            frame.getLocationInWindow(location);
+            edgeBand.set(frame.getEdgeBandPixels());
+            grabX.set(location[0] + 1);
+            grabY.set(location[1] + 1);
+            ViewGroup.MarginLayoutParams p =
+                (ViewGroup.MarginLayoutParams) frame.getLayoutParams();
+            heightBeforeTheDrag.set(p.height);
+            bottomBeforeTheDrag.set(p.bottomMargin);
+            assertTrue("the top left corner must grip the top and the left frame edges",
+                frame.gripAt(1, 1).isTopEdgeGripped() && frame.gripAt(1, 1).isLeftEdgeGripped());
+        });
+
+        dragBy(scenario, grabX.get(), grabY.get(), 0, -220);
+        instrumentation.waitForIdleSync();
+
+        scenario.onActivity(activity -> {
+            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
+                activity.findViewById(R.id.owner_call_dialog).getLayoutParams();
+            assertTrue("a drag on the top frame edge from " + grabX.get() + "," + grabY.get()
+                    + " with an edge band of " + edgeBand.get()
+                    + " pixels must grow the dialog upward, but the height went from "
+                    + heightBeforeTheDrag.get() + " to " + p.height,
+                p.height > heightBeforeTheDrag.get());
+            assertEquals("the bottom edge must stay where it was while the top edge is dragged",
+                bottomBeforeTheDrag.get(), p.bottomMargin);
+        });
+
+        assertNotNull("the frame resize screenshot must reach the directory the workflow pulls",
+            captureScreenshot(scenario, "owner-call-dialog-after-top-edge-drag.png"));
+    }
+
     private static void dragBy(ActivityScenario<TermuxActivity> scenario, int startX, int startY,
                                int horizontalPixels, int verticalPixels) {
         int slop = ViewConfiguration.get(
