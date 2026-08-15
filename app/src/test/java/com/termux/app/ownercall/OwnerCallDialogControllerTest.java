@@ -201,36 +201,57 @@ public class OwnerCallDialogControllerTest {
     }
 
     @Test
-    public void movesTheDialogToThePositionRequestedByADrag() {
+    public void movesTheDialogOnBothAxesWhileItsHeaderIsDragged() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        int requestedBottomMargin = GEOMETRY.getMinBottomMarginPixels() + 200;
+        controller.onDialogResizedBy(-200, 0);
+        OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
 
-        controller.onDragPositionChanged(requestedBottomMargin);
+        controller.onDialogMovedBy(120, -200);
 
-        ViewGroup.MarginLayoutParams layoutParams =
-            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
-        Assert.assertEquals(requestedBottomMargin, layoutParams.bottomMargin);
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertEquals(placementBeforeTheDrag.getLeftMarginPixels() + 120,
+            placement.getLeftMarginPixels());
+        Assert.assertEquals(placementBeforeTheDrag.getBottomMarginPixels() + 200,
+            placement.getBottomMarginPixels());
     }
 
     @Test
-    public void theChosenPositionSurvivesAReBindFromATerminalScreenUpdate() {
+    public void resizesTheDialogWhileItsResizeHandleIsDragged() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        int requestedBottomMargin = GEOMETRY.getMinBottomMarginPixels() + 200;
-        controller.onDragPositionChanged(requestedBottomMargin);
+        OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
+
+        controller.onDialogResizedBy(-80, 150);
+
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertEquals(placementBeforeTheDrag.getWidthPixels() - 80,
+            placement.getWidthPixels());
+        Assert.assertEquals(placementBeforeTheDrag.getHeightPixels() + 150,
+            placement.getHeightPixels());
+        Assert.assertEquals("the top edge must stay where it was while the bottom edge is dragged",
+            placementBeforeTheDrag.getBottomMarginPixels() - 150,
+            placement.getBottomMarginPixels());
+    }
+
+    @Test
+    public void theChosenPlacementSurvivesAReBindFromATerminalScreenUpdate() {
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        controller.onDialogResizedBy(-80, 150);
+        controller.onDialogMovedBy(60, -200);
+        OwnerCallDialogPlacement placementAfterTheDrags = placementOf(root);
 
         controller.showCallsForSession(FIRST_SESSION, NOW + 1000);
 
-        ViewGroup.MarginLayoutParams layoutParams =
-            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
-        Assert.assertEquals(requestedBottomMargin, layoutParams.bottomMargin);
+        Assert.assertEquals(placementAfterTheDrags, placementOf(root));
     }
 
     @Test
-    public void aLayoutChangeThatMakesTheChosenPositionInvalidClampsItBackInsideTheAllowedArea() {
+    public void aLayoutChangeThatMakesTheChosenPlacementInvalidClampsItBackInsideTheScreen() {
         View root = inflateActivityLayout();
         AtomicReference<OwnerCallDialogGeometry> geometryRef =
             new AtomicReference<>(GEOMETRY);
@@ -242,19 +263,43 @@ public class OwnerCallDialogControllerTest {
                 return calls == null ? Collections.emptyList() : calls;
             },
             geometryRef::get,
-            new RecordedBodyTaps());
+            new RecordedBodyTaps(),
+            new RecordedPlacementStore());
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        controller.onDragPositionChanged(GEOMETRY.getMaxBottomMarginPixels());
+        controller.onDialogMovedBy(0, -GEOMETRY.getAvailableHeightPixels());
 
         OwnerCallDialogGeometry reducedGeometry =
             OwnerCallDialogGeometry.resolve(1000, 0, 1080, 120, 36);
         geometryRef.set(reducedGeometry);
         controller.showCallsForSession(FIRST_SESSION, NOW + 1000);
 
-        ViewGroup.MarginLayoutParams layoutParams =
-            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
-        Assert.assertTrue("position must be clamped to fit the reduced layout",
-            layoutParams.bottomMargin <= reducedGeometry.getMaxBottomMarginPixels());
+        OwnerCallDialogPlacement placement = placementOf(root);
+        Assert.assertTrue("the dialog must stay inside the reduced screen",
+            placement.getBottomMarginPixels() + placement.getHeightPixels()
+                <= reducedGeometry.getAvailableHeightPixels());
+        Assert.assertTrue("the dialog must stay inside the reduced screen",
+            placement.getLeftMarginPixels() + placement.getWidthPixels()
+                <= reducedGeometry.getAvailableWidthPixels());
+    }
+
+    @Test
+    public void theChosenPlacementIsStoredWhenTheDragEndsAndIsUsedOnTheNextLaunch() {
+        RecordedPlacementStore store = new RecordedPlacementStore();
+        View root = inflateActivityLayout();
+        OwnerCallDialogController controller = controllerFor(root, allCallsBySession(),
+            new RecordedBodyTaps(), store);
+        controller.showCallsForSession(FIRST_SESSION, NOW);
+        controller.onDialogResizedBy(-200, 0);
+        controller.onDialogMovedBy(120, -200);
+        controller.onDialogPlacementCommitted();
+        OwnerCallDialogPlacement storedPlacement = placementOf(root);
+
+        View relaunchedRoot = inflateActivityLayout();
+        OwnerCallDialogController relaunchedController =
+            controllerFor(relaunchedRoot, allCallsBySession(), new RecordedBodyTaps(), store);
+        relaunchedController.showCallsForSession(FIRST_SESSION, NOW);
+
+        Assert.assertEquals(storedPlacement, placementOf(relaunchedRoot));
     }
 
     @Test
@@ -290,11 +335,15 @@ public class OwnerCallDialogControllerTest {
     }
 
     private static OwnerCallDialogController controllerFor(View root) {
+        return controllerFor(root, allCallsBySession());
+    }
+
+    private static Map<String, List<OwnerCall>> allCallsBySession() {
         Map<String, List<OwnerCall>> callsBySession = new HashMap<>();
         callsBySession.put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
         callsBySession.put(SECOND_SESSION, Arrays.asList(OTHER_SESSION_CALL,
             OTHER_SESSION_SECOND_CALL, OTHER_SESSION_THIRD_CALL));
-        return controllerFor(root, callsBySession);
+        return callsBySession;
     }
 
     private static OwnerCallDialogController controllerFor(View root,
@@ -305,13 +354,44 @@ public class OwnerCallDialogControllerTest {
     private static OwnerCallDialogController controllerFor(View root,
                                                            Map<String, List<OwnerCall>> callsBySession,
                                                            RecordedBodyTaps bodyTaps) {
+        return controllerFor(root, callsBySession, bodyTaps, new RecordedPlacementStore());
+    }
+
+    private static OwnerCallDialogController controllerFor(View root,
+                                                           Map<String, List<OwnerCall>> callsBySession,
+                                                           RecordedBodyTaps bodyTaps,
+                                                           RecordedPlacementStore placementStore) {
         return new OwnerCallDialogController(root,
             sessionName -> {
                 List<OwnerCall> calls = callsBySession.get(sessionName);
                 return calls == null ? Collections.emptyList() : calls;
             },
             () -> GEOMETRY,
-            bodyTaps);
+            bodyTaps,
+            placementStore);
+    }
+
+    private static final class RecordedPlacementStore
+        implements OwnerCallDialogController.OwnerCallDialogPlacementStore {
+
+        private OwnerCallDialogPlacement storedPlacement = null;
+
+        @Override
+        public OwnerCallDialogPlacement loadPlacement() {
+            return storedPlacement;
+        }
+
+        @Override
+        public void savePlacement(OwnerCallDialogPlacement placement) {
+            storedPlacement = placement;
+        }
+    }
+
+    private static OwnerCallDialogPlacement placementOf(View root) {
+        ViewGroup.MarginLayoutParams layoutParams =
+            (ViewGroup.MarginLayoutParams) dialog(root).getLayoutParams();
+        return new OwnerCallDialogPlacement(layoutParams.leftMargin, layoutParams.bottomMargin,
+            layoutParams.width, layoutParams.height);
     }
 
     private static final class RecordedBodyTaps

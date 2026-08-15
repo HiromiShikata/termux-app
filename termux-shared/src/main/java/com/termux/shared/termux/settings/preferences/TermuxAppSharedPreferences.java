@@ -168,6 +168,41 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
             TERMUX_APP.KEY_VERSION_CODE_OF_THE_PREVIOUS_LAUNCH, versionCode, false);
     }
 
+    public int getOwnerCallDialogLeftMargin() {
+        return SharedPreferenceUtils.getInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_LEFT_MARGIN,
+            TERMUX_APP.VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET);
+    }
+
+    public int getOwnerCallDialogBottomMargin() {
+        return SharedPreferenceUtils.getInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_BOTTOM_MARGIN,
+            TERMUX_APP.VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET);
+    }
+
+    public int getOwnerCallDialogWidth() {
+        return SharedPreferenceUtils.getInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_WIDTH,
+            TERMUX_APP.VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET);
+    }
+
+    public int getOwnerCallDialogHeight() {
+        return SharedPreferenceUtils.getInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_HEIGHT,
+            TERMUX_APP.VALUE_OWNER_CALL_DIALOG_PLACEMENT_UNSET);
+    }
+
+    public void setOwnerCallDialogPlacement(int leftMarginPixels, int bottomMarginPixels,
+                                            int widthPixels, int heightPixels) {
+        SharedPreferenceUtils.setInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_LEFT_MARGIN, leftMarginPixels, false);
+        SharedPreferenceUtils.setInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_BOTTOM_MARGIN, bottomMarginPixels, false);
+        SharedPreferenceUtils.setInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_WIDTH, widthPixels, false);
+        SharedPreferenceUtils.setInt(mSharedPreferences,
+            TERMUX_APP.KEY_OWNER_CALL_DIALOG_HEIGHT, heightPixels, false);
+    }
 
     public static int[] getDefaultFontSizes(Context context) {
         float dipInPixels = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, context.getResources().getDisplayMetrics());

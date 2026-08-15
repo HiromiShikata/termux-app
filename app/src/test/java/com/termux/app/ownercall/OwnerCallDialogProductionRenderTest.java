@@ -183,10 +183,6 @@ public class OwnerCallDialogProductionRenderTest {
                 }
 
                 @Override
-                public void onDragPositionChanged(int bottomMarginPixels) {
-                }
-
-                @Override
                 public void onCopyableTextTapped(String text) {
                 }
 

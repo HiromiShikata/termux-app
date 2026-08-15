@@ -6,23 +6,25 @@ public final class OwnerCallDialogGeometry {
 
     public static final int SCREEN_HEIGHT_DIVISOR = 4;
     public static final int VISIBLE_TERMINAL_ROWS_BELOW = 5;
+    public static final int MINIMUM_WIDTH_DIVISOR = 4;
+    public static final int MINIMUM_HEIGHT_DIVISOR = 10;
 
-    private final int mWidthPixels;
-    private final int mHeightPixels;
-    private final int mLeftMarginPixels;
-    private final int mBottomMarginPixels;
-    private final int mMinBottomMarginPixels;
-    private final int mMaxBottomMarginPixels;
+    @NonNull
+    private final OwnerCallDialogPlacement mPlacement;
 
-    private OwnerCallDialogGeometry(int widthPixels, int heightPixels, int leftMarginPixels,
-                                    int bottomMarginPixels, int minBottomMarginPixels,
-                                    int maxBottomMarginPixels) {
-        mWidthPixels = widthPixels;
-        mHeightPixels = heightPixels;
-        mLeftMarginPixels = leftMarginPixels;
-        mBottomMarginPixels = bottomMarginPixels;
-        mMinBottomMarginPixels = minBottomMarginPixels;
-        mMaxBottomMarginPixels = maxBottomMarginPixels;
+    @NonNull
+    private final OwnerCallDialogPlacement mDefaultPlacement;
+
+    private final int mAvailableWidthPixels;
+    private final int mAvailableHeightPixels;
+
+    private OwnerCallDialogGeometry(@NonNull OwnerCallDialogPlacement placement,
+                                    @NonNull OwnerCallDialogPlacement defaultPlacement,
+                                    int availableWidthPixels, int availableHeightPixels) {
+        mPlacement = placement;
+        mDefaultPlacement = defaultPlacement;
+        mAvailableWidthPixels = availableWidthPixels;
+        mAvailableHeightPixels = availableHeightPixels;
     }
 
     @NonNull
@@ -36,40 +38,52 @@ public final class OwnerCallDialogGeometry {
         int inset = Math.max(0, terminalAreaBottomInsetPixels);
         int defaultBottomMargin = inset
             + Math.max(0, terminalRowHeightPixels) * VISIBLE_TERMINAL_ROWS_BELOW;
-        int minBottomMargin = inset;
-        int maxBottomMargin = Math.max(minBottomMargin,
-            Math.max(0, screenHeightPixels) - height);
-        return new OwnerCallDialogGeometry(width, height, leftMargin, defaultBottomMargin,
-            minBottomMargin, maxBottomMargin);
+        OwnerCallDialogPlacement defaultPlacement =
+            new OwnerCallDialogPlacement(leftMargin, defaultBottomMargin, width, height);
+        return new OwnerCallDialogGeometry(defaultPlacement, defaultPlacement, leftMargin + width,
+            Math.max(0, screenHeightPixels));
     }
 
     public int getWidthPixels() {
-        return mWidthPixels;
+        return mPlacement.getWidthPixels();
     }
 
     public int getHeightPixels() {
-        return mHeightPixels;
+        return mPlacement.getHeightPixels();
     }
 
     public int getLeftMarginPixels() {
-        return mLeftMarginPixels;
+        return mPlacement.getLeftMarginPixels();
     }
 
     public int getBottomMarginPixels() {
-        return mBottomMarginPixels;
-    }
-
-    public int getMinBottomMarginPixels() {
-        return mMinBottomMarginPixels;
-    }
-
-    public int getMaxBottomMarginPixels() {
-        return mMaxBottomMarginPixels;
+        return mPlacement.getBottomMarginPixels();
     }
 
     @NonNull
-    public OwnerCallDialogGeometry withBottomMargin(int bottomMarginPixels) {
-        return new OwnerCallDialogGeometry(mWidthPixels, mHeightPixels, mLeftMarginPixels,
-            bottomMarginPixels, mMinBottomMarginPixels, mMaxBottomMarginPixels);
+    public OwnerCallDialogPlacement getDefaultPlacement() {
+        return mDefaultPlacement;
+    }
+
+    public int getAvailableWidthPixels() {
+        return mAvailableWidthPixels;
+    }
+
+    public int getAvailableHeightPixels() {
+        return mAvailableHeightPixels;
+    }
+
+    public int getMinimumWidthPixels() {
+        return mAvailableWidthPixels / MINIMUM_WIDTH_DIVISOR;
+    }
+
+    public int getMinimumHeightPixels() {
+        return mAvailableHeightPixels / MINIMUM_HEIGHT_DIVISOR;
+    }
+
+    @NonNull
+    public OwnerCallDialogGeometry withPlacement(@NonNull OwnerCallDialogPlacement placement) {
+        return new OwnerCallDialogGeometry(placement, mDefaultPlacement, mAvailableWidthPixels,
+            mAvailableHeightPixels);
     }
 }

@@ -1,9 +1,8 @@
 package com.termux.app.ownercall;
 
-import android.view.GestureDetector;
-import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -31,6 +30,14 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
         OwnerCallDialogGeometry currentGeometry();
     }
 
+    public interface OwnerCallDialogPlacementStore {
+
+        @Nullable
+        OwnerCallDialogPlacement loadPlacement();
+
+        void savePlacement(@NonNull OwnerCallDialogPlacement placement);
+    }
+
     @NonNull
     private final View mRoot;
 
@@ -44,28 +51,28 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
     private final OwnerCallBodySpannedText.OwnerCallBodyTapActions mBodyTapActions;
 
     @NonNull
+    private final OwnerCallDialogPlacementStore mPlacementStore;
+
+    @NonNull
     private final OwnerCallDialogState mState = new OwnerCallDialogState();
 
     @Nullable
-    private Integer mChosenBottomMargin = null;
+    private OwnerCallDialogPlacement mChosenPlacement;
 
-    private boolean mDragListenerAttached = false;
-
-    private boolean mDragging = false;
-
-    private float mDragStartY = 0f;
-
-    private int mDragStartBottomMargin = 0;
+    private boolean mDragListenersAttached = false;
 
     public OwnerCallDialogController(
         @NonNull View root,
         @NonNull OwnerCallSource callSource,
         @NonNull OwnerCallDialogGeometrySource geometrySource,
-        @NonNull OwnerCallBodySpannedText.OwnerCallBodyTapActions bodyTapActions) {
+        @NonNull OwnerCallBodySpannedText.OwnerCallBodyTapActions bodyTapActions,
+        @NonNull OwnerCallDialogPlacementStore placementStore) {
         mRoot = root;
         mCallSource = callSource;
         mGeometrySource = geometrySource;
         mBodyTapActions = bodyTapActions;
+        mPlacementStore = placementStore;
+        mChosenPlacement = placementStore.loadPlacement();
     }
 
     @Override
@@ -111,15 +118,40 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
         }
     }
 
-    @Override
-    public void onDragPositionChanged(int bottomMarginPixels) {
+    public void onDialogMovedBy(int horizontalPixels, int verticalPixels) {
+        applyPlacement(currentPlacement().movedBy(horizontalPixels, verticalPixels));
+    }
+
+    public void onDialogResizedBy(int horizontalPixels, int verticalPixels) {
+        applyPlacement(currentPlacement().resizedBy(horizontalPixels, verticalPixels));
+    }
+
+    public void onDialogPlacementCommitted() {
+        if (mChosenPlacement != null) {
+            mPlacementStore.savePlacement(mChosenPlacement);
+        }
+    }
+
+    @NonNull
+    private OwnerCallDialogPlacement currentPlacement() {
+        return resolvePlacement(mGeometrySource.currentGeometry());
+    }
+
+    @NonNull
+    private OwnerCallDialogPlacement resolvePlacement(@NonNull OwnerCallDialogGeometry geometry) {
+        return OwnerCallDialogPlacementResolver.resolve(mChosenPlacement,
+            geometry.getDefaultPlacement(), geometry.getAvailableWidthPixels(),
+            geometry.getAvailableHeightPixels(), geometry.getMinimumWidthPixels(),
+            geometry.getMinimumHeightPixels());
+    }
+
+    private void applyPlacement(@NonNull OwnerCallDialogPlacement requestedPlacement) {
         OwnerCallDialogGeometry geometry = mGeometrySource.currentGeometry();
-        mChosenBottomMargin = OwnerCallDialogPositionResolver.resolve(
-            bottomMarginPixels,
-            geometry.getBottomMarginPixels(),
-            geometry.getMinBottomMarginPixels(),
-            geometry.getMaxBottomMarginPixels());
-        applyChosenBottomMarginToDialog();
+        mChosenPlacement = OwnerCallDialogPlacementResolver.resolve(requestedPlacement,
+            geometry.getDefaultPlacement(), geometry.getAvailableWidthPixels(),
+            geometry.getAvailableHeightPixels(), geometry.getMinimumWidthPixels(),
+            geometry.getMinimumHeightPixels());
+        applyChosenPlacementToDialog();
     }
 
     private void render(int offsetFromDisplayedCall, long nowMillis) {
@@ -128,73 +160,81 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
             return;
         }
         OwnerCallDialogGeometry geometry = mGeometrySource.currentGeometry();
-        int resolvedBottomMargin = OwnerCallDialogPositionResolver.resolve(
-            mChosenBottomMargin,
-            geometry.getBottomMarginPixels(),
-            geometry.getMinBottomMarginPixels(),
-            geometry.getMaxBottomMarginPixels());
-        if (mChosenBottomMargin != null) {
-            mChosenBottomMargin = resolvedBottomMargin;
+        OwnerCallDialogPlacement placement = resolvePlacement(geometry);
+        if (mChosenPlacement != null) {
+            mChosenPlacement = placement;
         }
         List<OwnerCall> calls = mCallSource.callsForSession(mState.getSessionName());
         int requestedIndex = mState.indexOfDisplayedCall(calls) + offsetFromDisplayedCall;
         OwnerCallDialogPaging paging = OwnerCallDialogBinder.bind(mRoot, calls,
-            requestedIndex, nowMillis, geometry.withBottomMargin(resolvedBottomMargin), this);
+            requestedIndex, nowMillis, geometry.withPlacement(placement), this);
         mState.displayCallAt(calls, paging.getIndex());
-        ensureDragListenerAttached();
+        ensureDragListenersAttached();
     }
 
-    private void applyChosenBottomMarginToDialog() {
+    private void applyChosenPlacementToDialog() {
         View dialog = mRoot.findViewById(R.id.owner_call_dialog);
-        if (dialog == null || mChosenBottomMargin == null) {
+        if (dialog == null || mChosenPlacement == null) {
             return;
         }
         ViewGroup.MarginLayoutParams params =
             (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
-        if (params.bottomMargin == mChosenBottomMargin) {
+        if (params.leftMargin == mChosenPlacement.getLeftMarginPixels()
+            && params.bottomMargin == mChosenPlacement.getBottomMarginPixels()
+            && params.width == mChosenPlacement.getWidthPixels()
+            && params.height == mChosenPlacement.getHeightPixels()) {
             return;
         }
-        params.bottomMargin = mChosenBottomMargin;
+        params.leftMargin = mChosenPlacement.getLeftMarginPixels();
+        params.bottomMargin = mChosenPlacement.getBottomMarginPixels();
+        params.width = mChosenPlacement.getWidthPixels();
+        params.height = mChosenPlacement.getHeightPixels();
         dialog.setLayoutParams(params);
     }
 
-    private void ensureDragListenerAttached() {
-        if (mDragListenerAttached) {
+    private void ensureDragListenersAttached() {
+        if (mDragListenersAttached) {
             return;
         }
         View header = mRoot.findViewById(R.id.owner_call_dialog_header);
-        if (header == null) {
+        View resizeHandle = mRoot.findViewById(R.id.owner_call_dialog_resize_handle);
+        if (header == null || resizeHandle == null) {
             return;
         }
-        attachDragListenerTo(header);
-        mDragListenerAttached = true;
+        attachDragListenerTo(header, this::onDialogMovedBy);
+        attachDragListenerTo(resizeHandle, this::onDialogResizedBy);
+        mDragListenersAttached = true;
     }
 
-    private void attachDragListenerTo(@NonNull View header) {
-        GestureDetector gestureDetector = new GestureDetector(header.getContext(),
-            new GestureDetector.SimpleOnGestureListener() {
-                @Override
-                public void onLongPress(@NonNull MotionEvent e) {
-                    mDragging = true;
-                    mDragStartY = e.getRawY();
-                    View dialog = mRoot.findViewById(R.id.owner_call_dialog);
-                    mDragStartBottomMargin = dialog == null ? 0
-                        : ((ViewGroup.MarginLayoutParams) dialog.getLayoutParams()).bottomMargin;
-                    header.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                }
-            });
-        header.setOnTouchListener((view, event) -> {
-            gestureDetector.onTouchEvent(event);
-            if (mDragging) {
-                int action = event.getActionMasked();
-                if (action == MotionEvent.ACTION_MOVE) {
-                    int newBottomMargin = mDragStartBottomMargin
-                        + (int) (mDragStartY - event.getRawY());
-                    onDragPositionChanged(newBottomMargin);
-                } else if (action == MotionEvent.ACTION_UP
-                    || action == MotionEvent.ACTION_CANCEL) {
-                    mDragging = false;
-                }
+    private interface OwnerCallDialogDragAction {
+
+        void applyStep(int horizontalPixels, int verticalPixels);
+    }
+
+    private void attachDragListenerTo(@NonNull View handle,
+                                      @NonNull OwnerCallDialogDragAction dragAction) {
+        OwnerCallDialogDragGesture gesture = new OwnerCallDialogDragGesture(
+            ViewConfiguration.get(handle.getContext()).getScaledTouchSlop());
+        handle.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    gesture.onTouchDown(event.getRawX(), event.getRawY());
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    OwnerCallDialogDragStep step =
+                        gesture.onTouchMoved(event.getRawX(), event.getRawY());
+                    if (step != null) {
+                        dragAction.applyStep(step.getHorizontalPixels(), step.getVerticalPixels());
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (gesture.onTouchFinished()) {
+                        onDialogPlacementCommitted();
+                    }
+                    break;
+                default:
+                    break;
             }
             return true;
         });
