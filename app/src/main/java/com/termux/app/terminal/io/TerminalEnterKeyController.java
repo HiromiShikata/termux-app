@@ -111,6 +111,7 @@ public class TerminalEnterKeyController {
         boolean recorded = new SessionReplyTimeRecorder(store)
             .recordReplyOnSubmit(session, System.currentTimeMillis());
         if (!recorded) return;
+        mActivity.deleteAnsweredOwnerCallsOfSession(session.mSessionName);
         TermuxTerminalSessionActivityClient sessionClient =
             mActivity.getTermuxTerminalSessionClient();
         if (sessionClient != null && session == mActivity.getCurrentSession()) {
