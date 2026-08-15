@@ -18,8 +18,8 @@ import androidx.viewpager.widget.PagerAdapter;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.terminal.MaxHeightScrollView;
+import com.termux.app.terminal.SessionGenuineReplyRecorder;
 import com.termux.app.terminal.SessionNewActivityStore;
-import com.termux.app.terminal.SessionReplyTimeRecorder;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
 import com.termux.shared.logger.Logger;
@@ -159,14 +159,15 @@ public class TerminalToolbarViewPager {
         private void recordUserInputForSession(@Nullable TerminalSession session) {
             SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
             if (store == null) return;
-            boolean recorded = new SessionReplyTimeRecorder(store)
-                .recordReplyOnSubmit(session, System.currentTimeMillis());
-            if (!recorded) return;
-            TermuxTerminalSessionActivityClient sessionClient =
-                mActivity.getTermuxTerminalSessionClient();
-            if (sessionClient != null && session == mActivity.getCurrentSession()) {
-                sessionClient.updateSessionNameOverlay();
-            }
+            new SessionGenuineReplyRecorder(
+                store,
+                sessionName -> mActivity.deleteAnsweredOwnerCallsOfSession(sessionName),
+                () -> {
+                    TermuxTerminalSessionActivityClient sessionClient =
+                        mActivity.getTermuxTerminalSessionClient();
+                    if (sessionClient != null) sessionClient.updateSessionNameOverlay();
+                }
+            ).recordReply(session, System.currentTimeMillis(), session == mActivity.getCurrentSession());
         }
 
         void showSubmittedTextInputHistory(final EditText editText) {

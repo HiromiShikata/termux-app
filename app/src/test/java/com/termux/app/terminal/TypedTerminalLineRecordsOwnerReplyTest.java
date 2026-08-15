@@ -34,10 +34,10 @@ public class TypedTerminalLineRecordsOwnerReplyTest {
     @Test
     public void theTerminalViewClientRecordsTheGenuineOwnerReply() throws IOException {
         Assert.assertTrue("a line the owner types straight into the terminal view is a genuine reply, "
-                + "so this client has to record the genuine in-app reply time that clears the red "
-                + "owner-call dot instead of leaving it armed until the laggy statusline reply token "
-                + "catches up",
-            readViewClientSource().contains("SessionReplyTimeRecorder"));
+                + "so this client has to route through the shared reply sequence collaborator that "
+                + "records the in-app reply time and clears the red owner-call dot instead of leaving "
+                + "it armed until the laggy statusline reply token catches up",
+            readViewClientSource().contains("SessionGenuineReplyRecorder"));
     }
 
     @Test

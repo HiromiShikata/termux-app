@@ -8,8 +8,8 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.SessionGenuineReplyRecorder;
 import com.termux.app.terminal.SessionNewActivityStore;
-import com.termux.app.terminal.SessionReplyTimeRecorder;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.logger.Logger;
 import com.termux.terminal.TerminalEmulator;
@@ -108,14 +108,14 @@ public class TerminalEnterKeyController {
         if (session == null || !session.isRunning()) return;
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
-        boolean recorded = new SessionReplyTimeRecorder(store)
-            .recordReplyOnSubmit(session, System.currentTimeMillis());
-        if (!recorded) return;
-        mActivity.deleteAnsweredOwnerCallsOfSession(session.mSessionName);
-        TermuxTerminalSessionActivityClient sessionClient =
-            mActivity.getTermuxTerminalSessionClient();
-        if (sessionClient != null && session == mActivity.getCurrentSession()) {
-            sessionClient.updateSessionNameOverlay();
-        }
+        new SessionGenuineReplyRecorder(
+            store,
+            sessionName -> mActivity.deleteAnsweredOwnerCallsOfSession(sessionName),
+            () -> {
+                TermuxTerminalSessionActivityClient sessionClient =
+                    mActivity.getTermuxTerminalSessionClient();
+                if (sessionClient != null) sessionClient.updateSessionNameOverlay();
+            }
+        ).recordReply(session, System.currentTimeMillis(), session == mActivity.getCurrentSession());
     }
 }

@@ -645,14 +645,14 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     private void recordGenuineReplyForSession(@NonNull TerminalSession session) {
         SessionNewActivityStore store = mActivity.getSessionNewActivityStore();
         if (store == null) return;
-        if (!new SessionReplyTimeRecorder(store).recordReplyOnSubmit(session, System.currentTimeMillis())) {
-            return;
-        }
-        mActivity.deleteAnsweredOwnerCallsOfSession(session.mSessionName);
-        if (mTermuxTerminalSessionActivityClient != null
-            && session == mActivity.getCurrentSession()) {
-            mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();
-        }
+        new SessionGenuineReplyRecorder(
+            store,
+            sessionName -> mActivity.deleteAnsweredOwnerCallsOfSession(sessionName),
+            () -> {
+                if (mTermuxTerminalSessionActivityClient != null)
+                    mTermuxTerminalSessionActivityClient.updateSessionNameOverlay();
+            }
+        ).recordReply(session, System.currentTimeMillis(), session == mActivity.getCurrentSession());
     }
 
     private static boolean isPrintableInputCodePoint(int codePoint) {
