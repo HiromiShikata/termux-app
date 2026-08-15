@@ -1,5 +1,6 @@
 package com.termux.app.ownercall;
 
+import android.text.method.LinkMovementMethod;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -18,7 +19,8 @@ public final class OwnerCallDialogBinder {
     private static final float DISABLED_BUTTON_ALPHA = 0.3f;
     private static final float ENABLED_BUTTON_ALPHA = 1.0f;
 
-    public interface OwnerCallDialogActions {
+    public interface OwnerCallDialogActions
+        extends OwnerCallBodySpannedText.OwnerCallBodyTapActions {
 
         void onPreviousCallRequested();
 
@@ -54,7 +56,7 @@ public final class OwnerCallDialogBinder {
         OwnerCall call = calls.get(paging.getIndex());
         applyGeometry(dialog, geometry);
         bindHeader(root, call, paging, nowMillis);
-        bindBody(root, call);
+        bindBody(root, call, actions);
         bindActions(root, call, paging, actions);
         dialog.setVisibility(View.VISIBLE);
         return paging;
@@ -102,13 +104,16 @@ public final class OwnerCallDialogBinder {
         view.setText(text);
     }
 
-    private static void bindBody(@NonNull View root, @NonNull OwnerCall call) {
+    private static void bindBody(@NonNull View root, @NonNull OwnerCall call,
+                                 @Nullable OwnerCallDialogActions actions) {
         ScrollView bodyScroll = root.findViewById(R.id.owner_call_dialog_body_scroll);
         if (call.getCalledAt().equals(bodyScroll.getTag(R.id.owner_call_dialog_body_scroll))) {
             return;
         }
         TextView body = root.findViewById(R.id.owner_call_dialog_body);
-        body.setText(call.getBody());
+        body.setMovementMethod(LinkMovementMethod.getInstance());
+        body.setText(OwnerCallBodySpannedText.of(
+            OwnerCallBodyDisplayText.of(call.getBody()), actions));
         bodyScroll.setTag(R.id.owner_call_dialog_body_scroll, call.getCalledAt());
         bodyScroll.scrollTo(0, 0);
     }

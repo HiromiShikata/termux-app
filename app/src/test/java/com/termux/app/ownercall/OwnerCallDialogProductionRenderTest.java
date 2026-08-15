@@ -3,6 +3,8 @@ package com.termux.app.ownercall;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -183,10 +185,35 @@ public class OwnerCallDialogProductionRenderTest {
                 @Override
                 public void onDragPositionChanged(int bottomMarginPixels) {
                 }
+
+                @Override
+                public void onCopyableTextTapped(String text) {
+                }
+
+                @Override
+                public void onUrlTapped(String url) {
+                }
             });
         root.findViewById(R.id.owner_call_dialog_close_button).performClick();
 
         Assert.assertTrue("close button must invoke onDialogCloseRequested", closedCalled[0]);
+    }
+
+    @Test
+    public void theDialogTextIsSmallerThanTheDefaultSoMoreOfTheCallFitsOnScreen() {
+        View root = inflateActivityLayout();
+        DisplayMetrics metrics = root.getResources().getDisplayMetrics();
+
+        assertScaledTextSize(root, R.id.owner_call_dialog_relative_time, 11f, metrics);
+        assertScaledTextSize(root, R.id.owner_call_dialog_position, 11f, metrics);
+        assertScaledTextSize(root, R.id.owner_call_dialog_body, 12f, metrics);
+    }
+
+    private static void assertScaledTextSize(View root, int viewId, float expectedScaledPixels,
+                                             DisplayMetrics metrics) {
+        Assert.assertEquals(
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, expectedScaledPixels, metrics),
+            ((TextView) root.findViewById(viewId)).getTextSize(), 0.01f);
     }
 
     @Test

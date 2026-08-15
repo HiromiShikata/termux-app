@@ -41,6 +41,9 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
     private final OwnerCallDialogGeometrySource mGeometrySource;
 
     @NonNull
+    private final OwnerCallBodySpannedText.OwnerCallBodyTapActions mBodyTapActions;
+
+    @NonNull
     private final OwnerCallDialogState mState = new OwnerCallDialogState();
 
     @Nullable
@@ -54,12 +57,25 @@ public final class OwnerCallDialogController implements OwnerCallDialogBinder.Ow
 
     private int mDragStartBottomMargin = 0;
 
-    public OwnerCallDialogController(@NonNull View root,
-                                     @NonNull OwnerCallSource callSource,
-                                     @NonNull OwnerCallDialogGeometrySource geometrySource) {
+    public OwnerCallDialogController(
+        @NonNull View root,
+        @NonNull OwnerCallSource callSource,
+        @NonNull OwnerCallDialogGeometrySource geometrySource,
+        @NonNull OwnerCallBodySpannedText.OwnerCallBodyTapActions bodyTapActions) {
         mRoot = root;
         mCallSource = callSource;
         mGeometrySource = geometrySource;
+        mBodyTapActions = bodyTapActions;
+    }
+
+    @Override
+    public void onCopyableTextTapped(@NonNull String text) {
+        mBodyTapActions.onCopyableTextTapped(text);
+    }
+
+    @Override
+    public void onUrlTapped(@NonNull String url) {
+        mBodyTapActions.onUrlTapped(url);
     }
 
     public void showCallsForSession(@Nullable String sessionName, long nowMillis) {

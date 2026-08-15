@@ -62,6 +62,8 @@ import com.termux.shared.data.IntentUtils;
 import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
+import com.termux.shared.interact.ShareUtils;
+import com.termux.app.ownercall.OwnerCallBodySpannedText;
 import com.termux.app.ownercall.OwnerCallDialogController;
 import com.termux.app.ownercall.OwnerCallDialogGeometry;
 import com.termux.app.ownercall.OwnerCallDialogRelayoutWatcher;
@@ -920,7 +922,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mOwnerCallDialogController = new OwnerCallDialogController(
             findViewById(R.id.activity_termux_root_relative_layout),
             mOwnerCallInbox::callsFor,
-            this::currentOwnerCallDialogGeometry);
+            this::currentOwnerCallDialogGeometry,
+            new OwnerCallBodySpannedText.OwnerCallBodyTapActions() {
+                @Override
+                public void onCopyableTextTapped(@NonNull String text) {
+                    ShareUtils.copyTextToClipboard(TermuxActivity.this, text,
+                        getString(R.string.msg_owner_call_text_copied_to_clipboard));
+                }
+
+                @Override
+                public void onUrlTapped(@NonNull String url) {
+                    if (mTermuxTerminalViewClient != null) {
+                        mTermuxTerminalViewClient.showUrlOpenChoice(url);
+                    }
+                }
+            });
         OwnerCallDialogRelayoutWatcher.watchTerminalArea(mTerminalView,
             this::renderUnansweredOwnerCallsOfDisplayedSession);
 
