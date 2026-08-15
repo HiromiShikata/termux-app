@@ -71,11 +71,11 @@ public final class DiagnosticsReportBuilder {
             new DiagnosticsReportSubsection(LIVE_SCROLLBAR_VIEW_CLASSES, 500),
             new DiagnosticsReportSubsection(UNDELIVERED_SHELL_INPUT, 600),
             new DiagnosticsReportSubsection(SHELL_EXIT_STATUSES, 400),
+            new DiagnosticsReportSubsection(PEAK_BUSIEST_TARGETS, 500),
+            new DiagnosticsReportSubsection(PEAK_SCROLLBAR_VIEW_CLASSES, 500),
             new DiagnosticsReportSubsection(LONGEST_STALL_STACK_TRACE, 1140),
             new DiagnosticsReportSubsection(STALL_HOT_PATH_RANKING, 900),
             new DiagnosticsReportSubsection(SESSION_RECONNECT_COST_BY_REASON, 600),
-            new DiagnosticsReportSubsection(PEAK_BUSIEST_TARGETS, 500),
-            new DiagnosticsReportSubsection(PEAK_SCROLLBAR_VIEW_CLASSES, 500),
             new DiagnosticsReportSubsection(SESSION_CREATION_PATHS, 500),
             new DiagnosticsReportSubsection(APP_PROCESS_COMMAND_NAMES, 500),
             new DiagnosticsReportSubsection(STALL_HOT_PATH_STACK_TRACES, 600)));
@@ -128,6 +128,9 @@ public final class DiagnosticsReportBuilder {
 
         builder.append('\n');
         appendPreviousProcessExitSection(builder, report);
+
+        builder.append('\n');
+        appendPreviousProcessConditionSection(builder, report);
 
         builder.append('\n');
         appendUndeliveredShellInputSection(builder, report);
@@ -200,6 +203,37 @@ public final class DiagnosticsReportBuilder {
             return;
         }
         builder.append("First launch after installation\n");
+    }
+
+    private void appendPreviousProcessConditionSection(@NonNull DiagnosticsReportText builder,
+                                                       @NonNull DiagnosticsReport report) {
+        ProcessConditionSnapshot condition = report.getPreviousProcessCondition();
+        builder.append("Condition of the previous process before it ended\n");
+        if (!condition.isRecorded()) {
+            String unreadableReason = condition.getUnreadableReason();
+            if (unreadableReason == null) {
+                builder.append("  None: no earlier process recorded its condition\n");
+                return;
+            }
+            builder.append("  Unreadable: ").append(unreadableReason).append('\n');
+            return;
+        }
+        builder.append("  Last recorded: ")
+            .append(formatTimestamp(condition.getRecordedAtMillis())).append('\n');
+        builder.append("  Process uptime then: ")
+            .append(formatUptime(condition.getProcessUptimeMillis())).append('\n');
+        builder.append("  Main looper pending messages then: ")
+            .append(condition.getMainLooperPendingMessageCount()).append('\n');
+        builder.append("  Synchronization barriers in the queue then: ")
+            .append(condition.getSynchronizationBarrierCount()).append('\n');
+        builder.append("  Deepest main looper queue it saw: ")
+            .append(condition.getPeakPendingMessageCount())
+            .append(" at ").append(formatTimestamp(condition.getPeakObservedAtMillis())).append('\n');
+        builder.append("  Views that could hold a scrollbar fade callback then: ")
+            .append(condition.getPeakScrollbarViewCount()).append('\n');
+        builder.append("  Scroll gestures the terminal never drew for (up to ")
+            .append(ScrollWithoutDrawEpisodeRecorder.MAX_RETAINED_EPISODES).append(" kept): ")
+            .append(condition.getKeptScrollWithoutDrawEpisodeCount()).append('\n');
     }
 
     @NonNull

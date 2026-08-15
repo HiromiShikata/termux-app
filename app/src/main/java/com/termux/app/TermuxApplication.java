@@ -13,6 +13,8 @@ import com.termux.app.diagnostics.AppVersionChangeHolder;
 import com.termux.app.diagnostics.AppVersionChangeRecorder;
 import com.termux.app.diagnostics.CrashReportDiagnosticsSupplement;
 import com.termux.app.diagnostics.MainThreadStallWatchdog;
+import com.termux.app.diagnostics.ProcessConditionSnapshotFileStore;
+import com.termux.app.diagnostics.ProcessConditionSnapshotHolder;
 import com.termux.app.diagnostics.ProcessUptimeTracker;
 import com.termux.shared.errors.Error;
 import com.termux.shared.logger.Logger;
@@ -55,6 +57,9 @@ public class TermuxApplication extends Application implements Configuration.Prov
         setLogConfig(context);
 
         recordVersionChangeOfThisLaunch(context);
+
+        ProcessConditionSnapshotHolder.getInstance().useStore(
+            ProcessConditionSnapshotFileStore.inFilesDirectory(context.getFilesDir()));
 
         Logger.logDebug("Starting Application");
 

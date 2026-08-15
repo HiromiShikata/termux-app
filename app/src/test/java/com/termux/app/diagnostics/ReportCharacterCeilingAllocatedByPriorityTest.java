@@ -170,7 +170,8 @@ public class ReportCharacterCeilingAllocatedByPriorityTest {
             new DiagnosticsActivityWindows(7, 3),
             DiagnosticsReportDelivery.of("host-0", 11023, 842L, 4096L, 4097L, true),
             peak, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
         return new DiagnosticsReportBuilder().build(report);
     }
 

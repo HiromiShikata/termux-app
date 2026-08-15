@@ -75,6 +75,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsTouchEvents mTouchEvents;
     @NonNull
     private final DiagnosticsPreviousProcessExits mPreviousProcessExits;
+    @NonNull
+    private final ProcessConditionSnapshot mPreviousProcessCondition;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -105,10 +107,12 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsMainLooperQueuePeak mainLooperQueuePeak,
                              @NonNull DiagnosticsScrollSteps scrollSteps,
                              @NonNull DiagnosticsTouchEvents touchEvents,
-                             @NonNull DiagnosticsPreviousProcessExits previousProcessExits) {
+                             @NonNull DiagnosticsPreviousProcessExits previousProcessExits,
+                             @NonNull ProcessConditionSnapshot previousProcessCondition) {
         mScrollSteps = scrollSteps;
         mTouchEvents = touchEvents;
         mPreviousProcessExits = previousProcessExits;
+        mPreviousProcessCondition = previousProcessCondition;
         mSessionCreationPaths = sessionCreationPaths;
         mActivityWindows = activityWindows;
         mLastReportDelivery = lastReportDelivery;
@@ -172,6 +176,11 @@ public final class DiagnosticsReport {
     @NonNull
     public DiagnosticsPreviousProcessExits getPreviousProcessExits() {
         return mPreviousProcessExits;
+    }
+
+    @NonNull
+    public ProcessConditionSnapshot getPreviousProcessCondition() {
+        return mPreviousProcessCondition;
     }
 
     @NonNull

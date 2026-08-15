@@ -117,7 +117,8 @@ public final class DiagnosticsReportCollector {
             MainLooperQueuePeakRecorderHolder.getInstance().snapshot(),
             DiagnosticsScrollSteps.of(TerminalScrollStepCounterHolder.getInstance()),
             DiagnosticsTouchEvents.of(TerminalTouchCounterHolder.getInstance()),
-            mPreviousProcessExitReader.read(activity, Build.VERSION.SDK_INT));
+            mPreviousProcessExitReader.read(activity, Build.VERSION.SDK_INT),
+            ProcessConditionSnapshotHolder.getInstance().getPreviousProcessCondition());
     }
 
     @NonNull

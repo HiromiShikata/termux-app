@@ -180,7 +180,8 @@ public class DiagnosticsReportBuilderTest {
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
     }
 
     private DiagnosticsReport reportWithVersionChange(DiagnosticsVersionChange versionChange) {
@@ -194,7 +195,8 @@ public class DiagnosticsReportBuilderTest {
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
     }
 
     @Test
@@ -229,7 +231,8 @@ public class DiagnosticsReportBuilderTest {
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
     }
 
     private DiagnosticsReport reportWithForegroundOpenTagScanCost(DiagnosticsWorkCostLine cost) {
@@ -243,7 +246,8 @@ public class DiagnosticsReportBuilderTest {
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
     }
 
     @Test
@@ -868,7 +872,8 @@ public class DiagnosticsReportBuilderTest {
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN));
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED));
 
         Assert.assertTrue("the report must be longer than the window it survives in, otherwise the"
                 + " truncation never happens and this test proves nothing, but it is only "
@@ -949,7 +954,8 @@ public class DiagnosticsReportBuilderTest {
             NO_WORK_COST,
             NO_WORK_COST, DiagnosticsSessionCreationPaths.NONE, DiagnosticsActivityWindows.NONE, DiagnosticsReportDelivery.NONE,
             DiagnosticsMainLooperQueuePeak.NEVER_OBSERVED, DiagnosticsScrollSteps.NONE, DiagnosticsTouchEvents.NONE,
-            DiagnosticsPreviousProcessExits.NOT_TAKEN);
+            DiagnosticsPreviousProcessExits.NOT_TAKEN,
+            ProcessConditionSnapshot.NOT_RECORDED);
     }
 
     private static DiagnosticsShellInputDelivery deliveringEverything() {
