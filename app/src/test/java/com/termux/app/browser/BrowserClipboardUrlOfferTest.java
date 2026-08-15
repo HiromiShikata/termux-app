@@ -68,6 +68,56 @@ public class BrowserClipboardUrlOfferTest {
     }
 
     @Test
+    public void anAddressThatNamesNoSiteBehindItsSchemeIsNotOffered() {
+        Assert.assertFalse("the control that opens it sits in the dialog's button row and has room only"
+                + " for the site, so an address carrying no site names nothing the owner could read",
+            BrowserClipboardUrlOffer.of("https://?q=1").isOffered());
+        Assert.assertFalse("an empty site between the scheme and the path is the same absence",
+            BrowserClipboardUrlOffer.of("https:///a/page").isOffered());
+    }
+
+    @Test
+    public void theSiteTheAddressWouldOpenIsNamedOnItsOwn() {
+        Assert.assertEquals("a button sharing a row with the open and cancel buttons has room for the"
+                + " site rather than for a whole address, and the site is what tells the owner where a"
+                + " press would take him",
+            "example.com", BrowserClipboardUrlOffer.of("https://example.com/a/page?q=1").getHost());
+        Assert.assertEquals("an address ending at its site names that site",
+            "example.com", BrowserClipboardUrlOffer.of("http://example.com").getHost());
+        Assert.assertEquals("a fragment ends the site exactly as a path does",
+            "example.com", BrowserClipboardUrlOffer.of("https://example.com#section").getHost());
+    }
+
+    @Test
+    public void theSiteIsNamedWithoutTheCredentialsAndPortAroundIt() {
+        Assert.assertEquals("credentials copied inside an address are not where it goes, and putting"
+                + " them on a button would show them on screen",
+            "example.com",
+            BrowserClipboardUrlOffer.of("https://someone:secret@example.com:8443/page").getHost());
+    }
+
+    @Test
+    public void anAddressWrittenToANumericSiteNamesThatSiteWholeRatherThanCutAtItsFirstColon() {
+        Assert.assertEquals("cutting a numeric address at its first colon would name a site that does"
+                + " not exist and tell the owner nothing about where a press would take him",
+            "[2001:db8::1]", BrowserClipboardUrlOffer.of("http://[2001:db8::1]:8080/page").getHost());
+    }
+
+    @Test
+    public void anOfferThatWasNotMadeRefusesToNameASite() {
+        BrowserClipboardUrlOffer offer = BrowserClipboardUrlOffer.of("the meeting is at four");
+
+        try {
+            offer.getHost();
+            Assert.fail("an empty site would be drawn on a button that opens nothing rather than"
+                + " reported as the absence it is");
+        } catch (IllegalStateException expected) {
+            Assert.assertTrue("the refusal has to say what was asked for. Actual: " + expected.getMessage(),
+                expected.getMessage().contains("clipboard"));
+        }
+    }
+
+    @Test
     public void anOfferThatWasNotMadeRefusesToNameAnAddress() {
         BrowserClipboardUrlOffer offer = BrowserClipboardUrlOffer.of("the meeting is at four");
 
