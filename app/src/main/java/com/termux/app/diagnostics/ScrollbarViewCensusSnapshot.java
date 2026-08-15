@@ -22,7 +22,6 @@ public final class ScrollbarViewCensusSnapshot {
         List<ScrollbarViewCensus.ViewNode> nodes = new ArrayList<>();
         for (View windowRoot : windowRoots.getReachableWindowRoots()) {
             nodes.add(new AndroidScrollbarViewNode(windowRoot));
-            break;
         }
         return ScrollbarViewCensus.take(nodes, windowRoots.getNoLongerReachableCount());
     }

@@ -135,6 +135,17 @@ public class ScrollbarViewCensusWindowScopeInReportTest {
     }
 
     @Test
+    public void aCensusTakenBeforeAnyWindowWasRegisteredSpendsNoCharactersOnWindowScope() {
+        String report = renderedReportOf(ScrollbarViewCensus.empty());
+
+        Assert.assertFalse("the report reaches the reader only as its first "
+                + DiagnosticsReportBuilder.PASTE_LIMIT_CHARACTERS + " characters, and a census with no"
+                + " window to describe would be restating the zero already on the total line while pushing"
+                + " measured evidence out of that window. Actual report:\n" + report,
+            report.contains("Windows walked"));
+    }
+
+    @Test
     public void theWindowScopeLinesSitInsideTheWindowTheReportSurvives() {
         String report = renderedReportOf(ScrollbarViewCensus.take(
             Collections.singletonList(windowHoldingOneTerminalView()), 0));
