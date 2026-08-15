@@ -32,18 +32,18 @@ public class OwnerCallDialogStateTest {
         Arrays.asList(OLDEST_CALL, MIDDLE_CALL, NEWEST_CALL);
 
     @Test
-    public void startsAtTheNewestCallOfANewlyDisplayedSession() {
+    public void startsAtTheOldestCallOfANewlyDisplayedSession() {
         OwnerCallDialogState state = new OwnerCallDialogState();
         state.displaySession(SESSION_URL);
         state.displayCallAt(THREE_CALLS, 2);
 
         state.displaySession(OTHER_SESSION_URL);
 
-        Assert.assertEquals(2, state.indexOfDisplayedCall(THREE_CALLS));
+        Assert.assertEquals(0, state.indexOfDisplayedCall(THREE_CALLS));
     }
 
     @Test
-    public void startsAtTheNewestCallHoweverManyCallsAreWaiting() {
+    public void startsAtTheOldestCallHoweverManyCallsAreWaiting() {
         List<OwnerCall> manyCalls = new ArrayList<>();
         for (int minute = 0; minute < 4882; minute++) {
             manyCalls.add(call(SESSION_URL, String.format(Locale.ROOT, "2026-08-14T%02d:%02d:00Z",
@@ -53,16 +53,16 @@ public class OwnerCallDialogStateTest {
 
         state.displaySession(SESSION_URL);
 
-        Assert.assertEquals(manyCalls.size() - 1, state.indexOfDisplayedCall(manyCalls));
+        Assert.assertEquals(0, state.indexOfDisplayedCall(manyCalls));
     }
 
     @Test
-    public void returnsToTheNewestCallWhenTheCallBeingReadIsNoLongerWaiting() {
+    public void returnsToTheOldestCallWhenTheCallBeingReadIsNoLongerWaiting() {
         OwnerCallDialogState state = new OwnerCallDialogState();
         state.displaySession(SESSION_URL);
         state.displayCallAt(THREE_CALLS, 0);
 
-        Assert.assertEquals(1,
+        Assert.assertEquals(0,
             state.indexOfDisplayedCall(Arrays.asList(MIDDLE_CALL, NEWEST_CALL)));
     }
 
@@ -132,6 +132,6 @@ public class OwnerCallDialogStateTest {
 
         state.closeDialog();
 
-        Assert.assertEquals(2, state.indexOfDisplayedCall(THREE_CALLS));
+        Assert.assertEquals(0, state.indexOfDisplayedCall(THREE_CALLS));
     }
 }

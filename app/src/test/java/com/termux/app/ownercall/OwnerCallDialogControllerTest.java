@@ -50,15 +50,15 @@ public class OwnerCallDialogControllerTest {
         OwnerCallDialogGeometry.resolve(2400, 0, 1080, 120, 36);
 
     @Test
-    public void showsTheNewestWaitingCallOfTheSessionOnScreen() {
+    public void showsTheOldestWaitingCallOfTheSessionOnScreen() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
 
         controller.showCallsForSession(FIRST_SESSION, NOW);
 
         Assert.assertEquals(View.VISIBLE, dialog(root).getVisibility());
-        Assert.assertEquals("2 / 2", positionText(root));
-        Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
+        Assert.assertEquals("1 / 2", positionText(root));
+        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
     }
 
     @Test
@@ -72,18 +72,18 @@ public class OwnerCallDialogControllerTest {
     }
 
     @Test
-    public void pagesBackToTheEarlierWaitingCallAndForwardAgain() {
+    public void pagesForwardToTheLaterWaitingCallAndBackAgain() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
 
-        root.findViewById(R.id.owner_call_dialog_previous_button).performClick();
-        Assert.assertEquals("1 / 2", positionText(root));
-        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
-
         root.findViewById(R.id.owner_call_dialog_next_button).performClick();
         Assert.assertEquals("2 / 2", positionText(root));
         Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
+
+        root.findViewById(R.id.owner_call_dialog_previous_button).performClick();
+        Assert.assertEquals("1 / 2", positionText(root));
+        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
     }
 
     @Test
@@ -107,8 +107,8 @@ public class OwnerCallDialogControllerTest {
         controller.reopenDialog(NOW);
 
         Assert.assertEquals(View.VISIBLE, dialog(root).getVisibility());
-        Assert.assertEquals("2 / 2", positionText(root));
-        Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
+        Assert.assertEquals("1 / 2", positionText(root));
+        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
     }
 
     @Test
@@ -122,8 +122,8 @@ public class OwnerCallDialogControllerTest {
         controller.showCallsForSession(FIRST_SESSION, NOW);
 
         Assert.assertEquals(View.VISIBLE, dialog(root).getVisibility());
-        Assert.assertEquals("2 / 2", positionText(root));
-        Assert.assertEquals(LATER_CALL.getBody(), bodyText(root));
+        Assert.assertEquals("1 / 2", positionText(root));
+        Assert.assertEquals(EARLIER_CALL.getBody(), bodyText(root));
     }
 
     @Test
@@ -142,16 +142,16 @@ public class OwnerCallDialogControllerTest {
     }
 
     @Test
-    public void switchesToTheNewestWaitingCallOfTheNewlyDisplayedSession() {
+    public void switchesToTheOldestWaitingCallOfTheNewlyDisplayedSession() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        root.findViewById(R.id.owner_call_dialog_previous_button).performClick();
+        root.findViewById(R.id.owner_call_dialog_next_button).performClick();
 
         controller.showCallsForSession(SECOND_SESSION, NOW);
 
-        Assert.assertEquals("3 / 3", positionText(root));
-        Assert.assertEquals(OTHER_SESSION_THIRD_CALL.getBody(), bodyText(root));
+        Assert.assertEquals("1 / 3", positionText(root));
+        Assert.assertEquals(OTHER_SESSION_CALL.getBody(), bodyText(root));
     }
 
     @Test
@@ -163,7 +163,7 @@ public class OwnerCallDialogControllerTest {
 
         controller.showCallsForSession(SECOND_SESSION, NOW);
 
-        Assert.assertEquals("3 / 3", positionText(root));
+        Assert.assertEquals("1 / 3", positionText(root));
     }
 
     @Test
@@ -173,6 +173,7 @@ public class OwnerCallDialogControllerTest {
         callsBySession.put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
         OwnerCallDialogController controller = controllerFor(root, callsBySession);
         controller.showCallsForSession(FIRST_SESSION, NOW);
+        root.findViewById(R.id.owner_call_dialog_next_button).performClick();
         Assert.assertEquals("2 / 2", positionText(root));
 
         callsBySession.put(FIRST_SESSION, Collections.singletonList(LATER_CALL));
@@ -189,7 +190,6 @@ public class OwnerCallDialogControllerTest {
         callsBySession.put(FIRST_SESSION, Arrays.asList(EARLIER_CALL, LATER_CALL));
         OwnerCallDialogController controller = controllerFor(root, callsBySession);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        root.findViewById(R.id.owner_call_dialog_previous_button).performClick();
         Assert.assertEquals("1 / 2", positionText(root));
 
         callsBySession.put(FIRST_SESSION,
