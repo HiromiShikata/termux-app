@@ -131,11 +131,13 @@ public final class ClaudeStatuslineTimes {
             + optionalFractionalSeconds + optionalZoneOffset);
     }
 
+    private static final long DATED_TOKEN_MAX_FUTURE_MILLIS = 24L * 60 * 60 * 1000;
+
     @NonNull
     private static TokenTime tokenTime(@NonNull Pattern datedPattern, @NonNull Pattern pattern,
                                        @NonNull String screenText, long nowMillis,
                                        @NonNull TimeZone timeZone) {
-        Long datedMatch = datedTimeMillis(datedPattern, screenText, timeZone);
+        Long datedMatch = datedTimeMillis(datedPattern, screenText, nowMillis, timeZone);
         if (datedMatch != null) {
             return TokenTime.fromDatedToken(datedMatch);
         }
@@ -145,11 +147,11 @@ public final class ClaudeStatuslineTimes {
 
     @Nullable
     private static Long datedTimeMillis(@NonNull Pattern datedPattern, @NonNull String screenText,
-                                        @NonNull TimeZone timeZone) {
+                                        long nowMillis, @NonNull TimeZone timeZone) {
         Matcher matcher = datedPattern.matcher(screenText);
         Long lastMatch = null;
         while (matcher.find()) {
-            Long parsed = epochMillisFromDatedMatch(matcher, timeZone);
+            Long parsed = epochMillisFromDatedMatch(matcher, nowMillis, timeZone);
             if (parsed != null) {
                 lastMatch = parsed;
             }
@@ -158,7 +160,7 @@ public final class ClaudeStatuslineTimes {
     }
 
     @Nullable
-    private static Long epochMillisFromDatedMatch(@NonNull Matcher matcher,
+    private static Long epochMillisFromDatedMatch(@NonNull Matcher matcher, long nowMillis,
                                                   @NonNull TimeZone timeZone) {
         int year = Integer.parseInt(matcher.group(1));
         int month = Integer.parseInt(matcher.group(2));
@@ -170,11 +172,17 @@ public final class ClaudeStatuslineTimes {
         try {
             LocalDateTime localDateTime =
                 LocalDateTime.of(year, month, day, hours, minutes, seconds);
+            long epochMillis;
             if (zone == null) {
-                return localDateTime.atZone(timeZone.toZoneId()).toInstant().toEpochMilli();
+                epochMillis = localDateTime.atZone(timeZone.toZoneId()).toInstant().toEpochMilli();
+            } else {
+                ZoneOffset offset = "Z".equals(zone) ? ZoneOffset.UTC : ZoneOffset.of(zone);
+                epochMillis = OffsetDateTime.of(localDateTime, offset).toInstant().toEpochMilli();
             }
-            ZoneOffset offset = "Z".equals(zone) ? ZoneOffset.UTC : ZoneOffset.of(zone);
-            return OffsetDateTime.of(localDateTime, offset).toInstant().toEpochMilli();
+            if (epochMillis > nowMillis + DATED_TOKEN_MAX_FUTURE_MILLIS) {
+                return null;
+            }
+            return epochMillis;
         } catch (DateTimeException invalidDateTime) {
             return null;
         }
