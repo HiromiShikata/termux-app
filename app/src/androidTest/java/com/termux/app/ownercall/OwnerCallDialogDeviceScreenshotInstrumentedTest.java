@@ -545,6 +545,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             sessionClient.addNewSession(true, SESSION_URL);
         });
         awaitRunningDisplayedSession(scenario);
+        awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();

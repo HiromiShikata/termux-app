@@ -1222,7 +1222,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @NonNull
     private List<OwnerCall> unansweredOwnerCallsForSession(@Nullable String sessionName) {
         return OwnerCallUnansweredSelection.of(mOwnerCallInbox.callsFor(sessionName),
-            ownerCallAnsweredThroughTimeMillis(sessionName));
+            ownerCallAnsweredThroughTimeMillis(sessionName), System.currentTimeMillis());
     }
 
     @Nullable

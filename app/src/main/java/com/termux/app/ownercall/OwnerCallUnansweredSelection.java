@@ -18,7 +18,9 @@ import java.util.List;
  * after it are still waiting.
  *
  * <p>A call whose {@code calledAt} cannot be read carries no time to compare, so it is kept: an
- * unreadable timestamp is not evidence that the owner answered it.
+ * unreadable timestamp is not evidence that the owner answered it. A reply time later than now is
+ * likewise not evidence of an answer — the owner cannot have replied in the future, so it is a
+ * corrupted time and every call is kept rather than the whole dialog being emptied by it.
  */
 public final class OwnerCallUnansweredSelection {
 
@@ -27,8 +29,9 @@ public final class OwnerCallUnansweredSelection {
 
     @NonNull
     public static List<OwnerCall> of(@NonNull List<OwnerCall> calls,
-                                     @Nullable Long answeredThroughMillis) {
-        if (answeredThroughMillis == null) {
+                                     @Nullable Long answeredThroughMillis,
+                                     long nowMillis) {
+        if (answeredThroughMillis == null || answeredThroughMillis > nowMillis) {
             return calls;
         }
         List<OwnerCall> unanswered = new ArrayList<>();
