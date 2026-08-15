@@ -429,4 +429,16 @@ public class ClaudeStatuslineTimesTest {
         Assert.assertNull(times.getCallTimeMillis());
         Assert.assertFalse(times.hasAnyToken());
     }
+
+    @Test
+    public void aFarFutureYearInADatedTokenIsIgnoredWhileOtherTokensAreKept() {
+        long now = timeMillis(2026, 8, 15, 4, 49, 10);
+        String screen = "call:2026-08-15T04:29:52Z out:2026-08-15T04:49:01Z reply:2726-08-15T04:36:29Z";
+
+        ClaudeStatuslineTimes times = ClaudeStatuslineTimes.parse(screen, now, UTC);
+
+        Assert.assertNotNull(times.getCallTimeMillis());
+        Assert.assertNotNull(times.getOutTimeMillis());
+        Assert.assertNull("A reply time in year 2726 must not be stored", times.getReplyTimeMillis());
+    }
 }
