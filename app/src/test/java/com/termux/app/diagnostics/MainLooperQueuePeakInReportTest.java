@@ -52,8 +52,9 @@ public class MainLooperQueuePeakInReportTest {
         for (int viewIndex = 0; viewIndex < webViewCount; viewIndex++) {
             children.add(new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true));
         }
-        return ScrollbarViewCensus.take(new CensusNode("android.widget.FrameLayout", false,
-            children.toArray(new ScrollbarViewCensus.ViewNode[0])));
+        return ScrollbarViewCensus.take(Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+            new CensusNode("android.widget.FrameLayout", false,
+                children.toArray(new ScrollbarViewCensus.ViewNode[0]))), 0);
     }
 
     private static DiagnosticsMainLooperQueuePeak peakOfTheShapeTheDeviceReported() {

@@ -4,7 +4,8 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 
-import com.termux.app.TermuxActivity;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class ScrollbarViewCensusSnapshot {
 
@@ -12,9 +13,16 @@ public final class ScrollbarViewCensusSnapshot {
     }
 
     @NonNull
-    public static ScrollbarViewCensus take(@NonNull TermuxActivity activity) {
-        View decorView = activity.getWindow() == null ? null : activity.getWindow().getDecorView();
-        if (decorView == null) return ScrollbarViewCensus.empty();
-        return ScrollbarViewCensus.take(new AndroidScrollbarViewNode(decorView));
+    public static ScrollbarViewCensus take() {
+        return take(ActivityWindowRecorderHolder.getInstance().snapshotWindowRoots());
+    }
+
+    @NonNull
+    public static ScrollbarViewCensus take(@NonNull ActivityWindowRoots windowRoots) {
+        List<ScrollbarViewCensus.ViewNode> nodes = new ArrayList<>();
+        for (View windowRoot : windowRoots.getReachableWindowRoots()) {
+            nodes.add(new AndroidScrollbarViewNode(windowRoot));
+        }
+        return ScrollbarViewCensus.take(nodes, windowRoots.getNoLongerReachableCount());
     }
 }

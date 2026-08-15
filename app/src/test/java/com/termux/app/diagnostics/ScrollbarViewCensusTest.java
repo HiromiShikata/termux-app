@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class ScrollbarViewCensusTest {
@@ -40,11 +41,12 @@ public class ScrollbarViewCensusTest {
     @Test
     public void countsEveryViewThatCanHoldAScrollbarFadeCallback() {
         ScrollbarViewCensus census = ScrollbarViewCensus.take(
-            new FakeViewNode("FrameLayout", false,
-                new FakeViewNode("TerminalView", true),
-                new FakeViewNode("LinearLayout", false,
-                    new FakeViewNode("WebView", true),
-                    new FakeViewNode("WebView", true))));
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("FrameLayout", false,
+                    new FakeViewNode("TerminalView", true),
+                    new FakeViewNode("LinearLayout", false,
+                        new FakeViewNode("WebView", true),
+                        new FakeViewNode("WebView", true)))), 0);
 
         Assert.assertEquals(3, census.getScrollbarViewCount());
     }
@@ -52,11 +54,12 @@ public class ScrollbarViewCensusTest {
     @Test
     public void ranksTheClassHoldingTheMostSuchViewsFirst() {
         ScrollbarViewCensus census = ScrollbarViewCensus.take(
-            new FakeViewNode("FrameLayout", false,
-                new FakeViewNode("TerminalView", true),
-                new FakeViewNode("WebView", true),
-                new FakeViewNode("WebView", true),
-                new FakeViewNode("WebView", true)));
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("FrameLayout", false,
+                    new FakeViewNode("TerminalView", true),
+                    new FakeViewNode("WebView", true),
+                    new FakeViewNode("WebView", true),
+                    new FakeViewNode("WebView", true))), 0);
 
         List<ScrollbarViewCensusEntry> busiest = census.getBusiestClasses();
         Assert.assertEquals("WebView", busiest.get(0).getClassName());
@@ -68,7 +71,8 @@ public class ScrollbarViewCensusTest {
     @Test
     public void aTreeWithNoScrollbarViewsCountsNothing() {
         ScrollbarViewCensus census = ScrollbarViewCensus.take(
-            new FakeViewNode("FrameLayout", false, new FakeViewNode("TextView", false)));
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("FrameLayout", false, new FakeViewNode("TextView", false))), 0);
 
         Assert.assertEquals(0, census.getScrollbarViewCount());
         Assert.assertTrue(census.getBusiestClasses().isEmpty());
@@ -76,7 +80,9 @@ public class ScrollbarViewCensusTest {
 
     @Test
     public void aRootThatItselfHoldsAScrollbarIsCounted() {
-        ScrollbarViewCensus census = ScrollbarViewCensus.take(new FakeViewNode("ScrollView", true));
+        ScrollbarViewCensus census = ScrollbarViewCensus.take(
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("ScrollView", true)), 0);
 
         Assert.assertEquals(1, census.getScrollbarViewCount());
         Assert.assertEquals("ScrollView", census.getBusiestClasses().get(0).getClassName());
@@ -89,8 +95,9 @@ public class ScrollbarViewCensusTest {
             children.add(new FakeViewNode("ViewClass" + index, true));
         }
         ScrollbarViewCensus census = ScrollbarViewCensus.take(
-            new FakeViewNode("FrameLayout", false,
-                children.toArray(new ScrollbarViewCensus.ViewNode[0])));
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("FrameLayout", false,
+                    children.toArray(new ScrollbarViewCensus.ViewNode[0]))), 0);
 
         Assert.assertEquals(ScrollbarViewCensus.MAX_REPORTED_CLASSES + 4, census.getScrollbarViewCount());
         Assert.assertEquals(ScrollbarViewCensus.MAX_REPORTED_CLASSES, census.getBusiestClasses().size());

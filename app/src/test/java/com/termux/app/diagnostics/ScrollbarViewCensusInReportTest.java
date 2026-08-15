@@ -69,10 +69,11 @@ public class ScrollbarViewCensusInReportTest {
     @Test
     public void theReportNamesTheViewClassesThatCanHoldAScrollbarFadeCallbackAndHowManyOfEach() {
         String report = renderedReportOf(ScrollbarViewCensus.take(
-            new FakeViewNode("android.widget.FrameLayout", false,
-                new FakeViewNode("android.webkit.WebView", true),
-                new FakeViewNode("android.webkit.WebView", true),
-                new FakeViewNode("com.termux.view.TerminalView", true))));
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("android.widget.FrameLayout", false,
+                    new FakeViewNode("android.webkit.WebView", true),
+                    new FakeViewNode("android.webkit.WebView", true),
+                    new FakeViewNode("com.termux.view.TerminalView", true))), 0));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("the pending scrollbar fade callbacks in the main looper queue carry only the"
@@ -109,7 +110,8 @@ public class ScrollbarViewCensusInReportTest {
     @Test
     public void theCensusSitsInsideTheWindowTheReportSurvives() {
         String report = renderedReportOf(ScrollbarViewCensus.take(
-            new FakeViewNode("com.termux.view.TerminalView", true)));
+            Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+                new FakeViewNode("com.termux.view.TerminalView", true)), 0));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("the section has to be present for its position to matter. Actual report:\n"

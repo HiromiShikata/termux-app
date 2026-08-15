@@ -28,25 +28,45 @@ public final class ScrollbarViewCensus {
     @NonNull
     private final List<ScrollbarViewCensusEntry> mBusiestClasses;
 
-    private ScrollbarViewCensus(int scrollbarViewCount, @NonNull List<ScrollbarViewCensusEntry> busiestClasses) {
+    private final int mWindowCount;
+
+    private final int mWindowsNoLongerReachableCount;
+
+    private ScrollbarViewCensus(int scrollbarViewCount, @NonNull List<ScrollbarViewCensusEntry> busiestClasses,
+                                int windowCount, int windowsNoLongerReachableCount) {
         mScrollbarViewCount = scrollbarViewCount;
         mBusiestClasses = Collections.unmodifiableList(new ArrayList<>(busiestClasses));
+        mWindowCount = windowCount;
+        mWindowsNoLongerReachableCount = windowsNoLongerReachableCount;
     }
 
     @NonNull
     public static ScrollbarViewCensus empty() {
-        return new ScrollbarViewCensus(0, new ArrayList<>());
+        return new ScrollbarViewCensus(0, new ArrayList<>(), 0, 0);
     }
 
     @NonNull
-    public static ScrollbarViewCensus take(@NonNull ViewNode root) {
+    public static ScrollbarViewCensus take(@NonNull List<ViewNode> windowRoots,
+                                           int windowsNoLongerReachableCount) {
         Map<String, Integer> countsByClassName = new LinkedHashMap<>();
-        int scrollbarViewCount = count(root, countsByClassName);
-        return new ScrollbarViewCensus(scrollbarViewCount, busiestClasses(countsByClassName));
+        int scrollbarViewCount = 0;
+        for (ViewNode windowRoot : windowRoots) {
+            scrollbarViewCount += count(windowRoot, countsByClassName);
+        }
+        return new ScrollbarViewCensus(scrollbarViewCount, busiestClasses(countsByClassName),
+            windowRoots.size(), windowsNoLongerReachableCount);
     }
 
     public int getScrollbarViewCount() {
         return mScrollbarViewCount;
+    }
+
+    public int getWindowCount() {
+        return mWindowCount;
+    }
+
+    public int getWindowsNoLongerReachableCount() {
+        return mWindowsNoLongerReachableCount;
     }
 
     @NonNull

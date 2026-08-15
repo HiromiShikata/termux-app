@@ -388,6 +388,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setContentView(R.layout.activity_termux);
 
         mWindowDrawTimeObserver.observe(getWindow().getDecorView());
+        ActivityWindowRecorderHolder.getInstance().recordWindowRoot(getWindow().getDecorView());
 
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId

@@ -52,9 +52,10 @@ public class PendingMainLooperMessagesInReportTest {
     }
 
     private static ScrollbarViewCensus censusOfTheShapeTheDeviceReported() {
-        return ScrollbarViewCensus.take(new CensusNode("android.widget.FrameLayout", false,
-            new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
-            new CensusNode("com.termux.view.TerminalView", true)));
+        return ScrollbarViewCensus.take(Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+            new CensusNode("android.widget.FrameLayout", false,
+                new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
+                new CensusNode("com.termux.view.TerminalView", true))), 0);
     }
 
     private static final class CensusNode implements ScrollbarViewCensus.ViewNode {

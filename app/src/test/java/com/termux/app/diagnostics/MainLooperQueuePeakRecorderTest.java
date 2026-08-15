@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class MainLooperQueuePeakRecorderTest {
@@ -68,8 +69,9 @@ public class MainLooperQueuePeakRecorderTest {
         for (int viewIndex = 0; viewIndex < scrollbarViewCount; viewIndex++) {
             children.add(new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true));
         }
-        return ScrollbarViewCensus.take(new CensusNode("android.widget.FrameLayout", false,
-            children.toArray(new ScrollbarViewCensus.ViewNode[0])));
+        return ScrollbarViewCensus.take(Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+            new CensusNode("android.widget.FrameLayout", false,
+                children.toArray(new ScrollbarViewCensus.ViewNode[0]))), 0);
     }
 
     private static DiagnosticsMainLooperQueue queueOfScrollbarFadeCallbacks(int pendingMessageCount) {

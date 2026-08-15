@@ -508,6 +508,7 @@ public final class DiagnosticsReportBuilder {
                                                 @NonNull ScrollbarViewCensus census) {
         builder.append("  Views that can hold a scrollbar fade callback\n");
         builder.append("    Total: ").append(census.getScrollbarViewCount()).append('\n');
+        appendScrollbarViewCensusWindowLines(builder, census);
         if (census.getBusiestClasses().isEmpty()) {
             builder.append("    Busiest classes: none\n");
             return;
@@ -518,6 +519,14 @@ public final class DiagnosticsReportBuilder {
             classLines.add("      " + entry.getViewCount() + " x " + entry.getClassName());
         }
         appendLinesWithinBudget(builder, classLines, LIVE_SCROLLBAR_VIEW_CLASSES);
+    }
+
+    private void appendScrollbarViewCensusWindowLines(@NonNull DiagnosticsReportText builder,
+                                                      @NonNull ScrollbarViewCensus census) {
+        if (census.getWindowCount() == 0 && census.getWindowsNoLongerReachableCount() == 0) return;
+        builder.append("    Windows walked: ").append(census.getWindowCount()).append('\n');
+        builder.append("    Windows no longer reachable: ")
+            .append(census.getWindowsNoLongerReachableCount()).append('\n');
     }
 
     private void appendMainLooperQueuePeakLines(@NonNull DiagnosticsReportText builder,

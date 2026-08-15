@@ -69,14 +69,15 @@ public class MainLooperQueueBudgetInReportTest {
     }
 
     private static ScrollbarViewCensus censusOfTheShapeTheDeviceReported() {
-        return ScrollbarViewCensus.take(new CensusNode("android.widget.FrameLayout", false,
-            new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
-            new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
-            new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
-            new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
-            new CensusNode("com.termux.view.TerminalView", true),
-            new CensusNode("android.widget.ListView", true),
-            new CensusNode("androidx.recyclerview.widget.RecyclerView", true)));
+        return ScrollbarViewCensus.take(Collections.<ScrollbarViewCensus.ViewNode>singletonList(
+            new CensusNode("android.widget.FrameLayout", false,
+                new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
+                new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
+                new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
+                new CensusNode("com.termux.app.browser.BrowserAssistStructureFreeWebView", true),
+                new CensusNode("com.termux.view.TerminalView", true),
+                new CensusNode("android.widget.ListView", true),
+                new CensusNode("androidx.recyclerview.widget.RecyclerView", true))), 0);
     }
 
     private static List<DiagnosticsSessionLine> sessionLinesThatDeliveredEverything(int sessionCount) {
