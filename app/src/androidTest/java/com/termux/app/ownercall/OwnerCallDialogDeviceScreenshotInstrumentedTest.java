@@ -260,35 +260,33 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     }
 
     @Test
-    public void theHeaderDragMovesTheDialogSidewaysAndTheHandleDragResizesIt() throws Exception {
+    public void theHeaderDragMovesTheDialogSidewaysAndTheRightEdgeDragNarrowsIt() throws Exception {
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
         awaitDialogShowing(scenario, "1 / 3");
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
 
-        AtomicInteger handleX = new AtomicInteger();
-        AtomicInteger handleY = new AtomicInteger();
+        AtomicInteger rightEdgeX = new AtomicInteger();
+        AtomicInteger rightEdgeY = new AtomicInteger();
         AtomicInteger widthBeforeTheResize = new AtomicInteger();
-        AtomicInteger heightBeforeTheResize = new AtomicInteger();
         scenario.onActivity(activity -> {
-            View handle = activity.findViewById(R.id.owner_call_dialog_resize_handle);
+            View dialog = activity.findViewById(R.id.owner_call_dialog);
             int[] location = new int[2];
-            handle.getLocationInWindow(location);
-            handleX.set(location[0] + handle.getWidth() / 2);
-            handleY.set(location[1] + handle.getHeight() / 2);
-            ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
-                activity.findViewById(R.id.owner_call_dialog).getLayoutParams();
+            dialog.getLocationInWindow(location);
+            rightEdgeX.set(location[0] + dialog.getWidth() - 1);
+            rightEdgeY.set(location[1] + dialog.getHeight() / 2);
+            ViewGroup.MarginLayoutParams p =
+                (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
             widthBeforeTheResize.set(p.width);
-            heightBeforeTheResize.set(p.height);
         });
 
-        dragBy(scenario, handleX.get(), handleY.get(), -200, 0);
+        dragBy(scenario, rightEdgeX.get(), rightEdgeY.get(), -200, 0);
         instrumentation.waitForIdleSync();
 
         AtomicInteger leftBeforeTheMove = new AtomicInteger();
         scenario.onActivity(activity -> {
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams)
                 activity.findViewById(R.id.owner_call_dialog).getLayoutParams();
-            assertTrue("dragging the resize handle left must narrow the dialog",
+            assertTrue("dragging the right frame edge left must narrow the dialog",
                 p.width < widthBeforeTheResize.get());
             leftBeforeTheMove.set(p.leftMargin);
         });

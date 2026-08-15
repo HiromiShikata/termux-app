@@ -124,11 +124,6 @@ public final class OwnerCallDialogController
         applyPlacement(currentPlacement().movedBy(horizontalPixels, verticalPixels));
     }
 
-    public void onDialogResizedBy(int horizontalPixels, int verticalPixels) {
-        onDialogResizedBy(OwnerCallDialogEdgeGrip.bottomRightCorner(), horizontalPixels,
-            verticalPixels);
-    }
-
     @Override
     public void onDialogResizedBy(@NonNull OwnerCallDialogEdgeGrip grip, int horizontalPixels,
                                   int verticalPixels) {
@@ -207,13 +202,11 @@ public final class OwnerCallDialogController
             return;
         }
         View header = mRoot.findViewById(R.id.owner_call_dialog_header);
-        View resizeHandle = mRoot.findViewById(R.id.owner_call_dialog_resize_handle);
         View dialog = mRoot.findViewById(R.id.owner_call_dialog);
-        if (header == null || resizeHandle == null || !(dialog instanceof OwnerCallDialogFrame)) {
+        if (header == null || !(dialog instanceof OwnerCallDialogFrame)) {
             return;
         }
         attachDragListenerTo(header, this::onDialogMovedBy);
-        attachDragListenerTo(resizeHandle, this::onDialogResizedBy);
         ((OwnerCallDialogFrame) dialog).setResizeActions(this);
         mDragListenersAttached = true;
     }

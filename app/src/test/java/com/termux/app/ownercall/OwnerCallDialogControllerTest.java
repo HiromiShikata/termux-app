@@ -208,7 +208,7 @@ public class OwnerCallDialogControllerTest {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        controller.onDialogResizedBy(-200, 0);
+        controller.onDialogResizedBy(bottomRightCorner(), -200, 0);
         OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
 
         controller.onDialogMovedBy(120, -200);
@@ -221,13 +221,13 @@ public class OwnerCallDialogControllerTest {
     }
 
     @Test
-    public void resizesTheDialogWhileItsResizeHandleIsDragged() {
+    public void resizesTheDialogWhileItsBottomRightCornerIsDragged() {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
         OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
 
-        controller.onDialogResizedBy(-80, 150);
+        controller.onDialogResizedBy(bottomRightCorner(), -80, 150);
 
         OwnerCallDialogPlacement placement = placementOf(root);
         Assert.assertEquals(placementBeforeTheDrag.getWidthPixels() - 80,
@@ -244,7 +244,7 @@ public class OwnerCallDialogControllerTest {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        controller.onDialogResizedBy(-300, 0);
+        controller.onDialogResizedBy(bottomRightCorner(), -300, 0);
         controller.onDialogMovedBy(200, 0);
         OwnerCallDialogPlacement placementBeforeTheDrag = placementOf(root);
 
@@ -352,6 +352,10 @@ public class OwnerCallDialogControllerTest {
         event.recycle();
     }
 
+    private static OwnerCallDialogEdgeGrip bottomRightCorner() {
+        return OwnerCallDialogEdgeGrip.bottomRightCorner();
+    }
+
     private static OwnerCallDialogEdgeGrip leftEdge() {
         return OwnerCallDialogEdgeGrip.resolve(0, 500, 1000, 1000, 60, 0);
     }
@@ -369,7 +373,7 @@ public class OwnerCallDialogControllerTest {
         View root = inflateActivityLayout();
         OwnerCallDialogController controller = controllerFor(root);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        controller.onDialogResizedBy(-80, 150);
+        controller.onDialogResizedBy(bottomRightCorner(), -80, 150);
         controller.onDialogMovedBy(60, -200);
         OwnerCallDialogPlacement placementAfterTheDrags = placementOf(root);
 
@@ -417,7 +421,7 @@ public class OwnerCallDialogControllerTest {
         OwnerCallDialogController controller = controllerFor(root, allCallsBySession(),
             new RecordedBodyTaps(), store);
         controller.showCallsForSession(FIRST_SESSION, NOW);
-        controller.onDialogResizedBy(-200, 0);
+        controller.onDialogResizedBy(bottomRightCorner(), -200, 0);
         controller.onDialogMovedBy(120, -200);
         controller.onDialogPlacementCommitted();
         OwnerCallDialogPlacement storedPlacement = placementOf(root);
