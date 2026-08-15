@@ -13,6 +13,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.os.Environment;
 import android.os.SystemClock;
+import android.text.Spanned;
+import android.text.style.ClickableSpan;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -26,6 +28,8 @@ import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.browser.BrowserTab;
+import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -71,6 +75,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final String REPEATED_CALL_BODY =
         "Decide whether the invoice recipient may be changed.";
     private static final String CALL_REASON = "the owner is being called";
+    private static final String TAPPED_URL =
+        "https://github.com/HiromiShikata/termux-app/pull/1939";
 
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 30_000L;
@@ -459,6 +465,52 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             activity.findViewById(R.id.owner_call_pending_indicator).getVisibility()));
     }
 
+    @Test
+    public void tappingAUrlInTheDialogOpensItInTheInAppBrowser() throws Exception {
+        server.serveOwnerCallFile(
+            ownerCallDocument("2026-08-14T05:00:00Z", "Approve the release at " + TAPPED_URL));
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 1");
+
+        scenario.onActivity(activity -> {
+            TextView body = activity.findViewById(R.id.owner_call_dialog_body);
+            assertNotNull(body);
+            tappableUrlSpanOf(body).onClick(body);
+        });
+
+        awaitBrowserShowingTheTappedUrl(scenario);
+    }
+
+    private static ClickableSpan tappableUrlSpanOf(TextView body) {
+        CharSequence text = body.getText();
+        assertTrue("the dialog body must carry tappable spans", text instanceof Spanned);
+        ClickableSpan[] spans = ((Spanned) text).getSpans(0, text.length(), ClickableSpan.class);
+        assertEquals("the URL in the body is the only tappable span", 1, spans.length);
+        return spans[0];
+    }
+
+    private static void awaitBrowserShowingTheTappedUrl(ActivityScenario<TermuxActivity> scenario)
+        throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        AtomicReference<String> openedUrl = new AtomicReference<>(null);
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            scenario.onActivity(activity -> {
+                TermuxBrowserController browserController = activity.getTermuxBrowserController();
+                if (browserController == null || !browserController.isBrowserVisible()) return;
+                BrowserTab tab = browserController.getActiveTab();
+                openedUrl.set(tab == null ? null : tab.getUrl());
+            });
+            if (TAPPED_URL.equals(openedUrl.get())) {
+                return;
+            }
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("a tap on the URL in the owner call dialog did not open it in the "
+            + "in-app browser; the browser showed " + openedUrl.get());
+    }
+
     private ActivityScenario<TermuxActivity> launchWithACallingSession() throws Exception {
         ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
         awaitServiceConnected(scenario);
@@ -706,7 +758,12 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         private volatile boolean running;
         private volatile IOException failure;
         private volatile boolean ownerCallFileExists = true;
+        private volatile String ownerCallFile = OWNER_CALL_FILE;
         private final List<String> deletedPaths = Collections.synchronizedList(new ArrayList<>());
+
+        void serveOwnerCallFile(String file) {
+            ownerCallFile = file;
+        }
 
         void start() throws IOException {
             serverSocket = new ServerSocket(0, 16, InetAddress.getByName("127.0.0.1"));
@@ -765,7 +822,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             }
             if (OWNER_CALL_FILE_PATH.equals(path)) {
                 respond(socket, ownerCallFileExists ? 200 : 404,
-                    ownerCallFileExists ? OWNER_CALL_FILE : "");
+                    ownerCallFileExists ? ownerCallFile : "");
                 return;
             }
             if (INDEX_PATH.equals(path)) {
