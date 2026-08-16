@@ -27,13 +27,18 @@ public final class DiagnosticsSessionLine {
     @NonNull
     private final DiagnosticsSessionListAbsence mListAbsence;
 
+    @NonNull
+    private final DiagnosticsScrollAnswer mScrollAnswer;
+
     public DiagnosticsSessionLine(@NonNull String name, boolean alive, long secondsSinceLastActivity,
                                   boolean hasLastActivity, int transcriptRows, int columns,
                                   @NonNull DiagnosticsSessionListDisplay listDisplay,
                                   @NonNull DiagnosticsShellInputDelivery shellInputDelivery,
                                   @NonNull DiagnosticsSessionStatusline statusline,
                                   @NonNull DiagnosticsScrollGestureRouting scrollGestureRouting,
-                                  @NonNull DiagnosticsSessionListAbsence listAbsence) {
+                                  @NonNull DiagnosticsSessionListAbsence listAbsence,
+                                  @NonNull DiagnosticsScrollAnswer scrollAnswer) {
+        mScrollAnswer = scrollAnswer;
         mListAbsence = listAbsence;
         mName = name;
         mAlive = alive;
@@ -95,5 +100,10 @@ public final class DiagnosticsSessionLine {
     @NonNull
     public DiagnosticsSessionListAbsence getListAbsence() {
         return mListAbsence;
+    }
+
+    @NonNull
+    public DiagnosticsScrollAnswer getScrollAnswer() {
+        return mScrollAnswer;
     }
 }

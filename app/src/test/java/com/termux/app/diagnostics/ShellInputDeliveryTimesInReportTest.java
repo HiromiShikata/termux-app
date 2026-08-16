@@ -22,7 +22,8 @@ public class ShellInputDeliveryTimesInReportTest {
             DiagnosticsSessionListDisplay.DISPLAYED, shellInputDelivery,
             new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY),
             DiagnosticsScrollGestureRouting.ofEmulatorState(true, true),
-            DiagnosticsSessionListAbsence.presentInTheList());
+            DiagnosticsSessionListAbsence.presentInTheList(),
+                new DiagnosticsScrollAnswer(0L, 0L, null, null));
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             1, 1, 32, Collections.singletonList(sessionLine),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
