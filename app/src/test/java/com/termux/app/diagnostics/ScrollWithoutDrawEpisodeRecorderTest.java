@@ -63,6 +63,21 @@ public class ScrollWithoutDrawEpisodeRecorderTest {
     }
 
     @Test
+    public void theSameConditionIsRecordedOnceEvenThoughTheDerivedLastDrawTimeMoves() {
+        ScrollWithoutDrawEpisodeRecorder recorder = new ScrollWithoutDrawEpisodeRecorder();
+
+        assertTrue(recorder.recordEpisode(20_000L, 10_000L));
+        boolean recordedAgain = recorder.recordEpisode(20_000L, 9_996L);
+
+        assertFalse("the caller converts a monotonic draw instant into a wall clock time against a"
+                + " reading taken a few milliseconds apart on every cycle, so the same draw arrives"
+                + " with a slightly different value each time, and a recorder that treats each of"
+                + " those as a separate draw fills every retained slot with one stale condition and"
+                + " discards the genuinely distinct episode that follows it",
+            recordedAgain);
+    }
+
+    @Test
     public void aNewEpisodeIsRecordedOnceTheTerminalHasDrawnAgain() {
         ScrollWithoutDrawEpisodeRecorder recorder = new ScrollWithoutDrawEpisodeRecorder();
 
