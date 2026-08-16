@@ -3,6 +3,7 @@ package com.termux.app.diagnostics;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -43,6 +44,36 @@ public class DrawTimeRecorderTest {
 
         assertEquals("keeping the first draw instead of the most recent one would report a frozen"
             + " pipeline for an app that is drawing normally", 100L, drawTime.getMillisSinceLastDraw());
+    }
+
+    @Test
+    public void theInstantOfTheLastDrawStaysTheSameHoweverManyReadingsAreTaken() {
+        DrawTimeRecorder recorder = new DrawTimeRecorder();
+        Object window = new Object();
+
+        recorder.record(window, 10_000L);
+        recorder.snapshot(window, 11_843L);
+        recorder.snapshot(window, 71_004L);
+
+        assertEquals("the age of a draw is measured against the moment each reading is taken, so it"
+                + " differs on every reading of one unchanged draw, and anything deciding whether it"
+                + " is looking at the same draw as before needs the instant the draw happened rather"
+                + " than a value derived from when it was read",
+            10_000L, recorder.getLastDrawElapsedRealtimeMillis(window));
+    }
+
+    @Test
+    public void theInstantOfALastDrawIsRefusedForSomethingThatHasNeverDrawn() {
+        DrawTimeRecorder recorder = new DrawTimeRecorder();
+        Object window = new Object();
+
+        try {
+            recorder.getLastDrawElapsedRealtimeMillis(window);
+            fail("returning a stand-in instant for something that has never drawn would let a caller"
+                + " treat the absence of any frame as a frame produced at that instant");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage().startsWith("nothing has been drawn by "));
+        }
     }
 
     @Test

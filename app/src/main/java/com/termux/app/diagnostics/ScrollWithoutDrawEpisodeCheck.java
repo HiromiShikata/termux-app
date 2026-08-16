@@ -21,13 +21,15 @@ public final class ScrollWithoutDrawEpisodeCheck {
         TerminalScrollStepCounter scrollStepCounter = TerminalScrollStepCounterHolder.getInstance();
         LatestTerminalScrollStep latestScrollStep = LatestTerminalScrollStep.of(scrollStepCounter);
         if (!latestScrollStep.hasStepped()) return;
-        DiagnosticsDrawTime terminalDrawTime = TerminalDrawTimeRecorderHolder.getInstance()
+        DrawTimeRecorder terminalDrawTimeRecorder = TerminalDrawTimeRecorderHolder.getInstance();
+        DiagnosticsDrawTime terminalDrawTime = terminalDrawTimeRecorder
             .snapshot(terminalView, SystemClock.elapsedRealtime());
         if (!terminalDrawTime.hasDrawn()) return;
         long lastScrollStepAtMillis = latestScrollStep.getSteppedAtMillis();
         long lastTerminalDrawAtMillis = nowMillis - terminalDrawTime.getMillisSinceLastDraw();
         if (!ScrollWithoutDrawEpisodeRecorderHolder.getInstance()
-                .recordEpisode(lastScrollStepAtMillis, lastTerminalDrawAtMillis)) {
+                .recordEpisode(lastScrollStepAtMillis, lastTerminalDrawAtMillis,
+                    terminalDrawTimeRecorder.getLastDrawElapsedRealtimeMillis(terminalView))) {
             return;
         }
         DiagnosticEventLogHolder.record(DiagnosticEventType.SCROLL_WITHOUT_DRAW,
