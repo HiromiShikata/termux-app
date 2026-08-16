@@ -93,4 +93,19 @@ public class DisconnectedSessionSubmitRecordsOwnerReplyTest {
                 + "unanswered owner call",
             reconnectBranch.contains("ReconnectSubmitReplyDecision.shouldRecordReply"));
     }
+
+    @Test
+    public void submittingOwnerContentIntoARunningSessionDelegatesToSubmitForRecording()
+        throws IOException {
+        String body = commitTextInputToTerminalBody();
+        int runningStart = body.indexOf("session.isRunning()");
+        Assert.assertTrue("running-session branch must exist", runningStart >= 0);
+        int reconnectStart = body.indexOf("reconnectFinishedSessionInPlace", runningStart);
+        Assert.assertTrue(reconnectStart > runningStart);
+        String runningBranch = body.substring(runningStart, reconnectStart);
+        Assert.assertFalse("the running-session branch must not record the reply — "
+                + "TerminalEnterKeyController.submit records it via recordReplyOnSubmit, "
+                + "so recording here would trigger a duplicate DELETE of the owner call file",
+            runningBranch.contains("recordUserInputForSession"));
+    }
 }

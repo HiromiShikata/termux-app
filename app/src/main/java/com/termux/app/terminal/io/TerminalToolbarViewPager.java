@@ -138,7 +138,6 @@ public class TerminalToolbarViewPager {
                 if (session.isRunning()) {
                     if (ToolbarTextInputEncoder.hasContentToSend(submittedTextInput)) {
                         session.getEmulator().paste(ToolbarTextInputEncoder.textToSend(submittedTextInput));
-                        recordUserInputForSession(session);
                         ownerContentSubmitted = true;
                     }
                 } else if (mActivity.getTermuxTerminalSessionClient().decideFinishedSessionEnterAction(session).isReconnect()) {
