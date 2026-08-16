@@ -28,6 +28,17 @@ public final class ExitedSessionImmediateReconnectBackoff {
         return nowMillis - attempts.lastReconnectTimeMillis >= waitMillis(attempts.consecutiveReconnects);
     }
 
+    public synchronized long millisUntilReadyToReconnectImmediately(@NonNull String sessionName,
+                                                                     long nowMillis) {
+        DeathAttempts attempts = mAttemptsBySessionName.get(sessionName);
+        if (attempts == null) {
+            return 0L;
+        }
+        long remainingMillis = attempts.lastReconnectTimeMillis
+            + waitMillis(attempts.consecutiveReconnects) - nowMillis;
+        return Math.max(0L, remainingMillis);
+    }
+
     public synchronized void recordImmediateReconnect(@NonNull String sessionName, long nowMillis) {
         DeathAttempts attempts = mAttemptsBySessionName.get(sessionName);
         if (attempts == null || attempts.seenRunningLongEnoughAfterTheReconnect) {

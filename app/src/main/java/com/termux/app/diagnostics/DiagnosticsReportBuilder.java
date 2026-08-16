@@ -3,6 +3,8 @@ package com.termux.app.diagnostics;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.app.sessiondefinition.SessionReconnectBlockerCensus;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.ArrayList;
@@ -40,6 +42,8 @@ public final class DiagnosticsReportBuilder {
 
     private static final String SESSION_CREATION_PATHS = "session creation paths";
 
+    private static final String RECONNECT_BLOCKERS = "reconnect blockers";
+
     private static final String APP_PROCESS_COMMAND_NAMES = "app process command names";
 
     private static final String LIVE_SCROLLBAR_VIEW_CLASSES = "live scrollbar view classes";
@@ -73,6 +77,7 @@ public final class DiagnosticsReportBuilder {
             new DiagnosticsReportSubsection(SHELL_EXIT_STATUSES, 400),
             new DiagnosticsReportSubsection(PEAK_BUSIEST_TARGETS, 500),
             new DiagnosticsReportSubsection(PEAK_SCROLLBAR_VIEW_CLASSES, 500),
+            new DiagnosticsReportSubsection(RECONNECT_BLOCKERS, 560),
             new DiagnosticsReportSubsection(LONGEST_STALL_STACK_TRACE, 1140),
             new DiagnosticsReportSubsection(STALL_HOT_PATH_RANKING, 900),
             new DiagnosticsReportSubsection(SESSION_RECONNECT_COST_BY_REASON, 600),
@@ -86,6 +91,7 @@ public final class DiagnosticsReportBuilder {
             UNDELIVERED_SHELL_INPUT,
             SHELL_EXIT_STATUSES,
             SESSION_CREATION_PATHS,
+            RECONNECT_BLOCKERS,
             APP_PROCESS_COMMAND_NAMES,
             SESSION_RECONNECT_COST_BY_REASON,
             BUSIEST_TARGETS,
@@ -143,6 +149,9 @@ public final class DiagnosticsReportBuilder {
 
         builder.append('\n');
         appendSessionCreationPathSection(builder, report);
+
+        builder.append('\n');
+        appendReconnectBlockerSection(builder, report);
 
         builder.append('\n');
         appendActivityWindowSection(builder, report);
@@ -355,6 +364,40 @@ public final class DiagnosticsReportBuilder {
                 + countByPath.getCreationCount());
         }
         appendLinesWithinBudget(builder, countByPathLines, SESSION_CREATION_PATHS);
+    }
+
+    private void appendReconnectBlockerSection(@NonNull DiagnosticsReportText builder,
+                                               @NonNull DiagnosticsReport report) {
+        SessionReconnectBlockerCensus census = report.getReconnectBlockerCensus();
+        builder.append("Why the sessions on screen were not reconnected at the last scan\n");
+        if (!census.isTaken()) {
+            builder.append("  None: no background reconnect scan has run yet\n");
+            return;
+        }
+        builder.append("  Scanned ").append(formatTimestamp(census.getTakenAtMillis()))
+            .append(", considered ").append(census.getConsideredCount())
+            .append(", planned ").append(census.getPlannedCount()).append('\n');
+        List<String> blockerLines = new ArrayList<>();
+        blockerLines.add("  Shell gone: " + census.getShellGoneCount());
+        blockerLines.add("    still marked reconnecting: "
+            + census.getShellGoneMarkedReconnectingCount()
+            + ", longest " + formatUptime(census.getLongestReconnectingMillis()));
+        blockerLines.add("    inside the exit backoff: "
+            + census.getShellGoneInsideTheExitBackoffCount()
+            + ", longest wait left " + formatUptime(census.getLongestExitBackoffRemainingMillis()));
+        blockerLines.add("    reported failed to reconnect: "
+            + census.getShellGoneReportedFailedCount());
+        blockerLines.add("    ready but left out of the plan: "
+            + census.getShellGoneReadyButNotPlannedCount());
+        blockerLines.add("  Alive but silent and out of reach: " + census.getSilentCount());
+        blockerLines.add("    the one on screen, which this scan skips: "
+            + census.getSilentDisplayedRightNowCount());
+        blockerLines.add("    still marked reconnecting: "
+            + census.getSilentMarkedReconnectingCount());
+        blockerLines.add("    inside the silence backoff: "
+            + census.getSilentInsideTheSilenceBackoffCount()
+            + ", longest wait left " + formatUptime(census.getLongestSilenceBackoffRemainingMillis()));
+        appendLinesWithinBudget(builder, blockerLines, RECONNECT_BLOCKERS);
     }
 
     private void appendScrollStepSection(@NonNull DiagnosticsReportText builder,

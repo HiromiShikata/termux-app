@@ -58,12 +58,14 @@ import com.termux.app.diagnostics.ProcessUptimeTracker;
 import com.termux.app.diagnostics.ScrollWithoutDrawEpisodeRecorderHolder;
 import com.termux.app.diagnostics.ScrollbarViewCensusSnapshot;
 import com.termux.app.diagnostics.SessionCreationPath;
+import com.termux.app.diagnostics.SessionReconnectBlockerCensusHolder;
 import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.ExitedSessionImmediateReconnectBackoff;
 import com.termux.app.sessiondefinition.HungSessionReconnectBackoff;
 import com.termux.app.sessiondefinition.PlannedSessionReconnect;
+import com.termux.app.sessiondefinition.SessionReconnectBlockerCensus;
 import com.termux.app.sessiondefinition.SessionReconnectReason;
 import com.termux.app.sessiondefinition.SessionDefinitionCapCountPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionPlannedSession;
@@ -2547,10 +2549,13 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
             mDeadSessionReconnectPlanner.planReconnects(candidateSessions, autosshCommandTemplate,
                 DeadSessionReconnectPlanner.UNLIMITED,
                 mActivity.getPreferences().getUserRemovedSessionNames());
-        List<String> sessionNamesToReconnect = new ArrayList<>();
+        Set<String> sessionNamesToReconnect = new HashSet<>();
         for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
             sessionNamesToReconnect.add(plannedReconnect.getSessionName());
         }
+        SessionReconnectBlockerCensusHolder.getInstance().record(
+            censusOfSessionsLeftUnreconnected(candidateSessions, sessionNamesToReconnect,
+                silentSessionLastOutTimeMillisByName.keySet(), store, nowMillis));
         List<String> reconnectedSessionNames = new ArrayList<>();
         for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
             String sessionName = plannedReconnect.getSessionName();
@@ -2577,6 +2582,36 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         if (mActivity.getAppOpenTagController() != null)
             mActivity.getAppOpenTagController().forgetSessionsOtherThan(presentSessionNames);
         return reconnectedSessionNames;
+    }
+
+    @NonNull
+    private SessionReconnectBlockerCensus censusOfSessionsLeftUnreconnected(
+        @NonNull List<DeadSessionReconnectPlanner.CandidateSession> candidateSessions,
+        @NonNull Set<String> sessionNamesToReconnect,
+        @NonNull Set<String> silentSessionNames,
+        @Nullable SessionNewActivityStore store,
+        long nowMillis) {
+        List<SessionReconnectBlockerCensus.ConsideredSession> consideredSessions = new ArrayList<>();
+        for (DeadSessionReconnectPlanner.CandidateSession candidateSession : candidateSessions) {
+            String sessionName = candidateSession.getName();
+            boolean reconnecting = candidateSession.isReconnecting();
+            long reconnectingForMillis = reconnecting && store != null
+                ? Math.max(0L, nowMillis - store.getReconnectingStartTimeMillis(sessionName))
+                : 0L;
+            consideredSessions.add(new SessionReconnectBlockerCensus.ConsideredSession(
+                candidateSession.isRunning(),
+                candidateSession.isCurrent(),
+                reconnecting,
+                reconnectingForMillis,
+                store != null && store.isReconnectFailed(sessionName),
+                silentSessionNames.contains(sessionName),
+                mExitedSessionImmediateReconnectBackoff.millisUntilReadyToReconnectImmediately(
+                    sessionName, nowMillis),
+                mHungSessionReconnectBackoff.millisUntilReadyToAttemptAgain(sessionName,
+                    candidateSession.getLastOutTimeMillis(), nowMillis),
+                sessionNamesToReconnect.contains(sessionName)));
+        }
+        return SessionReconnectBlockerCensus.of(consideredSessions, nowMillis);
     }
 
     public void releaseRuntimeResourcesOfSessionsThatMustHoldNone() {
