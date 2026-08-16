@@ -16,19 +16,21 @@ public final class ScrollWithoutDrawEpisodeRecorder {
 
     private boolean mHasRecordedEpisode;
 
-    private long mRecordedTerminalDrawAtMillis;
+    private long mRecordedTerminalDrawAtElapsedRealtimeMillis;
 
     public synchronized boolean recordEpisode(long lastScrollStepAtMillis,
-                                              long lastTerminalDrawAtMillis) {
+                                              long lastTerminalDrawAtMillis,
+                                              long lastTerminalDrawAtElapsedRealtimeMillis) {
         long undrawnForMillis = lastScrollStepAtMillis - lastTerminalDrawAtMillis;
         if (undrawnForMillis < UNDRAWN_AFTER_SCROLL_THRESHOLD_MILLIS) {
             return false;
         }
-        if (mHasRecordedEpisode && mRecordedTerminalDrawAtMillis == lastTerminalDrawAtMillis) {
+        if (mHasRecordedEpisode && mRecordedTerminalDrawAtElapsedRealtimeMillis
+                == lastTerminalDrawAtElapsedRealtimeMillis) {
             return false;
         }
         mHasRecordedEpisode = true;
-        mRecordedTerminalDrawAtMillis = lastTerminalDrawAtMillis;
+        mRecordedTerminalDrawAtElapsedRealtimeMillis = lastTerminalDrawAtElapsedRealtimeMillis;
         mEpisodes.add(new ScrollWithoutDrawEpisode(lastScrollStepAtMillis, undrawnForMillis));
         while (mEpisodes.size() > MAX_RETAINED_EPISODES) {
             mEpisodes.remove(0);

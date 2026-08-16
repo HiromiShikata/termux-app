@@ -22,4 +22,12 @@ public final class DrawTimeRecorder {
         return DiagnosticsDrawTime.drawnMillisAgo(
             elapsedRealtimeMillis - lastDrawElapsedRealtimeMillis);
     }
+
+    public synchronized long getLastDrawElapsedRealtimeMillis(@NonNull Object drawnBy) {
+        Long lastDrawElapsedRealtimeMillis = mLastDrawElapsedRealtimeMillisByDrawnBy.get(drawnBy);
+        if (lastDrawElapsedRealtimeMillis == null) {
+            throw new IllegalStateException("nothing has been drawn by " + drawnBy);
+        }
+        return lastDrawElapsedRealtimeMillis;
+    }
 }
