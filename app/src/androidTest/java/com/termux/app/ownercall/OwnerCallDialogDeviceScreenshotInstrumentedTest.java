@@ -102,10 +102,6 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
         CallingSessionRemove.removeEveryCallingSession(scenario);
-        if (scenario != null) {
-            scenario.close();
-            scenario = null;
-        }
         forgetTheStoredDialogPlacement();
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {

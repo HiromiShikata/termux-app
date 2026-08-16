@@ -54,10 +54,6 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
         CallingSessionRemove.removeEveryCallingSession(scenario);
-        if (scenario != null) {
-            scenario.close();
-            scenario = null;
-        }
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
             server.stop();
