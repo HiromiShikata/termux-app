@@ -61,8 +61,6 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final String REPEATED_CALL_BODY =
         "Decide whether the invoice recipient may be changed.";
     private static final String CALL_REASON = "the owner is being called";
-    private static final String TAPPED_URL =
-        "https://github.com/HiromiShikata/termux-app/pull/1939";
 
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 30_000L;
@@ -447,8 +445,9 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     @Test
     public void tappingAUrlInTheDialogOpensItInTheInAppBrowser() throws Exception {
+        String tappedUrl = server.tappedPageUrl();
         server.serveOwnerCallFile(
-            ownerCallDocument("2026-08-14T05:00:00Z", "Approve the release at " + TAPPED_URL));
+            ownerCallDocument("2026-08-14T05:00:00Z", "Approve the release at " + tappedUrl));
         ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
         awaitDialogShowing(scenario, "1 / 1");
 
@@ -458,7 +457,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             tappableUrlSpanOf(body).onClick(body);
         });
 
-        awaitBrowserShowingTheTappedUrl(scenario);
+        awaitBrowserShowingTheTappedUrl(scenario, tappedUrl);
     }
 
     private static ClickableSpan tappableUrlSpanOf(TextView body) {
@@ -469,7 +468,8 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         return spans[0];
     }
 
-    private static void awaitBrowserShowingTheTappedUrl(ActivityScenario<TermuxActivity> scenario)
+    private static void awaitBrowserShowingTheTappedUrl(ActivityScenario<TermuxActivity> scenario,
+                                                        String tappedUrl)
         throws InterruptedException {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
         long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
@@ -482,7 +482,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
                 BrowserTab tab = browserController.getActiveTab();
                 openedUrl.set(tab == null ? null : tab.getUrl());
             });
-            if (TAPPED_URL.equals(openedUrl.get())) {
+            if (tappedUrl.equals(openedUrl.get())) {
                 return;
             }
             Thread.sleep(POLL_INTERVAL_MILLIS);
