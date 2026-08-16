@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.ownercall.CallingSessionRemove;
 import com.termux.app.ownercall.LocalOwnerCallServer;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
@@ -26,7 +27,6 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(AndroidJUnit4.class)
 public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
@@ -34,12 +34,14 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     private static final String SESSION_URL = LocalOwnerCallServer.SESSION_URL;
     private static final String CALL_BODY = "Decide whether the release may go out.";
     private static final String CALL_REASON = "the owner is being called";
-    private static final String REPLY_TEXT = "yes";
+    private static final String REPLY_TEXT = "go ahead with the release";
     private static final long READY_TIMEOUT_MILLIS = 30_000L;
     private static final long POLL_INTERVAL_MILLIS = 100L;
+    private static final long DELETE_SETTLE_MILLIS = 3_000L;
 
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
+    private ActivityScenario<TermuxActivity> scenario;
 
     @Before
     public void startTheOwnerCallServer() throws IOException {
@@ -51,6 +53,7 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
 
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
+        CallingSessionRemove.removeEveryCallingSession(scenario);
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
             server.stop();
@@ -60,7 +63,7 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     @Test
     public void submittingTheReplyThroughTheSendButtonDeletesTheSessionsOwnerCallFile()
         throws Exception {
-        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        scenario = launchWithACallingSession();
         awaitTheToolbarTextInput(scenario);
 
         scenario.onActivity(activity -> {
@@ -75,8 +78,10 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
                     activity.getTerminalToolbarViewPagerAdapter()));
         });
 
-        awaitDeleteRequest();
-        assertEquals(Collections.singletonList(LocalOwnerCallServer.OWNER_CALL_FILE_PATH),
+        awaitDeleteRequestsToSettle();
+        assertEquals("one submitted reply answers the calls once, so it must ask the owner call "
+                + "file to be deleted exactly once",
+            Collections.singletonList(LocalOwnerCallServer.OWNER_CALL_FILE_PATH),
             server.deletedPaths());
     }
 
@@ -145,12 +150,11 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
         }, "the called session never started");
     }
 
-    private void awaitDeleteRequest() throws InterruptedException {
+    private void awaitDeleteRequestsToSettle() throws InterruptedException {
         long deadline = System.currentTimeMillis() + READY_TIMEOUT_MILLIS;
-        AtomicInteger deleteCount = new AtomicInteger();
         while (System.currentTimeMillis() < deadline) {
-            deleteCount.set(server.deletedPaths().size());
-            if (deleteCount.get() > 0) {
+            if (!server.deletedPaths().isEmpty()) {
+                Thread.sleep(DELETE_SETTLE_MILLIS);
                 return;
             }
             Thread.sleep(POLL_INTERVAL_MILLIS);

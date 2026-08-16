@@ -26,7 +26,10 @@ public final class LocalOwnerCallServer {
         + "https___github_com_HiromiShikata_termux-app_issues_1884.yaml";
     public static final String INDEX_PATH = "/in-tmux-by-human/index.v4.json";
     public static final String PROJECT_PATH = "/in-tmux-by-human/umino.v4.json";
+    public static final String TAPPED_PAGE_PATH = "/the-page-a-tapped-url-opens";
     public static final String ACCESS_TOKEN = "device-test-token";
+
+    private static final String TAPPED_PAGE_DOCUMENT = "the page a tapped url opens";
 
     private static final String INDEX_DOCUMENT = "{\"version\":4,\"projects\":[{\"name\":\""
         + PROJECT_CODE + "\",\"path\":\"" + PROJECT_PATH + "?k=" + ACCESS_TOKEN + "\"}]}";
@@ -78,6 +81,10 @@ public final class LocalOwnerCallServer {
             + "?k=" + ACCESS_TOKEN;
     }
 
+    public String tappedPageUrl() {
+        return "http://127.0.0.1:" + serverSocket.getLocalPort() + TAPPED_PAGE_PATH;
+    }
+
     public List<String> deletedPaths() {
         return new ArrayList<>(deletedPaths);
     }
@@ -109,6 +116,10 @@ public final class LocalOwnerCallServer {
         String method = requestLineParts.length > 0 ? requestLineParts[0] : "";
         String target = requestLineParts.length > 1 ? requestLineParts[1] : "";
         String path = target.split("\\?", 2)[0];
+        if (TAPPED_PAGE_PATH.equals(path)) {
+            respond(socket, 200, TAPPED_PAGE_DOCUMENT);
+            return;
+        }
         if (!target.contains("k=" + ACCESS_TOKEN)) {
             respond(socket, 401, "");
             return;
