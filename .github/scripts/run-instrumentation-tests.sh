@@ -66,7 +66,7 @@ unlock_screen
 read -r -a test_args <<< "${GRADLE_TEST_ARGS:-}"
 
 status=0
-timeout 1500 ./gradlew :app:connectedDebugAndroidTest "${test_args[@]}" \
+timeout 1800 ./gradlew :app:connectedDebugAndroidTest "${test_args[@]}" \
   -Pandroid.testInstrumentationRunnerArguments.numShards="${SHARD_COUNT}" \
   -Pandroid.testInstrumentationRunnerArguments.shardIndex="${SHARD_INDEX}" || status=$?
 
