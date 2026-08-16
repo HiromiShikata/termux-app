@@ -36,7 +36,7 @@ public final class DiagnosticsReportSessionDelivery {
         if (emulator == null) return false;
 
         DiagnosticsReport report = mCollector.collect(activity, System.currentTimeMillis());
-        String reportText = mReportBuilder.build(report);
+        String reportText = mReportBuilder.buildForDeliveryIntoASession(report);
 
         long pasteStartMillis = SystemClock.elapsedRealtime();
         emulator.paste(reportText);

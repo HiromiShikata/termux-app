@@ -119,6 +119,11 @@ public final class DiagnosticsReportBuilder {
     }
 
     @NonNull
+    public String buildForDeliveryIntoASession(@NonNull DiagnosticsReport report) {
+        return render(report, DiagnosticsReportCharacterAllowances.unlimited()).toString();
+    }
+
+    @NonNull
     private DiagnosticsReportText render(@NonNull DiagnosticsReport report,
                                          @NonNull DiagnosticsReportCharacterAllowances allowances) {
         DiagnosticsReportText builder = new DiagnosticsReportText(allowances);
