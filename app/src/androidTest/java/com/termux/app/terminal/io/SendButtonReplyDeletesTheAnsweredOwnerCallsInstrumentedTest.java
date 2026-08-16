@@ -12,10 +12,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.app.ownercall.LocalOwnerCallServer;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import org.junit.After;
@@ -34,10 +36,11 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     private static final String SESSION_URL = LocalOwnerCallServer.SESSION_URL;
     private static final String CALL_BODY = "Decide whether the release may go out.";
     private static final String CALL_REASON = "the owner is being called";
-    private static final String REPLY_TEXT = "yes";
+    private static final String REPLY_TEXT = "The release may go out.";
     private static final long READY_TIMEOUT_MILLIS = 30_000L;
     private static final long POLL_INTERVAL_MILLIS = 100L;
 
+    private ActivityScenario<TermuxActivity> scenario;
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
 
@@ -51,6 +54,18 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
 
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
+        if (scenario != null) {
+            scenario.onActivity(activity -> {
+                TermuxService service = activity.getTermuxService();
+                if (service == null) return;
+                TermuxSession termuxSession = service.getTermuxSessionForSessionName(SESSION_URL);
+                if (termuxSession == null) return;
+                TerminalSession session = termuxSession.getTerminalSession();
+                if (session == null) return;
+                session.finishIfRunning();
+                service.removeTermuxSession(session);
+            });
+        }
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
             server.stop();
@@ -60,7 +75,7 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     @Test
     public void submittingTheReplyThroughTheSendButtonDeletesTheSessionsOwnerCallFile()
         throws Exception {
-        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        scenario = launchWithACallingSession();
         awaitTheToolbarTextInput(scenario);
 
         scenario.onActivity(activity -> {

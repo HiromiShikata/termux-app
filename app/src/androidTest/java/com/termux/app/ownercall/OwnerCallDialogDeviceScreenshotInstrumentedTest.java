@@ -28,6 +28,7 @@ import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
 import com.termux.app.browser.BrowserTab;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -35,6 +36,7 @@ import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import org.junit.After;
@@ -87,6 +89,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     public GrantPermissionRule writeExternalStoragePermissionRule =
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
+    private ActivityScenario<TermuxActivity> scenario;
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
 
@@ -102,6 +105,18 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     public void stopTheOwnerCallServer() throws InterruptedException {
         forgetTheStoredDialogPlacement();
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
+        if (scenario != null) {
+            scenario.onActivity(activity -> {
+                TermuxService service = activity.getTermuxService();
+                if (service == null) return;
+                TermuxSession termuxSession = service.getTermuxSessionForSessionName(SESSION_URL);
+                if (termuxSession == null) return;
+                TerminalSession session = termuxSession.getTerminalSession();
+                if (session == null) return;
+                session.finishIfRunning();
+                service.removeTermuxSession(session);
+            });
+        }
         if (server != null) {
             server.stop();
         }
@@ -436,7 +451,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     @Test
     public void indicatorIsHiddenWhenTheSessionHasNoOwnerCall() throws Exception {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario = ActivityScenario.launch(TermuxActivity.class);
         awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> assertEquals(View.GONE,
@@ -490,7 +505,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     }
 
     private ActivityScenario<TermuxActivity> launchWithACallingSession() throws Exception {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario = ActivityScenario.launch(TermuxActivity.class);
         awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> {
