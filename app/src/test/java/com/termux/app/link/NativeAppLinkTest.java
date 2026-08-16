@@ -192,13 +192,23 @@ public class NativeAppLinkTest {
     }
 
     @Test
-    public void slackWorkspaceHostWithoutAPermalinkPathHasNoTarget() {
-        Assert.assertNull(NativeAppLink.resolveTarget("https://a-workspace.slack.com/home"));
+    public void slackWorkspaceHostWithAnyPathMapsToSlack() {
+        assertTarget("https://a-workspace.slack.com/home", "Slack", "com.Slack");
+        assertTarget("https://a-workspace.slack.com/", "Slack", "com.Slack");
+        assertTarget("https://a-workspace.slack.com/files/U01ABCDEFGH/F01ABCDEFGH/image.png",
+            "Slack", "com.Slack");
     }
 
     @Test
-    public void slackWebClientHostWithoutAClientPathHasNoTarget() {
-        Assert.assertNull(NativeAppLink.resolveTarget("https://app.slack.com/signin"));
+    public void slackWebClientHostWithAnyPathMapsToSlack() {
+        assertTarget("https://app.slack.com/signin", "Slack", "com.Slack");
+        assertTarget("https://app.slack.com/", "Slack", "com.Slack");
+    }
+
+    @Test
+    public void slackJoinHostMapsToSlack() {
+        assertTarget("https://join.slack.com/t/a-workspace/shared_invite/abc123",
+            "Slack", "com.Slack");
     }
 
     @Test
