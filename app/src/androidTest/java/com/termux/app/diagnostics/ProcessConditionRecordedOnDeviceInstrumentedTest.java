@@ -25,7 +25,7 @@ public class ProcessConditionRecordedOnDeviceInstrumentedTest {
 
         ProcessConditionSnapshotHolder.getInstance().recordCurrentCondition(
             ProcessConditionSnapshot.recorded(recordedAtMillis, 1000L, 12, 1, 82,
-                recordedAtMillis - 1000L, 71, 3));
+                recordedAtMillis - 1000L, 71, 3, ScrollAnswerTotals.NONE));
 
         ProcessConditionSnapshot readBack = awaitRecordWrittenSince(context, recordedAtMillis);
 

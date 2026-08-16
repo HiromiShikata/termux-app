@@ -7,7 +7,7 @@ import java.util.Map;
 
 public final class ProcessConditionSnapshotFormat {
 
-    public static final String FORMAT_VERSION = "processConditionSnapshot v1";
+    public static final String FORMAT_VERSION = "processConditionSnapshot v2";
 
     private static final String RECORDED_AT_MILLIS = "recordedAtMillis";
 
@@ -24,6 +24,12 @@ public final class ProcessConditionSnapshotFormat {
     private static final String PEAK_SCROLLBAR_VIEW_COUNT = "peakScrollbarViewCount";
 
     private static final String KEPT_SCROLL_WITHOUT_DRAW_EPISODE_COUNT = "keptScrollWithoutDrawEpisodeCount";
+
+    private static final String SCROLL_EPISODES_SENT_TO_THE_PROGRAM = "scrollEpisodesSentToTheProgram";
+
+    private static final String SCROLL_EPISODES_ANSWERED_BY_THE_PROGRAM = "scrollEpisodesAnsweredByTheProgram";
+
+    private static final String EARLIEST_UNANSWERED_SCROLL_EPISODE_SENT_AT_MILLIS = "earliestUnansweredScrollEpisodeSentAtMillis";
 
     private ProcessConditionSnapshotFormat() {
     }
@@ -43,7 +49,10 @@ public final class ProcessConditionSnapshotFormat {
             + " " + PEAK_PENDING_MESSAGE_COUNT + "=" + snapshot.getPeakPendingMessageCount()
             + " " + PEAK_OBSERVED_AT_MILLIS + "=" + snapshot.getPeakObservedAtMillis()
             + " " + PEAK_SCROLLBAR_VIEW_COUNT + "=" + snapshot.getPeakScrollbarViewCount()
-            + " " + KEPT_SCROLL_WITHOUT_DRAW_EPISODE_COUNT + "=" + snapshot.getKeptScrollWithoutDrawEpisodeCount();
+            + " " + KEPT_SCROLL_WITHOUT_DRAW_EPISODE_COUNT + "=" + snapshot.getKeptScrollWithoutDrawEpisodeCount()
+            + " " + SCROLL_EPISODES_SENT_TO_THE_PROGRAM + "=" + snapshot.getScrollAnswerTotals().getEpisodesSentToTheProgram()
+            + " " + SCROLL_EPISODES_ANSWERED_BY_THE_PROGRAM + "=" + snapshot.getScrollAnswerTotals().getEpisodesAnsweredByTheProgram()
+            + " " + EARLIEST_UNANSWERED_SCROLL_EPISODE_SENT_AT_MILLIS + "=" + snapshot.getScrollAnswerTotals().getEarliestUnansweredEpisodeSentAtMillis();
     }
 
     @NonNull
@@ -71,7 +80,11 @@ public final class ProcessConditionSnapshotFormat {
             (int) requiredValueOf(valueByName, PEAK_PENDING_MESSAGE_COUNT, trimmed),
             requiredValueOf(valueByName, PEAK_OBSERVED_AT_MILLIS, trimmed),
             (int) requiredValueOf(valueByName, PEAK_SCROLLBAR_VIEW_COUNT, trimmed),
-            (int) requiredValueOf(valueByName, KEPT_SCROLL_WITHOUT_DRAW_EPISODE_COUNT, trimmed));
+            (int) requiredValueOf(valueByName, KEPT_SCROLL_WITHOUT_DRAW_EPISODE_COUNT, trimmed),
+            ScrollAnswerTotals.of(
+                requiredValueOf(valueByName, SCROLL_EPISODES_SENT_TO_THE_PROGRAM, trimmed),
+                requiredValueOf(valueByName, SCROLL_EPISODES_ANSWERED_BY_THE_PROGRAM, trimmed),
+                requiredValueOf(valueByName, EARLIEST_UNANSWERED_SCROLL_EPISODE_SENT_AT_MILLIS, trimmed)));
     }
 
     private static long requiredValueOf(@NonNull Map<String, Long> valueByName, @NonNull String name,

@@ -22,7 +22,8 @@ public class ProcessConditionSnapshotFileStoreTest {
     public void aConditionWrittenByOneProcessIsReadBackWholeByTheNext() throws IOException {
         File recordFile = recordFile();
         new ProcessConditionSnapshotFileStore(recordFile).write(
-            ProcessConditionSnapshot.recorded(1786968180000L, 342000L, 12, 1, 82, 1786968102000L, 71, 3));
+            ProcessConditionSnapshot.recorded(1786968180000L, 342000L, 12, 1, 82, 1786968102000L, 71, 3,
+                ScrollAnswerTotals.NONE));
 
         ProcessConditionSnapshot readBack = new ProcessConditionSnapshotFileStore(recordFile).read();
 
@@ -47,6 +48,29 @@ public class ProcessConditionSnapshotFileStoreTest {
     }
 
     @Test
+    public void theScrollTheProgramNeverAnsweredOutlivesTheProcessThatSentIt() throws IOException {
+        File recordFile = recordFile();
+        new ProcessConditionSnapshotFileStore(recordFile).write(
+            ProcessConditionSnapshot.recorded(1786968180000L, 342000L, 12, 1, 82, 1786968102000L, 71, 3,
+                ScrollAnswerTotals.of(319L, 318L, 1786968150000L)));
+
+        ScrollAnswerTotals readBack =
+            new ProcessConditionSnapshotFileStore(recordFile).read().getScrollAnswerTotals();
+
+        Assert.assertEquals("how many scrolls that process sent to the programs is the denominator"
+            + " every answered count is read against", 319L, readBack.getEpisodesSentToTheProgram());
+        Assert.assertEquals("a process whose programs answered every scroll but one is the state the"
+            + " symptom appears in, and the answered count is what shows it",
+            318L, readBack.getEpisodesAnsweredByTheProgram());
+        Assert.assertTrue("a scroll the program never answered is the decisive reading, and losing it"
+            + " with the process leaves every later report describing a healthy start instead",
+            readBack.hasUnansweredEpisode());
+        Assert.assertEquals("the instant that scroll was sent is what places it against the moment the"
+            + " application stopped responding", 1786968150000L,
+            readBack.getEarliestUnansweredEpisodeSentAtMillis());
+    }
+
+    @Test
     public void aProcessWithNoEarlierRecordReadsAsNotRecordedRatherThanAsZeroes() throws IOException {
         ProcessConditionSnapshot readBack = new ProcessConditionSnapshotFileStore(recordFile()).read();
 
@@ -57,10 +81,37 @@ public class ProcessConditionSnapshotFileStoreTest {
     }
 
     @Test
+    public void theRecordAnEarlierBuildLeftBehindIsRejectedByNamingTheFormatItDoesNotOpenWith()
+        throws IOException {
+        File recordFile = recordFile();
+        PrintWriter writer = new PrintWriter(recordFile, "UTF-8");
+        writer.print("processConditionSnapshot v1 recordedAtMillis=1786968180000"
+            + " processUptimeMillis=342000 mainLooperPendingMessageCount=12"
+            + " synchronizationBarrierCount=1 peakPendingMessageCount=82"
+            + " peakObservedAtMillis=1786968102000 peakScrollbarViewCount=71"
+            + " keptScrollWithoutDrawEpisodeCount=3");
+        writer.close();
+
+        ProcessConditionSnapshot readBack = new ProcessConditionSnapshotFileStore(recordFile).read();
+
+        Assert.assertFalse("every device that installs this build reads one record written by the"
+            + " process before it, and reading the keys that happen to match would leave the scroll"
+            + " answer at zero, which is indistinguishable from a process whose programs answered no"
+            + " scroll at all", readBack.isRecorded());
+        String reason = readBack.getUnreadableReason();
+        Assert.assertNotNull("the one transitional reading has to say why it holds no numbers, or it"
+            + " is read as a fault in the writing side", reason);
+        Assert.assertTrue("the reason has to name the format expected so the reader knows the record"
+            + " was written by an earlier build rather than corrupted. Actual reason: " + reason,
+            reason.contains(ProcessConditionSnapshotFormat.FORMAT_VERSION));
+    }
+
+    @Test
     public void aRecordThatCannotBeParsedReportsWhyRatherThanReadingAsAbsent() throws IOException {
         File recordFile = recordFile();
         PrintWriter writer = new PrintWriter(recordFile, "UTF-8");
-        writer.print("processConditionSnapshot v1 recordedAtMillis=1786968180000");
+        writer.print(ProcessConditionSnapshotFormat.FORMAT_VERSION
+            + " recordedAtMillis=1786968180000");
         writer.close();
 
         ProcessConditionSnapshot readBack = new ProcessConditionSnapshotFileStore(recordFile).read();
@@ -79,9 +130,9 @@ public class ProcessConditionSnapshotFileStoreTest {
         File recordFile = recordFile();
         ProcessConditionSnapshotFileStore store = new ProcessConditionSnapshotFileStore(recordFile);
         store.write(ProcessConditionSnapshot.recorded(1786968180000L, 342000L, 12, 1, 82,
-            1786968102000L, 71, 3));
+            1786968102000L, 71, 3, ScrollAnswerTotals.NONE));
         store.write(ProcessConditionSnapshot.recorded(1786968240000L, 402000L, 4, 0, 90,
-            1786968220000L, 8, 5));
+            1786968220000L, 8, 5, ScrollAnswerTotals.NONE));
 
         ProcessConditionSnapshot readBack = new ProcessConditionSnapshotFileStore(recordFile).read();
 

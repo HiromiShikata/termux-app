@@ -6,7 +6,8 @@ import androidx.annotation.Nullable;
 public final class ProcessConditionSnapshot {
 
     public static final ProcessConditionSnapshot NOT_RECORDED =
-        new ProcessConditionSnapshot(false, null, 0L, 0L, 0, 0, 0, 0L, 0, 0);
+        new ProcessConditionSnapshot(false, null, 0L, 0L, 0, 0, 0, 0L, 0, 0,
+            ScrollAnswerTotals.NONE);
 
     private final boolean mRecorded;
 
@@ -29,13 +30,17 @@ public final class ProcessConditionSnapshot {
 
     private final int mKeptScrollWithoutDrawEpisodeCount;
 
+    @NonNull
+    private final ScrollAnswerTotals mScrollAnswerTotals;
+
     private ProcessConditionSnapshot(boolean recorded, @Nullable String unreadableReason,
                                      long recordedAtMillis, long processUptimeMillis,
                                      int mainLooperPendingMessageCount,
                                      int synchronizationBarrierCount,
                                      int peakPendingMessageCount, long peakObservedAtMillis,
                                      int peakScrollbarViewCount,
-                                     int keptScrollWithoutDrawEpisodeCount) {
+                                     int keptScrollWithoutDrawEpisodeCount,
+                                     @NonNull ScrollAnswerTotals scrollAnswerTotals) {
         mRecorded = recorded;
         mUnreadableReason = unreadableReason;
         mRecordedAtMillis = recordedAtMillis;
@@ -46,6 +51,7 @@ public final class ProcessConditionSnapshot {
         mPeakObservedAtMillis = peakObservedAtMillis;
         mPeakScrollbarViewCount = peakScrollbarViewCount;
         mKeptScrollWithoutDrawEpisodeCount = keptScrollWithoutDrawEpisodeCount;
+        mScrollAnswerTotals = scrollAnswerTotals;
     }
 
     @NonNull
@@ -55,15 +61,18 @@ public final class ProcessConditionSnapshot {
                                                     int peakPendingMessageCount,
                                                     long peakObservedAtMillis,
                                                     int peakScrollbarViewCount,
-                                                    int keptScrollWithoutDrawEpisodeCount) {
+                                                    int keptScrollWithoutDrawEpisodeCount,
+                                                    @NonNull ScrollAnswerTotals scrollAnswerTotals) {
         return new ProcessConditionSnapshot(true, null, recordedAtMillis, processUptimeMillis,
             mainLooperPendingMessageCount, synchronizationBarrierCount, peakPendingMessageCount,
-            peakObservedAtMillis, peakScrollbarViewCount, keptScrollWithoutDrawEpisodeCount);
+            peakObservedAtMillis, peakScrollbarViewCount, keptScrollWithoutDrawEpisodeCount,
+            scrollAnswerTotals);
     }
 
     @NonNull
     public static ProcessConditionSnapshot unreadable(@NonNull String reason) {
-        return new ProcessConditionSnapshot(false, reason, 0L, 0L, 0, 0, 0, 0L, 0, 0);
+        return new ProcessConditionSnapshot(false, reason, 0L, 0L, 0, 0, 0, 0L, 0, 0,
+            ScrollAnswerTotals.NONE);
     }
 
     public boolean isRecorded() {
@@ -105,5 +114,10 @@ public final class ProcessConditionSnapshot {
 
     public int getKeptScrollWithoutDrawEpisodeCount() {
         return mKeptScrollWithoutDrawEpisodeCount;
+    }
+
+    @NonNull
+    public ScrollAnswerTotals getScrollAnswerTotals() {
+        return mScrollAnswerTotals;
     }
 }
