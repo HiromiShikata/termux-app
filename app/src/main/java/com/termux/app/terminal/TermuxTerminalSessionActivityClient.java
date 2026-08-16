@@ -55,6 +55,7 @@ import com.termux.app.diagnostics.DiagnosticsMainLooperQueuePeak;
 import com.termux.app.diagnostics.ProcessConditionSnapshot;
 import com.termux.app.diagnostics.ProcessConditionSnapshotHolder;
 import com.termux.app.diagnostics.ProcessUptimeTracker;
+import com.termux.app.diagnostics.ScrollAnswerTotals;
 import com.termux.app.diagnostics.ScrollWithoutDrawEpisodeRecorderHolder;
 import com.termux.app.diagnostics.ScrollbarViewCensusSnapshot;
 import com.termux.app.diagnostics.SessionCreationPath;
@@ -96,6 +97,7 @@ import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import com.termux.shared.termux.terminal.io.BellHandler;
 import com.termux.shared.logger.Logger;
 import com.termux.terminal.TerminalBuffer;
+import com.termux.terminal.ScrollAnswerRecord;
 import com.termux.terminal.TerminalColors;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
@@ -1451,7 +1453,21 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
                 peak.getPendingMessageCount(),
                 peak.getObservedAtMillis(),
                 peak.getScrollbarViewCensus().getScrollbarViewCount(),
-                ScrollWithoutDrawEpisodeRecorderHolder.getInstance().getEpisodes().size()));
+                ScrollWithoutDrawEpisodeRecorderHolder.getInstance().getEpisodes().size(),
+                scrollAnswerTotalsOfEverySession()));
+    }
+
+    @NonNull
+    private ScrollAnswerTotals scrollAnswerTotalsOfEverySession() {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return ScrollAnswerTotals.NONE;
+        List<ScrollAnswerRecord> records = new ArrayList<>();
+        for (TermuxSession termuxSession : new ArrayList<>(service.getTermuxSessions())) {
+            TerminalSession session = termuxSession.getTerminalSession();
+            if (session == null) continue;
+            records.add(session.getScrollAnswerRecord());
+        }
+        return ScrollAnswerTotals.ofRecords(records);
     }
 
     private void refreshDisplayedSessionsForCallToUser() {

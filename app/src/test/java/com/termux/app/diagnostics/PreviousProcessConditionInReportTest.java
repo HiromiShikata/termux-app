@@ -39,7 +39,7 @@ public class PreviousProcessConditionInReportTest {
     @Test
     public void theReportStatesWhatTheProcessThatEndedHadMeasuredAboutItself() {
         String report = renderedReportOf(ProcessConditionSnapshot.recorded(1786968180000L, 342000L,
-            12, 1, 82, 1786968102000L, 71, 3));
+            12, 1, 82, 1786968102000L, 71, 3, ScrollAnswerTotals.NONE));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("the condition being investigated is one in which the application stops"
@@ -104,9 +104,36 @@ public class PreviousProcessConditionInReportTest {
     }
 
     @Test
+    public void theReportNamesTheScrollThatProcessSentWhichItsProgramNeverAnswered() {
+        String report = renderedReportOf(ProcessConditionSnapshot.recorded(1786968180000L, 342000L,
+            12, 1, 82, 1786968102000L, 71, 3, ScrollAnswerTotals.of(319L, 318L, 1786968150000L)));
+
+        String section = report.substring(report.indexOf(SECTION_HEADING));
+        Assert.assertTrue("a scroll the terminal sent that the program never answered separates a"
+                + " terminal that stopped accepting input from a program that stopped producing"
+                + " output, and that reading dies with the process. Actual report:\n" + report,
+            section.contains("Scrolls the program answered then: 318 of 319"));
+        Assert.assertTrue("the instant the unanswered scroll was sent is what places it against the"
+                + " moment the application stopped responding. Actual report:\n" + report,
+            section.contains("Oldest scroll the program never answered: 2026-08-17T12:02:30Z"));
+    }
+
+    @Test
+    public void theReportSaysNothingWasOutstandingWhenEveryScrollWasAnswered() {
+        String report = renderedReportOf(ProcessConditionSnapshot.recorded(1786968180000L, 342000L,
+            12, 1, 82, 1786968102000L, 71, 3, ScrollAnswerTotals.of(98L, 98L, 0L)));
+
+        String section = report.substring(report.indexOf(SECTION_HEADING));
+        Assert.assertTrue("a process whose programs answered every scroll did not exhibit the defect,"
+                + " and rendering an instant there would send the reader after a scroll that was"
+                + " never outstanding. Actual report:\n" + report,
+            section.contains("Oldest scroll the program never answered: none outstanding"));
+    }
+
+    @Test
     public void theConditionOfTheProcessThatEndedSitsInsideTheWindowTheReportSurvives() {
         String report = renderedReportOf(ProcessConditionSnapshot.recorded(1786968180000L, 342000L,
-            12, 1, 82, 1786968102000L, 71, 3));
+            12, 1, 82, 1786968102000L, 71, 3, ScrollAnswerTotals.NONE));
 
         int sectionIndex = report.indexOf(SECTION_HEADING);
         Assert.assertTrue("the section has to be present for its position to matter. Actual report:\n"

@@ -248,6 +248,14 @@ public final class DiagnosticsReportBuilder {
         builder.append("  Scroll gestures the terminal never drew for (up to ")
             .append(ScrollWithoutDrawEpisodeRecorder.MAX_RETAINED_EPISODES).append(" kept): ")
             .append(condition.getKeptScrollWithoutDrawEpisodeCount()).append('\n');
+        ScrollAnswerTotals scrollAnswerTotals = condition.getScrollAnswerTotals();
+        builder.append("  Scrolls the program answered then: ")
+            .append(scrollAnswerTotals.getEpisodesAnsweredByTheProgram())
+            .append(" of ").append(scrollAnswerTotals.getEpisodesSentToTheProgram()).append('\n');
+        builder.append("  Oldest scroll the program never answered: ")
+            .append(scrollAnswerTotals.hasUnansweredEpisode()
+                ? formatTimestamp(scrollAnswerTotals.getEarliestUnansweredEpisodeSentAtMillis())
+                : "none outstanding").append('\n');
     }
 
     @NonNull
