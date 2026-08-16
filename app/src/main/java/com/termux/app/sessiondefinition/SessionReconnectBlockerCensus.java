@@ -6,15 +6,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Counts, for one run of the background reconnect scan, how many of the sessions it considered were
- * left unreconnected and which condition left each one out. The scan drops a session for reasons that
- * are invisible from outside the process — an earlier reconnect still marked in flight, a backoff that
- * has not elapsed, or the deliberate exclusion of the session currently on screen from the silent-session
- * path — and without this census a report can say only that some sessions were not reconnected. Session
- * names are deliberately absent, because this census is written into a report the owner pastes into a
- * public record.
- */
 public final class SessionReconnectBlockerCensus {
 
     public static final SessionReconnectBlockerCensus NOT_TAKEN =
