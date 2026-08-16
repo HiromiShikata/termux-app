@@ -55,6 +55,18 @@ public final class HungSessionReconnectBackoff {
         return nowMillis - attempts.lastAttemptTimeMillis >= waitMillis(attempts.consecutiveAttempts);
     }
 
+    public synchronized long millisUntilReadyToAttemptAgain(@NonNull String sessionName,
+                                                             @Nullable Long lastOutTimeMillis,
+                                                             long nowMillis) {
+        SilenceAttempts attempts = mAttemptsBySessionName.get(sessionName);
+        if (attempts == null || !attempts.describesTheSameSilenceAs(lastOutTimeMillis)) {
+            return 0L;
+        }
+        long remainingMillis = attempts.lastAttemptTimeMillis
+            + waitMillis(attempts.consecutiveAttempts) - nowMillis;
+        return Math.max(0L, remainingMillis);
+    }
+
     public synchronized void recordAttemptForSilence(@NonNull String sessionName,
                                                      @Nullable Long lastOutTimeMillis,
                                                      long nowMillis) {

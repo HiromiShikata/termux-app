@@ -2,6 +2,8 @@ package com.termux.app.diagnostics;
 
 import androidx.annotation.NonNull;
 
+import com.termux.app.sessiondefinition.SessionReconnectBlockerCensus;
+
 import java.util.Collections;
 import java.util.List;
 
@@ -77,6 +79,8 @@ public final class DiagnosticsReport {
     private final DiagnosticsPreviousProcessExits mPreviousProcessExits;
     @NonNull
     private final ProcessConditionSnapshot mPreviousProcessCondition;
+    @NonNull
+    private final SessionReconnectBlockerCensus mReconnectBlockerCensus;
 
     public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
                              int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
@@ -109,6 +113,50 @@ public final class DiagnosticsReport {
                              @NonNull DiagnosticsTouchEvents touchEvents,
                              @NonNull DiagnosticsPreviousProcessExits previousProcessExits,
                              @NonNull ProcessConditionSnapshot previousProcessCondition) {
+        this(versionName, versionCode, reportTimestampMillis, sessionsCountedTowardCap,
+            sessionsDisplayedCount, maxSessionsCap, sessionLines, openTabCount, tabHistoryEntryCount,
+            wakeLockHeld, foreground, recentEvents, memoryUsage, backgroundOutputScanCost,
+            foregroundOpenTagScanCost, bufferReflowCost, sessionReconnectCost,
+            replacedSessionShellInput, mainThreadStalls, mainLooperQueue, scrollbarViewCensus,
+            processUptimeMillis, backgroundCycle, versionChange, shellExits, phantomProcessMonitor,
+            appProcessPopulation, terminalDrawCost, shellOutputParseCost, sessionCreationPaths,
+            activityWindows, lastReportDelivery, mainLooperQueuePeak, scrollSteps, touchEvents,
+            previousProcessExits, previousProcessCondition, SessionReconnectBlockerCensus.NOT_TAKEN);
+    }
+
+    public DiagnosticsReport(@NonNull String versionName, int versionCode, long reportTimestampMillis,
+                             int sessionsCountedTowardCap, int sessionsDisplayedCount, int maxSessionsCap,
+                             @NonNull List<DiagnosticsSessionLine> sessionLines,
+                             int openTabCount, int tabHistoryEntryCount,
+                             boolean wakeLockHeld, boolean foreground,
+                             @NonNull List<DiagnosticEvent> recentEvents,
+                             @NonNull DiagnosticsMemoryUsage memoryUsage,
+                             @NonNull DiagnosticsWorkCostLine backgroundOutputScanCost,
+                             @NonNull DiagnosticsWorkCostLine foregroundOpenTagScanCost,
+                             @NonNull DiagnosticsWorkCostLine bufferReflowCost,
+                             @NonNull DiagnosticsSessionReconnectCost sessionReconnectCost,
+                             @NonNull DiagnosticsReplacedSessionShellInput replacedSessionShellInput,
+                             @NonNull DiagnosticsMainThreadStalls mainThreadStalls,
+                             @NonNull DiagnosticsMainLooperQueue mainLooperQueue,
+                             @NonNull ScrollbarViewCensus scrollbarViewCensus,
+                             long processUptimeMillis,
+                             @NonNull DiagnosticsBackgroundCycle backgroundCycle,
+                             @NonNull DiagnosticsVersionChange versionChange,
+                             @NonNull DiagnosticsShellExits shellExits,
+                             @NonNull DiagnosticsPhantomProcessMonitor phantomProcessMonitor,
+                             @NonNull DiagnosticsAppProcessPopulation appProcessPopulation,
+                             @NonNull DiagnosticsWorkCostLine terminalDrawCost,
+                             @NonNull DiagnosticsWorkCostLine shellOutputParseCost,
+                             @NonNull DiagnosticsSessionCreationPaths sessionCreationPaths,
+                             @NonNull DiagnosticsActivityWindows activityWindows,
+                             @NonNull DiagnosticsReportDelivery lastReportDelivery,
+                             @NonNull DiagnosticsMainLooperQueuePeak mainLooperQueuePeak,
+                             @NonNull DiagnosticsScrollSteps scrollSteps,
+                             @NonNull DiagnosticsTouchEvents touchEvents,
+                             @NonNull DiagnosticsPreviousProcessExits previousProcessExits,
+                             @NonNull ProcessConditionSnapshot previousProcessCondition,
+                             @NonNull SessionReconnectBlockerCensus reconnectBlockerCensus) {
+        mReconnectBlockerCensus = reconnectBlockerCensus;
         mScrollSteps = scrollSteps;
         mTouchEvents = touchEvents;
         mPreviousProcessExits = previousProcessExits;
@@ -181,6 +229,11 @@ public final class DiagnosticsReport {
     @NonNull
     public ProcessConditionSnapshot getPreviousProcessCondition() {
         return mPreviousProcessCondition;
+    }
+
+    @NonNull
+    public SessionReconnectBlockerCensus getReconnectBlockerCensus() {
+        return mReconnectBlockerCensus;
     }
 
     @NonNull
