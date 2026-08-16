@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.ownercall.CallingSessionRemove;
 import com.termux.app.ownercall.LocalOwnerCallServer;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
@@ -34,12 +35,13 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     private static final String SESSION_URL = LocalOwnerCallServer.SESSION_URL;
     private static final String CALL_BODY = "Decide whether the release may go out.";
     private static final String CALL_REASON = "the owner is being called";
-    private static final String REPLY_TEXT = "yes";
+    private static final String REPLY_TEXT = "go ahead with the release";
     private static final long READY_TIMEOUT_MILLIS = 30_000L;
     private static final long POLL_INTERVAL_MILLIS = 100L;
 
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
+    private ActivityScenario<TermuxActivity> scenario;
 
     @Before
     public void startTheOwnerCallServer() throws IOException {
@@ -51,6 +53,11 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
 
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
+        CallingSessionRemove.removeEveryCallingSession(scenario);
+        if (scenario != null) {
+            scenario.close();
+            scenario = null;
+        }
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
             server.stop();
@@ -60,7 +67,7 @@ public class SendButtonReplyDeletesTheAnsweredOwnerCallsInstrumentedTest {
     @Test
     public void submittingTheReplyThroughTheSendButtonDeletesTheSessionsOwnerCallFile()
         throws Exception {
-        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        scenario = launchWithACallingSession();
         awaitTheToolbarTextInput(scenario);
 
         scenario.onActivity(activity -> {

@@ -89,6 +89,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     private LocalOwnerCallServer server;
     private String previousSessionDefinitionUrl;
+    private ActivityScenario<TermuxActivity> scenario;
 
     @Before
     public void startTheOwnerCallServer() throws IOException {
@@ -100,6 +101,11 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     @After
     public void stopTheOwnerCallServer() throws InterruptedException {
+        CallingSessionRemove.removeEveryCallingSession(scenario);
+        if (scenario != null) {
+            scenario.close();
+            scenario = null;
+        }
         forgetTheStoredDialogPlacement();
         preferences().setSessionDefinitionUrl(previousSessionDefinitionUrl);
         if (server != null) {
@@ -436,7 +442,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
     @Test
     public void indicatorIsHiddenWhenTheSessionHasNoOwnerCall() throws Exception {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario = ActivityScenario.launch(TermuxActivity.class);
         awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> assertEquals(View.GONE,
@@ -490,7 +496,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     }
 
     private ActivityScenario<TermuxActivity> launchWithACallingSession() throws Exception {
-        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        scenario = ActivityScenario.launch(TermuxActivity.class);
         awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> {
