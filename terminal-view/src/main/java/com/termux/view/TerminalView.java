@@ -684,9 +684,11 @@ public final class TerminalView extends View {
             TerminalScrollStepCounterHolder.getInstance().record(scrollEvent, System.currentTimeMillis());
             switch (scrollEvent) {
                 case MOUSE_WHEEL:
+                    mTermSession.getScrollAnswerRecord().recordScrollSentToTheProgram(System.currentTimeMillis());
                     sendMouseEventCode(event, up ? TerminalEmulator.MOUSE_WHEELUP_BUTTON : TerminalEmulator.MOUSE_WHEELDOWN_BUTTON, true);
                     break;
                 case ARROW_KEY:
+                    mTermSession.getScrollAnswerRecord().recordScrollSentToTheProgram(System.currentTimeMillis());
                     handleKeyCode(up ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, 0);
                     break;
                 case LOCAL_SCROLLBACK:

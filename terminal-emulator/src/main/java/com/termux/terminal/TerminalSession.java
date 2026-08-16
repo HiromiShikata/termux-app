@@ -96,6 +96,8 @@ public final class TerminalSession extends TerminalOutput {
 
     private final ShellInputDeliveryRecord mShellInputDeliveryRecord = new ShellInputDeliveryRecord();
 
+    private final ScrollAnswerRecord mScrollAnswerRecord = new ScrollAnswerRecord();
+
     private final ShellStartupInputBuffer mShellStartupInputBuffer = new ShellStartupInputBuffer();
 
     private static final String LOG_TAG = "TerminalSession";
@@ -265,6 +267,11 @@ public final class TerminalSession extends TerminalOutput {
     @NonNull
     public ShellInputDeliveryRecord getShellInputDeliveryRecord() {
         return mShellInputDeliveryRecord;
+    }
+
+    @NonNull
+    public ScrollAnswerRecord getScrollAnswerRecord() {
+        return mScrollAnswerRecord;
     }
 
     /**
@@ -581,7 +588,10 @@ public final class TerminalSession extends TerminalOutput {
             mClient.onShellOutputParsed(System.nanoTime() - parseStartNanos,
                 mEmulator.getScreen().getActiveTranscriptRows());
             notifyScreenUpdate();
-            if (genuineByteCount > 0) notifyGenuineOutput();
+            if (genuineByteCount > 0) {
+                mScrollAnswerRecord.recordOutputFromTheProgram(System.currentTimeMillis());
+                notifyGenuineOutput();
+            }
         }
 
         private void renderShellCompletionNotice(int exitCode) {

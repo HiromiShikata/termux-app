@@ -24,6 +24,7 @@ import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalBuffer;
 import com.termux.shared.termux.terminal.ShellOutputParseCostCounterHolder;
 import com.termux.terminal.TerminalBufferReflowCostCounterHolder;
+import com.termux.terminal.ScrollAnswerRecord;
 import com.termux.terminal.ShellInputDeliveryRecord;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
@@ -237,11 +238,19 @@ public final class DiagnosticsReportCollector {
             DiagnosticsSessionListDisplay listDisplay =
                 DiagnosticsSessionListDisplay.ofSessionIndex(sessionIndex, sessionIndexesDisplayedInList);
 
+            ScrollAnswerRecord scrollAnswerRecord = terminalSession.getScrollAnswerRecord();
+            DiagnosticsScrollAnswer scrollAnswer = new DiagnosticsScrollAnswer(
+                scrollAnswerRecord.getEpisodesSentToTheProgram(),
+                scrollAnswerRecord.getEpisodesAnsweredByTheProgram(),
+                scrollAnswerRecord.getUnansweredEpisodeSentAtMillis(),
+                scrollAnswerRecord.getLastEpisodeAnsweredAtMillis());
+
             lines.add(new DiagnosticsSessionLine(name, alive, secondsSinceLastActivity, hasLastActivity,
                 transcriptRows, columns, listDisplay,
                 shellInputDelivery, statusline, scrollGestureRouting,
                 DiagnosticsSessionListAbsence.ofListState(listDisplay, name,
-                    collapsedProjectSessionNames, hiddenSessionNames)));
+                    collapsedProjectSessionNames, hiddenSessionNames),
+                scrollAnswer));
         }
         return lines;
     }

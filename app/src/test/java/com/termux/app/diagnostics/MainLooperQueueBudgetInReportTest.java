@@ -96,7 +96,8 @@ public class MainLooperQueueBudgetInReportTest {
                 new DiagnosticsShellInputDelivery(acceptedButNotWritten, 0L, 0L, true, null, null, null),
                 new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.NONE),
                 DiagnosticsScrollGestureRouting.ofEmulatorState(false, false),
-                DiagnosticsSessionListAbsence.presentInTheList()));
+                DiagnosticsSessionListAbsence.presentInTheList(),
+                new DiagnosticsScrollAnswer(0L, 0L, null, null)));
         }
         return sessionLines;
     }

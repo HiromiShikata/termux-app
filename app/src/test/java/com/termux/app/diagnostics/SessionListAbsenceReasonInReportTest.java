@@ -20,7 +20,8 @@ public class SessionListAbsenceReasonInReportTest {
             listDisplay,
             new DiagnosticsShellInputDelivery(88, 88, 0, true, "", null, null),
             new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY),
-            DiagnosticsScrollGestureRouting.ofEmulatorState(false, false), listAbsence);
+            DiagnosticsScrollGestureRouting.ofEmulatorState(false, false), listAbsence,
+                new DiagnosticsScrollAnswer(0L, 0L, null, null));
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             1, 0, 32, Collections.singletonList(sessionLine),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),

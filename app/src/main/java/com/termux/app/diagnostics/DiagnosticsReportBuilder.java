@@ -867,6 +867,7 @@ public final class DiagnosticsReportBuilder {
                 .append('\n');
             appendListAbsence(builder, line.getListAbsence());
             appendScrollGestureRouting(builder, line.getScrollGestureRouting());
+            appendScrollAnswer(builder, line.getScrollAnswer());
             appendShellInputDelivery(builder, line.getShellInputDelivery());
             appendStatusline(builder, line.getStatusline());
         }
@@ -881,6 +882,26 @@ public final class DiagnosticsReportBuilder {
     private void appendScrollGestureRouting(@NonNull DiagnosticsReportText builder,
                                             @NonNull DiagnosticsScrollGestureRouting routing) {
         builder.append("      a scroll gesture goes to ").append(routing.getReportLabel()).append('\n');
+    }
+
+    private void appendScrollAnswer(@NonNull DiagnosticsReportText builder,
+                                    @NonNull DiagnosticsScrollAnswer scrollAnswer) {
+        builder.append("      scroll answered by the program: ");
+        if (!scrollAnswer.hasBeenSentAScroll()) {
+            builder.append("no scroll has been sent to it yet\n");
+            return;
+        }
+        builder.append(scrollAnswer.getEpisodesAnsweredByTheProgram()).append(" of ")
+            .append(scrollAnswer.getEpisodesSentToTheProgram());
+        Long unansweredSentAtMillis = scrollAnswer.getUnansweredEpisodeSentAtMillis();
+        if (unansweredSentAtMillis != null) {
+            builder.append(", one waiting since ").append(formatTimestamp(unansweredSentAtMillis));
+        }
+        Long lastAnsweredAtMillis = scrollAnswer.getLastEpisodeAnsweredAtMillis();
+        if (lastAnsweredAtMillis != null) {
+            builder.append(", last answered at ").append(formatTimestamp(lastAnsweredAtMillis));
+        }
+        builder.append('\n');
     }
 
     private void appendStatusline(@NonNull DiagnosticsReportText builder,

@@ -21,7 +21,8 @@ public class ScrollGestureRoutingInReportTest {
             DiagnosticsSessionListDisplay.DISPLAYED,
             new DiagnosticsShellInputDelivery(88, 88, 0, true, "", null, null),
             new DiagnosticsSessionStatusline(null, null, null, SessionNewActivityTier.GRAY),
-            scrollGestureRouting, PRESENT_IN_THE_LIST);
+            scrollGestureRouting, PRESENT_IN_THE_LIST,
+                new DiagnosticsScrollAnswer(0L, 0L, null, null));
         DiagnosticsReport report = new DiagnosticsReport("0.119.0", 119, REPORT_MILLIS,
             1, 1, 32, Collections.singletonList(sessionLine),
             0, 0, false, true, Collections.<DiagnosticEvent>emptyList(),
