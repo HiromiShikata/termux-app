@@ -28,10 +28,28 @@ public final class BrowserTabHistoryEntry {
         @NonNull String title,
         @NonNull String bodySnippet,
         @Nullable Long closedAtMillis) {
+        this(url, title.isEmpty() ? url : title, boundBodySnippet(bodySnippet), closedAtMillis, null);
+    }
+
+    private BrowserTabHistoryEntry(
+        @NonNull String url,
+        @NonNull String title,
+        @NonNull String bodySnippet,
+        @Nullable Long closedAtMillis,
+        Void ignored) {
         mUrl = url;
-        mTitle = title.isEmpty() ? url : title;
-        mBodySnippet = boundBodySnippet(bodySnippet);
+        mTitle = title;
+        mBodySnippet = bodySnippet;
         mClosedAtMillis = closedAtMillis;
+    }
+
+    @NonNull
+    static BrowserTabHistoryEntry fromPersisted(
+        @NonNull String url,
+        @NonNull String title,
+        @NonNull String bodySnippet,
+        @Nullable Long closedAtMillis) {
+        return new BrowserTabHistoryEntry(url, title.isEmpty() ? url : title, bodySnippet, closedAtMillis, null);
     }
 
     @NonNull
@@ -56,7 +74,7 @@ public final class BrowserTabHistoryEntry {
 
     @NonNull
     public BrowserTabHistoryEntry withClosedAtMillis(long closedAtMillis) {
-        return new BrowserTabHistoryEntry(mUrl, mTitle, mBodySnippet, closedAtMillis);
+        return new BrowserTabHistoryEntry(mUrl, mTitle, mBodySnippet, closedAtMillis, null);
     }
 
     @NonNull

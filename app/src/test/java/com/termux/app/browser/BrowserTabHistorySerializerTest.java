@@ -134,4 +134,13 @@ public class BrowserTabHistorySerializerTest {
 
         Assert.assertFalse(serialized.contains("closedAtMillis"));
     }
+
+    @Test
+    public void deserializePreservesBodySnippetExactlyAsStored() throws JSONException {
+        String serialized = "[{\"url\":\"https://example.com/page\",\"title\":\"T\",\"bodySnippet\":\"word  word\"}]";
+
+        BrowserTabHistory restored = mSerializer.deserialize(serialized, BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+
+        Assert.assertEquals("word  word", restored.getEntries().get(0).getBodySnippet());
+    }
 }

@@ -92,4 +92,26 @@ public class BrowserTabHistoryEntryTest {
         Assert.assertEquals(first, second);
         Assert.assertEquals(first.hashCode(), second.hashCode());
     }
+
+    @Test
+    public void fromPersistedStoresBodySnippetWithoutCollapsing() {
+        BrowserTabHistoryEntry entry = BrowserTabHistoryEntry.fromPersisted(
+            "https://example.com/page", "Title", "word  word", null);
+        Assert.assertEquals("word  word", entry.getBodySnippet());
+    }
+
+    @Test
+    public void fromPersistedFallsBackTitleToUrlWhenEmpty() {
+        BrowserTabHistoryEntry entry = BrowserTabHistoryEntry.fromPersisted(
+            "https://example.com/page", "", "body", null);
+        Assert.assertEquals("https://example.com/page", entry.getTitle());
+    }
+
+    @Test
+    public void withClosedAtMillisDoesNotReprocessBodySnippet() {
+        BrowserTabHistoryEntry entry = BrowserTabHistoryEntry.fromPersisted(
+            "https://example.com/page", "Title", "word  word", null);
+        BrowserTabHistoryEntry closed = entry.withClosedAtMillis(1234L);
+        Assert.assertEquals("word  word", closed.getBodySnippet());
+    }
 }

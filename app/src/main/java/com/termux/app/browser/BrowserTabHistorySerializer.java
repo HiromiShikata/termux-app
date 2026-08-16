@@ -50,7 +50,7 @@ public final class BrowserTabHistorySerializer {
             Long closedAtMillis = entryObject.has(KEY_CLOSED_AT_MILLIS)
                 ? entryObject.getLong(KEY_CLOSED_AT_MILLIS)
                 : null;
-            entries.add(new BrowserTabHistoryEntry(url, title, bodySnippet, closedAtMillis));
+            entries.add(BrowserTabHistoryEntry.fromPersisted(url, title, bodySnippet, closedAtMillis));
         }
         return new BrowserTabHistory(entries, maxEntries);
     }
