@@ -61,6 +61,6 @@ public final class ScrollAnswerTotals {
     }
 
     public boolean hasUnansweredEpisode() {
-        return mEpisodesSentToTheProgram > mEpisodesAnsweredByTheProgram;
+        return mEarliestUnansweredEpisodeSentAtMillis != 0L;
     }
 }

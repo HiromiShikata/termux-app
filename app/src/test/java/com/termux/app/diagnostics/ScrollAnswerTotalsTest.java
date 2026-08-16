@@ -73,6 +73,16 @@ public class ScrollAnswerTotalsTest {
     }
 
     @Test
+    public void aProgramAnsweringBetweenTheTwoReadsIsNotReportedAsAnEpisodeSentAtTheEpoch() {
+        ScrollAnswerTotals totals = ScrollAnswerTotals.of(319L, 318L, 0L);
+
+        assertFalse("each session's counts are read one call at a time while the terminal keeps"
+            + " running, so they can skew by one against an episode that closed between the two"
+            + " reads. Reading that skew as an outstanding episode would put 1970-01-01T00:00:00Z"
+            + " into the field this whole investigation turns on", totals.hasUnansweredEpisode());
+    }
+
+    @Test
     public void aProcessWhereNothingWasScrolledReportsNoEpisodes() {
         ScrollAnswerTotals totals = ScrollAnswerTotals.ofRecords(Collections.<ScrollAnswerRecord>emptyList());
 
