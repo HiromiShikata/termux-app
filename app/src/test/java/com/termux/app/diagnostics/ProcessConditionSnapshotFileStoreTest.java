@@ -81,6 +81,32 @@ public class ProcessConditionSnapshotFileStoreTest {
     }
 
     @Test
+    public void theRecordAnEarlierBuildLeftBehindIsRejectedByNamingTheFormatItDoesNotOpenWith()
+        throws IOException {
+        File recordFile = recordFile();
+        PrintWriter writer = new PrintWriter(recordFile, "UTF-8");
+        writer.print("processConditionSnapshot v1 recordedAtMillis=1786968180000"
+            + " processUptimeMillis=342000 mainLooperPendingMessageCount=12"
+            + " synchronizationBarrierCount=1 peakPendingMessageCount=82"
+            + " peakObservedAtMillis=1786968102000 peakScrollbarViewCount=71"
+            + " keptScrollWithoutDrawEpisodeCount=3");
+        writer.close();
+
+        ProcessConditionSnapshot readBack = new ProcessConditionSnapshotFileStore(recordFile).read();
+
+        Assert.assertFalse("every device that installs this build reads one record written by the"
+            + " process before it, and reading the keys that happen to match would leave the scroll"
+            + " answer at zero, which is indistinguishable from a process whose programs answered no"
+            + " scroll at all", readBack.isRecorded());
+        String reason = readBack.getUnreadableReason();
+        Assert.assertNotNull("the one transitional reading has to say why it holds no numbers, or it"
+            + " is read as a fault in the writing side", reason);
+        Assert.assertTrue("the reason has to name the format expected so the reader knows the record"
+            + " was written by an earlier build rather than corrupted. Actual reason: " + reason,
+            reason.contains(ProcessConditionSnapshotFormat.FORMAT_VERSION));
+    }
+
+    @Test
     public void aRecordThatCannotBeParsedReportsWhyRatherThanReadingAsAbsent() throws IOException {
         File recordFile = recordFile();
         PrintWriter writer = new PrintWriter(recordFile, "UTF-8");
