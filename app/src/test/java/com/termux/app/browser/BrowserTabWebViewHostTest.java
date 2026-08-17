@@ -1,7 +1,9 @@
 package com.termux.app.browser;
 
 import android.app.Activity;
+import android.os.Bundle;
 import android.view.View;
+import android.webkit.WebBackForwardList;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
@@ -329,6 +331,29 @@ public class BrowserTabWebViewHostTest {
         }
     }
 
+    @Test
+    public void returningToAReleasedTabRestoresStateInsteadOfReloadingUrl() {
+        List<String> loadedUrls = new ArrayList<>();
+        List<Bundle> restoredStates = new ArrayList<>();
+        BrowserTabWebViewHost host = new BrowserTabWebViewHost(new FrameLayout(mActivity),
+            tab -> new StateCapturingWebView(mActivity, loadedUrls, restoredStates), 2);
+
+        BrowserTab distantTab = tab(SESSION_A, "https://a.example/form");
+        host.showTab(distantTab);
+        host.showTab(tab(SESSION_A, "https://a.example/push1"));
+        host.showTab(tab(SESSION_A, "https://a.example/push2"));
+        host.showTab(tab(SESSION_A, "https://a.example/push3"));
+
+        Assert.assertFalse(host.hasWebViewForTab(distantTab));
+
+        loadedUrls.clear();
+        restoredStates.clear();
+        host.showTab(distantTab);
+
+        Assert.assertEquals(1, restoredStates.size());
+        Assert.assertFalse(loadedUrls.contains("https://a.example/form"));
+    }
+
     private static final class UrlRecordingWebView extends WebView {
         private final List<String> mLoadedUrls;
 
@@ -341,6 +366,35 @@ public class BrowserTabWebViewHostTest {
         public void loadUrl(String url) {
             mLoadedUrls.add(url);
             super.loadUrl(url);
+        }
+    }
+
+    private static final class StateCapturingWebView extends WebView {
+        private final List<String> mLoadedUrls;
+        private final List<Bundle> mRestoredStates;
+
+        StateCapturingWebView(Activity activity, List<String> loadedUrls, List<Bundle> restoredStates) {
+            super(activity);
+            mLoadedUrls = loadedUrls;
+            mRestoredStates = restoredStates;
+        }
+
+        @Override
+        public void loadUrl(String url) {
+            mLoadedUrls.add(url);
+            super.loadUrl(url);
+        }
+
+        @Override
+        public WebBackForwardList saveState(Bundle outState) {
+            outState.putBoolean("has_page_state", true);
+            return super.saveState(outState);
+        }
+
+        @Override
+        public WebBackForwardList restoreState(Bundle inState) {
+            mRestoredStates.add(inState);
+            return super.restoreState(inState);
         }
     }
 }
