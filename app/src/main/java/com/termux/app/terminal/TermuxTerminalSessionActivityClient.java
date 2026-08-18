@@ -87,6 +87,7 @@ import com.termux.app.terminal.session.SessionReconnectPacer;
 import com.termux.app.terminal.session.UserRemovedSessionReconnectSuppressionPlanner;
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
 import com.termux.app.terminal.tts.TtsManager;
+import com.termux.app.terminal.session.PersistedSessionSaveScheduler;
 import com.termux.app.terminal.session.PersistedSessionSerializer;
 import com.termux.app.terminal.session.RestoredSessionCommandPlanner;
 import com.termux.shared.termux.TermuxConstants;
@@ -164,6 +165,28 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
 
     @Nullable
     private Handler mStatuslineParseHandler;
+
+    @Nullable
+    private HandlerThread mSessionPersistThread;
+
+    @Nullable
+    private Handler mSessionPersistHandler;
+
+    private final PersistedSessionSaveScheduler mPersistedSessionSaveScheduler =
+        new PersistedSessionSaveScheduler(
+            task -> sessionPersistHandler().post(task),
+            sessions -> {
+                try {
+                    return mPersistedSessionSerializer.serialize(sessions);
+                } catch (JSONException e) {
+                    Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize persisted sessions", e);
+                    return null;
+                }
+            },
+            text -> {
+                if (!mPersistedSessionStore.write(text))
+                    Logger.logError(LOG_TAG, "Refused to overwrite persisted sessions that could not be read");
+            });
 
     private final AlwaysPresentSessionPlanner mAlwaysPresentSessionPlanner = new AlwaysPresentSessionPlanner();
     private final AlwaysPresentSessionStartupPlanner mAlwaysPresentSessionStartupPlanner = new AlwaysPresentSessionStartupPlanner();
@@ -469,6 +492,7 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
     public void onDestroy() {
         stopDisplayedSessionCallScanTick();
         stopStatuslineParseThread();
+        stopSessionPersistThread();
     }
 
     /**
@@ -910,6 +934,28 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         if (mStatuslineParseThread != null) {
             mStatuslineParseThread.quit();
             mStatuslineParseThread = null;
+        }
+    }
+
+    @NonNull
+    private Handler sessionPersistHandler() {
+        if (mSessionPersistThread == null || mSessionPersistHandler == null) {
+            HandlerThread thread = new HandlerThread("TermuxSessionPersist");
+            thread.start();
+            mSessionPersistThread = thread;
+            mSessionPersistHandler = new Handler(thread.getLooper());
+        }
+        return mSessionPersistHandler;
+    }
+
+    private void stopSessionPersistThread() {
+        if (mSessionPersistHandler != null) {
+            mSessionPersistHandler.removeCallbacksAndMessages(null);
+            mSessionPersistHandler = null;
+        }
+        if (mSessionPersistThread != null) {
+            mSessionPersistThread.quit();
+            mSessionPersistThread = null;
         }
     }
 
@@ -3159,22 +3205,15 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
     }
 
     private void savePersistedSessions() {
-        try {
-            List<PersistedSessionRestoreData> restoreData = new ArrayList<>();
-            for (Map.Entry<TerminalSession, PersistedSession> entry : mPersistedSessionBySession.entrySet()) {
-                TerminalSession session = entry.getKey();
-                PersistedSession persistedSession = entry.getValue();
-                restoreData.add(new PersistedSessionRestoreData(persistedSession.getHandle(), session.mSessionName,
-                    persistedSession.getExecutablePath(), persistedSession.getArguments(),
-                    persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
-            }
-            String serialized = mPersistedSessionSerializer.serialize(restoreData);
-            if (!mPersistedSessionStore.write(serialized)) {
-                Logger.logError(LOG_TAG, "Refused to overwrite persisted sessions that could not be read");
-            }
-        } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize persisted sessions", e);
+        List<PersistedSessionRestoreData> snapshot = new ArrayList<>();
+        for (Map.Entry<TerminalSession, PersistedSession> entry : mPersistedSessionBySession.entrySet()) {
+            TerminalSession session = entry.getKey();
+            PersistedSession persistedSession = entry.getValue();
+            snapshot.add(new PersistedSessionRestoreData(persistedSession.getHandle(), session.mSessionName,
+                persistedSession.getExecutablePath(), persistedSession.getArguments(),
+                persistedSession.isFailSafe(), persistedSession.getWorkingDirectory()));
         }
+        mPersistedSessionSaveScheduler.save(snapshot);
     }
 
     private List<PersistedSessionRestoreData> loadPersistedSessions() {

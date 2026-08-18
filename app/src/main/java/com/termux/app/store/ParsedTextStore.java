@@ -22,7 +22,7 @@ public final class ParsedTextStore<T> {
 
     private final TextAccess mTextAccess;
 
-    private boolean mStoredTextUnparseable;
+    private volatile boolean mStoredTextUnparseable;
 
     public ParsedTextStore(@NonNull TextAccess textAccess) {
         mTextAccess = textAccess;
