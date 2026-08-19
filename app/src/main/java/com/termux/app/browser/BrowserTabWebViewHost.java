@@ -1,5 +1,6 @@
 package com.termux.app.browser;
 
+import android.os.Bundle;
 import android.os.Looper;
 import android.view.View;
 import android.webkit.WebView;
@@ -10,6 +11,7 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,8 @@ public final class BrowserTabWebViewHost {
     private final int mLiveWebViewWindowSize;
 
     private final Map<BrowserTab, WebView> mWebViewByTab = new LinkedHashMap<>();
+
+    private final Map<BrowserTab, Bundle> mSavedStateByTab = new LinkedHashMap<>();
 
     private final Set<WebView> mDestroyedWebViews = Collections.newSetFromMap(new WeakHashMap<>());
 
@@ -67,7 +71,12 @@ public final class BrowserTabWebViewHost {
         }
         mDisplayedTab = tab;
         if (firstDisplay) {
-            webView.loadUrl(tab.getUrl());
+            Bundle savedState = mSavedStateByTab.remove(tab);
+            if (savedState != null) {
+                webView.restoreState(savedState);
+            } else {
+                webView.loadUrl(tab.getUrl());
+            }
         }
         enforceLiveWebViewWindow();
         return webView;
@@ -103,7 +112,12 @@ public final class BrowserTabWebViewHost {
     private void releaseWebViewForTab(@NonNull BrowserTab tab) {
         if (tab == mDisplayedTab) return;
         WebView webView = mWebViewByTab.remove(tab);
-        if (webView != null) destroyWebView(webView);
+        if (webView != null) {
+            Bundle state = new Bundle();
+            webView.saveState(state);
+            if (!state.isEmpty()) mSavedStateByTab.put(tab, state);
+            destroyWebView(webView);
+        }
     }
 
     @Nullable
@@ -159,6 +173,7 @@ public final class BrowserTabWebViewHost {
     }
 
     public void removeTab(@NonNull BrowserTab tab) {
+        mSavedStateByTab.remove(tab);
         WebView webView = mWebViewByTab.remove(tab);
         if (tab == mDisplayedTab) mDisplayedTab = null;
         if (webView != null) destroyWebView(webView);
@@ -169,10 +184,15 @@ public final class BrowserTabWebViewHost {
         for (BrowserTab tab : mWebViewByTab.keySet()) {
             if (sessionHandle.equals(tab.getSessionHandle())) tabsToRemove.add(tab);
         }
+        Iterator<BrowserTab> it = mSavedStateByTab.keySet().iterator();
+        while (it.hasNext()) {
+            if (sessionHandle.equals(it.next().getSessionHandle())) it.remove();
+        }
         for (BrowserTab tab : tabsToRemove) removeTab(tab);
     }
 
     public void destroyAll() {
+        mSavedStateByTab.clear();
         List<WebView> webViews = new ArrayList<>(mWebViewByTab.values());
         mWebViewByTab.clear();
         mDisplayedTab = null;
