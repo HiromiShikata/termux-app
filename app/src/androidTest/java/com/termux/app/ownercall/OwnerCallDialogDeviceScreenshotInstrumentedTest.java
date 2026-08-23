@@ -46,6 +46,14 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -61,6 +69,9 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     private static final String REPEATED_CALL_BODY =
         "Decide whether the invoice recipient may be changed.";
     private static final String CALL_REASON = "the owner is being called";
+    private static final String ANSWERED_CALL_TIME = "2026-08-14T04:22:28Z";
+    private static final String REPLY_TIME_BETWEEN_THE_TWO_CALLS = "2026-08-14T04:25:00Z";
+    private static final String WAITING_CALL_TIME = "2026-08-14T04:27:00Z";
 
     private static final long SERVICE_READY_TIMEOUT_MILLIS = 30_000L;
     private static final long SESSION_READY_TIMEOUT_MILLIS = 30_000L;
@@ -435,6 +446,29 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
     }
 
     @Test
+    public void aCallTheOwnerAnsweredStaysHiddenWhenTheNextCallArrivesOnTheSameSession()
+        throws Exception {
+        server.serveOwnerCallFile(ownerCallDocument(ANSWERED_CALL_TIME, OLDEST_CALL_BODY)
+            + ownerCallDocument(WAITING_CALL_TIME, REPEATED_CALL_BODY));
+        ActivityScenario<TermuxActivity> scenario = launchWithACallingSession();
+        awaitDialogShowing(scenario, "1 / 2");
+
+        scenario.onActivity(activity -> {
+            SessionNewActivityStore store = activity.getSessionNewActivityStore();
+            assertNotNull(store);
+            store.recordGenuineAppReply(SESSION_URL,
+                Instant.parse(REPLY_TIME_BETWEEN_THE_TWO_CALLS).toEpochMilli());
+            store.recordExplicitCall(SESSION_URL, System.currentTimeMillis(), CALL_REASON,
+                CALL_REASON + "-" + System.nanoTime());
+            activity.showUnansweredOwnerCallsOfDisplayedSession();
+        });
+
+        awaitDialogShowing(scenario, "1 / 1");
+        scenario.onActivity(activity -> assertEquals(REPEATED_CALL_BODY,
+            textOf(activity, R.id.owner_call_dialog_body)));
+    }
+
+    @Test
     public void indicatorIsHiddenWhenTheSessionHasNoOwnerCall() throws Exception {
         scenario = ActivityScenario.launch(TermuxActivity.class);
         awaitServiceConnected(scenario);
@@ -496,18 +530,20 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         awaitServiceConnected(scenario);
 
         scenario.onActivity(activity -> {
-            activity.getPreferences().setSessionDefinitionUrl(server.indexUrl());
-            activity.loadSessionsFromDefinition();
-        });
-        awaitLoadedEntries(scenario);
-
-        scenario.onActivity(activity -> {
+            SessionNewActivityStore store = activity.getSessionNewActivityStore();
+            assertNotNull(store);
+            store.purgeSession(SESSION_URL);
             TermuxTerminalSessionActivityClient sessionClient =
                 activity.getTermuxTerminalSessionClient();
             assertNotNull(sessionClient);
+            // Start the session before loading the definition so the session list is never
+            // empty during the definition rebuild that removes the default startup session.
             sessionClient.addNewSession(true, SESSION_URL);
+            activity.getPreferences().setSessionDefinitionUrl(server.indexUrl());
+            activity.loadSessionsFromDefinition();
         });
         awaitRunningDisplayedSession(scenario);
+        awaitLoadedEntries(scenario);
 
         scenario.onActivity(activity -> {
             SessionNewActivityStore store = activity.getSessionNewActivityStore();

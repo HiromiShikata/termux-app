@@ -63,6 +63,7 @@ import com.termux.shared.android.PermissionUtils;
 import com.termux.shared.data.DataUtils;
 import com.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.shared.interact.ShareUtils;
+import com.termux.app.ownercall.OwnerCall;
 import com.termux.app.ownercall.OwnerCallBodySpannedText;
 import com.termux.app.ownercall.OwnerCallDialogController;
 import com.termux.app.ownercall.OwnerCallDialogGeometry;
@@ -72,6 +73,7 @@ import com.termux.app.ownercall.OwnerCallDialogStoredPlacement;
 import com.termux.app.ownercall.OwnerCallDialogViewport;
 import com.termux.app.ownercall.OwnerCallFileUrl;
 import com.termux.app.ownercall.OwnerCallInbox;
+import com.termux.app.ownercall.OwnerCallUnansweredSelection;
 import com.termux.app.sessiondefinition.SessionDefinitionAutoReloadScheduler;
 import com.termux.app.sessiondefinition.SessionReconnectScheduler;
 import com.termux.app.sessiondefinition.SessionDefinitionController;
@@ -924,7 +926,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mOwnerCallDialogController = new OwnerCallDialogController(
             findViewById(R.id.activity_termux_root_relative_layout),
-            mOwnerCallInbox::callsFor,
+            this::unansweredOwnerCallsForSession,
             this::currentOwnerCallDialogGeometry,
             new OwnerCallBodySpannedText.OwnerCallBodyTapActions() {
                 @Override
@@ -1210,11 +1212,26 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void updateOwnerCallPendingIndicator(@Nullable String sessionName) {
         View indicator = findViewById(R.id.owner_call_pending_indicator);
         if (indicator == null) return;
-        boolean hasCalls = !mOwnerCallInbox.callsFor(sessionName).isEmpty();
+        boolean hasCalls = !unansweredOwnerCallsForSession(sessionName).isEmpty();
         int newVisibility = hasCalls ? View.VISIBLE : View.GONE;
         if (indicator.getVisibility() != newVisibility) {
             indicator.setVisibility(newVisibility);
         }
+    }
+
+    @NonNull
+    private List<OwnerCall> unansweredOwnerCallsForSession(@Nullable String sessionName) {
+        return OwnerCallUnansweredSelection.of(mOwnerCallInbox.callsFor(sessionName),
+            ownerCallAnsweredThroughTimeMillis(sessionName), System.currentTimeMillis());
+    }
+
+    @Nullable
+    private Long ownerCallAnsweredThroughTimeMillis(@Nullable String sessionName) {
+        SessionNewActivityStore store = getSessionNewActivityStore();
+        if (sessionName == null || store == null) {
+            return null;
+        }
+        return store.genuineReplyTimeMillis(sessionName);
     }
 
     @Nullable
