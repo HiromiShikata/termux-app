@@ -2152,6 +2152,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             }
             return true;
         }
+        if (mBrowserVisible && displayedWebView != null) {
+            return true;
+        }
         if (mBrowserVisible) {
             showTerminal();
             return true;
