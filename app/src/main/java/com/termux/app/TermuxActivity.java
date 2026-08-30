@@ -939,7 +939,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 public void onUrlTapped(@NonNull String url) {
                     TermuxBrowserController browserController = getTermuxBrowserController();
                     if (browserController == null) return;
-                    browserController.openUrlInNewTab(url);
+                    NativeAppLink.openInNativeAppOrElse(TermuxActivity.this, url,
+                        () -> browserController.openUrlInNewTab(url));
                 }
             },
             new OwnerCallDialogController.OwnerCallDialogPlacementStore() {
