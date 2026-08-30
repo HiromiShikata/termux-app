@@ -939,7 +939,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 public void onUrlTapped(@NonNull String url) {
                     TermuxBrowserController browserController = getTermuxBrowserController();
                     if (browserController == null) return;
-                    NativeAppLink.openInNativeAppOrElse(TermuxActivity.this, url,
+                    openOwnerCallUrlInMatchingAppOrBrowser(TermuxActivity.this, url,
                         () -> browserController.openUrlInNewTab(url));
                 }
             },
@@ -972,6 +972,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.onCreate();
+    }
+
+    static void openOwnerCallUrlInMatchingAppOrBrowser(@NonNull Context context,
+                                                       @NonNull String url,
+                                                       @NonNull Runnable browserFallback) {
+        NativeAppLink.openInNativeAppOrElse(context, url, browserFallback);
     }
 
     private void setTermuxSessionsListView() {

@@ -1,47 +1,61 @@
 package com.termux.app;
 
+import android.app.Application;
+import android.content.Context;
+import android.content.Intent;
+
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
+import org.robolectric.shadows.ShadowApplication;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
+@RunWith(RobolectricTestRunner.class)
 public class TermuxActivityOwnerCallDialogUrlOpensInMatchingAppTest {
 
-    private static final String ACTIVITY_RELATIVE_PATH =
-        "src/main/java/com/termux/app/TermuxActivity.java";
+    @Test
+    public void slackUrlOpensSlackApplicationInsteadOfFallingBackToBrowser() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000";
+        boolean[] fallbackRan = {false};
 
-    private String readModuleFile(String relativePath) throws IOException {
-        Path moduleRelative = Paths.get(relativePath);
-        if (Files.exists(moduleRelative)) {
-            return new String(Files.readAllBytes(moduleRelative), StandardCharsets.UTF_8);
-        }
-        Path repoRelative = Paths.get("app").resolve(relativePath);
-        return new String(Files.readAllBytes(repoRelative), StandardCharsets.UTF_8);
+        TermuxActivity.openOwnerCallUrlInMatchingAppOrBrowser(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertFalse("browser fallback must not run when Slack is installed", fallbackRan[0]);
+        Intent started = shadowApplication.getNextStartedActivity();
+        Assert.assertNotNull(started);
+        Assert.assertEquals(Intent.ACTION_VIEW, started.getAction());
+        Assert.assertEquals("com.Slack", started.getPackage());
+        Assert.assertEquals(url, started.getDataString());
     }
 
     @Test
-    public void ownerCallDialogUrlTapRoutesThroughNativeAppBeforeOpeningInBrowser() throws IOException {
-        String source = readModuleFile(ACTIVITY_RELATIVE_PATH);
-        int methodIndex = source.indexOf("public void onUrlTapped(@NonNull String url)");
-        Assert.assertTrue("onUrlTapped not found in TermuxActivity", methodIndex >= 0);
-        String methodRegion = source.substring(methodIndex, methodIndex + 400);
-        Assert.assertTrue(
-            "onUrlTapped in the owner call dialog must route through NativeAppLink.openInNativeAppOrElse before opening in the browser",
-            methodRegion.contains("NativeAppLink.openInNativeAppOrElse("));
+    public void slackUrlFallsBackToBrowserWhenSlackIsNotInstalled() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        shadowApplication.checkActivities(true);
+        String url = "https://a-workspace.slack.com/archives/C01ABCDEFGH/p1700000000000000";
+        boolean[] fallbackRan = {false};
+
+        TermuxActivity.openOwnerCallUrlInMatchingAppOrBrowser(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertTrue("browser fallback must run when Slack is not installed", fallbackRan[0]);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
 
     @Test
-    public void ownerCallDialogUrlTapDoesNotBypassNativeAppResolution() throws IOException {
-        String source = readModuleFile(ACTIVITY_RELATIVE_PATH);
-        int methodIndex = source.indexOf("public void onUrlTapped(@NonNull String url)");
-        Assert.assertTrue("onUrlTapped not found in TermuxActivity", methodIndex >= 0);
-        String methodRegion = source.substring(methodIndex, methodIndex + 400);
-        Assert.assertFalse(
-            "onUrlTapped in the owner call dialog must not bypass native-app resolution by calling openUrlInNewTab directly without NativeAppLink",
-            !methodRegion.contains("NativeAppLink.openInNativeAppOrElse(") && methodRegion.contains("openUrlInNewTab"));
+    public void nonNativeAppUrlFallsBackToBrowser() {
+        Context context = RuntimeEnvironment.getApplication();
+        ShadowApplication shadowApplication = Shadows.shadowOf((Application) context);
+        String url = "https://github.com/HiromiShikata/termux-app";
+        boolean[] fallbackRan = {false};
+
+        TermuxActivity.openOwnerCallUrlInMatchingAppOrBrowser(context, url, () -> fallbackRan[0] = true);
+
+        Assert.assertTrue("browser fallback must run for a URL with no matching native app", fallbackRan[0]);
+        Assert.assertNull(shadowApplication.getNextStartedActivity());
     }
 }
