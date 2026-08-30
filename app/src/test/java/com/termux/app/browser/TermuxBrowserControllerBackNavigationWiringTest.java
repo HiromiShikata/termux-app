@@ -38,6 +38,19 @@ public class TermuxBrowserControllerBackNavigationWiringTest {
     }
 
     @Test
+    public void onBackPressedReturnsTrueWithoutClosingBrowserWhenNoHistoryAndWebViewPresent() throws IOException {
+        String source = readControllerSource();
+        int methodIndex = source.indexOf("public boolean onBackPressed()");
+        Assert.assertTrue(methodIndex >= 0);
+        int methodEnd = source.indexOf("\n    }", methodIndex);
+        Assert.assertTrue(methodEnd > methodIndex);
+        String methodBody = source.substring(methodIndex, methodEnd);
+        Assert.assertTrue(
+            "onBackPressed must return true without showTerminal when browser has no history but a WebView is present",
+            methodBody.contains("if (mBrowserVisible && displayedWebView != null) {\n            return true;"));
+    }
+
+    @Test
     public void onPageFinishedClosesTheBrowserWhenAboutBlankIsLoadedWhileBrowserIsVisible() throws IOException {
         String source = readControllerSource();
         int onPageFinishedIndex = source.indexOf(
