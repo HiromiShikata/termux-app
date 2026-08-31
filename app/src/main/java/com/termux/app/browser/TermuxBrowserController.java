@@ -2142,24 +2142,28 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public boolean onBackPressed() {
         WebView displayedWebView = currentWebView();
-        if (mBrowserVisible && displayedWebView != null && displayedWebView.canGoBack()) {
-            WebBackForwardList backForwardList = displayedWebView.copyBackForwardList();
-            int previousIndex = backForwardList.getCurrentIndex() - 1;
-            if (previousIndex >= 0 && "about:blank".equals(backForwardList.getItemAtIndex(previousIndex).getUrl())) {
+        BrowserBackPressDecision.Result decision = BrowserBackPressDecision.resolve(
+            mBrowserVisible,
+            displayedWebView != null,
+            displayedWebView != null && displayedWebView.canGoBack());
+        switch (decision) {
+            case NAVIGATE_BACK:
+                WebBackForwardList backForwardList = displayedWebView.copyBackForwardList();
+                int previousIndex = backForwardList.getCurrentIndex() - 1;
+                if (previousIndex >= 0 && "about:blank".equals(backForwardList.getItemAtIndex(previousIndex).getUrl())) {
+                    showTerminal();
+                } else {
+                    displayedWebView.goBack();
+                }
+                return true;
+            case KEEP_BROWSER_OPEN:
+                return true;
+            case SHOW_TERMINAL:
                 showTerminal();
-            } else {
-                displayedWebView.goBack();
-            }
-            return true;
+                return true;
+            default:
+                return false;
         }
-        if (mBrowserVisible && displayedWebView != null) {
-            return true;
-        }
-        if (mBrowserVisible) {
-            showTerminal();
-            return true;
-        }
-        return false;
     }
 
     public void toggleTabsDrawer() {
