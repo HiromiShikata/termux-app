@@ -9,6 +9,8 @@ import java.util.List;
 
 public final class BrowserPersistedSessionTabs {
 
+    private static final long DELETION_RETENTION_MS = 10L * 24 * 60 * 60 * 1000;
+
     private final String mSessionName;
 
     private final List<BrowserPersistedTab> mTabs;
@@ -73,6 +75,10 @@ public final class BrowserPersistedSessionTabs {
 
     public boolean isDeleted() {
         return mDeletedAtMillis != null;
+    }
+
+    public boolean isStaleAt(long currentTimeMillis) {
+        return mDeletedAtMillis != null && currentTimeMillis - mDeletedAtMillis > DELETION_RETENTION_MS;
     }
 
     public boolean hasRetainableData() {

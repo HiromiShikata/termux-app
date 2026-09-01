@@ -140,6 +140,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private BrowserTabHistory mTabHistory = new BrowserTabHistory();
 
+    @Nullable
+    private List<BrowserBookmark> mPendingLegacyBookmarks;
+
+    @Nullable
+    private BrowserTabHistory mPendingLegacyHistory;
+
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
 
     private BrowserTabHistoryPersistScheduler.Debouncer mTabHistoryDirtyDebouncer;
@@ -360,6 +366,21 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         } catch (JSONException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load persisted browser session tabs", e);
         }
+        try {
+            String legacyBookmarks = mActivity.getPreferences().getBrowserBookmarks();
+            if (legacyBookmarks != null && !legacyBookmarks.isEmpty()) {
+                mPendingLegacyBookmarks = new BrowserBookmarkSerializer().deserialize(legacyBookmarks);
+                mActivity.getPreferences().setBrowserBookmarks("");
+            }
+            String legacyHistory = mActivity.getPreferences().getBrowserTabHistory();
+            if (legacyHistory != null && !legacyHistory.isEmpty()) {
+                mPendingLegacyHistory = new BrowserTabHistorySerializer()
+                    .deserialize(legacyHistory, BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+                mActivity.getPreferences().setBrowserTabHistory("");
+            }
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to migrate legacy browser bookmarks/history", e);
+        }
     }
 
     private void restorePersistedTabsForSession(@Nullable String sessionHandle, @Nullable String sessionName) {
@@ -386,6 +407,31 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             ? mPersistedTabsBySessionName.get(mCurrentSessionName)
             : null;
         mTabHistory = session != null ? session.getHistory() : new BrowserTabHistory();
+    }
+
+    private void applyLegacyMigrationIfPending() {
+        if (mCurrentSessionName == null) return;
+        if (mPendingLegacyBookmarks == null && mPendingLegacyHistory == null) return;
+        BrowserPersistedSessionTabs existing = mPersistedTabsBySessionName.get(mCurrentSessionName);
+        List<BrowserBookmark> bookmarks = mPendingLegacyBookmarks != null
+            ? mPendingLegacyBookmarks
+            : (existing != null ? existing.getBookmarks() : new ArrayList<>());
+        BrowserTabHistory history = mPendingLegacyHistory != null
+            ? mPendingLegacyHistory
+            : (existing != null ? existing.getHistory() : new BrowserTabHistory());
+        mPendingLegacyBookmarks = null;
+        mPendingLegacyHistory = null;
+        if (existing != null) {
+            mPersistedTabsBySessionName.put(mCurrentSessionName,
+                new BrowserPersistedSessionTabs(
+                    mCurrentSessionName, existing.getTabs(), existing.getActiveTabIndex(),
+                    bookmarks, history, existing.getDeletedAtMillis()));
+        } else {
+            mPersistedTabsBySessionName.put(mCurrentSessionName,
+                new BrowserPersistedSessionTabs(
+                    mCurrentSessionName, new ArrayList<>(), 0, bookmarks, history, null));
+        }
+        writePersistedSessionTabs();
     }
 
     public void beginPersistenceBatch() {
@@ -1562,6 +1608,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
+        applyLegacyMigrationIfPending();
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
         preloadProjectOverviewTabForSession(mCurrentSessionHandle, mCurrentSessionName);
         loadCurrentSessionHistory();

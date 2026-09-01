@@ -22,8 +22,6 @@ public final class BrowserPersistedTabsSerializer {
     private static final String KEY_HISTORY = "history";
     private static final String KEY_DELETED_AT_MILLIS = "deletedAtMillis";
 
-    private static final long STALE_DELETED_THRESHOLD_MS = 10L * 24 * 60 * 60 * 1000;
-
     private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
 
     private final BrowserTabHistorySerializer mHistorySerializer = new BrowserTabHistorySerializer();
@@ -110,10 +108,7 @@ public final class BrowserPersistedTabsSerializer {
             @NonNull List<BrowserPersistedSessionTabs> sessions, long currentTimeMillis) {
         List<BrowserPersistedSessionTabs> result = new ArrayList<>();
         for (BrowserPersistedSessionTabs session : sessions) {
-            if (session.isDeleted()
-                    && currentTimeMillis - session.getDeletedAtMillis() > STALE_DELETED_THRESHOLD_MS) {
-                continue;
-            }
+            if (session.isStaleAt(currentTimeMillis)) continue;
             result.add(session);
         }
         return result;
