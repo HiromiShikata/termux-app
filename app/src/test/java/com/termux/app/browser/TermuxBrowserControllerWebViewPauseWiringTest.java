@@ -73,7 +73,7 @@ public class TermuxBrowserControllerWebViewPauseWiringTest {
     @Test
     public void persistTabHistoryGoesThroughTheDebouncingScheduler() throws IOException {
         String persistBody = methodBody(readControllerSource(), "private void persistTabHistory()");
-        Assert.assertTrue(persistBody.contains("mTabHistoryPersistScheduler.markDirty(mTabHistory)"));
+        Assert.assertTrue(persistBody.contains("mTabHistoryDirtyDebouncer.schedule("));
     }
 
     @Test
