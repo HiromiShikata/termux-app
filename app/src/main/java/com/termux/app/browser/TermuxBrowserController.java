@@ -12,7 +12,6 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.text.Editable;
@@ -55,7 +54,6 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.link.NativeAppLink;
-import com.termux.app.store.ParsedTextStore;
 import com.termux.app.terminal.SessionInfoHorizontalBounds;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.shared.interact.DialogUtils;
@@ -126,22 +124,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final BrowserOpenSessionNamesSerializer mOpenSessionNamesSerializer = new BrowserOpenSessionNamesSerializer();
 
-    private final BrowserBookmarkSerializer mBookmarkSerializer = new BrowserBookmarkSerializer();
-
-    private final ParsedTextStore<List<BrowserBookmark>> mBookmarkStore =
-        new ParsedTextStore<>(new ParsedTextStore.TextAccess() {
-
-            @Override
-            public String read() {
-                return mActivity.getPreferences().getBrowserBookmarks();
-            }
-
-            @Override
-            public void write(@NonNull String text) {
-                mActivity.getPreferences().setBrowserBookmarks(text);
-            }
-        });
-
     private final BrowserUrlActions mUrlActions;
 
     private final BrowserPersistedTabsSerializer mPersistedTabsSerializer = new BrowserPersistedTabsSerializer();
@@ -152,19 +134,24 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
+    private final BrowserSessionBookmarkStore mSessionBookmarkStore =
+        new BrowserSessionBookmarkStore(mPersistedTabsBySessionName);
+
     private final BrowserTabPersistenceBatch mPersistenceBatch = new BrowserTabPersistenceBatch();
 
     private final BrowserTabHistorySerializer mTabHistorySerializer = new BrowserTabHistorySerializer();
 
     private BrowserTabHistory mTabHistory = new BrowserTabHistory();
 
+    @Nullable
+    private List<BrowserBookmark> mPendingLegacyBookmarks;
+
+    @Nullable
+    private BrowserTabHistory mPendingLegacyHistory;
+
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
 
-    private final HandlerThread mTabHistoryPersistThread;
-
-    private final Handler mTabHistoryPersistHandler;
-
-    private final BrowserTabHistoryPersistScheduler mTabHistoryPersistScheduler;
+    private BrowserTabHistoryPersistScheduler.Debouncer mTabHistoryDirtyDebouncer;
 
     private boolean mAppForegrounded = true;
 
@@ -280,17 +267,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mActivity = activity;
         this.mMediaCapturePermissionController =
             new BrowserMediaCapturePermissionController(() -> mActivity);
-        this.mTabHistoryPersistThread = new HandlerThread("BrowserTabHistoryPersist");
-        this.mTabHistoryPersistThread.start();
-        this.mTabHistoryPersistHandler = new Handler(mTabHistoryPersistThread.getLooper());
-        this.mTabHistoryPersistScheduler = new BrowserTabHistoryPersistScheduler(
-            new MainThreadDebouncer(mMainHandler, TAB_HISTORY_PERSIST_DEBOUNCE_MS),
-            mTabHistoryPersistHandler::post,
-            this::serializeTabHistoryForPersist,
-            value -> {
-                if (value.isEmpty()) return;
-                mActivity.getPreferences().setBrowserTabHistory(value);
-            });
+        this.mTabHistoryDirtyDebouncer = new MainThreadDebouncer(mMainHandler, TAB_HISTORY_PERSIST_DEBOUNCE_MS);
         this.mWebViewContainer = activity.findViewById(R.id.browser_web_view_container);
         this.mWebViewHost = new BrowserTabWebViewHost(mWebViewContainer, this::createWebViewForTab);
         this.mWebViewHost.setWebViewDestroyListener(mScrollTracker::forget);
@@ -353,7 +330,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         configureBrowserOpenStatePersistence();
         loadPersistedSessionTabs();
         loadPersistedSessionSplitRatios();
-        loadPersistedTabHistory();
     }
 
     public int getTotalOpenTabCount() {
@@ -364,31 +340,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return mTabHistory.getEntries().size();
     }
 
-    private void loadPersistedTabHistory() {
-        try {
-            mTabHistory = mTabHistorySerializer.deserialize(
-                mActivity.getPreferences().getBrowserTabHistory(), BrowserTabHistory.DEFAULT_MAX_ENTRIES);
-        } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load persisted browser tab history", e);
-        }
-    }
-
     private void persistTabHistory() {
-        mTabHistoryPersistScheduler.markDirty(mTabHistory);
+        mTabHistoryDirtyDebouncer.schedule(this::rebuildAndWritePersistedSessionTabs);
     }
 
     private void flushTabHistory() {
-        mTabHistoryPersistScheduler.flushNow();
-    }
-
-    @NonNull
-    private String serializeTabHistoryForPersist(@NonNull BrowserTabHistory history) {
-        try {
-            return mTabHistorySerializer.serialize(history);
-        } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize browser tab history", e);
-            return "";
-        }
+        mTabHistoryDirtyDebouncer.cancel();
+        rebuildAndWritePersistedSessionTabs();
     }
 
     private void loadPersistedSessionSplitRatios() {
@@ -402,11 +360,29 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         try {
             List<BrowserPersistedSessionTabs> persistedSessionTabs =
                 mPersistedTabsSerializer.deserialize(mActivity.getPreferences().getBrowserSessionTabs());
-            for (BrowserPersistedSessionTabs sessionTabs : persistedSessionTabs) {
+            List<BrowserPersistedSessionTabs> pruned =
+                BrowserPersistedTabsSerializer.pruneStaleDeleted(
+                    persistedSessionTabs, System.currentTimeMillis());
+            for (BrowserPersistedSessionTabs sessionTabs : pruned) {
                 mPersistedTabsBySessionName.put(sessionTabs.getSessionName(), sessionTabs);
             }
         } catch (JSONException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load persisted browser session tabs", e);
+        }
+        try {
+            String legacyBookmarks = mActivity.getPreferences().getBrowserBookmarks();
+            if (legacyBookmarks != null && !legacyBookmarks.isEmpty()) {
+                mPendingLegacyBookmarks = new BrowserBookmarkSerializer().deserialize(legacyBookmarks);
+                mActivity.getPreferences().setBrowserBookmarks("");
+            }
+            String legacyHistory = mActivity.getPreferences().getBrowserTabHistory();
+            if (legacyHistory != null && !legacyHistory.isEmpty()) {
+                mPendingLegacyHistory = new BrowserTabHistorySerializer()
+                    .deserialize(legacyHistory, BrowserTabHistory.DEFAULT_MAX_ENTRIES);
+                mActivity.getPreferences().setBrowserTabHistory("");
+            }
+        } catch (JSONException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to migrate legacy browser bookmarks/history", e);
         }
     }
 
@@ -427,6 +403,38 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             sessionName, mProjectActionUrlResolver.resolveForSessionName(sessionName));
         if (overviewUrl == null) return;
         mTabManager.addTab(sessionHandle, normalizeUrl(overviewUrl)).setViewMode(BrowserViewMode.DESKTOP);
+    }
+
+    private void loadCurrentSessionHistory() {
+        BrowserPersistedSessionTabs session = mCurrentSessionName != null
+            ? mPersistedTabsBySessionName.get(mCurrentSessionName)
+            : null;
+        mTabHistory = session != null ? session.getHistory() : new BrowserTabHistory();
+    }
+
+    private void applyLegacyMigrationIfPending() {
+        if (mCurrentSessionName == null) return;
+        if (mPendingLegacyBookmarks == null && mPendingLegacyHistory == null) return;
+        BrowserPersistedSessionTabs existing = mPersistedTabsBySessionName.get(mCurrentSessionName);
+        List<BrowserBookmark> bookmarks = mPendingLegacyBookmarks != null
+            ? mPendingLegacyBookmarks
+            : (existing != null ? existing.getBookmarks() : new ArrayList<>());
+        BrowserTabHistory history = mPendingLegacyHistory != null
+            ? mPendingLegacyHistory
+            : (existing != null ? existing.getHistory() : new BrowserTabHistory());
+        mPendingLegacyBookmarks = null;
+        mPendingLegacyHistory = null;
+        if (existing != null) {
+            mPersistedTabsBySessionName.put(mCurrentSessionName,
+                new BrowserPersistedSessionTabs(
+                    mCurrentSessionName, existing.getTabs(), existing.getActiveTabIndex(),
+                    bookmarks, history, existing.getDeletedAtMillis()));
+        } else {
+            mPersistedTabsBySessionName.put(mCurrentSessionName,
+                new BrowserPersistedSessionTabs(
+                    mCurrentSessionName, new ArrayList<>(), 0, bookmarks, history, null));
+        }
+        writePersistedSessionTabs();
     }
 
     public void beginPersistenceBatch() {
@@ -450,8 +458,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             BrowserPersistedSessionTabsAction action = BrowserPersistedSessionTabsAction.decide(
                 mSessionHandlesWithTabsLoaded.contains(sessionHandle), !tabs.isEmpty());
             if (action == BrowserPersistedSessionTabsAction.KEEP_PERSISTED) continue;
+            BrowserPersistedSessionTabs existing = mPersistedTabsBySessionName.get(sessionName);
             if (action == BrowserPersistedSessionTabsAction.REMOVE) {
-                mPersistedTabsBySessionName.remove(sessionName);
+                if (existing != null && existing.hasRetainableData()) {
+                    mPersistedTabsBySessionName.put(sessionName,
+                        new BrowserPersistedSessionTabs(
+                            sessionName, new ArrayList<>(), 0,
+                            existing.getBookmarks(), existing.getHistory(),
+                            existing.getDeletedAtMillis()));
+                } else {
+                    mPersistedTabsBySessionName.remove(sessionName);
+                }
                 continue;
             }
             List<BrowserPersistedTab> persistedTabs = new ArrayList<>();
@@ -460,8 +477,14 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                     new BrowserPersistedTab(tab.getUrl(), tab.getTitle(), tab.getViewMode().isDesktop()));
             }
             int activeTabIndex = mTabManager.getActiveTabIndex(sessionHandle);
+            List<BrowserBookmark> bookmarks = existing != null ? existing.getBookmarks() : new ArrayList<>();
+            BrowserTabHistory history = sessionName.equals(mCurrentSessionName)
+                ? mTabHistory
+                : (existing != null ? existing.getHistory() : new BrowserTabHistory());
             mPersistedTabsBySessionName.put(sessionName,
-                new BrowserPersistedSessionTabs(sessionName, persistedTabs, Math.max(activeTabIndex, 0)));
+                new BrowserPersistedSessionTabs(
+                    sessionName, persistedTabs, Math.max(activeTabIndex, 0),
+                    bookmarks, history, null));
         }
         writePersistedSessionTabs();
     }
@@ -641,24 +664,12 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     @NonNull
     private BrowserBookmarkCollection loadBookmarks() {
-        try {
-            return new BrowserBookmarkCollection(mBookmarkStore.load(mBookmarkSerializer::deserialize));
-        } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG,
-                "Failed to deserialize browser bookmarks, keeping the stored text so the bookmarks are not lost", e);
-            return new BrowserBookmarkCollection(new ArrayList<>());
-        }
+        return mSessionBookmarkStore.load(mCurrentSessionName);
     }
 
     private void saveBookmarks(@NonNull BrowserBookmarkCollection bookmarks) {
-        try {
-            if (!mBookmarkStore.write(mBookmarkSerializer.serialize(bookmarks.getBookmarks()))) {
-                Logger.logError(LOG_TAG, "Refused to overwrite browser bookmarks that could not be read");
-                mActivity.showToast(mActivity.getString(R.string.msg_browser_bookmarks_unreadable), true);
-            }
-        } catch (JSONException e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to serialize browser bookmarks", e);
-        }
+        mSessionBookmarkStore.save(mCurrentSessionName, bookmarks.getBookmarks());
+        writePersistedSessionTabs();
     }
 
     private void navigateCurrentTabToUrl(@Nullable String input) {
@@ -1587,8 +1598,10 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
             BrowserSessionSwitch.requiresTerminalOnSessionChange(mCurrentSessionHandle, newSessionHandle);
         mCurrentSessionHandle = newSessionHandle;
         mCurrentSessionName = (session == null) ? null : session.mSessionName;
+        applyLegacyMigrationIfPending();
         restorePersistedTabsForSession(mCurrentSessionHandle, mCurrentSessionName);
         preloadProjectOverviewTabForSession(mCurrentSessionHandle, mCurrentSessionName);
+        loadCurrentSessionHistory();
         rebindTabsList();
         rebindTabStripToCurrentSession();
         updateDesktopModeToggleState();
@@ -1657,7 +1670,13 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
         if (session.mSessionName != null && !session.mSessionName.isEmpty()
             && BrowserSessionRemovalTabRetention.shouldDeletePersistedTabs(reason)) {
-            mPersistedTabsBySessionName.remove(session.mSessionName);
+            BrowserPersistedSessionTabs existing = mPersistedTabsBySessionName.get(session.mSessionName);
+            if (existing != null && existing.hasRetainableData()) {
+                mPersistedTabsBySessionName.put(session.mSessionName,
+                    existing.withDeletedAtMillis(System.currentTimeMillis()));
+            } else {
+                mPersistedTabsBySessionName.remove(session.mSessionName);
+            }
             writePersistedSessionTabs();
             mSessionSplitRatios.removeSession(session.mSessionName);
             mActivity.getPreferences().setBrowserSessionSplitRatios(
@@ -1689,8 +1708,17 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
     }
 
     public void restoreTabsForReconnectedSession(@Nullable String sessionHandle, @Nullable String sessionName) {
+        clearSessionDeletedMarker(sessionName);
         if (moveLiveTabsToReconnectedSession(sessionHandle, sessionName)) return;
         restorePersistedTabsForSession(sessionHandle, sessionName);
+    }
+
+    private void clearSessionDeletedMarker(@Nullable String sessionName) {
+        if (sessionName == null || sessionName.isEmpty()) return;
+        BrowserPersistedSessionTabs existing = mPersistedTabsBySessionName.get(sessionName);
+        if (existing == null || !existing.isDeleted()) return;
+        mPersistedTabsBySessionName.put(sessionName, existing.withoutDeletedMarker());
+        writePersistedSessionTabs();
     }
 
     private boolean moveLiveTabsToReconnectedSession(@Nullable String sessionHandle,
@@ -2193,7 +2221,6 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void onActivityDestroy() {
         flushTabHistory();
-        mTabHistoryPersistThread.quitSafely();
         cancelPendingFileChooser();
         mDownloadController.unregisterDownloadCompleteReceiver();
         mWebViewHost.destroyAll();

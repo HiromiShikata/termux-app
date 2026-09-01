@@ -8,6 +8,7 @@ import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
@@ -102,5 +103,143 @@ public class BrowserPersistedTabsSerializerTest {
             restored.get(0).getTabs().get(0).getUrl());
         Assert.assertEquals("Title with \"quotes\" and / slash",
             restored.get(0).getTabs().get(0).getTitle());
+    }
+
+    @Test
+    public void roundTripPreservesBookmarks() throws JSONException {
+        List<BrowserBookmark> bookmarks = Arrays.asList(
+            new BrowserBookmark("https://example.com/", "Example"),
+            new BrowserBookmark("https://termux.dev/", "Termux"));
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("session-a",
+                Arrays.asList(new BrowserPersistedTab("https://a.example/", "A", true)),
+                0, bookmarks, new BrowserTabHistory(), null));
+
+        List<BrowserPersistedSessionTabs> restored =
+            serializer.deserialize(serializer.serialize(sessions));
+
+        Assert.assertEquals(1, restored.size());
+        List<BrowserBookmark> restoredBookmarks = restored.get(0).getBookmarks();
+        Assert.assertEquals(2, restoredBookmarks.size());
+        Assert.assertEquals("https://example.com/", restoredBookmarks.get(0).getUrl());
+        Assert.assertEquals("Example", restoredBookmarks.get(0).getTitle());
+        Assert.assertEquals("https://termux.dev/", restoredBookmarks.get(1).getUrl());
+    }
+
+    @Test
+    public void roundTripPreservesHistory() throws JSONException {
+        BrowserTabHistory history = new BrowserTabHistory()
+            .recorded("https://example.com/first", "First")
+            .recorded("https://example.com/second", "Second");
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("session-a",
+                Arrays.asList(new BrowserPersistedTab("https://a.example/", "A", true)),
+                0, new ArrayList<>(), history, null));
+
+        List<BrowserPersistedSessionTabs> restored =
+            serializer.deserialize(serializer.serialize(sessions));
+
+        Assert.assertEquals(1, restored.size());
+        BrowserTabHistory restoredHistory = restored.get(0).getHistory();
+        Assert.assertEquals(2, restoredHistory.getEntries().size());
+        Assert.assertEquals("https://example.com/second", restoredHistory.getEntries().get(0).getUrl());
+        Assert.assertEquals("https://example.com/first", restoredHistory.getEntries().get(1).getUrl());
+    }
+
+    @Test
+    public void roundTripPreservesDeletedAtMillis() throws JSONException {
+        BrowserBookmark bookmark = new BrowserBookmark("https://example.com/", "Example");
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("session-a",
+                new ArrayList<>(), 0,
+                Collections.singletonList(bookmark), new BrowserTabHistory(), 1700000000000L));
+
+        List<BrowserPersistedSessionTabs> restored =
+            serializer.deserialize(serializer.serialize(sessions));
+
+        Assert.assertEquals(1, restored.size());
+        Assert.assertEquals(Long.valueOf(1700000000000L), restored.get(0).getDeletedAtMillis());
+        Assert.assertTrue(restored.get(0).isDeleted());
+    }
+
+    @Test
+    public void sessionsWithOnlyBookmarksButNoTabsAreSerialized() throws JSONException {
+        List<BrowserBookmark> bookmarks = Collections.singletonList(
+            new BrowserBookmark("https://example.com/", "Example"));
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("session-a",
+                new ArrayList<>(), 0, bookmarks, new BrowserTabHistory(), null));
+
+        List<BrowserPersistedSessionTabs> restored =
+            serializer.deserialize(serializer.serialize(sessions));
+
+        Assert.assertEquals(1, restored.size());
+        Assert.assertEquals("session-a", restored.get(0).getSessionName());
+        Assert.assertTrue(restored.get(0).getTabs().isEmpty());
+        Assert.assertEquals(1, restored.get(0).getBookmarks().size());
+    }
+
+    @Test
+    public void sessionsWithDeletedMarkerAreSerialized() throws JSONException {
+        BrowserBookmark bookmark = new BrowserBookmark("https://saved.example/", "Saved");
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("deleted-session",
+                new ArrayList<>(), 0,
+                Collections.singletonList(bookmark), new BrowserTabHistory(), 9999999999999L));
+
+        List<BrowserPersistedSessionTabs> restored =
+            serializer.deserialize(serializer.serialize(sessions));
+
+        Assert.assertEquals(1, restored.size());
+        Assert.assertEquals("deleted-session", restored.get(0).getSessionName());
+        Assert.assertEquals(Long.valueOf(9999999999999L), restored.get(0).getDeletedAtMillis());
+    }
+
+    @Test
+    public void pruneStaleDeletedRemovesEntriesOlderThanTenDays() {
+        long tenDaysMs = 10L * 24 * 60 * 60 * 1000;
+        long currentTimeMillis = 2000000000000L;
+        long staleDeletionTime = currentTimeMillis - tenDaysMs - 1;
+        BrowserBookmark bookmark = new BrowserBookmark("https://example.com/", "Old");
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("stale-session",
+                new ArrayList<>(), 0,
+                Collections.singletonList(bookmark), new BrowserTabHistory(), staleDeletionTime));
+
+        List<BrowserPersistedSessionTabs> pruned =
+            BrowserPersistedTabsSerializer.pruneStaleDeleted(sessions, currentTimeMillis);
+
+        Assert.assertTrue(pruned.isEmpty());
+    }
+
+    @Test
+    public void pruneStaleDeletedKeepsEntriesWithinTenDays() {
+        long tenDaysMs = 10L * 24 * 60 * 60 * 1000;
+        long currentTimeMillis = 2000000000000L;
+        long recentDeletionTime = currentTimeMillis - tenDaysMs + 1;
+        BrowserBookmark bookmark = new BrowserBookmark("https://example.com/", "Recent");
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("recent-session",
+                new ArrayList<>(), 0,
+                Collections.singletonList(bookmark), new BrowserTabHistory(), recentDeletionTime));
+
+        List<BrowserPersistedSessionTabs> pruned =
+            BrowserPersistedTabsSerializer.pruneStaleDeleted(sessions, currentTimeMillis);
+
+        Assert.assertEquals(1, pruned.size());
+        Assert.assertEquals("recent-session", pruned.get(0).getSessionName());
+    }
+
+    @Test
+    public void pruneStaleDeletedKeepsActiveSessionsWithNoDeletedMarker() {
+        List<BrowserPersistedSessionTabs> sessions = Arrays.asList(
+            new BrowserPersistedSessionTabs("active-session",
+                Arrays.asList(new BrowserPersistedTab("https://a.example/", "A", true)), 0));
+
+        List<BrowserPersistedSessionTabs> pruned =
+            BrowserPersistedTabsSerializer.pruneStaleDeleted(sessions, Long.MAX_VALUE);
+
+        Assert.assertEquals(1, pruned.size());
+        Assert.assertEquals("active-session", pruned.get(0).getSessionName());
     }
 }
