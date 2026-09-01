@@ -134,6 +134,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     private final Map<String, BrowserPersistedSessionTabs> mPersistedTabsBySessionName = new LinkedHashMap<>();
 
+    private final BrowserSessionBookmarkStore mSessionBookmarkStore =
+        new BrowserSessionBookmarkStore(mPersistedTabsBySessionName);
+
     private final BrowserTabPersistenceBatch mPersistenceBatch = new BrowserTabPersistenceBatch();
 
     private final BrowserTabHistorySerializer mTabHistorySerializer = new BrowserTabHistorySerializer();
@@ -661,24 +664,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     @NonNull
     private BrowserBookmarkCollection loadBookmarks() {
-        if (mCurrentSessionName == null) return new BrowserBookmarkCollection(new ArrayList<>());
-        BrowserPersistedSessionTabs session = mPersistedTabsBySessionName.get(mCurrentSessionName);
-        if (session == null) return new BrowserBookmarkCollection(new ArrayList<>());
-        return new BrowserBookmarkCollection(session.getBookmarks());
+        return mSessionBookmarkStore.load(mCurrentSessionName);
     }
 
     private void saveBookmarks(@NonNull BrowserBookmarkCollection bookmarks) {
-        if (mCurrentSessionName == null) return;
-        List<BrowserBookmark> bookmarkList = bookmarks.getBookmarks();
-        BrowserPersistedSessionTabs current = mPersistedTabsBySessionName.get(mCurrentSessionName);
-        if (current != null) {
-            mPersistedTabsBySessionName.put(mCurrentSessionName, current.withBookmarks(bookmarkList));
-        } else {
-            mPersistedTabsBySessionName.put(mCurrentSessionName,
-                new BrowserPersistedSessionTabs(
-                    mCurrentSessionName, new ArrayList<>(), 0,
-                    bookmarkList, new BrowserTabHistory(), null));
-        }
+        mSessionBookmarkStore.save(mCurrentSessionName, bookmarks.getBookmarks());
         writePersistedSessionTabs();
     }
 
