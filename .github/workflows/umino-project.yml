@@ -20,15 +20,7 @@ on:
       - reopened
       - review_requested
       - labeled
-      - opened
       - edited
-      - reopened
-      - synchronize
-  pull_request_target:
-    types:
-      - opened
-      - edited
-      - reopened
       - synchronize
 
 env:
