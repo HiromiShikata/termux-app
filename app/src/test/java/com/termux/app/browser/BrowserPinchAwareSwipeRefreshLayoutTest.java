@@ -101,4 +101,26 @@ public class BrowserPinchAwareSwipeRefreshLayoutTest {
             verticalEvent(MotionEvent.ACTION_MOVE, 200f));
         Assert.assertFalse(intercepted);
     }
+
+    @Test
+    public void doesNotInterceptADownwardDragEvenAfterChildScrollUpTransitionsToFalseWithinTheSameGesture() {
+        boolean[] canScrollUp = {true};
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        BrowserPinchAwareSwipeRefreshLayout layout = new BrowserPinchAwareSwipeRefreshLayout(activity);
+        layout.addView(new View(activity), new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        layout.setOnChildScrollUpCallback((parent, child) -> canScrollUp[0]);
+        layout.measure(
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(1000, View.MeasureSpec.EXACTLY));
+        layout.layout(0, 0, 1000, 1000);
+
+        layout.onInterceptTouchEvent(verticalEvent(MotionEvent.ACTION_DOWN, 200f));
+        layout.onInterceptTouchEvent(verticalEvent(MotionEvent.ACTION_MOVE, 600f));
+
+        canScrollUp[0] = false;
+
+        boolean intercepted = layout.onInterceptTouchEvent(verticalEvent(MotionEvent.ACTION_MOVE, 800f));
+        Assert.assertFalse(intercepted);
+    }
 }
