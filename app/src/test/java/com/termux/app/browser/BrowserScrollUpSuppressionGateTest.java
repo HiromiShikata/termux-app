@@ -15,54 +15,73 @@ public class BrowserScrollUpSuppressionGateTest {
     @Test
     public void suppressesRefreshAtGestureStartWhenTheChildCanStillScrollUp() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true));
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false));
     }
 
     @Test
     public void allowsRefreshAtGestureStartWhenTheChildIsAtTheVeryTop() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false));
+        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false, false));
     }
 
     @Test
     public void suppressesRefreshOnEveryMoveWhileTheChildCanStillScrollUp() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true);
-        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true));
-        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true));
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false));
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false));
     }
 
     @Test
-    public void allowsRefreshOnAMoveOnceTheChildReachesTheVeryTop() {
+    public void continuesSuppressionForEntireGestureEvenAfterChildReachesTheVeryTop() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true);
-        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false));
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false);
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false, false));
     }
 
     @Test
     public void doesNotSuppressMoveEventsThatArriveWithoutAPrecedingDown() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true));
+        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false));
+    }
+
+    @Test
+    public void longPressUnlockOverridesGestureStartSuppressionToAllowRefresh() {
+        BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false);
+        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false, true));
+    }
+
+    @Test
+    public void longPressUnlockDoesNotLeakIntoTheNextGesture() {
+        BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false, true);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_UP, false, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false));
     }
 
     @Test
     public void allowsADeliberateDownwardPullToArmRefreshAfterTheGestureResets() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_UP, false);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false);
-        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false));
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_UP, false, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false, false);
+        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false, false));
     }
 
     @Test
     public void resetsOnCancelSoAnInterruptedScrollDoesNotLeakState() {
         BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_CANCEL, true);
-        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false);
-        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false));
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_CANCEL, true, false);
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false, false);
+        Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false, false));
     }
 }

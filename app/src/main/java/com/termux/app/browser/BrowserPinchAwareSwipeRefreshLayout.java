@@ -16,6 +16,9 @@ public final class BrowserPinchAwareSwipeRefreshLayout extends SwipeRefreshLayou
     private final BrowserScrollDirectionInterceptGate mScrollDirectionInterceptGate =
         new BrowserScrollDirectionInterceptGate();
 
+    private final BrowserScrollLongPressGate mLongPressGate =
+        new BrowserScrollLongPressGate();
+
     private final BrowserScrollUpSuppressionGate mScrollUpSuppressionGate =
         new BrowserScrollUpSuppressionGate();
 
@@ -34,8 +37,10 @@ public final class BrowserPinchAwareSwipeRefreshLayout extends SwipeRefreshLayou
             action, event.getPointerCount());
         boolean declineUpwardScroll = mScrollDirectionInterceptGate.shouldDeclineInterception(
             action, event.getY());
+        boolean longPressUnlocked = mLongPressGate.isLongPressUnlocked(
+            action, event.getY(), event.getEventTime());
         boolean suppressWhileChildCanScrollUp = mScrollUpSuppressionGate.shouldSuppressRefresh(
-            action, canChildScrollUp());
+            action, canChildScrollUp(), longPressUnlocked);
         if (declinePinch || declineUpwardScroll || suppressWhileChildCanScrollUp) {
             return false;
         }
