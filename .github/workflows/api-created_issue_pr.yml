@@ -35,8 +35,9 @@ jobs:
       - name: Add to Project
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ISSUE_OR_PR_URL_INPUT: ${{ github.event.inputs.issue_or_pr_url }}
         run: |
-          ISSUE_OR_PR_URL="${{ github.event.inputs.issue_or_pr_url }}"
+          ISSUE_OR_PR_URL="$ISSUE_OR_PR_URL_INPUT"
           ISSUE_OR_PR_URL="${ISSUE_OR_PR_URL%%\?*}"
           ISSUE_OR_PR_URL="${ISSUE_OR_PR_URL%/}"
 

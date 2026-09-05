@@ -95,7 +95,7 @@ jobs:
         if: steps.resolve_pr.outputs.pr_number && steps.check_auto_merge.outputs.allowed == 'true'
         run: |
           curl -s -X POST \
-            -H "Authorization: bearer ${{ secrets.GH_TOKEN }}" \
+            -H "Authorization: bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{
               \"query\": \"mutation(\$id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: \$id, mergeMethod: SQUASH }) { clientMutationId } }\",
