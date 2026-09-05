@@ -24,16 +24,16 @@ jobs:
       pull-requests: write
       contents: read
     steps:
-      - uses: step-security/harden-runner@v2
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
         with:
           egress-policy: audit
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
       - name: Use Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
 
       - name: Check for DONTMERGE
         run: |
@@ -46,14 +46,14 @@ jobs:
             echo "$result"
             exit 1
           fi
-      - uses: nearform-actions/github-action-check-linked-issues@v1
+      - uses: nearform-actions/github-action-check-linked-issues@7140e2e01aa0c18b8ac61bddf5e89abde1ca760e # v1
         id: check-linked-issues
         if: false
         with:
           exclude-branches: 'release/**, dependabot/**, project-common/**'
           loose-matching: true
       - name: Check PR title follows conventional commit format
-        uses: amannn/action-semantic-pull-request@v6
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
