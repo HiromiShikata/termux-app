@@ -228,6 +228,36 @@ public class BrowserLinkContextMenuControllerTest {
         throw new AssertionError("menu item not found: " + label);
     }
 
+    @Test
+    public void resolveLinkUrlPrefersHitTestResultUrlOverFocusNodeHrefUrlWhenBothPresent() {
+        String hitTestUrl = "https://link2.example/page";
+        String staleHrefUrl = "https://link1.example/first";
+        Assert.assertEquals(
+            "hit test result URL (from touch position) must take precedence over "
+                + "focus-node href URL (which may be stale from a prior long-press)",
+            hitTestUrl,
+            BrowserLinkContextMenuController.resolveLinkUrl(hitTestUrl, staleHrefUrl));
+    }
+
+    @Test
+    public void resolveLinkUrlUsesFocusNodeHrefUrlWhenHitTestResultIsAbsent() {
+        String hrefUrl = "https://image-anchor.example/page";
+        Assert.assertEquals(hrefUrl,
+            BrowserLinkContextMenuController.resolveLinkUrl(null, hrefUrl));
+    }
+
+    @Test
+    public void resolveLinkUrlReturnsHitTestUrlWhenFocusNodeHrefIsAbsent() {
+        String hitTestUrl = "https://link.example/page";
+        Assert.assertEquals(hitTestUrl,
+            BrowserLinkContextMenuController.resolveLinkUrl(hitTestUrl, null));
+    }
+
+    @Test
+    public void resolveLinkUrlReturnsNullWhenBothAreAbsent() {
+        Assert.assertNull(BrowserLinkContextMenuController.resolveLinkUrl(null, null));
+    }
+
     private String clipboardText() {
         ClipboardManager clipboardManager =
             (ClipboardManager) context().getSystemService(Context.CLIPBOARD_SERVICE);

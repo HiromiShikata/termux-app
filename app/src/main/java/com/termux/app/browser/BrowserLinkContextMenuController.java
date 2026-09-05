@@ -65,16 +65,19 @@ public final class BrowserLinkContextMenuController {
         return true;
     }
 
+    static String resolveLinkUrl(@Nullable String hitTestUrl, @Nullable String hrefUrl) {
+        if (BrowserLinkLongPress.isOpenableLinkUrl(hitTestUrl)) return hitTestUrl;
+        return hrefUrl;
+    }
+
     private void requestLinkHrefThenShowMenu(@Nullable String fallbackLinkUrl) {
         Handler hrefHandler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(@NonNull Message message) {
                 mCallbackGuard.run("requestFocusNodeHref", () -> {
-                    String linkUrl = message.getData().getString("url");
+                    String hrefUrl = message.getData().getString("url");
                     String anchorText = message.getData().getString("title");
-                    if (!BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
-                        linkUrl = fallbackLinkUrl;
-                    }
+                    String linkUrl = resolveLinkUrl(fallbackLinkUrl, hrefUrl);
                     if (BrowserLinkLongPress.isOpenableLinkUrl(linkUrl)) {
                         showLinkContextMenu(linkUrl, anchorText);
                     }
