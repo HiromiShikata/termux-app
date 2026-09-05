@@ -66,8 +66,8 @@ public final class BrowserLinkContextMenuController {
     }
 
     static String resolveLinkUrl(@Nullable String fallbackLinkUrl, @Nullable String hrefUrl) {
-        if (BrowserLinkLongPress.isOpenableLinkUrl(hrefUrl)) return hrefUrl;
-        return fallbackLinkUrl;
+        if (BrowserLinkLongPress.isOpenableLinkUrl(fallbackLinkUrl)) return fallbackLinkUrl;
+        return hrefUrl;
     }
 
     private void requestLinkHrefThenShowMenu(@Nullable String fallbackLinkUrl) {
