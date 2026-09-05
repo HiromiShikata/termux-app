@@ -16,6 +16,8 @@ on:
 env:
   PROJECT_V2_ID: PVT_kwHOAGJHa84AFWnr
 
+permissions: {}
+
 jobs:
   add-to-project:
     runs-on: ubuntu-latest

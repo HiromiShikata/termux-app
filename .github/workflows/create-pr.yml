@@ -8,10 +8,14 @@ name: Create PR
 on:
   push:
 
+permissions: {}
+
 jobs:
   create_and_enable_automerge:
     runs-on: ubuntu-latest
     if: github.ref_name != github.event.repository.default_branch
+    permissions:
+      contents: read
     steps:
       - uses: step-security/harden-runner@v2
         with:
