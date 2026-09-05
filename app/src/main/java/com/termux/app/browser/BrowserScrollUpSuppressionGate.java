@@ -16,6 +16,7 @@ public final class BrowserScrollUpSuppressionGate {
             case MotionEvent.ACTION_MOVE:
                 if (!mGestureInProgress) return false;
                 if (longPressUnlocked) return false;
+                if (childCanScrollUp) mStartedWithChildScrollable = true;
                 return mStartedWithChildScrollable;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
