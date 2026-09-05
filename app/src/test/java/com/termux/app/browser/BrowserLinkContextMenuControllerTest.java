@@ -247,6 +247,13 @@ public class BrowserLinkContextMenuControllerTest {
     }
 
     @Test
+    public void resolveLinkUrlReturnsHitTestUrlWhenFocusNodeHrefIsAbsent() {
+        String hitTestUrl = "https://link.example/page";
+        Assert.assertEquals(hitTestUrl,
+            BrowserLinkContextMenuController.resolveLinkUrl(hitTestUrl, null));
+    }
+
+    @Test
     public void resolveLinkUrlReturnsNullWhenBothAreAbsent() {
         Assert.assertNull(BrowserLinkContextMenuController.resolveLinkUrl(null, null));
     }
