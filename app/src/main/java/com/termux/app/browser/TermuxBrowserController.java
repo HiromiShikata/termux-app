@@ -952,6 +952,7 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
                 }
                 notifyTabsUpdated();
                 persistSessionTabs();
+                view.evaluateJavascript(BrowserInnerScrollJavascriptInterface.INJECTION_SCRIPT, null);
                 return false;
             }
 
@@ -1073,6 +1074,9 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }).attach();
 
         mScrollTracker.attach(webView);
+        webView.addJavascriptInterface(
+            new BrowserInnerScrollJavascriptInterface(webView, mScrollTracker),
+            BrowserInnerScrollJavascriptInterface.INTERFACE_NAME);
         webView.setFindListener((activeMatchOrdinal, numberOfMatches, isDoneCounting) -> {
             if (isDisplayedTab(tab)) {
                 mFindController.onFindResultReceived(activeMatchOrdinal, numberOfMatches, isDoneCounting);

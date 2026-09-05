@@ -99,4 +99,36 @@ public class BrowserWebViewScrollTrackerTest {
 
         Assert.assertFalse(mScrollTracker.isAtTop(webView));
     }
+
+    @Test
+    public void reportsNotAtTopWhenInnerScrollHasContentAbove() {
+        WebView webView = new WebView(mActivity);
+        mScrollTracker.attach(webView);
+
+        mScrollTracker.recordInnerScrollHasContentAbove(webView, true);
+
+        Assert.assertFalse(mScrollTracker.isAtTop(webView));
+    }
+
+    @Test
+    public void reportsAtTopAgainWhenInnerScrollReturnsToTopOfContent() {
+        WebView webView = new WebView(mActivity);
+        mScrollTracker.attach(webView);
+
+        mScrollTracker.recordInnerScrollHasContentAbove(webView, true);
+        mScrollTracker.recordInnerScrollHasContentAbove(webView, false);
+
+        Assert.assertTrue(mScrollTracker.isAtTop(webView));
+    }
+
+    @Test
+    public void resetToTopClearsInnerScrollContentAboveFlag() {
+        WebView webView = new WebView(mActivity);
+        mScrollTracker.attach(webView);
+
+        mScrollTracker.recordInnerScrollHasContentAbove(webView, true);
+        mScrollTracker.resetToTop(webView);
+
+        Assert.assertTrue(mScrollTracker.isAtTop(webView));
+    }
 }

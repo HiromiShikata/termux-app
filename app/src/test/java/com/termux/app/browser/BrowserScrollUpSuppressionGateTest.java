@@ -84,4 +84,12 @@ public class BrowserScrollUpSuppressionGateTest {
         gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false, false);
         Assert.assertFalse(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, false, false));
     }
+
+    @Test
+    public void latchesOntoSuppressionWhenChildBecomesScrollableAfterGestureStartedAtTop() {
+        BrowserScrollUpSuppressionGate gate = new BrowserScrollUpSuppressionGate();
+        gate.shouldSuppressRefresh(MotionEvent.ACTION_DOWN, false, false);
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false));
+        Assert.assertTrue(gate.shouldSuppressRefresh(MotionEvent.ACTION_MOVE, true, false));
+    }
 }
