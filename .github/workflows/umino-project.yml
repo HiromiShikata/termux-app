@@ -110,8 +110,8 @@ jobs:
       - run: |
           OWNER=$(echo ${{ github.repository }} | cut -d '/' -f 1)
           REPO=$(echo ${{ github.repository }} | cut -d '/' -f 2)
-          ENTITY_TYPE=$(echo ${{ github.event_name }} | grep -q "pull_request" && echo "pullRequest" || echo "issue")
-          NUMBER=$(echo ${{ github.event_name }} | grep -q "pull_request" && echo ${{ github.event.pull_request.number }} || echo ${{ github.event.issue.number }})
+          ENTITY_TYPE=$(echo "$EVENT_NAME" | grep -q "pull_request" && echo "pullRequest" || echo "issue")
+          NUMBER=$(echo "$EVENT_NAME" | grep -q "pull_request" && echo "$PR_NUMBER" || echo "$ISSUE_NUMBER")
 
           QUERY_DATA='{ "query": "query { repository(owner: \"'$OWNER'\", name: \"'$REPO'\") { '${ENTITY_TYPE}'(number: '$NUMBER') { projectItems(first: 10) { nodes { id } } } } }" }'
           RESPONSE=$(curl -X POST -H "Authorization: Bearer $GH_PROJECT_TOKEN" -H "Content-Type: application/json" --data "$QUERY_DATA" https://api.github.com/graphql)
@@ -147,6 +147,9 @@ jobs:
           fi
         env:
           GH_PROJECT_TOKEN: ${{ secrets.GH_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         if: >-
           ((github.event_name == 'issues' && github.event.issue.state == 'open') ||
           (github.event_name == 'pull_request' && github.event.pull_request.state == 'open')) &&
