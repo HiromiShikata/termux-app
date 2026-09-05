@@ -77,7 +77,7 @@ jobs:
           mkdir -p /tmp/commitlint-run
           cd /tmp/commitlint-run
           npm init -y
-          npm install --no-audit --no-fund --save-dev @commitlint/cli @commitlint/config-conventional
+          npm install --no-fund --save-dev @commitlint/cli @commitlint/config-conventional
       - name: Lint commits
         env:
           NODE_PATH: /tmp/commitlint-run/node_modules
