@@ -19,6 +19,7 @@ public final class BrowserInnerScrollJavascriptInterface {
         "document.addEventListener('scroll',function(e){" +
         "var t=e.target;" +
         "if(t&&t.scrollTop>0){s.add(t);}else if(t){s.delete(t);}" +
+        "s.forEach(function(el){if(!el.isConnected)s.delete(el);});" +
         "var b=window.TermuxScrollBridge;" +
         "if(b)b.onScrolled(s.size>0);" +
         "},true);" +
