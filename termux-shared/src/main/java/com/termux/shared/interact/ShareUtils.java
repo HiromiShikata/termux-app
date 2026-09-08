@@ -207,6 +207,7 @@ public class ShareUtils {
         if (context == null || url == null || url.isEmpty()) return;
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
         intent.setPackage(CHROME_PACKAGE_NAME);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             context.startActivity(intent);
         } catch (ActivityNotFoundException e) {

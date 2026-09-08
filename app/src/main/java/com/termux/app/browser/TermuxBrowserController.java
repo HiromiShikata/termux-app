@@ -1111,9 +1111,16 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         return true;
     }
 
-    private boolean openInMatchingNativeApp(@NonNull String url) {
+    static boolean openInNativeAppOrFallBackToChrome(@NonNull Context context, @NonNull String url) {
         NativeAppLink.NativeAppTarget target = NativeAppLink.resolveTarget(url);
-        return target != null && NativeAppLink.openInNativeApp(mActivity, url, target);
+        if (target == null) return false;
+        if (NativeAppLink.openInNativeApp(context, url, target)) return true;
+        ShareUtils.openUrlInChrome(context, url);
+        return true;
+    }
+
+    private boolean openInMatchingNativeApp(@NonNull String url) {
+        return openInNativeAppOrFallBackToChrome(mActivity, url);
     }
 
     private boolean openNewWindowUrlInNewTab(@NonNull WebView requestingWebView, @NonNull String url) {
