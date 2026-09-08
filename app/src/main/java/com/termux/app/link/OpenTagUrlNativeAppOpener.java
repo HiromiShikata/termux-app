@@ -5,6 +5,7 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 
 import com.termux.app.browser.OpenTagBrowserController;
+import com.termux.shared.interact.ShareUtils;
 
 public final class OpenTagUrlNativeAppOpener implements OpenTagBrowserController.UrlOpener {
 
@@ -20,7 +21,13 @@ public final class OpenTagUrlNativeAppOpener implements OpenTagBrowserController
 
     @Override
     public void openUrlInTabForSession(@NonNull String sessionHandle, @NonNull String url) {
-        NativeAppLink.openInNativeAppOrElse(mContext, url,
-            () -> mInAppBrowserOpener.openUrlInTabForSession(sessionHandle, url));
+        NativeAppLink.NativeAppTarget target = NativeAppLink.resolveTarget(url);
+        if (target == null) {
+            mInAppBrowserOpener.openUrlInTabForSession(sessionHandle, url);
+            return;
+        }
+        if (!NativeAppLink.openInNativeApp(mContext, url, target)) {
+            ShareUtils.openUrlInChrome(mContext, url);
+        }
     }
 }

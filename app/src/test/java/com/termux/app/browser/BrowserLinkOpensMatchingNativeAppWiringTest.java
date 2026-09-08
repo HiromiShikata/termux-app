@@ -75,14 +75,36 @@ public class BrowserLinkOpensMatchingNativeAppWiringTest {
 
     @Test
     public void theBrowserResolvesTheMatchingNativeApplicationThroughTheSharedLinkResolver() throws IOException {
+        String staticMethod = blockStartingAt(
+            readModuleSource(BROWSER_CONTROLLER_PATH),
+            "static boolean openInNativeAppOrFallBackToChrome(", "\n    }");
+
+        Assert.assertTrue("the browser must reuse the shared native application resolver so every vendor it"
+                + " recognises, Slack included, leaves the in-app browser the same way",
+            staticMethod.contains("NativeAppLink.resolveTarget("));
+        Assert.assertTrue("the browser must launch the resolved application",
+            staticMethod.contains("NativeAppLink.openInNativeApp("));
+    }
+
+    @Test
+    public void theBrowserOpensChromeWhenTheNativeAppCannotHandleTheUrl() throws IOException {
+        String staticMethod = blockStartingAt(
+            readModuleSource(BROWSER_CONTROLLER_PATH),
+            "static boolean openInNativeAppOrFallBackToChrome(", "\n    }");
+
+        Assert.assertTrue("when the native app is not available, the browser must open Chrome instead of loading the URL in-app",
+            staticMethod.contains("ShareUtils.openUrlInChrome("));
+        Assert.assertTrue("the browser must report the URL as handled when it falls back to Chrome",
+            staticMethod.contains("return true"));
+    }
+
+    @Test
+    public void thePrivateMatchingMethodDelegatesToTheTestableStaticHelper() throws IOException {
         String hostMethod = blockStartingAt(
             readModuleSource(BROWSER_CONTROLLER_PATH),
             "private boolean openInMatchingNativeApp(", "\n    }");
 
-        Assert.assertTrue("the browser must reuse the shared native application resolver so every vendor it"
-                + " recognises, Slack included, leaves the in-app browser the same way",
-            hostMethod.contains("NativeAppLink.resolveTarget("));
-        Assert.assertTrue("the browser must launch the resolved application",
-            hostMethod.contains("NativeAppLink.openInNativeApp("));
+        Assert.assertTrue("the private method must delegate to the package-private static helper so the logic can be tested independently",
+            hostMethod.contains("openInNativeAppOrFallBackToChrome("));
     }
 }
