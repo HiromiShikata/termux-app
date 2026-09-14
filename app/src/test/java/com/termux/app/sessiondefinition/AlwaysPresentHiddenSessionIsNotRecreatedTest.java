@@ -38,9 +38,6 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 public class AlwaysPresentHiddenSessionIsNotRecreatedTest {
 
-    private static final String PROJECT_LABEL = "projectOne";
-    private static final String PROJECT_MANAGER_SESSION_NAME =
-        PROJECT_LABEL + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX;
     private static final String ALWAYS_NOT_APPLICABLE_SESSION_NAME = "secretary";
     private static final String DISPLAYED_SESSION_NAME = "https://example.test/displayed";
 
@@ -50,7 +47,7 @@ public class AlwaysPresentHiddenSessionIsNotRecreatedTest {
     private TermuxAppSharedPreferences preferences;
 
     private final List<SessionDefinitionEntry> entries = Collections.singletonList(
-        new SessionDefinitionEntry(PROJECT_LABEL, "storyDisplayed",
+        new SessionDefinitionEntry("projectOne", "storyDisplayed",
             Collections.singletonList(DISPLAYED_SESSION_NAME)));
 
     @Before
@@ -109,22 +106,6 @@ public class AlwaysPresentHiddenSessionIsNotRecreatedTest {
     }
 
     @Test
-    public void aDefinitionLoadCreatesNoSessionForAHiddenProjectManagerName() throws Exception {
-        recordAsHidden(PROJECT_MANAGER_SESSION_NAME);
-
-        loadTheSessionDefinition();
-
-        assertNull("a definition load must create nothing for the project manager name of a project "
-                + "group when the owner has hidden that name; the always-present restore reaches the "
-                + "creation call for it and gives the hidden name a live shell again",
-            service.getTermuxSessionForSessionName(PROJECT_MANAGER_SESSION_NAME));
-        assertEquals("the hidden project manager name must appear nowhere in the live session list "
-                + "after a definition load, because the session cap, the reconnect sweep and the "
-                + "statusline scan all walk that list by name",
-            0, occurrencesInLiveSessionList(PROJECT_MANAGER_SESSION_NAME));
-    }
-
-    @Test
     public void aDefinitionLoadCreatesNoSessionForAHiddenAlwaysNotApplicableName() throws Exception {
         preferences.setAlwaysNaSessionNames(ALWAYS_NOT_APPLICABLE_SESSION_NAME);
         recordAsHidden(ALWAYS_NOT_APPLICABLE_SESSION_NAME);
@@ -146,9 +127,6 @@ public class AlwaysPresentHiddenSessionIsNotRecreatedTest {
 
         loadTheSessionDefinition();
 
-        assertNotNull("keeping hidden names out of the always-present restore must not stop it creating "
-                + "the project manager session of a project group that the owner has not hidden",
-            service.getTermuxSessionForSessionName(PROJECT_MANAGER_SESSION_NAME));
         assertNotNull("keeping hidden names out of the always-present restore must not stop it creating "
                 + "a stored always-not-applicable session that the owner has not hidden",
             service.getTermuxSessionForSessionName(ALWAYS_NOT_APPLICABLE_SESSION_NAME));

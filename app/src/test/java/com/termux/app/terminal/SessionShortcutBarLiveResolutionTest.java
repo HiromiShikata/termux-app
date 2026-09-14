@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotNull;
 import android.content.Context;
 
 import com.termux.app.TermuxService;
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
@@ -35,8 +34,7 @@ public class SessionShortcutBarLiveResolutionTest {
 
     private TermuxService service;
     private TermuxShellManager shellManager;
-    private final SessionShortcutBarPlanner planner =
-        new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
+    private final SessionShortcutBarPlanner planner = new SessionShortcutBarPlanner();
 
     @Before
     public void setUp() throws Exception {
@@ -59,7 +57,7 @@ public class SessionShortcutBarLiveResolutionTest {
 
         List<String> labels = renderedShortcutLabels(alwaysNa, entries);
 
-        assertEquals(Arrays.asList("umino", "umino/story"), labels);
+        assertEquals(Arrays.asList("umino/story"), labels);
     }
 
     @Test
@@ -73,7 +71,7 @@ public class SessionShortcutBarLiveResolutionTest {
 
         List<String> labels = renderedShortcutLabels(alwaysNa, entries);
 
-        assertEquals(Arrays.asList("umino", "na-inbox"), labels);
+        assertEquals(Arrays.asList("na-inbox"), labels);
     }
 
     @Test
@@ -88,7 +86,7 @@ public class SessionShortcutBarLiveResolutionTest {
 
         assertEquals("a pinned composite name whose session is not live still renders its button, so"
                 + " the owner can reach the session without opening it by another route first",
-            Arrays.asList("umino", "umino/story"), labels);
+            Arrays.asList("umino/story"), labels);
     }
 
     private List<String> renderedShortcutLabels(Set<String> alwaysNaSessionNames,

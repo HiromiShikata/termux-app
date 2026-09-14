@@ -826,16 +826,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         boolean restoredPersistedSessions = mTermuxTerminalSessionActivityClient.restorePersistedSessions();
         boolean createdAlwaysPresentSessions = mTermuxTerminalSessionActivityClient.restoreAlwaysPresentSessions();
-        restoreProjectManagerSessionsOnColdStart();
 
         if (restoredPersistedSessions || createdAlwaysPresentSessions) return;
         if (mTermuxService != null && !mTermuxService.isTermuxSessionsEmpty()) return;
         mTermuxTerminalSessionActivityClient.addNewSession(false, null);
-    }
-
-    private void restoreProjectManagerSessionsOnColdStart() {
-        new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner())
-            .restoreProjectManagerSessionsOnColdStart();
     }
 
     @Override

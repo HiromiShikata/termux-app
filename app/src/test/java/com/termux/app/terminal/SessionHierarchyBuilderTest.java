@@ -88,11 +88,10 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
     }
 
     @Test
@@ -106,13 +105,12 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "https://example.test/b"), entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
-        assertStoryHeader(rows.get(4), "storyB");
-        assertSession(rows.get(5), 1);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+        assertStoryHeader(rows.get(3), "storyB");
+        assertSession(rows.get(4), 1);
     }
 
     @Test
@@ -126,15 +124,13 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "https://example.test/b"), entries, NA);
 
-        Assert.assertEquals(8, rows.size());
+        Assert.assertEquals(6, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
-        assertProjectHeader(rows.get(4), "projectTwo");
-        assertDefinitionBackedSession(rows.get(5), "projectTwopm");
-        assertStoryHeader(rows.get(6), "storyB");
-        assertSession(rows.get(7), 1);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+        assertProjectHeader(rows.get(3), "projectTwo");
+        assertStoryHeader(rows.get(4), "storyB");
+        assertSession(rows.get(5), 1);
     }
 
     @Test
@@ -146,12 +142,11 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a1", "https://example.test/a2"), entries, NA);
 
-        Assert.assertEquals(5, rows.size());
+        Assert.assertEquals(4, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
-        assertSession(rows.get(4), 1);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+        assertSession(rows.get(3), 1);
     }
 
     @Test
@@ -163,13 +158,12 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "manual-session"), entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
         assertProjectHeader(rows.get(2), "projectOne");
-        assertDefinitionBackedSession(rows.get(3), "projectOnepm");
-        assertStoryHeader(rows.get(4), "storyA");
-        assertSession(rows.get(5), 0);
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
     }
 
     @Test
@@ -182,14 +176,13 @@ public class SessionHierarchyBuilderTest {
             Arrays.asList("https://example.test/a", "https://example.test/new", "manual-session"),
             entries, NA);
 
-        Assert.assertEquals(7, rows.size());
+        Assert.assertEquals(6, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
         assertSession(rows.get(2), 2);
         assertProjectHeader(rows.get(3), "projectOne");
-        assertDefinitionBackedSession(rows.get(4), "projectOnepm");
-        assertStoryHeader(rows.get(5), "storyA");
-        assertSession(rows.get(6), 0);
+        assertStoryHeader(rows.get(4), "storyA");
+        assertSession(rows.get(5), 0);
     }
 
     @Test
@@ -201,13 +194,12 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "https://example.test/new"), entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
         assertProjectHeader(rows.get(2), "projectOne");
-        assertDefinitionBackedSession(rows.get(3), "projectOnepm");
-        assertStoryHeader(rows.get(4), "storyA");
-        assertSession(rows.get(5), 0);
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
     }
 
     @Test
@@ -219,11 +211,10 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
     }
 
     @Test
@@ -236,13 +227,12 @@ public class SessionHierarchyBuilderTest {
             Arrays.asList("https://example.test/a", "https://example.test/new", "https://example.test/new"),
             entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
         assertProjectHeader(rows.get(2), "projectOne");
-        assertDefinitionBackedSession(rows.get(3), "projectOnepm");
-        assertStoryHeader(rows.get(4), "storyA");
-        assertSession(rows.get(5), 0);
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
     }
 
     @Test
@@ -256,13 +246,12 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/bottom", "https://example.test/top"), entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyTop");
-        assertSession(rows.get(3), 1);
-        assertStoryHeader(rows.get(4), "storyBottom");
-        assertSession(rows.get(5), 0);
+        assertStoryHeader(rows.get(1), "storyTop");
+        assertSession(rows.get(2), 1);
+        assertStoryHeader(rows.get(3), "storyBottom");
+        assertSession(rows.get(4), 0);
     }
 
     @Test
@@ -274,11 +263,10 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
     }
 
     @Test
@@ -336,8 +324,8 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/top", "https://example.test/bottom"), entries, NA);
 
-        Assert.assertEquals(3, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 0));
-        Assert.assertEquals(5, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 1));
+        Assert.assertEquals(2, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 0));
+        Assert.assertEquals(4, SessionHierarchyBuilder.rowPositionForSessionIndex(rows, 1));
     }
 
     @Test
@@ -388,14 +376,13 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.emptyList(), entries, NA);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertDefinitionBackedSession(rows.get(3), "https://example.test/a");
-        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(rows));
-        Assert.assertEquals("the defined story session plus the project-manager row",
-            Integer.valueOf(2),
+        assertStoryHeader(rows.get(1), "storyA");
+        assertDefinitionBackedSession(rows.get(2), "https://example.test/a");
+        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(rows));
+        Assert.assertEquals("the defined story session",
+            Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get("projectOne"));
     }
 
@@ -410,18 +397,16 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(8, rows.size());
+        Assert.assertEquals(6, rows.size());
         assertProjectHeader(rows.get(0), "projectWithSession");
-        assertDefinitionBackedSession(rows.get(1), "projectWithSessionpm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
-        assertProjectHeader(rows.get(4), "projectWithoutSession");
-        assertDefinitionBackedSession(rows.get(5), "projectWithoutSessionpm");
-        assertStoryHeader(rows.get(6), "storyB");
-        assertDefinitionBackedSession(rows.get(7), "https://example.test/b");
-        Assert.assertEquals(Integer.valueOf(2),
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+        assertProjectHeader(rows.get(3), "projectWithoutSession");
+        assertStoryHeader(rows.get(4), "storyB");
+        assertDefinitionBackedSession(rows.get(5), "https://example.test/b");
+        Assert.assertEquals(Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get("projectWithoutSession"));
-        Assert.assertEquals(Integer.valueOf(2),
+        Assert.assertEquals(Integer.valueOf(1),
             SessionHierarchyBuilder.sessionCountByProjectLabel(rows).get("projectWithSession"));
     }
 
@@ -436,8 +421,7 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals("the live story session, the definition-backed story session and the"
-            + " project-manager row each project draws", 4,
+        Assert.assertEquals("the live story session and the definition-backed story session", 2,
             SessionHierarchyBuilder.totalSessionCount(rows));
     }
 
@@ -454,19 +438,16 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "https://example.test/c"), entries, NA);
 
-        Assert.assertEquals(12, rows.size());
+        Assert.assertEquals(9, rows.size());
         assertProjectHeader(rows.get(0), "projectFirst");
-        assertDefinitionBackedSession(rows.get(1), "projectFirstpm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
-        assertProjectHeader(rows.get(4), "projectMiddleWithoutLiveSession");
-        assertDefinitionBackedSession(rows.get(5), "projectMiddleWithoutLiveSessionpm");
-        assertStoryHeader(rows.get(6), "storyB");
-        assertDefinitionBackedSession(rows.get(7), "https://example.test/b");
-        assertProjectHeader(rows.get(8), "projectLast");
-        assertDefinitionBackedSession(rows.get(9), "projectLastpm");
-        assertStoryHeader(rows.get(10), "storyC");
-        assertSession(rows.get(11), 1);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
+        assertProjectHeader(rows.get(3), "projectMiddleWithoutLiveSession");
+        assertStoryHeader(rows.get(4), "storyB");
+        assertDefinitionBackedSession(rows.get(5), "https://example.test/b");
+        assertProjectHeader(rows.get(6), "projectLast");
+        assertStoryHeader(rows.get(7), "storyC");
+        assertSession(rows.get(8), 1);
     }
 
     @Test
@@ -483,7 +464,7 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        SessionHierarchyRow emptyProjectHeader = rows.get(4);
+        SessionHierarchyRow emptyProjectHeader = rows.get(3);
         assertProjectHeader(emptyProjectHeader, "projectWithoutSession");
         Assert.assertEquals("https://github.com/HiromiShikata/projects/9",
             emptyProjectHeader.getOverviewUrl());
@@ -507,12 +488,11 @@ public class SessionHierarchyBuilderTest {
         collapsed.add("projectWithoutSession");
         List<SessionHierarchyRow> visibleRows = builder.filterCollapsedProjects(rows, collapsed);
 
-        Assert.assertEquals(5, visibleRows.size());
+        Assert.assertEquals(4, visibleRows.size());
         assertProjectHeader(visibleRows.get(0), "projectWithSession");
-        assertDefinitionBackedSession(visibleRows.get(1), "projectWithSessionpm");
-        assertStoryHeader(visibleRows.get(2), "storyA");
-        assertSession(visibleRows.get(3), 0);
-        assertProjectHeader(visibleRows.get(4), "projectWithoutSession");
+        assertStoryHeader(visibleRows.get(1), "storyA");
+        assertSession(visibleRows.get(2), 0);
+        assertProjectHeader(visibleRows.get(3), "projectWithoutSession");
     }
 
     @Test
@@ -543,12 +523,11 @@ public class SessionHierarchyBuilderTest {
         collapsed.add("projectOne");
         List<SessionHierarchyRow> visibleRows = builder.filterCollapsedProjects(rows, collapsed);
 
-        Assert.assertEquals(5, visibleRows.size());
+        Assert.assertEquals(4, visibleRows.size());
         assertProjectHeader(visibleRows.get(0), "projectOne");
         assertProjectHeader(visibleRows.get(1), "projectTwo");
-        assertDefinitionBackedSession(visibleRows.get(2), "projectTwopm");
-        assertStoryHeader(visibleRows.get(3), "storyB");
-        assertSession(visibleRows.get(4), 1);
+        assertStoryHeader(visibleRows.get(2), "storyB");
+        assertSession(visibleRows.get(3), 1);
     }
 
     @Test
@@ -579,12 +558,11 @@ public class SessionHierarchyBuilderTest {
         collapsed.add(NA);
         List<SessionHierarchyRow> visibleRows = builder.filterCollapsedProjects(rows, collapsed);
 
-        Assert.assertEquals(5, visibleRows.size());
+        Assert.assertEquals(4, visibleRows.size());
         assertProjectHeader(visibleRows.get(0), NA);
         assertProjectHeader(visibleRows.get(1), "projectOne");
-        assertDefinitionBackedSession(visibleRows.get(2), "projectOnepm");
-        assertStoryHeader(visibleRows.get(3), "storyA");
-        assertSession(visibleRows.get(4), 0);
+        assertStoryHeader(visibleRows.get(2), "storyA");
+        assertSession(visibleRows.get(3), 0);
     }
 
     @Test
@@ -700,11 +678,10 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA, alwaysNaSessionNames);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 0);
         assertProjectHeader(rows.get(2), "projectOne");
-        assertDefinitionBackedSession(rows.get(3), "projectOnepm");
     }
 
     @Test
@@ -722,13 +699,12 @@ public class SessionHierarchyBuilderTest {
             Arrays.asList("https://example.test/a", "https://example.test/b"), entries, NA,
             alwaysNaSessionNames);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 0);
         assertProjectHeader(rows.get(2), "projectOne");
-        assertDefinitionBackedSession(rows.get(3), "projectOnepm");
-        assertStoryHeader(rows.get(4), "storyB");
-        assertSession(rows.get(5), 1);
+        assertStoryHeader(rows.get(3), "storyB");
+        assertSession(rows.get(4), 1);
     }
 
     @Test
@@ -743,11 +719,10 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA, alwaysNaSessionNames);
 
-        Assert.assertEquals(4, rows.size());
+        Assert.assertEquals(3, rows.size());
         assertProjectHeader(rows.get(0), "projectOne");
-        assertDefinitionBackedSession(rows.get(1), "projectOnepm");
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
+        assertStoryHeader(rows.get(1), "storyA");
+        assertSession(rows.get(2), 0);
     }
 
     @Test
@@ -763,12 +738,11 @@ public class SessionHierarchyBuilderTest {
             Arrays.asList("https://example.test/a", "manual-session"), entries, NA,
             alwaysNaSessionNames);
 
-        Assert.assertEquals(5, rows.size());
+        Assert.assertEquals(4, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 0);
         assertSession(rows.get(2), 1);
         assertProjectHeader(rows.get(3), "projectOne");
-        assertDefinitionBackedSession(rows.get(4), "projectOnepm");
     }
 
     @Test
@@ -780,13 +754,12 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", null), entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(5, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
         assertProjectHeader(rows.get(2), "projectOne");
-        assertDefinitionBackedSession(rows.get(3), "projectOnepm");
-        assertStoryHeader(rows.get(4), "storyA");
-        assertSession(rows.get(5), 0);
+        assertStoryHeader(rows.get(3), "storyA");
+        assertSession(rows.get(4), 0);
     }
 
     @Test
@@ -798,14 +771,13 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("https://example.test/a", "scratch", "scratch"), entries, NA);
 
-        Assert.assertEquals(7, rows.size());
+        Assert.assertEquals(6, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
         assertSession(rows.get(2), 2);
         assertProjectHeader(rows.get(3), "projectOne");
-        assertDefinitionBackedSession(rows.get(4), "projectOnepm");
-        assertStoryHeader(rows.get(5), "storyA");
-        assertSession(rows.get(6), 0);
+        assertStoryHeader(rows.get(4), "storyA");
+        assertSession(rows.get(5), 0);
     }
 
     @Test
@@ -833,9 +805,8 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.emptyList(), entries, NA);
 
-        Assert.assertEquals(2, rows.size());
+        Assert.assertEquals(1, rows.size());
         assertProjectHeader(rows.get(0), "emptyProject");
-        assertDefinitionBackedSession(rows.get(1), "emptyProjectpm");
         Assert.assertEquals("https://github.com/HiromiShikata/projects/9", rows.get(0).getOverviewUrl());
         Assert.assertEquals("https://example.test/tdpm", rows.get(0).getTdpmConsoleUrl());
         Assert.assertEquals("https://example.test/new-issue", rows.get(0).getNewIssueUrl());
@@ -856,7 +827,7 @@ public class SessionHierarchyBuilderTest {
     }
 
     @Test
-    public void emptyProjectHeaderHasNoStoryRowsAndOnlyItsProjectManagerRow() {
+    public void emptyProjectHeaderHasNoStoryRowsAndNoSessionRows() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             new SessionDefinitionEntry("emptyProject", "", Collections.emptyList(),
                 Collections.emptyMap(), "https://github.com/HiromiShikata/projects/9"));
@@ -867,9 +838,8 @@ public class SessionHierarchyBuilderTest {
         for (SessionHierarchyRow row : rows) {
             Assert.assertNotEquals(SessionHierarchyRow.Type.STORY_HEADER, row.getType());
         }
-        Assert.assertEquals("a project the session definition names owns its project-manager row even"
-            + " while it carries no story", 1, SessionHierarchyBuilder.totalSessionCount(rows));
-        assertDefinitionBackedSession(rows.get(1), "emptyProjectpm");
+        Assert.assertEquals("a project the session definition names draws no session rows while it"
+            + " carries no story", 0, SessionHierarchyBuilder.totalSessionCount(rows));
     }
 
     @Test
@@ -884,15 +854,13 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Collections.singletonList("https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(6, rows.size());
+        Assert.assertEquals(4, rows.size());
         assertProjectHeader(rows.get(0), "emptyProject");
         Assert.assertEquals("https://github.com/HiromiShikata/projects/9", rows.get(0).getOverviewUrl());
-        assertDefinitionBackedSession(rows.get(1), "emptyProjectpm");
-        assertProjectHeader(rows.get(2), "populatedProject");
-        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", rows.get(2).getOverviewUrl());
-        assertDefinitionBackedSession(rows.get(3), "populatedProjectpm");
-        assertStoryHeader(rows.get(4), "storyA");
-        assertSession(rows.get(5), 0);
+        assertProjectHeader(rows.get(1), "populatedProject");
+        Assert.assertEquals("https://github.com/HiromiShikata/projects/7", rows.get(1).getOverviewUrl());
+        assertStoryHeader(rows.get(2), "storyA");
+        assertSession(rows.get(3), 0);
     }
 
     @Test
@@ -906,15 +874,13 @@ public class SessionHierarchyBuilderTest {
         List<SessionHierarchyRow> rows = builder.build(
             Arrays.asList("manual-session", "https://example.test/a"), entries, NA);
 
-        Assert.assertEquals(8, rows.size());
+        Assert.assertEquals(6, rows.size());
         assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 0);
         assertProjectHeader(rows.get(2), "emptyProject");
-        assertDefinitionBackedSession(rows.get(3), "emptyProjectpm");
-        assertProjectHeader(rows.get(4), "populatedProject");
-        assertDefinitionBackedSession(rows.get(5), "populatedProjectpm");
-        assertStoryHeader(rows.get(6), "storyA");
-        assertSession(rows.get(7), 1);
+        assertProjectHeader(rows.get(3), "populatedProject");
+        assertStoryHeader(rows.get(4), "storyA");
+        assertSession(rows.get(5), 1);
 
         int sessionRows = 0;
         for (SessionHierarchyRow row : rows) {
@@ -922,12 +888,11 @@ public class SessionHierarchyBuilderTest {
                 sessionRows++;
             }
         }
-        Assert.assertEquals("the not-applicable session, the story session and the project-manager row"
-            + " of each of the two projects", 4, sessionRows);
+        Assert.assertEquals("the not-applicable session and the story session", 2, sessionRows);
     }
 
     @Test
-    public void defaultProjectManagerSessionAppearsAtTopOfItsProjectBeforeStoryRows() {
+    public void orphanedSessionNamedLikeProjectManagerGoesToNaBucket() {
         List<SessionDefinitionEntry> entries = Arrays.asList(
             new SessionDefinitionEntry("umino", "storyA",
                 Collections.singletonList("https://example.test/u1")),
@@ -942,31 +907,16 @@ public class SessionHierarchyBuilderTest {
                 "xmilepm"),
             entries, NA);
 
-        assertProjectHeader(rows.get(0), "umino");
+        assertProjectHeader(rows.get(0), NA);
         assertSession(rows.get(1), 1);
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 0);
-        assertProjectHeader(rows.get(4), "xmile");
-        assertSession(rows.get(5), 3);
-        assertStoryHeader(rows.get(6), "storyB");
-        assertSession(rows.get(7), 2);
-        Assert.assertEquals(8, rows.size());
-    }
-
-    @Test
-    public void defaultProjectManagerSessionIsNotPlacedUnderNaBucket() {
-        List<SessionDefinitionEntry> entries = Collections.singletonList(
-            new SessionDefinitionEntry("umino", "storyA",
-                Collections.singletonList("https://example.test/u1")));
-
-        List<SessionHierarchyRow> rows = builder.build(
-            Arrays.asList("uminopm", "https://example.test/u1"), entries, NA);
-
-        assertProjectHeader(rows.get(0), "umino");
-        assertSession(rows.get(1), 0);
-        assertStoryHeader(rows.get(2), "storyA");
-        assertSession(rows.get(3), 1);
-        Assert.assertEquals(4, rows.size());
+        assertSession(rows.get(2), 3);
+        assertProjectHeader(rows.get(3), "umino");
+        assertStoryHeader(rows.get(4), "storyA");
+        assertSession(rows.get(5), 0);
+        assertProjectHeader(rows.get(6), "xmile");
+        assertStoryHeader(rows.get(7), "storyB");
+        assertSession(rows.get(8), 2);
+        Assert.assertEquals(9, rows.size());
     }
 
     @Test

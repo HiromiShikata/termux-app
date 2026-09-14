@@ -174,7 +174,6 @@ public class SessionDefinitionControllerWashReplaceTest {
         invokeBuildSessions(partialResult);
 
         List<String> expected = new ArrayList<>(allUrls);
-        expected.add("loadedGroup" + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX);
         assertEquals(expected, remainingSessionNames());
     }
 
@@ -195,8 +194,7 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeBuildSessions(authoritativeResult);
 
-        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a", "https://example.test/b",
-            "projectOne" + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX),
+        assertEquals(Arrays.asList("adhoc-local", "https://example.test/a", "https://example.test/b"),
             remainingSessionNames());
     }
 

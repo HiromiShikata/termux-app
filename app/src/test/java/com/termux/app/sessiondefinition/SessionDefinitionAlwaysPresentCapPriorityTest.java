@@ -38,8 +38,7 @@ public class SessionDefinitionAlwaysPresentCapPriorityTest {
     private TermuxShellManager shellManager;
     private final SessionDefinitionAlwaysPresentPriorityPlanner alwaysPresentPriorityPlanner =
         new SessionDefinitionAlwaysPresentPriorityPlanner();
-    private final SessionShortcutBarPlanner shortcutBarPlanner =
-        new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
+    private final SessionShortcutBarPlanner shortcutBarPlanner = new SessionShortcutBarPlanner();
 
     @Before
     public void setUp() throws Exception {

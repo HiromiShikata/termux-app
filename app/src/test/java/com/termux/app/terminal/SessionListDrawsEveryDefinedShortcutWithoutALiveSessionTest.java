@@ -1,6 +1,5 @@
 package com.termux.app.terminal;
 
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 
 import org.junit.Assert;
@@ -26,10 +25,6 @@ public class SessionListDrawsEveryDefinedShortcutWithoutALiveSessionTest {
     private static final String NA = "N/A";
     private static final String FIRST_PROJECT_LABEL = "projectone";
     private static final String SECOND_PROJECT_LABEL = "projecttwo";
-    private static final String FIRST_PROJECT_MANAGER_SESSION_NAME = FIRST_PROJECT_LABEL
-        + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX;
-    private static final String SECOND_PROJECT_MANAGER_SESSION_NAME = SECOND_PROJECT_LABEL
-        + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX;
     private static final String FIRST_STORY_LABEL = "storyone";
     private static final String SECOND_STORY_LABEL = "storytwo";
     private static final String FIRST_STORY_SESSION_NAME = "https://example.test/story-one";
@@ -113,32 +108,14 @@ public class SessionListDrawsEveryDefinedShortcutWithoutALiveSessionTest {
     }
 
     @Test
-    public void aProjectManagerNamePinnedToTheNotApplicableGroupDrawsItsRowWhileNoSessionIsLive() {
-        Set<String> alwaysNaSessionNames = Collections.singleton(FIRST_PROJECT_MANAGER_SESSION_NAME);
+    public void everyStoryNameTheDefinitionCarriesDrawsOneRowWhileNoSessionIsLive() {
+        Set<String> alwaysNaSessionNames = new LinkedHashSet<>(
+            Collections.singletonList(FIRST_STORY_SESSION_NAME));
 
         List<SessionHierarchyRow> rows = builder.build(Collections.emptyList(),
             definitionNamingBothProjects(), NA, alwaysNaSessionNames);
 
-        Assert.assertEquals("a project-manager name is derived from a project label the session"
-                + " definition names, so it must draw exactly one shortcut row while the owner has it"
-                + " pinned to the not-applicable group and no session is live for it. Actual:\n"
-                + dump(rows),
-            1, rowCountForSessionName(rows, FIRST_PROJECT_MANAGER_SESSION_NAME));
-        Assert.assertEquals("a pinned project-manager name must draw its row under the not-applicable"
-                + " header. Actual:\n" + dump(rows),
-            NA, projectLabelOfRowFor(rows, FIRST_PROJECT_MANAGER_SESSION_NAME));
-    }
-
-    @Test
-    public void everyNameTheDefinitionCarriesDrawsOneRowWhileNoSessionIsLive() {
-        Set<String> alwaysNaSessionNames = new LinkedHashSet<>(Arrays.asList(
-            FIRST_STORY_SESSION_NAME, SECOND_PROJECT_MANAGER_SESSION_NAME));
-
-        List<SessionHierarchyRow> rows = builder.build(Collections.emptyList(),
-            definitionNamingBothProjects(), NA, alwaysNaSessionNames);
-
-        for (String definedSessionName : Arrays.asList(FIRST_PROJECT_MANAGER_SESSION_NAME,
-                SECOND_PROJECT_MANAGER_SESSION_NAME, FIRST_STORY_SESSION_NAME,
+        for (String definedSessionName : Arrays.asList(FIRST_STORY_SESSION_NAME,
                 SECOND_STORY_SESSION_NAME)) {
             Assert.assertEquals("the session list is built from the session definition alone, so every"
                     + " name the definition carries must draw exactly one shortcut row while nothing is"
@@ -149,11 +126,10 @@ public class SessionListDrawsEveryDefinedShortcutWithoutALiveSessionTest {
     }
 
     @Test
-    public void aPinnedNameWhoseSessionIsLiveStillDrawsExactlyOneRow() {
-        List<String> liveSessionNames =
-            Arrays.asList(FIRST_STORY_SESSION_NAME, FIRST_PROJECT_MANAGER_SESSION_NAME);
-        Set<String> alwaysNaSessionNames = new LinkedHashSet<>(Arrays.asList(
-            FIRST_STORY_SESSION_NAME, FIRST_PROJECT_MANAGER_SESSION_NAME));
+    public void aPinnedStoryNameWhoseSessionIsLiveStillDrawsExactlyOneRow() {
+        List<String> liveSessionNames = Collections.singletonList(FIRST_STORY_SESSION_NAME);
+        Set<String> alwaysNaSessionNames = new LinkedHashSet<>(
+            Collections.singletonList(FIRST_STORY_SESSION_NAME));
 
         List<SessionHierarchyRow> rows = builder.build(liveSessionNames,
             definitionNamingBothProjects(), NA, alwaysNaSessionNames);
@@ -161,9 +137,6 @@ public class SessionListDrawsEveryDefinedShortcutWithoutALiveSessionTest {
         Assert.assertEquals("a pinned name whose session is live must draw one row only, carrying the"
                 + " live session index. Actual:\n" + dump(rows),
             1, rowCountForSessionName(rows, FIRST_STORY_SESSION_NAME));
-        Assert.assertEquals("a pinned project-manager name whose session is live must draw one row"
-                + " only. Actual:\n" + dump(rows),
-            1, rowCountForSessionName(rows, FIRST_PROJECT_MANAGER_SESSION_NAME));
         Assert.assertEquals("no live session may be drawn twice; a repeated index makes next and"
                 + " previous session navigation visit it twice. Actual:\n" + dump(rows),
             Collections.emptyList(), sessionIndexesDrawnMoreThanOnce(rows));

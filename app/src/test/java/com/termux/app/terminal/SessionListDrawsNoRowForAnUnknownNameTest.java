@@ -13,8 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Locks the two session list properties that a released build violated: the project manager row of a
- * project is the first row inside that project's own group, and no row is drawn for a session name
+ * Locks the session list property that a released build violated: no row is drawn for a session name
  * that is neither a live session nor a name the session definition carries. The violation drew one
  * row per accumulated stored name, placed every one of those rows under the not-applicable header,
  * and left each of them with no live session to navigate to.
@@ -23,19 +22,18 @@ public class SessionListDrawsNoRowForAnUnknownNameTest {
 
     private static final String NA = "N/A";
     private static final String PROJECT_LABEL = "demoproject";
-    private static final String PROJECT_MANAGER_SESSION_NAME = "demoprojectpm";
     private static final String STORY_LABEL = "demostory";
     private static final String STORY_SESSION_NAME = "https://example.test/story-session";
 
     private final SessionHierarchyBuilder builder = new SessionHierarchyBuilder();
 
-    private static List<SessionDefinitionEntry> definitionWithAProjectManagerAndOneStorySession() {
+    private static List<SessionDefinitionEntry> definitionWithOneStorySession() {
         return Collections.singletonList(new SessionDefinitionEntry(PROJECT_LABEL, STORY_LABEL,
-            Arrays.asList(PROJECT_MANAGER_SESSION_NAME, STORY_SESSION_NAME)));
+            Collections.singletonList(STORY_SESSION_NAME)));
     }
 
     private static Set<String> namesTheDefinitionCarries() {
-        return new LinkedHashSet<>(Arrays.asList(PROJECT_MANAGER_SESSION_NAME, STORY_SESSION_NAME));
+        return new LinkedHashSet<>(Collections.singletonList(STORY_SESSION_NAME));
     }
 
     private static String dump(List<SessionHierarchyRow> rows) {
@@ -61,53 +59,13 @@ public class SessionListDrawsNoRowForAnUnknownNameTest {
     }
 
     @Test
-    public void theProjectManagerRowOfALiveProjectManagerSessionIsTheFirstRowInsideItsProjectGroup() {
-        List<String> liveSessionNames = Arrays.asList(STORY_SESSION_NAME, PROJECT_MANAGER_SESSION_NAME);
-
-        List<SessionHierarchyRow> rows =
-            builder.build(liveSessionNames, definitionWithAProjectManagerAndOneStorySession(), NA);
-
-        int projectHeaderIndex = indexOfProjectHeader(rows, PROJECT_LABEL);
-        Assert.assertTrue("the project group must have a header. Actual:\n" + dump(rows),
-            projectHeaderIndex >= 0);
-        SessionHierarchyRow firstRowInsideTheProject = rows.get(projectHeaderIndex + 1);
-        Assert.assertFalse("the first row inside the project group must be a session row, not a header."
-            + " Actual:\n" + dump(rows), firstRowInsideTheProject.isHeader());
-        Assert.assertEquals("the project manager session must be the first row inside its project group."
-                + " Actual:\n" + dump(rows),
-            PROJECT_MANAGER_SESSION_NAME, firstRowInsideTheProject.getSessionName());
-        Assert.assertEquals("the project manager row must carry the live session index."
-                + " Actual:\n" + dump(rows),
-            liveSessionNames.indexOf(PROJECT_MANAGER_SESSION_NAME),
-            firstRowInsideTheProject.getSessionIndex());
-        Assert.assertEquals("the project manager session must not be placed under the not-applicable"
-            + " header. Actual:\n" + dump(rows), -1, indexOfProjectHeader(rows, NA));
-    }
-
-    @Test
-    public void theProjectManagerRowStaysFirstInsideItsProjectGroupWhileItHasNoLiveSession() {
-        List<SessionHierarchyRow> rows = builder.build(Collections.singletonList(STORY_SESSION_NAME),
-            definitionWithAProjectManagerAndOneStorySession(), NA);
-
-        int projectHeaderIndex = indexOfProjectHeader(rows, PROJECT_LABEL);
-        Assert.assertTrue("the project group must have a header. Actual:\n" + dump(rows),
-            projectHeaderIndex >= 0);
-        SessionHierarchyRow firstRowInsideTheProject = rows.get(projectHeaderIndex + 1);
-        Assert.assertEquals("the project manager session must be the first row inside its project group"
-                + " even while it has no live session. Actual:\n" + dump(rows),
-            PROJECT_MANAGER_SESSION_NAME, firstRowInsideTheProject.getSessionName());
-        Assert.assertEquals("the project manager session must not be placed under the not-applicable"
-            + " header. Actual:\n" + dump(rows), -1, indexOfProjectHeader(rows, NA));
-    }
-
-    @Test
     public void everyDrawnSessionRowNamesEitherALiveSessionOrANameTheDefinitionCarries() {
-        List<String> liveSessionNames = Arrays.asList(STORY_SESSION_NAME, PROJECT_MANAGER_SESSION_NAME,
+        List<String> liveSessionNames = Arrays.asList(STORY_SESSION_NAME,
             "https://example.test/live-session-outside-the-definition");
         Set<String> definedNames = namesTheDefinitionCarries();
 
         List<SessionHierarchyRow> rows =
-            builder.build(liveSessionNames, definitionWithAProjectManagerAndOneStorySession(), NA);
+            builder.build(liveSessionNames, definitionWithOneStorySession(), NA);
 
         List<String> rowsNamingNeitherALiveSessionNorADefinedName = new ArrayList<>();
         for (SessionHierarchyRow row : rows) {
@@ -127,11 +85,10 @@ public class SessionListDrawsNoRowForAnUnknownNameTest {
     @Test
     public void aLiveSessionOutsideTheDefinitionKeepsExactlyOneRowUnderTheNotApplicableHeader() {
         String liveSessionOutsideTheDefinition = "https://example.test/live-session-outside-the-definition";
-        List<String> liveSessionNames = Arrays.asList(STORY_SESSION_NAME, PROJECT_MANAGER_SESSION_NAME,
-            liveSessionOutsideTheDefinition);
+        List<String> liveSessionNames = Arrays.asList(STORY_SESSION_NAME, liveSessionOutsideTheDefinition);
 
         List<SessionHierarchyRow> rows =
-            builder.build(liveSessionNames, definitionWithAProjectManagerAndOneStorySession(), NA);
+            builder.build(liveSessionNames, definitionWithOneStorySession(), NA);
 
         int rowCountForThatSession = 0;
         for (SessionHierarchyRow row : rows) {
