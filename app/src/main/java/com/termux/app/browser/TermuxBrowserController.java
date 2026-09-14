@@ -781,7 +781,18 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         applyOrientationLayout(isLandscape ? BrowserSplitOrientation.LANDSCAPE : BrowserSplitOrientation.PORTRAIT);
         if (mBrowserVisible) {
             applyBrowserSplitRatio(mSessionSplitRatios.resolveRatioToApply(mCurrentSessionName));
+        } else {
+            applyTerminalOnlyLayoutParams(isLandscape);
         }
+    }
+
+    private void applyTerminalOnlyLayoutParams(boolean landscape) {
+        View terminalView = mActivity.getTerminalView();
+        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) terminalView.getLayoutParams();
+        params.width = landscape ? 0 : LinearLayout.LayoutParams.MATCH_PARENT;
+        params.height = landscape ? LinearLayout.LayoutParams.MATCH_PARENT : 0;
+        params.weight = 1f;
+        terminalView.setLayoutParams(params);
     }
 
     private BrowserSplitOrientation resolveCurrentSplitOrientation() {
