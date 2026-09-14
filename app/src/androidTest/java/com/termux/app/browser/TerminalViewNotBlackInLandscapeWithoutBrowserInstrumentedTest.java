@@ -54,6 +54,7 @@ public class TerminalViewNotBlackInLandscapeWithoutBrowserInstrumentedTest {
 
             LinearLayout.LayoutParams paramsAfterPortrait =
                 (LinearLayout.LayoutParams) terminalView.getLayoutParams();
+            assertEquals(LinearLayout.LayoutParams.MATCH_PARENT, paramsAfterPortrait.width);
             assertEquals(0, paramsAfterPortrait.height);
             assertEquals(1f, paramsAfterPortrait.weight, 0f);
         });
