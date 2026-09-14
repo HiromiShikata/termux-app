@@ -48,12 +48,9 @@ public class SessionShortcutBarDrawsEveryDefinedShortcutWiringTest {
         Assert.assertTrue("both rows must be planned by the planner alone, so no runtime state decides"
                 + " whether a configured shortcut exists. Actual body:\n" + rebuildBody,
             rebuildBody.contains("mSessionShortcutBarPlanner.planRightToLeftShortcutRows("));
-        Assert.assertTrue("the upper row must be filled from the planned always-on session list."
+        Assert.assertTrue("the shortcuts row must be filled from the planned always-on session list."
                 + " Actual body:\n" + rebuildBody,
             rebuildBody.contains("rightToLeftShortcutRows.getAlwaysSessionShortcuts()"));
-        Assert.assertTrue("the lower row must be filled from the planned project manager session list."
-                + " Actual body:\n" + rebuildBody,
-            rebuildBody.contains("rightToLeftShortcutRows.getProjectManagerSessionShortcuts()"));
         Assert.assertTrue("the shortcut bar must render every planned shortcut, so the render list must"
                 + " come from the planned list alone. Actual body:\n" + fillShortcutRowBody,
             fillShortcutRowBody.contains(

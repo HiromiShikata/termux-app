@@ -10,9 +10,6 @@ import android.content.Context;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.termux.R;
-import com.termux.app.sessiondefinition.SessionDefinitionEntry;
-import com.termux.app.sessiondefinition.SessionDefinitionLoadResult;
-import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.session.PersistedSessionRestoreData;
@@ -43,10 +40,6 @@ public class ColdStartSessionCreationTest {
     private static final String ALWAYS_PRESENT_SESSION_NAME = "secretary";
     private static final String HIDDEN_ALWAYS_PRESENT_SESSION_NAME = "tdpmcli";
     private static final String PERSISTED_SESSION_NAME = "persisted-agent";
-    private static final String FIRST_PROJECT_LABEL = "alpha";
-    private static final String SECOND_PROJECT_LABEL = "beta";
-    private static final String FIRST_PROJECT_MANAGER_SESSION_NAME = "alphapm";
-    private static final String SECOND_PROJECT_MANAGER_SESSION_NAME = "betapm";
     private static final int SESSION_CAP = 16;
 
     private TermuxActivity activity;
@@ -123,20 +116,6 @@ public class ColdStartSessionCreationTest {
     }
 
     @Test
-    public void aProjectManagerSessionIsCreatedForEveryProjectWithoutAnyLoadSessionsAction() throws Exception {
-        cacheSessionDefinitionEntriesForProjects(FIRST_PROJECT_LABEL, SECOND_PROJECT_LABEL);
-
-        createStartupSessions();
-
-        assertNotNull("every project's project-manager session must be created on a cold start without the "
-                + "owner pressing Load Sessions; the live session names were " + liveSessionNames(),
-            service.getTermuxSessionForSessionName(FIRST_PROJECT_MANAGER_SESSION_NAME));
-        assertNotNull("every project's project-manager session must be created on a cold start without the "
-                + "owner pressing Load Sessions; the live session names were " + liveSessionNames(),
-            service.getTermuxSessionForSessionName(SECOND_PROJECT_MANAGER_SESSION_NAME));
-    }
-
-    @Test
     public void aHiddenAlwaysPresentSessionStaysUncreatedOnAColdStart() throws Exception {
         preferences.setAlwaysNaSessionNames(
             ALWAYS_PRESENT_SESSION_NAME + "\n" + HIDDEN_ALWAYS_PRESENT_SESSION_NAME);
@@ -166,19 +145,6 @@ public class ColdStartSessionCreationTest {
     private void persistOneSessionNamed(String sessionName) throws Exception {
         preferences.setPersistedSessions(persistedSessionSerializer.serialize(Collections.singletonList(
             new PersistedSessionRestoreData(null, sessionName, "/system/bin/sh", new String[0], false, "/"))));
-    }
-
-    private void cacheSessionDefinitionEntriesForProjects(String... projectLabels) throws Exception {
-        List<SessionDefinitionEntry> entries = new ArrayList<>();
-        for (String projectLabel : projectLabels) {
-            entries.add(new SessionDefinitionEntry(projectLabel, projectLabel + "-story",
-                Collections.singletonList("https://example.test/" + projectLabel)));
-        }
-        SessionDefinitionRepository repository = (SessionDefinitionRepository)
-            read(activity, TermuxActivity.class, "mSessionDefinitionRepository");
-        set(repository, SessionDefinitionRepository.class, "result",
-            new SessionDefinitionLoadResult(entries, projectLabels.length, Collections.emptyList()));
-        set(repository, SessionDefinitionRepository.class, "loaded", true);
     }
 
     private List<String> liveSessionNames() {

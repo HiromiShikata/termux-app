@@ -16,7 +16,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 
 import org.junit.Rule;
@@ -42,7 +41,7 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         GrantPermissionRule.grant(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
     @Test
-    public void renderedControlBarPlacesAlwaysSessionShortcutsAboveProjectManagerSessionShortcuts()
+    public void renderedControlBarPlacesAlwaysSessionShortcutsBelowControls()
             throws Exception {
         Context appContext = ApplicationProvider.getApplicationContext();
         Context context = new ContextThemeWrapper(appContext, R.style.Theme_TermuxActivity_DayNight_NoActionBar);
@@ -50,8 +49,6 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
         View controlBar = View.inflate(context, R.layout.session_list_bottom_sheet_control_bar, null);
         ShortcutFlowLayout alwaysSessionShortcutsContainer =
             controlBar.findViewById(R.id.session_list_bottom_sheet_always_session_shortcuts_container);
-        ShortcutFlowLayout projectManagerSessionShortcutsContainer = controlBar.findViewById(
-            R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
 
         Set<String> alwaysNaSessionNames = new LinkedHashSet<>(Arrays.asList("inbox", "review"));
         List<SessionDefinitionEntry> entries = Arrays.asList(
@@ -60,25 +57,17 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
             new SessionDefinitionEntry("beta", "storyB",
                 Collections.singletonList("https://example.test/b1")));
 
-        SessionShortcutBarPlanner planner =
-            new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
+        SessionShortcutBarPlanner planner = new SessionShortcutBarPlanner();
         SessionShortcutRows rightToLeftShortcutRows = planner.planRightToLeftShortcutRows(
             alwaysNaSessionNames, entries, Collections.emptyList());
         List<SessionShortcut> alwaysSessionRenderOrderShortcuts =
             SessionShortcutBarPlanner.renderOrderShortcuts(
                 rightToLeftShortcutRows.getAlwaysSessionShortcuts());
-        List<SessionShortcut> projectManagerRenderOrderShortcuts =
-            SessionShortcutBarPlanner.renderOrderShortcuts(
-                rightToLeftShortcutRows.getProjectManagerSessionShortcuts());
 
         assertEquals(Arrays.asList("review", "inbox"),
             targetSessionNames(alwaysSessionRenderOrderShortcuts));
-        assertEquals(Arrays.asList("betapm", "alphapm"),
-            targetSessionNames(projectManagerRenderOrderShortcuts));
 
         addShortcutButtons(context, alwaysSessionShortcutsContainer, alwaysSessionRenderOrderShortcuts);
-        addShortcutButtons(context, projectManagerSessionShortcutsContainer,
-            projectManagerRenderOrderShortcuts);
 
         int widthSpec = View.MeasureSpec.makeMeasureSpec(BAR_WIDTH, View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
@@ -102,21 +91,13 @@ public class SessionShortcutBarDeviceScreenshotInstrumentedTest {
             firstControlButton.getLeft() > controlsGroup.getPaddingLeft());
 
         int alwaysSessionRowTopInBar = topInBar(controlBar, alwaysSessionShortcutsContainer);
-        int projectManagerRowTopInBar = topInBar(controlBar, projectManagerSessionShortcutsContainer);
         assertTrue("the always-on session shortcuts must sit on their own row below the controls",
             alwaysSessionRowTopInBar >= controlsGroupBottomInBar);
-        assertTrue("the project manager session shortcuts must sit on a row below the always-on session"
-                + " shortcuts",
-            projectManagerRowTopInBar
-                >= alwaysSessionRowTopInBar + alwaysSessionShortcutsContainer.getHeight());
 
         assertRowFillsBarAndStaysWithinIt(controlBar, alwaysSessionShortcutsContainer);
-        assertRowFillsBarAndStaysWithinIt(controlBar, projectManagerSessionShortcutsContainer);
 
-        assertEquals("both always-on session shortcuts must be rendered on the upper row",
+        assertEquals("both always-on session shortcuts must be rendered",
             2, alwaysSessionShortcutsContainer.getChildCount());
-        assertEquals("both project manager session shortcuts must be rendered on the lower row",
-            2, projectManagerSessionShortcutsContainer.getChildCount());
 
         File outDir = sharedScreenshotDirectory();
         File out = new File(outDir, "session-shortcut-bar.png");

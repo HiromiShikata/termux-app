@@ -1,6 +1,5 @@
 package com.termux.app.terminal;
 
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 
 import org.junit.Assert;
@@ -21,8 +20,6 @@ public class DeletedSessionLeavesTheListTest {
 
     private static final String NA = "N/A";
     private static final String PROJECT_LABEL = "projectone";
-    private static final String PROJECT_MANAGER_SESSION_NAME = PROJECT_LABEL
-        + DefaultProjectManagerSessionPlanner.PROJECT_MANAGER_SESSION_NAME_SUFFIX;
     private static final String STORY_LABEL = "storyone";
     private static final String DELETED_STORY_SESSION_NAME = "https://example.test/story-one";
     private static final String KEPT_STORY_SESSION_NAME = "https://example.test/story-two";
@@ -77,22 +74,6 @@ public class DeletedSessionLeavesTheListTest {
         Assert.assertEquals("deleting one session must not remove the rows of the others. Actual:\n"
                 + dump(rows),
             1, rowCountForSessionName(rows, KEPT_STORY_SESSION_NAME));
-        Assert.assertEquals("the project-manager row of the project is not the deleted name and must"
-                + " stay. Actual:\n" + dump(rows),
-            1, rowCountForSessionName(rows, PROJECT_MANAGER_SESSION_NAME));
-    }
-
-    @Test
-    public void aDeletedProjectManagerSessionNameDrawsNoRowWhileNoSessionIsLiveForIt() {
-        Set<String> deletedSessionNames = Collections.singleton(PROJECT_MANAGER_SESSION_NAME);
-
-        List<SessionHierarchyRow> rows = builder.build(Collections.emptyList(), definition(), NA,
-            Collections.emptySet(), deletedSessionNames);
-
-        Assert.assertEquals("a project-manager row is drawn from a derived name, and the owner can"
-                + " delete that session too, so its row must leave the list as well. Actual:\n"
-                + dump(rows),
-            0, rowCountForSessionName(rows, PROJECT_MANAGER_SESSION_NAME));
     }
 
     @Test

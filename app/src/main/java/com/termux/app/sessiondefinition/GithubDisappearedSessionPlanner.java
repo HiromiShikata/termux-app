@@ -10,16 +10,12 @@ import java.util.Set;
 
 public final class GithubDisappearedSessionPlanner {
 
-    private final DefaultProjectManagerSessionPlanner defaultProjectManagerSessionPlanner =
-        new DefaultProjectManagerSessionPlanner();
-
     @NonNull
     public Set<String> collectSessionNamesInList(@NonNull List<SessionDefinitionEntry> currentEntries) {
         Set<String> namesInList = new HashSet<>();
         for (SessionDefinitionEntry entry : currentEntries) {
             namesInList.addAll(entry.getUrls());
         }
-        namesInList.addAll(defaultProjectManagerSessionPlanner.planSessionNames(currentEntries));
         return namesInList;
     }
 

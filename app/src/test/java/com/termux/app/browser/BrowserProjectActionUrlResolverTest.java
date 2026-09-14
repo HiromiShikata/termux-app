@@ -90,16 +90,16 @@ public class BrowserProjectActionUrlResolverTest {
     }
 
     @Test
-    public void resolvesProjectActionUrlsForProjectManagerStyleSessionNameNotInAnyUrlList() {
+    public void returnsEmptyForSessionNameThatDoesNotMatchAnyDefinitionUrl() {
         List<SessionDefinitionEntry> entries = Collections.singletonList(
             entry("project-a", "story-1", "session-a",
                 "https://overview.a/", "https://console.a/", "https://newissue.a/"));
 
         BrowserProjectActionUrls actionUrls = resolverFor(entries).resolveForSessionName("project-apm");
 
-        Assert.assertEquals("https://overview.a/", actionUrls.getOverviewUrl());
-        Assert.assertEquals("https://console.a/", actionUrls.getTdpmConsoleUrl());
-        Assert.assertEquals("https://newissue.a/", actionUrls.getNewIssueUrl());
+        Assert.assertNull(actionUrls.getOverviewUrl());
+        Assert.assertNull(actionUrls.getTdpmConsoleUrl());
+        Assert.assertNull(actionUrls.getNewIssueUrl());
     }
 
     @Test

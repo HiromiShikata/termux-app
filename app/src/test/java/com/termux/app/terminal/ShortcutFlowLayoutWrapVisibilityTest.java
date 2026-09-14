@@ -13,15 +13,12 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
-import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -135,19 +132,15 @@ public class ShortcutFlowLayoutWrapVisibilityTest {
     }
 
     private List<SessionShortcut> renderOrderShortcutsWithSecretaryAndManyProjects() {
-        List<SessionDefinitionEntry> entries = new ArrayList<>();
-        for (int index = 0; index < 12; index++) {
-            String projectLabel = "project" + index;
-            entries.add(new SessionDefinitionEntry(projectLabel, "story",
-                Collections.singletonList("https://example.test/" + index)));
-        }
         Set<String> alwaysNaSessionNames = new LinkedHashSet<>();
         alwaysNaSessionNames.add("secretary");
+        for (int index = 0; index < 12; index++) {
+            alwaysNaSessionNames.add("na-session-" + index);
+        }
 
-        SessionShortcutBarPlanner planner =
-            new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
+        SessionShortcutBarPlanner planner = new SessionShortcutBarPlanner();
         List<SessionShortcut> rightToLeftShortcuts =
-            planner.planRightToLeftShortcuts(alwaysNaSessionNames, entries);
+            planner.planRightToLeftShortcuts(alwaysNaSessionNames, Collections.emptyList());
         return SessionShortcutBarPlanner.renderOrderShortcuts(rightToLeftShortcuts);
     }
 

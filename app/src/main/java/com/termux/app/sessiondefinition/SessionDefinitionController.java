@@ -32,8 +32,6 @@ public final class SessionDefinitionController {
         new SessionDefinitionDisappearedSessionPlanner();
     private final GithubDisappearedSessionPlanner githubDisappearedSessionPlanner =
         new GithubDisappearedSessionPlanner();
-    private final DefaultProjectManagerSessionPlanner defaultProjectManagerSessionPlanner =
-        new DefaultProjectManagerSessionPlanner();
     private final SessionDefinitionDuplicateSessionPlanner duplicateSessionPlanner =
         new SessionDefinitionDuplicateSessionPlanner();
     private final SessionDefinitionCapCountPlanner capCountPlanner =
@@ -79,24 +77,6 @@ public final class SessionDefinitionController {
                 setLoadingProgressVisible(false);
             }
         });
-    }
-
-    public void restoreProjectManagerSessionsOnColdStart() {
-        List<SessionDefinitionEntry> cachedEntries = repository.getCachedEntries();
-        if (!cachedEntries.isEmpty()) {
-            restoreProjectManagerSessions(cachedEntries);
-            return;
-        }
-        repository.load(activity.getPreferences().getSessionDefinitionUrl().trim(),
-            () -> restoreProjectManagerSessions(repository.getCachedEntries()));
-    }
-
-    private void restoreProjectManagerSessions(@NonNull List<SessionDefinitionEntry> entries) {
-        List<String> projectManagerSessionNames = defaultProjectManagerSessionPlanner.planSessionNames(entries);
-        if (projectManagerSessionNames.isEmpty()) {
-            return;
-        }
-        activity.getTermuxTerminalSessionClient().restoreAlwaysPresentSessions(projectManagerSessionNames);
     }
 
     private void notifyPartialLoad(SessionDefinitionLoadResult result) {
@@ -165,9 +145,6 @@ public final class SessionDefinitionController {
             activity.showToast(activity.getString(R.string.msg_session_limit_exceeded,
                 configuredLimit, limitPlan.getDroppedSessionCount()), true);
         }
-
-        activity.getTermuxTerminalSessionClient()
-            .restoreAlwaysPresentSessions(defaultProjectManagerSessionPlanner.planSessionNames(entries));
 
         activity.getTermuxTerminalSessionClient()
             .ensureCurrentSessionValidAfterRebuild(displayedSessionOrderBeforeReload);
@@ -263,7 +240,6 @@ public final class SessionDefinitionController {
                 sessionName, terminalSession.isRunning()));
         }
         Set<String> protectedSessionNames = new HashSet<>(alwaysPresentSessionNames());
-        protectedSessionNames.addAll(defaultProjectManagerSessionPlanner.planSessionNames(currentEntries));
         List<String> sessionNamesToRemove = new ArrayList<>(disappearedSessionPlanner.planSessionNamesToRemove(
             currentEntries, protectedSessionNames, liveSessions));
         sessionNamesToRemove.addAll(githubDisappearedSessionPlanner.planGithubSessionNamesToRemove(

@@ -32,8 +32,7 @@ public class SessionHierarchyBuilderSessionCountTest {
                 "https://example.test/b1"),
             entries, NA);
 
-        Assert.assertEquals("three story sessions plus the project-manager row each of the two projects"
-            + " draws", 5, SessionHierarchyBuilder.totalSessionCount(rows));
+        Assert.assertEquals("three story sessions", 3, SessionHierarchyBuilder.totalSessionCount(rows));
     }
 
     @Test
@@ -67,10 +66,10 @@ public class SessionHierarchyBuilderSessionCountTest {
             entries, NA);
 
         Map<String, Integer> countByProject = SessionHierarchyBuilder.sessionCountByProjectLabel(rows);
-        Assert.assertEquals("two story sessions plus the project-manager row",
-            Integer.valueOf(3), countByProject.get("projectOne"));
-        Assert.assertEquals("one story session plus the project-manager row",
-            Integer.valueOf(2), countByProject.get("projectTwo"));
+        Assert.assertEquals("two story sessions",
+            Integer.valueOf(2), countByProject.get("projectOne"));
+        Assert.assertEquals("one story session",
+            Integer.valueOf(1), countByProject.get("projectTwo"));
     }
 
     @Test
@@ -87,8 +86,8 @@ public class SessionHierarchyBuilderSessionCountTest {
             entries, NA);
 
         Map<String, Integer> countByProject = SessionHierarchyBuilder.sessionCountByProjectLabel(rows);
-        Assert.assertEquals("three story sessions across two stories plus the project-manager row",
-            Integer.valueOf(4), countByProject.get("projectOne"));
+        Assert.assertEquals("three story sessions across two stories",
+            Integer.valueOf(3), countByProject.get("projectOne"));
     }
 
     @Test
@@ -103,8 +102,8 @@ public class SessionHierarchyBuilderSessionCountTest {
 
         Map<String, Integer> countByProject = SessionHierarchyBuilder.sessionCountByProjectLabel(rows);
         Assert.assertEquals(Integer.valueOf(2), countByProject.get(NA));
-        Assert.assertEquals("one story session plus the project-manager row",
-            Integer.valueOf(2), countByProject.get("projectOne"));
+        Assert.assertEquals("one story session",
+            Integer.valueOf(1), countByProject.get("projectOne"));
     }
 
     @Test
@@ -115,16 +114,16 @@ public class SessionHierarchyBuilderSessionCountTest {
 
         List<SessionHierarchyRow> before = builder.build(
             Collections.singletonList("https://example.test/a1"), entries, NA);
-        Assert.assertEquals(3, SessionHierarchyBuilder.totalSessionCount(before));
-        Assert.assertEquals("both defined story sessions plus the project-manager row",
-            Integer.valueOf(3),
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(before));
+        Assert.assertEquals("both defined story sessions",
+            Integer.valueOf(2),
             SessionHierarchyBuilder.sessionCountByProjectLabel(before).get("projectOne"));
 
         List<SessionHierarchyRow> after = builder.build(
             Arrays.asList("https://example.test/a1", "https://example.test/a2"), entries, NA);
-        Assert.assertEquals(3, SessionHierarchyBuilder.totalSessionCount(after));
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(after));
         Assert.assertEquals("the count does not change when the second session becomes live",
-            Integer.valueOf(3),
+            Integer.valueOf(2),
             SessionHierarchyBuilder.sessionCountByProjectLabel(after).get("projectOne"));
     }
 
@@ -136,13 +135,13 @@ public class SessionHierarchyBuilderSessionCountTest {
 
         List<SessionHierarchyRow> before = builder.build(
             Arrays.asList("https://example.test/a1", "https://example.test/a2"), entries, NA);
-        Assert.assertEquals(3, SessionHierarchyBuilder.totalSessionCount(before));
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(before));
 
         List<SessionHierarchyRow> after = builder.build(
             Collections.singletonList("https://example.test/a1"), entries, NA);
-        Assert.assertEquals(3, SessionHierarchyBuilder.totalSessionCount(after));
-        Assert.assertEquals("both defined story sessions plus the project-manager row survive the"
-            + " release of one live session object", Integer.valueOf(3),
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(after));
+        Assert.assertEquals("both defined story sessions survive the release of one live session object",
+            Integer.valueOf(2),
             SessionHierarchyBuilder.sessionCountByProjectLabel(after).get("projectOne"));
     }
 
@@ -231,8 +230,8 @@ public class SessionHierarchyBuilderSessionCountTest {
         List<SessionHierarchyRow> countedRows =
             SessionHierarchyBuilder.filterCollapsedProjectSessions(rows, collapsed);
 
-        Assert.assertEquals("only the expanded project's story session and its project-manager row are"
-            + " counted", 2, SessionHierarchyBuilder.totalSessionCount(countedRows));
+        Assert.assertEquals("only the expanded project's story session is counted",
+            1, SessionHierarchyBuilder.totalSessionCount(countedRows));
         Assert.assertEquals(1, SessionHierarchyBuilder.pendingCallSessionCount(
             countedRows, sessionNames, pendingCallSessionNames));
     }
@@ -255,9 +254,9 @@ public class SessionHierarchyBuilderSessionCountTest {
         Map<String, Integer> countByProject =
             SessionHierarchyBuilder.sessionCountByProjectLabel(countedRows);
         Assert.assertEquals(Integer.valueOf(0), countByProject.get("collapsedProject"));
-        Assert.assertEquals("two story sessions plus the project-manager row",
-            Integer.valueOf(3), countByProject.get("expandedProject"));
-        Assert.assertEquals(3, SessionHierarchyBuilder.totalSessionCount(countedRows));
+        Assert.assertEquals("two story sessions",
+            Integer.valueOf(2), countByProject.get("expandedProject"));
+        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(countedRows));
     }
 
     @Test
@@ -296,8 +295,8 @@ public class SessionHierarchyBuilderSessionCountTest {
         Map<String, Integer> countByProject =
             SessionHierarchyBuilder.sessionCountByProjectLabel(countedRows);
         Assert.assertEquals(Integer.valueOf(0), countByProject.get("collapsedProject"));
-        Assert.assertEquals("the remaining story session plus the project-manager row",
-            Integer.valueOf(2), countByProject.get("expandedProject"));
-        Assert.assertEquals(2, SessionHierarchyBuilder.totalSessionCount(countedRows));
+        Assert.assertEquals("the remaining story session",
+            Integer.valueOf(1), countByProject.get("expandedProject"));
+        Assert.assertEquals(1, SessionHierarchyBuilder.totalSessionCount(countedRows));
     }
 }

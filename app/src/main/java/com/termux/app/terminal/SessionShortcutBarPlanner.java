@@ -3,7 +3,6 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 
 import java.util.ArrayList;
@@ -13,12 +12,6 @@ import java.util.List;
 import java.util.Set;
 
 public final class SessionShortcutBarPlanner {
-
-    private final DefaultProjectManagerSessionPlanner projectManagerSessionPlanner;
-
-    public SessionShortcutBarPlanner(@NonNull DefaultProjectManagerSessionPlanner projectManagerSessionPlanner) {
-        this.projectManagerSessionPlanner = projectManagerSessionPlanner;
-    }
 
     @NonNull
     public List<SessionShortcut> planRightToLeftShortcuts(@NonNull Set<String> alwaysNaSessionNames,
@@ -30,11 +23,8 @@ public final class SessionShortcutBarPlanner {
     public List<SessionShortcut> planRightToLeftShortcuts(@NonNull Set<String> alwaysNaSessionNames,
                                                           @NonNull List<SessionDefinitionEntry> entries,
                                                           @NonNull List<String> liveSessionNames) {
-        SessionShortcutRows rows = planRightToLeftShortcutRows(alwaysNaSessionNames, entries,
-            liveSessionNames);
-        List<SessionShortcut> rightToLeftShortcuts = new ArrayList<>(rows.getAlwaysSessionShortcuts());
-        rightToLeftShortcuts.addAll(rows.getProjectManagerSessionShortcuts());
-        return rightToLeftShortcuts;
+        return new ArrayList<>(planRightToLeftShortcutRows(alwaysNaSessionNames, entries,
+            liveSessionNames).getAlwaysSessionShortcuts());
     }
 
     @NonNull
@@ -53,20 +43,7 @@ public final class SessionShortcutBarPlanner {
             }
             alwaysSessionShortcuts.add(new SessionShortcut(trimmedName, targetSessionName));
         }
-        List<SessionShortcut> projectManagerSessionShortcuts = new ArrayList<>();
-        Set<String> seenProjectLabels = new LinkedHashSet<>();
-        for (SessionDefinitionEntry entry : entries) {
-            String projectLabel = entry.getGroupLabel();
-            String pmSessionName = projectManagerSessionPlanner.sessionNameForProjectLabel(projectLabel);
-            if (pmSessionName == null) {
-                continue;
-            }
-            if (!seenProjectLabels.add(projectLabel)) {
-                continue;
-            }
-            projectManagerSessionShortcuts.add(new SessionShortcut(projectLabel.trim(), pmSessionName));
-        }
-        return new SessionShortcutRows(alwaysSessionShortcuts, projectManagerSessionShortcuts);
+        return new SessionShortcutRows(alwaysSessionShortcuts);
     }
 
     @NonNull

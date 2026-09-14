@@ -24,7 +24,6 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.browser.TermuxBrowserController;
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.view.KeyboardUtils;
@@ -57,9 +56,7 @@ public class SessionListBottomSheetController {
     private final View mGoogleButton;
     private final ImageButton mHiddenToggleButton;
     private final ShortcutFlowLayout mAlwaysSessionShortcutsContainer;
-    private final ShortcutFlowLayout mProjectManagerSessionShortcutsContainer;
-    private final SessionShortcutBarPlanner mSessionShortcutBarPlanner =
-        new SessionShortcutBarPlanner(new DefaultProjectManagerSessionPlanner());
+    private final SessionShortcutBarPlanner mSessionShortcutBarPlanner = new SessionShortcutBarPlanner();
 
     private boolean mAdapterBound;
     private float mDragStartRawY;
@@ -89,8 +86,6 @@ public class SessionListBottomSheetController {
         this.mHiddenToggleButton = activity.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button);
         this.mAlwaysSessionShortcutsContainer =
             activity.findViewById(R.id.session_list_bottom_sheet_always_session_shortcuts_container);
-        this.mProjectManagerSessionShortcutsContainer =
-            activity.findViewById(R.id.session_list_bottom_sheet_project_manager_session_shortcuts_container);
         bindActionButtons();
         bindHiddenToggleButton();
         bindDragToDismiss();
@@ -469,7 +464,6 @@ public class SessionListBottomSheetController {
 
     private void rebuildSessionShortcuts(@NonNull TermuxSessionsListViewController listController) {
         mAlwaysSessionShortcutsContainer.removeAllViews();
-        mProjectManagerSessionShortcutsContainer.removeAllViews();
         TermuxService service = mActivity.getTermuxService();
         if (service == null) {
             return;
@@ -480,8 +474,6 @@ public class SessionListBottomSheetController {
                 listController.getEntries(), liveSessionNames(service));
         fillShortcutRow(mAlwaysSessionShortcutsContainer,
             rightToLeftShortcutRows.getAlwaysSessionShortcuts(), service, listController);
-        fillShortcutRow(mProjectManagerSessionShortcutsContainer,
-            rightToLeftShortcutRows.getProjectManagerSessionShortcuts(), service, listController);
     }
 
     private void fillShortcutRow(@NonNull ShortcutFlowLayout row,

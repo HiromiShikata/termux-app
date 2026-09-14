@@ -3,7 +3,6 @@ package com.termux.app.terminal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.termux.app.sessiondefinition.DefaultProjectManagerSessionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
@@ -24,8 +23,6 @@ public final class SessionHierarchyBuilder {
     private static final String HTTPS_SCHEME_PREFIX = "https://";
 
     private final SessionDefinitionEntryMatcher mMatcher = new SessionDefinitionEntryMatcher();
-    private final DefaultProjectManagerSessionPlanner mDefaultProjectManagerSessionPlanner =
-        new DefaultProjectManagerSessionPlanner();
 
     @NonNull
     public List<SessionHierarchyRow> build(@NonNull List<String> sessionNames,
@@ -53,34 +50,19 @@ public final class SessionHierarchyBuilder {
             return flatten(sessionNames);
         }
 
-        Map<String, String> projectLabelByManagerSessionName = projectLabelByManagerSessionName(entries);
         Set<String> notApplicableDefinitionNames = new LinkedHashSet<>();
-        for (String managerSessionName : projectLabelByManagerSessionName.keySet()) {
-            if (isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)) {
-                notApplicableDefinitionNames.add(managerSessionName);
-            }
-        }
 
         Map<String, Integer> sessionIndexByName = new LinkedHashMap<>();
         Map<String, Integer> liveSessionIndexByName = new LinkedHashMap<>();
-        Map<String, Integer> managerSessionIndexByProjectLabel = new LinkedHashMap<>();
         List<Integer> unmatchedSessionIndexes = new ArrayList<>();
         for (int sessionIndex = 0; sessionIndex < sessionNames.size(); sessionIndex++) {
             String sessionName = sessionNames.get(sessionIndex);
             if (sessionName != null && !liveSessionIndexByName.containsKey(sessionName)) {
                 liveSessionIndexByName.put(sessionName, sessionIndex);
             }
-            if (!isAlwaysNaSessionName(sessionName, alwaysNaSessionNames)
-                    && projectLabelByManagerSessionName.containsKey(sessionName)) {
-                String projectLabel = projectLabelByManagerSessionName.get(sessionName);
-                if (!managerSessionIndexByProjectLabel.containsKey(projectLabel)) {
-                    managerSessionIndexByProjectLabel.put(projectLabel, sessionIndex);
-                    continue;
-                }
-            }
             if (isAlwaysNaSessionName(sessionName, alwaysNaSessionNames)
                     || (mMatcher.findEntryForSessionName(entries, sessionName) == null
-                        && !isOrphanedProjectSessionName(sessionName))) {
+                        && !hasUrlScheme(sessionName))) {
                 unmatchedSessionIndexes.add(sessionIndex);
                 continue;
             }
@@ -117,10 +99,6 @@ public final class SessionHierarchyBuilder {
                 if (isAlwaysNaSessionName(url, alwaysNaSessionNames)) {
                     placedNames.add(url);
                     notApplicableDefinitionNames.add(url);
-                    continue;
-                }
-                if (projectLabelByManagerSessionName.containsKey(url)) {
-                    placedNames.add(url);
                     continue;
                 }
                 if (!placedNames.add(url)) {
@@ -166,16 +144,6 @@ public final class SessionHierarchyBuilder {
             rows.add(SessionHierarchyRow.projectHeader(projectLabel,
                 overviewUrlByProject.get(projectLabel), tdpmConsoleUrlByProject.get(projectLabel),
                 newIssueUrlByProject.get(projectLabel)));
-            String managerSessionName = drawableManagerSessionNameOwnedByProject(projectLabel,
-                projectLabelByManagerSessionName, alwaysNaSessionNames);
-            if (managerSessionName != null
-                    && !isDeletedWithoutALiveSession(managerSessionName, deletedSessionNames,
-                        liveSessionIndexByName)) {
-                Integer managerSessionIndex = managerSessionIndexByProjectLabel.get(projectLabel);
-                rows.add(managerSessionIndex == null
-                    ? definitionBackedSessionRow(liveSessionIndexByName, managerSessionName)
-                    : sessionRow(sessionNames, managerSessionIndex));
-            }
             Map<String, List<String>> storiesInProject = sessionNamesByProjectAndStory.get(projectLabel);
             if (storiesInProject == null) {
                 continue;
@@ -200,30 +168,6 @@ public final class SessionHierarchyBuilder {
     }
 
     public static final int NO_LIVE_SESSION_INDEX = -1;
-
-    /**
-     * A project-manager session name is derived from a project label, so the session definition
-     * entries do not have to carry it, and a project can be named by the definition while no live
-     * session exists for its project-manager name. Such a project still owns a project-manager row,
-     * drawn from the derived name the same way a story row is drawn from a name the definition lists.
-     * The derived name drops the surrounding whitespace of the project label, so two labels that
-     * differ only by whitespace derive one name and only the label that owns that name draws its row.
-     * A name the owner pinned to the not-applicable group keeps its single row there instead.
-     */
-    @Nullable
-    private String drawableManagerSessionNameOwnedByProject(
-            @NonNull String projectLabel,
-            @NonNull Map<String, String> projectLabelByManagerSessionName,
-            @NonNull Set<String> alwaysNaSessionNames) {
-        String managerSessionName =
-            mDefaultProjectManagerSessionPlanner.sessionNameForProjectLabel(projectLabel);
-        if (managerSessionName == null
-                || !projectLabel.equals(projectLabelByManagerSessionName.get(managerSessionName))) {
-            return null;
-        }
-        return isAlwaysNaSessionName(managerSessionName, alwaysNaSessionNames)
-            ? null : managerSessionName;
-    }
 
     /**
      * The owner deleting a session records the name as removed and ends the session, so a name the
@@ -557,26 +501,12 @@ public final class SessionHierarchyBuilder {
         return collapsedProjectSessionNames;
     }
 
-    @NonNull
-    private Map<String, String> projectLabelByManagerSessionName(@NonNull List<SessionDefinitionEntry> entries) {
-        Map<String, String> projectLabelByManagerSessionName = new LinkedHashMap<>();
-        for (SessionDefinitionEntry entry : entries) {
-            String managerSessionName =
-                mDefaultProjectManagerSessionPlanner.sessionNameForProjectLabel(entry.getGroupLabel());
-            if (managerSessionName == null) {
-                continue;
-            }
-            projectLabelByManagerSessionName.putIfAbsent(managerSessionName, entry.getGroupLabel());
-        }
-        return projectLabelByManagerSessionName;
-    }
-
     private static boolean isAlwaysNaSessionName(@Nullable String sessionName,
                                                  @NonNull Set<String> alwaysNaSessionNames) {
         return sessionName != null && alwaysNaSessionNames.contains(sessionName);
     }
 
-    private static boolean isOrphanedProjectSessionName(@Nullable String sessionName) {
+    private static boolean hasUrlScheme(@Nullable String sessionName) {
         if (sessionName == null) {
             return false;
         }
