@@ -1,4 +1,4 @@
-package com.termux.app.terminal;
+package com.termux.app.browser;
 
 import static org.junit.Assert.assertEquals;
 
@@ -10,7 +10,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.termux.app.RetryRule;
 import com.termux.app.TermuxActivity;
-import com.termux.app.browser.TermuxBrowserController;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,6 +32,8 @@ public class TerminalViewNotBlackInLandscapeWithoutBrowserInstrumentedTest {
             View terminalView = activity.getTerminalView();
             LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) terminalView.getLayoutParams();
             assertEquals(LinearLayout.LayoutParams.MATCH_PARENT, params.height);
+            assertEquals(0, params.width);
+            assertEquals(1f, params.weight, 0f);
         });
     }
 
@@ -43,12 +44,18 @@ public class TerminalViewNotBlackInLandscapeWithoutBrowserInstrumentedTest {
             TermuxBrowserController browserController = activity.getTermuxBrowserController();
 
             browserController.reconfigureBrowserSplitForOrientation(true);
-            browserController.reconfigureBrowserSplitForOrientation(false);
 
             View terminalView = activity.getTerminalView();
-            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) terminalView.getLayoutParams();
-            assertEquals(0, params.height);
-            assertEquals(1f, params.weight, 0f);
+            LinearLayout.LayoutParams paramsAfterLandscape =
+                (LinearLayout.LayoutParams) terminalView.getLayoutParams();
+            assertEquals(LinearLayout.LayoutParams.MATCH_PARENT, paramsAfterLandscape.height);
+
+            browserController.reconfigureBrowserSplitForOrientation(false);
+
+            LinearLayout.LayoutParams paramsAfterPortrait =
+                (LinearLayout.LayoutParams) terminalView.getLayoutParams();
+            assertEquals(0, paramsAfterPortrait.height);
+            assertEquals(1f, paramsAfterPortrait.weight, 0f);
         });
     }
 }
