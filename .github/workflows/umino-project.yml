@@ -202,7 +202,7 @@ jobs:
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           github.event.pull_request.user.login != 'app/dependabot'
         with:
-          exclude-branches: 'release/**, dependabot/**, dependabot-**, project-common/**, renovate/**'
+          exclude-branches: 'release/**, dependabot/**, dependabot-**, project-common/**, renovate/**, fleet-live-to-main'
           github-token: ${{ steps.app-token.outputs.token }}
           loose-matching: true
           skip-linked-issues-check-label: ''
