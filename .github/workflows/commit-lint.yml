@@ -52,6 +52,12 @@ jobs:
         with:
           exclude-branches: 'release/**, dependabot/**, project-common/**'
           loose-matching: true
+      - name: Check for bare issue-number shorthand
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          git log --format=%s "origin/${{ github.event.repository.default_branch }}..HEAD" > "$RUNNER_TEMP/commit-subjects.txt"
+          "$GITHUB_WORKSPACE/scripts/reject-bare-issue-number-references.sh" "$RUNNER_TEMP/commit-subjects.txt"
       - name: Check PR title follows conventional commit format
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6
         env:
