@@ -196,15 +196,22 @@ jobs:
           client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
           private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
           owner: HiromiShikata
-      - uses: nearform-actions/github-action-check-linked-issues@7140e2e01aa0c18b8ac61bddf5e89abde1ca760e
-        id: check-linked-issues
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: >-
+          github.event.pull_request.user.login != 'dependabot[bot]' &&
+          github.event.pull_request.user.login != 'app/dependabot'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         if: >-
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           github.event.pull_request.user.login != 'app/dependabot'
         with:
-          exclude-branches: 'release/**, dependabot/**, dependabot-**, project-common/**, renovate/**, fleet-live-to-main'
-          github-token: ${{ steps.app-token.outputs.token }}
-          loose-matching: true
-          skip-linked-issues-check-label: ''
-      - name: Get the output
-        run: echo "How many linked issues? ${{ steps.check-linked-issues.outputs.linked_issues_count }}"
+          node-version: 24
+      - name: Check linked issues in pull request description
+        id: check-linked-issues
+        if: >-
+          github.event.pull_request.user.login != 'dependabot[bot]' &&
+          github.event.pull_request.user.login != 'app/dependabot'
+        run: bash scripts/check-pull-request-linked-issues-runner.sh
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ACCOUNT_OWNER: HiromiShikata
