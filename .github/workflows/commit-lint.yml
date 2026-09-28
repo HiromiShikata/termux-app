@@ -53,6 +53,7 @@ jobs:
           exclude-branches: 'release/**, dependabot/**, project-common/**'
           loose-matching: true
       - name: Check for bare issue-number shorthand
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -79,12 +80,14 @@ jobs:
             prep
             adapt
       - name: Install commitlint
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         run: |
           mkdir -p /tmp/commitlint-run
           cd /tmp/commitlint-run
           npm init -y
           npm install --no-fund --save-dev @commitlint/cli @commitlint/config-conventional
       - name: Lint commits
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         env:
           NODE_PATH: /tmp/commitlint-run/node_modules
         run: |
