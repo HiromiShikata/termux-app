@@ -150,8 +150,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         if: >-
-          ((github.event_name == 'issues' && github.event.issue.state == 'open') ||
-          (github.event_name == 'pull_request' && github.event.pull_request.state == 'open')) &&
+          github.event_name == 'issues' && github.event.issue.state == 'open' &&
           (github.event.action == 'opened' || github.event.action == 'reopened')
 
       - name: Auto assign issue to owner
