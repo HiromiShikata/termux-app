@@ -51,58 +51,29 @@ jobs:
           client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
           private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
           owner: HiromiShikata
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: >-
+          github.event_name == 'issues' && github.event.issue.state == 'open' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        if: >-
+          github.event_name == 'issues' && github.event.issue.state == 'open' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+        with:
+          node-version: 24
       - name: Move issue to ${{ env.awaiting_workspace }}
         run: |
-          RESOURCE_NODE_ID="${{ github.event.pull_request.node_id || github.event.issue.node_id }}"
-          PROJECT_V2_ID="${{ env.project_v2_id }}"
-
-          echo "RESOURCE_NODE_ID=$RESOURCE_NODE_ID"
-          echo "PROJECT_V2_ID=$PROJECT_V2_ID"
-
-          ADD_RESPONSE=$(gh api graphql \
-            -f query='mutation($projectId:ID!,$contentId:ID!){addProjectV2ItemById(input:{projectId:$projectId,contentId:$contentId}){item{id}}}' \
-            -f projectId="$PROJECT_V2_ID" \
-            -f contentId="$RESOURCE_NODE_ID" 2>&1 || true)
-
-          echo "addProjectV2ItemById response: $ADD_RESPONSE"
-
-          ITEM_ID=$(echo "$ADD_RESPONSE" | jq -r '.data.addProjectV2ItemById.item.id // empty' 2>/dev/null || echo "")
-
-          if [ -z "$ITEM_ID" ]; then
-            FALLBACK_RESPONSE=$(gh api graphql \
-              -f query='query($nodeId:ID!){node(id:$nodeId){...on PullRequest{projectItems(first:10){nodes{id project{id}}}}...on Issue{projectItems(first:10){nodes{id project{id}}}}}}' \
-              -f nodeId="$RESOURCE_NODE_ID" 2>&1 || true)
-            echo "projectItems fallback response: $FALLBACK_RESPONSE"
-            ITEM_ID=$(echo "$FALLBACK_RESPONSE" | jq -r ".data.node.projectItems.nodes[]? | select(.project.id == \"$PROJECT_V2_ID\") | .id" 2>/dev/null || echo "")
-          fi
-
-          if [ -z "$ITEM_ID" ]; then
-            echo "Failed to resolve project item ID for $RESOURCE_NODE_ID in project $PROJECT_V2_ID"
-            exit 1
-          fi
-
-          echo "Resolved ITEM_ID=$ITEM_ID"
-
-          if [ "${{ github.event.action }}" = "opened" ]; then
-            EXISTING_STATUS=$(gh api graphql \
-              -f query='query($itemId:ID!){node(id:$itemId){... on ProjectV2Item{fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}' \
-              -f itemId="$ITEM_ID" \
-              --jq '.data.node.fieldValueByName.name // ""')
-
-            if [ -n "$EXISTING_STATUS" ]; then
-              echo "Status is already $EXISTING_STATUS; keeping it instead of overwriting with ${{ env.awaiting_workspace }}"
-              exit 0
-            fi
-          fi
-
-          gh api graphql \
-            -f query='mutation($projectId:ID!,$itemId:ID!,$fieldId:ID!,$optionId:String!){updateProjectV2ItemFieldValue(input:{projectId:$projectId,itemId:$itemId,fieldId:$fieldId,value:{singleSelectOptionId:$optionId}}){projectV2Item{id}}}' \
-            -f projectId="$PROJECT_V2_ID" \
-            -f itemId="$ITEM_ID" \
-            -f fieldId="PVTSSF_lAHOAGJHa84AFWnrzgDFcxE" \
-            -f optionId="d1c19cce"
+          cd scripts/typescript
+          npm i
+          npx tsx src/adapter/entry-points/cli/add-project-board-item.ts
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          PROJECT_V2_ID: ${{ env.project_v2_id }}
+          STATUS_FIELD_ID: PVTSSF_lAHOAGJHa84AFWnrzgDFcxE
+          AWAITING_WORKSPACE_OPTION_ID: d1c19cce
+          EVENT_ACTION: ${{ github.event.action }}
+          ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
+          PULL_REQUEST_NODE_ID: ${{ github.event.pull_request.node_id }}
         if: >-
           github.event_name == 'issues' && github.event.issue.state == 'open' &&
           (github.event.action == 'opened' || github.event.action == 'reopened')
