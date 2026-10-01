@@ -63,6 +63,7 @@ jobs:
           node-version: 24
       - name: Move issue to ${{ env.awaiting_workspace }}
         run: |
+          bash scripts/ensure-repositories-management-scripts-typescript.sh
           cd scripts/typescript
           npm i
           npx tsx src/adapter/entry-points/cli/add-project-board-item.ts
