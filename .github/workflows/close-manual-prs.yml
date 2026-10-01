@@ -19,7 +19,6 @@ permissions: {}
 jobs:
   close-manual-pr:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.event.pull_request.user.type != 'Bot'
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
         with:
@@ -39,14 +38,14 @@ jobs:
           PR_ACTOR_LOGIN: ${{ github.event.pull_request.user.login }}
           PR_ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
         run: |
-          ALLOWED_LOGINS="hs-bot-gh-app[bot] dependabot[bot] renovate[bot] github-actions[bot]"
+          FORCED_MANUAL_LOGINS="dependabot[bot] renovate[bot]"
 
           is_manual_pr() {
             local login="$1" type="$2"
-            [ "$type" = "Bot" ] && return 1
-            for allowed in $ALLOWED_LOGINS; do
-              [ "$login" = "$allowed" ] && return 1
+            for forced in $FORCED_MANUAL_LOGINS; do
+              [ "$login" = "$forced" ] && return 0
             done
+            [ "$type" = "Bot" ] && return 1
             return 0
           }
 
