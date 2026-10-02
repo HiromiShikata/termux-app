@@ -1851,6 +1851,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return Collections.unmodifiableList(mSessionDefinitionRepository.getCachedEntries());
     }
 
+    public boolean isSessionDefinitionListLoaded() {
+        return mSessionDefinitionRepository.isLoaded();
+    }
+
     @Nullable
     public TerminalSession getCurrentSession() {
         if (mTerminalView != null)

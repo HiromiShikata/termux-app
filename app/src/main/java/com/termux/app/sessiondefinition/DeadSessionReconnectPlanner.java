@@ -151,6 +151,28 @@ public final class DeadSessionReconnectPlanner {
                                                         @Nullable String autosshCommandTemplate,
                                                         int maxSessionsToReconnect,
                                                         @NonNull Set<String> userRemovedSessionNames) {
+        return planReconnects(candidateSessions, autosshCommandTemplate, maxSessionsToReconnect,
+            userRemovedSessionNames, false, Collections.emptySet(), Collections.emptySet(), true);
+    }
+
+    /**
+     * Plans which stale definition-backed sessions to reconnect, applying the same GitHub-URL-named
+     * session suppression as {@link FinishedSessionEnterAction#decide}: once the published session list
+     * has been fetched successfully at least once ({@code publishedSessionListLoaded}) and the "remove
+     * GitHub sessions not in list" preference is enabled ({@code removeGithubSessionsNotInList}), a
+     * candidate whose name starts with {@code https://github.com/} and is absent from both the
+     * published list ({@code publishedSessionNames}) and the always-present session names
+     * ({@code alwaysPresentSessionNames}) is never planned for reconnect.
+     */
+    @NonNull
+    public List<PlannedSessionReconnect> planReconnects(@NonNull List<CandidateSession> candidateSessions,
+                                                        @Nullable String autosshCommandTemplate,
+                                                        int maxSessionsToReconnect,
+                                                        @NonNull Set<String> userRemovedSessionNames,
+                                                        boolean publishedSessionListLoaded,
+                                                        @NonNull Set<String> publishedSessionNames,
+                                                        @NonNull Set<String> alwaysPresentSessionNames,
+                                                        boolean removeGithubSessionsNotInList) {
         List<PlannedSessionReconnect> plannedReconnects = new ArrayList<>();
         if (maxSessionsToReconnect <= 0) {
             return plannedReconnects;
@@ -163,7 +185,9 @@ public final class DeadSessionReconnectPlanner {
             if (candidateSession.isDeadProcessReconnectCandidate()
                 || candidateSession.isDetachedInputReconnectCandidate()) {
                 addIfReconnectable(candidateSession, reasonThatPlanned(candidateSession),
-                    autosshCommandTemplate, userRemovedSessionNames, plannedReconnects);
+                    autosshCommandTemplate, userRemovedSessionNames, publishedSessionListLoaded,
+                    publishedSessionNames, alwaysPresentSessionNames, removeGithubSessionsNotInList,
+                    plannedReconnects);
                 if (plannedReconnects.size() >= maxSessionsToReconnect) {
                     return plannedReconnects;
                 }
@@ -175,7 +199,9 @@ public final class DeadSessionReconnectPlanner {
         for (CandidateSession hungAliveCandidate : hungAliveCandidates) {
             addIfReconnectable(hungAliveCandidate,
                 SessionReconnectReason.SILENT_FOR_LONGER_THAN_THE_STALENESS_THRESHOLD,
-                autosshCommandTemplate, userRemovedSessionNames, plannedReconnects);
+                autosshCommandTemplate, userRemovedSessionNames, publishedSessionListLoaded,
+                publishedSessionNames, alwaysPresentSessionNames, removeGithubSessionsNotInList,
+                plannedReconnects);
             if (plannedReconnects.size() >= maxSessionsToReconnect) {
                 return plannedReconnects;
             }
@@ -194,10 +220,15 @@ public final class DeadSessionReconnectPlanner {
                                            @NonNull SessionReconnectReason reason,
                                            @Nullable String autosshCommandTemplate,
                                            @NonNull Set<String> userRemovedSessionNames,
+                                           boolean publishedSessionListLoaded,
+                                           @NonNull Set<String> publishedSessionNames,
+                                           @NonNull Set<String> alwaysPresentSessionNames,
+                                           boolean removeGithubSessionsNotInList,
                                            @NonNull List<PlannedSessionReconnect> plannedReconnects) {
         FinishedSessionEnterAction action =
             FinishedSessionEnterAction.decide(candidateSession.getName(), autosshCommandTemplate,
-                userRemovedSessionNames);
+                userRemovedSessionNames, publishedSessionListLoaded, publishedSessionNames,
+                alwaysPresentSessionNames, removeGithubSessionsNotInList);
         if (action.isReconnect()) {
             plannedReconnects.add(new PlannedSessionReconnect(candidateSession.getName(), reason));
         }

@@ -64,6 +64,7 @@ import com.termux.app.diagnostics.SessionReconnectCostCounterHolder;
 import com.termux.app.sessiondefinition.DeadSessionReconnectPlanner;
 import com.termux.app.sessiondefinition.DisplayedSessionSelector;
 import com.termux.app.sessiondefinition.ExitedSessionImmediateReconnectBackoff;
+import com.termux.app.sessiondefinition.GithubDisappearedSessionPlanner;
 import com.termux.app.sessiondefinition.HungSessionReconnectBackoff;
 import com.termux.app.sessiondefinition.PlannedSessionReconnect;
 import com.termux.app.sessiondefinition.SessionReconnectBlockerCensus;
@@ -2458,7 +2459,11 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         }
         return FinishedSessionEnterAction.decide(finishedSession.mSessionName,
             mActivity.getPreferences().getAutosshCommand(),
-            mActivity.getPreferences().getUserRemovedSessionNames());
+            mActivity.getPreferences().getUserRemovedSessionNames(),
+            mActivity.isSessionDefinitionListLoaded(),
+            new GithubDisappearedSessionPlanner().collectSessionNamesInList(mActivity.getSessionDefinitionEntries()),
+            mActivity.getPreferences().getAlwaysNaSessionNames(),
+            mActivity.getPreferences().shouldRemoveGithubSessionsNotInList());
     }
 
     public boolean reconnectFinishedSessionInPlace(@Nullable TerminalSession finishedSession,
@@ -2610,7 +2615,11 @@ public class TermuxTerminalSessionActivityClient extends ShellExitCountingTermin
         List<PlannedSessionReconnect> plannedReconnects =
             mDeadSessionReconnectPlanner.planReconnects(candidateSessions, autosshCommandTemplate,
                 DeadSessionReconnectPlanner.UNLIMITED,
-                mActivity.getPreferences().getUserRemovedSessionNames());
+                mActivity.getPreferences().getUserRemovedSessionNames(),
+                mActivity.isSessionDefinitionListLoaded(),
+                new GithubDisappearedSessionPlanner().collectSessionNamesInList(mActivity.getSessionDefinitionEntries()),
+                mActivity.getPreferences().getAlwaysNaSessionNames(),
+                mActivity.getPreferences().shouldRemoveGithubSessionsNotInList());
         Set<String> sessionNamesToReconnect = new HashSet<>();
         for (PlannedSessionReconnect plannedReconnect : plannedReconnects) {
             sessionNamesToReconnect.add(plannedReconnect.getSessionName());
