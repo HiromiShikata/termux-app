@@ -3,10 +3,14 @@ package com.termux.app.terminal;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
+import androidx.drawerlayout.widget.DrawerLayout;
+
+import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
 import com.termux.app.sessiondefinition.SessionDefinitionEntry;
@@ -18,6 +22,7 @@ import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
+import com.termux.view.TerminalView;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -64,6 +69,17 @@ public class TermuxTerminalSessionActivityClientUserRemovedSessionTest {
         preferences = TermuxAppSharedPreferences.build(appContext, true);
         set(activity, TermuxActivity.class, "mPreferences", preferences);
         preferences.setAutosshCommand("ssh {name}");
+
+        set(activity, TermuxActivity.class, "mProperties",
+            com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
+        set(activity, TermuxActivity.class, "mIsVisible", true);
+
+        DrawerLayout drawerLayout = new DrawerLayout(appContext);
+        drawerLayout.setId(R.id.drawer_layout);
+        activity.setContentView(drawerLayout);
+
+        TerminalView terminalView = new TerminalView(appContext, null);
+        set(activity, TermuxActivity.class, "mTerminalView", terminalView);
     }
 
     @Test
@@ -156,6 +172,50 @@ public class TermuxTerminalSessionActivityClientUserRemovedSessionTest {
                 + "tap-to-retry, and timeout-retry, consistent with how an explicitly user-removed "
                 + "session already cannot be reconnected through any of those paths today",
             reconnected);
+    }
+
+    @Test
+    public void switchToSessionReconnectingIfDeadDoesNotRecreateGithubSessionAbsentFromPublishedList()
+            throws Exception {
+        markPublishedSessionListLoaded(Collections.singletonList(OTHER_GITHUB_SESSION_NAME));
+        preferences.setRemoveGithubSessionsNotInList(true);
+
+        TermuxSession deadSession = session(GITHUB_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deadSession);
+        int liveSessionCountBeforeSwitch = service.getTermuxSessions().size();
+
+        activity.getTermuxTerminalSessionClient()
+            .switchToSessionReconnectingIfDead(deadSession.getTerminalSession());
+
+        assertEquals("a GitHub-URL session absent from the published list must not be recreated through "
+                + "the tap-to-switch path (also used by tap-to-retry-after-failure and timeout-retry), "
+                + "consistent with how the Enter-key/toolbar-submit in-place reconnect path already "
+                + "refuses to recreate it: the owner must land on the very same dead session object he "
+                + "tapped, not a replacement",
+            deadSession.getTerminalSession(), activity.getCurrentSession());
+        assertEquals("no new TermuxSession may be added to the service's live session list by the "
+                + "tap-to-switch path when the decision for this session is removal rather than "
+                + "reconnect",
+            liveSessionCountBeforeSwitch, service.getTermuxSessions().size());
+    }
+
+    @Test
+    public void switchToSessionReconnectingIfDeadReconnectsGithubSessionPresentInPublishedList()
+            throws Exception {
+        markPublishedSessionListLoaded(Collections.singletonList(GITHUB_SESSION_NAME));
+        preferences.setRemoveGithubSessionsNotInList(true);
+
+        TermuxSession deadSession = session(GITHUB_SESSION_NAME);
+        shellManager.mTermuxSessions.add(deadSession);
+
+        activity.getTermuxTerminalSessionClient()
+            .switchToSessionReconnectingIfDead(deadSession.getTerminalSession());
+
+        assertNotSame("a GitHub-URL session present in the published list must still be reconnected "
+                + "through the tap-to-switch path (also used by tap-to-retry-after-failure and "
+                + "timeout-retry) exactly as today, landing the owner on a genuinely new session rather "
+                + "than the original dead one",
+            deadSession.getTerminalSession(), activity.getCurrentSession());
     }
 
     private void markPublishedSessionListLoaded(List<String> sessionNamesInList) throws Exception {
