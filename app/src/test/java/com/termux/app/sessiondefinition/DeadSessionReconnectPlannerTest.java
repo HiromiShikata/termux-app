@@ -298,6 +298,37 @@ public class DeadSessionReconnectPlannerTest {
     }
 
     @Test
+    public void planReconnectsExcludesGithubCandidateAbsentFromPublishedList() {
+        String githubSessionName = "https://github.com/HiromiShikata/termux-app/issues/2024";
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(githubSessionName, false));
+
+        List<PlannedSessionReconnect> plannedReconnects = planner.planReconnects(
+            candidates, "ssh {name}", DeadSessionReconnectPlanner.UNLIMITED, Collections.emptySet(),
+            true, Collections.singleton("https://github.com/HiromiShikata/termux-app/issues/9999"),
+            Collections.emptySet(), true);
+
+        Assert.assertTrue("a GitHub-URL candidate absent from the published list must not be planned "
+                + "for reconnect once the list has been fetched and the removal preference is enabled; "
+                + "planned reconnects were " + plannedReconnects,
+            plannedReconnects.isEmpty());
+    }
+
+    @Test
+    public void planReconnectsIncludesGithubCandidatePresentInPublishedList() {
+        String githubSessionName = "https://github.com/HiromiShikata/termux-app/issues/2024";
+        List<DeadSessionReconnectPlanner.CandidateSession> candidates = Collections.singletonList(
+            new DeadSessionReconnectPlanner.CandidateSession(githubSessionName, false));
+
+        List<PlannedSessionReconnect> plannedReconnects = planner.planReconnects(
+            candidates, "ssh {name}", DeadSessionReconnectPlanner.UNLIMITED, Collections.emptySet(),
+            true, Collections.singleton(githubSessionName), Collections.emptySet(), true);
+
+        Assert.assertEquals(1, plannedReconnects.size());
+        Assert.assertEquals(githubSessionName, plannedReconnects.get(0).getSessionName());
+    }
+
+    @Test
     public void aCandidateThatIsNotRunningIsNeverCarriedAsHung() {
         DeadSessionReconnectPlanner.CandidateSession candidate =
             new DeadSessionReconnectPlanner.CandidateSession(

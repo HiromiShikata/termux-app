@@ -1,8 +1,10 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
@@ -12,6 +14,9 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.sessiondefinition.SessionDefinitionEntry;
+import com.termux.app.sessiondefinition.SessionDefinitionLoadResult;
+import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
@@ -32,6 +37,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 @RunWith(RobolectricTestRunner.class)
@@ -52,6 +58,12 @@ public class DeadSessionRetentionAcrossBackgroundScansTest {
     }
 
     private static final String CURRENT_SESSION_NAME = "session-current";
+
+    private static final String GITHUB_SESSION_NAME =
+        "https://github.com/HiromiShikata/termux-app/issues/2024";
+
+    private static final String OTHER_GITHUB_SESSION_NAME =
+        "https://github.com/HiromiShikata/termux-app/issues/9999";
 
     private static final int VISIBLE_SESSION_COUNT = 16;
 
@@ -183,6 +195,52 @@ public class DeadSessionRetentionAcrossBackgroundScansTest {
                 + "forever, with nothing logged and nothing thrown, and no other assertion in this suite "
                 + "distinguishes that from a working reopen",
             releasedSession.getEmulator());
+    }
+
+    @Test
+    public void reconnectDeadDefinitionBackedSessionsInBackgroundExcludesGithubSessionAbsentFromPublishedList()
+            throws Exception {
+        TermuxSession githubDeadSession = deadSessionHoldingAnEmulator(GITHUB_SESSION_NAME);
+        shellManager.mTermuxSessions.add(githubDeadSession);
+        activity.getTerminalView().mTermSession = githubDeadSession.getTerminalSession();
+        markPublishedSessionListLoaded(Collections.singletonList(OTHER_GITHUB_SESSION_NAME));
+        preferences.setRemoveGithubSessionsNotInList(true);
+
+        List<String> reconnectedSessionNames =
+            activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+
+        assertFalse("a GitHub-URL session absent from the published list must not be planned for "
+                + "reconnect by the periodic background scan once the list has been fetched and the "
+                + "removal preference is enabled; planned names were " + reconnectedSessionNames,
+            reconnectedSessionNames.contains(GITHUB_SESSION_NAME));
+    }
+
+    @Test
+    public void reconnectDeadDefinitionBackedSessionsInBackgroundIncludesGithubSessionPresentInPublishedList()
+            throws Exception {
+        TermuxSession githubDeadSession = deadSessionHoldingAnEmulator(GITHUB_SESSION_NAME);
+        shellManager.mTermuxSessions.add(githubDeadSession);
+        activity.getTerminalView().mTermSession = githubDeadSession.getTerminalSession();
+        markPublishedSessionListLoaded(Collections.singletonList(GITHUB_SESSION_NAME));
+        preferences.setRemoveGithubSessionsNotInList(true);
+
+        List<String> reconnectedSessionNames =
+            activity.getTermuxTerminalSessionClient().reconnectDeadDefinitionBackedSessionsInBackground();
+
+        assertTrue("a GitHub-URL session present in the published list must still be planned for "
+                + "reconnect by the periodic background scan exactly as today",
+            reconnectedSessionNames.contains(GITHUB_SESSION_NAME));
+    }
+
+    private void markPublishedSessionListLoaded(List<String> sessionNamesInList) throws Exception {
+        Field repositoryField = TermuxActivity.class.getDeclaredField("mSessionDefinitionRepository");
+        repositoryField.setAccessible(true);
+        Object repository = repositoryField.get(activity);
+        SessionDefinitionEntry entry = new SessionDefinitionEntry("group", "entry", sessionNamesInList);
+        SessionDefinitionLoadResult result = new SessionDefinitionLoadResult(
+            Collections.singletonList(entry), 1, Collections.emptyList());
+        set(repository, SessionDefinitionRepository.class, "result", result);
+        set(repository, SessionDefinitionRepository.class, "loaded", true);
     }
 
     private void openTheRowToleratingTheDeviceOnlyNativeLibrary(TerminalSession releasedSession) {
