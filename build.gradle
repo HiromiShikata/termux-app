@@ -6,6 +6,26 @@ buildscript {
     dependencies {
         classpath "com.android.tools.build:gradle:8.13.2"
     }
+    configurations.classpath {
+        resolutionStrategy {
+            force "org.bouncycastle:bcprov-jdk18on:1.85"
+            force "org.bouncycastle:bcpkix-jdk18on:1.85"
+            force "org.bouncycastle:bcutil-jdk18on:1.85"
+            force "io.netty:netty-common:4.1.137.Final"
+            force "io.netty:netty-buffer:4.1.137.Final"
+            force "io.netty:netty-transport:4.1.137.Final"
+            force "io.netty:netty-resolver:4.1.137.Final"
+            force "io.netty:netty-codec:4.1.137.Final"
+            force "io.netty:netty-codec-http:4.1.137.Final"
+            force "io.netty:netty-codec-http2:4.1.137.Final"
+            force "io.netty:netty-handler:4.1.137.Final"
+            force "io.netty:netty-handler-proxy:4.1.137.Final"
+            force "io.netty:netty-codec-socks:4.1.137.Final"
+            force "io.netty:netty-transport-native-unix-common:4.1.137.Final"
+            force "org.bitbucket.b_c:jose4j:0.9.6"
+            force "org.jdom:jdom2:2.0.6.1"
+        }
+    }
 }
 
 def availableProcessors = Runtime.runtime.availableProcessors()
@@ -19,6 +39,12 @@ allprojects {
         google()
         mavenCentral()
         maven { url "https://jitpack.io" }
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            force "org.bouncycastle:bcprov-jdk18on:1.85"
+        }
     }
 
     tasks.withType(Test).configureEach {

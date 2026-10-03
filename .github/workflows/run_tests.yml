@@ -33,6 +33,13 @@ jobs:
         java-version: '17'
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
+    - name: Verify dependency vulnerability fixes
+      run: |
+        ./gradlew --init-script gradle/verify-dependency-vulnerability-fixes.init.gradle \
+            verifyBuildscriptAndWorkflowDependencyVulnerabilityFixes \
+            :app:verifyRobolectricBouncyCastleTestClasspathFix \
+            :termux-shared:verifyRobolectricBouncyCastleTestClasspathFix \
+            :terminal-view:verifyRobolectricBouncyCastleTestClasspathFix
     - name: Execute tests with JaCoCo coverage
       run: |
         ./gradlew jacocoTestReport
