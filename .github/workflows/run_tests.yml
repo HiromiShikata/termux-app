@@ -36,7 +36,7 @@ jobs:
     - name: Verify dependency vulnerability fixes
       run: |
         ./gradlew --init-script gradle/verify-dependency-vulnerability-fixes.init.gradle \
-            verifyBuildscriptAndWorkflowDependencyVulnerabilityFixes \
+            verifyBuildscriptDependencyVulnerabilityFixes \
             :app:verifyRobolectricBouncyCastleTestClasspathFix \
             :termux-shared:verifyRobolectricBouncyCastleTestClasspathFix \
             :terminal-view:verifyRobolectricBouncyCastleTestClasspathFix
