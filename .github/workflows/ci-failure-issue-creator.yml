@@ -6,43 +6,36 @@
 name: CI Failure Issue Creator
 
 on:
-  check_suite:
+  workflow_run:
     types:
       - completed
+    workflows: ['*']
 
 jobs:
   create-or-comment-issue:
-    if: github.event.check_suite.conclusion == 'failure' && github.event.check_suite.head_branch == github.event.repository.default_branch
+    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == github.event.repository.default_branch && github.event.workflow_run.name != github.workflow
     runs-on: ubuntu-latest
+    timeout-minutes: 7
     permissions:
+      contents: read
       issues: write
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
         with:
           egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Derive issue title and check results URL
+        id: details
+        run: scripts/ci-fetch-check-run-details.sh
+        env:
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
       - name: Create or comment on CI failure issue
+        run: scripts/ci-failure-default-branch-upsert-issue.sh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          ISSUE_TITLE="[CI] Default branch CI failure"
-          REPO="${{ github.repository }}"
-          COMMIT_CHECKS_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.check_suite.head_sha }}/checks"
-
-          EXISTING_ISSUE_NUMBER=$(gh issue list \
-            --repo "$REPO" \
-            --state open \
-            --search "$ISSUE_TITLE in:title" \
-            --json number,title \
-            --jq ".[] | select(.title == \"$ISSUE_TITLE\") | .number" \
-            | head -n1)
-
-          if [ -n "$EXISTING_ISSUE_NUMBER" ]; then
-            gh issue comment "$EXISTING_ISSUE_NUMBER" \
-              --repo "$REPO" \
-              --body "CI failed on the default branch. [View failed checks]($COMMIT_CHECKS_URL)"
-          else
-            gh issue create \
-              --repo "$REPO" \
-              --title "$ISSUE_TITLE" \
-              --body "CI failed on the default branch. [View failed checks]($COMMIT_CHECKS_URL)"
-          fi
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_TITLE: ${{ steps.details.outputs.issue_title }}
+          CHECK_RESULTS_URL: ${{ steps.details.outputs.check_results_url }}
