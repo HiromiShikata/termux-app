@@ -39,7 +39,11 @@ jobs:
             verifyBuildscriptDependencyVulnerabilityFixes \
             :app:verifyRobolectricBouncyCastleTestClasspathFix \
             :termux-shared:verifyRobolectricBouncyCastleTestClasspathFix \
-            :terminal-view:verifyRobolectricBouncyCastleTestClasspathFix
+            :terminal-view:verifyRobolectricBouncyCastleTestClasspathFix \
+            :app:verifyModuleConfigurationsDependencyVulnerabilityFixes \
+            :termux-shared:verifyModuleConfigurationsDependencyVulnerabilityFixes \
+            :terminal-emulator:verifyModuleConfigurationsDependencyVulnerabilityFixes \
+            :terminal-view:verifyModuleConfigurationsDependencyVulnerabilityFixes
     - name: Execute tests with JaCoCo coverage
       run: |
         ./gradlew jacocoTestReport
