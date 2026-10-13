@@ -1112,7 +1112,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public void reconnectDeadDisplayedSessions() {
-        reconnectDeadDisplayedSessionsThenForceRescanStatusline();
+        String baseUrl = getPreferences().getSessionDefinitionUrl().trim();
+        mSessionDefinitionRepository.loadForRebuild(baseUrl, true,
+            freshlyFetchedResult -> reconnectDeadDisplayedSessionsThenForceRescanStatusline(),
+            forceRefreshFailure -> reconnectDeadDisplayedSessionsThenForceRescanStatusline());
     }
 
     public void reconnectDeadDefinitionBackedSessions() {
