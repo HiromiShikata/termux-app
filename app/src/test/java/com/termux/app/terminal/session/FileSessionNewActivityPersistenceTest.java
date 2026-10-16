@@ -106,4 +106,17 @@ public class FileSessionNewActivityPersistenceTest {
 
         Assert.assertTrue(writeExecutor.isShutdown());
     }
+
+    @Test
+    public void saveAfterShutdownDoesNotThrow() throws Exception {
+        File cacheFile = File.createTempFile("session_new_activity_states", ".json");
+        Assert.assertTrue(cacheFile.delete());
+        ExecutorService writeExecutor = Executors.newSingleThreadExecutor();
+        FileSessionNewActivityPersistence persistence =
+            new FileSessionNewActivityPersistence(cacheFile, writeExecutor);
+        persistence.shutdown();
+
+        persistence.save(Arrays.asList(
+            new SessionNewActivityState("session-one", 1_000L, 2_000L, "needs approval", 3_000L, 4_000L)));
+    }
 }
