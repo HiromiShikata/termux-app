@@ -10,4 +10,6 @@ public interface SessionNewActivityPersistence {
     List<SessionNewActivityState> load();
 
     void save(@NonNull List<SessionNewActivityState> states);
+
+    void shutdown();
 }

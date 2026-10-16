@@ -70,6 +70,11 @@ public final class FileSessionNewActivityPersistence implements SessionNewActivi
         mWriteExecutor.execute(this::flushPending);
     }
 
+    @Override
+    public void shutdown() {
+        mWriteExecutor.shutdown();
+    }
+
     public void saveBlocking(@NonNull List<SessionNewActivityState> states) {
         try {
             writeFile(mSerialization.serialize(states));
