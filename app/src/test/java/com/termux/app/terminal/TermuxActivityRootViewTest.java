@@ -577,4 +577,35 @@ public class TermuxActivityRootViewTest {
             0, bottomMarginOf(rootView)
         );
     }
+
+    @Test
+    public void onGlobalLayoutMustStillScheduleZeroPendingMarginOnReturnToFullScreenGeometryWhenKeyboardIsGenuinelyVisibleWithRealInset() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        runBaselineCallEstablishingInertState(rootView, activity);
+        Assert.assertEquals("baseline call must leave bottomMargin at 0", 0, bottomMarginOf(rootView));
+        Assert.assertNull("baseline call must leave marginBottom unset", rootView.marginBottom);
+        Assert.assertNull("baseline call must leave lastMarginBottom unset", rootView.lastMarginBottom);
+
+        setBottomMarginOf(rootView, 400);
+
+        Rect secondCallWindowAvailableRect = new Rect(0, 0, 1080, 2000);
+        ControllableBottomSpaceView secondCallBottomSpaceView = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), secondCallWindowAvailableRect, 0, 1600, 1080, 400
+        );
+        setBottomSpaceView(activity, secondCallBottomSpaceView);
+        int realImeInsetHeightPxDuringMarginEchoPass = 823;
+        setKeyboardVisibleWithInsetHeight(activity, true, realImeInsetHeightPxDuringMarginEchoPass);
+
+        rootView.onGlobalLayout();
+
+        Assert.assertEquals(
+            "return-to-full-screen resize while visible-because-of-margin must still schedule"
+                + " marginBottom 0 to be applied on next measure even though the keyboard is"
+                + " genuinely visible with a nonzero real IME inset during this same echo pass",
+            Integer.valueOf(0), rootView.marginBottom
+        );
+    }
 }
