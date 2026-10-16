@@ -177,7 +177,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         boolean isVisibleBecauseMargin = (windowAvailableRect.bottom == bottomSpaceViewRect.bottom) && params.bottomMargin > 0;
         boolean isVisibleBecauseExtraMargin = ((bottomSpaceViewRect.bottom - windowAvailableRect.bottom) < 0);
         boolean keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap =
-            isVisible && keyboardVisible && realKeyboardImeInsetHeightPx > 0;
+            isVisible && !isVisibleBecauseMargin && keyboardVisible && realKeyboardImeInsetHeightPx > 0;
 
         if (root_view_logging_enabled) {
             Logger.logVerbose(LOG_TAG, "windowAvailableRect " + ViewUtils.toRectString(windowAvailableRect) + ", bottomSpaceViewRect " + ViewUtils.toRectString(bottomSpaceViewRect));
