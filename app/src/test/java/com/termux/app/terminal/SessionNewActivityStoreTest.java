@@ -1286,12 +1286,24 @@ public class SessionNewActivityStoreTest {
         }
     }
 
+    @Test
+    public void shutdownDelegatesToTheInjectedPersistence() {
+        SaveCountingPersistence persistence = new SaveCountingPersistence();
+        SessionNewActivityStore store = new SessionNewActivityStore(persistence);
+        Assert.assertFalse(persistence.wasShutdownCalled());
+
+        store.shutdown();
+
+        Assert.assertTrue(persistence.wasShutdownCalled());
+    }
+
     private static final long ONE_DAY_MILLIS = 24L * 60L * 60L * 1000L;
 
     private static final class SaveCountingPersistence implements SessionNewActivityPersistence {
 
         private List<SessionNewActivityState> mStates = new ArrayList<>();
         private int mSaveCount;
+        private boolean mShutdownCalled;
 
         @NonNull
         @Override
@@ -1305,8 +1317,17 @@ public class SessionNewActivityStoreTest {
             mSaveCount++;
         }
 
+        @Override
+        public void shutdown() {
+            mShutdownCalled = true;
+        }
+
         int getSaveCount() {
             return mSaveCount;
+        }
+
+        boolean wasShutdownCalled() {
+            return mShutdownCalled;
         }
     }
 }

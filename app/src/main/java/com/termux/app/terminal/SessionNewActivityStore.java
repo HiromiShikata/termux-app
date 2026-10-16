@@ -530,6 +530,10 @@ public class SessionNewActivityStore {
         mOnChangeListener = listener;
     }
 
+    public void shutdown() {
+        mPersistence.shutdown();
+    }
+
     @Nullable
     public Long getLastSeenTimeMillis(@NonNull String sessionName) {
         return mLastSeenTimeMillisByName.get(sessionName);

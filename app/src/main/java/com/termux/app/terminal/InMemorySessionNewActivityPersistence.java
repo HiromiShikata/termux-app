@@ -19,4 +19,8 @@ public final class InMemorySessionNewActivityPersistence implements SessionNewAc
     public void save(@NonNull List<SessionNewActivityState> states) {
         mStates = new ArrayList<>(states);
     }
+
+    @Override
+    public void shutdown() {
+    }
 }

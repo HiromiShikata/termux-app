@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 public final class FileSessionNewActivityPersistence implements SessionNewActivityPersistence {
 
@@ -67,7 +68,16 @@ public final class FileSessionNewActivityPersistence implements SessionNewActivi
         if (writeAlreadyScheduled) {
             return;
         }
-        mWriteExecutor.execute(this::flushPending);
+        try {
+            mWriteExecutor.execute(this::flushPending);
+        } catch (RejectedExecutionException error) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Dropped session activity state write after persistence shutdown", error);
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        mWriteExecutor.shutdown();
     }
 
     public void saveBlocking(@NonNull List<SessionNewActivityState> states) {

@@ -279,6 +279,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         SystemEventReceiver.unregisterPackageUpdateEvents(this);
 
         mSessionNewActivityStore.setOnChangeListener(null);
+        mSessionNewActivityStore.shutdown();
         NotificationManager notificationManager =
             (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (notificationManager != null)
