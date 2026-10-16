@@ -168,6 +168,16 @@ public class TermuxActivityRootViewTest {
         ((FakeDecorView) activity.getWindow().getDecorView()).setCurrentRootWindowInsets(insets);
     }
 
+    private void setKeyboardVisibleWithInsetHeight(TermuxActivity activity, boolean keyboardVisible, int imeInsetHeightPx) {
+        WindowInsets.Builder builder = new WindowInsets.Builder()
+            .setVisible(WindowInsets.Type.ime(), keyboardVisible);
+        if (keyboardVisible) {
+            builder.setInsets(WindowInsets.Type.ime(), android.graphics.Insets.of(0, 0, 0, imeInsetHeightPx));
+        }
+        WindowInsets insets = builder.build();
+        ((FakeDecorView) activity.getWindow().getDecorView()).setCurrentRootWindowInsets(insets);
+    }
+
     private void setBottomSpaceView(TermuxActivity activity, View bottomSpaceView) throws Exception {
         setFieldByReflection(activity, TermuxActivity.class, "mTermuxActivityBottomSpaceView", bottomSpaceView);
     }
@@ -509,6 +519,93 @@ public class TermuxActivityRootViewTest {
                 + pxHiddenByKeyboardOnFirstPass + "px margin from the first pass must be force-corrected"
                 + " to 0 rather than left unchanged",
             0, bottomMarginOf(rootView)
+        );
+    }
+
+    @Test
+    public void onGlobalLayoutMustApplyKeyboardInsetHeightMarginWhenGeometryShowsNoOverlapAtSmallWindowHeight() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        int smallWindowWidth = 1080;
+        int smallWindowHeight = 700;
+        Rect smallWindowAvailableRect = new Rect(0, 0, smallWindowWidth, smallWindowHeight);
+        int bottomSpaceViewWidth = 1080;
+        int bottomSpaceViewHeight = 100;
+        int bottomSpaceViewLocationYFlushWithSmallWindowBottom = 600;
+
+        ControllableBottomSpaceView settledBottomSpaceView = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
+            bottomSpaceViewLocationYFlushWithSmallWindowBottom, bottomSpaceViewWidth, bottomSpaceViewHeight
+        );
+        setBottomSpaceView(activity, settledBottomSpaceView);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, smallWindowWidth, smallWindowHeight);
+        Assert.assertEquals(
+            "settled small-window baseline (AC-1) must start with bottomMargin at 0",
+            0, bottomMarginOf(rootView)
+        );
+
+        int realImeInsetHeightPxWhenKeyboardGenuinelyVisible = 823;
+        ControllableBottomSpaceView bottomSpaceViewWithIdenticalGeometryWhileKeyboardVisible = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
+            bottomSpaceViewLocationYFlushWithSmallWindowBottom, bottomSpaceViewWidth, bottomSpaceViewHeight
+        );
+        setBottomSpaceView(activity, bottomSpaceViewWithIdenticalGeometryWhileKeyboardVisible);
+        setKeyboardVisibleWithInsetHeight(activity, true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, smallWindowWidth, smallWindowHeight);
+        Assert.assertEquals(
+            "AC-4: tapping the text field to show the real keyboard must move the bottom toolbar by the"
+                + " real IME inset height, the same adjustment made at full window size, even though"
+                + " window geometry shows no overlap at this small settled window height",
+            realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
+        );
+
+        ControllableBottomSpaceView bottomSpaceViewWithIdenticalGeometryAfterKeyboardDismissed = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
+            bottomSpaceViewLocationYFlushWithSmallWindowBottom, bottomSpaceViewWidth, bottomSpaceViewHeight
+        );
+        setBottomSpaceView(activity, bottomSpaceViewWithIdenticalGeometryAfterKeyboardDismissed);
+        setKeyboardVisible(activity, false);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, smallWindowWidth, smallWindowHeight);
+        Assert.assertEquals(
+            "AC-4: dismissing the keyboard again with geometry still unchanged must return the bottom"
+                + " toolbar to the settled small-window-height position AC-1 describes",
+            0, bottomMarginOf(rootView)
+        );
+    }
+
+    @Test
+    public void onGlobalLayoutMustStillScheduleZeroPendingMarginOnReturnToFullScreenGeometryWhenKeyboardIsGenuinelyVisibleWithRealInset() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        runBaselineCallEstablishingInertState(rootView, activity);
+        Assert.assertEquals("baseline call must leave bottomMargin at 0", 0, bottomMarginOf(rootView));
+        Assert.assertNull("baseline call must leave marginBottom unset", rootView.marginBottom);
+        Assert.assertNull("baseline call must leave lastMarginBottom unset", rootView.lastMarginBottom);
+
+        setBottomMarginOf(rootView, 400);
+
+        Rect secondCallWindowAvailableRect = new Rect(0, 0, 1080, 2000);
+        ControllableBottomSpaceView secondCallBottomSpaceView = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), secondCallWindowAvailableRect, 0, 1600, 1080, 400
+        );
+        setBottomSpaceView(activity, secondCallBottomSpaceView);
+        int realImeInsetHeightPxDuringMarginEchoPass = 823;
+        setKeyboardVisibleWithInsetHeight(activity, true, realImeInsetHeightPxDuringMarginEchoPass);
+
+        rootView.onGlobalLayout();
+
+        Assert.assertEquals(
+            "return-to-full-screen resize while visible-because-of-margin must still schedule"
+                + " marginBottom 0 to be applied on next measure even though the keyboard is"
+                + " genuinely visible with a nonzero real IME inset during this same echo pass",
+            Integer.valueOf(0), rootView.marginBottom
         );
     }
 }
