@@ -148,10 +148,6 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
             WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
             WindowInsetsCompat rootWindowInsetsCompat = rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null;
             keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsetsCompat);
-            // The real IME content-inset height, used below as an additive fallback when geometry
-            // alone (getWindowVisibleDisplayFrame) fails to show the keyboard overlapping the
-            // bottom space view, which happens at some window heights in split-screen/multi-window
-            // mode.
             realKeyboardImeInsetHeightPx = rootWindowInsetsCompat != null
                 ? rootWindowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
             boolean keyboardVisibilityChanged = marginRecomputeGate.shouldRecomputeMargin(keyboardVisible);
@@ -180,11 +176,6 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         boolean isVisible = ViewUtils.isRectAbove(windowAvailableRect, bottomSpaceViewRect);
         boolean isVisibleBecauseMargin = (windowAvailableRect.bottom == bottomSpaceViewRect.bottom) && params.bottomMargin > 0;
         boolean isVisibleBecauseExtraMargin = ((bottomSpaceViewRect.bottom - windowAvailableRect.bottom) < 0);
-        // At some window heights (e.g. small split-screen), windowAvailableRect and
-        // bottomSpaceViewRect stay bit-for-bit identical whether the real keyboard is open or not,
-        // so isVisible stays true and the geometry-only logic below never reaches the pxHidden
-        // branch. When the real IME inset confirms a genuine nonzero keyboard height, this flags
-        // that case so the branch below can apply it instead of forcing the margin toward zero.
         boolean keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap =
             isVisible && keyboardVisible && realKeyboardImeInsetHeightPx > 0;
 
@@ -199,9 +190,6 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
         // If the bottomSpaceViewRect is visible, then remove the margin if needed
         if (isVisible) {
-            // Additive fallback: the real keyboard is genuinely visible per the IME inset even
-            // though geometry alone shows no overlap, so apply the real inset height as the margin
-            // instead of letting the logic below force it toward zero.
             if (keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap) {
                 boolean setMarginToRealImeInsetHeight = params.bottomMargin != realKeyboardImeInsetHeightPx;
                 if (setMarginToRealImeInsetHeight) {
