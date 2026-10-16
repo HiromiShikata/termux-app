@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @RunWith(RobolectricTestRunner.class)
 public class FileSessionNewActivityPersistenceTest {
@@ -91,5 +92,18 @@ public class FileSessionNewActivityPersistenceTest {
         List<SessionNewActivityState> reloaded = persistence.load();
         Assert.assertEquals(SessionNewActivityStateCaps.MAX_REASON_LENGTH,
             reloaded.get(0).getLastExplicitCallReason().length());
+    }
+
+    @Test
+    public void shutdownShutsDownTheRealWriteExecutor() throws Exception {
+        File cacheFile = File.createTempFile("session_new_activity_states", ".json");
+        Assert.assertTrue(cacheFile.delete());
+        ExecutorService writeExecutor = Executors.newSingleThreadExecutor();
+        FileSessionNewActivityPersistence persistence =
+            new FileSessionNewActivityPersistence(cacheFile, writeExecutor);
+
+        persistence.shutdown();
+
+        Assert.assertTrue(writeExecutor.isShutdown());
     }
 }
