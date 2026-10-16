@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.termux.shared.logger.Logger;
 
@@ -143,6 +144,19 @@ public class ViewUtils {
         }
 
         return new Rect[]{windowAvailableRect, viewRect};
+    }
+
+    /**
+     * Check if the real software keyboard (IME) is currently visible, derived directly from the
+     * system's keyboard/IME inset state rather than from the visible-display-frame-vs-status-bar-height
+     * comparison {@link #getWindowAndViewRects(View, int)} uses, since that comparison also changes
+     * on window resize in multi-window mode.
+     *
+     * @param insets The {@link WindowInsetsCompat} to check, or {@code null} if unavailable.
+     * @return Returns {@code true} if {@code insets} is not {@code null} and the IME inset type is visible.
+     */
+    public static boolean isKeyboardVisible(@Nullable WindowInsetsCompat insets) {
+        return insets != null && insets.isVisible(WindowInsetsCompat.Type.ime());
     }
 
     /**

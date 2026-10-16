@@ -6,16 +6,25 @@ import android.content.ContextWrapper;
 import android.content.res.Resources;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Build;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.core.view.WindowInsetsCompat;
 
 import com.termux.shared.logger.Logger;
 
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = Build.VERSION_CODES.R)
 public class ViewUtilsTest {
 
     private static class StubResources extends Resources {
@@ -23,7 +32,11 @@ public class ViewUtilsTest {
 
         @SuppressWarnings("deprecation")
         StubResources(float density) {
-            super(null, null, null);
+            super(
+                RuntimeEnvironment.getApplication().getResources().getAssets(),
+                RuntimeEnvironment.getApplication().getResources().getDisplayMetrics(),
+                RuntimeEnvironment.getApplication().getResources().getConfiguration()
+            );
             displayMetrics.density = density;
         }
 
@@ -65,7 +78,7 @@ public class ViewUtilsTest {
         private ViewGroup.LayoutParams layoutParams;
 
         StubView(ViewGroup.LayoutParams layoutParams) {
-            super(null);
+            super(RuntimeEnvironment.getApplication());
             this.layoutParams = layoutParams;
         }
 
@@ -191,5 +204,26 @@ public class ViewUtilsTest {
         StubView view = new StubView(layoutParams);
         ViewUtils.setLayoutMarginsInPixels(view, 1, 2, 3, 4);
         Assert.assertSame(layoutParams, view.getLayoutParams());
+    }
+
+    @Test
+    public void isKeyboardVisibleReturnsFalseForNullInsets() {
+        Assert.assertFalse(ViewUtils.isKeyboardVisible(null));
+    }
+
+    @Test
+    public void isKeyboardVisibleReturnsTrueWhenImeInsetIsVisible() {
+        WindowInsetsCompat insets = new WindowInsetsCompat.Builder()
+            .setVisible(WindowInsetsCompat.Type.ime(), true)
+            .build();
+        Assert.assertTrue(ViewUtils.isKeyboardVisible(insets));
+    }
+
+    @Test
+    public void isKeyboardVisibleReturnsFalseWhenImeInsetIsNotVisible() {
+        WindowInsetsCompat insets = new WindowInsetsCompat.Builder()
+            .setVisible(WindowInsetsCompat.Type.ime(), false)
+            .build();
+        Assert.assertFalse(ViewUtils.isKeyboardVisible(insets));
     }
 }
