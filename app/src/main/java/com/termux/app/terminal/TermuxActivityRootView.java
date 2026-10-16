@@ -74,7 +74,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
     private Rect lastWindowAvailableRect;
     private Rect lastBottomSpaceViewRect;
-    private boolean marginMutatedOnPreviousOnGlobalLayoutPass;
+    private Rect predictedBottomSpaceViewRectAfterOwnMarginMutation;
 
     /** Log root view events. */
     private boolean ROOT_VIEW_LOGGING_ENABLED = false;
@@ -139,19 +139,22 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         Rect bottomSpaceViewRect = windowAndViewRects[1];
 
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) getLayoutParams();
+        int bottomMarginBeforeThisPass = params.bottomMargin;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
             boolean keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null);
             boolean keyboardVisibilityChanged = marginRecomputeGate.shouldRecomputeMargin(keyboardVisible);
-            boolean bottomToolbarGeometryChanged = !windowAvailableRect.equals(lastWindowAvailableRect)
-                || !bottomSpaceViewRect.equals(lastBottomSpaceViewRect);
+            boolean windowGeometryChanged = !windowAvailableRect.equals(lastWindowAvailableRect);
+            boolean bottomSpaceViewGeometryChanged = !bottomSpaceViewRect.equals(lastBottomSpaceViewRect);
+            boolean bottomSpaceViewGeometryChangeIsSelfInducedEcho = bottomSpaceViewGeometryChanged
+                && predictedBottomSpaceViewRectAfterOwnMarginMutation != null
+                && bottomSpaceViewRect.equals(predictedBottomSpaceViewRectAfterOwnMarginMutation);
+            boolean bottomToolbarGeometryChanged = windowGeometryChanged
+                || (bottomSpaceViewGeometryChanged && !bottomSpaceViewGeometryChangeIsSelfInducedEcho);
             lastWindowAvailableRect = windowAvailableRect;
             lastBottomSpaceViewRect = bottomSpaceViewRect;
-            if (marginMutatedOnPreviousOnGlobalLayoutPass) {
-                bottomToolbarGeometryChanged = false;
-            }
-            marginMutatedOnPreviousOnGlobalLayoutPass = false;
+            predictedBottomSpaceViewRectAfterOwnMarginMutation = null;
             if (!keyboardVisibilityChanged && !bottomToolbarGeometryChanged) {
                 return;
             }
@@ -203,7 +206,8 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
                 if ((System.currentTimeMillis() - lastMarginBottomTime) > 40) {
                     lastMarginBottomTime = System.currentTimeMillis();
                     marginBottom = 0;
-                    marginMutatedOnPreviousOnGlobalLayoutPass = true;
+                    predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
+                        bottomSpaceViewRect, marginBottom - bottomMarginBeforeThisPass);
                 } else {
                     if (root_view_logging_enabled)
                         Logger.logVerbose(LOG_TAG, "Ignoring restoring marginBottom to 0 since called to quickly");
@@ -237,7 +241,8 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
                     Logger.logVerbose(LOG_TAG, "Setting bottom margin to 0");
                 params.setMargins(0, 0, 0, 0);
                 setLayoutParams(params);
-                marginMutatedOnPreviousOnGlobalLayoutPass = true;
+                predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
+                    bottomSpaceViewRect, 0 - bottomMarginBeforeThisPass);
             } else {
                 if (root_view_logging_enabled)
                     Logger.logVerbose(LOG_TAG, "Bottom margin already equals 0");
@@ -249,7 +254,8 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
                 // works fine for all cases.
                 marginBottom = lastMarginBottom;
                 if (marginBottom != null) {
-                    marginMutatedOnPreviousOnGlobalLayoutPass = true;
+                    predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
+                        bottomSpaceViewRect, marginBottom - bottomMarginBeforeThisPass);
                 }
             }
         }
@@ -294,12 +300,22 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
                 params.setMargins(0, 0, 0, pxHidden);
                 setLayoutParams(params);
                 lastMarginBottom = pxHidden;
-                marginMutatedOnPreviousOnGlobalLayoutPass = true;
+                predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
+                    bottomSpaceViewRect, pxHidden - bottomMarginBeforeThisPass);
             } else {
                 if (root_view_logging_enabled)
                     Logger.logVerbose(LOG_TAG, "Bottom margin already equals " + pxHidden);
             }
         }
+    }
+
+    private static Rect bottomSpaceViewRectAfterMarginChangesBy(Rect bottomSpaceViewRectBeforeMarginChange, int marginChangePx) {
+        return new Rect(
+            bottomSpaceViewRectBeforeMarginChange.left,
+            bottomSpaceViewRectBeforeMarginChange.top - marginChangePx,
+            bottomSpaceViewRectBeforeMarginChange.right,
+            bottomSpaceViewRectBeforeMarginChange.bottom - marginChangePx
+        );
     }
 
     public static class WindowInsetsListener implements View.OnApplyWindowInsetsListener {
