@@ -646,7 +646,6 @@ public class TermuxActivityRootViewTest {
         int ordinaryWindowWidth = BASELINE_WINDOW_AVAILABLE_RECT.width();
         int ordinaryWindowHeight = BASELINE_WINDOW_AVAILABLE_RECT.height();
 
-        // Settle the view at a baseline the same way a real device would, through onGlobalLayout() alone.
         ControllableBottomSpaceView bottomSpaceView = newBaselineBottomSpaceView(RuntimeEnvironment.getApplication());
         setBottomSpaceView(activity, bottomSpaceView);
         rootView.onGlobalLayout();
@@ -659,8 +658,6 @@ public class TermuxActivityRootViewTest {
         TermuxActivityRootView.WindowInsetsListener windowInsetsListener = new TermuxActivityRootView.WindowInsetsListener();
         int realImeInsetHeightPxWhenKeyboardGenuinelyVisible = 823;
 
-        // Call site 1 fires first, as InsetsController can deliver it ahead of any layout traversal:
-        // the onApplyWindowInsets callback applies the real IME inset height on its own.
         WindowInsets keyboardVisibleInsets = buildWindowInsetsCarryingKeyboardState(true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
         windowInsetsListener.onApplyWindowInsets(rootView, keyboardVisibleInsets);
         applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
@@ -669,9 +666,6 @@ public class TermuxActivityRootViewTest {
             realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
         );
 
-        // Call site 2 ALSO fires for this same transition, as it ordinarily does on a non-split-screen
-        // device once the resize traversal catches up, with the root window insets it self-queries
-        // still reflecting the keyboard-visible state with the same real IME inset height.
         setKeyboardVisibleWithInsetHeight(activity, true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
         rootView.onGlobalLayout();
         applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
@@ -683,7 +677,6 @@ public class TermuxActivityRootViewTest {
             realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
         );
 
-        // Dismiss the keyboard, driving both call sites again for the dismiss half of this same transition.
         WindowInsets keyboardHiddenInsets = buildWindowInsetsCarryingKeyboardState(false, 0);
         windowInsetsListener.onApplyWindowInsets(rootView, keyboardHiddenInsets);
         setKeyboardVisible(activity, false);
