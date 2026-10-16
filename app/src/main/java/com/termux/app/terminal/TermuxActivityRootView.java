@@ -3,6 +3,7 @@ package com.termux.app.terminal;
 import android.content.Context;
 import android.graphics.Rect;
 import android.inputmethodservice.InputMethodService;
+import android.os.Build;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,6 +70,8 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
     public long lastMarginBottomTime;
     public long lastMarginBottomExtraTime;
 
+    private final BottomToolbarMarginRecomputeGate marginRecomputeGate = new BottomToolbarMarginRecomputeGate();
+
     /** Log root view events. */
     private boolean ROOT_VIEW_LOGGING_ENABLED = false;
 
@@ -122,6 +125,14 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
         View bottomSpaceView = mActivity.getTermuxActivityBottomSpaceView();
         if (bottomSpaceView == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
+            boolean keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null);
+            if (!marginRecomputeGate.shouldRecomputeMargin(keyboardVisible)) {
+                return;
+            }
+        }
 
         boolean root_view_logging_enabled = ROOT_VIEW_LOGGING_ENABLED;
 
