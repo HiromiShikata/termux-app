@@ -141,9 +141,19 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) getLayoutParams();
         int bottomMarginBeforeThisPass = params.bottomMargin;
 
+        boolean keyboardVisible = false;
+        int realKeyboardImeInsetHeightPx = 0;
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
-            boolean keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null);
+            WindowInsetsCompat rootWindowInsetsCompat = rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null;
+            keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsetsCompat);
+            // The real IME content-inset height, used below as an additive fallback when geometry
+            // alone (getWindowVisibleDisplayFrame) fails to show the keyboard overlapping the
+            // bottom space view, which happens at some window heights in split-screen/multi-window
+            // mode.
+            realKeyboardImeInsetHeightPx = rootWindowInsetsCompat != null
+                ? rootWindowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
             boolean keyboardVisibilityChanged = marginRecomputeGate.shouldRecomputeMargin(keyboardVisible);
             boolean windowGeometryChanged = !windowAvailableRect.equals(lastWindowAvailableRect);
             boolean bottomSpaceViewGeometryChanged = !bottomSpaceViewRect.equals(lastBottomSpaceViewRect);
@@ -170,6 +180,13 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         boolean isVisible = ViewUtils.isRectAbove(windowAvailableRect, bottomSpaceViewRect);
         boolean isVisibleBecauseMargin = (windowAvailableRect.bottom == bottomSpaceViewRect.bottom) && params.bottomMargin > 0;
         boolean isVisibleBecauseExtraMargin = ((bottomSpaceViewRect.bottom - windowAvailableRect.bottom) < 0);
+        // At some window heights (e.g. small split-screen), windowAvailableRect and
+        // bottomSpaceViewRect stay bit-for-bit identical whether the real keyboard is open or not,
+        // so isVisible stays true and the geometry-only logic below never reaches the pxHidden
+        // branch. When the real IME inset confirms a genuine nonzero keyboard height, this flags
+        // that case so the branch below can apply it instead of forcing the margin toward zero.
+        boolean keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap =
+            isVisible && keyboardVisible && realKeyboardImeInsetHeightPx > 0;
 
         if (root_view_logging_enabled) {
             Logger.logVerbose(LOG_TAG, "windowAvailableRect " + ViewUtils.toRectString(windowAvailableRect) + ", bottomSpaceViewRect " + ViewUtils.toRectString(bottomSpaceViewRect));
@@ -182,6 +199,25 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
         // If the bottomSpaceViewRect is visible, then remove the margin if needed
         if (isVisible) {
+            // Additive fallback: the real keyboard is genuinely visible per the IME inset even
+            // though geometry alone shows no overlap, so apply the real inset height as the margin
+            // instead of letting the logic below force it toward zero.
+            if (keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap) {
+                boolean setMarginToRealImeInsetHeight = params.bottomMargin != realKeyboardImeInsetHeightPx;
+                if (setMarginToRealImeInsetHeight) {
+                    if (root_view_logging_enabled)
+                        Logger.logVerbose(LOG_TAG, "Setting bottom margin to real IME inset height " + realKeyboardImeInsetHeightPx);
+                    params.setMargins(0, 0, 0, realKeyboardImeInsetHeightPx);
+                    setLayoutParams(params);
+                    lastMarginBottom = realKeyboardImeInsetHeightPx;
+                    predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
+                        bottomSpaceViewRect, realKeyboardImeInsetHeightPx - bottomMarginBeforeThisPass);
+                } else if (root_view_logging_enabled) {
+                    Logger.logVerbose(LOG_TAG, "Bottom margin already equals real IME inset height " + realKeyboardImeInsetHeightPx);
+                }
+                return;
+            }
+
             // If visible because of margin, i.e the bottom of bottomSpaceViewRect equals that of windowAvailableRect
             // and a margin has been added
             // Necessary so that we don't get stuck in an infinite loop since setting margin
