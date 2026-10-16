@@ -72,17 +72,6 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
     private final BottomToolbarMarginRecomputeGate marginRecomputeGate = new BottomToolbarMarginRecomputeGate();
 
-    /**
-     * The window-available and bottom-space-view {@link Rect}s computed on the immediately
-     * preceding {@link #onGlobalLayout()} call. A window-size-only change (such as a continuous
-     * split-screen resize) still has to settle the bottom toolbar to its new stable position, and
-     * the pre-existing non-keyboard self-correction branches below (the freeform/landscape-taskbar
-     * extra-margin correction and the extra-keys-toggle wrong-margin correction) depend on running
-     * whenever this geometry changes, independent of the real keyboard's visibility. Comparing
-     * against these lets margin recompute fire on either signal changing, while still staying
-     * suppressed once both the real keyboard's visibility and this geometry have settled, so a
-     * continuous resize still converges instead of retriggering itself indefinitely.
-     */
     private Rect lastWindowAvailableRect;
     private Rect lastBottomSpaceViewRect;
 
