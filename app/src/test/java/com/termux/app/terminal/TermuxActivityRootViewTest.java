@@ -407,4 +407,52 @@ public class TermuxActivityRootViewTest {
             );
         }
     }
+
+    @Test
+    public void onGlobalLayoutMustSettleOnTheCorrectMarginWhenTheFinalRealResizeStepLandsOnASuppressedPass() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        int windowWidth = 1080;
+        int bottomSpaceViewHeight = 100;
+        int fixedStructuralOffsetPxUnrelatedToMargin = 60;
+        int[] resizeSequenceWindowHeights = {2000, 1800, 1600, 1600, 1600};
+        int firstSettledWindowHeightIndex = 2;
+
+        int[] bottomMarginAfterEachPass = new int[resizeSequenceWindowHeights.length];
+
+        for (int i = 0; i < resizeSequenceWindowHeights.length; i++) {
+            int windowHeight = resizeSequenceWindowHeights[i];
+            int marginLeftInEffectByPreviousPass = bottomMarginOf(rootView);
+
+            int bottomSpaceViewBottom = windowHeight + fixedStructuralOffsetPxUnrelatedToMargin - marginLeftInEffectByPreviousPass;
+            int bottomSpaceViewLocationY = bottomSpaceViewBottom - bottomSpaceViewHeight;
+
+            Rect windowAvailableRect = new Rect(0, 0, windowWidth, windowHeight);
+            ControllableBottomSpaceView bottomSpaceView = new ControllableBottomSpaceView(
+                RuntimeEnvironment.getApplication(), windowAvailableRect, 0, bottomSpaceViewLocationY, windowWidth, bottomSpaceViewHeight
+            );
+            setBottomSpaceView(activity, bottomSpaceView);
+            setKeyboardVisible(activity, false);
+
+            rootView.onGlobalLayout();
+            applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, windowWidth, windowHeight);
+
+            bottomMarginAfterEachPass[i] = bottomMarginOf(rootView);
+
+            Thread.sleep(50);
+        }
+
+        int finalSettledMargin = bottomMarginAfterEachPass[bottomMarginAfterEachPass.length - 1];
+        Assert.assertEquals(
+            "final settled bottom margin at window height "
+                + resizeSequenceWindowHeights[resizeSequenceWindowHeights.length - 1]
+                + " must equal the fixed structural offset (" + fixedStructuralOffsetPxUnrelatedToMargin
+                + "px) to avoid leaving the bottom toolbar clipped, since that offset does not depend on"
+                + " window height (all margins recorded: " + java.util.Arrays.toString(bottomMarginAfterEachPass) + ")",
+            fixedStructuralOffsetPxUnrelatedToMargin,
+            finalSettledMargin
+        );
+    }
 }
