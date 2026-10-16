@@ -127,6 +127,27 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
     public void onGlobalLayout() {
         if (mActivity == null || !mActivity.isVisible()) return;
 
+        WindowInsetsCompat rootWindowInsetsCompat = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
+            rootWindowInsetsCompat = rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null;
+        }
+        recomputeBottomMarginUsingWindowInsets(rootWindowInsetsCompat);
+    }
+
+    /**
+     * Recomputes the bottom toolbar margin from the given {@link WindowInsetsCompat}. This is the
+     * shared decision {@link #onGlobalLayout()} makes from a self-queried {@link WindowInsets}, and
+     * {@link WindowInsetsListener#onApplyWindowInsets(View, WindowInsets)} makes from the insets
+     * delivered directly to that callback. The latter is necessary because in genuine Android
+     * split-screen with task bounds clamped by the OS, showing/hiding the IME causes no resize and
+     * so schedules no layout traversal, meaning {@link #onGlobalLayout()} never fires during that
+     * transition; {@link View#onApplyWindowInsets(WindowInsets)} is still delivered through a
+     * separate pipeline driven by {@code InsetsController} independent of that traversal.
+     *
+     * @param windowInsetsCompat The window insets to recompute the margin from, or {@code null}.
+     */
+    private void recomputeBottomMarginUsingWindowInsets(@Nullable WindowInsetsCompat windowInsetsCompat) {
         View bottomSpaceView = mActivity.getTermuxActivityBottomSpaceView();
         if (bottomSpaceView == null) return;
 
@@ -145,11 +166,9 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         int realKeyboardImeInsetHeightPx = 0;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
-            WindowInsetsCompat rootWindowInsetsCompat = rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null;
-            keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsetsCompat);
-            realKeyboardImeInsetHeightPx = rootWindowInsetsCompat != null
-                ? rootWindowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
+            keyboardVisible = ViewUtils.isKeyboardVisible(windowInsetsCompat);
+            realKeyboardImeInsetHeightPx = windowInsetsCompat != null
+                ? windowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
             boolean keyboardVisibilityChanged = marginRecomputeGate.shouldRecomputeMargin(keyboardVisible);
             boolean windowGeometryChanged = !windowAvailableRect.equals(lastWindowAvailableRect);
             boolean bottomSpaceViewGeometryChanged = !bottomSpaceViewRect.equals(lastBottomSpaceViewRect);
@@ -345,7 +364,14 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
     public static class WindowInsetsListener implements View.OnApplyWindowInsetsListener {
         @Override
         public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-            mStatusBarHeight =  WindowInsetsCompat.toWindowInsetsCompat(insets).getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            WindowInsetsCompat insetsCompat = WindowInsetsCompat.toWindowInsetsCompat(insets);
+            mStatusBarHeight = insetsCompat.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+            if (v instanceof TermuxActivityRootView) {
+                TermuxActivityRootView rootView = (TermuxActivityRootView) v;
+                if (rootView.mActivity != null && rootView.mActivity.isVisible()) {
+                    rootView.recomputeBottomMarginUsingWindowInsets(insetsCompat);
+                }
+            }
             // Let view window handle insets however it wants
             return v.onApplyWindowInsets(insets);
         }
