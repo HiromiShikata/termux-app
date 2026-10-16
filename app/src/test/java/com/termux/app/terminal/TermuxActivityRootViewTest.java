@@ -353,4 +353,58 @@ public class TermuxActivityRootViewTest {
             )
         ));
     }
+
+    private void applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(TermuxActivityRootView rootView, int windowWidth, int windowHeight) {
+        rootView.onMeasure(
+            View.MeasureSpec.makeMeasureSpec(windowWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(windowHeight, View.MeasureSpec.EXACTLY)
+        );
+    }
+
+    @Test
+    public void onGlobalLayoutMustConvergeAndStopChangingMarginAcrossAContinuousResizeSequenceWithConstantKeyboardVisibility() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        int windowWidth = 1080;
+        int bottomSpaceViewHeight = 100;
+        int fixedStructuralOffsetPxUnrelatedToMargin = 60;
+        int[] resizeSequenceWindowHeights = {2000, 1800, 1600, 1400, 1200, 1200, 1200};
+        int firstSettledWindowHeightIndex = 4;
+
+        int[] bottomMarginAfterEachPass = new int[resizeSequenceWindowHeights.length];
+
+        for (int i = 0; i < resizeSequenceWindowHeights.length; i++) {
+            int windowHeight = resizeSequenceWindowHeights[i];
+            int marginLeftInEffectByPreviousPass = bottomMarginOf(rootView);
+
+            int bottomSpaceViewBottom = windowHeight + fixedStructuralOffsetPxUnrelatedToMargin - marginLeftInEffectByPreviousPass;
+            int bottomSpaceViewLocationY = bottomSpaceViewBottom - bottomSpaceViewHeight;
+
+            Rect windowAvailableRect = new Rect(0, 0, windowWidth, windowHeight);
+            ControllableBottomSpaceView bottomSpaceView = new ControllableBottomSpaceView(
+                RuntimeEnvironment.getApplication(), windowAvailableRect, 0, bottomSpaceViewLocationY, windowWidth, bottomSpaceViewHeight
+            );
+            setBottomSpaceView(activity, bottomSpaceView);
+            setKeyboardVisible(activity, false);
+
+            rootView.onGlobalLayout();
+            applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, windowWidth, windowHeight);
+
+            bottomMarginAfterEachPass[i] = bottomMarginOf(rootView);
+
+            Thread.sleep(50);
+        }
+
+        for (int i = firstSettledWindowHeightIndex + 1; i < bottomMarginAfterEachPass.length; i++) {
+            Assert.assertEquals(
+                "bottom margin must not keep changing on pass #" + i + " versus pass #" + firstSettledWindowHeightIndex
+                    + " once the window height and keyboard visibility both stopped changing (all margins recorded: "
+                    + java.util.Arrays.toString(bottomMarginAfterEachPass) + ")",
+                bottomMarginAfterEachPass[firstSettledWindowHeightIndex],
+                bottomMarginAfterEachPass[i]
+            );
+        }
+    }
 }
