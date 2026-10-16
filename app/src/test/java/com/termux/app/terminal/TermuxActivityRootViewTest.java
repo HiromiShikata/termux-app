@@ -638,6 +638,66 @@ public class TermuxActivityRootViewTest {
     }
 
     @Test
+    public void onApplyWindowInsetsAndOnGlobalLayoutTogetherMustNotDoubleApplyOrResetMarginForOneKeyboardTransitionOnOrdinaryDevice() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        int ordinaryWindowWidth = BASELINE_WINDOW_AVAILABLE_RECT.width();
+        int ordinaryWindowHeight = BASELINE_WINDOW_AVAILABLE_RECT.height();
+
+        // Settle the view at a baseline the same way a real device would, through onGlobalLayout() alone.
+        ControllableBottomSpaceView bottomSpaceView = newBaselineBottomSpaceView(RuntimeEnvironment.getApplication());
+        setBottomSpaceView(activity, bottomSpaceView);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "ordinary-device baseline must start with bottomMargin at 0",
+            0, bottomMarginOf(rootView)
+        );
+
+        TermuxActivityRootView.WindowInsetsListener windowInsetsListener = new TermuxActivityRootView.WindowInsetsListener();
+        int realImeInsetHeightPxWhenKeyboardGenuinelyVisible = 823;
+
+        // Call site 1 fires first, as InsetsController can deliver it ahead of any layout traversal:
+        // the onApplyWindowInsets callback applies the real IME inset height on its own.
+        WindowInsets keyboardVisibleInsets = buildWindowInsetsCarryingKeyboardState(true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
+        windowInsetsListener.onApplyWindowInsets(rootView, keyboardVisibleInsets);
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "the onApplyWindowInsets call site must move the bottom toolbar by the real IME inset height",
+            realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
+        );
+
+        // Call site 2 ALSO fires for this same transition, as it ordinarily does on a non-split-screen
+        // device once the resize traversal catches up, with the root window insets it self-queries
+        // still reflecting the keyboard-visible state with the same real IME inset height.
+        setKeyboardVisibleWithInsetHeight(activity, true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "a second call, via onGlobalLayout(), for the same keyboard-visible transition the"
+                + " onApplyWindowInsets call site already handled must leave the bottom toolbar margin"
+                + " exactly at the real IME inset height, neither doubling it nor resetting it to 0 due to"
+                + " marginRecomputeGate treating the unchanged keyboard-visible state as nothing new",
+            realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
+        );
+
+        // Dismiss the keyboard, driving both call sites again for the dismiss half of this same transition.
+        WindowInsets keyboardHiddenInsets = buildWindowInsetsCarryingKeyboardState(false, 0);
+        windowInsetsListener.onApplyWindowInsets(rootView, keyboardHiddenInsets);
+        setKeyboardVisible(activity, false);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "dismissing the keyboard again, driven through both the onApplyWindowInsets call site and a"
+                + " subsequent onGlobalLayout() call for that same dismissal, must return the bottom"
+                + " toolbar margin to 0",
+            0, bottomMarginOf(rootView)
+        );
+    }
+
+    @Test
     public void onGlobalLayoutMustStillScheduleZeroPendingMarginOnReturnToFullScreenGeometryWhenKeyboardIsGenuinelyVisibleWithRealInset() throws Exception {
         TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
         setKeyboardVisible(activity, false);
