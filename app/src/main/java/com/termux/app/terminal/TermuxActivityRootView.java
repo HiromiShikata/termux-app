@@ -72,6 +72,20 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
     private final BottomToolbarMarginRecomputeGate marginRecomputeGate = new BottomToolbarMarginRecomputeGate();
 
+    /**
+     * The window-available and bottom-space-view {@link Rect}s computed on the immediately
+     * preceding {@link #onGlobalLayout()} call. A window-size-only change (such as a continuous
+     * split-screen resize) still has to settle the bottom toolbar to its new stable position, and
+     * the pre-existing non-keyboard self-correction branches below (the freeform/landscape-taskbar
+     * extra-margin correction and the extra-keys-toggle wrong-margin correction) depend on running
+     * whenever this geometry changes, independent of the real keyboard's visibility. Comparing
+     * against these lets margin recompute fire on either signal changing, while still staying
+     * suppressed once both the real keyboard's visibility and this geometry have settled, so a
+     * continuous resize still converges instead of retriggering itself indefinitely.
+     */
+    private Rect lastWindowAvailableRect;
+    private Rect lastBottomSpaceViewRect;
+
     /** Log root view events. */
     private boolean ROOT_VIEW_LOGGING_ENABLED = false;
 
@@ -126,10 +140,23 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         View bottomSpaceView = mActivity.getTermuxActivityBottomSpaceView();
         if (bottomSpaceView == null) return;
 
+        // Get the position Rects of the bottom space view and the main window holding it
+        Rect[] windowAndViewRects = ViewUtils.getWindowAndViewRects(bottomSpaceView, mStatusBarHeight);
+        if (windowAndViewRects == null)
+            return;
+
+        Rect windowAvailableRect = windowAndViewRects[0];
+        Rect bottomSpaceViewRect = windowAndViewRects[1];
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
             boolean keyboardVisible = ViewUtils.isKeyboardVisible(rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null);
-            if (!marginRecomputeGate.shouldRecomputeMargin(keyboardVisible)) {
+            boolean keyboardVisibilityChanged = marginRecomputeGate.shouldRecomputeMargin(keyboardVisible);
+            boolean bottomToolbarGeometryChanged = !windowAvailableRect.equals(lastWindowAvailableRect)
+                || !bottomSpaceViewRect.equals(lastBottomSpaceViewRect);
+            lastWindowAvailableRect = windowAvailableRect;
+            lastBottomSpaceViewRect = bottomSpaceViewRect;
+            if (!keyboardVisibilityChanged && !bottomToolbarGeometryChanged) {
                 return;
             }
         }
@@ -140,14 +167,6 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
             Logger.logVerbose(LOG_TAG, ":\nonGlobalLayout:");
 
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) getLayoutParams();
-
-        // Get the position Rects of the bottom space view and the main window holding it
-        Rect[] windowAndViewRects = ViewUtils.getWindowAndViewRects(bottomSpaceView, mStatusBarHeight);
-        if (windowAndViewRects == null)
-            return;
-
-        Rect windowAvailableRect = windowAndViewRects[0];
-        Rect bottomSpaceViewRect = windowAndViewRects[1];
 
         // If the bottomSpaceViewRect is inside the windowAvailableRect, then it must be completely visible
         //boolean isVisible = windowAvailableRect.contains(bottomSpaceViewRect); // rect.right comparison often fails in landscape
