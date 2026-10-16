@@ -178,6 +178,15 @@ public class TermuxActivityRootViewTest {
         ((FakeDecorView) activity.getWindow().getDecorView()).setCurrentRootWindowInsets(insets);
     }
 
+    private WindowInsets buildWindowInsetsCarryingKeyboardState(boolean keyboardVisible, int imeInsetHeightPx) {
+        WindowInsets.Builder builder = new WindowInsets.Builder()
+            .setVisible(WindowInsets.Type.ime(), keyboardVisible);
+        if (keyboardVisible) {
+            builder.setInsets(WindowInsets.Type.ime(), android.graphics.Insets.of(0, 0, 0, imeInsetHeightPx));
+        }
+        return builder.build();
+    }
+
     private void setBottomSpaceView(TermuxActivity activity, View bottomSpaceView) throws Exception {
         setFieldByReflection(activity, TermuxActivity.class, "mTermuxActivityBottomSpaceView", bottomSpaceView);
     }
@@ -574,6 +583,109 @@ public class TermuxActivityRootViewTest {
         Assert.assertEquals(
             "AC-4: dismissing the keyboard again with geometry still unchanged must return the bottom"
                 + " toolbar to the settled small-window-height position AC-1 describes",
+            0, bottomMarginOf(rootView)
+        );
+    }
+
+    @Test
+    public void onApplyWindowInsetsAloneMustApplyKeyboardInsetHeightMarginWhenGlobalLayoutNeverFiresAtSmallWindowHeight() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        int smallWindowWidth = 1080;
+        int smallWindowHeight = 700;
+        Rect smallWindowAvailableRect = new Rect(0, 0, smallWindowWidth, smallWindowHeight);
+        int bottomSpaceViewWidth = 1080;
+        int bottomSpaceViewHeight = 100;
+        int bottomSpaceViewLocationYFlushWithSmallWindowBottom = 600;
+
+        ControllableBottomSpaceView settledBottomSpaceView = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
+            bottomSpaceViewLocationYFlushWithSmallWindowBottom, bottomSpaceViewWidth, bottomSpaceViewHeight
+        );
+        setBottomSpaceView(activity, settledBottomSpaceView);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, smallWindowWidth, smallWindowHeight);
+        Assert.assertEquals(
+            "settled small-window baseline (AC-1) must start with bottomMargin at 0",
+            0, bottomMarginOf(rootView)
+        );
+
+        TermuxActivityRootView.WindowInsetsListener windowInsetsListener = new TermuxActivityRootView.WindowInsetsListener();
+
+        int realImeInsetHeightPxWhenKeyboardGenuinelyVisible = 823;
+        WindowInsets keyboardVisibleInsets = buildWindowInsetsCarryingKeyboardState(true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
+        windowInsetsListener.onApplyWindowInsets(rootView, keyboardVisibleInsets);
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, smallWindowWidth, smallWindowHeight);
+        Assert.assertEquals(
+            "AC-4 regression on the onApplyWindowInsets path: tapping the text field to show the real"
+                + " keyboard must move the bottom toolbar by the real IME inset height via the"
+                + " onApplyWindowInsets callback alone, since onGlobalLayout() never fires during this"
+                + " transition in genuine split-screen at this small settled window height",
+            realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
+        );
+
+        WindowInsets keyboardHiddenInsets = buildWindowInsetsCarryingKeyboardState(false, 0);
+        windowInsetsListener.onApplyWindowInsets(rootView, keyboardHiddenInsets);
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, smallWindowWidth, smallWindowHeight);
+        Assert.assertEquals(
+            "AC-4 regression on the onApplyWindowInsets path: dismissing the keyboard again via the"
+                + " onApplyWindowInsets callback alone, with geometry still unchanged, must return the"
+                + " bottom toolbar to the settled small-window-height position AC-1 describes",
+            0, bottomMarginOf(rootView)
+        );
+    }
+
+    @Test
+    public void onApplyWindowInsetsAndOnGlobalLayoutTogetherMustNotDoubleApplyOrResetMarginForOneKeyboardTransitionOnOrdinaryDevice() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        int ordinaryWindowWidth = BASELINE_WINDOW_AVAILABLE_RECT.width();
+        int ordinaryWindowHeight = BASELINE_WINDOW_AVAILABLE_RECT.height();
+
+        ControllableBottomSpaceView bottomSpaceView = newBaselineBottomSpaceView(RuntimeEnvironment.getApplication());
+        setBottomSpaceView(activity, bottomSpaceView);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "ordinary-device baseline must start with bottomMargin at 0",
+            0, bottomMarginOf(rootView)
+        );
+
+        TermuxActivityRootView.WindowInsetsListener windowInsetsListener = new TermuxActivityRootView.WindowInsetsListener();
+        int realImeInsetHeightPxWhenKeyboardGenuinelyVisible = 823;
+
+        WindowInsets keyboardVisibleInsets = buildWindowInsetsCarryingKeyboardState(true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
+        windowInsetsListener.onApplyWindowInsets(rootView, keyboardVisibleInsets);
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "the onApplyWindowInsets call site must move the bottom toolbar by the real IME inset height",
+            realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
+        );
+
+        setKeyboardVisibleWithInsetHeight(activity, true, realImeInsetHeightPxWhenKeyboardGenuinelyVisible);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "a second call, via onGlobalLayout(), for the same keyboard-visible transition the"
+                + " onApplyWindowInsets call site already handled must leave the bottom toolbar margin"
+                + " exactly at the real IME inset height, neither doubling it nor resetting it to 0 due to"
+                + " marginRecomputeGate treating the unchanged keyboard-visible state as nothing new",
+            realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
+        );
+
+        WindowInsets keyboardHiddenInsets = buildWindowInsetsCarryingKeyboardState(false, 0);
+        windowInsetsListener.onApplyWindowInsets(rootView, keyboardHiddenInsets);
+        setKeyboardVisible(activity, false);
+        rootView.onGlobalLayout();
+        applyPendingMeasuredMarginOntoRealLayoutParamsAsADevicesMeasurePassWould(rootView, ordinaryWindowWidth, ordinaryWindowHeight);
+        Assert.assertEquals(
+            "dismissing the keyboard again, driven through both the onApplyWindowInsets call site and a"
+                + " subsequent onGlobalLayout() call for that same dismissal, must return the bottom"
+                + " toolbar margin to 0",
             0, bottomMarginOf(rootView)
         );
     }
