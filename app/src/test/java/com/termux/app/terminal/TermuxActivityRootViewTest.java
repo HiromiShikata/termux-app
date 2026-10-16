@@ -535,8 +535,6 @@ public class TermuxActivityRootViewTest {
         int bottomSpaceViewHeight = 100;
         int bottomSpaceViewLocationYFlushWithSmallWindowBottom = 600;
 
-        // Step 1 (AC-1): settled small-window baseline, keyboard hidden. The bottom space view
-        // sits flush with the small window's bottom edge, so no keyboard-avoidance margin is needed.
         ControllableBottomSpaceView settledBottomSpaceView = new ControllableBottomSpaceView(
             RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
             bottomSpaceViewLocationYFlushWithSmallWindowBottom, bottomSpaceViewWidth, bottomSpaceViewHeight
@@ -549,11 +547,6 @@ public class TermuxActivityRootViewTest {
             0, bottomMarginOf(rootView)
         );
 
-        // Step 2 (AC-4, regression): tap the text field so the real keyboard shows. On this device
-        // the small window's geometry (getWindowVisibleDisplayFrame and the bottom space view's
-        // location) does not change at all when the IME opens, so isRectAbove still reports the
-        // bottom space view as fully visible. The real IME content-inset height is the only signal
-        // that the keyboard is genuinely covering the toolbar, so the margin must track it.
         int realImeInsetHeightPxWhenKeyboardGenuinelyVisible = 823;
         ControllableBottomSpaceView bottomSpaceViewWithIdenticalGeometryWhileKeyboardVisible = new ControllableBottomSpaceView(
             RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
@@ -570,8 +563,6 @@ public class TermuxActivityRootViewTest {
             realImeInsetHeightPxWhenKeyboardGenuinelyVisible, bottomMarginOf(rootView)
         );
 
-        // Step 3 (AC-4): dismiss the keyboard again, geometry still unchanged. The toolbar must
-        // return to the settled small-window-height position AC-1 describes.
         ControllableBottomSpaceView bottomSpaceViewWithIdenticalGeometryAfterKeyboardDismissed = new ControllableBottomSpaceView(
             RuntimeEnvironment.getApplication(), smallWindowAvailableRect, 0,
             bottomSpaceViewLocationYFlushWithSmallWindowBottom, bottomSpaceViewWidth, bottomSpaceViewHeight
