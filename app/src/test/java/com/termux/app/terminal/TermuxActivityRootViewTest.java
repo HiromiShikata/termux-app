@@ -455,4 +455,60 @@ public class TermuxActivityRootViewTest {
             finalSettledMargin
         );
     }
+
+    @Test
+    public void onGlobalLayoutMustNotSuppressGenuineBottomSpaceViewChangeFromExtraKeysRowToggleAsASelfInducedMarginEcho() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+
+        Rect windowAvailableRectBeforeKeyboardOpens = new Rect(0, 0, 1080, 2000);
+        ControllableBottomSpaceView bottomSpaceViewBeforeKeyboardOpens = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), windowAvailableRectBeforeKeyboardOpens, 0, 1900, 1080, 100
+        );
+        setBottomSpaceView(activity, bottomSpaceViewBeforeKeyboardOpens);
+        rootView.onGlobalLayout();
+        Assert.assertEquals(
+            "baseline call before keyboard opens must leave bottomMargin at 0",
+            0, bottomMarginOf(rootView)
+        );
+
+        Rect windowAvailableRectWhileKeyboardVisible = new Rect(0, 0, 1080, 1700);
+        int bottomSpaceViewHeight = 100;
+        int bottomSpaceViewLocationYHiddenByKeyboard = 1800;
+        int pxHiddenByKeyboardOnFirstPass = (bottomSpaceViewLocationYHiddenByKeyboard + bottomSpaceViewHeight)
+            - windowAvailableRectWhileKeyboardVisible.bottom;
+
+        setKeyboardVisible(activity, true);
+        ControllableBottomSpaceView bottomSpaceViewHiddenByKeyboard = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), windowAvailableRectWhileKeyboardVisible,
+            0, bottomSpaceViewLocationYHiddenByKeyboard, 1080, bottomSpaceViewHeight
+        );
+        setBottomSpaceView(activity, bottomSpaceViewHiddenByKeyboard);
+        rootView.onGlobalLayout();
+        Assert.assertEquals(
+            "first pass with keyboard newly visible must set the margin to the pixels hidden behind the keyboard",
+            pxHiddenByKeyboardOnFirstPass, bottomMarginOf(rootView)
+        );
+
+        int extraKeysRowToggleShiftPxUnrelatedToFirstPassMarginDelta = 50;
+        int bottomSpaceViewLocationYAfterExtraKeysRowToggle = bottomSpaceViewLocationYHiddenByKeyboard
+            - extraKeysRowToggleShiftPxUnrelatedToFirstPassMarginDelta;
+        ControllableBottomSpaceView bottomSpaceViewAfterExtraKeysRowToggle = new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), windowAvailableRectWhileKeyboardVisible,
+            0, bottomSpaceViewLocationYAfterExtraKeysRowToggle, 1080, bottomSpaceViewHeight
+        );
+        setBottomSpaceView(activity, bottomSpaceViewAfterExtraKeysRowToggle);
+        setKeyboardVisible(activity, true);
+        rootView.onGlobalLayout();
+
+        Assert.assertEquals(
+            "extra keys row toggle moving the bottom space view by an amount unrelated to the first"
+                + " pass margin delta, with window rect and keyboard visibility both unchanged, must not"
+                + " be classified as a self-induced echo of the first pass margin mutation, so the stale "
+                + pxHiddenByKeyboardOnFirstPass + "px margin from the first pass must be force-corrected"
+                + " to 0 rather than left unchanged",
+            0, bottomMarginOf(rootView)
+        );
+    }
 }
