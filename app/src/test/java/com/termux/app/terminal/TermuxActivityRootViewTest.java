@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 
 import com.termux.app.TermuxActivity;
@@ -150,6 +151,125 @@ public class TermuxActivityRootViewTest {
             outLocation[0] = locationInWindowX;
             outLocation[1] = locationInWindowY;
         }
+    }
+
+    /**
+     * A {@link TermuxActivityRootView} whose {@link #getRootWindowInsets()} is overridden to return
+     * a caller-controlled {@link WindowInsets} rather than whatever the simulated window reports.
+     * Used only by the API-29 genuinely-attached-view tests below, since the existing {@code FakeWindow}
+     * / {@code FakeDecorView} fixtures never become {@link View#isAttachedToWindow() attached} and so
+     * cannot reach the view-aware branch of the two-argument {@code toWindowInsetsCompat} overload.
+     */
+    private static final class WindowInsetsReturningTermuxActivityRootView extends TermuxActivityRootView {
+        private WindowInsets rootWindowInsetsToReturn;
+
+        WindowInsetsReturningTermuxActivityRootView(Context context) {
+            super(context);
+        }
+
+        void setRootWindowInsetsToReturn(WindowInsets insets) {
+            this.rootWindowInsetsToReturn = insets;
+        }
+
+        @Override
+        public WindowInsets getRootWindowInsets() {
+            return rootWindowInsetsToReturn;
+        }
+    }
+
+    /**
+     * A minimal {@link Window} whose {@link #getDecorView()} / {@link #peekDecorView()} return a
+     * caller-supplied {@link View} directly, so that view can be reused as both the decor view
+     * {@link TermuxActivityRootView#onGlobalLayout()} queries and the production
+     * {@link TermuxActivityRootView} under test.
+     */
+    private static final class SingleDecorViewFakeWindow extends Window {
+        private final View decorView;
+
+        SingleDecorViewFakeWindow(Context context, View decorView) {
+            super(context);
+            this.decorView = decorView;
+        }
+
+        @Override public View getDecorView() { return decorView; }
+        @Override public View peekDecorView() { return decorView; }
+        @Override public void addContentView(View view, ViewGroup.LayoutParams params) { }
+        @Override public void closeAllPanels() { }
+        @Override public void closePanel(int featureId) { }
+        @Override public View getCurrentFocus() { return null; }
+        @Override public LayoutInflater getLayoutInflater() { return null; }
+        @Override public int getNavigationBarColor() { return 0; }
+        @Override public int getStatusBarColor() { return 0; }
+        @Override public int getVolumeControlStream() { return 0; }
+        @Override public void invalidatePanelMenu(int featureId) { }
+        @Override public boolean isFloating() { return false; }
+        @Override public boolean isShortcutKey(int keyCode, KeyEvent event) { return false; }
+        @Override protected void onActive() { }
+        @Override public void onConfigurationChanged(android.content.res.Configuration newConfig) { }
+        @Override public void openPanel(int featureId, KeyEvent event) { }
+        @Override public boolean performContextMenuIdentifierAction(int id, int flags) { return false; }
+        @Override public boolean performPanelIdentifierAction(int featureId, int id, int flags) { return false; }
+        @Override public boolean performPanelShortcut(int featureId, int keyCode, KeyEvent event, int flags) { return false; }
+        @Override public void restoreHierarchyState(Bundle savedInstanceState) { }
+        @Override public Bundle saveHierarchyState() { return null; }
+        @Override public void setBackgroundDrawable(Drawable drawable) { }
+        @Override public void setChildDrawable(int featureId, Drawable drawable) { }
+        @Override public void setChildInt(int featureId, int value) { }
+        @Override public void setContentView(View view) { }
+        @Override public void setContentView(View view, ViewGroup.LayoutParams params) { }
+        @Override public void setContentView(int layoutResID) { }
+        @Override public void setDecorCaptionShade(int decorCaptionShade) { }
+        @Override public void setFeatureDrawable(int featureId, Drawable drawable) { }
+        @Override public void setFeatureDrawableAlpha(int featureId, int alpha) { }
+        @Override public void setFeatureDrawableResource(int featureId, int resId) { }
+        @Override public void setFeatureDrawableUri(int featureId, Uri uri) { }
+        @Override public void setFeatureInt(int featureId, int value) { }
+        @Override public void setNavigationBarColor(int color) { }
+        @Override public void setResizingCaptionDrawable(Drawable drawable) { }
+        @Override public void setStatusBarColor(int color) { }
+        @Override public void setTitle(CharSequence title) { }
+        @Override public void setTitleColor(int textColor) { }
+        @Override public void setVolumeControlStream(int streamType) { }
+        @Override public boolean superDispatchGenericMotionEvent(MotionEvent event) { return false; }
+        @Override public boolean superDispatchKeyEvent(KeyEvent event) { return false; }
+        @Override public boolean superDispatchKeyShortcutEvent(KeyEvent event) { return false; }
+        @Override public boolean superDispatchTrackballEvent(MotionEvent event) { return false; }
+        @Override public void takeInputQueue(InputQueue.Callback callback) { }
+        @Override public void takeKeyEvents(boolean get) { }
+        @Override public void takeSurface(SurfaceHolder.Callback2 callback) { }
+        @Override public void togglePanel(int featureId, KeyEvent event) { }
+        @Override public boolean superDispatchTouchEvent(MotionEvent event) { return false; }
+    }
+
+    /**
+     * Builds a {@link WindowInsetsReturningTermuxActivityRootView} that is genuinely attached to a
+     * real (Robolectric-simulated) window — {@link View#isAttachedToWindow()} is {@code true} — unlike
+     * the {@code FakeWindow}/{@code FakeDecorView} fixtures used by the rest of this suite, so that the
+     * view-aware branch of the two-argument {@code toWindowInsetsCompat} overload actually activates.
+     *
+     * <p>A bare {@link WindowManager#addView(View, ViewGroup.LayoutParams)} call on the application
+     * {@link WindowManager} does not reach Robolectric's real {@code ViewRootImpl} attachment path, so
+     * {@link View#isAttachedToWindow()} stays {@code false} afterwards. Driving a throwaway carrier
+     * {@link Activity} through the real create/start/resume/visible lifecycle and installing this view
+     * as its content view does reach that path, because that is the same mechanism
+     * {@link org.robolectric.Robolectric#setupActivity(Class)}-style tests rely on throughout this
+     * codebase to obtain a genuinely attached view.
+     */
+    private WindowInsetsReturningTermuxActivityRootView buildGenuinelyAttachedRootViewReturning(WindowInsets rootWindowInsetsToReturn) {
+        Context context = RuntimeEnvironment.getApplication();
+        WindowInsetsReturningTermuxActivityRootView rootView = new WindowInsetsReturningTermuxActivityRootView(context);
+        rootView.setRootWindowInsetsToReturn(rootWindowInsetsToReturn);
+        rootView.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        Activity carrierActivity = Robolectric.buildActivity(Activity.class)
+            .create()
+            .start()
+            .resume()
+            .visible()
+            .get();
+        carrierActivity.setContentView(rootView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        return rootView;
     }
 
     private TermuxActivity buildVisibleActivityWithControllableWindowInsets() throws Exception {
@@ -718,6 +838,96 @@ public class TermuxActivityRootViewTest {
                 + " marginBottom 0 to be applied on next measure even though the keyboard is"
                 + " genuinely visible with a nonzero real IME inset during this same echo pass",
             Integer.valueOf(0), rootView.marginBottom
+        );
+    }
+
+    /**
+     * Builds the single raw {@link WindowInsets} both API-29 genuinely-attached-view tests below share:
+     * a legacy system-window bottom inset and a legacy stable bottom inset, both {@code 100px}, with no
+     * transient IME component (no {@code setVisible(Type.ime(), ...)} and no {@code setInsets(Type.ime(), ...)}
+     * call), matching a persistent non-IME bottom inset such as a legacy 3-button navigation bar.
+     */
+    private WindowInsets buildPersistentNonImeBottomInsetWindowInsets(int persistentBottomInsetPx) {
+        return new WindowInsets.Builder()
+            .setSystemWindowInsets(android.graphics.Insets.of(0, 0, 0, persistentBottomInsetPx))
+            .setStableInsets(android.graphics.Insets.of(0, 0, 0, persistentBottomInsetPx))
+            .build();
+    }
+
+    @Test
+    @Config(sdk = Build.VERSION_CODES.Q)
+    public void onGlobalLayoutMustNotFalselyReportKeyboardVisibleFromPersistentNonImeBottomInsetWhenDecorViewIsGenuinelyAttached() throws Exception {
+        int persistentBottomInsetPx = 100;
+        WindowInsets rawWindowInsets = buildPersistentNonImeBottomInsetWindowInsets(persistentBottomInsetPx);
+
+        WindowInsetsReturningTermuxActivityRootView rootView = buildGenuinelyAttachedRootViewReturning(rawWindowInsets);
+        Assert.assertTrue(
+            "precondition: the decor view onGlobalLayout() passes to toWindowInsetsCompat must be"
+                + " genuinely attached to a window, otherwise the two-argument overload's view-aware"
+                + " logic never activates and this test would not exercise the scenario Completion"
+                + " Criterion 3 requires",
+            rootView.isAttachedToWindow()
+        );
+
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setFieldByReflection(activity, Activity.class, "mWindow", new SingleDecorViewFakeWindow(activity, rootView));
+        rootView.setActivity(activity);
+        setBottomSpaceView(activity, newBaselineBottomSpaceView(RuntimeEnvironment.getApplication()));
+
+        Assert.assertEquals(
+            "precondition: root view must start with bottomMargin at 0 before onGlobalLayout() runs",
+            0, bottomMarginOf(rootView)
+        );
+
+        rootView.onGlobalLayout();
+
+        Assert.assertEquals(
+            "fixed behaviour target: a persistent " + persistentBottomInsetPx + "px non-IME bottom inset"
+                + " (e.g. a legacy 3-button navigation bar) with no IME visibility signal must not be"
+                + " misreported as a visible keyboard once the view-aware two-argument"
+                + " toWindowInsetsCompat overload correctly populates the root stable inset from the"
+                + " genuinely attached decor view, so bottomMargin must stay at 0 rather than the"
+                + " false-positive " + persistentBottomInsetPx + "px the single-argument overload"
+                + " produces by forcing the root stable inset to 0",
+            0, bottomMarginOf(rootView)
+        );
+    }
+
+    @Test
+    @Config(sdk = Build.VERSION_CODES.Q)
+    public void onApplyWindowInsetsMustNotFalselyReportKeyboardVisibleFromPersistentNonImeBottomInsetWhenViewArgumentIsGenuinelyAttached() throws Exception {
+        int persistentBottomInsetPx = 100;
+        WindowInsets rawWindowInsets = buildPersistentNonImeBottomInsetWindowInsets(persistentBottomInsetPx);
+
+        WindowInsetsReturningTermuxActivityRootView rootView = buildGenuinelyAttachedRootViewReturning(rawWindowInsets);
+        Assert.assertTrue(
+            "precondition: the v parameter onApplyWindowInsets() receives must be genuinely attached to"
+                + " a window, otherwise the two-argument overload's view-aware logic never activates and"
+                + " this test would not exercise the scenario Completion Criterion 4 requires",
+            rootView.isAttachedToWindow()
+        );
+
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        rootView.setActivity(activity);
+        setBottomSpaceView(activity, newBaselineBottomSpaceView(RuntimeEnvironment.getApplication()));
+
+        Assert.assertEquals(
+            "precondition: root view must start with bottomMargin at 0 before onApplyWindowInsets() runs",
+            0, bottomMarginOf(rootView)
+        );
+
+        TermuxActivityRootView.WindowInsetsListener windowInsetsListener = new TermuxActivityRootView.WindowInsetsListener();
+        windowInsetsListener.onApplyWindowInsets(rootView, rawWindowInsets);
+
+        Assert.assertEquals(
+            "fixed behaviour target: a persistent " + persistentBottomInsetPx + "px non-IME bottom inset"
+                + " with no IME visibility signal must not be misreported as a visible keyboard via the"
+                + " onApplyWindowInsets call site once the view-aware two-argument toWindowInsetsCompat"
+                + " overload correctly populates the root stable inset from the genuinely attached v"
+                + " parameter, so bottomMargin must stay at 0 rather than the false-positive "
+                + persistentBottomInsetPx + "px the single-argument overload produces by forcing the"
+                + " root stable inset to 0",
+            0, bottomMarginOf(rootView)
         );
     }
 }
