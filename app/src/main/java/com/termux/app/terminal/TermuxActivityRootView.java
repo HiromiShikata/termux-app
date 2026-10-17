@@ -130,7 +130,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         WindowInsetsCompat rootWindowInsetsCompat = null;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             WindowInsets rootWindowInsets = mActivity.getWindow().getDecorView().getRootWindowInsets();
-            rootWindowInsetsCompat = rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets) : null;
+            rootWindowInsetsCompat = rootWindowInsets != null ? WindowInsetsCompat.toWindowInsetsCompat(rootWindowInsets, mActivity.getWindow().getDecorView()) : null;
         }
         recomputeBottomMarginUsingWindowInsets(rootWindowInsetsCompat);
     }
@@ -364,7 +364,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
     public static class WindowInsetsListener implements View.OnApplyWindowInsetsListener {
         @Override
         public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-            WindowInsetsCompat insetsCompat = WindowInsetsCompat.toWindowInsetsCompat(insets);
+            WindowInsetsCompat insetsCompat = WindowInsetsCompat.toWindowInsetsCompat(insets, v);
             mStatusBarHeight = insetsCompat.getInsets(WindowInsetsCompat.Type.statusBars()).top;
             if (v instanceof TermuxActivityRootView) {
                 TermuxActivityRootView rootView = (TermuxActivityRootView) v;
