@@ -415,12 +415,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
             WindowInsetsCompat insetsCompat = ViewCompat.getRootWindowInsets(anchorView);
             return insetsCompat != null && insetsCompat.isVisible(WindowInsetsCompat.Type.ime());
         });
-        // On API 29 WindowInsetsCompat#isVisible(Type.ime()) is a compat approximation, not the
-        // real platform signal (that only landed in API 30), and it was observed via
-        // 'dumpsys input_method' to disagree with the platform's own mInputShown state in this
-        // clamped split-screen window height scenario: the platform genuinely shows the keyboard
-        // (mShowRequested=true mInputShown=true) while this compat check still reports false.
-        // Fall back to the platform's own ground truth so a real keyboard show/hide is not missed.
         return insetsReportVisible || imeShownAccordingToSystemOrFalse(instrumentation);
     }
 
