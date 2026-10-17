@@ -204,6 +204,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         AtomicInteger headerScreenY = new AtomicInteger();
         AtomicInteger headerWidth = new AtomicInteger();
         AtomicInteger headerHeight = new AtomicInteger();
+        awaitWindowLocationSettled(scenario, R.id.owner_call_dialog_header);
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) dialog.getLayoutParams();
@@ -265,6 +266,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         AtomicInteger rightEdgeX = new AtomicInteger();
         AtomicInteger rightEdgeY = new AtomicInteger();
         AtomicInteger widthBeforeTheResize = new AtomicInteger();
+        awaitWindowLocationSettled(scenario, R.id.owner_call_dialog);
         scenario.onActivity(activity -> {
             View dialog = activity.findViewById(R.id.owner_call_dialog);
             int[] location = new int[2];
@@ -290,6 +292,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
 
         AtomicInteger headerX = new AtomicInteger();
         AtomicInteger headerY = new AtomicInteger();
+        awaitWindowLocationSettled(scenario, R.id.owner_call_dialog_header);
         scenario.onActivity(activity -> {
             View header = activity.findViewById(R.id.owner_call_dialog_header);
             int[] location = new int[2];
@@ -320,6 +323,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         AtomicInteger heightBeforeTheDrag = new AtomicInteger();
         AtomicInteger bottomBeforeTheDrag = new AtomicInteger();
         AtomicInteger edgeBand = new AtomicInteger();
+        awaitWindowLocationSettled(scenario, R.id.owner_call_dialog);
         scenario.onActivity(activity -> {
             OwnerCallDialogFrame frame = activity.findViewById(R.id.owner_call_dialog);
             int[] location = new int[2];
@@ -378,6 +382,7 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         AtomicInteger tapY = new AtomicInteger();
         AtomicInteger buttonWidth = new AtomicInteger();
         AtomicInteger buttonHeight = new AtomicInteger();
+        awaitWindowLocationSettled(scenario, R.id.owner_call_dialog_next_button);
         scenario.onActivity(activity -> {
             View nextButton = activity.findViewById(R.id.owner_call_dialog_next_button);
             assertTrue("the next button must be enabled while the oldest call is displayed",
@@ -597,6 +602,37 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             + " over the terminal; it showed \"" + position.get() + "\" laid out at "
             + laidOutHeight.get() + " pixels high, and the owner call server reported "
             + server().describeFailure());
+    }
+
+    private static void awaitWindowLocationSettled(ActivityScenario<TermuxActivity> scenario,
+                                                    int viewId) throws InterruptedException {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        long deadline = System.currentTimeMillis() + DIALOG_TIMEOUT_MILLIS;
+        AtomicInteger previousY = new AtomicInteger(Integer.MIN_VALUE);
+        AtomicInteger previousWindowHeight = new AtomicInteger(Integer.MIN_VALUE);
+        while (System.currentTimeMillis() < deadline) {
+            instrumentation.waitForIdleSync();
+            AtomicInteger currentY = new AtomicInteger();
+            AtomicInteger currentWindowHeight = new AtomicInteger();
+            AtomicInteger viewHeight = new AtomicInteger();
+            scenario.onActivity(activity -> {
+                View view = activity.findViewById(viewId);
+                int[] location = new int[2];
+                view.getLocationInWindow(location);
+                currentY.set(location[1]);
+                currentWindowHeight.set(activity.getWindow().getDecorView().getHeight());
+                viewHeight.set(view.getHeight());
+            });
+            if (OwnerCallDialogWindowLocationStability.hasSettled(previousY.get(),
+                    previousWindowHeight.get(), currentY.get(), currentWindowHeight.get(),
+                    viewHeight.get())) {
+                return;
+            }
+            previousY.set(currentY.get());
+            previousWindowHeight.set(currentWindowHeight.get());
+            Thread.sleep(POLL_INTERVAL_MILLIS);
+        }
+        throw new AssertionError("window location for view id " + viewId + " never settled");
     }
 
     private static void awaitDialogGone(ActivityScenario<TermuxActivity> scenario)
