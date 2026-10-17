@@ -68,13 +68,16 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
 
     private static final long APK_UPDATE_FOREGROUND_CHECK_SUPPRESSION_MILLIS = 600_000L;
 
-    private static final long DOCKED_STACK_DIVIDER_FRAME_SETTLE_TIMEOUT_MILLIS = 8_000L;
-
-    private static final long DOCKED_STACK_DIVIDER_FRAME_STABILITY_POLL_INTERVAL_MILLIS = 300L;
-
-    private static final int DOCKED_STACK_DIVIDER_FRAME_STABILITY_REQUIRED_CONSECUTIVE_READS = 2;
-
-    private static final int DOCKED_STACK_DIVIDER_SAFETY_MARGIN_PX = 20;
+    // The platform continues to dispatch touches using the task's requested resize bounds even
+    // when minimum-resizable-task-height enforcement makes the window's own rendered frame (and
+    // therefore the view hierarchy's measured bounds) taller than that request: resizing the
+    // primary pane's stack to a small height still leaves its window frame clamped to the
+    // device's minimum resizable task height, but touches below the originally requested bottom
+    // are delivered to the secondary pane's window, not the primary pane's, even though the
+    // primary pane's content visually extends further down. A tap target's own measured bounds
+    // are therefore not sufficient to pick a safe tap point in this clamped scenario; the
+    // requested resize bottom must additionally bound it.
+    private static final int CLAMPED_TASK_TOUCHABLE_BOUNDARY_SAFETY_MARGIN_PX = 20;
 
     private static final long DOUBLE_TAP_TIMEOUT_SAFETY_MARGIN_MILLIS = 150L;
 
@@ -90,10 +93,8 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     private static final Pattern INPUT_METHOD_INPUT_SHOWN_PATTERN =
         Pattern.compile("mInputShown=(true|false)");
 
-    private static final String DOCKED_STACK_DIVIDER_WINDOW_TITLE = "DockedStackDivider";
-
-    private static final Pattern WINDOW_FRAME_BOTTOM_PATTERN =
-        Pattern.compile("mFrame=\\[-?\\d+,-?\\d+\\]\\[-?\\d+,(-?\\d+)\\]");
+    private static final Pattern INPUT_METHOD_SERVED_VIEW_CLASS_NAME_PATTERN =
+        Pattern.compile("mServedView=(\\S+)\\{");
 
     @Rule
     public final RetryRule retryRule = new RetryRule(TEST_RETRY_ATTEMPTS);
@@ -205,8 +206,11 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
             assertNotNull("the terminal view must exist so it can be tapped to request a real"
                 + " keyboard show", terminalView);
 
+            int maxSafeTapYInclusivePx =
+                requestedBottomPx - CLAMPED_TASK_TOUCHABLE_BOUNDARY_SAFETY_MARGIN_PX;
+
             boolean imeShown = tapViewRepeatedlyUntilImeVisible(instrumentation, decorView,
-                terminalView, IME_VISIBILITY_TIMEOUT_MILLIS);
+                terminalView, maxSafeTapYInclusivePx, IME_VISIBILITY_TIMEOUT_MILLIS);
             boolean altFocusableImFlagSet = mainThreadBoolean(instrumentation, () ->
                 (activity.getWindow().getAttributes().flags
                     & android.view.WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM) != 0);
@@ -352,62 +356,20 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
 
     private static boolean tapViewRepeatedlyUntilImeVisible(Instrumentation instrumentation,
                                                              View anchorView, View tapTargetView,
+                                                             int maxSafeTapYInclusivePx,
                                                              long timeoutMillis)
             throws InterruptedException, IOException {
-        int minSafeTapYInclusivePx = awaitStableDockedStackDividerFrameBottomPx(instrumentation);
         long minSpacingPastDoubleTapTimeoutMillis =
             ViewConfiguration.getDoubleTapTimeout() + DOUBLE_TAP_TIMEOUT_SAFETY_MARGIN_MILLIS;
         long deadline = System.currentTimeMillis() + timeoutMillis;
         do {
-            tapCenterOfView(instrumentation, tapTargetView, minSafeTapYInclusivePx);
+            tapCenterOfView(instrumentation, tapTargetView, maxSafeTapYInclusivePx);
             if (awaitImeVisibility(instrumentation, anchorView, true,
                     minSpacingPastDoubleTapTimeoutMillis)) {
                 return true;
             }
         } while (System.currentTimeMillis() < deadline);
         return imeVisible(instrumentation, anchorView);
-    }
-
-    private static int dockedStackDividerFrameBottomOrMinValue(Instrumentation instrumentation)
-            throws IOException {
-        String windowDump = runShellCommand(instrumentation, "dumpsys window windows");
-        int maximumBottomPx = Integer.MIN_VALUE;
-        for (String windowBlock : windowDump.split("\n  Window #")) {
-            if (!windowBlock.contains(DOCKED_STACK_DIVIDER_WINDOW_TITLE)) {
-                continue;
-            }
-            Matcher matcher = WINDOW_FRAME_BOTTOM_PATTERN.matcher(windowBlock);
-            if (matcher.find()) {
-                maximumBottomPx = Math.max(maximumBottomPx, Integer.parseInt(matcher.group(1)));
-            }
-        }
-        return maximumBottomPx;
-    }
-
-    private static int awaitStableDockedStackDividerFrameBottomPx(Instrumentation instrumentation)
-            throws InterruptedException, IOException {
-        long deadline =
-            System.currentTimeMillis() + DOCKED_STACK_DIVIDER_FRAME_SETTLE_TIMEOUT_MILLIS;
-        int previousBottomPx = Integer.MIN_VALUE;
-        int consecutiveMatches = 0;
-        while (true) {
-            int currentBottomPx = dockedStackDividerFrameBottomOrMinValue(instrumentation);
-            if (currentBottomPx != Integer.MIN_VALUE && currentBottomPx == previousBottomPx) {
-                consecutiveMatches++;
-            } else {
-                consecutiveMatches = currentBottomPx == Integer.MIN_VALUE ? 0 : 1;
-                previousBottomPx = currentBottomPx;
-            }
-            if (consecutiveMatches >= DOCKED_STACK_DIVIDER_FRAME_STABILITY_REQUIRED_CONSECUTIVE_READS
-                    || System.currentTimeMillis() >= deadline) {
-                break;
-            }
-            Thread.sleep(DOCKED_STACK_DIVIDER_FRAME_STABILITY_POLL_INTERVAL_MILLIS);
-        }
-        if (previousBottomPx == Integer.MIN_VALUE) {
-            return Integer.MIN_VALUE;
-        }
-        return previousBottomPx + DOCKED_STACK_DIVIDER_SAFETY_MARGIN_PX;
     }
 
     private static boolean imeVisible(Instrumentation instrumentation, View anchorView) {
@@ -421,8 +383,22 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     private static boolean imeShownAccordingToSystemOrFalse(Instrumentation instrumentation) {
         try {
             String inputMethodDump = runShellCommand(instrumentation, "dumpsys input_method");
-            Matcher matcher = INPUT_METHOD_INPUT_SHOWN_PATTERN.matcher(inputMethodDump);
-            return matcher.find() && Boolean.parseBoolean(matcher.group(1));
+            // 'mInputShown' is a system-wide flag, not scoped to any particular window: a stray
+            // IME event belonging to the secondary split-screen pane's own app (e.g. it briefly
+            // showing its own keyboard for an unrelated view) would otherwise satisfy this check
+            // even though this app's own window never received a real keyboard show. Require
+            // 'mServedView' to additionally identify a view belonging to this app's own package
+            // before trusting 'mInputShown'.
+            String targetPackageNamePrefix =
+                instrumentation.getTargetContext().getPackageName() + ".";
+            Matcher servedViewMatcher =
+                INPUT_METHOD_SERVED_VIEW_CLASS_NAME_PATTERN.matcher(inputMethodDump);
+            if (!servedViewMatcher.find()
+                    || !servedViewMatcher.group(1).startsWith(targetPackageNamePrefix)) {
+                return false;
+            }
+            Matcher inputShownMatcher = INPUT_METHOD_INPUT_SHOWN_PATTERN.matcher(inputMethodDump);
+            return inputShownMatcher.find() && Boolean.parseBoolean(inputShownMatcher.group(1));
         } catch (IOException e) {
             return false;
         }
@@ -440,7 +416,7 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     }
 
     private static void tapCenterOfView(Instrumentation instrumentation, View view,
-                                         int minSafeTapYInclusivePx) {
+                                         int maxSafeTapYInclusivePx) {
         int[] location = new int[2];
         int[] size = new int[2];
         instrumentation.runOnMainSync(() -> {
@@ -450,9 +426,8 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
         });
         int centerX = location[0] + size[0] / 2;
         int preferredCenterY = location[1] + size[1] / 2;
-        int lowestSafeYInclusivePx = Math.max(location[1], minSafeTapYInclusivePx);
-        int centerY = Math.min(location[1] + size[1] - 1,
-            Math.max(preferredCenterY, lowestSafeYInclusivePx));
+        int highestSafeYInclusivePx = Math.min(location[1] + size[1] - 1, maxSafeTapYInclusivePx);
+        int centerY = Math.max(location[1], Math.min(preferredCenterY, highestSafeYInclusivePx));
         UiDevice.getInstance(instrumentation).click(centerX, centerY);
     }
 
