@@ -90,6 +90,46 @@ public class TermuxUrlUtilsTest {
         Assert.assertSame(first, second);
     }
 
+    @Test
+    public void extractUrlsCompletesQuicklyForManyColonsWithNoAtSign() {
+        StringBuilder adversarialInput = new StringBuilder("https://");
+        for (int i = 0; i < 30000; i++) {
+            adversarialInput.append(':');
+        }
+        adversarialInput.append('\u0001');
+
+        long startNanos = System.nanoTime();
+        TermuxUrlUtils.extractUrls(adversarialInput.toString());
+        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+
+        Assert.assertTrue(
+            "extractUrls() took " + elapsedMillis + "ms, expected under 2000ms, for an input of many ':' " +
+                "characters after a URL scheme with no '@' terminator; this is a ReDoS symptom in the " +
+                "userinfo (user:pass@) regex group",
+            elapsedMillis < 2000);
+    }
+
+    @Test
+    public void extractUrlsKeepsFullUrlWhenUserinfoContainsMultipleAtSigns() {
+        Assert.assertEquals(Arrays.asList("ftp://admin@proxy@evil-host.com/x"),
+            extract("ftp://admin@proxy@evil-host.com/x"));
+    }
+
+    @Test
+    public void extractUrlsCompletesQuicklyForManyRepeatedSchemesWithNoAtSign() {
+        String adversarialInput = "https://".repeat(16000);
+
+        long startNanos = System.nanoTime();
+        TermuxUrlUtils.extractUrls(adversarialInput);
+        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000;
+
+        Assert.assertTrue(
+            "extractUrls() took " + elapsedMillis + "ms, expected under 3000ms, for an input of many " +
+                "repeated 'https://' scheme occurrences with no '@' and no whitespace anywhere; this is a " +
+                "ReDoS symptom in the userinfo (user:pass@) regex group",
+            elapsedMillis < 3000);
+    }
+
     private static List<CharSequence> extract(String text) {
         LinkedHashSet<CharSequence> result = TermuxUrlUtils.extractUrls(text);
         return new ArrayList<>(result);

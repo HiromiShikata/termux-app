@@ -51,7 +51,7 @@ public class TermuxUrlUtils {
         regex_sb.append("(");
 
         // User name and/or password in format 'user:pass@'.
-        regex_sb.append("(?:\\S+(?::\\S*)?@)?");
+        regex_sb.append("(?:[^\\s]{1,2000}@)?");
 
         // Begin host group.
         regex_sb.append("(?:");
