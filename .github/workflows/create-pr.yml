@@ -67,10 +67,11 @@ jobs:
       - name: Get PR Node ID
         if: steps.resolve_pr.outputs.pr_number
         id: get_pr_id
-        run: |
-          PR_DATA=$(curl -s -H "Authorization: token ${{ steps.app-token.outputs.token }}" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/${{ github.repository }}/pulls/${{ steps.resolve_pr.outputs.pr_number }}")
-          PR_ID=$(echo "$PR_DATA" | jq -r '.node_id')
-          echo "node_id=$PR_ID" >> "$GITHUB_OUTPUT"
+        run: scripts/get-pr-node-id-with-retry.sh
+        env:
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.resolve_pr.outputs.pr_number }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
       - name: Check auto-merge capability
         if: steps.resolve_pr.outputs.pr_number
