@@ -138,6 +138,12 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     private static final Pattern INPUT_METHOD_SERVED_VIEW_CLASS_NAME_PATTERN =
         Pattern.compile("mServedView=(\\S+)\\{");
 
+    // android.settings.SETTINGS always resolves to the stock Settings app's own package on this
+    // project's CI emulator image (android_instrumentation_tests.yml), never a vendor-replaced
+    // Settings app, so this fixed package name is safe to force-stop directly instead of having
+    // to resolve it from the launched Intent at runtime.
+    private static final String SETTINGS_SECONDARY_PANE_PACKAGE_NAME = "com.android.settings";
+
     @Rule
     public final RetryRule retryRule = new RetryRule(TEST_RETRY_ATTEMPTS);
 
@@ -231,6 +237,7 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                 boundsBeforeKeyboard, boundsAfterKeyboardDismiss);
         } finally {
             instrumentation.runOnMainSync(activity::finish);
+            forceStopSettingsSecondaryPaneQuietly(instrumentation);
         }
     }
 
@@ -409,6 +416,7 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                 branchFiredSnapshot.realImeInsetBottomPx, branchFiredSnapshot.rootViewBottomMarginPx);
         } finally {
             instrumentation.runOnMainSync(activity::finish);
+            forceStopSettingsSecondaryPaneQuietly(instrumentation);
         }
     }
 
@@ -419,6 +427,22 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
             .putLong(ApkUpdateForegroundCheckThrottle.PREFERENCE_KEY_LAST_FOREGROUND_CHECK_AT,
                 System.currentTimeMillis() + APK_UPDATE_FOREGROUND_CHECK_SUPPRESSION_MILLIS)
             .commit();
+    }
+
+    /** Force-stops the Settings app that
+     * {@link #launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary} starts as the
+     * split-screen secondary pane, so its task does not linger as a stray entry in 'dumpsys
+     * activity activities' for a later test, or a later {@link RetryRule} retry attempt of this
+     * same test, to be confused by. Called from a scenario's finally block, so this must run
+     * regardless of whether the scenario passed or failed; any shell-command failure is logged
+     * rather than propagated so it never masks that scenario's own pass/fail result. */
+    private static void forceStopSettingsSecondaryPaneQuietly(Instrumentation instrumentation) {
+        try {
+            runShellCommand(instrumentation, "am force-stop " + SETTINGS_SECONDARY_PANE_PACKAGE_NAME);
+        } catch (IOException e) {
+            Log.i(LOG_TAG, "failed to force-stop " + SETTINGS_SECONDARY_PANE_PACKAGE_NAME
+                + " while cleaning up the split-screen secondary pane: " + e);
+        }
     }
 
     /** Holds the split-screen-primary {@link TermuxActivity} pane state shared by every scenario
