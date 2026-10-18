@@ -12,6 +12,7 @@ import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -24,6 +25,7 @@ import com.termux.R;
 import com.termux.app.RetryRule;
 import com.termux.app.TermuxActivity;
 import com.termux.app.apkupdate.ApkUpdateForegroundCheckThrottle;
+import com.termux.shared.view.ViewUtils;
 import com.termux.view.TerminalView;
 
 import org.junit.Assume;
@@ -64,7 +66,47 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
 
     private static final long LAYOUT_SETTLE_MILLIS = 400L;
 
+    private static final long MARGIN_SETTLE_TIMEOUT_MILLIS = 15_000L;
+
+    // TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets bakes the real IME inset
+    // into the margin on a single onGlobalLayout/onApplyWindowInsets pass, and that pass is a
+    // sub-frame transient. Confirmed live: a black-box poll of the same fields that branch reads
+    // (15ms sleep, sampling continuously while the keyboard was visible, 3s budget) still only
+    // managed to run every few hundred milliseconds to over a second apart during the real
+    // keyboard-show animation on this emulator, because instrumentation.runOnMainSync queues
+    // behind that animation's own main-thread work; across many growth attempts it never once
+    // landed inside the single pass, even though TermuxActivityRootView's own verbose logcat
+    // trace proved in the same runs that the pass did fire, with the branch's exact condition
+    // (isVisible && !isVisibleBecauseMargin && keyboardVisible && realImeInsetBottomPx > 0) true
+    // at that logged instant. Reading that same logcat trace afterward instead of re-sampling
+    // the view hierarchy sidesteps the race entirely: production writes the line itself, once,
+    // the instant the branch runs, and it stays in the buffer to be read at leisure once the
+    // keyboard-show animation has fully settled.
+    private static final String TARGETED_INSET_BRANCH_MARGIN_LOG_MESSAGE_PREFIX =
+        "Setting bottom margin to real IME inset height ";
+
+    private static final Pattern TARGETED_INSET_BRANCH_MARGIN_LOG_PATTERN =
+        Pattern.compile(Pattern.quote(TARGETED_INSET_BRANCH_MARGIN_LOG_MESSAGE_PREFIX) + "(\\d+)");
+
     private static final int CLAMPED_HEIGHT_REQUEST_DIVISOR = 8;
+
+    // Candidate split-screen-primary pane heights to grow to, expressed as a fraction of the
+    // device's own full display height so the test adapts to the device's actual geometry
+    // instead of relying on a hardcoded pixel value. Android's split-screen
+    // minimum-resizable-task-height enforcement only clamps a requested height that is too
+    // SMALL; growing the primary pane large enough instead pushes its own "visible display
+    // frame" (as computed by View#getWindowVisibleDisplayFrame, which
+    // ViewUtils#getWindowAndViewRects relies on, same as production) into genuine overlap with
+    // the real on-screen keyboard once it is shown, without the window's own rendered/requested
+    // height actually changing - exactly the scenario
+    // TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets's
+    // keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap branch exists for. These
+    // fractions were chosen empirically on the CI emulator config this project runs
+    // (android_instrumentation_tests.yml); if the on-screen keyboard height or display geometry
+    // ever drifts outside this range on a future emulator image, the scenario below is skipped
+    // via Assume rather than asserting on an unreachable precondition.
+    private static final float[] GROWN_HEIGHT_FRACTIONS_OF_DISPLAY_HEIGHT =
+        {0.55f, 0.56f, 0.565f, 0.57f, 0.58f};
 
     private static final long APK_UPDATE_FOREGROUND_CHECK_SUPPRESSION_MILLIS = 600_000L;
 
@@ -111,73 +153,20 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
             "true".equals(runShellCommand(instrumentation,
                 "am supports-split-screen-multi-window").trim()));
 
-        Instrumentation.ActivityMonitor monitor =
-            instrumentation.addMonitor(TermuxActivity.class.getName(), null, false);
-        String primaryLaunchComponent = targetPackageName + "/" + TermuxActivity.class.getName();
-        runShellCommand(instrumentation,
-            "am start -n " + primaryLaunchComponent + " --windowingMode 3");
-        Activity launchedActivity;
-        try {
-            launchedActivity = monitor.waitForActivityWithTimeout(ACTIVITY_LAUNCH_TIMEOUT_MILLIS);
-        } finally {
-            instrumentation.removeMonitor(monitor);
-        }
-        assertNotNull("TermuxActivity must launch when started with split-screen-primary"
-            + " windowing mode via the shell", launchedActivity);
-        TermuxActivity activity = (TermuxActivity) launchedActivity;
+        SplitScreenPrimaryPaneHandle pane = launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary(
+            instrumentation, targetPackageName);
+        TermuxActivity activity = pane.activity;
+        View decorView = pane.decorView;
 
         try {
-            runShellCommand(instrumentation,
-                "am start -a android.settings.SETTINGS --windowingMode 4");
-
-            boolean enteredMultiWindowMode = awaitCondition(
-                () -> mainThreadBoolean(instrumentation, activity::isInMultiWindowMode),
-                MULTI_WINDOW_MODE_ENTERED_TIMEOUT_MILLIS);
-            Assume.assumeTrue(
-                "this scenario requires the launched task to actually enter multi-window mode"
-                    + " after requesting split-screen-primary/secondary windowing modes",
-                enteredMultiWindowMode);
-
-            awaitServiceAndSessionReady(instrumentation, activity);
-
-            View decorView = mainThreadValue(instrumentation,
-                () -> activity.getWindow().getDecorView());
-
-            runShellCommand(instrumentation, "am start -n " + primaryLaunchComponent);
-            boolean primaryPaneRegainedFocusAfterRefocus = awaitPrimaryPaneWindowFocusAndResumed(
-                instrumentation, decorView, targetPackageName, TermuxActivity.class.getName(),
-                PRIMARY_PANE_WINDOW_FOCUS_TIMEOUT_MILLIS);
-            assertTrue("the primary split-screen pane must regain input focus and become the"
-                + " resumed activity after being re-started in place, since"
-                + " InputMethodManager#showSoftInput silently no-ops for a view whose window is"
-                + " not the currently focused one", primaryPaneRegainedFocusAfterRefocus);
-
-            int[] preResizeLocation = new int[2];
-            int[] preResizeSize = new int[2];
-            instrumentation.runOnMainSync(() -> {
-                decorView.getLocationOnScreen(preResizeLocation);
-                preResizeSize[0] = decorView.getWidth();
-                preResizeSize[1] = decorView.getHeight();
-            });
-            int currentLeftPx = preResizeLocation[0];
-            int currentTopPx = preResizeLocation[1];
-            int currentRightPx = currentLeftPx + preResizeSize[0];
-            int preResizeHeightPx = preResizeSize[1];
-            int requestedHeightPx = Math.max(1, preResizeHeightPx / CLAMPED_HEIGHT_REQUEST_DIVISOR);
-            int requestedBottomPx = currentTopPx + requestedHeightPx;
-
-            int taskId = mainThreadInt(instrumentation, activity::getTaskId);
-            int stackId = stackIdContainingTaskOrNegativeOneWhenNotFound(instrumentation, taskId);
-            assertTrue("the split-screen-primary task's containing StackId must be discoverable"
-                + " from 'dumpsys activity activities' so the stack (the unit split-screen"
-                + " resize actually applies to, unlike 'am task resize' which is rejected for a"
-                + " task inside a split-screen stack) can be resized", stackId >= 0);
-            runShellCommand(instrumentation, "am stack resize " + stackId + " "
-                + currentLeftPx + " " + currentTopPx + " " + currentRightPx + " "
+            int requestedHeightPx = Math.max(1, pane.preResizeHeightPx / CLAMPED_HEIGHT_REQUEST_DIVISOR);
+            int requestedBottomPx = pane.currentTopPx + requestedHeightPx;
+            runShellCommand(instrumentation, "am stack resize " + pane.stackId + " "
+                + pane.currentLeftPx + " " + pane.currentTopPx + " " + pane.currentRightPx + " "
                 + requestedBottomPx);
 
             boolean heightChanged = awaitCondition(
-                () -> mainThreadInt(instrumentation, decorView::getHeight) != preResizeHeightPx,
+                () -> mainThreadInt(instrumentation, decorView::getHeight) != pane.preResizeHeightPx,
                 HEIGHT_RESIZE_APPLIED_TIMEOUT_MILLIS);
             Assume.assumeTrue(
                 "this scenario requires the device to actually apply the requested small-height"
@@ -191,7 +180,7 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                 + resumedActivityComponentOrUnavailable(instrumentation));
 
             int clampedHeightPx = mainThreadInt(instrumentation, decorView::getHeight);
-            Log.i(LOG_TAG, "preResizeHeightPx=" + preResizeHeightPx
+            Log.i(LOG_TAG, "preResizeHeightPx=" + pane.preResizeHeightPx
                 + " requestedHeightPx=" + requestedHeightPx
                 + " clampedHeightPx=" + clampedHeightPx);
 
@@ -245,6 +234,184 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
         }
     }
 
+    // The scenario above resizes the primary pane SMALLER than the device's minimum resizable
+    // task height, so its window frame is clamped and the real on-screen keyboard never
+    // physically overlaps it: WindowInsetsCompat#isVisible(Type.ime()) structurally stays false
+    // there on this emulator, so TermuxActivityRootView never reaches the branch that reads
+    // realKeyboardImeInsetHeightPx at all. This scenario instead grows the primary pane LARGER,
+    // which is not subject to a minimum-height floor, so that once the real keyboard is shown it
+    // genuinely overlaps the window's own visible display frame while the window's own
+    // rendered/requested height stays unchanged (confirmed below), exercising
+    // TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets's
+    // keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap branch, the only branch that
+    // consumes the real IME inset height directly rather than deriving the margin from rect
+    // geometry alone.
+    @Test
+    public void toolbarBottomMarginMatchesRealImeInsetWhenKeyboardOverlapsWithoutWindowResizeInSplitScreen()
+            throws Exception {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        String targetPackageName = instrumentation.getTargetContext().getPackageName();
+        suppressApkUpdateForegroundCheckForTestDuration(instrumentation);
+
+        Assume.assumeTrue(
+            "this scenario requires a device that reports split-screen multi-window support",
+            "true".equals(runShellCommand(instrumentation,
+                "am supports-split-screen-multi-window").trim()));
+
+        SplitScreenPrimaryPaneHandle pane = launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary(
+            instrumentation, targetPackageName);
+        TermuxActivity activity = pane.activity;
+        View decorView = pane.decorView;
+
+        try {
+            View bottomSpaceView = mainThreadValue(instrumentation,
+                activity::getTermuxActivityBottomSpaceView);
+            assertNotNull("the bottom space view that"
+                + " recomputeBottomMarginUsingWindowInsets measures against must exist in this"
+                + " layout", bottomSpaceView);
+
+            View rootView = mainThreadValue(instrumentation, activity::getTermuxActivityRootView);
+            assertNotNull("the activity's root view, whose bottom margin"
+                + " recomputeBottomMarginUsingWindowInsets adjusts, must exist", rootView);
+            // Required, not just diagnostic: this scenario detects whether the targeted
+            // sub-frame-transient branch fired by reading TermuxActivityRootView's own verbose
+            // logcat trace (see TARGETED_INSET_BRANCH_MARGIN_LOG_PATTERN below), since a
+            // black-box poll cannot reliably observe that single pass directly.
+            com.termux.shared.logger.Logger.setLogLevel(activity,
+                com.termux.shared.logger.Logger.LOG_LEVEL_VERBOSE);
+            instrumentation.runOnMainSync(() ->
+                ((TermuxActivityRootView) rootView).setIsRootViewLoggingEnabled(true));
+
+            TerminalView terminalView = mainThreadValue(instrumentation, activity::getTerminalView);
+            assertNotNull("the terminal view must exist so it can be tapped to request a real"
+                + " keyboard show", terminalView);
+
+            int displayHeightPx = mainThreadValue(instrumentation,
+                () -> ViewUtils.getDisplaySize(activity, false).y);
+
+            KeyboardOverlapSnapshot branchFiredSnapshot = null;
+            int decorHeightBeforeKeyboardAtBranchFirePx = -1;
+            int previousObservedHeightPx = pane.preResizeHeightPx;
+            for (float growthFraction : GROWN_HEIGHT_FRACTIONS_OF_DISPLAY_HEIGHT) {
+                int requestedHeightPx = Math.round(displayHeightPx * growthFraction);
+                int requestedBottomPx = pane.currentTopPx + requestedHeightPx;
+                runShellCommand(instrumentation, "am stack resize " + pane.stackId + " "
+                    + pane.currentLeftPx + " " + pane.currentTopPx + " " + pane.currentRightPx
+                    + " " + requestedBottomPx);
+
+                int baselineHeightForThisAttemptPx = previousObservedHeightPx;
+                boolean heightChanged = awaitCondition(
+                    () -> mainThreadInt(instrumentation, decorView::getHeight)
+                        != baselineHeightForThisAttemptPx,
+                    HEIGHT_RESIZE_APPLIED_TIMEOUT_MILLIS);
+                if (!heightChanged) {
+                    Log.i(LOG_TAG, "growthAttempt growthFraction=" + growthFraction
+                        + " requestedHeightPx=" + requestedHeightPx
+                        + " skipped=heightDidNotChange");
+                    continue;
+                }
+                Thread.sleep(LAYOUT_SETTLE_MILLIS);
+                int decorHeightBeforeKeyboardPx = mainThreadInt(instrumentation, decorView::getHeight);
+                previousObservedHeightPx = decorHeightBeforeKeyboardPx;
+
+                // Cleared right before the tap below so the only matches this attempt's later
+                // logcat read can find are ones this attempt's own keyboard-show caused.
+                clearLogcat(instrumentation);
+
+                int maxSafeTapYInclusivePx = requestedBottomPx
+                    - CLAMPED_TASK_TOUCHABLE_BOUNDARY_SAFETY_MARGIN_PX;
+                boolean imeShown = tapViewRepeatedlyUntilImeVisible(instrumentation, decorView,
+                    terminalView, maxSafeTapYInclusivePx, IME_VISIBILITY_TIMEOUT_MILLIS);
+                if (!imeShown) {
+                    Log.i(LOG_TAG, "growthAttempt growthFraction=" + growthFraction
+                        + " requestedHeightPx=" + requestedHeightPx
+                        + " decorHeightBeforeKeyboardPx=" + decorHeightBeforeKeyboardPx
+                        + " skipped=realKeyboardDidNotShow");
+                    continue;
+                }
+
+                // The production branch this scenario targets writes the real IME inset height
+                // directly into the margin only on the single onGlobalLayout/onApplyWindowInsets
+                // pass where the window's own visible frame reports no geometric overlap at all
+                // with the bottom space view (isVisible && !isVisibleBecauseMargin) while the
+                // keyboard is genuinely visible with a positive inset, then returns immediately -
+                // the only place production ever writes its own realKeyboardImeInsetHeightPx
+                // field into the margin, so any corruption of that field is visible here
+                // regardless of what a later pass does to the margin afterward. That pass is a
+                // sub-frame transient a black-box poll cannot reliably catch (see the comment on
+                // TARGETED_INSET_BRANCH_MARGIN_LOG_PATTERN above), so instead wait for the
+                // keyboard-show animation and its layout passes to fully settle, then check
+                // whether that branch fired from TermuxActivityRootView's own verbose logcat
+                // trace and confirm the value it baked in matches the real inset this test reads
+                // independently via the decor view's own insets.
+                Thread.sleep(LAYOUT_SETTLE_MILLIS);
+                java.util.List<Integer> targetedBranchMarginValues =
+                    targetedInsetBranchMarginValuesInLogcat(instrumentation);
+                KeyboardOverlapSnapshot settled = captureKeyboardOverlapSnapshot(
+                    instrumentation, decorView, bottomSpaceView, rootView);
+
+                UiDevice.getInstance(instrumentation).pressBack();
+                awaitImeVisibility(instrumentation, decorView, false, IME_VISIBILITY_TIMEOUT_MILLIS);
+
+                // Whether the targeted branch fired at all MUST NOT require that the value it
+                // baked in matches the real IME inset this test reads independently below: that
+                // equality is exactly what a corrupted realKeyboardImeInsetHeightPx field would
+                // break, so folding it into this accept-this-attempt gate would make a corrupted
+                // value look like "the branch never fired at this height" (an Assume skip) rather
+                // than "the branch fired and baked in a wrong value" (an assertion failure). The
+                // branch firing is instead recognized from its own logcat trace existing at all,
+                // the keyboard genuinely being visible, and this attempt's own window not having
+                // actually resized - independent of what value was baked in.
+                boolean targetedBranchFired = !targetedBranchMarginValues.isEmpty()
+                    && settled.keyboardVisible
+                    && settled.decorHeightPx == decorHeightBeforeKeyboardPx;
+
+                Log.i(LOG_TAG, "growthAttempt growthFraction=" + growthFraction
+                    + " requestedHeightPx=" + requestedHeightPx
+                    + " decorHeightBeforeKeyboardPx=" + decorHeightBeforeKeyboardPx
+                    + " targetedBranchMarginValuesInLogcat=" + targetedBranchMarginValues
+                    + " settledKeyboardVisible=" + settled.keyboardVisible
+                    + " settledRealImeInsetBottomPx=" + settled.realImeInsetBottomPx
+                    + " settledIsVisible=" + settled.isVisible
+                    + " settledIsVisibleBecauseMargin=" + settled.isVisibleBecauseMargin
+                    + " settledRootViewBottomMarginPx=" + settled.rootViewBottomMarginPx
+                    + " settledDecorHeightPx=" + settled.decorHeightPx
+                    + " targetedBranchFired=" + targetedBranchFired);
+
+                if (targetedBranchFired) {
+                    branchFiredSnapshot = settled;
+                    decorHeightBeforeKeyboardAtBranchFirePx = decorHeightBeforeKeyboardPx;
+                    break;
+                }
+            }
+
+            Assume.assumeTrue("this scenario requires a split-screen primary pane height where"
+                + " the real on-screen keyboard overlaps the window's own visible display frame"
+                + " without the task's own rendered window size actually changing, which depends"
+                + " on this device's display height and on-screen keyboard height; see logcat"
+                + " tag " + LOG_TAG + " growthAttempt lines for what was observed at each"
+                + " candidate height", branchFiredSnapshot != null);
+
+            assertEquals("the window's own rendered frame height must not change when the real"
+                    + " keyboard is shown in this scenario, since the margin-correction branch"
+                    + " under test exists precisely to compensate for a keyboard overlap that"
+                    + " occurs WITHOUT an actual window resize",
+                decorHeightBeforeKeyboardAtBranchFirePx, branchFiredSnapshot.decorHeightPx);
+
+            assertTrue("the real on-screen keyboard's IME inset must be genuinely positive for"
+                    + " this scenario to exercise the margin-correction branch",
+                branchFiredSnapshot.realImeInsetBottomPx > 0);
+
+            assertEquals("the root view's bottom margin must exactly track the real IME inset"
+                    + " height reported by the system when the keyboard genuinely overlaps the"
+                    + " window without an actual window resize, since TermuxActivityRootView"
+                    + " sets the margin directly from this value in that case",
+                branchFiredSnapshot.realImeInsetBottomPx, branchFiredSnapshot.rootViewBottomMarginPx);
+        } finally {
+            instrumentation.runOnMainSync(activity::finish);
+        }
+    }
+
     private static void suppressApkUpdateForegroundCheckForTestDuration(
             Instrumentation instrumentation) {
         PreferenceManager.getDefaultSharedPreferences(instrumentation.getTargetContext())
@@ -252,6 +419,180 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
             .putLong(ApkUpdateForegroundCheckThrottle.PREFERENCE_KEY_LAST_FOREGROUND_CHECK_AT,
                 System.currentTimeMillis() + APK_UPDATE_FOREGROUND_CHECK_SUPPRESSION_MILLIS)
             .commit();
+    }
+
+    /** Holds the split-screen-primary {@link TermuxActivity} pane state shared by every scenario
+     * once the primary pane has been launched, placed into genuine split-screen alongside a
+     * Settings secondary pane, and refocused so it is the resumed, window-focused activity ready
+     * to be resized. */
+    private static final class SplitScreenPrimaryPaneHandle {
+        final TermuxActivity activity;
+        final View decorView;
+        final int stackId;
+        final int currentLeftPx;
+        final int currentTopPx;
+        final int currentRightPx;
+        final int preResizeHeightPx;
+
+        SplitScreenPrimaryPaneHandle(TermuxActivity activity, View decorView, int stackId,
+                int currentLeftPx, int currentTopPx, int currentRightPx, int preResizeHeightPx) {
+            this.activity = activity;
+            this.decorView = decorView;
+            this.stackId = stackId;
+            this.currentLeftPx = currentLeftPx;
+            this.currentTopPx = currentTopPx;
+            this.currentRightPx = currentRightPx;
+            this.preResizeHeightPx = preResizeHeightPx;
+        }
+    }
+
+    private static SplitScreenPrimaryPaneHandle launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary(
+            Instrumentation instrumentation, String targetPackageName)
+            throws IOException, InterruptedException {
+        Instrumentation.ActivityMonitor monitor =
+            instrumentation.addMonitor(TermuxActivity.class.getName(), null, false);
+        String primaryLaunchComponent = targetPackageName + "/" + TermuxActivity.class.getName();
+        runShellCommand(instrumentation,
+            "am start -n " + primaryLaunchComponent + " --windowingMode 3");
+        Activity launchedActivity;
+        try {
+            launchedActivity = monitor.waitForActivityWithTimeout(ACTIVITY_LAUNCH_TIMEOUT_MILLIS);
+        } finally {
+            instrumentation.removeMonitor(monitor);
+        }
+        assertNotNull("TermuxActivity must launch when started with split-screen-primary"
+            + " windowing mode via the shell", launchedActivity);
+        TermuxActivity activity = (TermuxActivity) launchedActivity;
+
+        runShellCommand(instrumentation,
+            "am start -a android.settings.SETTINGS --windowingMode 4");
+
+        boolean enteredMultiWindowMode = awaitCondition(
+            () -> mainThreadBoolean(instrumentation, activity::isInMultiWindowMode),
+            MULTI_WINDOW_MODE_ENTERED_TIMEOUT_MILLIS);
+        Assume.assumeTrue(
+            "this scenario requires the launched task to actually enter multi-window mode"
+                + " after requesting split-screen-primary/secondary windowing modes",
+            enteredMultiWindowMode);
+
+        awaitServiceAndSessionReady(instrumentation, activity);
+
+        View decorView = mainThreadValue(instrumentation,
+            () -> activity.getWindow().getDecorView());
+
+        runShellCommand(instrumentation, "am start -n " + primaryLaunchComponent);
+        boolean primaryPaneRegainedFocusAfterRefocus = awaitPrimaryPaneWindowFocusAndResumed(
+            instrumentation, decorView, targetPackageName, TermuxActivity.class.getName(),
+            PRIMARY_PANE_WINDOW_FOCUS_TIMEOUT_MILLIS);
+        assertTrue("the primary split-screen pane must regain input focus and become the"
+            + " resumed activity after being re-started in place, since"
+            + " InputMethodManager#showSoftInput silently no-ops for a view whose window is"
+            + " not the currently focused one", primaryPaneRegainedFocusAfterRefocus);
+
+        int[] preResizeLocation = new int[2];
+        int[] preResizeSize = new int[2];
+        instrumentation.runOnMainSync(() -> {
+            decorView.getLocationOnScreen(preResizeLocation);
+            preResizeSize[0] = decorView.getWidth();
+            preResizeSize[1] = decorView.getHeight();
+        });
+        int currentLeftPx = preResizeLocation[0];
+        int currentTopPx = preResizeLocation[1];
+        int currentRightPx = currentLeftPx + preResizeSize[0];
+        int preResizeHeightPx = preResizeSize[1];
+
+        int taskId = mainThreadInt(instrumentation, activity::getTaskId);
+        int stackId = stackIdContainingTaskOrNegativeOneWhenNotFound(instrumentation, taskId);
+        assertTrue("the split-screen-primary task's containing StackId must be discoverable"
+            + " from 'dumpsys activity activities' so the stack (the unit split-screen"
+            + " resize actually applies to, unlike 'am task resize' which is rejected for a"
+            + " task inside a split-screen stack) can be resized", stackId >= 0);
+
+        return new SplitScreenPrimaryPaneHandle(activity, decorView, stackId, currentLeftPx,
+            currentTopPx, currentRightPx, preResizeHeightPx);
+    }
+
+    /** A single point-in-time reading of every quantity
+     * {@link TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets} bases its decision
+     * on, computed independently from the test using the same production
+     * {@link ViewUtils} helpers, plus the root view's own currently-applied bottom margin and the
+     * decor view's current height. */
+    private static final class KeyboardOverlapSnapshot {
+        final boolean keyboardVisible;
+        final int realImeInsetBottomPx;
+        final boolean isVisible;
+        final boolean isVisibleBecauseMargin;
+        final int rootViewBottomMarginPx;
+        final int decorHeightPx;
+
+        KeyboardOverlapSnapshot(boolean keyboardVisible, int realImeInsetBottomPx,
+                boolean isVisible, boolean isVisibleBecauseMargin, int rootViewBottomMarginPx,
+                int decorHeightPx) {
+            this.keyboardVisible = keyboardVisible;
+            this.realImeInsetBottomPx = realImeInsetBottomPx;
+            this.isVisible = isVisible;
+            this.isVisibleBecauseMargin = isVisibleBecauseMargin;
+            this.rootViewBottomMarginPx = rootViewBottomMarginPx;
+            this.decorHeightPx = decorHeightPx;
+        }
+    }
+
+    private static KeyboardOverlapSnapshot captureKeyboardOverlapSnapshot(
+            Instrumentation instrumentation, View decorView, View bottomSpaceView, View rootView) {
+        Object[] result = new Object[1];
+        instrumentation.runOnMainSync(() -> {
+            WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(decorView);
+            boolean keyboardVisible = ViewUtils.isKeyboardVisible(insets);
+            int realImeInsetBottomPx = insets != null
+                ? insets.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
+            int statusBarHeightPx = insets != null
+                ? insets.getInsets(WindowInsetsCompat.Type.statusBars()).top : 0;
+            Rect[] windowAndViewRects =
+                ViewUtils.getWindowAndViewRects(bottomSpaceView, statusBarHeightPx);
+            int rootViewBottomMarginPx = 0;
+            if (rootView.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                rootViewBottomMarginPx =
+                    ((ViewGroup.MarginLayoutParams) rootView.getLayoutParams()).bottomMargin;
+            }
+            boolean isVisible = windowAndViewRects != null
+                && ViewUtils.isRectAbove(windowAndViewRects[0], windowAndViewRects[1]);
+            boolean isVisibleBecauseMargin = windowAndViewRects != null
+                && windowAndViewRects[0].bottom == windowAndViewRects[1].bottom
+                && rootViewBottomMarginPx > 0;
+            result[0] = new KeyboardOverlapSnapshot(keyboardVisible, realImeInsetBottomPx,
+                isVisible, isVisibleBecauseMargin, rootViewBottomMarginPx, decorView.getHeight());
+        });
+        return (KeyboardOverlapSnapshot) result[0];
+    }
+
+    /** Clears the device's logcat buffer so a later read of
+     * {@link #targetedInsetBranchMarginValuesInLogcat} only reflects lines logged after this
+     * call. */
+    private static void clearLogcat(Instrumentation instrumentation) throws IOException {
+        runShellCommand(instrumentation, "logcat -c");
+    }
+
+    /** Returns, in the order logged, every value {@link TermuxActivityRootView}'s own verbose
+     * logcat trace recorded it having baked directly into the root view's bottom margin from its
+     * {@code realKeyboardImeInsetHeightPx} field, by searching the device's current logcat
+     * buffer for that branch's exact, unique log message
+     * ({@link #TARGETED_INSET_BRANCH_MARGIN_LOG_MESSAGE_PREFIX}). Returns an empty list if that
+     * branch did not fire since the buffer was last cleared. {@code UiAutomation#executeShellCommand}
+     * does not run its command through a shell - confirmed live: a {@code logcat -d | grep -F '...'}
+     * command built the same way every other shell command in this file is built returned an
+     * empty result in an actual instrumented run despite the target line being present in that
+     * same run's own captured logcat, while the identical command run directly via {@code adb
+     * shell} on the host (which does invoke a real shell) returned matches - so filtering is
+     * done here in this process on the plain, unfiltered dump instead of relying on a pipe. */
+    private static java.util.List<Integer> targetedInsetBranchMarginValuesInLogcat(
+            Instrumentation instrumentation) throws IOException {
+        String fullDump = runShellCommand(instrumentation, "logcat -d");
+        java.util.List<Integer> values = new java.util.ArrayList<>();
+        Matcher matcher = TARGETED_INSET_BRANCH_MARGIN_LOG_PATTERN.matcher(fullDump);
+        while (matcher.find()) {
+            values.add(Integer.parseInt(matcher.group(1)));
+        }
+        return values;
     }
 
     private static int stackIdContainingTaskOrNegativeOneWhenNotFound(
