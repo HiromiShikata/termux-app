@@ -68,20 +68,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
 
     private static final long MARGIN_SETTLE_TIMEOUT_MILLIS = 15_000L;
 
-    // TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets bakes the real IME inset
-    // into the margin on a single onGlobalLayout/onApplyWindowInsets pass, and that pass is a
-    // sub-frame transient. Confirmed live: a black-box poll of the same fields that branch reads
-    // (15ms sleep, sampling continuously while the keyboard was visible, 3s budget) still only
-    // managed to run every few hundred milliseconds to over a second apart during the real
-    // keyboard-show animation on this emulator, because instrumentation.runOnMainSync queues
-    // behind that animation's own main-thread work; across many growth attempts it never once
-    // landed inside the single pass, even though TermuxActivityRootView's own verbose logcat
-    // trace proved in the same runs that the pass did fire, with the branch's exact condition
-    // (isVisible && !isVisibleBecauseMargin && keyboardVisible && realImeInsetBottomPx > 0) true
-    // at that logged instant. Reading that same logcat trace afterward instead of re-sampling
-    // the view hierarchy sidesteps the race entirely: production writes the line itself, once,
-    // the instant the branch runs, and it stays in the buffer to be read at leisure once the
-    // keyboard-show animation has fully settled.
     private static final String TARGETED_INSET_BRANCH_MARGIN_LOG_MESSAGE_PREFIX =
         "Setting bottom margin to real IME inset height ";
 
@@ -90,35 +76,11 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
 
     private static final int CLAMPED_HEIGHT_REQUEST_DIVISOR = 8;
 
-    // Candidate split-screen-primary pane heights to grow to, expressed as a fraction of the
-    // device's own full display height so the test adapts to the device's actual geometry
-    // instead of relying on a hardcoded pixel value. Android's split-screen
-    // minimum-resizable-task-height enforcement only clamps a requested height that is too
-    // SMALL; growing the primary pane large enough instead pushes its own "visible display
-    // frame" (as computed by View#getWindowVisibleDisplayFrame, which
-    // ViewUtils#getWindowAndViewRects relies on, same as production) into genuine overlap with
-    // the real on-screen keyboard once it is shown, without the window's own rendered/requested
-    // height actually changing - exactly the scenario
-    // TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets's
-    // keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap branch exists for. These
-    // fractions were chosen empirically on the CI emulator config this project runs
-    // (android_instrumentation_tests.yml); if the on-screen keyboard height or display geometry
-    // ever drifts outside this range on a future emulator image, the scenario below is skipped
-    // via Assume rather than asserting on an unreachable precondition.
     private static final float[] GROWN_HEIGHT_FRACTIONS_OF_DISPLAY_HEIGHT =
         {0.55f, 0.56f, 0.565f, 0.57f, 0.58f};
 
     private static final long APK_UPDATE_FOREGROUND_CHECK_SUPPRESSION_MILLIS = 600_000L;
 
-    // The platform continues to dispatch touches using the task's requested resize bounds even
-    // when minimum-resizable-task-height enforcement makes the window's own rendered frame (and
-    // therefore the view hierarchy's measured bounds) taller than that request: resizing the
-    // primary pane's stack to a small height still leaves its window frame clamped to the
-    // device's minimum resizable task height, but touches below the originally requested bottom
-    // are delivered to the secondary pane's window, not the primary pane's, even though the
-    // primary pane's content visually extends further down. A tap target's own measured bounds
-    // are therefore not sufficient to pick a safe tap point in this clamped scenario; the
-    // requested resize bottom must additionally bound it.
     private static final int CLAMPED_TASK_TOUCHABLE_BOUNDARY_SAFETY_MARGIN_PX = 20;
 
     private static final long DOUBLE_TAP_TIMEOUT_SAFETY_MARGIN_MILLIS = 150L;
@@ -138,10 +100,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     private static final Pattern INPUT_METHOD_SERVED_VIEW_CLASS_NAME_PATTERN =
         Pattern.compile("mServedView=(\\S+)\\{");
 
-    // android.settings.SETTINGS always resolves to the stock Settings app's own package on this
-    // project's CI emulator image (android_instrumentation_tests.yml), never a vendor-replaced
-    // Settings app, so this fixed package name is safe to force-stop directly instead of having
-    // to resolve it from the launched Intent at runtime.
     private static final String SETTINGS_SECONDARY_PANE_PACKAGE_NAME = "com.android.settings";
 
     @Rule
@@ -241,18 +199,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
         }
     }
 
-    // The scenario above resizes the primary pane SMALLER than the device's minimum resizable
-    // task height, so its window frame is clamped and the real on-screen keyboard never
-    // physically overlaps it: WindowInsetsCompat#isVisible(Type.ime()) structurally stays false
-    // there on this emulator, so TermuxActivityRootView never reaches the branch that reads
-    // realKeyboardImeInsetHeightPx at all. This scenario instead grows the primary pane LARGER,
-    // which is not subject to a minimum-height floor, so that once the real keyboard is shown it
-    // genuinely overlaps the window's own visible display frame while the window's own
-    // rendered/requested height stays unchanged (confirmed below), exercising
-    // TermuxActivityRootView#recomputeBottomMarginUsingWindowInsets's
-    // keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap branch, the only branch that
-    // consumes the real IME inset height directly rather than deriving the margin from rect
-    // geometry alone.
     @Test
     public void toolbarBottomMarginMatchesRealImeInsetWhenKeyboardOverlapsWithoutWindowResizeInSplitScreen()
             throws Exception {
@@ -280,10 +226,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
             View rootView = mainThreadValue(instrumentation, activity::getTermuxActivityRootView);
             assertNotNull("the activity's root view, whose bottom margin"
                 + " recomputeBottomMarginUsingWindowInsets adjusts, must exist", rootView);
-            // Required, not just diagnostic: this scenario detects whether the targeted
-            // sub-frame-transient branch fired by reading TermuxActivityRootView's own verbose
-            // logcat trace (see TARGETED_INSET_BRANCH_MARGIN_LOG_PATTERN below), since a
-            // black-box poll cannot reliably observe that single pass directly.
             com.termux.shared.logger.Logger.setLogLevel(activity,
                 com.termux.shared.logger.Logger.LOG_LEVEL_VERBOSE);
             instrumentation.runOnMainSync(() ->
@@ -321,8 +263,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                 int decorHeightBeforeKeyboardPx = mainThreadInt(instrumentation, decorView::getHeight);
                 previousObservedHeightPx = decorHeightBeforeKeyboardPx;
 
-                // Cleared right before the tap below so the only matches this attempt's later
-                // logcat read can find are ones this attempt's own keyboard-show caused.
                 clearLogcat(instrumentation);
 
                 int maxSafeTapYInclusivePx = requestedBottomPx
@@ -337,20 +277,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                     continue;
                 }
 
-                // The production branch this scenario targets writes the real IME inset height
-                // directly into the margin only on the single onGlobalLayout/onApplyWindowInsets
-                // pass where the window's own visible frame reports no geometric overlap at all
-                // with the bottom space view (isVisible && !isVisibleBecauseMargin) while the
-                // keyboard is genuinely visible with a positive inset, then returns immediately -
-                // the only place production ever writes its own realKeyboardImeInsetHeightPx
-                // field into the margin, so any corruption of that field is visible here
-                // regardless of what a later pass does to the margin afterward. That pass is a
-                // sub-frame transient a black-box poll cannot reliably catch (see the comment on
-                // TARGETED_INSET_BRANCH_MARGIN_LOG_PATTERN above), so instead wait for the
-                // keyboard-show animation and its layout passes to fully settle, then check
-                // whether that branch fired from TermuxActivityRootView's own verbose logcat
-                // trace and confirm the value it baked in matches the real inset this test reads
-                // independently via the decor view's own insets.
                 Thread.sleep(LAYOUT_SETTLE_MILLIS);
                 java.util.List<Integer> targetedBranchMarginValues =
                     targetedInsetBranchMarginValuesInLogcat(instrumentation);
@@ -360,15 +286,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                 UiDevice.getInstance(instrumentation).pressBack();
                 awaitImeVisibility(instrumentation, decorView, false, IME_VISIBILITY_TIMEOUT_MILLIS);
 
-                // Whether the targeted branch fired at all MUST NOT require that the value it
-                // baked in matches the real IME inset this test reads independently below: that
-                // equality is exactly what a corrupted realKeyboardImeInsetHeightPx field would
-                // break, so folding it into this accept-this-attempt gate would make a corrupted
-                // value look like "the branch never fired at this height" (an Assume skip) rather
-                // than "the branch fired and baked in a wrong value" (an assertion failure). The
-                // branch firing is instead recognized from its own logcat trace existing at all,
-                // the keyboard genuinely being visible, and this attempt's own window not having
-                // actually resized - independent of what value was baked in.
                 boolean targetedBranchFired = !targetedBranchMarginValues.isEmpty()
                     && settled.keyboardVisible
                     && settled.decorHeightPx == decorHeightBeforeKeyboardPx;
@@ -748,12 +665,6 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     private static boolean imeShownAccordingToSystemOrFalse(Instrumentation instrumentation) {
         try {
             String inputMethodDump = runShellCommand(instrumentation, "dumpsys input_method");
-            // 'mInputShown' is a system-wide flag, not scoped to any particular window: a stray
-            // IME event belonging to the secondary split-screen pane's own app (e.g. it briefly
-            // showing its own keyboard for an unrelated view) would otherwise satisfy this check
-            // even though this app's own window never received a real keyboard show. Require
-            // 'mServedView' to additionally identify a view belonging to this app's own package
-            // before trusting 'mInputShown'.
             String targetPackageNamePrefix =
                 instrumentation.getTargetContext().getPackageName() + ".";
             Matcher servedViewMatcher =
