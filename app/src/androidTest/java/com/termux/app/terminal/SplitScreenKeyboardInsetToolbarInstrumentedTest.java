@@ -200,6 +200,126 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     }
 
     @Test
+    public void fullScreenKeyboardToggleKeepsImeVisibleAndToolbarFlushAboveIt() throws Exception {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        String targetPackageName = instrumentation.getTargetContext().getPackageName();
+        suppressApkUpdateForegroundCheckForTestDuration(instrumentation);
+        Instrumentation.ActivityMonitor monitor = instrumentation.addMonitor(
+            TermuxActivity.class.getName(), null, false);
+        Activity launchedActivity;
+        try {
+            runShellCommand(instrumentation,
+                "am start -n " + targetPackageName + "/" + TermuxActivity.class.getName());
+            launchedActivity = monitor.waitForActivityWithTimeout(ACTIVITY_LAUNCH_TIMEOUT_MILLIS);
+        } finally {
+            instrumentation.removeMonitor(monitor);
+        }
+        assertNotNull("full-screen Termux activity must launch", launchedActivity);
+        TermuxActivity activity = (TermuxActivity) launchedActivity;
+        try {
+            awaitServiceAndSessionReady(instrumentation, activity);
+            View decorView = mainThreadValue(instrumentation,
+                () -> activity.getWindow().getDecorView());
+            View separatorView = mainThreadValue(instrumentation,
+                () -> activity.findViewById(R.id.terminal_toolbar_bottom_separator));
+            View keyboardToggleButton = mainThreadValue(instrumentation,
+                () -> activity.findViewById(R.id.terminal_toolbar_keyboard_toggle_button));
+            assertNotNull("toolbar separator must exist", separatorView);
+            assertNotNull("keyboard toggle button must exist", keyboardToggleButton);
+            Rect separatorBeforeKeyboard = screenBoundsOf(instrumentation, separatorView);
+            Rect windowBeforeKeyboard = screenBoundsOf(instrumentation, decorView);
+
+            tapCenterOfView(instrumentation, keyboardToggleButton,
+                windowBeforeKeyboard.bottom - 1);
+            assertTrue("keyboard toggle must show the real on-screen keyboard",
+                awaitImeVisibility(instrumentation, decorView, true, IME_VISIBILITY_TIMEOUT_MILLIS));
+            for (int sample = 0; sample < 6; sample++) {
+                Thread.sleep(700L);
+                assertTrue("keyboard must remain shown after toolbar toggle, sample " + sample,
+                    imeVisible(instrumentation, decorView));
+            }
+            Rect separatorWithKeyboard = screenBoundsOf(instrumentation, separatorView);
+            Rect windowWithKeyboard = screenBoundsOf(instrumentation, decorView);
+            assertTrue("keyboard must reduce the full-screen window height",
+                windowWithKeyboard.bottom < windowBeforeKeyboard.bottom);
+            assertEquals("toolbar must retain its settled offset above the keyboard",
+                windowBeforeKeyboard.bottom - separatorBeforeKeyboard.top,
+                windowWithKeyboard.bottom - separatorWithKeyboard.top);
+        } finally {
+            instrumentation.runOnMainSync(activity::finish);
+        }
+    }
+
+    @Test
+    public void toolbarMovesOnlyWithWindowResizeWhenKeyboardOverlapsSplitScreenPane()
+            throws Exception {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        String targetPackageName = instrumentation.getTargetContext().getPackageName();
+        suppressApkUpdateForegroundCheckForTestDuration(instrumentation);
+        Assume.assumeTrue("split-screen support is required", "true".equals(
+            runShellCommand(instrumentation, "am supports-split-screen-multi-window").trim()));
+
+        SplitScreenPrimaryPaneHandle pane = launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary(
+            instrumentation, targetPackageName);
+        TermuxActivity activity = pane.activity;
+        View decorView = pane.decorView;
+        try {
+            int displayHeightPx = mainThreadValue(instrumentation,
+                () -> ViewUtils.getDisplaySize(activity, false).y);
+            int requestedBottomPx = pane.currentTopPx + Math.round(displayHeightPx * 0.6375f);
+            runShellCommand(instrumentation, "am stack resize " + pane.stackId + " "
+                + pane.currentLeftPx + " " + pane.currentTopPx + " " + pane.currentRightPx
+                + " " + requestedBottomPx);
+            assertTrue("the split-screen pane must resize for the keyboard-overlap scenario",
+                awaitCondition(() -> mainThreadInt(instrumentation, decorView::getHeight)
+                    != pane.preResizeHeightPx, HEIGHT_RESIZE_APPLIED_TIMEOUT_MILLIS));
+            Thread.sleep(LAYOUT_SETTLE_MILLIS);
+
+            View separatorView = mainThreadValue(instrumentation,
+                () -> activity.findViewById(R.id.terminal_toolbar_bottom_separator));
+            TerminalView terminalView = mainThreadValue(instrumentation, activity::getTerminalView);
+            View bottomSpaceView = mainThreadValue(instrumentation,
+                activity::getTermuxActivityBottomSpaceView);
+            View rootView = mainThreadValue(instrumentation, activity::getTermuxActivityRootView);
+            assertNotNull("toolbar separator must exist", separatorView);
+            assertNotNull("terminal tap target must exist", terminalView);
+            assertNotNull("bottom space view must exist", bottomSpaceView);
+            assertNotNull("root view must exist", rootView);
+            Rect separatorBeforeKeyboard = screenBoundsOf(instrumentation, separatorView);
+            int windowHeightBeforeKeyboardPx = mainThreadInt(instrumentation, decorView::getHeight);
+
+            assertTrue("terminal tap must display a real keyboard",
+                tapViewRepeatedlyUntilImeVisible(instrumentation, decorView, terminalView,
+                    requestedBottomPx - CLAMPED_TASK_TOUCHABLE_BOUNDARY_SAFETY_MARGIN_PX,
+                    IME_VISIBILITY_TIMEOUT_MILLIS));
+            Thread.sleep(LAYOUT_SETTLE_MILLIS);
+            Rect separatorWithKeyboard = screenBoundsOf(instrumentation, separatorView);
+            KeyboardOverlapSnapshot shown = captureKeyboardOverlapSnapshot(
+                instrumentation, decorView, bottomSpaceView, rootView);
+            int windowResizePx = windowHeightBeforeKeyboardPx - shown.decorHeightPx;
+            assertTrue("this split-screen pane must shrink when the keyboard overlaps it",
+                windowResizePx > 0);
+            assertTrue("the keyboard must report a positive IME inset",
+                shown.realImeInsetBottomPx > 0);
+            assertEquals("the toolbar must move once with the resized pane, not twice by also"
+                    + " adding the IME inset as a margin",
+                windowResizePx, separatorBeforeKeyboard.top - separatorWithKeyboard.top);
+
+            UiDevice.getInstance(instrumentation).pressBack();
+            assertTrue("keyboard must dismiss", awaitImeVisibility(instrumentation,
+                decorView, false, IME_VISIBILITY_TIMEOUT_MILLIS));
+            assertTrue("pane must restore its prior height", awaitCondition(
+                () -> mainThreadInt(instrumentation, decorView::getHeight)
+                    == windowHeightBeforeKeyboardPx, HEIGHT_RESIZE_APPLIED_TIMEOUT_MILLIS));
+            assertEquals("toolbar must return to its original screen position",
+                separatorBeforeKeyboard, screenBoundsOf(instrumentation, separatorView));
+        } finally {
+            instrumentation.runOnMainSync(activity::finish);
+            forceStopSettingsSecondaryPaneQuietly(instrumentation);
+        }
+    }
+
+    @Test
     public void toolbarBottomMarginMatchesRealImeInsetWhenKeyboardOverlapsWithoutWindowResizeInSplitScreen()
             throws Exception {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();

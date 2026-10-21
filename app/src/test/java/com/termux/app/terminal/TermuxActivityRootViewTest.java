@@ -758,6 +758,67 @@ public class TermuxActivityRootViewTest {
     }
 
     @Test
+    public void splitScreenKeyboardInsetMustNotDoubleShiftToolbarAfterWindowResizes() throws Exception {
+        assertResizedWindowDoesNotGainAnotherKeyboardMargin(1224, 1048, 176);
+    }
+
+    @Test
+    public void fullScreenKeyboardInsetMustPreserveToolbarPositionAfterWindowResizes() throws Exception {
+        assertResizedWindowDoesNotGainAnotherKeyboardMargin(1920, 1048, 872);
+    }
+
+    @Test
+    public void splitScreenKeyboardWithoutOverlapMustKeepToolbarPositionThroughDismissal() throws Exception {
+        TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+        setKeyboardVisible(activity, false);
+        TermuxActivityRootView rootView = buildRootView(activity);
+        setBottomSpaceView(activity, new ControllableBottomSpaceView(
+            RuntimeEnvironment.getApplication(), new Rect(0, 0, 1080, 947),
+            0, 944, 1080, 3));
+        rootView.onGlobalLayout();
+        Assert.assertEquals(0, bottomMarginOf(rootView));
+
+        TermuxActivityRootView.WindowInsetsListener listener = new TermuxActivityRootView.WindowInsetsListener();
+        listener.onApplyWindowInsets(rootView, buildWindowInsetsCarryingKeyboardState(true, 0));
+        Assert.assertEquals("keyboard below the small pane cannot move its toolbar",
+            0, bottomMarginOf(rootView));
+        listener.onApplyWindowInsets(rootView, buildWindowInsetsCarryingKeyboardState(false, 0));
+        Assert.assertEquals("dismissal cannot move a toolbar that never overlapped the keyboard",
+            0, bottomMarginOf(rootView));
+    }
+
+    private void assertResizedWindowDoesNotGainAnotherKeyboardMargin(
+            int windowBottomBeforeKeyboardPx, int windowBottomWithKeyboardPx,
+            int realImeInsetHeightPx) throws Exception {
+            TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
+            setKeyboardVisible(activity, false);
+            TermuxActivityRootView rootView = buildRootView(activity);
+            setBottomSpaceView(activity, new ControllableBottomSpaceView(
+                RuntimeEnvironment.getApplication(), new Rect(0, 0, 1080, windowBottomBeforeKeyboardPx),
+                0, windowBottomBeforeKeyboardPx - 3, 1080, 3));
+            rootView.onGlobalLayout();
+            Assert.assertEquals(0, bottomMarginOf(rootView));
+
+            setBottomSpaceView(activity, new ControllableBottomSpaceView(
+                RuntimeEnvironment.getApplication(), new Rect(0, 0, 1080, windowBottomWithKeyboardPx),
+                0, windowBottomWithKeyboardPx - 3, 1080, 3));
+            WindowInsets visibleInsets = buildWindowInsetsCarryingKeyboardState(true, realImeInsetHeightPx);
+            new TermuxActivityRootView.WindowInsetsListener().onApplyWindowInsets(rootView, visibleInsets);
+            Assert.assertEquals(
+                "the resized window already lifts the toolbar by the real IME overlap, so its"
+                    + " bottom margin must not lift it a second time",
+                0, bottomMarginOf(rootView));
+
+            WindowInsets hiddenInsets = buildWindowInsetsCarryingKeyboardState(false, 0);
+            setBottomSpaceView(activity, new ControllableBottomSpaceView(
+                RuntimeEnvironment.getApplication(), new Rect(0, 0, 1080, windowBottomBeforeKeyboardPx),
+                0, windowBottomBeforeKeyboardPx - 3, 1080, 3));
+            new TermuxActivityRootView.WindowInsetsListener().onApplyWindowInsets(rootView, hiddenInsets);
+            Assert.assertEquals("keyboard dismissal must restore the original toolbar margin",
+                0, bottomMarginOf(rootView));
+    }
+
+    @Test
     public void onApplyWindowInsetsAndOnGlobalLayoutTogetherMustNotDoubleApplyOrResetMarginForOneKeyboardTransitionOnOrdinaryDevice() throws Exception {
         TermuxActivity activity = buildVisibleActivityWithControllableWindowInsets();
         setKeyboardVisible(activity, false);
