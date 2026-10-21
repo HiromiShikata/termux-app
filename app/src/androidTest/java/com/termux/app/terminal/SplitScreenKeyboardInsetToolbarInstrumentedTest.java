@@ -19,6 +19,8 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.preference.PreferenceManager;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
+import androidx.test.runner.lifecycle.Stage;
 import androidx.test.uiautomator.UiDevice;
 
 import com.termux.R;
@@ -99,6 +101,9 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
 
     private static final Pattern INPUT_METHOD_SERVED_VIEW_CLASS_NAME_PATTERN =
         Pattern.compile("mServedView=(\\S+)\\{");
+
+    private static final Pattern INPUT_METHOD_TOUCHABLE_REGION_TOP_PATTERN =
+        Pattern.compile("touchable region=SkRegion\\(\\(\\d+,(\\d+),");
 
     private static final String SETTINGS_SECONDARY_PANE_PACKAGE_NAME = "com.android.settings";
 
@@ -193,6 +198,141 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
                     + " after the real keyboard is dismissed at a clamped small split-screen"
                     + " window height",
                 boundsBeforeKeyboard, boundsAfterKeyboardDismiss);
+        } finally {
+            instrumentation.runOnMainSync(activity::finish);
+            forceStopSettingsSecondaryPaneQuietly(instrumentation);
+        }
+    }
+
+    @Test
+    public void fullScreenKeyboardToggleKeepsImeVisibleAndToolbarFlushAboveIt() throws Exception {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        String targetPackageName = instrumentation.getTargetContext().getPackageName();
+        suppressApkUpdateForegroundCheckForTestDuration(instrumentation);
+        finishExistingTermuxActivity(instrumentation);
+        runShellCommand(instrumentation,
+            "am start -n " + targetPackageName + "/" + TermuxActivity.class.getName());
+        TermuxActivity activity = awaitResumedTermuxActivity(instrumentation);
+        try {
+            awaitServiceAndSessionReady(instrumentation, activity);
+            View decorView = mainThreadValue(instrumentation,
+                () -> activity.getWindow().getDecorView());
+            View separatorView = mainThreadValue(instrumentation,
+                () -> activity.findViewById(R.id.terminal_toolbar_bottom_separator));
+            View keyboardToggleButton = mainThreadValue(instrumentation,
+                () -> activity.findViewById(R.id.terminal_toolbar_keyboard_toggle_button));
+            assertNotNull("toolbar separator must exist", separatorView);
+            assertNotNull("keyboard toggle button must exist", keyboardToggleButton);
+            if (imeShownAccordingToSystemOrFalse(instrumentation)) {
+                UiDevice.getInstance(instrumentation).pressBack();
+            }
+            assertTrue("full-screen baseline must start with the keyboard hidden",
+                awaitImeVisibility(instrumentation, decorView, false, IME_VISIBILITY_TIMEOUT_MILLIS));
+            Rect separatorBeforeKeyboard = screenBoundsOf(instrumentation, separatorView);
+            Rect windowBeforeKeyboard = screenBoundsOf(instrumentation, decorView);
+            View rootView = mainThreadValue(instrumentation, activity::getTermuxActivityRootView);
+            assertNotNull("root view must exist", rootView);
+            Rect rootBeforeKeyboard = screenBoundsOf(instrumentation, rootView);
+            int separatorInsetFromRootBottomPx = rootBeforeKeyboard.bottom - separatorBeforeKeyboard.top;
+
+            tapCenterOfView(instrumentation, keyboardToggleButton,
+                windowBeforeKeyboard.bottom - 1);
+            assertTrue("keyboard toggle must show the real on-screen keyboard",
+                awaitImeVisibility(instrumentation, decorView, true, IME_VISIBILITY_TIMEOUT_MILLIS));
+            for (int sample = 0; sample < 6; sample++) {
+                Thread.sleep(700L);
+                assertTrue("keyboard must remain shown after toolbar toggle, sample " + sample,
+                    imeVisible(instrumentation, decorView));
+            }
+            Rect separatorWithKeyboard = screenBoundsOf(instrumentation, separatorView);
+            WindowInsetsCompat shownInsets = mainThreadValue(instrumentation,
+                () -> ViewCompat.getRootWindowInsets(decorView));
+            assertNotNull("visible keyboard must deliver window insets", shownInsets);
+            int realImeInsetBottomPx = shownInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom;
+            assertTrue("visible keyboard must report a positive IME inset", realImeInsetBottomPx > 0);
+            int keyboardTopOnScreenPx = keyboardTouchableTopOnScreenPx(instrumentation);
+            assertEquals("full-screen toolbar must stay flush above the real keyboard without"
+                    + " an extra navigation-bar-sized displacement",
+                keyboardTopOnScreenPx - separatorInsetFromRootBottomPx,
+                separatorWithKeyboard.top);
+        } finally {
+            instrumentation.runOnMainSync(activity::finish);
+        }
+    }
+
+    @Test
+    public void toolbarMovesOnlyWithRealImeInsetWhenKeyboardOverlapsSplitScreenPane()
+            throws Exception {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        String targetPackageName = instrumentation.getTargetContext().getPackageName();
+        suppressApkUpdateForegroundCheckForTestDuration(instrumentation);
+        finishExistingTermuxActivity(instrumentation);
+        Assume.assumeTrue("split-screen support is required", "true".equals(
+            runShellCommand(instrumentation, "am supports-split-screen-multi-window").trim()));
+
+        SplitScreenPrimaryPaneHandle pane = launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary(
+            instrumentation, targetPackageName);
+        TermuxActivity activity = pane.activity;
+        View decorView = pane.decorView;
+        try {
+            int displayHeightPx = mainThreadValue(instrumentation,
+                () -> ViewUtils.getDisplaySize(activity, false).y);
+            int requestedBottomPx = pane.currentTopPx + Math.round(displayHeightPx * 0.6375f);
+            runShellCommand(instrumentation, "am stack resize " + pane.stackId + " "
+                + pane.currentLeftPx + " " + pane.currentTopPx + " " + pane.currentRightPx
+                + " " + requestedBottomPx);
+            assertTrue("the split-screen pane must reach the requested overlap height",
+                awaitCondition(() -> mainThreadInt(instrumentation, decorView::getHeight)
+                    == requestedBottomPx - pane.currentTopPx, HEIGHT_RESIZE_APPLIED_TIMEOUT_MILLIS));
+            Thread.sleep(LAYOUT_SETTLE_MILLIS);
+
+            View separatorView = mainThreadValue(instrumentation,
+                () -> activity.findViewById(R.id.terminal_toolbar_bottom_separator));
+            TerminalView terminalView = mainThreadValue(instrumentation, activity::getTerminalView);
+            View bottomSpaceView = mainThreadValue(instrumentation,
+                activity::getTermuxActivityBottomSpaceView);
+            View rootView = mainThreadValue(instrumentation, activity::getTermuxActivityRootView);
+            assertNotNull("toolbar separator must exist", separatorView);
+            assertNotNull("terminal tap target must exist", terminalView);
+            assertNotNull("bottom space view must exist", bottomSpaceView);
+            assertNotNull("root view must exist", rootView);
+            if (imeShownAccordingToSystemOrFalse(instrumentation)) {
+                UiDevice.getInstance(instrumentation).pressBack();
+            }
+            assertTrue("split-screen baseline must start with the keyboard hidden",
+                awaitImeVisibility(instrumentation, decorView, false, IME_VISIBILITY_TIMEOUT_MILLIS));
+            Rect separatorBeforeKeyboard = screenBoundsOf(instrumentation, separatorView);
+            Rect rootBeforeKeyboard = screenBoundsOf(instrumentation, rootView);
+            Rect windowBeforeKeyboard = screenBoundsOf(instrumentation, decorView);
+            int windowHeightBeforeKeyboardPx = mainThreadInt(instrumentation, decorView::getHeight);
+
+            assertTrue("terminal tap must display a real keyboard",
+                tapViewRepeatedlyUntilImeVisible(instrumentation, decorView, terminalView,
+                    requestedBottomPx - CLAMPED_TASK_TOUCHABLE_BOUNDARY_SAFETY_MARGIN_PX,
+                    IME_VISIBILITY_TIMEOUT_MILLIS));
+            Thread.sleep(LAYOUT_SETTLE_MILLIS);
+            Rect separatorWithKeyboard = screenBoundsOf(instrumentation, separatorView);
+            KeyboardOverlapSnapshot shown = captureKeyboardOverlapSnapshot(
+                instrumentation, decorView, bottomSpaceView, rootView);
+            int windowResizePx = windowHeightBeforeKeyboardPx - shown.decorHeightPx;
+            assertTrue("the keyboard must report a positive IME inset",
+                shown.realImeInsetBottomPx > 0);
+            int keyboardTopOnScreenPx = keyboardTouchableTopOnScreenPx(instrumentation);
+            int separatorInsetFromRootBottomPx = rootBeforeKeyboard.bottom - separatorBeforeKeyboard.top;
+            assertEquals("split-screen toolbar must sit flush above the real keyboard whether"
+                    + " the pane resizes or the unconsumed inset becomes a margin; windowResizePx="
+                    + windowResizePx,
+                keyboardTopOnScreenPx - separatorInsetFromRootBottomPx,
+                separatorWithKeyboard.top);
+
+            UiDevice.getInstance(instrumentation).pressBack();
+            assertTrue("keyboard must dismiss", awaitImeVisibility(instrumentation,
+                decorView, false, IME_VISIBILITY_TIMEOUT_MILLIS));
+            assertTrue("pane must restore its prior height", awaitCondition(
+                () -> mainThreadInt(instrumentation, decorView::getHeight)
+                    == windowHeightBeforeKeyboardPx, HEIGHT_RESIZE_APPLIED_TIMEOUT_MILLIS));
+            assertEquals("toolbar must return to its original screen position",
+                separatorBeforeKeyboard, screenBoundsOf(instrumentation, separatorView));
         } finally {
             instrumentation.runOnMainSync(activity::finish);
             forceStopSettingsSecondaryPaneQuietly(instrumentation);
@@ -387,23 +527,61 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
         }
     }
 
+    private static TermuxActivity awaitResumedTermuxActivity(Instrumentation instrumentation)
+            throws InterruptedException {
+        TermuxActivity[] observedActivity = new TermuxActivity[1];
+        boolean resumed = awaitCondition(
+            () -> {
+                observedActivity[0] = resumedTermuxActivityOrNull(instrumentation);
+                return observedActivity[0] != null;
+            },
+            ACTIVITY_LAUNCH_TIMEOUT_MILLIS);
+        assertTrue("TermuxActivity must become resumed after the launch request", resumed);
+        return observedActivity[0];
+    }
+
+    private static TermuxActivity resumedTermuxActivityOrNull(Instrumentation instrumentation) {
+        return mainThreadValue(instrumentation, () -> {
+            for (Activity activity : ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(Stage.RESUMED)) {
+                if (activity instanceof TermuxActivity) {
+                    return (TermuxActivity) activity;
+                }
+            }
+            return null;
+        });
+    }
+
+    private static void finishExistingTermuxActivity(Instrumentation instrumentation)
+            throws InterruptedException {
+        TermuxActivity existingActivity = mainThreadValue(instrumentation, () -> {
+            Stage[] liveStages = {
+                Stage.RESUMED, Stage.STARTED, Stage.PAUSED, Stage.STOPPED, Stage.CREATED
+            };
+            for (Stage stage : liveStages) {
+                for (Activity activity : ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(stage)) {
+                    if (activity instanceof TermuxActivity) {
+                        return (TermuxActivity) activity;
+                    }
+                }
+            }
+            return null;
+        });
+        if (existingActivity == null) return;
+        instrumentation.runOnMainSync(existingActivity::finish);
+        assertTrue("prior TermuxActivity must finish before a new windowing mode is requested",
+            awaitCondition(() -> mainThreadBoolean(instrumentation, existingActivity::isDestroyed),
+                ACTIVITY_LAUNCH_TIMEOUT_MILLIS));
+    }
+
     private static SplitScreenPrimaryPaneHandle launchAndFocusSplitScreenPrimaryPaneWithSettingsSecondary(
             Instrumentation instrumentation, String targetPackageName)
             throws IOException, InterruptedException {
-        Instrumentation.ActivityMonitor monitor =
-            instrumentation.addMonitor(TermuxActivity.class.getName(), null, false);
         String primaryLaunchComponent = targetPackageName + "/" + TermuxActivity.class.getName();
         runShellCommand(instrumentation,
             "am start -n " + primaryLaunchComponent + " --windowingMode 3");
-        Activity launchedActivity;
-        try {
-            launchedActivity = monitor.waitForActivityWithTimeout(ACTIVITY_LAUNCH_TIMEOUT_MILLIS);
-        } finally {
-            instrumentation.removeMonitor(monitor);
-        }
-        assertNotNull("TermuxActivity must launch when started with split-screen-primary"
-            + " windowing mode via the shell", launchedActivity);
-        TermuxActivity activity = (TermuxActivity) launchedActivity;
+        TermuxActivity activity = awaitResumedTermuxActivity(instrumentation);
 
         runShellCommand(instrumentation,
             "am start -a android.settings.SETTINGS --windowingMode 4");
@@ -570,6 +748,20 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
         return summary.length() > 0 ? summary.toString() : "unavailable";
     }
 
+    private static int keyboardTouchableTopOnScreenPx(Instrumentation instrumentation)
+            throws IOException {
+        String windowsDump = runShellCommand(instrumentation, "dumpsys window windows");
+        int inputMethodWindow = windowsDump.indexOf(" InputMethod}");
+        assertTrue("visible keyboard must have an InputMethod window", inputMethodWindow >= 0);
+        int nextWindow = windowsDump.indexOf("Window #", inputMethodWindow);
+        String inputMethodSection = windowsDump.substring(inputMethodWindow,
+            nextWindow >= 0 ? nextWindow : windowsDump.length());
+        Matcher touchableRegion = INPUT_METHOD_TOUCHABLE_REGION_TOP_PATTERN.matcher(inputMethodSection);
+        assertTrue("visible keyboard must expose its on-screen touchable region",
+            touchableRegion.find());
+        return Integer.parseInt(touchableRegion.group(1));
+    }
+
     private static boolean resumedActivityComponentMatches(
             String resumedActivityComponentOrUnavailable, String expectedPackageName,
             String expectedClassName) {
@@ -655,11 +847,8 @@ public class SplitScreenKeyboardInsetToolbarInstrumentedTest {
     }
 
     private static boolean imeVisible(Instrumentation instrumentation, View anchorView) {
-        boolean insetsReportVisible = mainThreadBoolean(instrumentation, () -> {
-            WindowInsetsCompat insetsCompat = ViewCompat.getRootWindowInsets(anchorView);
-            return insetsCompat != null && insetsCompat.isVisible(WindowInsetsCompat.Type.ime());
-        });
-        return insetsReportVisible || imeShownAccordingToSystemOrFalse(instrumentation);
+        return mainThreadBoolean(instrumentation, anchorView::hasWindowFocus)
+            && imeShownAccordingToSystemOrFalse(instrumentation);
     }
 
     private static boolean imeShownAccordingToSystemOrFalse(Instrumentation instrumentation) {
