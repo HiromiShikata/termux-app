@@ -73,6 +73,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
     private final BottomToolbarMarginRecomputeGate marginRecomputeGate = new BottomToolbarMarginRecomputeGate();
 
     private Rect lastWindowAvailableRect;
+    private Rect windowAvailableRectBeforeKeyboard;
     private Rect lastBottomSpaceViewRect;
     private Rect predictedBottomSpaceViewRectAfterOwnMarginMutation;
 
@@ -164,11 +165,19 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
         boolean keyboardVisible = false;
         int realKeyboardImeInsetHeightPx = 0;
+        int keyboardInsetNotConsumedByWindowResizePx = 0;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             keyboardVisible = ViewUtils.isKeyboardVisible(windowInsetsCompat);
             realKeyboardImeInsetHeightPx = windowInsetsCompat != null
                 ? windowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom : 0;
+            if (!keyboardVisible) {
+                windowAvailableRectBeforeKeyboard = new Rect(windowAvailableRect);
+            } else {
+                int windowResizeHeightPx = windowAvailableRectBeforeKeyboard != null
+                    ? Math.max(0, windowAvailableRectBeforeKeyboard.bottom - windowAvailableRect.bottom) : 0;
+                keyboardInsetNotConsumedByWindowResizePx = Math.max(0, realKeyboardImeInsetHeightPx - windowResizeHeightPx);
+            }
             boolean keyboardVisibilityChanged = marginRecomputeGate.shouldRecomputeMargin(keyboardVisible);
             boolean windowGeometryChanged = !windowAvailableRect.equals(lastWindowAvailableRect);
             boolean bottomSpaceViewGeometryChanged = !bottomSpaceViewRect.equals(lastBottomSpaceViewRect);
@@ -196,7 +205,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
         boolean isVisibleBecauseMargin = (windowAvailableRect.bottom == bottomSpaceViewRect.bottom) && params.bottomMargin > 0;
         boolean isVisibleBecauseExtraMargin = ((bottomSpaceViewRect.bottom - windowAvailableRect.bottom) < 0);
         boolean keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap =
-            isVisible && !isVisibleBecauseMargin && keyboardVisible && realKeyboardImeInsetHeightPx > 0;
+            isVisible && !isVisibleBecauseMargin && keyboardVisible && keyboardInsetNotConsumedByWindowResizePx > 0;
 
         if (root_view_logging_enabled) {
             Logger.logVerbose(LOG_TAG, "windowAvailableRect " + ViewUtils.toRectString(windowAvailableRect) + ", bottomSpaceViewRect " + ViewUtils.toRectString(bottomSpaceViewRect));
@@ -209,18 +218,32 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
 
         // If the bottomSpaceViewRect is visible, then remove the margin if needed
         if (isVisible) {
-            if (keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap) {
-                boolean setMarginToRealImeInsetHeight = params.bottomMargin != realKeyboardImeInsetHeightPx;
-                if (setMarginToRealImeInsetHeight) {
-                    if (root_view_logging_enabled)
-                        Logger.logVerbose(LOG_TAG, "Setting bottom margin to real IME inset height " + realKeyboardImeInsetHeightPx);
-                    params.setMargins(0, 0, 0, realKeyboardImeInsetHeightPx);
+            if (keyboardVisible && realKeyboardImeInsetHeightPx > 0 && keyboardInsetNotConsumedByWindowResizePx == 0) {
+                marginBottom = null;
+                lastMarginBottom = null;
+                if (params.bottomMargin != 0) {
+                    params.setMargins(0, 0, 0, 0);
                     setLayoutParams(params);
-                    lastMarginBottom = realKeyboardImeInsetHeightPx;
                     predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
-                        bottomSpaceViewRect, realKeyboardImeInsetHeightPx - bottomMarginBeforeThisPass);
+                        bottomSpaceViewRect, -bottomMarginBeforeThisPass);
+                }
+                return;
+            }
+            if (keyboardGenuinelyVisibleWithRealInsetDespiteNoGeometricOverlap) {
+                boolean setMarginToUnconsumedImeInsetHeight = params.bottomMargin != keyboardInsetNotConsumedByWindowResizePx;
+                if (setMarginToUnconsumedImeInsetHeight) {
+                    if (root_view_logging_enabled) {
+                        String marginSource = keyboardInsetNotConsumedByWindowResizePx == realKeyboardImeInsetHeightPx
+                            ? "real IME inset height " : "IME inset not consumed by window resize ";
+                        Logger.logVerbose(LOG_TAG, "Setting bottom margin to " + marginSource + keyboardInsetNotConsumedByWindowResizePx);
+                    }
+                    params.setMargins(0, 0, 0, keyboardInsetNotConsumedByWindowResizePx);
+                    setLayoutParams(params);
+                    lastMarginBottom = keyboardInsetNotConsumedByWindowResizePx;
+                    predictedBottomSpaceViewRectAfterOwnMarginMutation = bottomSpaceViewRectAfterMarginChangesBy(
+                        bottomSpaceViewRect, keyboardInsetNotConsumedByWindowResizePx - bottomMarginBeforeThisPass);
                 } else if (root_view_logging_enabled) {
-                    Logger.logVerbose(LOG_TAG, "Bottom margin already equals real IME inset height " + realKeyboardImeInsetHeightPx);
+                    Logger.logVerbose(LOG_TAG, "Bottom margin already equals IME inset not consumed by window resize " + keyboardInsetNotConsumedByWindowResizePx);
                 }
                 return;
             }
