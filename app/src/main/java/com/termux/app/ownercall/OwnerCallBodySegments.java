@@ -5,7 +5,9 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class OwnerCallBodySegments {
@@ -16,10 +18,12 @@ public final class OwnerCallBodySegments {
 
         private final int mStartIndex;
         private final int mEndIndex;
+        private final boolean mQuoted;
 
-        Line(int startIndex, int endIndex) {
+        Line(int startIndex, int endIndex, boolean quoted) {
             mStartIndex = startIndex;
             mEndIndex = endIndex;
+            mQuoted = quoted;
         }
     }
 
@@ -40,10 +44,11 @@ public final class OwnerCallBodySegments {
     @NonNull
     public static List<OwnerCallBodySegment> of(@NonNull OwnerCallBodyDisplayText displayText) {
         String text = displayText.getText();
-        List<Line> lines = linesOf(text);
+        List<OwnerCallBodyRange> quotedLines = displayText.getQuotedLines();
+        List<Line> lines = linesOf(text, quotedLineStarts(quotedLines));
         List<OwnerCallBodySegment> segments = new ArrayList<>();
-        int textStart = 0;
         boolean foundTable = false;
+        int pendingFirstLine = 0;
         int lineIndex = 0;
         while (lineIndex < lines.size()) {
             ParsedTable parsed = lineIndex + 1 < lines.size()
@@ -53,46 +58,71 @@ public final class OwnerCallBodySegments {
                 continue;
             }
             foundTable = true;
+            addTextSegments(segments, text, lines, pendingFirstLine, lineIndex - 1);
             Line first = lines.get(lineIndex);
             Line last = lines.get(parsed.mLastLineIndex);
-            int textEnd = first.mStartIndex;
-            while (textEnd > textStart && text.charAt(textEnd - 1) == '\n') {
-                textEnd--;
-            }
-            addTextSegment(segments, textStart, textEnd);
             segments.add(OwnerCallBodySegment.table(first.mStartIndex, last.mEndIndex,
-                parsed.mTable));
-            textStart = last.mEndIndex;
-            while (textStart < text.length() && text.charAt(textStart) == '\n') {
-                textStart++;
-            }
+                parsed.mTable, first.mQuoted));
             lineIndex = parsed.mLastLineIndex + 1;
+            pendingFirstLine = lineIndex;
         }
-        if (!foundTable) {
-            return Collections.singletonList(OwnerCallBodySegment.text(0, text.length()));
+        if (!foundTable && quotedLines.isEmpty()) {
+            return Collections.singletonList(OwnerCallBodySegment.text(0, text.length(), false));
         }
-        addTextSegment(segments, textStart, text.length());
+        addTextSegments(segments, text, lines, pendingFirstLine, lines.size() - 1);
         return segments;
     }
 
-    private static void addTextSegment(@NonNull List<OwnerCallBodySegment> segments,
-                                       int startIndex, int endIndex) {
-        if (endIndex > startIndex) {
-            segments.add(OwnerCallBodySegment.text(startIndex, endIndex));
+    @NonNull
+    private static Set<Integer> quotedLineStarts(@NonNull List<OwnerCallBodyRange> quotedLines) {
+        Set<Integer> starts = new HashSet<>();
+        for (OwnerCallBodyRange quotedLine : quotedLines) {
+            starts.add(quotedLine.getStartIndex());
+        }
+        return starts;
+    }
+
+    private static void addTextSegments(@NonNull List<OwnerCallBodySegment> segments,
+                                        @NonNull String text, @NonNull List<Line> lines,
+                                        int firstLine, int lastLine) {
+        int lineIndex = firstLine;
+        while (lineIndex <= lastLine) {
+            boolean quoted = lines.get(lineIndex).mQuoted;
+            int runEnd = lineIndex;
+            while (runEnd + 1 <= lastLine && lines.get(runEnd + 1).mQuoted == quoted) {
+                runEnd++;
+            }
+            int from = lineIndex;
+            int to = runEnd;
+            while (from <= to && isBlank(text, lines.get(from))) {
+                from++;
+            }
+            while (to >= from && isBlank(text, lines.get(to))) {
+                to--;
+            }
+            if (from <= to) {
+                segments.add(OwnerCallBodySegment.text(lines.get(from).mStartIndex,
+                    lines.get(to).mEndIndex, quoted));
+            }
+            lineIndex = runEnd + 1;
         }
     }
 
+    private static boolean isBlank(@NonNull String text, @NonNull Line line) {
+        return text.substring(line.mStartIndex, line.mEndIndex).trim().isEmpty();
+    }
+
     @NonNull
-    private static List<Line> linesOf(@NonNull String text) {
+    private static List<Line> linesOf(@NonNull String text, @NonNull Set<Integer> quotedStarts) {
         List<Line> lines = new ArrayList<>();
         int start = 0;
         while (true) {
             int end = text.indexOf('\n', start);
             if (end < 0) {
-                lines.add(new Line(start, text.length()));
+                lines.add(new Line(start, text.length(), quotedStarts.contains(start)));
                 return lines;
             }
-            lines.add(new Line(start, end));
+            lines.add(new Line(start, end, quotedStarts.contains(start)));
             start = end + 1;
         }
     }
@@ -102,7 +132,8 @@ public final class OwnerCallBodySegments {
                                                @NonNull List<Line> lines, int headerIndex) {
         Line header = lines.get(headerIndex);
         Line delimiter = lines.get(headerIndex + 1);
-        if (!containsPipe(text, header) || !containsPipe(text, delimiter)) {
+        if (header.mQuoted != delimiter.mQuoted
+            || !containsPipe(text, header) || !containsPipe(text, delimiter)) {
             return null;
         }
         List<OwnerCallBodyRange> headerCells = cellsOf(text, header);
@@ -121,7 +152,7 @@ public final class OwnerCallBodySegments {
         int lastLineIndex = headerIndex + 1;
         for (int index = headerIndex + 2; index < lines.size(); index++) {
             Line line = lines.get(index);
-            if (!containsPipe(text, line)) {
+            if (line.mQuoted != header.mQuoted || !containsPipe(text, line)) {
                 break;
             }
             rows.add(paddedRow(text, line, headerCells.size()));

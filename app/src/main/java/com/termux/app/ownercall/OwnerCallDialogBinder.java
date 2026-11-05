@@ -1,7 +1,6 @@
 package com.termux.app.ownercall;
 
 import android.text.method.LinkMovementMethod;
-import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -14,13 +13,13 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class OwnerCallDialogBinder {
 
     private static final float DISABLED_BUTTON_ALPHA = 0.3f;
     private static final float ENABLED_BUTTON_ALPHA = 1.0f;
-    private static final float TABLE_VERTICAL_MARGIN_DP = 6f;
 
     public interface OwnerCallDialogActions
         extends OwnerCallBodySpannedText.OwnerCallBodyTapActions {
@@ -122,7 +121,7 @@ public final class OwnerCallDialogBinder {
         }
         OwnerCallBodySegment leadingSegment = segments.get(0);
         int firstAppendedIndex = 0;
-        if (leadingSegment.isTable()) {
+        if (leadingSegment.isTable() || leadingSegment.isQuoted()) {
             leadingText.setText("");
             leadingText.setVisibility(View.GONE);
         } else {
@@ -132,35 +131,26 @@ public final class OwnerCallDialogBinder {
                 leadingSegment.getStartIndex(), leadingSegment.getEndIndex()));
             firstAppendedIndex = 1;
         }
-        for (int segmentIndex = firstAppendedIndex; segmentIndex < segments.size();
-             segmentIndex++) {
+        int segmentIndex = firstAppendedIndex;
+        while (segmentIndex < segments.size()) {
             OwnerCallBodySegment segment = segments.get(segmentIndex);
-            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            if (segment.isTable()) {
-                int tableMargin = Math.round(TypedValue.applyDimension(
-                    TypedValue.COMPLEX_UNIT_DIP, TABLE_VERTICAL_MARGIN_DP,
-                    leadingText.getResources().getDisplayMetrics()));
-                layoutParams.setMargins(0, tableMargin, 0, tableMargin);
+            if (segment.isQuoted()) {
+                List<OwnerCallBodySegment> quotedSegments = new ArrayList<>();
+                while (segmentIndex < segments.size() && segments.get(segmentIndex).isQuoted()) {
+                    quotedSegments.add(segments.get(segmentIndex));
+                    segmentIndex++;
+                }
+                segmentsView.addView(OwnerCallBodyQuoteView.create(leadingText, quotedSegments,
+                    displayed), new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                continue;
             }
-            segmentsView.addView(viewOf(leadingText, segment, displayed), layoutParams);
+            segmentsView.addView(OwnerCallBodySegmentView.create(leadingText, segment, displayed),
+                OwnerCallBodySegmentView.layoutParamsOf(leadingText, segment));
+            segmentIndex++;
         }
         bodyScroll.setTag(R.id.owner_call_dialog_body_scroll, call.getCalledAt());
         bodyScroll.scrollTo(0, 0);
-    }
-
-    @NonNull
-    private static View viewOf(@NonNull TextView textStyle, @NonNull OwnerCallBodySegment segment,
-                               @NonNull CharSequence displayed) {
-        if (segment.isTable()) {
-            return OwnerCallBodyTableView.create(textStyle, segment.getTable(), displayed);
-        }
-        TextView text = new TextView(textStyle.getContext());
-        text.setTextColor(textStyle.getCurrentTextColor());
-        text.setTextSize(TypedValue.COMPLEX_UNIT_PX, textStyle.getTextSize());
-        text.setMovementMethod(LinkMovementMethod.getInstance());
-        text.setText(displayed.subSequence(segment.getStartIndex(), segment.getEndIndex()));
-        return text;
     }
 
     private static void bindActions(@NonNull View root, @NonNull OwnerCall call,

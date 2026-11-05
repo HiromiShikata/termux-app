@@ -1,12 +1,13 @@
 package com.termux.app.ownercall;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.text.method.LinkMovementMethod;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.ViewGroup;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -20,6 +21,9 @@ public final class OwnerCallBodyTableView {
     private static final float CELL_PADDING_DP = 4f;
     private static final float BORDER_WIDTH_DP = 1f;
     private static final int BORDER_COLOR = 0xFF888888;
+    private static final int HEADER_FILL_COLOR = 0x33888888;
+    private static final int MINIMUM_COLUMN_WEIGHT = 12;
+    private static final int MAXIMUM_COLUMN_WEIGHT = 40;
 
     private OwnerCallBodyTableView() {
     }
@@ -28,9 +32,10 @@ public final class OwnerCallBodyTableView {
     public static TableLayout create(@NonNull TextView textStyle,
                                      @NonNull OwnerCallBodyTable table,
                                      @NonNull CharSequence displayed) {
-        TableLayout tableLayout = new TableLayout(textStyle.getContext());
-        tableLayout.setStretchAllColumns(true);
-        tableLayout.setShrinkAllColumns(true);
+        int[] columnWeights = OwnerCallBodyTableLayout.columnWeightsOf(table,
+            MINIMUM_COLUMN_WEIGHT, MAXIMUM_COLUMN_WEIGHT);
+        OwnerCallBodyTableLayout tableLayout = new OwnerCallBodyTableLayout(textStyle.getContext());
+        tableLayout.setColumnWeights(columnWeights);
         tableLayout.addView(rowOf(textStyle, table.getHeaderCells(), table.getAlignments(),
             displayed, true));
         for (List<OwnerCallBodyRange> row : table.getRows()) {
@@ -47,7 +52,9 @@ public final class OwnerCallBodyTableView {
         TableRow row = new TableRow(textStyle.getContext());
         for (int columnIndex = 0; columnIndex < cells.size(); columnIndex++) {
             row.addView(cellOf(textStyle, cells.get(columnIndex),
-                alignments.get(columnIndex), displayed, header));
+                alignments.get(columnIndex), displayed, header, columnIndex == 0),
+                new TableRow.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
         }
         return row;
     }
@@ -55,14 +62,14 @@ public final class OwnerCallBodyTableView {
     @NonNull
     private static TextView cellOf(@NonNull TextView textStyle, @NonNull OwnerCallBodyRange cell,
                                    @NonNull OwnerCallBodyTableAlignment alignment,
-                                   @NonNull CharSequence displayed, boolean header) {
+                                   @NonNull CharSequence displayed, boolean header,
+                                   boolean firstColumn) {
         Context context = textStyle.getContext();
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         int padding = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
             CELL_PADDING_DP, metrics));
-        GradientDrawable border = new GradientDrawable();
-        border.setStroke(Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
-            BORDER_WIDTH_DP, metrics)), BORDER_COLOR);
+        int strokePixels = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP,
+            BORDER_WIDTH_DP, metrics));
 
         TextView view = new TextView(context);
         view.setText(displayed.subSequence(cell.getStartIndex(), cell.getEndIndex()));
@@ -70,7 +77,8 @@ public final class OwnerCallBodyTableView {
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, textStyle.getTextSize());
         view.setTypeface(header ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
         view.setGravity(gravityOf(alignment));
-        view.setBackground(border);
+        view.setBackground(new OwnerCallBodyTableCellBorder(strokePixels, BORDER_COLOR,
+            header ? HEADER_FILL_COLOR : Color.TRANSPARENT, firstColumn, header));
         view.setPadding(padding, padding, padding, padding);
         view.setMovementMethod(LinkMovementMethod.getInstance());
         return view;
