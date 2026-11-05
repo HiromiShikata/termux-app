@@ -916,13 +916,21 @@
                 android:fillViewport="true"
                 android:scrollbars="vertical">
 
-                <TextView
-                    android:id="@+id/owner_call_dialog_body"
+                <LinearLayout
+                    android:id="@+id/owner_call_dialog_body_segments"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingEnd="6dp"
-                    android:textColor="@color/white"
-                    android:textSize="12sp" />
+                    android:orientation="vertical"
+                    android:paddingEnd="6dp">
+
+                    <TextView
+                        android:id="@+id/owner_call_dialog_body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/white"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
 
             </ScrollView>
 

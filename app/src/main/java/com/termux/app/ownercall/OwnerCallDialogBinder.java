@@ -1,9 +1,11 @@
 package com.termux.app.ownercall;
 
 import android.text.method.LinkMovementMethod;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -18,6 +20,7 @@ public final class OwnerCallDialogBinder {
 
     private static final float DISABLED_BUTTON_ALPHA = 0.3f;
     private static final float ENABLED_BUTTON_ALPHA = 1.0f;
+    private static final float TABLE_VERTICAL_MARGIN_DP = 6f;
 
     public interface OwnerCallDialogActions
         extends OwnerCallBodySpannedText.OwnerCallBodyTapActions {
@@ -108,12 +111,56 @@ public final class OwnerCallDialogBinder {
         if (call.getCalledAt().equals(bodyScroll.getTag(R.id.owner_call_dialog_body_scroll))) {
             return;
         }
-        TextView body = root.findViewById(R.id.owner_call_dialog_body);
-        body.setMovementMethod(LinkMovementMethod.getInstance());
-        body.setText(OwnerCallBodySpannedText.of(
-            OwnerCallBodyDisplayText.of(call.getBody()), actions));
+        LinearLayout segmentsView = root.findViewById(R.id.owner_call_dialog_body_segments);
+        TextView leadingText = root.findViewById(R.id.owner_call_dialog_body);
+        OwnerCallBodyDisplayText displayText = OwnerCallBodyDisplayText.of(call.getBody());
+        CharSequence displayed = OwnerCallBodySpannedText.of(displayText, actions);
+        List<OwnerCallBodySegment> segments = OwnerCallBodySegments.of(displayText);
+
+        while (segmentsView.getChildCount() > 1) {
+            segmentsView.removeViewAt(segmentsView.getChildCount() - 1);
+        }
+        OwnerCallBodySegment leadingSegment = segments.get(0);
+        int firstAppendedIndex = 0;
+        if (leadingSegment.isTable()) {
+            leadingText.setText("");
+            leadingText.setVisibility(View.GONE);
+        } else {
+            leadingText.setVisibility(View.VISIBLE);
+            leadingText.setMovementMethod(LinkMovementMethod.getInstance());
+            leadingText.setText(displayed.subSequence(
+                leadingSegment.getStartIndex(), leadingSegment.getEndIndex()));
+            firstAppendedIndex = 1;
+        }
+        for (int segmentIndex = firstAppendedIndex; segmentIndex < segments.size();
+             segmentIndex++) {
+            OwnerCallBodySegment segment = segments.get(segmentIndex);
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (segment.isTable()) {
+                int tableMargin = Math.round(TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, TABLE_VERTICAL_MARGIN_DP,
+                    leadingText.getResources().getDisplayMetrics()));
+                layoutParams.setMargins(0, tableMargin, 0, tableMargin);
+            }
+            segmentsView.addView(viewOf(leadingText, segment, displayed), layoutParams);
+        }
         bodyScroll.setTag(R.id.owner_call_dialog_body_scroll, call.getCalledAt());
         bodyScroll.scrollTo(0, 0);
+    }
+
+    @NonNull
+    private static View viewOf(@NonNull TextView textStyle, @NonNull OwnerCallBodySegment segment,
+                               @NonNull CharSequence displayed) {
+        if (segment.isTable()) {
+            return OwnerCallBodyTableView.create(textStyle, segment.getTable(), displayed);
+        }
+        TextView text = new TextView(textStyle.getContext());
+        text.setTextColor(textStyle.getCurrentTextColor());
+        text.setTextSize(TypedValue.COMPLEX_UNIT_PX, textStyle.getTextSize());
+        text.setMovementMethod(LinkMovementMethod.getInstance());
+        text.setText(displayed.subSequence(segment.getStartIndex(), segment.getEndIndex()));
+        return text;
     }
 
     private static void bindActions(@NonNull View root, @NonNull OwnerCall call,

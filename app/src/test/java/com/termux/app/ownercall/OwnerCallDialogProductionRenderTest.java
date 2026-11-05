@@ -3,9 +3,13 @@ package com.termux.app.ownercall;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Typeface;
+import android.text.Spanned;
+import android.text.style.ClickableSpan;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +17,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TableLayout;
+import android.widget.TableRow;
 import android.widget.TextView;
 
 import com.termux.R;
@@ -50,6 +56,12 @@ public class OwnerCallDialogProductionRenderTest {
         new OwnerCall(SESSION_NAME, "2026-08-14T04:27:28Z", REPEATED_BODY);
     private static final List<OwnerCall> THREE_CALLS =
         Arrays.asList(FIRST_CALL, SECOND_CALL, THIRD_CALL);
+
+    private static final String TABLE_BODY = "Intro line\n\n| Fruit | Price |\n"
+        + "|:---|---:|\n| Apple | 100 |\n| Peach | 250 |\nOutro line";
+    private static final String TAPPABLE_TABLE_BODY = "| Step | Target |\n|---|---|\n"
+        + "| 1 | <copy>termux-reload-settings</copy> |\n"
+        + "| 2 | https://github.com/HiromiShikata/termux-app/pull/1925 |";
 
     private static final int SCREEN_HEIGHT_PIXELS = 2400;
     private static final int TERMINAL_AREA_WIDTH_PIXELS = 1080;
@@ -307,6 +319,179 @@ public class OwnerCallDialogProductionRenderTest {
             output.exists() && output.length() > 0);
         Assert.assertEquals(TERMINAL_AREA_WIDTH_PIXELS, bitmap.getWidth());
         Assert.assertEquals(SCREEN_HEIGHT_PIXELS / 4, bitmap.getHeight());
+    }
+
+    @Test
+    public void rendersAGithubTableBodyAsARealTableWithItsCellTexts() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root, TABLE_BODY, null);
+        View dialog = layoutDialog(root);
+
+        List<TableLayout> tables = tablesUnder(dialog);
+
+        Assert.assertEquals(1, tables.size());
+        TableLayout table = tables.get(0);
+        Assert.assertEquals(3, table.getChildCount());
+        Assert.assertEquals(Arrays.asList("Fruit", "Price"), cellTextsOf(table, 0));
+        Assert.assertEquals(Arrays.asList("Apple", "100"), cellTextsOf(table, 1));
+        Assert.assertEquals(Arrays.asList("Peach", "250"), cellTextsOf(table, 2));
+    }
+
+    @Test
+    public void boldsTheHeaderRowAndAppliesTheDelimiterAlignmentToEachColumn() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root, TABLE_BODY, null);
+        View dialog = layoutDialog(root);
+        TableLayout table = tablesUnder(dialog).get(0);
+
+        Assert.assertEquals(Typeface.BOLD, cellAt(table, 0, 0).getTypeface().getStyle());
+        Assert.assertEquals(Typeface.NORMAL, cellAt(table, 1, 0).getTypeface().getStyle());
+        Assert.assertEquals(Gravity.LEFT,
+            cellAt(table, 1, 0).getGravity() & Gravity.HORIZONTAL_GRAVITY_MASK);
+        Assert.assertEquals(Gravity.RIGHT,
+            cellAt(table, 1, 1).getGravity() & Gravity.HORIZONTAL_GRAVITY_MASK);
+    }
+
+    @Test
+    public void keepsTheTextAroundATableInOrderAndOutsideTheTable() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root, TABLE_BODY, null);
+        layoutDialog(root);
+        ViewGroup segments = root.findViewById(R.id.owner_call_dialog_body_segments);
+
+        Assert.assertEquals(3, segments.getChildCount());
+        Assert.assertEquals("Intro line", ((TextView) segments.getChildAt(0)).getText().toString());
+        Assert.assertTrue(segments.getChildAt(1) instanceof TableLayout);
+        Assert.assertEquals("Outro line", ((TextView) segments.getChildAt(2)).getText().toString());
+    }
+
+    @Test
+    public void keepsABodyWithAPipeLineButNoDelimiterRowAsPlainTextInOneTextView() {
+        View root = inflateActivityLayout();
+        String body = "compare a | b\nwith nothing else";
+
+        bindSingleBody(root, body, null);
+        View dialog = layoutDialog(root);
+        ViewGroup segments = root.findViewById(R.id.owner_call_dialog_body_segments);
+
+        Assert.assertTrue(tablesUnder(dialog).isEmpty());
+        Assert.assertEquals(1, segments.getChildCount());
+        Assert.assertEquals(body, ((TextView) segments.getChildAt(0)).getText().toString());
+    }
+
+    @Test
+    public void keepsCopyAndUrlTargetsInsideTableCellsTappable() {
+        View root = inflateActivityLayout();
+        RecordingDialogActions actions = new RecordingDialogActions();
+        bindSingleBody(root, TAPPABLE_TABLE_BODY, actions);
+        View dialog = layoutDialog(root);
+        TableLayout table = tablesUnder(dialog).get(0);
+
+        clickableSpansOf(cellAt(table, 1, 1))[0].onClick(cellAt(table, 1, 1));
+        clickableSpansOf(cellAt(table, 2, 1))[0].onClick(cellAt(table, 2, 1));
+
+        Assert.assertEquals(Collections.singletonList("termux-reload-settings"),
+            actions.copiedTexts);
+        Assert.assertEquals(
+            Collections.singletonList("https://github.com/HiromiShikata/termux-app/pull/1925"),
+            actions.openedUrls);
+    }
+
+    @Test
+    public void fitsALongTableCellInsideTheDialogWidthByWrappingItsText() {
+        View root = inflateActivityLayout();
+        String longCell = repeat("長い説明の文章です。", 30);
+        bindSingleBody(root, "| Note | Detail |\n|---|---|\n| first | " + longCell + " |", null);
+        View dialog = layoutDialog(root);
+        TableLayout table = tablesUnder(dialog).get(0);
+
+        Assert.assertTrue("the table must not be wider than the dialog",
+            table.getWidth() <= dialog.getWidth());
+        Assert.assertTrue("the long cell must wrap onto several lines",
+            cellAt(table, 1, 1).getLineCount() > 1);
+    }
+
+    @Test
+    public void rendersTheTableBodyIdenticallyWhenTheSameCallIsRebound() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root, TABLE_BODY, null);
+        ViewGroup segments = root.findViewById(R.id.owner_call_dialog_body_segments);
+        int childCountBefore = segments.getChildCount();
+
+        OwnerCallDialogBinder.bind(root, Collections.singletonList(
+            new OwnerCall(SESSION_NAME, "2026-08-14T04:22:28Z", TABLE_BODY)), 0, NOW + 60_000L,
+            PORTRAIT_GEOMETRY, null);
+
+        Assert.assertEquals(childCountBefore, segments.getChildCount());
+        Assert.assertEquals(1, tablesUnder(root).size());
+    }
+
+    private static void bindSingleBody(View root, String body,
+                                       OwnerCallDialogBinder.OwnerCallDialogActions actions) {
+        OwnerCallDialogBinder.bind(root, Collections.singletonList(
+            new OwnerCall(SESSION_NAME, "2026-08-14T04:22:28Z", body)), 0, NOW,
+            PORTRAIT_GEOMETRY, actions);
+    }
+
+    private static List<TableLayout> tablesUnder(View view) {
+        List<TableLayout> tables = new ArrayList<>();
+        if (view instanceof TableLayout) {
+            tables.add((TableLayout) view);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int childIndex = 0; childIndex < group.getChildCount(); childIndex++) {
+                tables.addAll(tablesUnder(group.getChildAt(childIndex)));
+            }
+        }
+        return tables;
+    }
+
+    private static TextView cellAt(TableLayout table, int rowIndex, int columnIndex) {
+        return (TextView) ((TableRow) table.getChildAt(rowIndex)).getChildAt(columnIndex);
+    }
+
+    private static List<String> cellTextsOf(TableLayout table, int rowIndex) {
+        List<String> texts = new ArrayList<>();
+        TableRow row = (TableRow) table.getChildAt(rowIndex);
+        for (int columnIndex = 0; columnIndex < row.getChildCount(); columnIndex++) {
+            texts.add(((TextView) row.getChildAt(columnIndex)).getText().toString());
+        }
+        return texts;
+    }
+
+    private static ClickableSpan[] clickableSpansOf(TextView cell) {
+        Spanned spanned = (Spanned) cell.getText();
+        return spanned.getSpans(0, spanned.length(), ClickableSpan.class);
+    }
+
+    private static final class RecordingDialogActions
+        implements OwnerCallDialogBinder.OwnerCallDialogActions {
+
+        private final List<String> copiedTexts = new ArrayList<>();
+        private final List<String> openedUrls = new ArrayList<>();
+
+        @Override
+        public void onCopyableTextTapped(String text) {
+            copiedTexts.add(text);
+        }
+
+        @Override
+        public void onUrlTapped(String url) {
+            openedUrls.add(url);
+        }
+
+        @Override
+        public void onPreviousCallRequested() {
+        }
+
+        @Override
+        public void onNextCallRequested() {
+        }
+
+        @Override
+        public void onDialogCloseRequested() {
+        }
     }
 
     private static String repeat(String text, int times) {
