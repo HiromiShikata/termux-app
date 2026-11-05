@@ -12,5 +12,5 @@ else
 fi
 
 cd "$CHECK_SCRIPT_DIR"
-npm ci
+npm ci --omit=dev
 npx tsx "$SCRIPT_RELATIVE_PATH"

@@ -80,9 +80,27 @@ jobs:
             autogen
             prep
             adapt
+      - name: Resolve commitlint cache key
+        id: commitlint-cache-key
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
+        run: |
+          set -euo pipefail
+          CLI_VERSION=$(npm view @commitlint/cli version)
+          CONFIG_VERSION=$(npm view @commitlint/config-conventional version)
+          echo "key=${CLI_VERSION}-${CONFIG_VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Restore commitlint install
+        if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: /tmp/commitlint-run
+          key: commitlint-${{ runner.os }}-${{ steps.commitlint-cache-key.outputs.key }}
       - name: Install commitlint
         if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         run: |
+          if [ -x /tmp/commitlint-run/node_modules/.bin/commitlint ]; then
+            echo "commitlint restored from cache"
+            exit 0
+          fi
           mkdir -p /tmp/commitlint-run
           cd /tmp/commitlint-run
           npm init -y
