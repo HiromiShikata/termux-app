@@ -426,6 +426,159 @@ public class OwnerCallDialogProductionRenderTest {
         Assert.assertEquals(1, tablesUnder(root).size());
     }
 
+    private static final String QUOTE_TAG = "owner-call-body-quote";
+    private static final String WIDE_TABLE_BODY = "| Sample metric median (with unit) | Count | Share |\n"
+        + "|---|---:|---:|\n"
+        + "| short | 12 | 25.0%（200件中50件） |\n"
+        + "| A much longer description cell that must wrap onto several lines inside the dialog"
+        + " | 1904 | 100.0%（1904件中1904件） |";
+    private static final String QUOTE_BODY = "> A quoted note line.\nAfter the quote.";
+    private static final float PHONE_DENSITY = 2.625f;
+
+    @Test
+    public void keepsEveryColumnOfAWideTableInsideTheDialogAndNothingIsClipped() {
+        View root = inflateActivityLayoutAtPhoneDensity();
+        bindSingleBody(root, WIDE_TABLE_BODY, null);
+        View dialog = layoutDialog(root);
+        ViewGroup segments = root.findViewById(R.id.owner_call_dialog_body_segments);
+        TableLayout table = tablesUnder(dialog).get(0);
+
+        Assert.assertTrue("the table must end inside the dialog body",
+            table.getRight() <= segments.getWidth());
+        for (int rowIndex = 0; rowIndex < table.getChildCount(); rowIndex++) {
+            TableRow row = (TableRow) table.getChildAt(rowIndex);
+            for (int columnIndex = 0; columnIndex < row.getChildCount(); columnIndex++) {
+                TextView cell = (TextView) row.getChildAt(columnIndex);
+                Assert.assertTrue("cell " + rowIndex + "," + columnIndex
+                        + " must keep a visible width",
+                    cell.getWidth() > 0);
+                Assert.assertTrue("cell " + rowIndex + "," + columnIndex
+                        + " must stay inside its row",
+                    cell.getRight() <= row.getWidth());
+                Assert.assertTrue("cell " + rowIndex + "," + columnIndex
+                        + " must be tall enough for its whole text",
+                    cell.getHeight() >= cell.getLayout().getHeight());
+            }
+        }
+    }
+
+    @Test
+    public void givesEveryCellOfARowTheSameHeightSoBordersLineUpIntoOneGrid() {
+        View root = inflateActivityLayoutAtPhoneDensity();
+        bindSingleBody(root, WIDE_TABLE_BODY, null);
+        TableLayout table = tablesUnder(layoutDialog(root)).get(0);
+
+        for (int rowIndex = 0; rowIndex < table.getChildCount(); rowIndex++) {
+            TableRow row = (TableRow) table.getChildAt(rowIndex);
+            int expectedHeight = row.getChildAt(0).getHeight();
+            for (int columnIndex = 0; columnIndex < row.getChildCount(); columnIndex++) {
+                Assert.assertEquals("row " + rowIndex + " column " + columnIndex
+                        + " must have the row's height",
+                    expectedHeight, row.getChildAt(columnIndex).getHeight());
+            }
+            Assert.assertEquals(expectedHeight, row.getHeight());
+        }
+    }
+
+    @Test
+    public void drawsAQuoteWithoutItsMarkersAndWithAVerticalBarBesideIt() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root, QUOTE_BODY, null);
+        View dialog = layoutDialog(root);
+        ViewGroup segments = root.findViewById(R.id.owner_call_dialog_body_segments);
+
+        List<View> quotes = quoteViewsUnder(dialog);
+        Assert.assertEquals(1, quotes.size());
+        View quote = quotes.get(0);
+        Assert.assertEquals("A quoted note line.", renderedTextUnder(quote));
+        View bar = ((ViewGroup) quote).getChildAt(0);
+        Assert.assertTrue("the quote must show a vertical bar", bar.getWidth() > 0);
+        Assert.assertEquals(quote.getHeight(), bar.getHeight());
+        String renderedBody = renderedTextUnder(segments);
+        Assert.assertFalse("quote markers must not be shown", renderedBody.contains(">"));
+        Assert.assertTrue(renderedBody.contains("After the quote."));
+    }
+
+    @Test
+    public void rendersATableWrittenInsideAQuoteAsATableInsideThatQuote() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root, "> | h1 | h2 |\n> |---|---|\n> | a | b |", null);
+        View dialog = layoutDialog(root);
+
+        List<View> quotes = quoteViewsUnder(dialog);
+        Assert.assertEquals(1, quotes.size());
+        List<TableLayout> tables = tablesUnder(quotes.get(0));
+        Assert.assertEquals(1, tables.size());
+        Assert.assertEquals(Arrays.asList("h1", "h2"), cellTextsOf(tables.get(0), 0));
+        Assert.assertEquals(Arrays.asList("a", "b"), cellTextsOf(tables.get(0), 1));
+        Assert.assertEquals(Typeface.BOLD, cellAt(tables.get(0), 0, 0).getTypeface().getStyle());
+    }
+
+    @Test
+    public void aQuoteNextToATableDoesNotBreakTheTableOrBecomeARowOfIt() {
+        View root = inflateActivityLayout();
+        bindSingleBody(root,
+            "> Note before.\n| a | b |\n|---|---|\n| 1 | 2 |\n> | 3 | 4 |", null);
+        View dialog = layoutDialog(root);
+
+        List<TableLayout> tables = tablesUnder(dialog);
+        Assert.assertEquals(1, tables.size());
+        Assert.assertEquals("a header and one body row", 2, tables.get(0).getChildCount());
+        Assert.assertEquals(Arrays.asList("1", "2"), cellTextsOf(tables.get(0), 1));
+        List<View> quotes = quoteViewsUnder(dialog);
+        Assert.assertEquals(2, quotes.size());
+        Assert.assertEquals("Note before.", renderedTextUnder(quotes.get(0)));
+        Assert.assertEquals("| 3 | 4 |", renderedTextUnder(quotes.get(1)));
+    }
+
+    @Test
+    public void keepsCopyAndUrlTargetsInsideAQuoteTappable() {
+        View root = inflateActivityLayout();
+        RecordingDialogActions actions = new RecordingDialogActions();
+        bindSingleBody(root, "> Run <copy>termux-reload-settings</copy> now.\n"
+            + "> See https://github.com/HiromiShikata/termux-app/pull/1925", actions);
+        View dialog = layoutDialog(root);
+
+        TextView text = textViewsUnder(quoteViewsUnder(dialog).get(0)).get(0);
+        for (ClickableSpan span : clickableSpansOf(text)) {
+            span.onClick(text);
+        }
+
+        Assert.assertEquals(Collections.singletonList("termux-reload-settings"),
+            actions.copiedTexts);
+        Assert.assertEquals(
+            Collections.singletonList("https://github.com/HiromiShikata/termux-app/pull/1925"),
+            actions.openedUrls);
+    }
+
+    private static List<View> quoteViewsUnder(View view) {
+        List<View> quotes = new ArrayList<>();
+        if (QUOTE_TAG.equals(view.getTag())) {
+            quotes.add(view);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int childIndex = 0; childIndex < group.getChildCount(); childIndex++) {
+                quotes.addAll(quoteViewsUnder(group.getChildAt(childIndex)));
+            }
+        }
+        return quotes;
+    }
+
+    private static List<TextView> textViewsUnder(View view) {
+        List<TextView> texts = new ArrayList<>();
+        if (view instanceof TextView) {
+            texts.add((TextView) view);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int childIndex = 0; childIndex < group.getChildCount(); childIndex++) {
+                texts.addAll(textViewsUnder(group.getChildAt(childIndex)));
+            }
+        }
+        return texts;
+    }
+
     private static void bindSingleBody(View root, String body,
                                        OwnerCallDialogBinder.OwnerCallDialogActions actions) {
         OwnerCallDialogBinder.bind(root, Collections.singletonList(
@@ -538,6 +691,15 @@ public class OwnerCallDialogProductionRenderTest {
     private static View inflateActivityLayout() {
         Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+        return LayoutInflater.from(context)
+            .inflate(R.layout.activity_termux, new FrameLayout(context), false);
+    }
+
+    private static View inflateActivityLayoutAtPhoneDensity() {
+        Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
+            R.style.Theme_TermuxActivity_DayNight_NoActionBar);
+        context.getResources().getDisplayMetrics().density = PHONE_DENSITY;
+        context.getResources().getDisplayMetrics().scaledDensity = PHONE_DENSITY;
         return LayoutInflater.from(context)
             .inflate(R.layout.activity_termux, new FrameLayout(context), false);
     }
