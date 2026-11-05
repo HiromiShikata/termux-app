@@ -77,6 +77,28 @@ public class OwnerCallBodyDisplayTextTest {
     }
 
     @Test
+    public void removesTheQuoteMarkerFromEachQuotedLineAndKeepsOtherLinesAsTheyAre() {
+        OwnerCallBodyDisplayText displayText = OwnerCallBodyDisplayText.of(
+            "> first\n>second\n   > third\nplain > not quoted");
+
+        Assert.assertEquals("first\nsecond\nthird\nplain > not quoted", displayText.getText());
+    }
+
+    @Test
+    public void keepsCopyRangesOnTheRightTextAfterQuoteMarkersAreRemoved() {
+        OwnerCallBodyDisplayText displayText =
+            OwnerCallBodyDisplayText.of("> Run <copy>termux-reload-settings</copy> now.");
+
+        Assert.assertEquals("Run termux-reload-settings now.", displayText.getText());
+        List<OwnerCallBodyRange> ranges = displayText.getCopyableRanges();
+        Assert.assertEquals(1, ranges.size());
+        Assert.assertEquals("termux-reload-settings",
+            displayText.getText().substring(ranges.get(0).getStartIndex(),
+                ranges.get(0).getEndIndex()));
+        Assert.assertEquals("termux-reload-settings", ranges.get(0).getText());
+    }
+
+    @Test
     public void offersEveryCopyMarkerPairInTheBody() {
         OwnerCallBodyDisplayText displayText =
             OwnerCallBodyDisplayText.of("<copy>first</copy> and <copy>second</copy>");

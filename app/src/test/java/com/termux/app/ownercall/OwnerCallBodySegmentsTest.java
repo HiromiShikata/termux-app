@@ -116,6 +116,66 @@ public class OwnerCallBodySegmentsTest {
             segments.get(2).getStartIndex(), segments.get(2).getEndIndex()));
     }
 
+    @Test
+    public void readsQuotedLinesWithoutTheirMarkersSoTablesWrittenInsideQuotesAreTables() {
+        Case[] cases = {
+            new Case("a quoted header, delimiter and body rows make a table",
+                "> | h1 | h2 |\n> |---|---|\n> | a | b |",
+                "TABLE align=[LEFT,LEFT] header=[h1][h2] row=[a][b]"),
+            new Case("a quoted line before a table keeps the table",
+                "> note\n| a |\n|---|\n| 1 |",
+                "TEXT(note)",
+                "TABLE align=[LEFT] header=[a] row=[1]"),
+            new Case("a quoted line after a table is not absorbed as a table row",
+                "| a |\n|---|\n| 1 |\n> after",
+                "TABLE align=[LEFT] header=[a] row=[1]",
+                "TEXT(after)"),
+            new Case("a quoted pipe line right after a table is not a table row",
+                "| a | b |\n|---|---|\n| 1 | 2 |\n> | 3 | 4 |",
+                "TABLE align=[LEFT,LEFT] header=[a][b] row=[1][2]",
+                "TEXT(| 3 | 4 |)"),
+            new Case("a quoted delimiter row under a plain header does not make a table",
+                "| a | b |\n> |---|---|\n| 1 | 2 |",
+                "TEXT(| a | b |)",
+                "TEXT(|---|---|)",
+                "TEXT(| 1 | 2 |)"),
+            new Case("quoted lines around a table keep their order",
+                "> one\n> two\n| a |\n|---|\n| 1 |\n> three",
+                "TEXT(one\ntwo)",
+                "TABLE align=[LEFT] header=[a] row=[1]",
+                "TEXT(three)"),
+            new Case("a greater-than sign inside a line is not a quote",
+                "a > b\n| x |\n|---|",
+                "TEXT(a > b)",
+                "TABLE align=[LEFT] header=[x]"),
+        };
+        for (Case testCase : cases) {
+            OwnerCallBodyDisplayText displayText = OwnerCallBodyDisplayText.of(testCase.mBody);
+            Assert.assertEquals(testCase.mName, testCase.mExpected,
+                describe(displayText.getText(), OwnerCallBodySegments.of(displayText)));
+        }
+    }
+
+    @Test
+    public void cellRangesInsideAQuotedTablePointAtTheDisplayedTextToo() {
+        OwnerCallBodyDisplayText displayText = OwnerCallBodyDisplayText.of(
+            "> | name | link |\n> |---|---|\n> | <copy>gh pr view</copy> | "
+                + "https://github.com/HiromiShikata/termux-app/pull/1925 |");
+
+        List<OwnerCallBodySegment> segments = OwnerCallBodySegments.of(displayText);
+
+        Assert.assertEquals(1, segments.size());
+        OwnerCallBodyTable table = segments.get(0).getTable();
+        Assert.assertNotNull(table);
+        OwnerCallBodyRange copyCell = table.getRows().get(0).get(0);
+        Assert.assertEquals("gh pr view", copyCell.getText());
+        Assert.assertEquals(copyCell.getText(),
+            displayText.getText().substring(copyCell.getStartIndex(), copyCell.getEndIndex()));
+        OwnerCallBodyRange urlCell = table.getRows().get(0).get(1);
+        Assert.assertEquals(urlCell.getText(),
+            displayText.getText().substring(urlCell.getStartIndex(), urlCell.getEndIndex()));
+    }
+
     private static List<String> describe(String displayed, List<OwnerCallBodySegment> segments) {
         List<String> described = new ArrayList<>();
         for (OwnerCallBodySegment segment : segments) {
