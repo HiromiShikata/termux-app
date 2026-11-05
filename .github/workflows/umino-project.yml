@@ -38,8 +38,14 @@ jobs:
       github.actor != 'dependabot[bot]' &&
       github.actor != 'renovate[bot]' &&
       github.actor != 'app/dependabot' &&
-      github.event.action != 'labeled'
-    runs-on: ubuntu-latest
+      github.event.action != 'labeled' &&
+      (
+        (github.event_name == 'issues' &&
+         (github.event.action == 'opened' || github.event.action == 'reopened')) ||
+        (github.event_name == 'pull_request' && github.event.action == 'opened')
+      )
+    runs-on: ubuntu-slim
+    timeout-minutes: 7
     steps:
       - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
         with:
@@ -143,7 +149,8 @@ jobs:
           repo-token: ${{ steps.app-token.outputs.token }}
 
   check_pull_requests_to_link_issues:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 7
     name: Check linked issues in pull requests
     if: >-
       github.repository != 'HiromiShikata/test-repository' &&
