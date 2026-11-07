@@ -31,7 +31,7 @@ public class SessionListRightHandedPinTest {
         Assert.assertSame(title, row.getChildAt(0));
         Assert.assertSame(root.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button),
             row.getChildAt(1));
-        Assert.assertEquals(android.view.Gravity.START, title.getGravity());
+        Assert.assertEquals(android.view.Gravity.START | android.view.Gravity.TOP, title.getGravity());
     }
 
     @Test

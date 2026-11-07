@@ -29,7 +29,7 @@ public class SessionListLeftHandedTest {
         Assert.assertSame(root.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button),
             titleRow.getChildAt(0));
         Assert.assertSame(title, titleRow.getChildAt(1));
-        Assert.assertEquals(android.view.Gravity.END, title.getGravity());
+        Assert.assertEquals(android.view.Gravity.END | android.view.Gravity.TOP, title.getGravity());
 
         LinearLayout controls = root.findViewById(R.id.session_list_bottom_sheet_controls_group);
         assertChildren(controls,
@@ -81,14 +81,17 @@ public class SessionListLeftHandedTest {
 
     private static final class Snapshot {
         private final View title;
-        private final View toggle;
+        private final View titleRowFirst;
+        private final View titleRowSecond;
         private final int titleGravity;
         private final View[] controls;
         private final int controlsGravity;
 
         private Snapshot(View root) {
             title = root.findViewById(R.id.session_list_bottom_sheet_title);
-            toggle = root.findViewById(R.id.session_list_bottom_sheet_hidden_toggle_button);
+            LinearLayout titleRow = (LinearLayout) title.getParent();
+            titleRowFirst = titleRow.getChildAt(0);
+            titleRowSecond = titleRow.getChildAt(1);
             titleGravity = ((TextView) title).getGravity();
             LinearLayout controls = root.findViewById(R.id.session_list_bottom_sheet_controls_group);
             controlsGravity = controls.getGravity();
@@ -105,8 +108,8 @@ public class SessionListLeftHandedTest {
         private void assertMatches(View root) {
             TextView currentTitle = root.findViewById(R.id.session_list_bottom_sheet_title);
             LinearLayout titleRow = (LinearLayout) currentTitle.getParent();
-            Assert.assertSame(toggle, titleRow.getChildAt(1));
-            Assert.assertSame(title, titleRow.getChildAt(0));
+            Assert.assertSame(titleRowFirst, titleRow.getChildAt(0));
+            Assert.assertSame(titleRowSecond, titleRow.getChildAt(1));
             Assert.assertEquals(titleGravity, currentTitle.getGravity());
             LinearLayout currentControls = root.findViewById(
                 R.id.session_list_bottom_sheet_controls_group);
