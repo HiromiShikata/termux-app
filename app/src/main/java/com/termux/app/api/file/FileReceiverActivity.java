@@ -30,7 +30,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -199,8 +198,10 @@ public class FileReceiverActivity extends AppCompatActivity {
     }
 
     public File saveStreamWithName(InputStream in, String attachmentFileName) {
-        File receiveDir = new File(TERMUX_RECEIVEDIR);
+        return saveStreamWithName(new File(TERMUX_RECEIVEDIR), in, attachmentFileName);
+    }
 
+    File saveStreamWithName(File receiveDir, InputStream in, String attachmentFileName) {
         if (DataUtils.isNullOrEmpty(attachmentFileName)) {
             showErrorDialogAndQuit("File name cannot be null or empty");
             return null;
@@ -212,19 +213,30 @@ public class FileReceiverActivity extends AppCompatActivity {
         }
 
         try {
-            final File outFile = new File(receiveDir, attachmentFileName);
-            try (FileOutputStream f = new FileOutputStream(outFile)) {
-                byte[] buffer = new byte[4096];
-                int readBytes;
-                while ((readBytes = in.read(buffer)) > 0) {
-                    f.write(buffer, 0, readBytes);
-                }
+            final ReceivedFileDestination destination = ReceivedFileDestination.resolve(receiveDir, attachmentFileName);
+            if (destination.getStatus() != ReceivedFileDestinationStatus.ACCEPTED) {
+                showErrorDialogAndQuit(getRejectedDestinationMessage(destination.getStatus(), attachmentFileName, receiveDir));
+                return null;
             }
-            return outFile;
+            destination.writeContent(in);
+            return destination.getFile();
         } catch (IOException e) {
             showErrorDialogAndQuit("Error saving file:\n\n" + e);
             Logger.logStackTraceWithMessage(LOG_TAG, "Error saving file", e);
             return null;
+        }
+    }
+
+    static String getRejectedDestinationMessage(ReceivedFileDestinationStatus status, String attachmentFileName, File receiveDir) {
+        switch (status) {
+            case EMPTY_NAME:
+                return "File name is empty after removing directory segments: " + attachmentFileName;
+            case CURRENT_OR_PARENT_DIRECTORY_NAME:
+                return "File name must not be '.' or '..': " + attachmentFileName;
+            case OUTSIDE_RECEIVE_DIRECTORY:
+                return "File must be saved directly inside " + receiveDir.getAbsolutePath() + ": " + attachmentFileName;
+            default:
+                throw new IllegalStateException("Unexpected rejected destination status: " + status);
         }
     }
 

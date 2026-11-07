@@ -3,15 +3,49 @@ package com.termux.app.api.file;
 import com.termux.app.api.file.FileReceiverActivity;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 public class FileReceiverActivityTest {
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    @Test
+    public void testSaveStreamWithNameSavesReducedNameInsideReceiveDirectory() throws IOException {
+        File rootDir = temporaryFolder.newFolder("root");
+        File receiveDir = new File(rootDir, "downloads");
+        FileReceiverActivity activity = Robolectric.buildActivity(FileReceiverActivity.class).create().get();
+
+        File savedFile = activity.saveStreamWithName(receiveDir,
+            new ByteArrayInputStream("received".getBytes(StandardCharsets.UTF_8)), "../bin/termux-file-editor");
+
+        Assert.assertEquals(new File(receiveDir, "termux-file-editor").getAbsolutePath(), savedFile.getAbsolutePath());
+        Assert.assertEquals("received", new String(Files.readAllBytes(savedFile.toPath()), StandardCharsets.UTF_8));
+        Assert.assertFalse(new File(rootDir, "bin/termux-file-editor").exists());
+    }
+
+    @Test
+    public void testSaveStreamWithNameWritesNothingForRejectedName() throws IOException {
+        File receiveDir = temporaryFolder.newFolder("downloads");
+        FileReceiverActivity activity = Robolectric.buildActivity(FileReceiverActivity.class).create().get();
+
+        Assert.assertNull(activity.saveStreamWithName(receiveDir, new ByteArrayInputStream(new byte[]{1}), ".."));
+        Assert.assertEquals(0, receiveDir.list().length);
+    }
 
     @Test
     public void testIsSharedTextAnUrl() {
