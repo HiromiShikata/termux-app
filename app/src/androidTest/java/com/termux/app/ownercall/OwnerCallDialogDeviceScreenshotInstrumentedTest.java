@@ -3,6 +3,7 @@ package com.termux.app.ownercall;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
@@ -116,6 +117,39 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         if (server != null) {
             server.stop();
         }
+    }
+
+    @Test
+    public void leftHandedOwnerCallHeaderIsCapturedOffAndOnWithItsCloseButtonEdgeAsserted()
+        throws Exception {
+        preferences().setLeftHandedModeEnabled(false);
+        try {
+            ActivityScenario<TermuxActivity> headerScenario = launchWithACallingSession();
+            awaitDialogShowing(headerScenario, "1 / 3");
+            assertOwnerCallCloseButtonEdge(headerScenario, false);
+            assertNotNull("the owner-call header OFF capture must be written",
+                captureScreenshot(headerScenario, "left-handed-ownercall-header-before.png"));
+
+            preferences().setLeftHandedModeEnabled(true);
+            awaitWindowLocationSettled(headerScenario, R.id.owner_call_dialog_close_button);
+            assertOwnerCallCloseButtonEdge(headerScenario, true);
+            assertNotNull("the owner-call header ON capture must be written",
+                captureScreenshot(headerScenario, "left-handed-ownercall-header-after.png"));
+        } finally {
+            preferences().setLeftHandedModeEnabled(false);
+        }
+    }
+
+    private static void assertOwnerCallCloseButtonEdge(ActivityScenario<TermuxActivity> scenario, boolean leftHanded) {
+        scenario.onActivity(activity -> {
+            android.widget.LinearLayout header = activity.findViewById(R.id.owner_call_dialog_header);
+            View close = activity.findViewById(R.id.owner_call_dialog_close_button);
+            View edgeChild = leftHanded
+                ? header.getChildAt(0)
+                : header.getChildAt(header.getChildCount() - 1);
+            assertSame("the close button must sit at the " + (leftHanded ? "left" : "right") + " end of the header",
+                close, edgeChild);
+        });
     }
 
     private static void forgetTheStoredDialogPlacement() {
