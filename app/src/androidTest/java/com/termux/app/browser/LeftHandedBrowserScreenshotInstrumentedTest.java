@@ -68,7 +68,7 @@ public class LeftHandedBrowserScreenshotInstrumentedTest {
             View actions = activity.findViewById(R.id.browser_project_overview_actions);
             Assert.assertNotNull(actions);
             int horizontal = ((FrameLayout.LayoutParams) actions.getLayoutParams()).gravity
-                & android.view.Gravity.HORIZONTAL_GRAVITY_MASK;
+                & android.view.Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK;
             Log.i("LeftHandedToggle", "browser project actions visibility=" + actions.getVisibility()
                 + " horizontalGravity=" + horizontal + " leftHanded=" + leftHanded);
             Assert.assertEquals("the project actions must sit at the "
