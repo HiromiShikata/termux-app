@@ -127,16 +127,24 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
             ActivityScenario<TermuxActivity> headerScenario = launchWithACallingSession();
             awaitDialogShowing(headerScenario, "1 / 3");
             assertOwnerCallCloseButtonEdge(headerScenario, false);
-            assertNotNull("the owner-call header OFF capture must be written",
-                captureScreenshot(headerScenario, "left-handed-ownercall-header-before.png"));
+            captureDeviceScreenshot("left-handed-ownercall-header-before.png");
 
             preferences().setLeftHandedModeEnabled(true);
             awaitWindowLocationSettled(headerScenario, R.id.owner_call_dialog_close_button);
             assertOwnerCallCloseButtonEdge(headerScenario, true);
-            assertNotNull("the owner-call header ON capture must be written",
-                captureScreenshot(headerScenario, "left-handed-ownercall-header-after.png"));
+            captureDeviceScreenshot("left-handed-ownercall-header-after.png");
         } finally {
             preferences().setLeftHandedModeEnabled(false);
+        }
+    }
+
+    private static void captureDeviceScreenshot(String fileName) throws IOException {
+        android.graphics.Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        assertNotNull("the device screenshot must be available", bitmap);
+        File directory = sharedScreenshotDirectory();
+        try (FileOutputStream stream = new FileOutputStream(new File(directory, fileName))) {
+            assertTrue("PNG compression must succeed for " + fileName,
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream));
         }
     }
 
