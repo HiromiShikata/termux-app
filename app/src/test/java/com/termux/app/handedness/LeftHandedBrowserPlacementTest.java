@@ -41,7 +41,7 @@ public class LeftHandedBrowserPlacementTest {
 
         Assert.assertEquals(Gravity.BOTTOM | Gravity.END,
             ((FrameLayout.LayoutParams) actions.getLayoutParams()).gravity);
-        Assert.assertEquals(Gravity.END, actions.getGravity());
+        Assert.assertEquals(Gravity.END | Gravity.TOP, actions.getGravity());
         assertChildren(actions, R.id.browser_open_all_tasks_button,
             R.id.browser_open_first_ten_tasks_button);
     }
@@ -124,7 +124,7 @@ public class LeftHandedBrowserPlacementTest {
 
         Assert.assertEquals(Gravity.BOTTOM | Gravity.START,
             ((FrameLayout.LayoutParams) actions.getLayoutParams()).gravity);
-        Assert.assertEquals(Gravity.START, actions.getGravity());
+        Assert.assertEquals(Gravity.START | Gravity.TOP, actions.getGravity());
         assertChildren(actions, R.id.browser_open_all_tasks_button,
             R.id.browser_open_first_ten_tasks_button);
     }
