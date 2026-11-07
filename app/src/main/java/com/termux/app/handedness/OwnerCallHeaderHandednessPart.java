@@ -2,6 +2,7 @@ package com.termux.app.handedness;
 
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.termux.R;
 
@@ -12,12 +13,15 @@ public final class OwnerCallHeaderHandednessPart implements HandednessLayoutPart
 
     private final ViewGroupChildOrderMirror childOrderMirror = new ViewGroupChildOrderMirror();
     private final MarginEdgeMirror marginEdgeMirror = new MarginEdgeMirror();
+    private final TextViewGravityMirror relativeTimeGravityMirror = new TextViewGravityMirror();
+    private final TextView relativeTime;
     private final LinearLayout header;
     private final View position;
 
     public OwnerCallHeaderHandednessPart(View activityRoot) {
         header = activityRoot.findViewById(R.id.owner_call_dialog_header);
         position = activityRoot.findViewById(R.id.owner_call_dialog_position);
+        relativeTime = activityRoot.findViewById(R.id.owner_call_dialog_relative_time);
     }
 
     @Override
@@ -32,6 +36,7 @@ public final class OwnerCallHeaderHandednessPart implements HandednessLayoutPart
             return target;
         });
         marginEdgeMirror.apply(position, handedness);
+        relativeTimeGravityMirror.apply(relativeTime, handedness);
     }
 
 }
