@@ -14,6 +14,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.HandednessGravity;
+import com.termux.app.handedness.HandednessSource;
 
 import java.util.List;
 
@@ -24,14 +27,24 @@ public final class BrowserTabFaviconStripController {
     private final HorizontalScrollView mScrollView;
     private final LinearLayout mContainer;
     private final BrowserTabSelectionListener mListener;
+    private final HandednessSource mHandednessSource;
 
     public BrowserTabFaviconStripController(
             @NonNull HorizontalScrollView scrollView,
             @NonNull LinearLayout container,
             @NonNull BrowserTabSelectionListener listener) {
+        this(scrollView, container, listener, () -> Handedness.RIGHT_HANDED);
+    }
+
+    public BrowserTabFaviconStripController(
+            @NonNull HorizontalScrollView scrollView,
+            @NonNull LinearLayout container,
+            @NonNull BrowserTabSelectionListener listener,
+            @NonNull HandednessSource handednessSource) {
         this.mScrollView = scrollView;
         this.mContainer = container;
         this.mListener = listener;
+        this.mHandednessSource = handednessSource;
     }
 
     public void update(@NonNull List<BrowserTab> tabs, @Nullable BrowserTab activeTab) {
@@ -43,6 +56,7 @@ public final class BrowserTabFaviconStripController {
             ImageView faviconView = item.findViewById(R.id.browser_tab_strip_favicon);
             View indicator = item.findViewById(R.id.browser_tab_strip_active_indicator);
             View closeButton = item.findViewById(R.id.browser_tab_strip_close_button);
+            HandednessGravity.applyToFrameChild(closeButton, mHandednessSource.current());
             Bitmap favicon = tab.getFavicon();
             if (favicon != null) {
                 faviconView.setImageBitmap(favicon);
