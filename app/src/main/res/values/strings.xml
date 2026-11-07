@@ -472,7 +472,7 @@
     <string name="session_switch_overlay_enabled_title">Show session-switch overlay</string>
     <string name="session_switch_overlay_enabled_summary">When on, a small overlay listing the sessions appears in the top-left corner while you switch sessions with the volume keys. When off (default), the overlay stays hidden and volume keys still switch sessions.</string>
     <string name="left_handed_mode_title">Left-handed mode</string>
-    <string name="left_handed_mode_summary">When on, the bottom toolbar, the app update button and the owner-call indicator move to the left side for one-handed use with the left hand. When off (default), they stay on the right side.</string>
+    <string name="left_handed_mode_summary">When on, the bottom toolbar, the app update button, the main screen info row, the session list, the session rows, the owner-call dialog header and the input history rows move to the left side for one-handed use with the left hand. Text and icons are not mirrored. When off (default), they stay on the right side.</string>
     <string name="apk_update_checking">Checking for updates…</string>
     <string name="apk_update_up_to_date">You are already on the latest version (%1$s)</string>
     <string name="apk_update_check_failed">Update check failed: %1$s</string>
