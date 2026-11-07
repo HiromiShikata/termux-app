@@ -17,6 +17,8 @@ import androidx.viewpager.widget.PagerAdapter;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.TextInputHistoryRowHandednessLayout;
 import com.termux.app.terminal.MaxHeightScrollView;
 import com.termux.app.terminal.SessionGenuineReplyRecorder;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -177,7 +179,7 @@ public class TerminalToolbarViewPager {
 
             final AlertDialog[] openDialog = new AlertDialog[1];
             final SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-                mActivity, mSubmittedTextInputHistory, this::persistPinnedTextInputHistory,
+                mActivity, mActivity, mSubmittedTextInputHistory, this::persistPinnedTextInputHistory,
                 entry -> {
                     HistoryEntryRestore.into(editText, entry);
                     openDialog[0].dismiss();
@@ -232,6 +234,8 @@ public class TerminalToolbarViewPager {
     static final class SubmittedTextInputHistoryAdapter extends BaseAdapter {
 
         private final Context mContext;
+        @Nullable
+        private final TermuxActivity mActivity;
         private final SubmittedTextInputHistory mHistory;
         private final Runnable mOnPinnedChanged;
         private final HistoryEntryRestoreListener mOnEntryChosenForRestore;
@@ -242,7 +246,16 @@ public class TerminalToolbarViewPager {
                                          @NonNull SubmittedTextInputHistory history,
                                          @NonNull Runnable onPinnedChanged,
                                          @NonNull HistoryEntryRestoreListener onEntryChosenForRestore) {
+            this(context, null, history, onPinnedChanged, onEntryChosenForRestore);
+        }
+
+        SubmittedTextInputHistoryAdapter(@NonNull Context context,
+                                         @Nullable TermuxActivity activity,
+                                         @NonNull SubmittedTextInputHistory history,
+                                         @NonNull Runnable onPinnedChanged,
+                                         @NonNull HistoryEntryRestoreListener onEntryChosenForRestore) {
             mContext = context;
+            mActivity = activity;
             mHistory = history;
             mOnPinnedChanged = onPinnedChanged;
             mOnEntryChosenForRestore = onEntryChosenForRestore;
@@ -272,6 +285,8 @@ public class TerminalToolbarViewPager {
             View row = convertView != null
                 ? convertView
                 : mInflater.inflate(R.layout.item_toolbar_text_input_history, parent, false);
+            Handedness handedness = mActivity == null ? Handedness.RIGHT_HANDED : mActivity.getCurrentHandedness();
+            new TextInputHistoryRowHandednessLayout().apply(row, handedness);
             final String entry = getItem(position);
             ImageButton restoreButton =
                 row.findViewById(R.id.toolbar_text_input_history_restore_button);

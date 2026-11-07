@@ -14,6 +14,7 @@
         android:background="@drawable/session_row_group_divider" />
 
     <LinearLayout
+        android:id="@+id/session_row_content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -55,6 +56,7 @@
         </LinearLayout>
 
         <FrameLayout
+            android:id="@+id/session_reconnect_control"
             android:layout_width="48dip"
             android:layout_height="48dip"
             android:layout_gravity="center_vertical"

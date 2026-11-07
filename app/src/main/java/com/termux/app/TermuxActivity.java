@@ -91,6 +91,8 @@ import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.T
 import com.termux.app.handedness.Handedness;
 import com.termux.app.handedness.HandednessLayoutApplier;
 import com.termux.app.handedness.MainScreenHandednessPart;
+import com.termux.app.handedness.OwnerCallHeaderHandednessPart;
+import com.termux.app.handedness.SessionListHandednessPart;
 import com.termux.app.handedness.TerminalToolbarHandednessPart;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
@@ -418,6 +420,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         mHandednessLayoutApplier.registerPart(new TerminalToolbarHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new MainScreenHandednessPart(findViewById(android.R.id.content)));
+        mHandednessLayoutApplier.registerPart(new SessionListHandednessPart(findViewById(android.R.id.content)));
+        mHandednessLayoutApplier.registerPart(new OwnerCallHeaderHandednessPart(findViewById(android.R.id.content)));
         mPreferences.registerOnSharedPreferenceChangeListener(mLeftHandedModeChangeListener);
 
         setMargins();
@@ -1894,10 +1898,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mPreferences;
     }
 
+    public Handedness getCurrentHandedness() {
+        return mPreferences == null ? Handedness.RIGHT_HANDED
+            : Handedness.fromLeftHandedModeEnabled(mPreferences.isLeftHandedModeEnabled());
+    }
+
     private void applyLeftHandedModeFromPreferences() {
         if (mPreferences == null || mIsInvalidState) return;
         mHandednessLayoutApplier.applyHandedness(
             Handedness.fromLeftHandedModeEnabled(mPreferences.isLeftHandedModeEnabled()));
+        if (mTermuxSessionListViewController != null) {
+            mTermuxSessionListViewController.onHandednessChanged();
+        }
     }
 
     public TermuxAppSharedProperties getProperties() {

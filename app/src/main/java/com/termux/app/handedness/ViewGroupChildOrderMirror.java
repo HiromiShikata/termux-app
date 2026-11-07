@@ -12,6 +12,14 @@ import java.util.List;
 final class ViewGroupChildOrderMirror {
 
     void apply(ViewGroup group, Handedness handedness) {
+        apply(group, handedness, originalOrder -> {
+            List<View> target = new ArrayList<>(originalOrder);
+            Collections.reverse(target);
+            return target;
+        });
+    }
+
+    void apply(ViewGroup group, Handedness handedness, LeftHandedChildOrder leftHandedOrder) {
         @SuppressWarnings("unchecked")
         List<View> original = (List<View>) group.getTag(R.id.handedness_original_child_order_tag);
         if (original == null) {
@@ -21,10 +29,8 @@ final class ViewGroupChildOrderMirror {
             }
             group.setTag(R.id.handedness_original_child_order_tag, original);
         }
-        List<View> target = new ArrayList<>(original);
-        if (handedness == Handedness.LEFT_HANDED) {
-            Collections.reverse(target);
-        }
+        List<View> target = handedness == Handedness.LEFT_HANDED
+            ? leftHandedOrder.arrange(original) : new ArrayList<>(original);
         for (View child : target) {
             group.bringChildToFront(child);
         }

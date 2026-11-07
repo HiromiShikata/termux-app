@@ -29,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.handedness.SessionRowHandednessLayout;
 import com.termux.app.browser.BrowserUrlInput;
 import com.termux.app.browser.BrowserViewMode;
 import com.termux.app.browser.TermuxBrowserController;
@@ -115,6 +116,8 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
     private final SessionHierarchyBuilder mHierarchyBuilder = new SessionHierarchyBuilder();
 
     private final SessionDefinitionEntryMatcher mEntryMatcher = new SessionDefinitionEntryMatcher();
+
+    private final SessionRowHandednessLayout mSessionRowHandednessLayout = new SessionRowHandednessLayout();
 
     private List<SessionDefinitionEntry> mEntries = Collections.emptyList();
 
@@ -257,6 +260,10 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                 notifyItemChanged(position, RELATIVE_TIME_PAYLOAD);
             }
         }
+    }
+
+    public void onHandednessChanged() {
+        notifyDataSetChanged();
     }
 
     private boolean postToMainThreadIfOffThread(@NonNull Runnable action) {
@@ -1098,6 +1105,7 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
                 SessionRowViewHolder sessionRowViewHolder = new SessionRowViewHolder(
                     inflater.inflate(R.layout.item_terminal_sessions_list, parent, false));
                 bindSessionRowClickHandlers(sessionRowViewHolder);
+                mSessionRowHandednessLayout.apply(sessionRowViewHolder.itemView, mActivity.getCurrentHandedness());
                 return sessionRowViewHolder;
         }
     }
@@ -1115,6 +1123,9 @@ public class TermuxSessionsListViewController extends RecyclerView.Adapter<Termu
         SessionHierarchyRow row = mRows.get(position);
         if (isViewTypeMismatchedForRow(holder, row, position)) {
             return;
+        }
+        if (row.getType() == SessionHierarchyRow.Type.SESSION) {
+            mSessionRowHandednessLayout.apply(holder.itemView, mActivity.getCurrentHandedness());
         }
         bindRowView(row, holder.itemView, position);
     }
