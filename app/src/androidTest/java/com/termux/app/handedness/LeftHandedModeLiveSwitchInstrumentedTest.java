@@ -171,6 +171,11 @@ public class LeftHandedModeLiveSwitchInstrumentedTest {
 
             Assert.assertTrue("the terminal must draw text before the toggle, drawn="
                 + before.drawnNonBackgroundPixels, before.drawnNonBackgroundPixels > 50);
+            android.util.Log.i("LeftHandedToggle", "terminal probe: before=" + before.drawnNonBackgroundPixels
+                + " on=" + on.drawnNonBackgroundPixels + " off=" + off.drawnNonBackgroundPixels
+                + " sameSessionOn=" + (before.session == on.session)
+                + " sameSessionOff=" + (before.session == off.session)
+                + " emulatorOn=" + on.emulatorPresent + " emulatorOff=" + off.emulatorPresent);
             assertTerminalStillShows("ON", before, on);
             assertTerminalStillShows("OFF", before, off);
         } finally {
