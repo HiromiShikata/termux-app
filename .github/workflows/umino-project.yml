@@ -153,6 +153,7 @@ jobs:
     timeout-minutes: 7
     name: Check linked issues in pull requests
     if: >-
+      vars.PULL_REQUEST_CHECKS_IN_REPOSITORY_CI != 'true' &&
       github.repository != 'HiromiShikata/test-repository' &&
       (github.event_name == 'pull_request') &&
       (github.event.action == 'edited' ||

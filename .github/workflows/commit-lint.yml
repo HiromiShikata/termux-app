@@ -18,6 +18,7 @@ concurrency:
 
 jobs:
   commit-lint:
+    if: vars.PULL_REQUEST_CHECKS_IN_REPOSITORY_CI != 'true'
     runs-on: ubuntu-slim
     timeout-minutes: 7
     permissions:
