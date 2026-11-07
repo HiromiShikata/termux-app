@@ -44,21 +44,23 @@ public class LeftHandedModeScreenshotInstrumentedTest {
     public void leftHandedModeMovesSessionListAndTabDrawerAndIsCapturedOffAndOn() throws Exception {
         TermuxAppSharedPreferences preferences =
             TermuxAppSharedPreferences.build(ApplicationProvider.getApplicationContext());
+        preferences.setLeftHandedModeEnabled(false);
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
         try {
-            preferences.setLeftHandedModeEnabled(false);
-            captureMainScreenStates("before", false);
+            captureMainScreenStates(scenario, "before", false);
             preferences.setLeftHandedModeEnabled(true);
-            captureMainScreenStates("after", true);
-            captureSettingsScreen("before");
-            preferences.setLeftHandedModeEnabled(false);
+            SystemClock.sleep(ANIMATION_SETTLE_MILLIS);
+            captureMainScreenStates(scenario, "after", true);
             captureSettingsScreen("after");
+            preferences.setLeftHandedModeEnabled(false);
+            captureSettingsScreen("before");
         } finally {
             preferences.setLeftHandedModeEnabled(false);
         }
     }
 
-    private void captureMainScreenStates(String state, boolean leftHanded) throws Exception {
-        try (ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class)) {
+    private void captureMainScreenStates(ActivityScenario<TermuxActivity> scenario, String state, boolean leftHanded) throws Exception {
+        {
             scenario.onActivity(activity -> {
                 try {
                     writeScreenshot(activity.getWindow().getDecorView(),
@@ -110,8 +112,8 @@ public class LeftHandedModeScreenshotInstrumentedTest {
     }
 
     private void captureSettingsScreen(String state) throws Exception {
-        try (ActivityScenario<SettingsActivity> scenario =
-                 ActivityScenario.launch(SettingsActivity.class)) {
+        ActivityScenario<SettingsActivity> scenario = ActivityScenario.launch(SettingsActivity.class);
+        {
             scenario.onActivity(activity -> {
                 try {
                     writeScreenshot(activity.getWindow().getDecorView(),
