@@ -113,16 +113,16 @@ public class LeftHandedModeScreenshotInstrumentedTest {
 
     private void captureSettingsScreen(String state) throws Exception {
         ActivityScenario<SettingsActivity> scenario = ActivityScenario.launch(SettingsActivity.class);
-        {
-            scenario.onActivity(activity -> {
-                try {
-                    writeScreenshot(activity.getWindow().getDecorView(),
-                        "left-handed-settings-" + state + ".png");
-                } catch (Exception exception) {
-                    throw new RuntimeException(exception);
-                }
-            });
-        }
+        scenario.onActivity(activity -> {
+            try {
+                writeScreenshot(activity.getWindow().getDecorView(),
+                    "left-handed-settings-" + state + ".png");
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            } finally {
+                activity.finish();
+            }
+        });
     }
 
     private static int horizontalEdge(@NonNull DrawerLayout drawer) {
