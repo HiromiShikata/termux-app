@@ -196,7 +196,7 @@ public class TerminalToolbarViewPager {
             });
         }
 
-        void onHandednessChanged(@NonNull Handedness handedness) {
+        public void onHandednessChanged(@NonNull Handedness handedness) {
             if (mOpenSubmittedTextInputHistoryAdapter != null) {
                 mOpenSubmittedTextInputHistoryAdapter.setHandedness(handedness);
             }
