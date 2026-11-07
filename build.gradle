@@ -24,6 +24,7 @@ buildscript {
             force "io.netty:netty-transport-native-unix-common:4.1.137.Final"
             force "org.bitbucket.b_c:jose4j:0.9.6"
             force "org.jdom:jdom2:2.0.6.1"
+            force "com.google.guava:guava:33.7.2-jre"
         }
     }
 }
@@ -57,6 +58,7 @@ allprojects {
             force "io.netty:netty-transport-native-unix-common:4.1.137.Final"
             force "com.google.protobuf:protobuf-java:3.25.5"
             force "com.google.protobuf:protobuf-kotlin:3.25.5"
+            force "com.google.guava:guava:33.7.2-android"
         }
     }
 
