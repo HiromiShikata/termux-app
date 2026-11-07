@@ -126,16 +126,29 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         try {
             ActivityScenario<TermuxActivity> headerScenario = launchWithACallingSession();
             awaitDialogShowing(headerScenario, "1 / 3");
+            hideSoftKeyboardAndSettle(headerScenario);
             assertOwnerCallCloseButtonEdge(headerScenario, false);
             captureDeviceScreenshot("left-handed-ownercall-header-before.png");
 
             preferences().setLeftHandedModeEnabled(true);
             awaitWindowLocationSettled(headerScenario, R.id.owner_call_dialog_close_button);
+            hideSoftKeyboardAndSettle(headerScenario);
             assertOwnerCallCloseButtonEdge(headerScenario, true);
             captureDeviceScreenshot("left-handed-ownercall-header-after.png");
         } finally {
             preferences().setLeftHandedModeEnabled(false);
         }
+    }
+
+    private static void hideSoftKeyboardAndSettle(ActivityScenario<TermuxActivity> scenario) {
+        scenario.onActivity(activity -> {
+            android.view.inputmethod.InputMethodManager manager = (android.view.inputmethod.InputMethodManager)
+                activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            manager.hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(), 0);
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        android.os.SystemClock.sleep(1500L);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
     private static void captureDeviceScreenshot(String fileName) throws IOException {
