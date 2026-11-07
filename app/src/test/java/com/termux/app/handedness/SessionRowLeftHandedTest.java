@@ -80,7 +80,7 @@ public class SessionRowLeftHandedTest {
     }
 
     private static View reconnect(View row) {
-        return row.findViewById(R.id.session_reconnecting_indicator).getParent();
+        return (View) row.findViewById(R.id.session_reconnecting_indicator).getParent();
     }
 
     private static int dp(View view, int value) {
