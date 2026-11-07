@@ -198,8 +198,10 @@ public class FileReceiverActivity extends AppCompatActivity {
     }
 
     public File saveStreamWithName(InputStream in, String attachmentFileName) {
-        File receiveDir = new File(TERMUX_RECEIVEDIR);
+        return saveStreamWithName(new File(TERMUX_RECEIVEDIR), in, attachmentFileName);
+    }
 
+    File saveStreamWithName(File receiveDir, InputStream in, String attachmentFileName) {
         if (DataUtils.isNullOrEmpty(attachmentFileName)) {
             showErrorDialogAndQuit("File name cannot be null or empty");
             return null;
