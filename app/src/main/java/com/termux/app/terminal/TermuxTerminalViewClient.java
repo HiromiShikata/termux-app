@@ -8,7 +8,6 @@ import android.content.Context;
 import android.media.AudioManager;
 import android.os.SystemClock;
 import android.text.TextUtils;
-import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -22,6 +21,7 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.handedness.TabDrawerEdge;
 import com.termux.app.browser.OpenTagUrlOnTerminal;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.app.diagnostics.TerminalDrawCostCounterHolder;
@@ -320,7 +320,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                     mTermuxTerminalSessionActivityClient.switchToSession(false);
                     break;
                 case OPEN_DRAWER:
-                    mActivity.getDrawer().openDrawer(Gravity.LEFT);
+                    mActivity.getDrawer().openDrawer(TabDrawerEdge.currentGravity(mActivity.getDrawer()));
                     break;
                 case CLOSE_DRAWER:
                     mActivity.getDrawer().closeDrawers();

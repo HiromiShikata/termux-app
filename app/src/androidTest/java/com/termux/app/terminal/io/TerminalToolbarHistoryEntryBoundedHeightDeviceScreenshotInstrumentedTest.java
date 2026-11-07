@@ -18,6 +18,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
 import com.termux.app.terminal.MaxHeightScrollView;
 
 import org.junit.Rule;
@@ -56,7 +57,7 @@ public class TerminalToolbarHistoryEntryBoundedHeightDeviceScreenshotInstrumente
         history.add(SECOND_SHORT_ENTRY);
         history.add(LONG_PINNED_ENTRY);
         history.pin(LONG_PINNED_ENTRY);
-        return new TerminalToolbarViewPager.SubmittedTextInputHistoryAdapter(context, history, () -> {
+        return new TerminalToolbarViewPager.SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, history, () -> {
         }, entry -> {
         });
     }

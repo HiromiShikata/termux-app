@@ -293,6 +293,9 @@ public final class TermuxPreferenceConstants {
         public static final String KEY_SESSION_SWITCH_OVERLAY_ENABLED = "session_switch_overlay_enabled";
         public static final boolean DEFAULT_VALUE_KEY_SESSION_SWITCH_OVERLAY_ENABLED = false;
 
+        public static final String KEY_LEFT_HANDED_MODE = "left_handed_mode";
+        public static final boolean DEFAULT_VALUE_KEY_LEFT_HANDED_MODE = false;
+
         public static final String KEY_DISABLED_SESSION_NAMES = "disabled_session_names";
         public static final String DEFAULT_VALUE_KEY_DISABLED_SESSION_NAMES = "";
 

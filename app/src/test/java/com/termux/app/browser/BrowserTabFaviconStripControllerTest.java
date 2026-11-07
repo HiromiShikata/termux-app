@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -455,5 +456,28 @@ public class BrowserTabFaviconStripControllerTest {
         down.recycle();
         up.recycle();
         return consumedByDelegate;
+    }
+
+    @Test
+    public void leftHandedCloseButtonCornerTargetStaysInTheLeftQuadrantAndCoversTheButton() {
+        int chipWidth = 32;
+        int chipHeight = 32;
+        Rect closeButtonBounds = new Rect(0, 0, 15, 15);
+        int paddingPx = 4;
+
+        Rect cornerTarget = BrowserTabFaviconStripController
+            .computeCloseButtonCornerTarget(
+                closeButtonBounds, chipWidth, chipHeight, paddingPx, Handedness.LEFT_HANDED);
+
+        Assert.assertFalse("A left-handed corner target must not be inverted or empty",
+            cornerTarget.isEmpty());
+        Assert.assertTrue("Corner target must contain the close button centre",
+            cornerTarget.contains(closeButtonBounds.centerX(), closeButtonBounds.centerY()));
+        Assert.assertEquals("Corner target must stay pinned to the close button left edge",
+            closeButtonBounds.left, cornerTarget.left);
+        Assert.assertTrue("Corner target right edge must not cross the chip horizontal midpoint",
+            cornerTarget.right <= chipWidth / 2);
+        Assert.assertTrue("Corner target bottom edge must not cross the chip vertical midpoint",
+            cornerTarget.bottom <= chipHeight / 2);
     }
 }

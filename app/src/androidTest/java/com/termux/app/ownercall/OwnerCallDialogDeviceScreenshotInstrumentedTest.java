@@ -3,6 +3,7 @@ package com.termux.app.ownercall;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
@@ -116,6 +117,60 @@ public class OwnerCallDialogDeviceScreenshotInstrumentedTest {
         if (server != null) {
             server.stop();
         }
+    }
+
+    @Test
+    public void leftHandedOwnerCallHeaderIsCapturedOffAndOnWithItsCloseButtonEdgeAsserted()
+        throws Exception {
+        preferences().setLeftHandedModeEnabled(false);
+        try {
+            ActivityScenario<TermuxActivity> headerScenario = launchWithACallingSession();
+            awaitDialogShowing(headerScenario, "1 / 3");
+            hideSoftKeyboardAndSettle(headerScenario);
+            assertOwnerCallCloseButtonEdge(headerScenario, false);
+            captureDeviceScreenshot("left-handed-ownercall-header-before.png");
+
+            preferences().setLeftHandedModeEnabled(true);
+            awaitWindowLocationSettled(headerScenario, R.id.owner_call_dialog_close_button);
+            hideSoftKeyboardAndSettle(headerScenario);
+            assertOwnerCallCloseButtonEdge(headerScenario, true);
+            captureDeviceScreenshot("left-handed-ownercall-header-after.png");
+        } finally {
+            preferences().setLeftHandedModeEnabled(false);
+        }
+    }
+
+    private static void hideSoftKeyboardAndSettle(ActivityScenario<TermuxActivity> scenario) {
+        scenario.onActivity(activity -> {
+            android.view.inputmethod.InputMethodManager manager = (android.view.inputmethod.InputMethodManager)
+                activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            manager.hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(), 0);
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        android.os.SystemClock.sleep(1500L);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+    }
+
+    private static void captureDeviceScreenshot(String fileName) throws IOException {
+        android.graphics.Bitmap bitmap = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        assertNotNull("the device screenshot must be available", bitmap);
+        File directory = sharedScreenshotDirectory();
+        try (FileOutputStream stream = new FileOutputStream(new File(directory, fileName))) {
+            assertTrue("PNG compression must succeed for " + fileName,
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream));
+        }
+    }
+
+    private static void assertOwnerCallCloseButtonEdge(ActivityScenario<TermuxActivity> scenario, boolean leftHanded) {
+        scenario.onActivity(activity -> {
+            android.widget.LinearLayout header = activity.findViewById(R.id.owner_call_dialog_header);
+            View close = activity.findViewById(R.id.owner_call_dialog_close_button);
+            View edgeChild = leftHanded
+                ? header.getChildAt(0)
+                : header.getChildAt(header.getChildCount() - 1);
+            assertSame("the close button must sit at the " + (leftHanded ? "left" : "right") + " end of the header",
+                close, edgeChild);
+        });
     }
 
     private static void forgetTheStoredDialogPlacement() {

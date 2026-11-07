@@ -19,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.rule.GrantPermissionRule;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
 import com.termux.app.terminal.io.TerminalToolbarViewPager.SubmittedTextInputHistoryAdapter;
 
 import org.junit.Rule;
@@ -52,7 +53,7 @@ public class PinnedHistoryEditIconDeviceScreenshotInstrumentedTest {
         history.add(PINNED_ENTRY);
         history.pin(PINNED_ENTRY);
         SubmittedTextInputHistoryAdapter adapter =
-            new SubmittedTextInputHistoryAdapter(context, history, () -> {}, entry -> {});
+            new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, history, () -> {}, entry -> {});
 
         View pinnedRow = adapter.getView(0, null, unattachedParent);
         View unpinnedRow = adapter.getView(1, null, unattachedParent);

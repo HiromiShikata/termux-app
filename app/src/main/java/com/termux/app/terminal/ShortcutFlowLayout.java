@@ -10,6 +10,8 @@ import androidx.annotation.Nullable;
 
 public class ShortcutFlowLayout extends ViewGroup {
 
+    private boolean mStartAligned;
+
     public ShortcutFlowLayout(@NonNull Context context) {
         super(context);
     }
@@ -20,6 +22,15 @@ public class ShortcutFlowLayout extends ViewGroup {
 
     public ShortcutFlowLayout(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+    }
+
+    public void setStartAligned(boolean startAligned) {
+        mStartAligned = startAligned;
+        requestLayout();
+    }
+
+    public boolean isStartAligned() {
+        return mStartAligned;
     }
 
     @Override
@@ -101,7 +112,7 @@ public class ShortcutFlowLayout extends ViewGroup {
                 rowHasChild = true;
                 index++;
             }
-            int cursorX = rightEdge - rowWidth;
+            int cursorX = isStartAligned() ? getPaddingLeft() : rightEdge - rowWidth;
             for (int placeIndex = rowStartIndex; placeIndex < index; placeIndex++) {
                 View child = getChildAt(placeIndex);
                 if (child.getVisibility() == GONE) {

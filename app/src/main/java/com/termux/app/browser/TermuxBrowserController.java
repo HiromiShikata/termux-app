@@ -20,7 +20,6 @@ import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -53,6 +52,8 @@ import com.google.android.material.snackbar.Snackbar;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.TabDrawerEdge;
 import com.termux.app.link.NativeAppLink;
 import com.termux.app.terminal.SessionInfoHorizontalBounds;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
@@ -283,7 +284,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         this.mProjectOverviewActionsView = activity.findViewById(R.id.browser_project_overview_actions);
         HorizontalScrollView tabStripScroll = activity.findViewById(R.id.browser_tab_strip_scroll);
         LinearLayout tabStripContainer = activity.findViewById(R.id.browser_tab_strip_container);
-        mTabFaviconStripController = new BrowserTabFaviconStripController(tabStripScroll, tabStripContainer, this);
+        mTabFaviconStripController = new BrowserTabFaviconStripController(tabStripScroll, tabStripContainer, this,
+            () -> Handedness.fromLeftHandedModeEnabled(mActivity.getPreferences().isLeftHandedModeEnabled()));
         mProjectActionButtonsController = new BrowserProjectActionButtonsController(
             activity.findViewById(R.id.browser_tab_bar_overview_button),
             activity.findViewById(R.id.browser_tab_bar_tdpm_console_button),
@@ -1660,7 +1662,8 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
         }
 
         List<BrowserTab> tabs = mTabManager.getTabs(mCurrentSessionHandle);
-        mTabsListViewController = new BrowserTabsListViewController(mActivity, this, tabs);
+        mTabsListViewController = new BrowserTabsListViewController(mActivity, this, tabs,
+            () -> Handedness.fromLeftHandedModeEnabled(mActivity.getPreferences().isLeftHandedModeEnabled()));
         mTabsListView.setAdapter(mTabsListViewController);
         mTabsListView.setOnItemClickListener(mTabsListViewController);
     }
@@ -2218,10 +2221,11 @@ public final class TermuxBrowserController implements BrowserTabSelectionListene
 
     public void toggleTabsDrawer() {
         DrawerLayout drawer = mActivity.getDrawer();
-        if (drawer.isDrawerOpen(Gravity.END))
-            drawer.closeDrawer(Gravity.END);
+        int gravity = TabDrawerEdge.currentGravity(drawer);
+        if (drawer.isDrawerOpen(gravity))
+            drawer.closeDrawer(gravity);
         else
-            drawer.openDrawer(Gravity.END);
+            drawer.openDrawer(gravity);
     }
 
     public void onActivityResume() {

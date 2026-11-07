@@ -14,6 +14,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.HandednessGravity;
+import com.termux.app.handedness.HandednessSource;
 
 import java.util.List;
 
@@ -24,14 +27,24 @@ public final class BrowserTabFaviconStripController {
     private final HorizontalScrollView mScrollView;
     private final LinearLayout mContainer;
     private final BrowserTabSelectionListener mListener;
+    private final HandednessSource mHandednessSource;
 
     public BrowserTabFaviconStripController(
             @NonNull HorizontalScrollView scrollView,
             @NonNull LinearLayout container,
             @NonNull BrowserTabSelectionListener listener) {
+        this(scrollView, container, listener, () -> Handedness.RIGHT_HANDED);
+    }
+
+    public BrowserTabFaviconStripController(
+            @NonNull HorizontalScrollView scrollView,
+            @NonNull LinearLayout container,
+            @NonNull BrowserTabSelectionListener listener,
+            @NonNull HandednessSource handednessSource) {
         this.mScrollView = scrollView;
         this.mContainer = container;
         this.mListener = listener;
+        this.mHandednessSource = handednessSource;
     }
 
     public void update(@NonNull List<BrowserTab> tabs, @Nullable BrowserTab activeTab) {
@@ -43,6 +56,7 @@ public final class BrowserTabFaviconStripController {
             ImageView faviconView = item.findViewById(R.id.browser_tab_strip_favicon);
             View indicator = item.findViewById(R.id.browser_tab_strip_active_indicator);
             View closeButton = item.findViewById(R.id.browser_tab_strip_close_button);
+            HandednessGravity.applyToFrameChild(closeButton, mHandednessSource.current());
             Bitmap favicon = tab.getFavicon();
             if (favicon != null) {
                 faviconView.setImageBitmap(favicon);
@@ -52,7 +66,7 @@ public final class BrowserTabFaviconStripController {
             indicator.setVisibility(tab == activeTab ? View.VISIBLE : View.INVISIBLE);
             item.setOnClickListener(v -> mListener.openTab(tab));
             closeButton.setOnClickListener(v -> mListener.closeTab(tab));
-            applyCloseButtonCornerTouchTarget(item, closeButton);
+            applyCloseButtonCornerTouchTarget(item, closeButton, mHandednessSource);
             mContainer.addView(item);
         }
         View addItem = inflater.inflate(R.layout.item_browser_tab_favicon_strip_add, mContainer, false);
@@ -62,18 +76,9 @@ public final class BrowserTabFaviconStripController {
     }
 
     private static void applyCloseButtonCornerTouchTarget(
-            @NonNull View item, @NonNull View closeButton) {
-        int paddingPx = Math.round(TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP,
-            CLOSE_BUTTON_TOUCH_PADDING_DP,
-            item.getResources().getDisplayMetrics()));
-        Runnable applyDelegate = () -> {
-            Rect buttonBounds = new Rect();
-            closeButton.getHitRect(buttonBounds);
-            Rect cornerTarget = computeCloseButtonCornerTarget(
-                buttonBounds, item.getWidth(), item.getHeight(), paddingPx);
-            item.setTouchDelegate(new TouchDelegate(cornerTarget, closeButton));
-        };
+            @NonNull View item, @NonNull View closeButton, @NonNull HandednessSource handednessSource) {
+        Runnable applyDelegate = () -> applyCloseButtonTouchTarget(
+            item, closeButton, handednessSource.current());
         item.addOnLayoutChangeListener(
             (v, l, t, r, b, ol, ot, or, ob) -> applyDelegate.run());
         if (item.getWidth() > 0) {
@@ -81,15 +86,40 @@ public final class BrowserTabFaviconStripController {
         }
     }
 
+    public static void applyCloseButtonTouchTarget(
+            @NonNull View item, @NonNull View closeButton, @NonNull Handedness handedness) {
+        int paddingPx = Math.round(TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            CLOSE_BUTTON_TOUCH_PADDING_DP,
+            item.getResources().getDisplayMetrics()));
+        Rect buttonBounds = new Rect();
+        closeButton.getHitRect(buttonBounds);
+        Rect cornerTarget = computeCloseButtonCornerTarget(
+            buttonBounds, item.getWidth(), item.getHeight(), paddingPx, handedness);
+        item.setTouchDelegate(new TouchDelegate(cornerTarget, closeButton));
+    }
+
     @NonNull
     static Rect computeCloseButtonCornerTarget(
             @NonNull Rect closeButtonBounds, int itemWidth, int itemHeight, int paddingPx) {
-        int right = closeButtonBounds.right;
+        return computeCloseButtonCornerTarget(
+            closeButtonBounds, itemWidth, itemHeight, paddingPx, Handedness.RIGHT_HANDED);
+    }
+
+    @NonNull
+    static Rect computeCloseButtonCornerTarget(
+            @NonNull Rect closeButtonBounds, int itemWidth, int itemHeight, int paddingPx,
+            @NonNull Handedness handedness) {
         int top = closeButtonBounds.top;
-        int horizontalLimit = itemWidth > 0 ? itemWidth / 2 : closeButtonBounds.left;
         int verticalLimit = itemHeight > 0 ? itemHeight / 2 : closeButtonBounds.bottom;
-        int left = Math.max(horizontalLimit, closeButtonBounds.left - paddingPx);
         int bottom = Math.min(verticalLimit, closeButtonBounds.bottom + paddingPx);
-        return new Rect(left, top, right, bottom);
+        if (handedness == Handedness.LEFT_HANDED) {
+            int rightLimit = itemWidth > 0 ? itemWidth - itemWidth / 2 : closeButtonBounds.right;
+            int right = Math.min(rightLimit, closeButtonBounds.right + paddingPx);
+            return new Rect(closeButtonBounds.left, top, right, bottom);
+        }
+        int horizontalLimit = itemWidth > 0 ? itemWidth / 2 : closeButtonBounds.left;
+        int left = Math.max(horizontalLimit, closeButtonBounds.left - paddingPx);
+        return new Rect(left, top, closeButtonBounds.right, bottom);
     }
 }

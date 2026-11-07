@@ -21,6 +21,11 @@ import com.termux.R;
 import com.termux.shared.theme.NightMode;
 import com.termux.shared.theme.ThemeUtils;
 
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.HandednessChildOrder;
+import com.termux.app.handedness.HandednessSource;
+
+import java.util.Arrays;
 import java.util.List;
 
 public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> implements AdapterView.OnItemClickListener {
@@ -28,12 +33,21 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
     private static final int ACTIVE_TAB_TITLE_COLOR = 0xFF03A9F4;
 
     final BrowserTabSelectionListener mSelectionListener;
+    private final HandednessSource mHandednessSource;
 
     public BrowserTabsListViewController(@NonNull Context context,
                                          @NonNull BrowserTabSelectionListener selectionListener,
                                          @NonNull List<BrowserTab> tabList) {
+        this(context, selectionListener, tabList, () -> Handedness.RIGHT_HANDED);
+    }
+
+    public BrowserTabsListViewController(@NonNull Context context,
+                                         @NonNull BrowserTabSelectionListener selectionListener,
+                                         @NonNull List<BrowserTab> tabList,
+                                         @NonNull HandednessSource handednessSource) {
         super(context.getApplicationContext(), R.layout.item_browser_tabs_list, tabList);
         this.mSelectionListener = selectionListener;
+        this.mHandednessSource = handednessSource;
     }
 
     @SuppressLint("SetTextI18n")
@@ -53,6 +67,10 @@ public class BrowserTabsListViewController extends ArrayAdapter<BrowserTab> impl
         TextView urlView = tabRowView.findViewById(R.id.browser_tab_url);
         ImageButton closeButton = tabRowView.findViewById(R.id.browser_tab_close_button);
         ImageView faviconView = tabRowView.findViewById(R.id.browser_tab_favicon);
+        View contentView = tabRowView.findViewById(R.id.browser_tab_content);
+
+        HandednessChildOrder.apply((ViewGroup) tabRowView, mHandednessSource.current(), Arrays.asList(
+            closeButton, faviconView, contentView));
 
         titleView.setText(displayTitle(tab));
         urlView.setText(tab.getUrl());

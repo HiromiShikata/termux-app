@@ -40,6 +40,12 @@
         app:summary="@string/browser_preferences_summary"
         app:fragment="com.termux.app.fragments.settings.BrowserPreferencesFragment"/>
 
+    <SwitchPreferenceCompat
+        app:key="left_handed_mode"
+        app:title="@string/left_handed_mode_title"
+        app:summary="@string/left_handed_mode_summary"
+        app:defaultValue="false"/>
+
     <Preference
         app:key="style"
         app:title="@string/action_style_terminal"

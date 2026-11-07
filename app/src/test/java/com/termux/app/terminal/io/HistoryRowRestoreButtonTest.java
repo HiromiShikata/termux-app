@@ -9,6 +9,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
 import com.termux.app.terminal.io.TerminalToolbarViewPager.SubmittedTextInputHistoryAdapter;
 
 import org.junit.Assert;
@@ -38,8 +39,7 @@ public class HistoryRowRestoreButtonTest {
     @Test
     public void theRestoreIconSitsAtTheRightEdgeOfTheRowAndTheBookmarkIconAtTheLeftEdge() {
         Context context = themedContext();
-        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-            context, twoEntryHistory(), () -> {}, entry -> {});
+        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, twoEntryHistory(), () -> {}, entry -> {});
 
         ViewGroup row = (ViewGroup) adapter.getView(0, null, new FrameLayout(context));
 
@@ -55,8 +55,7 @@ public class HistoryRowRestoreButtonTest {
     @Test
     public void theRestoreIconSitsOutsideTheScrollingContainerThatSwallowsARowTap() {
         Context context = themedContext();
-        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-            context, twoEntryHistory(), () -> {}, entry -> {});
+        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, twoEntryHistory(), () -> {}, entry -> {});
 
         ViewGroup row = (ViewGroup) adapter.getView(0, null, new FrameLayout(context));
         View restoreButton = row.findViewById(R.id.toolbar_text_input_history_restore_button);
@@ -71,8 +70,7 @@ public class HistoryRowRestoreButtonTest {
     public void tappingTheRestoreIconDeliversThatRowsOwnEntry() {
         Context context = themedContext();
         List<String> restoredEntries = new ArrayList<>();
-        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-            context, twoEntryHistory(), () -> {}, restoredEntries::add);
+        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, twoEntryHistory(), () -> {}, restoredEntries::add);
         FrameLayout parent = new FrameLayout(context);
 
         adapter.getView(1, null, parent)
@@ -87,8 +85,7 @@ public class HistoryRowRestoreButtonTest {
     @Test
     public void theRestoreIconCarriesAContentDescriptionSoItIsAnnouncedRatherThanUnnamed() {
         Context context = themedContext();
-        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-            context, twoEntryHistory(), () -> {}, entry -> {});
+        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, twoEntryHistory(), () -> {}, entry -> {});
 
         ImageButton restoreButton = adapter.getView(0, null, new FrameLayout(context))
             .findViewById(R.id.toolbar_text_input_history_restore_button);
@@ -101,8 +98,7 @@ public class HistoryRowRestoreButtonTest {
     public void aRecycledRowRestoresTheEntryItWasRebound() {
         Context context = themedContext();
         List<String> restoredEntries = new ArrayList<>();
-        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-            context, twoEntryHistory(), () -> {}, restoredEntries::add);
+        SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, twoEntryHistory(), () -> {}, restoredEntries::add);
         FrameLayout parent = new FrameLayout(context);
 
         View recycled = adapter.getView(0, null, parent);

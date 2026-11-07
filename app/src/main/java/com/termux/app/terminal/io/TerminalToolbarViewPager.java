@@ -17,6 +17,8 @@ import androidx.viewpager.widget.PagerAdapter;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.TextInputHistoryRowHandednessLayout;
 import com.termux.app.terminal.MaxHeightScrollView;
 import com.termux.app.terminal.SessionGenuineReplyRecorder;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -43,6 +45,8 @@ public class TerminalToolbarViewPager {
         static final int SUBMITTED_TEXT_INPUT_HISTORY_SIZE = 5;
         private final PinnedTextInputHistorySerializer mPinnedTextInputHistorySerializer = new PinnedTextInputHistorySerializer();
         private final SubmittedTextInputHistory mSubmittedTextInputHistory;
+        @Nullable
+        private SubmittedTextInputHistoryAdapter mOpenSubmittedTextInputHistoryAdapter;
 
         public PageAdapter(TermuxActivity activity, String savedTextInput) {
             this.mActivity = activity;
@@ -177,7 +181,7 @@ public class TerminalToolbarViewPager {
 
             final AlertDialog[] openDialog = new AlertDialog[1];
             final SubmittedTextInputHistoryAdapter adapter = new SubmittedTextInputHistoryAdapter(
-                mActivity, mSubmittedTextInputHistory, this::persistPinnedTextInputHistory,
+                mActivity, mActivity.getCurrentHandedness(), mSubmittedTextInputHistory, this::persistPinnedTextInputHistory,
                 entry -> {
                     HistoryEntryRestore.into(editText, entry);
                     openDialog[0].dismiss();
@@ -186,6 +190,16 @@ public class TerminalToolbarViewPager {
                 .setTitle(R.string.title_toolbar_text_input_history_dialog)
                 .setAdapter(adapter, (dialog, which) ->
                     HistoryEntryRestore.into(editText, adapter.getItem(which))));
+            mOpenSubmittedTextInputHistoryAdapter = adapter;
+            openDialog[0].setOnDismissListener(dismissed -> {
+                if (mOpenSubmittedTextInputHistoryAdapter == adapter) mOpenSubmittedTextInputHistoryAdapter = null;
+            });
+        }
+
+        public void onHandednessChanged(@NonNull Handedness handedness) {
+            if (mOpenSubmittedTextInputHistoryAdapter != null) {
+                mOpenSubmittedTextInputHistoryAdapter.setHandedness(handedness);
+            }
         }
 
         @Override
@@ -232,6 +246,7 @@ public class TerminalToolbarViewPager {
     static final class SubmittedTextInputHistoryAdapter extends BaseAdapter {
 
         private final Context mContext;
+        private Handedness mHandedness;
         private final SubmittedTextInputHistory mHistory;
         private final Runnable mOnPinnedChanged;
         private final HistoryEntryRestoreListener mOnEntryChosenForRestore;
@@ -239,15 +254,22 @@ public class TerminalToolbarViewPager {
         private List<String> mOrderedEntries;
 
         SubmittedTextInputHistoryAdapter(@NonNull Context context,
+                                         @NonNull Handedness handedness,
                                          @NonNull SubmittedTextInputHistory history,
                                          @NonNull Runnable onPinnedChanged,
                                          @NonNull HistoryEntryRestoreListener onEntryChosenForRestore) {
             mContext = context;
+            mHandedness = handedness;
             mHistory = history;
             mOnPinnedChanged = onPinnedChanged;
             mOnEntryChosenForRestore = onEntryChosenForRestore;
             mInflater = LayoutInflater.from(context);
             mOrderedEntries = history.getOrderedEntries();
+        }
+
+        void setHandedness(@NonNull Handedness handedness) {
+            mHandedness = handedness;
+            notifyDataSetChanged();
         }
 
         @Override
@@ -272,6 +294,7 @@ public class TerminalToolbarViewPager {
             View row = convertView != null
                 ? convertView
                 : mInflater.inflate(R.layout.item_toolbar_text_input_history, parent, false);
+            new TextInputHistoryRowHandednessLayout().apply(row, mHandedness);
             final String entry = getItem(position);
             ImageButton restoreButton =
                 row.findViewById(R.id.toolbar_text_input_history_restore_button);
