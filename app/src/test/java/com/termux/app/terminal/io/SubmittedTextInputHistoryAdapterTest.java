@@ -10,6 +10,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 
 import com.termux.R;
+import com.termux.app.handedness.Handedness;
 import com.termux.app.terminal.io.TerminalToolbarViewPager.SubmittedTextInputHistoryAdapter;
 
 import org.junit.Assert;
@@ -48,7 +49,7 @@ public class SubmittedTextInputHistoryAdapterTest {
         FrameLayout parent = new FrameLayout(context);
         SubmittedTextInputHistory history = pinnedFirstHistory();
         SubmittedTextInputHistoryAdapter adapter =
-            new SubmittedTextInputHistoryAdapter(context, history, () -> {}, entry -> {});
+            new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, history, () -> {}, entry -> {});
 
         View pinnedRow = rowFor(adapter, parent, 0);
         View unpinnedRow = rowFor(adapter, parent, 1);
@@ -67,7 +68,7 @@ public class SubmittedTextInputHistoryAdapterTest {
         SubmittedTextInputHistory history = pinnedFirstHistory();
         AtomicInteger persistCalls = new AtomicInteger();
         SubmittedTextInputHistoryAdapter adapter =
-            new SubmittedTextInputHistoryAdapter(context, history, persistCalls::incrementAndGet,
+            new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, history, persistCalls::incrementAndGet,
                 entry -> {});
 
         View pinnedRow = rowFor(adapter, parent, 0);
