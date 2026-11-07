@@ -1,6 +1,7 @@
 package com.termux.shared.termux.settings.preferences;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
@@ -511,6 +512,22 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
 
     public void setSessionSwitchPreviewFirstEnabled(boolean value) {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_SESSION_SWITCH_PREVIEW_FIRST, value, false);
+    }
+
+    public boolean isLeftHandedModeEnabled() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences, TERMUX_APP.KEY_LEFT_HANDED_MODE, TERMUX_APP.DEFAULT_VALUE_KEY_LEFT_HANDED_MODE);
+    }
+
+    public void setLeftHandedModeEnabled(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_LEFT_HANDED_MODE, value, false);
+    }
+
+    public void registerOnSharedPreferenceChangeListener(@NonNull SharedPreferences.OnSharedPreferenceChangeListener listener) {
+        mSharedPreferences.registerOnSharedPreferenceChangeListener(listener);
+    }
+
+    public void unregisterOnSharedPreferenceChangeListener(@NonNull SharedPreferences.OnSharedPreferenceChangeListener listener) {
+        mSharedPreferences.unregisterOnSharedPreferenceChangeListener(listener);
     }
 
     public boolean isSessionSwitchOverlayEnabled() {

@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
@@ -86,6 +87,11 @@ import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.settings.preferences.TermuxPreferenceConstants.TERMUX_APP;
+import com.termux.app.handedness.Handedness;
+import com.termux.app.handedness.HandednessLayoutApplier;
+import com.termux.app.handedness.MainScreenHandednessPart;
+import com.termux.app.handedness.TerminalToolbarHandednessPart;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
 import com.termux.app.terminal.ProjectActionToken;
@@ -175,6 +181,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * Termux app shared preferences manager.
      */
     private TermuxAppSharedPreferences mPreferences;
+
+    private final HandednessLayoutApplier mHandednessLayoutApplier = new HandednessLayoutApplier();
+
+    private final SharedPreferences.OnSharedPreferenceChangeListener mLeftHandedModeChangeListener =
+        (sharedPreferences, key) -> {
+            if (TERMUX_APP.KEY_LEFT_HANDED_MODE.equals(key)) {
+                runOnUiThread(this::applyLeftHandedModeFromPreferences);
+            }
+        };
 
     /**
      * Termux app SharedProperties loaded from termux.properties
@@ -400,6 +415,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mIsInvalidState = true;
             return;
         }
+
+        mHandednessLayoutApplier.registerPart(new TerminalToolbarHandednessPart(findViewById(android.R.id.content)));
+        mHandednessLayoutApplier.registerPart(new MainScreenHandednessPart(findViewById(android.R.id.content)));
+        mPreferences.registerOnSharedPreferenceChangeListener(mLeftHandedModeChangeListener);
 
         setMargins();
 
@@ -647,6 +666,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onResume() {
         super.onResume();
 
+        applyLeftHandedModeFromPreferences();
+
         Logger.logVerbose(LOG_TAG, "onResume");
 
         if (mIsInvalidState) return;
@@ -696,6 +717,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
+
+        if (mPreferences != null)
+            mPreferences.unregisterOnSharedPreferenceChangeListener(mLeftHandedModeChangeListener);
 
         if (mTtsManager != null)
             mTtsManager.shutdown();
@@ -1868,6 +1892,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public TermuxAppSharedPreferences getPreferences() {
         return mPreferences;
+    }
+
+    private void applyLeftHandedModeFromPreferences() {
+        if (mPreferences == null || mIsInvalidState) return;
+        mHandednessLayoutApplier.applyHandedness(
+            Handedness.fromLeftHandedModeEnabled(mPreferences.isLeftHandedModeEnabled()));
     }
 
     public TermuxAppSharedProperties getProperties() {
