@@ -93,6 +93,10 @@ import com.termux.app.handedness.HandednessLayoutApplier;
 import com.termux.app.handedness.MainScreenHandednessPart;
 import com.termux.app.handedness.OwnerCallHeaderHandednessPart;
 import com.termux.app.handedness.SessionListHandednessPart;
+import com.termux.app.handedness.BrowserHandednessPart;
+import com.termux.app.handedness.BrowserTabStripHandednessPart;
+import com.termux.app.handedness.BrowserTabsListHandednessPart;
+import com.termux.app.handedness.TabDrawerEdge;
 import com.termux.app.handedness.TerminalToolbarHandednessPart;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
@@ -422,6 +426,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mHandednessLayoutApplier.registerPart(new MainScreenHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new SessionListHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new OwnerCallHeaderHandednessPart(findViewById(android.R.id.content)));
+        mHandednessLayoutApplier.registerPart(new BrowserHandednessPart(findViewById(android.R.id.content)));
+        mHandednessLayoutApplier.registerPart(new BrowserTabStripHandednessPart(findViewById(android.R.id.content)));
+        mHandednessLayoutApplier.registerPart(new BrowserTabsListHandednessPart(findViewById(android.R.id.content)));
         mPreferences.registerOnSharedPreferenceChangeListener(mLeftHandedModeChangeListener);
 
         setMargins();
@@ -508,7 +515,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         ActivityComponent rightDrawerComponent = new ActivityComponent() {
             @Override
             public boolean onBackPressed() {
-                if (getDrawer().isDrawerOpen(Gravity.RIGHT)) {
+                if (getDrawer().isDrawerOpen(TabDrawerEdge.currentGravity(getDrawer()))) {
                     getDrawer().closeDrawers();
                     return true;
                 }

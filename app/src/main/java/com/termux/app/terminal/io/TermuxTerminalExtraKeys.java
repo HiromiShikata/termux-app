@@ -1,13 +1,13 @@
 package com.termux.app.terminal.io;
 
 import android.annotation.SuppressLint;
-import android.view.Gravity;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.handedness.TabDrawerEdge;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.logger.Logger;
@@ -89,10 +89,11 @@ public class TermuxTerminalExtraKeys extends TerminalExtraKeys {
                 mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
         } else if ("DRAWER".equals(key)) {
             DrawerLayout drawerLayout = mTermuxTerminalViewClient.getActivity().getDrawer();
-            if (drawerLayout.isDrawerOpen(Gravity.LEFT))
-                drawerLayout.closeDrawer(Gravity.LEFT);
+            int gravity = TabDrawerEdge.currentGravity(drawerLayout);
+            if (drawerLayout.isDrawerOpen(gravity))
+                drawerLayout.closeDrawer(gravity);
             else
-                drawerLayout.openDrawer(Gravity.LEFT);
+                drawerLayout.openDrawer(gravity);
         } else if ("PASTE".equals(key)) {
             if(mTermuxTerminalSessionActivityClient != null)
                 mTermuxTerminalSessionActivityClient.onPasteTextFromClipboard(null);

@@ -3,6 +3,8 @@ package com.termux.app.handedness;
 import android.view.View;
 import android.widget.LinearLayout;
 
+import androidx.drawerlayout.widget.DrawerLayout;
+
 import com.termux.R;
 
 import java.util.Arrays;
@@ -14,6 +16,7 @@ public final class BrowserHandednessPart implements HandednessLayoutPart {
     private final LinearLayout tabBarProjectActions;
     private final LinearLayout findBar;
     private final LinearLayout actionIconRow;
+    private final DrawerLayout drawerLayout;
     private final LinearLayoutGravityMirror gravityMirror = new LinearLayoutGravityMirror();
 
     public BrowserHandednessPart(View activityRoot) {
@@ -22,6 +25,7 @@ public final class BrowserHandednessPart implements HandednessLayoutPart {
         tabBarProjectActions = activityRoot.findViewById(R.id.browser_tab_bar_project_actions);
         findBar = activityRoot.findViewById(R.id.browser_find_bar);
         actionIconRow = activityRoot.findViewById(R.id.browser_action_icon_row);
+        drawerLayout = activityRoot.findViewById(R.id.drawer_layout);
     }
 
     @Override
@@ -49,6 +53,7 @@ public final class BrowserHandednessPart implements HandednessLayoutPart {
             actionIconRow.findViewById(R.id.browser_bookmark_toggle_button),
             actionIconRow.findViewById(R.id.browser_new_tab_button),
             actionIconRow.findViewById(R.id.browser_desktop_mode_toggle)));
+        TabDrawerEdge.apply(drawerLayout, handedness);
     }
 
 }
