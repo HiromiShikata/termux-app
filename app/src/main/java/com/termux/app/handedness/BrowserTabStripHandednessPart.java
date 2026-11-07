@@ -4,6 +4,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.termux.R;
+import com.termux.app.browser.BrowserTabFaviconStripController;
 
 public final class BrowserTabStripHandednessPart implements HandednessLayoutPart {
 
@@ -20,6 +21,8 @@ public final class BrowserTabStripHandednessPart implements HandednessLayoutPart
                 .findViewById(R.id.browser_tab_strip_close_button);
             if (closeButton != null) {
                 HandednessGravity.applyToFrameChild(closeButton, handedness);
+                BrowserTabFaviconStripController.applyCloseButtonTouchTarget(
+                    tabStripContainer.getChildAt(index), closeButton, handedness);
             }
         }
     }

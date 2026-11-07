@@ -45,6 +45,8 @@ public class TerminalToolbarViewPager {
         static final int SUBMITTED_TEXT_INPUT_HISTORY_SIZE = 5;
         private final PinnedTextInputHistorySerializer mPinnedTextInputHistorySerializer = new PinnedTextInputHistorySerializer();
         private final SubmittedTextInputHistory mSubmittedTextInputHistory;
+        @Nullable
+        private SubmittedTextInputHistoryAdapter mOpenSubmittedTextInputHistoryAdapter;
 
         public PageAdapter(TermuxActivity activity, String savedTextInput) {
             this.mActivity = activity;
@@ -188,6 +190,16 @@ public class TerminalToolbarViewPager {
                 .setTitle(R.string.title_toolbar_text_input_history_dialog)
                 .setAdapter(adapter, (dialog, which) ->
                     HistoryEntryRestore.into(editText, adapter.getItem(which))));
+            mOpenSubmittedTextInputHistoryAdapter = adapter;
+            openDialog[0].setOnDismissListener(dismissed -> {
+                if (mOpenSubmittedTextInputHistoryAdapter == adapter) mOpenSubmittedTextInputHistoryAdapter = null;
+            });
+        }
+
+        void onHandednessChanged(@NonNull Handedness handedness) {
+            if (mOpenSubmittedTextInputHistoryAdapter != null) {
+                mOpenSubmittedTextInputHistoryAdapter.setHandedness(handedness);
+            }
         }
 
         @Override
@@ -234,7 +246,7 @@ public class TerminalToolbarViewPager {
     static final class SubmittedTextInputHistoryAdapter extends BaseAdapter {
 
         private final Context mContext;
-        private final Handedness mHandedness;
+        private Handedness mHandedness;
         private final SubmittedTextInputHistory mHistory;
         private final Runnable mOnPinnedChanged;
         private final HistoryEntryRestoreListener mOnEntryChosenForRestore;
@@ -253,6 +265,11 @@ public class TerminalToolbarViewPager {
             mOnEntryChosenForRestore = onEntryChosenForRestore;
             mInflater = LayoutInflater.from(context);
             mOrderedEntries = history.getOrderedEntries();
+        }
+
+        void setHandedness(@NonNull Handedness handedness) {
+            mHandedness = handedness;
+            notifyDataSetChanged();
         }
 
         @Override

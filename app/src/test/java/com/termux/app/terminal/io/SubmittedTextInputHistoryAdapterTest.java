@@ -89,4 +89,24 @@ public class SubmittedTextInputHistoryAdapterTest {
         Assert.assertEquals(Arrays.asList("pinned-entry updated", "plain-entry"),
             history.getOrderedEntries());
     }
+
+    @Test
+    public void rowsShownBeforeTheHandednessChangesAreReorderedToTheLeftEdgeOnRebind() {
+        Context context = themedContext();
+        FrameLayout parent = new FrameLayout(context);
+        SubmittedTextInputHistory history = pinnedFirstHistory();
+        SubmittedTextInputHistoryAdapter adapter =
+            new SubmittedTextInputHistoryAdapter(context, Handedness.RIGHT_HANDED, history, () -> {}, entry -> {});
+        View shownRow = adapter.getView(0, null, parent);
+        Assert.assertEquals("the restore button sits at the right edge while right-handed",
+            R.id.toolbar_text_input_history_restore_button,
+            ((android.view.ViewGroup) shownRow).getChildAt(((android.view.ViewGroup) shownRow).getChildCount() - 1).getId());
+
+        adapter.setHandedness(Handedness.LEFT_HANDED);
+        View rebound = adapter.getView(0, shownRow, parent);
+
+        Assert.assertEquals("an open dialog rebinds its visible rows, so the restore button must move to the left edge",
+            R.id.toolbar_text_input_history_restore_button,
+            ((android.view.ViewGroup) rebound).getChildAt(0).getId());
+    }
 }

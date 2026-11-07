@@ -1912,11 +1912,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void applyLeftHandedModeFromPreferences() {
         if (mPreferences == null || mIsInvalidState) return;
-        mHandednessLayoutApplier.applyHandedness(
-            Handedness.fromLeftHandedModeEnabled(mPreferences.isLeftHandedModeEnabled()));
+        Handedness handedness = Handedness.fromLeftHandedModeEnabled(mPreferences.isLeftHandedModeEnabled());
+        mHandednessLayoutApplier.applyHandedness(handedness);
         if (mTermuxSessionListViewController != null) {
             mTermuxSessionListViewController.onHandednessChanged();
         }
+        TerminalToolbarViewPager.PageAdapter toolbarAdapter = getTerminalToolbarViewPagerAdapter();
+        if (toolbarAdapter != null) toolbarAdapter.onHandednessChanged(handedness);
     }
 
     public TermuxAppSharedProperties getProperties() {
