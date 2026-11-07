@@ -95,7 +95,6 @@ public class LeftHandedModeDrawerEdgeInstrumentedTest {
             ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
             settle();
 
-            // The shortcut is disabled by default, so the test enables it through termux.properties above.
             scenario.onActivity(activity -> {
                 long now = SystemClock.uptimeMillis();
                 KeyEvent ctrlAltDpadRight = new KeyEvent(now, now, KeyEvent.ACTION_DOWN,
