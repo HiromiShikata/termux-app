@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="session_row_view_type_tag" type="id" />
+    <item name="handedness_original_child_order_tag" type="id" />
+    <item name="handedness_original_gravity_tag" type="id" />
+    <item name="handedness_original_edge_tag" type="id" />
 </resources>

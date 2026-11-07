@@ -3,24 +3,23 @@ package com.termux.app.handedness;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.termux.R;
+
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 
 final class ViewGroupChildOrderMirror {
 
-    private final Map<ViewGroup, List<View>> originalChildOrders = new IdentityHashMap<>();
-
     void apply(ViewGroup group, Handedness handedness) {
-        List<View> original = originalChildOrders.get(group);
+        @SuppressWarnings("unchecked")
+        List<View> original = (List<View>) group.getTag(R.id.handedness_original_child_order_tag);
         if (original == null) {
             original = new ArrayList<>();
             for (int index = 0; index < group.getChildCount(); index++) {
                 original.add(group.getChildAt(index));
             }
-            originalChildOrders.put(group, original);
+            group.setTag(R.id.handedness_original_child_order_tag, original);
         }
         List<View> target = new ArrayList<>(original);
         if (handedness == Handedness.LEFT_HANDED) {

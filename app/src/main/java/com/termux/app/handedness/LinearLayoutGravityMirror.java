@@ -3,18 +3,15 @@ package com.termux.app.handedness;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
+import com.termux.R;
 
 final class LinearLayoutGravityMirror {
 
-    private final Map<LinearLayout, Integer> originalGravities = new IdentityHashMap<>();
-
     void apply(LinearLayout layout, Handedness handedness) {
-        Integer original = originalGravities.get(layout);
+        Integer original = (Integer) layout.getTag(R.id.handedness_original_gravity_tag);
         if (original == null) {
             original = layout.getGravity();
-            originalGravities.put(layout, original);
+            layout.setTag(R.id.handedness_original_gravity_tag, original);
         }
         layout.setGravity(handedness == Handedness.LEFT_HANDED ? mirrored(original) : original);
     }

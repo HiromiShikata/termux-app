@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 
 import com.termux.R;
 
@@ -47,15 +46,11 @@ public class HandednessPlacementTest {
         assertChildren(textRow, R.id.terminal_toolbar_enter_button,
             R.id.terminal_toolbar_text_input, R.id.terminal_toolbar_text_input_history_button);
 
-        RelativeLayout.LayoutParams indicatorParams = indicatorParams(root);
-        Assert.assertEquals(RelativeLayout.TRUE,
-            indicatorParams.getRule(RelativeLayout.ALIGN_PARENT_START));
-        Assert.assertEquals(0, indicatorParams.getRule(RelativeLayout.ALIGN_PARENT_END));
-        Assert.assertEquals(R.id.terminal_toolbar_bottom_container,
-            indicatorParams.getRule(RelativeLayout.ABOVE));
-        Assert.assertEquals(eightDp(root), indicatorParams.getMarginStart());
-        Assert.assertEquals(0, indicatorParams.getMarginEnd());
-        Assert.assertEquals(eightDp(root), indicatorParams.bottomMargin);
+        layoutActivity(root);
+        View indicator = root.findViewById(R.id.apk_update_floating_indicator);
+        View toolbar = root.findViewById(R.id.terminal_toolbar_bottom_container);
+        Assert.assertEquals(eightDp(root), indicator.getLeft());
+        Assert.assertEquals(toolbar.getTop() - eightDp(root), indicator.getBottom());
         LinearLayout sessionInfo = root.findViewById(R.id.session_info_bottom_container);
         assertChildren(sessionInfo, R.id.owner_call_pending_indicator, R.id.session_info_bars_column);
     }
@@ -100,9 +95,17 @@ public class HandednessPlacementTest {
         Assert.assertEquals(Arrays.asList(Handedness.LEFT_HANDED), second.applied);
     }
 
-    private static RelativeLayout.LayoutParams indicatorParams(View root) {
-        return (RelativeLayout.LayoutParams) root.findViewById(
-            R.id.apk_update_floating_indicator).getLayoutParams();
+    private static void layoutActivity(View root) {
+        root.findViewById(R.id.apk_update_floating_indicator).setVisibility(View.VISIBLE);
+        int width = 1080;
+        int height = 1920;
+        root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, width, height);
+    }
+
+    private static int eightDp(View root) {
+        return Math.round(8 * root.getResources().getDisplayMetrics().density);
     }
 
     private static void assertChildren(LinearLayout parent, int... ids) {
@@ -135,10 +138,6 @@ public class HandednessPlacementTest {
         return null;
     }
 
-    private static int eightDp(View root) {
-        return Math.round(8 * root.getResources().getDisplayMetrics().density);
-    }
-
     private static View inflateActivityLayout() {
         Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
@@ -160,13 +159,10 @@ public class HandednessPlacementTest {
         private final int[] iconOrder;
         private final int iconGravity;
         private final int[] textOrder;
-        private final int[] indicatorRules;
-        private final int indicatorLeftMargin;
-        private final int indicatorTopMargin;
-        private final int indicatorRightMargin;
-        private final int indicatorBottomMargin;
-        private final int indicatorStartMargin;
-        private final int indicatorEndMargin;
+        private final int indicatorLeft;
+        private final int indicatorRight;
+        private final int indicatorTop;
+        private final int indicatorBottom;
         private final int[] sessionInfoOrder;
 
         private PlacementSnapshot(View root) {
@@ -177,14 +173,12 @@ public class HandednessPlacementTest {
             iconGravity = iconRow.getGravity();
             textOrder = childIds((LinearLayout) root.findViewById(
                 R.id.terminal_toolbar_text_input_row));
-            RelativeLayout.LayoutParams params = indicatorParams(root);
-            indicatorRules = params.getRules().clone();
-            indicatorLeftMargin = params.leftMargin;
-            indicatorTopMargin = params.topMargin;
-            indicatorRightMargin = params.rightMargin;
-            indicatorBottomMargin = params.bottomMargin;
-            indicatorStartMargin = params.getMarginStart();
-            indicatorEndMargin = params.getMarginEnd();
+            layoutActivity(root);
+            View indicator = root.findViewById(R.id.apk_update_floating_indicator);
+            indicatorLeft = indicator.getLeft();
+            indicatorRight = indicator.getRight();
+            indicatorTop = indicator.getTop();
+            indicatorBottom = indicator.getBottom();
             sessionInfoOrder = childIds((LinearLayout) root.findViewById(
                 R.id.session_info_bottom_container));
         }
@@ -201,14 +195,12 @@ public class HandednessPlacementTest {
             Assert.assertEquals(iconGravity, iconRow.getGravity());
             Assert.assertArrayEquals(textOrder, childIds((LinearLayout) root.findViewById(
                 R.id.terminal_toolbar_text_input_row)));
-            RelativeLayout.LayoutParams params = indicatorParams(root);
-            Assert.assertArrayEquals(indicatorRules, params.getRules());
-            Assert.assertEquals(indicatorLeftMargin, params.leftMargin);
-            Assert.assertEquals(indicatorTopMargin, params.topMargin);
-            Assert.assertEquals(indicatorRightMargin, params.rightMargin);
-            Assert.assertEquals(indicatorBottomMargin, params.bottomMargin);
-            Assert.assertEquals(indicatorStartMargin, params.getMarginStart());
-            Assert.assertEquals(indicatorEndMargin, params.getMarginEnd());
+            layoutActivity(root);
+            View indicator = root.findViewById(R.id.apk_update_floating_indicator);
+            Assert.assertEquals(indicatorLeft, indicator.getLeft());
+            Assert.assertEquals(indicatorRight, indicator.getRight());
+            Assert.assertEquals(indicatorTop, indicator.getTop());
+            Assert.assertEquals(indicatorBottom, indicator.getBottom());
             Assert.assertArrayEquals(sessionInfoOrder, childIds((LinearLayout) root.findViewById(
                 R.id.session_info_bottom_container)));
         }

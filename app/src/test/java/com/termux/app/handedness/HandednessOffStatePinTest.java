@@ -8,7 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.RelativeLayout;
 import android.widget.FrameLayout;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -57,19 +56,15 @@ public class HandednessOffStatePinTest {
     }
 
     @Test
-    public void apkUpdateIndicatorKeepsBottomEndRuleAndMargins() {
+    public void apkUpdateIndicatorStaysBottomRightAboveTheToolbar() {
         View root = inflateActivityLayout();
+        layoutActivity(root);
         FloatingActionButton indicator = root.findViewById(R.id.apk_update_floating_indicator);
-        RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) indicator.getLayoutParams();
+        View parent = (View) indicator.getParent();
+        View toolbar = root.findViewById(R.id.terminal_toolbar_bottom_container);
 
-        Assert.assertEquals(RelativeLayout.TRUE,
-            params.getRule(RelativeLayout.ALIGN_PARENT_END));
-        Assert.assertEquals(0, params.getRule(RelativeLayout.ALIGN_PARENT_START));
-        Assert.assertEquals(R.id.terminal_toolbar_bottom_container,
-            params.getRule(RelativeLayout.ABOVE));
-        Assert.assertEquals(eightDp(root), params.getMarginEnd());
-        Assert.assertEquals(0, params.getMarginStart());
-        Assert.assertEquals(eightDp(root), params.bottomMargin);
+        Assert.assertEquals(parent.getWidth() - eightDp(root), indicator.getRight());
+        Assert.assertEquals(toolbar.getTop() - eightDp(root), indicator.getBottom());
     }
 
     @Test
@@ -78,6 +73,19 @@ public class HandednessOffStatePinTest {
         LinearLayout row = root.findViewById(R.id.session_info_bottom_container);
 
         assertChildren(row, R.id.session_info_bars_column, R.id.owner_call_pending_indicator);
+    }
+
+    private static void layoutActivity(View root) {
+        root.findViewById(R.id.apk_update_floating_indicator).setVisibility(View.VISIBLE);
+        int width = 1080;
+        int height = 1920;
+        root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, width, height);
+    }
+
+    private static int eightDp(View root) {
+        return Math.round(8 * root.getResources().getDisplayMetrics().density);
     }
 
     private static void assertChildren(LinearLayout parent, int... ids) {
@@ -108,10 +116,6 @@ public class HandednessOffStatePinTest {
             }
         }
         return null;
-    }
-
-    private static int eightDp(View root) {
-        return Math.round(8 * root.getResources().getDisplayMetrics().density);
     }
 
     private static View inflateActivityLayout() {
