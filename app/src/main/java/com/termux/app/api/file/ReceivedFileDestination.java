@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
+import java.util.Arrays;
 
 public final class ReceivedFileDestination {
 
@@ -64,7 +64,16 @@ public final class ReceivedFileDestination {
     }
 
     private static boolean isDirectlyInside(File receiveDir, File file) throws IOException {
-        if (Files.isSymbolicLink(file.toPath())) return false;
+        if (isDanglingSymbolicLink(receiveDir, file)) return false;
         return file.getCanonicalFile().getParentFile().equals(receiveDir.getCanonicalFile());
+    }
+
+    private static boolean isDanglingSymbolicLink(File receiveDir, File file) throws IOException {
+        if (file.exists()) return false;
+        String[] entryNames = receiveDir.list();
+        if (entryNames == null) {
+            throw new IOException("Cannot list receive directory: " + receiveDir.getAbsolutePath());
+        }
+        return Arrays.asList(entryNames).contains(file.getName());
     }
 }
