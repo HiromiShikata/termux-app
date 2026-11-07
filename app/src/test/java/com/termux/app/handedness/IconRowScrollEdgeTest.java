@@ -56,6 +56,57 @@ public class IconRowScrollEdgeTest {
             scroll.getScrollX());
     }
 
+    @Test
+    public void rightHandedManualScrollSurvivesARelayoutAndReapplyingRightHanded() {
+        View root = inflateActivityLayout();
+        TerminalToolbarHandednessPart part = new TerminalToolbarHandednessPart(root);
+        part.applyHandedness(Handedness.RIGHT_HANDED);
+        layout(root);
+        HorizontalScrollView scroll = root.findViewById(R.id.terminal_toolbar_icon_button_scroll);
+        scroll.scrollTo(40, 0);
+
+        root.requestLayout();
+        layout(root);
+        Assert.assertEquals("a relayout must keep a manual right-handed scroll", 40, scroll.getScrollX());
+
+        part.applyHandedness(Handedness.RIGHT_HANDED);
+        layout(root);
+        Assert.assertEquals("re-applying right-handed must not reset a manual scroll", 40, scroll.getScrollX());
+    }
+
+    @Test
+    public void leftHandedManualScrollSurvivesARelayoutWithoutASizeChange() {
+        View root = inflateActivityLayout();
+        new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.LEFT_HANDED);
+        layout(root);
+        HorizontalScrollView scroll = root.findViewById(R.id.terminal_toolbar_icon_button_scroll);
+        scroll.scrollTo(10, 0);
+
+        layout(root);
+        Assert.assertEquals("a same-size relayout must keep a manual left-handed scroll", 10, scroll.getScrollX());
+    }
+
+    @Test
+    public void switchingLeftToRightRestoresTheStartAndRightToLeftShowsTheEnd() {
+        View root = inflateActivityLayout();
+        TerminalToolbarHandednessPart part = new TerminalToolbarHandednessPart(root);
+        HorizontalScrollView scroll = root.findViewById(R.id.terminal_toolbar_icon_button_scroll);
+        LinearLayout row = root.findViewById(R.id.terminal_toolbar_icon_button_row);
+        part.applyHandedness(Handedness.LEFT_HANDED);
+        layout(root);
+        int maxScrollX = row.getWidth() - scroll.getWidth();
+        Assert.assertEquals("left-handed shows the end", maxScrollX, scroll.getScrollX());
+
+        part.applyHandedness(Handedness.RIGHT_HANDED);
+        Assert.assertEquals("switching to right-handed restores the start at once", 0, scroll.getScrollX());
+        layout(root);
+        Assert.assertEquals("and keeps the start after the next layout", 0, scroll.getScrollX());
+
+        part.applyHandedness(Handedness.LEFT_HANDED);
+        layout(root);
+        Assert.assertEquals("switching back to left-handed shows the end", maxScrollX, scroll.getScrollX());
+    }
+
     private static void assertIconRowViewport(View root, int expectedScrollSign, boolean rightHanded) {
         HorizontalScrollView scroll = root.findViewById(R.id.terminal_toolbar_icon_button_scroll);
         LinearLayout row = root.findViewById(R.id.terminal_toolbar_icon_button_row);
