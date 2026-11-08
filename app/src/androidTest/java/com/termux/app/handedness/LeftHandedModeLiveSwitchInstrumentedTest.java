@@ -6,6 +6,8 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.SwitchPreferenceCompat;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -19,6 +21,7 @@ import android.view.View;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.terminal.TerminalSession;
 import com.termux.view.TerminalView;
@@ -96,6 +99,113 @@ public class LeftHandedModeLiveSwitchInstrumentedTest {
         } finally {
             preferences.setLeftHandedModeEnabled(false);
         }
+    }
+
+    @Test
+    public void switchButtonFlipsModeAndPlacementAndFlipsBackInTheSameActivity() throws Exception {
+        TermuxAppSharedPreferences preferences =
+            TermuxAppSharedPreferences.build(ApplicationProvider.getApplicationContext());
+        preferences.setLeftHandedModeEnabled(false);
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        try {
+            settle();
+            SwitchButtonLayout rightHanded = captureSwitchButton(scenario);
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+            Assert.assertTrue("the switch button must turn left-handed mode on",
+                preferences.isLeftHandedModeEnabled());
+            SwitchButtonLayout leftHanded = captureSwitchButton(scenario);
+
+            Assert.assertSame("the switch must apply without recreating the activity",
+                rightHanded.activity, leftHanded.activity);
+            assertReversed("bottom container", rightHanded.bottomContainerIds, leftHanded.bottomContainerIds);
+            Assert.assertEquals("the switch button must sit at the right edge of the toolbar",
+                leftHanded.containerWidth, leftHanded.buttonRight);
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+            Assert.assertFalse("the second tap must turn left-handed mode off",
+                preferences.isLeftHandedModeEnabled());
+            SwitchButtonLayout restored = captureSwitchButton(scenario);
+
+            Assert.assertSame("the restore must also keep the same activity",
+                rightHanded.activity, restored.activity);
+            Assert.assertEquals("the right-handed bottom order must come back",
+                rightHanded.bottomContainerIds, restored.bottomContainerIds);
+            Assert.assertEquals("the switch button must return to the left edge of the toolbar",
+                0, restored.buttonLeft);
+        } finally {
+            preferences.setLeftHandedModeEnabled(false);
+        }
+    }
+
+    @Test
+    public void settingsSwitchShowsTheValueSetByTheFooterButton() throws Exception {
+        TermuxAppSharedPreferences preferences =
+            TermuxAppSharedPreferences.build(ApplicationProvider.getApplicationContext());
+        preferences.setLeftHandedModeEnabled(false);
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        try {
+            settle();
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+            Assert.assertTrue("the footer button must turn left-handed mode on",
+                preferences.isLeftHandedModeEnabled());
+            Assert.assertTrue("the settings switch must show left-handed mode on",
+                isSettingsLeftHandedSwitchChecked());
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+            Assert.assertFalse("the second footer tap must turn left-handed mode off",
+                preferences.isLeftHandedModeEnabled());
+            Assert.assertFalse("the settings switch must show left-handed mode off",
+                isSettingsLeftHandedSwitchChecked());
+        } finally {
+            preferences.setLeftHandedModeEnabled(false);
+        }
+    }
+
+    private static boolean isSettingsLeftHandedSwitchChecked() {
+        boolean[] checked = new boolean[1];
+        try (ActivityScenario<SettingsActivity> settings = ActivityScenario.launch(SettingsActivity.class)) {
+            settle();
+            settings.onActivity(activity -> {
+                PreferenceFragmentCompat fragment = (PreferenceFragmentCompat)
+                    activity.getSupportFragmentManager().findFragmentById(R.id.settings);
+                SwitchPreferenceCompat leftHandedSwitch = fragment.findPreference("left_handed_mode");
+                Assert.assertNotNull("the settings screen must have the left_handed_mode switch", leftHandedSwitch);
+                checked[0] = leftHandedSwitch.isChecked();
+            });
+        }
+        settle();
+        return checked[0];
+    }
+
+    private static final class SwitchButtonLayout {
+        private TermuxActivity activity;
+        private List<Integer> bottomContainerIds;
+        private int containerWidth;
+        private int buttonLeft;
+        private int buttonRight;
+    }
+
+    private static SwitchButtonLayout captureSwitchButton(@NonNull ActivityScenario<TermuxActivity> scenario) {
+        SwitchButtonLayout layout = new SwitchButtonLayout();
+        scenario.onActivity(activity -> {
+            LinearLayout bottom = activity.findViewById(R.id.terminal_toolbar_bottom_container);
+            View button = activity.findViewById(R.id.terminal_toolbar_handedness_switch_button);
+            layout.activity = activity;
+            layout.bottomContainerIds = childIds(bottom);
+            layout.containerWidth = bottom.getWidth();
+            layout.buttonLeft = button.getLeft();
+            layout.buttonRight = button.getRight();
+        });
+        return layout;
     }
 
     private static void assertReversed(String name, List<Integer> rightHandedIds, List<Integer> leftHandedIds) {

@@ -573,7 +573,7 @@
 
         </LinearLayout>
 
-        <LinearLayout
+        <com.termux.app.handedness.TerminalToolbarBottomContainer
             android:id="@+id/terminal_toolbar_bottom_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -582,6 +582,17 @@
             android:gravity="bottom"
             android:elevation="6dp"
             android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/terminal_toolbar_handedness_switch_button"
+                android:layout_width="36dp"
+                android:layout_height="match_parent"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_switch_handedness_layout"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="4dp"
+                android:src="@drawable/ic_handedness_switch"
+                android:tint="@color/white" />
 
             <androidx.viewpager.widget.ViewPager
                 android:id="@+id/terminal_toolbar_view_pager"
@@ -761,7 +772,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="32dp" />
             </LinearLayout>
-        </LinearLayout>
+        </com.termux.app.handedness.TerminalToolbarBottomContainer>
 
         <View
             android:id="@+id/terminal_toolbar_bottom_separator"

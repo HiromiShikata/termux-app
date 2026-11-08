@@ -6,7 +6,10 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.TextPaint;
+import android.text.method.TransformationMethod;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 
 import java.util.ArrayList;
@@ -140,6 +143,8 @@ public final class ExtraKeysView extends GridLayout {
     /** Defines the text size in scaled pixels for the extra keys button labels. Kept small so the
      * compact key row labels do not overflow and multi-character labels render on a single line. */
     public static final float BUTTON_TEXT_SIZE_SP = 9f;
+
+    private static final float TEXT_SIZE_SEARCH_PRECISION_SP = 0.01f;
 
     /** Defines the minimum allowed duration in milliseconds for {@link #mLongPressRepeatDelay}. */
     public static final int MIN_LONG_PRESS__REPEAT_DELAY = 5;
@@ -493,7 +498,68 @@ public final class ExtraKeysView extends GridLayout {
         }
     }
 
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        fitButtonTextSize();
+    }
 
+    private void fitButtonTextSize() {
+        List<MaterialButton> buttons = new ArrayList<>();
+        for (int index = 0; index < getChildCount(); index++) {
+            View child = getChildAt(index);
+            if (child instanceof MaterialButton)
+                buttons.add((MaterialButton) child);
+        }
+        if (buttons.isEmpty())
+            return;
+        for (MaterialButton button : buttons) {
+            if (availableWidthPx(button) <= 0)
+                return;
+        }
+
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        float fittedTextSizeSp = BUTTON_TEXT_SIZE_SP;
+        if (!allLabelsFit(buttons, fittedTextSizeSp, metrics)) {
+            float fittingTextSizeSp = 0f;
+            float notFittingTextSizeSp = BUTTON_TEXT_SIZE_SP;
+            while (notFittingTextSizeSp - fittingTextSizeSp > TEXT_SIZE_SEARCH_PRECISION_SP) {
+                float candidateTextSizeSp = (fittingTextSizeSp + notFittingTextSizeSp) / 2f;
+                if (allLabelsFit(buttons, candidateTextSizeSp, metrics))
+                    fittingTextSizeSp = candidateTextSizeSp;
+                else
+                    notFittingTextSizeSp = candidateTextSizeSp;
+            }
+            fittedTextSizeSp = fittingTextSizeSp;
+        }
+        for (MaterialButton button : buttons)
+            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, fittedTextSizeSp);
+    }
+
+    private static boolean allLabelsFit(List<MaterialButton> buttons, float textSizeSp, DisplayMetrics metrics) {
+        for (MaterialButton button : buttons) {
+            if (!labelFits(button, textSizeSp, metrics))
+                return false;
+        }
+        return true;
+    }
+
+    private static boolean labelFits(MaterialButton button, float textSizeSp, DisplayMetrics metrics) {
+        TextPaint measurePaint = new TextPaint(button.getPaint());
+        measurePaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSizeSp, metrics));
+        return measurePaint.measureText(renderedLabel(button)) <= availableWidthPx(button);
+    }
+
+    private static int availableWidthPx(MaterialButton button) {
+        return button.getMeasuredWidth() - button.getPaddingLeft() - button.getPaddingRight();
+    }
+
+    private static String renderedLabel(MaterialButton button) {
+        CharSequence text = button.getText();
+        TransformationMethod method = button.getTransformationMethod();
+        CharSequence rendered = method == null ? null : method.getTransformation(text, button);
+        return (rendered == null ? text : rendered).toString();
+    }
 
     public void onExtraKeyButtonClick(View view, ExtraKeyButton buttonInfo, MaterialButton button) {
         if (mExtraKeysViewClient != null)

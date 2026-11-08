@@ -429,6 +429,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mHandednessLayoutApplier.registerPart(new BrowserHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new BrowserTabStripHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new BrowserTabsListHandednessPart(findViewById(android.R.id.content)));
+        TerminalToolbarHandednessPart.bindSwitchButton(findViewById(R.id.terminal_toolbar_handedness_switch_button), mPreferences);
         mPreferences.registerOnSharedPreferenceChangeListener(mLeftHandedModeChangeListener);
 
         setMargins();
