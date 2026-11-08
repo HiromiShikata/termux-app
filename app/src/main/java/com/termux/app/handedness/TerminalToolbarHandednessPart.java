@@ -5,6 +5,7 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 
 import com.termux.R;
+import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
 public final class TerminalToolbarHandednessPart implements HandednessLayoutPart {
 
@@ -30,6 +31,10 @@ public final class TerminalToolbarHandednessPart implements HandednessLayoutPart
         childOrderMirror.apply(iconButtonRow, handedness);
         scrollEdgeMirror.apply(iconButtonScroll, handedness);
         childOrderMirror.apply(textInputRow, handedness);
+    }
+
+    public static void bindSwitchButton(View button, TermuxAppSharedPreferences preferences) {
+        button.setOnClickListener(view -> preferences.setLeftHandedModeEnabled(!preferences.isLeftHandedModeEnabled()));
     }
 
 }
