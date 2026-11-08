@@ -21,53 +21,57 @@ public class ToolbarPlacementPinTest {
     private static final int HEIGHT_PX = 1920;
 
     @Test
-    public void rightHandedExtraKeysAndRightColumnSplitTheToolbarInHalf() {
+    public void rightHandedPagerGivesUpTheSwitchButtonWidthAndColumnKeepsHalf() {
         View root = inflateActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.RIGHT_HANDED);
         root.findViewById(R.id.terminal_toolbar_view_pager).setVisibility(View.VISIBLE);
         layoutActivity(root);
 
-        assertSplitInHalf(root);
+        assertPagerGivesUpSwitchButtonAndColumnKeepsHalf(root);
     }
 
     @Test
-    public void leftHandedExtraKeysAndRightColumnSplitTheToolbarInHalf() {
+    public void leftHandedPagerGivesUpTheSwitchButtonWidthAndColumnKeepsHalf() {
         View root = inflateActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.LEFT_HANDED);
         root.findViewById(R.id.terminal_toolbar_view_pager).setVisibility(View.VISIBLE);
         layoutActivity(root);
 
-        assertSplitInHalf(root);
+        assertPagerGivesUpSwitchButtonAndColumnKeepsHalf(root);
     }
 
     @Test
-    public void rightColumnTakesTheFullToolbarWidthWhenExtraKeysAreGone() {
+    public void rightColumnTakesTheToolbarWidthMinusSwitchButtonWhenExtraKeysAreGone() {
         View root = inflateActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.RIGHT_HANDED);
         layoutActivity(root);
 
-        View bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
-        View column = root.findViewById(R.id.terminal_toolbar_right_column);
-        Assert.assertEquals(bottom.getWidth(), column.getWidth(), 1);
+        assertColumnTakesToolbarWidthMinusSwitchButton(root);
     }
 
     @Test
-    public void leftHandedRightColumnTakesTheFullToolbarWidthWhenExtraKeysAreGone() {
+    public void leftHandedRightColumnTakesToolbarWidthMinusSwitchButtonWhenExtraKeysAreGone() {
         View root = inflateActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.LEFT_HANDED);
         layoutActivity(root);
 
-        View bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
-        View column = root.findViewById(R.id.terminal_toolbar_right_column);
-        Assert.assertEquals(bottom.getWidth(), column.getWidth(), 1);
+        assertColumnTakesToolbarWidthMinusSwitchButton(root);
     }
 
-    private static void assertSplitInHalf(View root) {
+    private static void assertPagerGivesUpSwitchButtonAndColumnKeepsHalf(View root) {
         View bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
+        View button = root.findViewById(R.id.terminal_toolbar_handedness_switch_button);
         View pager = root.findViewById(R.id.terminal_toolbar_view_pager);
         View column = root.findViewById(R.id.terminal_toolbar_right_column);
-        Assert.assertEquals(bottom.getWidth() / 2, pager.getWidth(), 1);
+        Assert.assertEquals(bottom.getWidth() / 2 - button.getWidth(), pager.getWidth(), 1);
         Assert.assertEquals(bottom.getWidth() / 2, column.getWidth(), 1);
+    }
+
+    private static void assertColumnTakesToolbarWidthMinusSwitchButton(View root) {
+        View bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
+        View button = root.findViewById(R.id.terminal_toolbar_handedness_switch_button);
+        View column = root.findViewById(R.id.terminal_toolbar_right_column);
+        Assert.assertEquals(bottom.getWidth() - button.getWidth(), column.getWidth(), 1);
     }
 
     private static void layoutActivity(View root) {
