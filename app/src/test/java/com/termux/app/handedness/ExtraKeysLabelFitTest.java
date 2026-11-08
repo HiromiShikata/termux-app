@@ -1,5 +1,6 @@
 package com.termux.app.handedness;
 
+import android.app.Activity;
 import android.content.Context;
 import android.text.method.TransformationMethod;
 import android.util.TypedValue;
@@ -22,6 +23,7 @@ import com.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 
@@ -50,7 +52,7 @@ public class ExtraKeysLabelFitTest {
 
     @Test
     public void extraKeysTextSizeStaysAtTheDefaultWhenThereIsEnoughWidth() throws Exception {
-        View root = inflateActivityLayout();
+        View root = attachedActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.RIGHT_HANDED);
         populateExtraKeysPagesAndLayout(root, WIDE_WIDTH_PX);
 
@@ -64,7 +66,7 @@ public class ExtraKeysLabelFitTest {
 
     @Test
     public void extraKeysTextSizeIsUniformAcrossKeys() throws Exception {
-        View root = inflateActivityLayout();
+        View root = attachedActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.RIGHT_HANDED);
         populateExtraKeysPagesAndLayout(root, TOOLBAR_WIDTH_PX);
 
@@ -77,7 +79,7 @@ public class ExtraKeysLabelFitTest {
     }
 
     private static void assertEveryLabelFits(Handedness handedness) throws Exception {
-        View root = inflateActivityLayout();
+        View root = attachedActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(handedness);
         populateExtraKeysPagesAndLayout(root, TOOLBAR_WIDTH_PX);
 
@@ -97,6 +99,7 @@ public class ExtraKeysLabelFitTest {
             TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_STYLE, ExtraKeysConstants.CONTROL_CHARS_ALIASES);
         float rowHeightPx = TOOLBAR_ROW_HEIGHT_DP * pager.getResources().getDisplayMetrics().density;
         pager.setAdapter(new ExtraKeysPageAdapter(info, rowHeightPx));
+        pager.setCurrentItem(0, false);
         pager.setVisibility(View.VISIBLE);
         root.measure(View.MeasureSpec.makeMeasureSpec(widthPx, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(WINDOW_HEIGHT_PX, View.MeasureSpec.EXACTLY));
@@ -105,20 +108,33 @@ public class ExtraKeysLabelFitTest {
 
     private static List<TextView> extraKeysLabels(View root) {
         ViewPager pager = root.findViewById(R.id.terminal_toolbar_view_pager);
+        List<ExtraKeysView> extraKeysViews = new ArrayList<>();
+        collectExtraKeysViews(pager, extraKeysViews);
+        Assert.assertFalse("no ExtraKeysView was instantiated under the toolbar pager after layout",
+            extraKeysViews.isEmpty());
+
         List<TextView> labels = new ArrayList<>();
-        collectNonEmptyTextViews(pager, labels);
-        Assert.assertFalse("no Extra Keys label was found under the toolbar pager", labels.isEmpty());
+        for (ExtraKeysView extraKeysView : extraKeysViews) {
+            for (int index = 0; index < extraKeysView.getChildCount(); index++) {
+                View child = extraKeysView.getChildAt(index);
+                if (child instanceof TextView && ((TextView) child).getText().length() > 0) {
+                    labels.add((TextView) child);
+                }
+            }
+        }
+        Assert.assertFalse("no Extra Keys label with text was found in the ExtraKeysView under the toolbar pager",
+            labels.isEmpty());
         return labels;
     }
 
-    private static void collectNonEmptyTextViews(ViewGroup group, List<TextView> labels) {
+    private static void collectExtraKeysViews(ViewGroup group, List<ExtraKeysView> extraKeysViews) {
         for (int index = 0; index < group.getChildCount(); index++) {
             View child = group.getChildAt(index);
-            if (child instanceof TextView && ((TextView) child).getText().length() > 0) {
-                labels.add((TextView) child);
+            if (child instanceof ExtraKeysView) {
+                extraKeysViews.add((ExtraKeysView) child);
             }
             if (child instanceof ViewGroup) {
-                collectNonEmptyTextViews((ViewGroup) child, labels);
+                collectExtraKeysViews((ViewGroup) child, extraKeysViews);
             }
         }
     }
@@ -130,11 +146,14 @@ public class ExtraKeysLabelFitTest {
         return (rendered == null ? text : rendered).toString();
     }
 
-    private static View inflateActivityLayout() {
+    private static View attachedActivityLayout() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
         Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
-        return LayoutInflater.from(context)
+        View root = LayoutInflater.from(context)
             .inflate(R.layout.activity_termux, new FrameLayout(context), false);
+        activity.setContentView(root);
+        return root;
     }
 
     private static final class ExtraKeysPageAdapter extends PagerAdapter {
