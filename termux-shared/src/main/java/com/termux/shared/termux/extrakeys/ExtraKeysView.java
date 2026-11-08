@@ -513,6 +513,10 @@ public final class ExtraKeysView extends GridLayout {
         }
         if (buttons.isEmpty())
             return;
+        for (MaterialButton button : buttons) {
+            if (availableWidthPx(button) <= 0)
+                return;
+        }
 
         DisplayMetrics metrics = getResources().getDisplayMetrics();
         float fittedTextSizeSp = BUTTON_TEXT_SIZE_SP;
@@ -543,8 +547,11 @@ public final class ExtraKeysView extends GridLayout {
     private static boolean labelFits(MaterialButton button, float textSizeSp, DisplayMetrics metrics) {
         TextPaint measurePaint = new TextPaint(button.getPaint());
         measurePaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSizeSp, metrics));
-        int availableWidthPx = button.getMeasuredWidth() - button.getPaddingLeft() - button.getPaddingRight();
-        return measurePaint.measureText(renderedLabel(button)) <= availableWidthPx;
+        return measurePaint.measureText(renderedLabel(button)) <= availableWidthPx(button);
+    }
+
+    private static int availableWidthPx(MaterialButton button) {
+        return button.getMeasuredWidth() - button.getPaddingLeft() - button.getPaddingRight();
     }
 
     private static String renderedLabel(MaterialButton button) {
