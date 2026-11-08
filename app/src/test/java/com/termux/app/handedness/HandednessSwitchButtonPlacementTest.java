@@ -5,6 +5,7 @@ import android.content.Context;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewParent;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -113,13 +114,25 @@ public class HandednessSwitchButtonPlacementTest {
         activity.setContentView(root);
         View bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
         View button = root.findViewById(R.id.terminal_toolbar_handedness_switch_button);
-        Assert.assertTrue(button.isShown());
+        Assert.assertTrue(isEffectivelyVisible(button));
 
         bottom.setVisibility(View.GONE);
 
         Assert.assertEquals(View.VISIBLE, button.getVisibility());
         Assert.assertSame(bottom, button.getParent());
-        Assert.assertFalse(button.isShown());
+        Assert.assertFalse(isEffectivelyVisible(button));
+    }
+
+    private static boolean isEffectivelyVisible(View view) {
+        View current = view;
+        while (current != null) {
+            if (current.getVisibility() != View.VISIBLE) {
+                return false;
+            }
+            ViewParent parent = current.getParent();
+            current = parent instanceof View ? (View) parent : null;
+        }
+        return true;
     }
 
     private static void applyWithExtraKeysVisible(View root, Handedness handedness) {
