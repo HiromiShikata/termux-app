@@ -98,6 +98,69 @@ public class LeftHandedModeLiveSwitchInstrumentedTest {
         }
     }
 
+    @Test
+    public void switchButtonFlipsModeAndPlacementAndFlipsBackInTheSameActivity() throws Exception {
+        TermuxAppSharedPreferences preferences =
+            TermuxAppSharedPreferences.build(ApplicationProvider.getApplicationContext());
+        preferences.setLeftHandedModeEnabled(false);
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        try {
+            settle();
+            SwitchButtonLayout rightHanded = captureSwitchButton(scenario);
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+            Assert.assertTrue("the switch button must turn left-handed mode on",
+                preferences.isLeftHandedModeEnabled());
+            SwitchButtonLayout leftHanded = captureSwitchButton(scenario);
+
+            Assert.assertSame("the switch must apply without recreating the activity",
+                rightHanded.activity, leftHanded.activity);
+            assertReversed("bottom container", rightHanded.bottomContainerIds, leftHanded.bottomContainerIds);
+            Assert.assertEquals("the switch button must sit at the right edge of the toolbar",
+                leftHanded.containerWidth, leftHanded.buttonRight);
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+            Assert.assertFalse("the second tap must turn left-handed mode off",
+                preferences.isLeftHandedModeEnabled());
+            SwitchButtonLayout restored = captureSwitchButton(scenario);
+
+            Assert.assertSame("the restore must also keep the same activity",
+                rightHanded.activity, restored.activity);
+            Assert.assertEquals("the right-handed bottom order must come back",
+                rightHanded.bottomContainerIds, restored.bottomContainerIds);
+            Assert.assertEquals("the switch button must return to the left edge of the toolbar",
+                0, restored.buttonLeft);
+        } finally {
+            preferences.setLeftHandedModeEnabled(false);
+        }
+    }
+
+    private static final class SwitchButtonLayout {
+        private TermuxActivity activity;
+        private List<Integer> bottomContainerIds;
+        private int containerWidth;
+        private int buttonLeft;
+        private int buttonRight;
+    }
+
+    private static SwitchButtonLayout captureSwitchButton(@NonNull ActivityScenario<TermuxActivity> scenario) {
+        SwitchButtonLayout layout = new SwitchButtonLayout();
+        scenario.onActivity(activity -> {
+            LinearLayout bottom = activity.findViewById(R.id.terminal_toolbar_bottom_container);
+            View button = activity.findViewById(R.id.terminal_toolbar_handedness_switch_button);
+            layout.activity = activity;
+            layout.bottomContainerIds = childIds(bottom);
+            layout.containerWidth = bottom.getWidth();
+            layout.buttonLeft = button.getLeft();
+            layout.buttonRight = button.getRight();
+        });
+        return layout;
+    }
+
     private static void assertReversed(String name, List<Integer> rightHandedIds, List<Integer> leftHandedIds) {
         List<Integer> expected = new ArrayList<>(rightHandedIds);
         Collections.reverse(expected);

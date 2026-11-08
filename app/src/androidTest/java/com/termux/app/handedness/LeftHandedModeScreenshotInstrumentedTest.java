@@ -81,6 +81,47 @@ public class LeftHandedModeScreenshotInstrumentedTest {
         }
     }
 
+    @Test
+    public void switchButtonCapturesRightHandedAfterTapAndLeftHandedScreenshots() throws Exception {
+        TermuxAppSharedPreferences preferences =
+            TermuxAppSharedPreferences.build(ApplicationProvider.getApplicationContext());
+        preferences.setLeftHandedModeEnabled(false);
+        ActivityScenario<TermuxActivity> scenario = ActivityScenario.launch(TermuxActivity.class);
+        try {
+            settle();
+            captureSwitchButtonScreen(scenario, "handedness-switch-right-handed.png", "switch right-handed",
+                false);
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            captureSwitchButtonScreen(scenario, "handedness-switch-after-tap.png", "switch after tap",
+                preferences.isLeftHandedModeEnabled());
+
+            settle();
+            captureSwitchButtonScreen(scenario, "handedness-switch-left-handed.png", "switch left-handed",
+                true);
+
+            scenario.onActivity(activity ->
+                activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).performClick());
+            settle();
+        } finally {
+            preferences.setLeftHandedModeEnabled(false);
+        }
+    }
+
+    private static void captureSwitchButtonScreen(ActivityScenario<TermuxActivity> scenario, String fileName,
+                                                  String label, boolean leftHanded) {
+        scenario.onActivity(activity -> {
+            try {
+                writeScreenshot(activity.getWindow().getDecorView(), fileName);
+            } catch (Exception exception) {
+                throw new RuntimeException(exception);
+            }
+            Log.i(LOG_TAG, label + " screenshot=" + fileName + " leftHanded=" + leftHanded);
+        });
+    }
+
     private static void captureMainScreen(ActivityScenario<TermuxActivity> scenario, String state,
                                           boolean leftHanded) {
         scenario.onActivity(activity -> captureWithTerminalProbe(activity,
