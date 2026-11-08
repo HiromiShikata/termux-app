@@ -23,12 +23,13 @@ import org.robolectric.RuntimeEnvironment;
 public class HandednessOffStatePinTest {
 
     @Test
-    public void terminalToolbarBottomContainerKeepsExtraKeysBeforeRightColumn() {
+    public void terminalToolbarBottomContainerKeepsSwitchButtonThenExtraKeysBeforeRightColumn() {
         View root = inflateActivityLayout();
         LinearLayout container = root.findViewById(R.id.terminal_toolbar_bottom_container);
 
-        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_view_pager), container.getChildAt(0));
-        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_right_column), container.getChildAt(1));
+        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_handedness_switch_button), container.getChildAt(0));
+        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_view_pager), container.getChildAt(1));
+        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_right_column), container.getChildAt(2));
     }
 
     @Test
