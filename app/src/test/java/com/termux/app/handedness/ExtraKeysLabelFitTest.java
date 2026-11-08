@@ -3,6 +3,7 @@ package com.termux.app.handedness;
 import android.app.Activity;
 import android.content.Context;
 import android.text.method.TransformationMethod;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -26,6 +27,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.annotation.Config;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,16 +43,19 @@ public class ExtraKeysLabelFitTest {
     private static final double TEXT_SIZE_TOLERANCE_PX = 0.01d;
 
     @Test
+    @Config(qualifiers = "w411dp-h914dp-420dpi")
     public void everyExtraKeysLabelFitsItsButtonInRightHandedMode() throws Exception {
         assertEveryLabelFits(Handedness.RIGHT_HANDED);
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h914dp-420dpi")
     public void everyExtraKeysLabelFitsItsButtonInLeftHandedMode() throws Exception {
         assertEveryLabelFits(Handedness.LEFT_HANDED);
     }
 
     @Test
+    @Config(qualifiers = "w822dp-h914dp-420dpi")
     public void extraKeysTextSizeStaysAtTheDefaultWhenThereIsEnoughWidth() throws Exception {
         View root = attachedActivityLayout();
         new TerminalToolbarHandednessPart(root).applyHandedness(Handedness.RIGHT_HANDED);
@@ -83,13 +88,24 @@ public class ExtraKeysLabelFitTest {
         new TerminalToolbarHandednessPart(root).applyHandedness(handedness);
         populateExtraKeysPagesAndLayout(root, TOOLBAR_WIDTH_PX);
 
-        for (TextView label : extraKeysLabels(root)) {
-            String text = renderedLabel(label);
-            float neededPx = label.getPaint().measureText(text);
-            int availablePx = label.getMeasuredWidth() - label.getPaddingLeft() - label.getPaddingRight();
-            Assert.assertTrue("label \"" + text + "\" needs " + neededPx + "px but its button leaves "
-                    + availablePx + "px in " + handedness,
-                neededPx <= availablePx + LABEL_FIT_TOLERANCE_PX);
+        DisplayMetrics metrics = root.getResources().getDisplayMetrics();
+        float defaultTextSizePx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,
+            ExtraKeysView.BUTTON_TEXT_SIZE_SP, metrics);
+        for (List<TextView> pageLabels : extraKeysLabelsPerPage(root)) {
+            float fittedTextSizePx = pageLabels.get(0).getTextSize();
+            Assert.assertTrue("fitted text size " + fittedTextSizePx + "px of the page is not smaller than the default "
+                    + defaultTextSizePx + "px in " + handedness,
+                fittedTextSizePx < defaultTextSizePx);
+            for (TextView label : pageLabels) {
+                String text = renderedLabel(label);
+                Assert.assertEquals("text size of label \"" + text + "\" in " + handedness + " differs from the page size",
+                    (double) fittedTextSizePx, (double) label.getTextSize(), TEXT_SIZE_TOLERANCE_PX);
+                float neededPx = label.getPaint().measureText(text);
+                int availablePx = label.getMeasuredWidth() - label.getPaddingLeft() - label.getPaddingRight();
+                Assert.assertTrue("label \"" + text + "\" needs " + neededPx + "px but its button leaves "
+                        + availablePx + "px in " + handedness,
+                    neededPx <= availablePx + LABEL_FIT_TOLERANCE_PX);
+            }
         }
     }
 
@@ -107,24 +123,34 @@ public class ExtraKeysLabelFitTest {
     }
 
     private static List<TextView> extraKeysLabels(View root) {
+        List<TextView> labels = new ArrayList<>();
+        for (List<TextView> pageLabels : extraKeysLabelsPerPage(root)) {
+            labels.addAll(pageLabels);
+        }
+        return labels;
+    }
+
+    private static List<List<TextView>> extraKeysLabelsPerPage(View root) {
         ViewPager pager = root.findViewById(R.id.terminal_toolbar_view_pager);
         List<ExtraKeysView> extraKeysViews = new ArrayList<>();
         collectExtraKeysViews(pager, extraKeysViews);
         Assert.assertFalse("no ExtraKeysView was instantiated under the toolbar pager after layout",
             extraKeysViews.isEmpty());
 
-        List<TextView> labels = new ArrayList<>();
+        List<List<TextView>> pages = new ArrayList<>();
         for (ExtraKeysView extraKeysView : extraKeysViews) {
+            List<TextView> labels = new ArrayList<>();
             for (int index = 0; index < extraKeysView.getChildCount(); index++) {
                 View child = extraKeysView.getChildAt(index);
                 if (child instanceof TextView && ((TextView) child).getText().length() > 0) {
                     labels.add((TextView) child);
                 }
             }
+            Assert.assertFalse("no Extra Keys label with text was found in an ExtraKeysView under the toolbar pager",
+                labels.isEmpty());
+            pages.add(labels);
         }
-        Assert.assertFalse("no Extra Keys label with text was found in the ExtraKeysView under the toolbar pager",
-            labels.isEmpty());
-        return labels;
+        return pages;
     }
 
     private static void collectExtraKeysViews(ViewGroup group, List<ExtraKeysView> extraKeysViews) {
