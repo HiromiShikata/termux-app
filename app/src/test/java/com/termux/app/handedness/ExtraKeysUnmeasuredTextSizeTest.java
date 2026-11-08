@@ -80,7 +80,7 @@ public class ExtraKeysUnmeasuredTextSizeTest {
         }
     }
 
-    private static ExtraKeysView inflateExtraKeysView() {
+    private static ExtraKeysView inflateExtraKeysView() throws Exception {
         Context context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(),
             R.style.Theme_TermuxActivity_DayNight_NoActionBar);
         ExtraKeysView extraKeysView = (ExtraKeysView) LayoutInflater.from(context)
