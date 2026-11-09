@@ -22,13 +22,15 @@ import java.util.Map;
 public class TerminalEnterKeyController {
 
     private final TermuxActivity mActivity;
-    private final ImageButton mButton;
     private final Map<String, Long> mLastBareEnterTimeMillisBySessionName = new HashMap<>();
 
-    public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
+    public TerminalEnterKeyController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
-        this.mButton = button;
-        mButton.setOnClickListener(view -> submit(
+    }
+
+    public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
+        this(activity);
+        button.setOnClickListener(view -> submit(
             mActivity.getTerminalToolbarTextInput(), mActivity.getTerminalToolbarViewPagerAdapter()));
     }
 

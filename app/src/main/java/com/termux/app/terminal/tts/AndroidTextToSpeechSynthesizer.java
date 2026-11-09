@@ -4,14 +4,18 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 
 import androidx.annotation.VisibleForTesting;
 
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesizer {
 
@@ -28,6 +32,10 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     private final Executor mSpeechQueueExecutor;
 
     private volatile TextToSpeech mTextToSpeech;
+
+    private final Map<String, Runnable> mCompletionsByUtteranceId = new ConcurrentHashMap<>();
+
+    private final AtomicInteger mUtteranceCounter = new AtomicInteger();
 
     AndroidTextToSpeechSynthesizer(Context context) {
         this(context, engineWorkExecutor(), runnable -> new Handler(Looper.getMainLooper()).post(runnable));
@@ -51,6 +59,29 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     @Override
     public void initialize(Runnable onReady) {
         mTextToSpeech = new TextToSpeech(mContext, status -> onEngineInitialized(status, onReady));
+        mTextToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+            @Override
+            public void onStart(String utteranceId) {
+            }
+
+            @Override
+            public void onDone(String utteranceId) {
+                completeUtterance(utteranceId);
+            }
+
+            @Override
+            public void onError(String utteranceId) {
+                Log.w(TtsManager.LOG_TAG, "TextToSpeech failed to speak utterance " + utteranceId);
+                completeUtterance(utteranceId);
+            }
+        });
+    }
+
+    private void completeUtterance(String utteranceId) {
+        Runnable onDone = mCompletionsByUtteranceId.remove(utteranceId);
+        if (onDone != null) {
+            mSpeechQueueExecutor.execute(onDone);
+        }
     }
 
     @VisibleForTesting
@@ -80,6 +111,13 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     @Override
     public void speak(String text, int queueMode, String utteranceId) {
         onTheEngineWorkThread(textToSpeech -> textToSpeech.speak(text, queueMode, null, utteranceId));
+    }
+
+    @Override
+    public void speak(String text, int queueMode, String utteranceId, Runnable onDone) {
+        String uniqueUtteranceId = utteranceId + "-" + mUtteranceCounter.incrementAndGet();
+        mCompletionsByUtteranceId.put(uniqueUtteranceId, onDone);
+        onTheEngineWorkThread(textToSpeech -> textToSpeech.speak(text, queueMode, null, uniqueUtteranceId));
     }
 
     @Override

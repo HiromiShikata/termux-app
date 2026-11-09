@@ -18,13 +18,17 @@ public final class TtsManager {
 
         void speak(String text, int queueMode, String utteranceId);
 
+        default void speak(String text, int queueMode, String utteranceId, Runnable onDone) {
+            speak(text, queueMode, utteranceId);
+        }
+
         void stop();
 
         void shutdown();
     }
 
     private final SpeechSynthesizer mSynthesizer;
-    private final List<String> mPendingTexts = new ArrayList<>();
+    private final List<Utterance> mPendingUtterances = new ArrayList<>();
 
     private boolean mReady = false;
 
@@ -39,24 +43,34 @@ public final class TtsManager {
 
     private void onReady() {
         mReady = true;
-        List<String> pending = new ArrayList<>(mPendingTexts);
-        mPendingTexts.clear();
-        for (String text : pending) dispatch(text);
+        List<Utterance> pending = new ArrayList<>(mPendingUtterances);
+        mPendingUtterances.clear();
+        for (Utterance utterance : pending) dispatch(utterance);
     }
 
     public void speak(String text) {
         if (text == null || text.isEmpty()) return;
+        speak(text, () -> {
+        });
+    }
+
+    public void speak(String text, Runnable onDone) {
+        if (text == null || text.isEmpty()) {
+            onDone.run();
+            return;
+        }
         Log.i(LOG_TAG, "speak (QUEUE_FLUSH): " + text);
+        Utterance utterance = new Utterance(text, onDone);
         if (mReady) {
-            dispatch(text);
+            dispatch(utterance);
         } else {
-            mPendingTexts.add(text);
+            mPendingUtterances.add(utterance);
         }
     }
 
     public void stop() {
         Log.i(LOG_TAG, "stop");
-        mPendingTexts.clear();
+        mPendingUtterances.clear();
         mSynthesizer.stop();
     }
 
@@ -65,7 +79,17 @@ public final class TtsManager {
         mSynthesizer.shutdown();
     }
 
-    private void dispatch(String text) {
-        mSynthesizer.speak(text, TextToSpeech.QUEUE_FLUSH, UTTERANCE_ID);
+    private void dispatch(Utterance utterance) {
+        mSynthesizer.speak(utterance.text, TextToSpeech.QUEUE_FLUSH, UTTERANCE_ID, utterance.onDone);
+    }
+
+    private static final class Utterance {
+        final String text;
+        final Runnable onDone;
+
+        Utterance(String text, Runnable onDone) {
+            this.text = text;
+            this.onDone = onDone;
+        }
     }
 }

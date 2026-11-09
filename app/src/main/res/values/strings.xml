@@ -510,4 +510,12 @@
     <string name="owner_call_dialog_close_content_description">Close the owner call dialog</string>
     <string name="owner_call_pending_indicator_content_description">Owner call pending — tap to show</string>
 
+    <string name="action_voice_patrol_start">音声パトロールを開始</string>
+    <string name="action_voice_patrol_stop">音声パトロールを停止</string>
+    <string name="voice_patrol_notification_channel_name">音声パトロール</string>
+    <string name="voice_patrol_notification_title">音声パトロール中</string>
+    <string name="voice_patrol_notification_text">呼び出し中のセッションを音声で確認しています</string>
+    <string name="voice_patrol_notification_stop_action">停止</string>
+    <string name="voice_patrol_microphone_permission_required">音声パトロールにはマイクの許可が必要です</string>
+    <string name="voice_patrol_no_session_definition">セッション定義の URL がないため音声パトロールを開始できません</string>
 </resources>
