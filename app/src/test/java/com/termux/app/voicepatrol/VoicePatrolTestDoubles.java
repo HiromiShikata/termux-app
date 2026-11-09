@@ -23,7 +23,8 @@ final class VoicePatrolTestDoubles {
         final List<String> shown = new ArrayList<>();
         final List<String> replies = new ArrayList<>();
         public void showSession(String name) { shown.add(name); }
-        public void sendReply(String name, String text) { replies.add(name + "|" + text); }
+        boolean replyDelivered = true;
+        public boolean sendReply(String name, String text) { replies.add(name + "|" + text); return replyDelivered; }
     }
     static final class Log implements VoicePatrolLog {
         final List<String> warnings = new ArrayList<>();

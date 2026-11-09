@@ -65,6 +65,27 @@ public class AndroidTextToSpeechSynthesizerTest {
     }
 
     @Test
+    public void stopCallbackReportsInterruptedFailureOnce() throws Exception {
+        ExecutorService engine = new DirectExecutorService();
+        RecordingExecutor speech = new RecordingExecutor();
+        AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(
+            RuntimeEnvironment.getApplication(), engine, speech);
+        RecordingOutcome outcome = new RecordingOutcome();
+        synthesizer.initialize(() -> { });
+        synthesizer.speak("hello", TextToSpeech.QUEUE_FLUSH, "utterance", outcome);
+        UtteranceProgressListener listener = progressListener(synthesizer);
+        listener.onStop(registeredId(synthesizer), true);
+        listener.onStop(registeredId(synthesizer), true);
+        assertEquals(2, speech.runnables.size());
+        speech.runnables.get(0).run();
+        speech.runnables.get(1).run();
+        assertEquals(0, outcome.spoken);
+        assertEquals(1, outcome.failed);
+        assertEquals(AndroidTextToSpeechSynthesizer.TTS_INTERRUPTED_REASON, outcome.reason);
+        engine.shutdownNow();
+    }
+
+    @Test
     public void speakingBeforeEngineInitializationReportsFailure() throws Exception {
         QueuedExecutorService engine = new QueuedExecutorService();
         AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(

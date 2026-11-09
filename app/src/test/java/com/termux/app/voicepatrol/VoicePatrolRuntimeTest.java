@@ -42,7 +42,8 @@ public class VoicePatrolRuntimeTest {
                 }
 
                 @Override
-                public void sendReply(String sessionName, String replyText) {
+                public boolean sendReply(String sessionName, String replyText) {
+                    return true;
                 }
             },
             (endpointUrl, listener) -> null,
