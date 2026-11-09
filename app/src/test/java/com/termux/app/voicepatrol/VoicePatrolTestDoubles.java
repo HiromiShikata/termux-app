@@ -4,121 +4,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 final class VoicePatrolTestDoubles {
+    private VoicePatrolTestDoubles() {}
 
-    private VoicePatrolTestDoubles() {
-    }
-
-    static final class FakeCallSource implements VoicePatrolCallSource {
+    static final class Calls implements VoicePatrolCallSource {
         List<VoicePatrolCall> calls = new ArrayList<>();
-
-        @Override
-        public List<VoicePatrolCall> callingSessionsInBellOrder() {
-            return new ArrayList<>(calls);
-        }
+        public List<VoicePatrolCall> callingSessionsInBellOrder() { return new ArrayList<>(calls); }
     }
-
-    static final class FakeSpeech implements VoicePatrolSpeech {
-        final List<String> spokenTexts = new ArrayList<>();
-        final List<Runnable> completions = new ArrayList<>();
+    static final class Speech implements VoicePatrolSpeech {
+        final List<String> texts = new ArrayList<>();
+        final List<VoicePatrolSpeechOutcome> outcomes = new ArrayList<>();
         final List<String> events = new ArrayList<>();
-
-        @Override
-        public void speak(String text, Runnable onDone) {
-            spokenTexts.add(text);
-            completions.add(onDone);
-            events.add("speak:" + text);
-        }
-
-        void finishLastUtterance() {
-            Runnable onDone = completions.remove(completions.size() - 1);
-            events.add("speech-done");
-            onDone.run();
-        }
-
-        @Override
-        public void stop() {
-            events.add("speech-stop");
-        }
+        public void speak(String text, VoicePatrolSpeechOutcome outcome) { texts.add(text); outcomes.add(outcome); events.add("speak"); }
+        public void stop() { events.add("stop"); }
+        void spoken() { outcomes.remove(0).onSpoken(); }
+        void failed(String reason) { outcomes.remove(0).onFailed(reason); }
     }
-
-    static final class FakeSessions implements VoicePatrolSessionActions {
-        final List<String> shownSessions = new ArrayList<>();
-        final List<String> repliesSessionAndText = new ArrayList<>();
-
-        @Override
-        public void showSession(String sessionName) {
-            shownSessions.add(sessionName);
-        }
-
-        @Override
-        public void sendReply(String sessionName, String replyText) {
-            repliesSessionAndText.add(sessionName + "|" + replyText);
-        }
+    static final class Actions implements VoicePatrolSessionActions {
+        final List<String> shown = new ArrayList<>();
+        final List<String> replies = new ArrayList<>();
+        public void showSession(String name) { shown.add(name); }
+        public void sendReply(String name, String text) { replies.add(name + "|" + text); }
     }
-
-    static final class FakeLog implements VoicePatrolLog {
+    static final class Log implements VoicePatrolLog {
         final List<String> warnings = new ArrayList<>();
-
-        @Override
-        public void warn(String message) {
-            warnings.add(message);
-        }
+        public void warn(String message) { warnings.add(message); }
     }
-
-    static final class FakeConnection implements LiveVoiceConnection {
-        final String endpointUrl;
-        final LiveVoiceConnectionListener listener;
-        final List<String> sentEvents = new ArrayList<>();
-        final List<Boolean> microphoneStates = new ArrayList<>();
-        int closeCount = 0;
-
-        FakeConnection(String endpointUrl, LiveVoiceConnectionListener listener) {
-            this.endpointUrl = endpointUrl;
-            this.listener = listener;
-        }
-
-        @Override
-        public void sendEvent(String eventJson) {
-            sentEvents.add(eventJson);
-        }
-
-        @Override
-        public void setMicrophoneEnabled(boolean enabled) {
-            microphoneStates.add(enabled);
-        }
-
-        @Override
-        public void close() {
-            closeCount++;
-        }
+    static final class Connection implements LiveVoiceConnection {
+        final String endpoint; final LiveVoiceConnectionListener listener;
+        final List<String> events = new ArrayList<>(); final List<Boolean> microphones = new ArrayList<>(); int closes;
+        Connection(String endpoint, LiveVoiceConnectionListener listener) { this.endpoint = endpoint; this.listener = listener; }
+        public void sendEvent(String eventJson) { events.add(eventJson); }
+        public void setMicrophoneEnabled(boolean enabled) { microphones.add(enabled); }
+        public void close() { closes++; }
     }
-
-    static final class FakeConnectionFactory implements LiveVoiceConnectionFactory {
-        final List<FakeConnection> opened = new ArrayList<>();
-
-        @Override
-        public LiveVoiceConnection open(String endpointUrl, LiveVoiceConnectionListener listener) {
-            FakeConnection connection = new FakeConnection(endpointUrl, listener);
-            opened.add(connection);
-            return connection;
-        }
-
-        FakeConnection last() {
-            return opened.get(opened.size() - 1);
-        }
+    static final class Connections implements LiveVoiceConnectionFactory {
+        final List<Connection> opened = new ArrayList<>();
+        public LiveVoiceConnection open(String endpoint, LiveVoiceConnectionListener listener) { Connection c = new Connection(endpoint, listener); opened.add(c); return c; }
     }
-
-    static String functionCallEvent(String callId, String name, String argumentsJson) {
-        return "{\"type\":\"response.event\",\"event\":{\"type\":\"response.output_item.done\","
-            + "\"item\":{\"type\":\"function_call\",\"call_id\":\"" + callId + "\",\"name\":\"" + name
-            + "\",\"arguments\":" + argumentsJson + "}}}";
-    }
-
-    static String sessionStartedEvent() {
-        return "{\"type\":\"session.started\"}";
-    }
-
-    static String sessionClosedEvent() {
-        return "{\"type\":\"session.closed\"}";
-    }
+    static String event(String type) { return "{\"type\":\"" + type + "\"}"; }
+    static String function(String id, String name, String arguments) { return "{\"type\":\"response.event\",\"event\":{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"call_id\":\"" + id + "\",\"name\":\"" + name + "\",\"arguments\":" + arguments + "}}}"; }
 }

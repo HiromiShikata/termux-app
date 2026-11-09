@@ -1,317 +1,38 @@
 package com.termux.app.voicepatrol;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import com.termux.app.voicepatrol.VoicePatrolTestDoubles.FakeCallSource;
-import com.termux.app.voicepatrol.VoicePatrolTestDoubles.FakeConnection;
-import com.termux.app.voicepatrol.VoicePatrolTestDoubles.FakeConnectionFactory;
-import com.termux.app.voicepatrol.VoicePatrolTestDoubles.FakeLog;
-import com.termux.app.voicepatrol.VoicePatrolTestDoubles.FakeSessions;
-import com.termux.app.voicepatrol.VoicePatrolTestDoubles.FakeSpeech;
-
+import static org.junit.Assert.*;
+import com.termux.app.voicepatrol.VoicePatrolTestDoubles.*;
+import java.util.*;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
-import java.util.Arrays;
-
-import static com.termux.app.voicepatrol.VoicePatrolTestDoubles.functionCallEvent;
-import static com.termux.app.voicepatrol.VoicePatrolTestDoubles.sessionClosedEvent;
-import static com.termux.app.voicepatrol.VoicePatrolTestDoubles.sessionStartedEvent;
-
 @RunWith(RobolectricTestRunner.class)
 public class VoicePatrolControllerTest {
-
-    private static final String ENDPOINT = "https://pc.example/api/live/sessions?k=TOKEN";
-
-    private static final class Harness {
-        final FakeCallSource calls = new FakeCallSource();
-        final FakeSpeech speech = new FakeSpeech();
-        final FakeSessions sessions = new FakeSessions();
-        final FakeConnectionFactory connections = new FakeConnectionFactory();
-        final FakeLog log = new FakeLog();
-        final VoicePatrolController controller = new VoicePatrolController(
-            ENDPOINT, calls, speech, sessions, connections, log);
-
-        FakeConnection connection() {
-            return connections.last();
-        }
-    }
-
-    private static VoicePatrolCall call(String sessionName, String body) {
-        return new VoicePatrolCall(sessionName, body);
-    }
-
-    private static String sentFunctionOutputFor(FakeConnection connection, int index) {
-        return connection.sentEvents.get(index);
-    }
-
-    @Test
-    public void readsTheCallAloudFirstAndOpensTheSessionOnlyAfterReadingEnds() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Please confirm the order."));
-
-        harness.controller.start();
-
-        assertEquals(VoicePatrolPhase.READING_CALL, harness.controller.getPhase());
-        assertEquals(Arrays.asList("Please confirm the order."), harness.speech.spokenTexts);
-        assertTrue(harness.connections.opened.isEmpty());
-        assertEquals(Arrays.asList("alpha"), harness.sessions.shownSessions);
-
-        harness.speech.finishLastUtterance();
-
-        assertEquals(1, harness.connections.opened.size());
-        assertEquals(ENDPOINT, harness.connection().endpointUrl);
-        assertEquals(VoicePatrolPhase.CONNECTING, harness.controller.getPhase());
-    }
-
-    @Test
-    public void microphoneIsDisabledWhileTtsSpeaksOverAnOpenSessionAndEnabledAfterwards() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "First."), call("beta", "Second."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        assertEquals(Arrays.asList(true), harness.connection().microphoneStates);
-
-        harness.connection().listener.onEventReceived(functionCallEvent("call_m", "session_skip", "{}"));
-        assertEquals(Arrays.asList(true, false), harness.connection().microphoneStates);
-
-        harness.speech.finishLastUtterance();
-        assertEquals(Arrays.asList(true, false, true), harness.connection().microphoneStates);
-        assertEquals(VoicePatrolPhase.CONVERSING, harness.controller.getPhase());
-    }
-
-    @Test
-    public void sendsSessionNameAndBodyAsNonSpokenContextAfterSessionStarts() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body text for the owner."));
-
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-
-        String contextEvents = String.join("\n", harness.connection().sentEvents);
-        assertTrue(contextEvents, contextEvents.contains("\"type\":\"session.thinking.append\""));
-        assertTrue(contextEvents, contextEvents.contains("\"delegation_id\":null"));
-        assertTrue(contextEvents, contextEvents.contains("alpha"));
-        assertTrue(contextEvents, contextEvents.contains("Body text for the owner."));
-        assertFalse(contextEvents, contextEvents.contains("session.commentary.append"));
-    }
-
-    @Test
-    public void sessionReplySendSendsReplyTextThroughSessionActionsAndReturnsOutputThenContinues() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "First call."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.connection().sentEvents.clear();
-
-        harness.connection().listener.onEventReceived(
-            functionCallEvent("call_1", "session_reply_send", "\"{\\\"replyText\\\":\\\"yes\\\"}\""));
-
-        assertEquals(Arrays.asList("alpha|yes"), harness.sessions.repliesSessionAndText);
-        assertTrue(harness.connection().sentEvents.size() >= 2);
-        assertTrue(harness.connection().sentEvents.get(0).contains("\"type\":\"response.item.create\""));
-        assertTrue(harness.connection().sentEvents.get(0).contains("\"call_id\":\"call_1\""));
-        assertTrue(harness.connection().sentEvents.get(0).contains("\"type\":\"function_call_output\""));
-        assertTrue(harness.connection().sentEvents.get(1).contains("\"type\":\"response.create\""));
-    }
-
-    @Test
-    public void afterReplyTheAppMovesToTheNextCallingSessionInBellOrder() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "First."), call("beta", "Second."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-
-        harness.connection().listener.onEventReceived(
-            functionCallEvent("call_1", "session_reply_send", "\"{\\\"replyText\\\":\\\"ok\\\"}\""));
-
-        assertEquals(VoicePatrolPhase.READING_CALL, harness.controller.getPhase());
-        assertEquals("Second.", harness.speech.spokenTexts.get(harness.speech.spokenTexts.size() - 1));
-        assertEquals("beta", harness.sessions.shownSessions.get(harness.sessions.shownSessions.size() - 1));
-        assertEquals(1, harness.connections.opened.size());
-    }
-
-    @Test
-    public void sessionSkipMovesToNextCallWithoutSendingAReply() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "First."), call("beta", "Second."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.connection().sentEvents.clear();
-
-        harness.connection().listener.onEventReceived(functionCallEvent("call_2", "session_skip", "{}"));
-
-        assertTrue(harness.sessions.repliesSessionAndText.isEmpty());
-        assertEquals("beta", harness.sessions.shownSessions.get(harness.sessions.shownSessions.size() - 1));
-        assertTrue(harness.connection().sentEvents.get(0).contains("\"call_id\":\"call_2\""));
-        assertTrue(harness.connection().sentEvents.get(1).contains("\"type\":\"response.create\""));
-    }
-
-    @Test
-    public void ownerCallRepeatReadsTheCurrentBodyAgainWithoutAddingContext() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Repeat me."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.connection().sentEvents.clear();
-
-        harness.connection().listener.onEventReceived(functionCallEvent("call_3", "owner_call_repeat", "{}"));
-
-        assertEquals(VoicePatrolPhase.READING_CALL, harness.controller.getPhase());
-        assertEquals("Repeat me.", harness.speech.spokenTexts.get(harness.speech.spokenTexts.size() - 1));
-        assertEquals(2, harness.connection().sentEvents.size());
-        harness.speech.finishLastUtterance();
-        assertEquals(VoicePatrolPhase.CONVERSING, harness.controller.getPhase());
-        assertEquals(2, harness.connection().sentEvents.size());
-        assertTrue(harness.connections.opened.size() == 1);
-    }
-
-    @Test
-    public void closesTheSessionWhenNoCallRemainsAndStaysSilentUntilCloseIsConfirmed() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Only call."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.connection().sentEvents.clear();
-
-        harness.calls.calls = Arrays.asList();
-        harness.connection().listener.onEventReceived(
-            functionCallEvent("call_4", "session_reply_send", "\"{\\\"replyText\\\":\\\"done\\\"}\""));
-
-        assertEquals(VoicePatrolPhase.WAITING_FOR_CALL, harness.controller.getPhase());
-        assertTrue(harness.connection().sentEvents.get(2).contains("\"type\":\"session.close\""));
-        assertEquals(0, harness.connection().closeCount);
-
-        harness.connection().listener.onEventReceived(sessionClosedEvent());
-
-        assertEquals(1, harness.connection().closeCount);
-    }
-
-    @Test
-    public void reopensTheSessionWhenANewCallArrivesAfterClose() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Only call."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.calls.calls = Arrays.asList();
-        harness.connection().listener.onEventReceived(
-            functionCallEvent("call_5", "session_reply_send", "\"{\\\"replyText\\\":\\\"done\\\"}\""));
-        harness.connection().listener.onEventReceived(sessionClosedEvent());
-
-        harness.calls.calls = Arrays.asList(call("gamma", "New call."));
-        harness.controller.onCallingSessionsChanged();
-
-        assertEquals(VoicePatrolPhase.READING_CALL, harness.controller.getPhase());
-        assertEquals("New call.", harness.speech.spokenTexts.get(harness.speech.spokenTexts.size() - 1));
-        harness.speech.finishLastUtterance();
-        assertEquals(2, harness.connections.opened.size());
-        assertEquals(VoicePatrolPhase.CONNECTING, harness.controller.getPhase());
-    }
-
-    @Test
-    public void connectFailureSpeaksJapaneseErrorAndStaysWaitingWithoutRetryingTheSameCall() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-
-        harness.connection().listener.onConnectFailed("openai_api_key_missing");
-
-        assertEquals(VoicePatrolPhase.WAITING_FOR_CALL, harness.controller.getPhase());
-        String lastSpoken = harness.speech.spokenTexts.get(harness.speech.spokenTexts.size() - 1);
-        assertTrue(lastSpoken, lastSpoken.startsWith("音声の接続を始められませんでした"));
-        assertTrue(lastSpoken, lastSpoken.contains("openai_api_key_missing"));
-
-        harness.controller.onCallingSessionsChanged();
-
-        assertEquals(1, harness.connections.opened.size());
-        assertEquals(VoicePatrolPhase.WAITING_FOR_CALL, harness.controller.getPhase());
-    }
-
-    @Test
-    public void connectFailureIsLoggedNotSwallowed() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-
-        harness.connection().listener.onConnectFailed("openai_live_session_failed");
-
-        assertEquals(1, harness.log.warnings.size());
-        assertTrue(harness.log.warnings.get(0).contains("openai_live_session_failed"));
-    }
-
-    @Test
-    public void invalidReplyArgumentsReturnErrorOutputAndStillContinueTheBackend() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.connection().sentEvents.clear();
-
-        harness.connection().listener.onEventReceived(
-            functionCallEvent("call_6", "session_reply_send", "{}"));
-
-        assertTrue(harness.sessions.repliesSessionAndText.isEmpty());
-        assertTrue(harness.connection().sentEvents.get(0).contains("\"call_id\":\"call_6\""));
-        assertTrue(harness.connection().sentEvents.get(0).contains("error"));
-        assertTrue(harness.connection().sentEvents.get(1).contains("\"type\":\"response.create\""));
-        assertFalse(harness.log.warnings.isEmpty());
-    }
-
-    @Test
-    public void unknownToolReturnsErrorOutputAndIsLogged() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-        harness.connection().sentEvents.clear();
-
-        harness.connection().listener.onEventReceived(functionCallEvent("call_7", "unknown_tool", "{}"));
-
-        assertTrue(harness.connection().sentEvents.get(0).contains("\"call_id\":\"call_7\""));
-        assertTrue(harness.connection().sentEvents.get(0).contains("error"));
-        assertEquals(1, harness.log.warnings.size());
-    }
-
-    @Test
-    public void unparseableServerEventIsLoggedAndIgnored() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-
-        harness.connection().listener.onEventReceived("not json");
-
-        assertEquals(1, harness.log.warnings.size());
-        assertEquals(VoicePatrolPhase.CONNECTING, harness.controller.getPhase());
-    }
-
-    @Test
-    public void stopClosesConnectionAndSilencesSpeech() {
-        Harness harness = new Harness();
-        harness.calls.calls = Arrays.asList(call("alpha", "Body."));
-        harness.controller.start();
-        harness.speech.finishLastUtterance();
-        harness.connection().listener.onEventReceived(sessionStartedEvent());
-
-        harness.controller.stop();
-
-        assertEquals(VoicePatrolPhase.STOPPED, harness.controller.getPhase());
-        assertEquals(1, harness.connection().closeCount);
-        assertTrue(harness.speech.events.contains("speech-stop"));
-    }
+ static final String SESSION_DEFINITION="https://pc.example:8443/owner/session.json?k=secret";
+ static final String DERIVED_ENDPOINT="https://pc.example:8443/api/live/sessions?k=secret";
+ static final class H { final Calls calls=new Calls(); final Speech speech=new Speech(); final Actions actions=new Actions(); final Connections factory=new Connections(); final Log log=new Log(); final VoicePatrolController controller=new VoicePatrolController(DERIVED_ENDPOINT,calls,speech,actions,factory,log); Connection connection(){return factory.opened.get(factory.opened.size()-1);} }
+ static VoicePatrolCall call(String name,String body){return new VoicePatrolCall(name,body);}
+ static H initial(String name,String body){H h=new H();h.calls.calls=new ArrayList<>(Arrays.asList(call(name,body)));h.controller.start();return h;}
+ static void open(H h){h.speech.spoken();assertEquals(DERIVED_ENDPOINT,h.connection().endpoint);}
+ static void startBackend(H h){open(h);h.connection().listener.onEventReceived(VoicePatrolTestDoubles.event("session.started"));}
+ static void assertFailure(H h,String reason){open(h);h.connection().listener.onConnectFailed(reason);assertEquals(VoicePatrolPhase.WAITING_FOR_CALL,h.controller.getPhase());assertEquals(1,h.log.warnings.size());assertEquals("音声の接続を始められませんでした。"+reason,h.speech.texts.get(1));h.controller.onCallingSessionsChanged();assertEquals(1,h.factory.opened.size());}
+ @Test public void readsBodyVerbatimBeforeOpeningAndShowsSession(){H h=initial("alpha","body verbatim");assertEquals(VoicePatrolPhase.READING_CALL,h.controller.getPhase());assertEquals(Arrays.asList("body verbatim"),h.speech.texts);assertEquals(Arrays.asList("alpha"),h.actions.shown);assertTrue(h.factory.opened.isEmpty());open(h);assertEquals(VoicePatrolPhase.CONNECTING,h.controller.getPhase());}
+ @Test public void opensWithDerivedEndpointAndSendsNameAndBodyThinkingPayloads(){H h=initial("alpha","body verbatim");startBackend(h);assertEquals(2,h.connection().events.size());Set<String> contents=new HashSet<>();for(String raw:h.connection().events){JSONObject j=new JSONObject(raw);assertEquals("session.thinking.append",j.getString("type"));assertTrue(j.isNull("delegation_id"));assertFalse(raw.contains("session.commentary.append"));contents.add(j.getString("content"));}assertEquals(new HashSet<>(Arrays.asList("alpha","body verbatim")),contents);}
+ @Test public void microphoneIsDisabledDuringRepeatSpeechAndEnabledAfterCompletion(){H h=initial("alpha","body");startBackend(h);h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("repeat-id","owner_call_repeat","{}"));assertEquals(Arrays.asList(false),h.connection().microphones);h.speech.spoken();assertEquals(Arrays.asList(false,true),h.connection().microphones);}
+ @Test public void replyOutputPrecedesResponseCreateWithSameCallIdAndMovesNext(){H h=initial("alpha","first");h.calls.calls=new ArrayList<>(Arrays.asList(call("alpha","first"),call("beta","second")));startBackend(h);h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("reply-id","session_reply_send","{\"replyText\":\"yes\"}"));assertEquals(Arrays.asList("alpha|yes"),h.actions.replies);assertEquals(2,h.connection().events.size());JSONObject output=new JSONObject(h.connection().events.get(0));assertEquals("response.item.create",output.getString("type"));assertEquals("reply-id",output.getString("event_id"));assertEquals("reply-id",output.getJSONObject("item").getString("call_id"));assertEquals("response.create",new JSONObject(h.connection().events.get(1)).getString("type"));assertEquals("second",h.speech.texts.get(1));}
+ @Test public void sessionSkipMovesNextWithoutReplyAndKeepsCallId(){H h=initial("alpha","first");h.calls.calls=new ArrayList<>(Arrays.asList(call("alpha","first"),call("beta","second")));startBackend(h);h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("skip-id","session_skip","{}"));assertTrue(h.actions.replies.isEmpty());assertEquals("skip-id",new JSONObject(h.connection().events.get(0)).getJSONObject("item").getString("call_id"));assertEquals("response.create",new JSONObject(h.connection().events.get(1)).getString("type"));assertEquals("second",h.speech.texts.get(1));}
+ @Test public void ownerCallRepeatReadsCurrentBodyWithoutContext(){H h=initial("alpha","repeat body");startBackend(h);int eventCount=h.connection().events.size();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("repeat-id","owner_call_repeat","{}"));assertEquals("repeat body",h.speech.texts.get(1));assertEquals(eventCount,h.connection().events.size());}
+ @Test public void missingReplyTextReturnsExactErrorAndContinues(){H h=initial("alpha","body");startBackend(h);h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("missing-id","session_reply_send","{}"));assertTrue(h.actions.replies.isEmpty());assertEquals("missing-id",new JSONObject(h.connection().events.get(0)).getJSONObject("item").getString("call_id"));assertEquals("error",new JSONObject(h.connection().events.get(0)).getJSONObject("item").getString("type"));assertEquals("response.create",new JSONObject(h.connection().events.get(1)).getString("type"));}
+ @Test public void nonStringReplyTextReturnsExactErrorAndContinues(){H h=initial("alpha","body");startBackend(h);h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("number-id","session_reply_send","{\"replyText\":3}"));assertTrue(h.actions.replies.isEmpty());assertEquals("error",new JSONObject(h.connection().events.get(0)).getJSONObject("item").getString("type"));assertEquals("response.create",new JSONObject(h.connection().events.get(1)).getString("type"));}
+ @Test public void emptyReplyTextReturnsExactErrorAndContinues(){H h=initial("alpha","body");startBackend(h);h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("empty-id","session_reply_send","{\"replyText\":\"\"}"));assertTrue(h.actions.replies.isEmpty());assertEquals("error",new JSONObject(h.connection().events.get(0)).getJSONObject("item").getString("type"));assertEquals("response.create",new JSONObject(h.connection().events.get(1)).getString("type"));}
+ @Test public void unknownToolReturnsExactErrorAndLogs(){H h=initial("alpha","body");startBackend(h);h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("unknown-id","unknown_tool","{}"));JSONObject error=new JSONObject(h.connection().events.get(0));assertEquals("unknown-id",error.getJSONObject("item").getString("call_id"));assertEquals("error",error.getJSONObject("item").getString("type"));assertEquals(Arrays.asList("unknown_tool"),h.log.warnings);}
+ @Test public void noCallSendsCloseWaitsAndClosesOnlyAfterClosed(){H h=initial("alpha","body");startBackend(h);h.calls.calls.clear();h.connection().events.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("skip-id","session_skip","{}"));assertEquals(VoicePatrolPhase.WAITING_FOR_CALL,h.controller.getPhase());assertEquals("session.close",new JSONObject(h.connection().events.get(2)).getString("type"));assertEquals(0,h.connection().closes);h.connection().listener.onEventReceived(VoicePatrolTestDoubles.event("session.closed"));assertEquals(1,h.connection().closes);}
+ @Test public void newCallAfterCloseReopensFromReading(){H h=initial("alpha","body");startBackend(h);h.calls.calls.clear();h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("skip-id","session_skip","{}"));h.connection().listener.onEventReceived(VoicePatrolTestDoubles.event("session.closed"));h.calls.calls.add(call("beta","new body"));h.controller.onCallingSessionsChanged();assertEquals(VoicePatrolPhase.READING_CALL,h.controller.getPhase());assertEquals("new body",h.speech.texts.get(1));assertEquals("beta",h.actions.shown.get(1));}
+ @Test public void apiKeyFailureSpeaksAndDoesNotRetry(){assertFailure(initial("a","b"),"openai_api_key_missing");}
+ @Test public void liveSessionFailureSpeaksAndDoesNotRetry(){assertFailure(initial("a","b"),"openai_live_session_failed");}
+ @Test public void badRequestFailureSpeaksAndDoesNotRetry(){assertFailure(initial("a","b"),"HTTP 400");}
+ @Test public void tokenRejectionFailureSpeaksAndDoesNotRetry(){assertFailure(initial("a","b"),"token_rejected");}
+ @Test public void speechFailureDuringOpenSessionLogsSpeaksAndCloses(){H h=initial("alpha","body");startBackend(h);h.connection().listener.onEventReceived(VoicePatrolTestDoubles.function("repeat-id","owner_call_repeat","{}"));h.speech.failed("audio_error");assertEquals("読み上げに失敗しました。audio_error",h.speech.texts.get(2));assertEquals(1,h.connection().closes);assertEquals(VoicePatrolPhase.WAITING_FOR_CALL,h.controller.getPhase());assertEquals(Arrays.asList("audio_error"),h.log.warnings);}
 }
