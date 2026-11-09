@@ -22,13 +22,15 @@ import java.util.Map;
 public class TerminalEnterKeyController {
 
     private final TermuxActivity mActivity;
-    private final ImageButton mButton;
     private final Map<String, Long> mLastBareEnterTimeMillisBySessionName = new HashMap<>();
 
-    public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
+    public TerminalEnterKeyController(@NonNull TermuxActivity activity) {
         this.mActivity = activity;
-        this.mButton = button;
-        mButton.setOnClickListener(view -> submit(
+    }
+
+    public TerminalEnterKeyController(@NonNull TermuxActivity activity, @NonNull ImageButton button) {
+        this(activity);
+        button.setOnClickListener(view -> submit(
             mActivity.getTerminalToolbarTextInput(), mActivity.getTerminalToolbarViewPagerAdapter()));
     }
 
@@ -47,6 +49,33 @@ public class TerminalEnterKeyController {
             recordReplyOnSubmit();
         }
         return ownerContentSubmitted;
+    }
+
+    public boolean submitVoiceReply(String replyText) {
+        return VoiceReplySubmitter.submit(new VoiceReplySubmitter.ReplyTerminal() {
+            @Override
+            public boolean acceptsOwnerInput() {
+                return inputReachesTheProgramReadingTheTerminal();
+            }
+
+            @Override
+            public void pasteOwnerContent(String text) {
+                TerminalSession session = mActivity.getCurrentSession();
+                if (session != null) {
+                    session.getEmulator().paste(text);
+                }
+            }
+
+            @Override
+            public void sendEnterAfterOwnerContent() {
+                sendEnter(true);
+            }
+
+            @Override
+            public void recordGenuineReply() {
+                recordReplyOnSubmit();
+            }
+        }, replyText);
     }
 
     private boolean reconnectAndDeliverAfterReconnect(@Nullable EditText editText) {

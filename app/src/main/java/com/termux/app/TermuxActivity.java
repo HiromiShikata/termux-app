@@ -44,6 +44,19 @@ import com.termux.app.apkupdate.UpdateTagUpdateRunner;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
+import com.termux.app.voicepatrol.AndroidLogVoicePatrolLog;
+import com.termux.app.voicepatrol.TermuxVoicePatrolPorts;
+import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
+import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
+import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
+import com.termux.app.voicepatrol.VoicePatrolCall;
+import com.termux.app.voicepatrol.VoicePatrolCallBodies;
+import com.termux.app.voicepatrol.VoicePatrolCallOrder;
+import com.termux.app.voicepatrol.VoicePatrolController;
+import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
+import com.termux.app.voicepatrol.VoicePatrolRuntime;
+import com.termux.app.voicepatrol.VoicePatrolService;
+import com.termux.app.voicepatrol.WebRtcLiveVoiceConnectionFactory;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.appopen.InstalledAppLauncher;
 import com.termux.app.browser.BrowserInboundViewUrl;
@@ -113,6 +126,7 @@ import com.termux.app.terminal.session.SessionDefinitionPrewarm;
 import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.app.terminal.session.SessionEagerLoader;
 import com.termux.app.terminal.TermuxSessionsListViewController;
+import com.termux.app.terminal.io.TerminalEnterKeyController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
@@ -140,6 +154,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Set;
 
 /**
@@ -152,7 +169,7 @@ import java.util.Set;
  * </ul>
  * about memory leaks.
  */
-public final class TermuxActivity extends AppCompatActivity implements ServiceConnection {
+public final class TermuxActivity extends AppCompatActivity implements ServiceConnection, VoicePatrolTerminalSessions {
 
     /**
      * The connection to the {@link TermuxService}. Requested in {@link #onCreate(Bundle)} with a call to
@@ -256,6 +273,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionDefinitionRepository();
 
     private final OwnerCallInbox mOwnerCallInbox = new OwnerCallInbox();
+
+    private static final int REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO = 4107;
+
+    private final TerminalEnterKeyController mVoicePatrolReplyEnterKeyController = new TerminalEnterKeyController(this);
+
+    private boolean mVoicePatrolActivityVisible;
 
     private OwnerCallDialogController mOwnerCallDialogController;
 
@@ -468,6 +491,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mSessionSwitchPickerController = new SessionSwitchPickerController(this);
 
         setSessionNavigationButtonsView();
+        setVoicePatrolButtonView();
 
         buildActivityComponents();
 
@@ -677,6 +701,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onResume() {
         super.onResume();
+        mVoicePatrolActivityVisible = true;
 
         applyLeftHandedModeFromPreferences();
 
@@ -698,6 +723,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             component.onActivityResume();
 
         mIsOnResumeAfterOnCreate = false;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mVoicePatrolActivityVisible = false;
     }
 
     @Override
@@ -1363,6 +1394,89 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mJumpToCallingSessionButton.setOnClickListener(v -> jumpToTopmostCallingSession());
     }
 
+    private void setVoicePatrolButtonView() {
+        findViewById(R.id.terminal_toolbar_voice_patrol_button).setOnClickListener(v -> toggleVoicePatrol());
+    }
+
+    private void toggleVoicePatrol() {
+        if (VoicePatrolRuntime.isRunning()) {
+            VoicePatrolRuntime.stop();
+            stopService(new Intent(this, VoicePatrolService.class));
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            == PackageManager.PERMISSION_GRANTED) {
+            startVoicePatrol();
+        } else {
+            ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO);
+        }
+    }
+
+    private void startVoicePatrol() {
+        String endpointUrl;
+        try {
+            endpointUrl = VoicePatrolEndpointUrl.resolve(getPreferences().getSessionDefinitionUrl());
+        } catch (IllegalArgumentException unusableSessionDefinition) {
+            Logger.logWarn(LOG_TAG, "voice patrol cannot start: " + unusableSessionDefinition.getMessage());
+            Logger.showToast(this, getString(R.string.voice_patrol_no_session_definition), true);
+            return;
+        }
+        ContextCompat.startForegroundService(this, VoicePatrolService.startIntent(this));
+        AndroidLogVoicePatrolLog log = new AndroidLogVoicePatrolLog();
+        TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(new TermuxVoicePatrolActivityBridge(this), log);
+        VoicePatrolRuntime.start(new VoicePatrolController(endpointUrl, ports,
+            new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log));
+    }
+
+    @Override
+    public List<String> sessionNames() {
+        if (mTermuxSessionListViewController == null) {
+            return new ArrayList<>();
+        }
+        return mTermuxSessionListViewController.getSessionNamesByIndex();
+    }
+
+    @Override
+    public List<Integer> orderedSessionIndexes() {
+        if (mTermuxSessionListViewController == null) {
+            return new ArrayList<>();
+        }
+        return mTermuxSessionListViewController.getOrderedSessionIndexes();
+    }
+
+    @Override
+    public Set<String> pendingCallSessionNames() {
+        if (mTermuxSessionListViewController == null) {
+            return new HashSet<>();
+        }
+        return mTermuxSessionListViewController.getPendingCallToUserSessionNames();
+    }
+
+    @Override
+    public Map<String, String> unansweredCallBodiesBySessionName() {
+        Map<String, List<OwnerCall>> unansweredCallsBySessionName = new HashMap<>();
+        for (String sessionName : pendingCallSessionNames()) {
+            unansweredCallsBySessionName.put(sessionName, unansweredOwnerCallsForSession(sessionName));
+        }
+        return VoicePatrolCallBodies.firstBodyBySessionName(unansweredCallsBySessionName);
+    }
+
+    @Override
+    public boolean isActivityVisible() {
+        return mVoicePatrolActivityVisible;
+    }
+
+    @Override
+    public void switchToSessionAtIndex(int sessionIndex) {
+        mTermuxSessionListViewController.switchToSessionAtIndex(sessionIndex);
+    }
+
+    @Override
+    public boolean submitVoiceReplyToCurrentSession(String replyText) {
+        return mVoicePatrolReplyEnterKeyController.submitVoiceReply(replyText);
+    }
+
     private void jumpToTopmostCallingSession() {
         if (mTermuxSessionListViewController == null) {
             return;
@@ -1692,6 +1806,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted) {
+                startVoicePatrol();
+            } else {
+                Logger.showToast(this, getString(R.string.voice_patrol_microphone_permission_required), true);
+            }
+        }
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: "  + Arrays.toString(permissions) + ", grantResults: "  + Arrays.toString(grantResults));
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);

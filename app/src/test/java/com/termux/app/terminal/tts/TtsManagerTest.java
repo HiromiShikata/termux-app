@@ -20,6 +20,7 @@ public class TtsManagerTest {
         final List<Integer> queueModes = new ArrayList<>();
         final List<String> spokenTexts = new ArrayList<>();
         int stopCount = 0;
+        int shutdownCount = 0;
 
         private Runnable mOnReady;
 
@@ -45,6 +46,7 @@ public class TtsManagerTest {
 
         @Override
         public void shutdown() {
+            shutdownCount++;
         }
     }
 
@@ -85,5 +87,40 @@ public class TtsManagerTest {
 
         assertTrue(synthesizer.spokenTexts.isEmpty());
         assertEquals(1, synthesizer.stopCount);
+    }
+
+    @Test
+    public void textsRequestedBeforeReadyAreSpokenOnceInRequestOrder() {
+        FakeSpeechSynthesizer synthesizer = new FakeSpeechSynthesizer();
+        TtsManager manager = new TtsManager(synthesizer);
+
+        manager.speak("first");
+        manager.speak("second");
+        synthesizer.becomeReady();
+
+        assertEquals(java.util.Arrays.asList("first", "second"), synthesizer.spokenTexts);
+    }
+
+    @Test
+    public void emptyTextIsNotSpokenBeforeOrAfterReady() {
+        FakeSpeechSynthesizer synthesizer = new FakeSpeechSynthesizer();
+        TtsManager manager = new TtsManager(synthesizer);
+
+        manager.speak("");
+        synthesizer.becomeReady();
+        manager.speak("");
+
+        assertTrue(synthesizer.spokenTexts.isEmpty());
+    }
+
+    @Test
+    public void shutdownStopsAndShutsDownTheEngine() {
+        FakeSpeechSynthesizer synthesizer = new FakeSpeechSynthesizer();
+        TtsManager manager = new TtsManager(synthesizer);
+
+        manager.shutdown();
+
+        assertEquals(1, synthesizer.stopCount);
+        assertEquals(1, synthesizer.shutdownCount);
     }
 }

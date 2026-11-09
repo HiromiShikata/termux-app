@@ -43,6 +43,7 @@ public class HandednessOffStatePinTest {
             R.id.terminal_toolbar_next_session_button,
             R.id.terminal_toolbar_jump_to_calling_session_button,
             R.id.terminal_toolbar_session_sheet_button,
+            R.id.terminal_toolbar_voice_patrol_button,
             R.id.terminal_toolbar_right_drawer_toggle_button);
         Assert.assertEquals(Gravity.END | Gravity.CENTER_VERTICAL, row.getGravity());
     }
