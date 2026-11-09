@@ -1,6 +1,7 @@
 package com.termux.app.voicepatrol;
 
 import com.termux.app.terminal.tts.TtsManager;
+import com.termux.app.terminal.tts.TtsUtteranceOutcome;
 
 public final class TtsVoicePatrolSpeech implements VoicePatrolSpeech {
 
@@ -11,8 +12,18 @@ public final class TtsVoicePatrolSpeech implements VoicePatrolSpeech {
     }
 
     @Override
-    public void speak(String text, Runnable onDone) {
-        mTtsManager.speak(text, onDone);
+    public void speak(String text, VoicePatrolSpeechOutcome outcome) {
+        mTtsManager.speak(text, new TtsUtteranceOutcome() {
+            @Override
+            public void onSpoken() {
+                outcome.onSpoken();
+            }
+
+            @Override
+            public void onFailed(String reason) {
+                outcome.onFailed(reason);
+            }
+        });
     }
 
     @Override

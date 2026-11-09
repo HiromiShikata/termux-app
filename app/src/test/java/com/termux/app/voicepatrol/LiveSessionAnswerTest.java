@@ -3,6 +3,7 @@ package com.termux.app.voicepatrol;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner.class)
 public class LiveSessionAnswerTest {
  @Test public void acceptedAnswerExposesStatusBodyAndSdp() { LiveSessionAnswer a=LiveSessionAnswer.fromHttpResponse(200,"answer-sdp"); assertTrue(a.isAccepted()); assertEquals("answer-sdp",a.getSdp()); assertEquals("",a.getFailureReason()); }
  @Test public void emptyAnswerIsRejected() { LiveSessionAnswer a=LiveSessionAnswer.fromHttpResponse(200," "); assertFalse(a.isAccepted()); assertEquals("empty_sdp_answer",a.getFailureReason()); assertEquals("",a.getSdp()); }

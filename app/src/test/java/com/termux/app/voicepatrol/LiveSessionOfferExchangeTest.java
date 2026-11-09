@@ -2,6 +2,7 @@ package com.termux.app.voicepatrol;
 import static org.junit.Assert.*;
 import java.io.IOException;
 import org.junit.Test;
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner.class)
 public class LiveSessionOfferExchangeTest {
  static final class Client implements LiveSessionHttpClient { String endpoint, offer; LiveSessionHttpResponse response; IOException failure; public LiveSessionHttpResponse post(String e,String o)throws IOException {endpoint=e;offer=o;if(failure!=null)throw failure;return response;} }
  @Test public void delegatesOfferUnchangedAndMapsAnswer(){Client c=new Client();c.response=new LiveSessionHttpResponse(200,"answer");LiveSessionAnswer a=new LiveSessionOfferExchange(c).exchange("endpoint","offer");assertTrue(a.isAccepted());assertEquals("endpoint",c.endpoint);assertEquals("offer",c.offer);assertEquals("answer",a.getSdp());}

@@ -15,6 +15,8 @@ public final class WebRtcLiveVoiceConnectionFactory implements LiveVoiceConnecti
         worker.setDaemon(true);
         return worker;
     });
+    private final LiveSessionOfferExchange mOfferExchange =
+        new LiveSessionOfferExchange(new HttpUrlLiveSessionHttpClient());
     private PeerConnectionFactory mPeerConnectionFactory;
 
     public WebRtcLiveVoiceConnectionFactory(Context context) {
@@ -24,7 +26,7 @@ public final class WebRtcLiveVoiceConnectionFactory implements LiveVoiceConnecti
     @Override
     public LiveVoiceConnection open(String endpointUrl, LiveVoiceConnectionListener listener) {
         WebRtcLiveVoiceConnection connection = new WebRtcLiveVoiceConnection(
-            peerConnectionFactory(), mHttpExecutor, endpointUrl, listener);
+            peerConnectionFactory(), mHttpExecutor, mOfferExchange, endpointUrl, listener);
         connection.start();
         return connection;
     }

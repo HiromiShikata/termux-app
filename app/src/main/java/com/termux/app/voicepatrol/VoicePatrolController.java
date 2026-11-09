@@ -7,9 +7,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class VoicePatrolController implements LiveVoiceConnectionListener {
+public class VoicePatrolController implements LiveVoiceConnectionListener {
 
     private static final String CONNECTION_FAILED_MESSAGE_JA = "音声の接続を始められませんでした。";
+    private static final String SPEECH_FAILED_MESSAGE_JA = "読み上げに失敗しました。";
     private static final String CONTEXT_CONTENT_HEADER = "Session name: %s\nOwner call body (already read aloud to the owner; do not read it aloud):\n%s";
     private static final String CONTEXT_EVENT_ID_PREFIX = "patrol-context";
     private static final String EVENT_ID_PREFIX = "patrol-event-";
@@ -145,7 +146,26 @@ public final class VoicePatrolController implements LiveVoiceConnectionListener 
         mReadingForContext = appendContextAfterReading;
         mSessions.showSession(call.getSessionName());
         setMicrophoneEnabled(false);
-        mSpeech.speak(call.getBody(), () -> onSpeechDone(call));
+        mSpeech.speak(call.getBody(), new VoicePatrolSpeechOutcome() {
+            @Override
+            public void onSpoken() {
+                onSpeechDone(call);
+            }
+
+            @Override
+            public void onFailed(String reason) {
+                onSpeechFailed(call, reason);
+            }
+        });
+    }
+
+    private void onSpeechFailed(VoicePatrolCall call, String reason) {
+        if (mPhase != VoicePatrolPhase.READING_CALL || call != mCurrentCall) {
+            return;
+        }
+        mLog.warn("Reading the owner call of " + call.getSessionName() + " failed: " + reason);
+        enterWaiting(namesOf(mCallSource.callingSessionsInBellOrder()));
+        speakWithoutFollowUp(SPEECH_FAILED_MESSAGE_JA + reason);
     }
 
     private void onSpeechDone(VoicePatrolCall call) {
@@ -249,7 +269,19 @@ public final class VoicePatrolController implements LiveVoiceConnectionListener 
         mPhase = VoicePatrolPhase.WAITING_FOR_CALL;
         mCurrentCall = null;
         mWaitingSnapshotNames = namesOf(mCallSource.callingSessionsInBellOrder());
-        mSpeech.speak(message, () -> {
+        speakWithoutFollowUp(message);
+    }
+
+    private void speakWithoutFollowUp(String message) {
+        mSpeech.speak(message, new VoicePatrolSpeechOutcome() {
+            @Override
+            public void onSpoken() {
+            }
+
+            @Override
+            public void onFailed(String reason) {
+                mLog.warn("Spoken message could not be read aloud: " + reason);
+            }
         });
     }
 

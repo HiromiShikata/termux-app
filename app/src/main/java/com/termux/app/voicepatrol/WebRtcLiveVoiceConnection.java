@@ -16,51 +16,48 @@ import org.webrtc.RtpReceiver;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 
 final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
     private static final String LOG_TAG = "TermuxVoicePatrol";
-    private static final String STUN_SERVER_URL = "stun:stun.l.google.com:19302";
     private static final String EVENT_CHANNEL_LABEL = "oai-events";
     private static final String MICROPHONE_TRACK_ID = "termux-voice-patrol-microphone";
     private static final String MEDIA_STREAM_ID = "termux-voice-patrol-stream";
-    private static final String SDP_CONTENT_TYPE = "application/sdp";
-    private static final int CONNECT_TIMEOUT_MILLIS = 15_000;
-    private static final int READ_TIMEOUT_MILLIS = 30_000;
     private static final String ICE_FAILED_REASON = "ice_failed";
+    private static final String OFFER_FAILED_REASON = "offer_failed";
+    private static final String LOCAL_DESCRIPTION_FAILED_REASON = "local_description_failed";
+    private static final String EVENT_CHANNEL_CLOSED_REASON = "event_channel_closed";
 
     private final PeerConnectionFactory mFactory;
     private final ExecutorService mHttpExecutor;
+    private final LiveSessionOfferExchange mOfferExchange;
     private final String mEndpointUrl;
     private final LiveVoiceConnectionListener mListener;
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+    private final LiveVoiceHandshake mHandshake = new LiveVoiceHandshake();
+    private final Runnable mGatheringTimeout = () -> applyStep(mHandshake.onGatheringTimedOut());
 
     private PeerConnection mPeerConnection;
     private DataChannel mEventChannel;
     private AudioSource mAudioSource;
     private AudioTrack mMicrophoneTrack;
-    private boolean mLocalDescriptionReady;
-    private boolean mIceGatheringComplete;
-    private boolean mOfferSent;
-    private boolean mEventChannelOpen;
+    private String mLocalOfferSdp = "";
+    private boolean mConnected;
     private boolean mClosed;
 
     WebRtcLiveVoiceConnection(PeerConnectionFactory factory,
                               ExecutorService httpExecutor,
+                              LiveSessionOfferExchange offerExchange,
                               String endpointUrl,
                               LiveVoiceConnectionListener listener) {
         mFactory = factory;
         mHttpExecutor = httpExecutor;
+        mOfferExchange = offerExchange;
         mEndpointUrl = endpointUrl;
         mListener = listener;
     }
@@ -68,13 +65,14 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
     void start() {
         mAudioSource = mFactory.createAudioSource(new MediaConstraints());
         mMicrophoneTrack = mFactory.createAudioTrack(MICROPHONE_TRACK_ID, mAudioSource);
-        PeerConnection.RTCConfiguration configuration = new PeerConnection.RTCConfiguration(
-            Collections.singletonList(PeerConnection.IceServer.builder(STUN_SERVER_URL).createIceServer()));
+        PeerConnection.RTCConfiguration configuration =
+            new PeerConnection.RTCConfiguration(new ArrayList<PeerConnection.IceServer>());
         mPeerConnection = mFactory.createPeerConnection(configuration, new PeerObserver());
         if (mPeerConnection == null) {
-            failBeforeConnected("peer_connection_unavailable");
+            applyStep(mHandshake.onNegotiationFailed("peer_connection_unavailable"));
             return;
         }
+        mMainHandler.postDelayed(mGatheringTimeout, LiveVoiceHandshake.GATHERING_TIMEOUT_MILLIS);
         mPeerConnection.addTrack(mMicrophoneTrack, Collections.singletonList(MEDIA_STREAM_ID));
         mEventChannel = mPeerConnection.createDataChannel(EVENT_CHANNEL_LABEL, new DataChannel.Init());
         mEventChannel.registerObserver(new EventChannelObserver());
@@ -104,6 +102,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
             return;
         }
         mClosed = true;
+        mMainHandler.removeCallbacks(mGatheringTimeout);
         if (mEventChannel != null) {
             mEventChannel.close();
             mEventChannel.dispose();
@@ -120,87 +119,55 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
         }
     }
 
-    private void onLocalOfferReady() {
-        if (mOfferSent || !mLocalDescriptionReady || !mIceGatheringComplete || mClosed) {
-            return;
-        }
-        mOfferSent = true;
-        SessionDescription localDescription = mPeerConnection.getLocalDescription();
-        String offerSdp = localDescription.description;
-        mHttpExecutor.execute(() -> postOffer(offerSdp));
-    }
-
-    private void postOffer(String offerSdp) {
-        LiveSessionAnswer answer;
-        try {
-            answer = exchangeOffer(offerSdp);
-        } catch (IOException networkFailure) {
-            Log.w(LOG_TAG, "the live session request failed: " + networkFailure.getMessage(), networkFailure);
-            postToMain(() -> failBeforeConnected("network_error"));
-            return;
-        }
-        postToMain(() -> onAnswer(answer));
-    }
-
-    private LiveSessionAnswer exchangeOffer(String offerSdp) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(mEndpointUrl).openConnection();
-        try {
-            connection.setRequestMethod("POST");
-            connection.setDoOutput(true);
-            connection.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
-            connection.setReadTimeout(READ_TIMEOUT_MILLIS);
-            connection.setRequestProperty("Content-Type", SDP_CONTENT_TYPE);
-            try (OutputStream output = connection.getOutputStream()) {
-                output.write(offerSdp.getBytes(StandardCharsets.UTF_8));
-            }
-            int statusCode = connection.getResponseCode();
-            InputStream stream = statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream();
-            String body = stream == null ? "" : readFully(stream);
-            return LiveSessionAnswer.fromHttpResponse(statusCode, body);
-        } finally {
-            connection.disconnect();
-        }
-    }
-
-    private static String readFully(InputStream stream) throws IOException {
-        try (InputStream input = stream) {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-            byte[] chunk = new byte[4096];
-            int read;
-            while ((read = input.read(chunk)) != -1) {
-                buffer.write(chunk, 0, read);
-            }
-            return buffer.toString(StandardCharsets.UTF_8.name());
-        }
-    }
-
-    private void onAnswer(LiveSessionAnswer answer) {
+    private void applyStep(HandshakeStep step) {
         if (mClosed) {
             return;
         }
-        if (!answer.isAccepted()) {
-            Log.w(LOG_TAG, "the live session was refused: " + answer.getFailureReason());
-            failBeforeConnected(answer.getFailureReason());
-            return;
+        switch (step.getKind()) {
+            case SEND_OFFER:
+                mMainHandler.removeCallbacks(mGatheringTimeout);
+                sendOffer(mLocalOfferSdp);
+                break;
+            case APPLY_ANSWER:
+                applyAnswer(step.getSdp());
+                break;
+            case CONNECTED:
+                mConnected = true;
+                break;
+            case FAIL:
+                failWith(step.getReason());
+                break;
+            case DISCONNECTED:
+                mListener.onDisconnected(step.getReason());
+                close();
+                break;
+            default:
+                break;
         }
-        mPeerConnection.setRemoteDescription(new SetObserver(
-            () -> {
-            },
-            reason -> failBeforeConnected("remote_description_failed"),
-            "remote description"),
-            new SessionDescription(SessionDescription.Type.ANSWER, answer.getSdp()));
     }
 
-    private void failBeforeConnected(String reason) {
-        if (mClosed) {
-            return;
-        }
-        if (mEventChannelOpen) {
+    private void failWith(String reason) {
+        Log.w(LOG_TAG, "the live voice connection failed: " + reason);
+        if (mConnected) {
             mListener.onDisconnected(reason);
         } else {
             mListener.onConnectFailed(reason);
         }
         close();
+    }
+
+    private void sendOffer(String offerSdp) {
+        mHttpExecutor.execute(() -> {
+            LiveSessionAnswer answer = mOfferExchange.exchange(mEndpointUrl, offerSdp);
+            postToMain(() -> applyStep(mHandshake.onAnswerReceived(answer)));
+        });
+    }
+
+    private void applyAnswer(String answerSdp) {
+        mPeerConnection.setRemoteDescription(new SetObserver(
+            () -> applyStep(mHandshake.onRemoteDescriptionApplied()),
+            reason -> applyStep(mHandshake.onRemoteDescriptionFailed())),
+            new SessionDescription(SessionDescription.Type.ANSWER, answerSdp));
     }
 
     private void postToMain(Runnable action) {
@@ -214,15 +181,13 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
     private final class OfferObserver implements SdpObserver {
         @Override
         public void onCreateSuccess(SessionDescription offer) {
-            postToMain(() -> mPeerConnection.setLocalDescription(
-                new SetObserver(
-                    () -> {
-                        mLocalDescriptionReady = true;
-                        onLocalOfferReady();
-                    },
-                    reason -> failBeforeConnected("local_description_failed"),
-                    "local description"),
-                offer));
+            postToMain(() -> {
+                mLocalOfferSdp = offer.description;
+                mPeerConnection.setLocalDescription(new SetObserver(
+                    () -> applyStep(mHandshake.onLocalDescriptionSet()),
+                    reason -> applyStep(mHandshake.onNegotiationFailed(LOCAL_DESCRIPTION_FAILED_REASON))),
+                    offer);
+            });
         }
 
         @Override
@@ -231,28 +196,26 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
         @Override
         public void onCreateFailure(String reason) {
-            postToMain(() -> failBeforeConnected("offer_failed"));
+            postToMain(() -> applyStep(mHandshake.onNegotiationFailed(OFFER_FAILED_REASON)));
         }
 
         @Override
         public void onSetFailure(String reason) {
-            postToMain(() -> failBeforeConnected("offer_failed"));
+            postToMain(() -> applyStep(mHandshake.onNegotiationFailed(OFFER_FAILED_REASON)));
         }
     }
 
     private static final class SetObserver implements SdpObserver {
         private final Runnable mOnSuccess;
-        private final FailureReasonHandler mOnFailure;
-        private final String mDescriptionName;
+        private final FailureHandler mOnFailure;
 
-        interface FailureReasonHandler {
+        interface FailureHandler {
             void onFailure(String reason);
         }
 
-        SetObserver(Runnable onSuccess, FailureReasonHandler onFailure, String descriptionName) {
+        SetObserver(Runnable onSuccess, FailureHandler onFailure) {
             mOnSuccess = onSuccess;
             mOnFailure = onFailure;
-            mDescriptionName = descriptionName;
         }
 
         @Override
@@ -271,7 +234,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
         @Override
         public void onSetFailure(String reason) {
-            Log.w(LOG_TAG, "setting the " + mDescriptionName + " failed: " + reason);
+            Log.w(LOG_TAG, "setting a session description failed: " + reason);
             mOnFailure.onFailure(reason);
         }
     }
@@ -284,7 +247,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
         @Override
         public void onIceConnectionChange(PeerConnection.IceConnectionState state) {
             if (state == PeerConnection.IceConnectionState.FAILED) {
-                postToMain(() -> failBeforeConnected(ICE_FAILED_REASON));
+                postToMain(() -> applyStep(mHandshake.onConnectionLost(ICE_FAILED_REASON)));
             }
         }
 
@@ -295,10 +258,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
         @Override
         public void onIceGatheringChange(PeerConnection.IceGatheringState state) {
             if (state == PeerConnection.IceGatheringState.COMPLETE) {
-                postToMain(() -> {
-                    mIceGatheringComplete = true;
-                    onLocalOfferReady();
-                });
+                postToMain(() -> applyStep(mHandshake.onIceGatheringComplete()));
             }
         }
 
@@ -332,6 +292,8 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
     }
 
     private final class EventChannelObserver implements DataChannel.Observer {
+        private boolean mOpenSeen;
+
         @Override
         public void onBufferedAmountChange(long previousAmount) {
         }
@@ -353,14 +315,14 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
             String eventJson = new String(bytes, StandardCharsets.UTF_8);
             postToMain(() -> mListener.onEventReceived(eventJson));
         }
-    }
 
-    private void onEventChannelState(DataChannel.State state) {
-        if (state == DataChannel.State.OPEN) {
-            mEventChannelOpen = true;
-        } else if (state == DataChannel.State.CLOSED && mEventChannelOpen) {
-            mListener.onDisconnected("event_channel_closed");
-            close();
+        private void onEventChannelState(DataChannel.State state) {
+            if (state == DataChannel.State.OPEN && !mOpenSeen) {
+                mOpenSeen = true;
+                applyStep(mHandshake.onDataChannelOpened());
+            } else if (state == DataChannel.State.CLOSED) {
+                applyStep(mHandshake.onConnectionLost(EVENT_CHANNEL_CLOSED_REASON));
+            }
         }
     }
 }

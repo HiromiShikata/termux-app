@@ -10,14 +10,14 @@ import android.util.Log;
 import androidx.annotation.VisibleForTesting;
 
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesizer {
+
+    static final String ENGINE_ERROR_REASON = "tts_engine_error";
+    static final String ENGINE_NOT_INITIALIZED_REASON = "tts_engine_not_initialized";
 
     private interface EngineWork {
         void runOn(TextToSpeech textToSpeech);
@@ -31,11 +31,9 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     private final Executor mSpeechQueueExecutor;
 
+    private final TtsUtteranceCompletions mCompletions = new TtsUtteranceCompletions();
+
     private volatile TextToSpeech mTextToSpeech;
-
-    private final Map<String, Runnable> mCompletionsByUtteranceId = new ConcurrentHashMap<>();
-
-    private final AtomicInteger mUtteranceCounter = new AtomicInteger();
 
     AndroidTextToSpeechSynthesizer(Context context) {
         this(context, engineWorkExecutor(), runnable -> new Handler(Looper.getMainLooper()).post(runnable));
@@ -58,7 +56,18 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     @Override
     public void initialize(Runnable onReady) {
-        mTextToSpeech = new TextToSpeech(mContext, status -> onEngineInitialized(status, onReady));
+        initialize(onReady, () -> {
+        });
+    }
+
+    @Override
+    public void initialize(Runnable onReady, Runnable onFailed) {
+        mTextToSpeech = new TextToSpeech(mContext, status -> {
+            if (status != TextToSpeech.SUCCESS) {
+                onFailed.run();
+            }
+            onEngineInitialized(status, onReady);
+        });
         mTextToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
             @Override
             public void onStart(String utteranceId) {
@@ -66,22 +75,19 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
             @Override
             public void onDone(String utteranceId) {
-                completeUtterance(utteranceId);
+                finishOnSpeechQueue(() -> mCompletions.finishSpoken(utteranceId));
             }
 
             @Override
             public void onError(String utteranceId) {
                 Log.w(TtsManager.LOG_TAG, "TextToSpeech failed to speak utterance " + utteranceId);
-                completeUtterance(utteranceId);
+                finishOnSpeechQueue(() -> mCompletions.finishFailed(utteranceId, ENGINE_ERROR_REASON));
             }
         });
     }
 
-    private void completeUtterance(String utteranceId) {
-        Runnable onDone = mCompletionsByUtteranceId.remove(utteranceId);
-        if (onDone != null) {
-            mSpeechQueueExecutor.execute(onDone);
-        }
+    private void finishOnSpeechQueue(Runnable finish) {
+        mSpeechQueueExecutor.execute(finish);
     }
 
     @VisibleForTesting
@@ -114,10 +120,16 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
     }
 
     @Override
-    public void speak(String text, int queueMode, String utteranceId, Runnable onDone) {
-        String uniqueUtteranceId = utteranceId + "-" + mUtteranceCounter.incrementAndGet();
-        mCompletionsByUtteranceId.put(uniqueUtteranceId, onDone);
-        onTheEngineWorkThread(textToSpeech -> textToSpeech.speak(text, queueMode, null, uniqueUtteranceId));
+    public void speak(String text, int queueMode, String utteranceId, TtsUtteranceOutcome outcome) {
+        String uniqueUtteranceId = utteranceId + "-" + mCompletions.register(outcome);
+        mEngineWorkExecutor.execute(() -> {
+            TextToSpeech textToSpeech = mTextToSpeech;
+            if (textToSpeech == null) {
+                mCompletions.finishFailed(uniqueUtteranceId, ENGINE_NOT_INITIALIZED_REASON);
+                return;
+            }
+            textToSpeech.speak(text, queueMode, null, uniqueUtteranceId);
+        });
     }
 
     @Override

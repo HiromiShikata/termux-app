@@ -2,6 +2,7 @@ package com.termux.app.terminal.tts;
 import static org.junit.Assert.*;
 import java.util.*;
 import org.junit.Test;
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner.class)
 public class TtsManagerSpeakCompletionTest {
  static final class Synth implements TtsManager.SpeechSynthesizer { Runnable ready;Runnable failed;final List<String> texts=new ArrayList<>();final List<TtsUtteranceOutcome> outcomes=new ArrayList<>();public void initialize(Runnable r){ready=r;}public void initialize(Runnable r,Runnable f){ready=r;failed=f;}public void speak(String t,int q,String id){texts.add(t);}public void speak(String t,int q,String id,TtsUtteranceOutcome o){texts.add(t);outcomes.add(o);}public void stop(){}public void shutdown(){}
  }

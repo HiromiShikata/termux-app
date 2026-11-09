@@ -46,6 +46,7 @@ import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.voicepatrol.AndroidLogVoicePatrolLog;
 import com.termux.app.voicepatrol.TermuxVoicePatrolPorts;
+import com.termux.app.voicepatrol.VoicePatrolActivityBridge;
 import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
 import com.termux.app.voicepatrol.VoicePatrolCall;
 import com.termux.app.voicepatrol.VoicePatrolCallOrder;
@@ -163,7 +164,7 @@ import java.util.Set;
  * </ul>
  * about memory leaks.
  */
-public final class TermuxActivity extends AppCompatActivity implements ServiceConnection {
+public final class TermuxActivity extends AppCompatActivity implements ServiceConnection, VoicePatrolActivityBridge {
 
     /**
      * The connection to the {@link TermuxService}. Requested in {@link #onCreate(Bundle)} with a call to
@@ -1423,7 +1424,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log));
     }
 
-    public List<VoicePatrolCall> voicePatrolCallsInBellOrder() {
+    @Override
+    public List<VoicePatrolCall> callingSessionsInBellOrder() {
         List<VoicePatrolCall> calls = new ArrayList<>();
         if (mTermuxSessionListViewController == null) {
             return calls;
@@ -1443,7 +1445,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return calls;
     }
 
-    public void showVoicePatrolSession(String sessionName) {
+    @Override
+    public void showSession(String sessionName) {
         if (!mVoicePatrolActivityVisible) {
             return;
         }
@@ -1453,16 +1456,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
     }
 
-    public boolean sendVoicePatrolReply(String sessionName, String replyText) {
+    @Override
+    public boolean sendReply(String sessionName, String replyText) {
         int sessionIndex = sessionIndexOfName(sessionName);
-        EditText textInput = getTerminalToolbarTextInput();
-        TerminalToolbarViewPager.PageAdapter adapter = getTerminalToolbarViewPagerAdapter();
-        if (sessionIndex < 0 || textInput == null || adapter == null) {
+        if (sessionIndex < 0) {
             return false;
         }
         mTermuxSessionListViewController.switchToSessionAtIndex(sessionIndex);
-        textInput.setText(replyText);
-        return mVoicePatrolReplyEnterKeyController.submit(textInput, adapter);
+        return mVoicePatrolReplyEnterKeyController.submitVoiceReply(replyText);
     }
 
     private int sessionIndexOfName(String sessionName) {

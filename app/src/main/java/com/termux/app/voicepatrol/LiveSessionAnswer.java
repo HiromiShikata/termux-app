@@ -28,6 +28,10 @@ public final class LiveSessionAnswer {
         return new LiveSessionAnswer(false, "", errorCodeOf(body, statusCode));
     }
 
+    public static LiveSessionAnswer failed(String reason) {
+        return new LiveSessionAnswer(false, "", reason);
+    }
+
     public boolean isAccepted() {
         return mAccepted;
     }
