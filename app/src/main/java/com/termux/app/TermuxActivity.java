@@ -50,6 +50,7 @@ import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
 import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
 import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
 import com.termux.app.voicepatrol.VoicePatrolCall;
+import com.termux.app.voicepatrol.VoicePatrolCallBodies;
 import com.termux.app.voicepatrol.VoicePatrolCallOrder;
 import com.termux.app.voicepatrol.VoicePatrolController;
 import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
@@ -1454,14 +1455,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public Map<String, String> unansweredCallBodiesBySessionName() {
-        Map<String, String> bodies = new HashMap<>();
+        Map<String, List<OwnerCall>> unansweredCallsBySessionName = new HashMap<>();
         for (String sessionName : pendingCallSessionNames()) {
-            List<OwnerCall> unansweredCalls = unansweredOwnerCallsForSession(sessionName);
-            if (!unansweredCalls.isEmpty()) {
-                bodies.put(sessionName, unansweredCalls.get(0).getBody());
-            }
+            unansweredCallsBySessionName.put(sessionName, unansweredOwnerCallsForSession(sessionName));
         }
-        return bodies;
+        return VoicePatrolCallBodies.firstBodyBySessionName(unansweredCallsBySessionName);
     }
 
     @Override

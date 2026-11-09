@@ -127,6 +127,9 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     @Override
     public void speak(String text, int queueMode, String utteranceId, TtsUtteranceOutcome outcome) {
+        if (queueMode == TextToSpeech.QUEUE_FLUSH) {
+            failPendingAsInterrupted();
+        }
         String uniqueUtteranceId = utteranceId + "-" + mCompletions.register(outcome);
         mEngineWorkExecutor.execute(() -> {
             TextToSpeech textToSpeech = mTextToSpeech;
@@ -140,7 +143,14 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     @Override
     public void stop() {
+        failPendingAsInterrupted();
         onTheEngineWorkThread(TextToSpeech::stop);
+    }
+
+    private void failPendingAsInterrupted() {
+        for (TtsUtteranceOutcome outcome : mCompletions.takeAll()) {
+            finishOnSpeechQueue(() -> outcome.onFailed(TTS_INTERRUPTED_REASON));
+        }
     }
 
     @Override
