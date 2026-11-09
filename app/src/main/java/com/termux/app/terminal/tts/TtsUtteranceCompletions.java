@@ -17,9 +17,12 @@ public final class TtsUtteranceCompletions {
     }
 
     public List<TtsUtteranceOutcome> takeAll() {
-        List<TtsUtteranceOutcome> outcomes = new ArrayList<>(mOutcomesByUtteranceId.values());
-        for (String utteranceId : mOutcomesByUtteranceId.keySet()) {
-            mOutcomesByUtteranceId.remove(utteranceId);
+        List<TtsUtteranceOutcome> outcomes = new ArrayList<>();
+        for (String utteranceId : new ArrayList<>(mOutcomesByUtteranceId.keySet())) {
+            TtsUtteranceOutcome outcome = mOutcomesByUtteranceId.remove(utteranceId);
+            if (outcome != null) {
+                outcomes.add(outcome);
+            }
         }
         return outcomes;
     }
