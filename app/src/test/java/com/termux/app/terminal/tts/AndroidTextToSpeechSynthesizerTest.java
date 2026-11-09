@@ -86,6 +86,57 @@ public class AndroidTextToSpeechSynthesizerTest {
     }
 
     @Test
+    public void stopReportsPendingUtteranceInterruptedOnce() throws Exception {
+        ExecutorService engine = new DirectExecutorService();
+        AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(
+            RuntimeEnvironment.getApplication(), engine, Runnable::run);
+        RecordingOutcome outcome = new RecordingOutcome();
+        synthesizer.initialize(() -> { });
+        synthesizer.speak("hello", TextToSpeech.QUEUE_FLUSH, "utterance", outcome);
+        synthesizer.stop();
+        assertEquals(0, outcome.spoken);
+        assertEquals(1, outcome.failed);
+        assertEquals(AndroidTextToSpeechSynthesizer.TTS_INTERRUPTED_REASON, outcome.reason);
+        engine.shutdownNow();
+    }
+
+    @Test
+    public void flushInterruptsEarlierPendingUtterancesAndKeepsNewUtterancePending() throws Exception {
+        ExecutorService engine = new DirectExecutorService();
+        AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(
+            RuntimeEnvironment.getApplication(), engine, Runnable::run);
+        RecordingOutcome first = new RecordingOutcome();
+        RecordingOutcome second = new RecordingOutcome();
+        synthesizer.initialize(() -> { });
+        synthesizer.speak("first", TextToSpeech.QUEUE_ADD, "first", first);
+        synthesizer.speak("second", TextToSpeech.QUEUE_FLUSH, "second", second);
+        assertEquals(1, first.failed);
+        assertEquals(AndroidTextToSpeechSynthesizer.TTS_INTERRUPTED_REASON, first.reason);
+        assertEquals(0, second.spoken);
+        assertEquals(0, second.failed);
+        assertEquals(1, pendingCount(synthesizer));
+        engine.shutdownNow();
+    }
+
+    @Test
+    public void lateDoneAndErrorCallbacksAfterInterruptionReportNothingFurther() throws Exception {
+        ExecutorService engine = new DirectExecutorService();
+        AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(
+            RuntimeEnvironment.getApplication(), engine, Runnable::run);
+        RecordingOutcome outcome = new RecordingOutcome();
+        synthesizer.initialize(() -> { });
+        synthesizer.speak("hello", TextToSpeech.QUEUE_FLUSH, "utterance", outcome);
+        String id = registeredId(synthesizer);
+        synthesizer.stop();
+        UtteranceProgressListener listener = progressListener(synthesizer);
+        listener.onDone(id);
+        listener.onError(id);
+        assertEquals(0, outcome.spoken);
+        assertEquals(1, outcome.failed);
+        engine.shutdownNow();
+    }
+
+    @Test
     public void speakingBeforeEngineInitializationReportsFailure() throws Exception {
         QueuedExecutorService engine = new QueuedExecutorService();
         AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(
@@ -119,6 +170,15 @@ public class AndroidTextToSpeechSynthesizerTest {
         map.setAccessible(true);
         Map<String, TtsUtteranceOutcome> outcomes = (Map<String, TtsUtteranceOutcome>) map.get(completions.get(synthesizer));
         outcomes.put(newId, outcomes.remove(oldId));
+    }
+
+    @SuppressWarnings("unchecked")
+    private int pendingCount(AndroidTextToSpeechSynthesizer synthesizer) throws Exception {
+        Field completions = AndroidTextToSpeechSynthesizer.class.getDeclaredField("mCompletions");
+        completions.setAccessible(true);
+        Field map = TtsUtteranceCompletions.class.getDeclaredField("mOutcomesByUtteranceId");
+        map.setAccessible(true);
+        return ((Map<String, ?>) map.get(completions.get(synthesizer))).size();
     }
 
     private UtteranceProgressListener progressListener(AndroidTextToSpeechSynthesizer synthesizer)

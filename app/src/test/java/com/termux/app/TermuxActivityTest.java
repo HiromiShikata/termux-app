@@ -18,6 +18,8 @@ import java.util.LinkedHashSet;
 import java.util.Arrays;
 import java.lang.reflect.Field;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.Map;
 
 @RunWith(RobolectricTestRunner.class)
 public class TermuxActivityTest {
@@ -60,6 +62,13 @@ public class TermuxActivityTest {
         field.set(activity, sessions);
         assertEquals(Arrays.asList("alpha", "beta"), activity.sessionNames());
         assertFalse(activity.submitVoiceReplyToCurrentSession("reply"));
+    }
+
+    @Test
+    public void unansweredCallBodiesAreEmptyWithNoPendingCallSessions() throws Exception {
+        TermuxActivity activity = org.robolectric.Robolectric.buildActivity(TermuxActivity.class).get();
+        Method method = TermuxActivity.class.getMethod("unansweredCallBodiesBySessionName");
+        assertEquals(Collections.emptyMap(), (Map<String, String>) method.invoke(activity));
     }
 
 }
