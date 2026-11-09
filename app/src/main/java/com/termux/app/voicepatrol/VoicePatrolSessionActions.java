@@ -4,5 +4,5 @@ public interface VoicePatrolSessionActions {
 
     void showSession(String sessionName);
 
-    void sendReply(String sessionName, String replyText);
+    boolean sendReply(String sessionName, String replyText);
 }

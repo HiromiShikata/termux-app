@@ -11,6 +11,8 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
 
     private static final String CONNECTION_FAILED_MESSAGE_JA = "音声の接続を始められませんでした。";
     private static final String SPEECH_FAILED_MESSAGE_JA = "読み上げに失敗しました。";
+    private static final String REPLY_NOT_DELIVERED_MESSAGE_JA = "返信を送れませんでした。";
+    private static final String CONNECTION_LOST_MESSAGE_JA = "音声の接続が切れました。";
     private static final String CONTEXT_CONTENT_HEADER = "Session name: %s\nOwner call body (already read aloud to the owner; do not read it aloud):\n%s";
     private static final String CONTEXT_EVENT_ID_PREFIX = "patrol-context";
     private static final String EVENT_ID_PREFIX = "patrol-event-";
@@ -114,14 +116,17 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
     public void onConnectFailed(String reason) {
         mLog.warn("Live voice connection failed: " + reason);
         closeConnection();
-        speakAndWait(CONNECTION_FAILED_MESSAGE_JA + reason);
+        speakAndWait(CONNECTION_FAILED_MESSAGE_JA + VoicePatrolFailureMessages.japaneseFor(reason));
     }
 
     @Override
     public void onDisconnected(String reason) {
         mLog.warn("Live voice connection was lost: " + reason);
         closeConnection();
-        enterWaiting(namesOf(mCallSource.callingSessionsInBellOrder()));
+        if (mPhase != VoicePatrolPhase.WAITING_FOR_CALL && mPhase != VoicePatrolPhase.STOPPED) {
+            enterWaiting(namesOf(mCallSource.callingSessionsInBellOrder()));
+            speakWithoutFollowUp(CONNECTION_LOST_MESSAGE_JA);
+        }
     }
 
     private void pickNext() {
@@ -165,7 +170,7 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
         }
         mLog.warn("Reading the owner call of " + call.getSessionName() + " failed: " + reason);
         enterWaiting(namesOf(mCallSource.callingSessionsInBellOrder()));
-        speakWithoutFollowUp(SPEECH_FAILED_MESSAGE_JA + reason);
+        speakWithoutFollowUp(SPEECH_FAILED_MESSAGE_JA + VoicePatrolFailureMessages.japaneseFor(reason));
     }
 
     private void onSpeechDone(VoicePatrolCall call) {
@@ -204,12 +209,16 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
     }
 
     private void onSessionClosed() {
-        if (!mClosing) {
+        boolean closedByServer = !mClosing;
+        if (closedByServer) {
             mLog.warn("The live session was closed by the server");
         }
         closeConnection();
         if (mPhase != VoicePatrolPhase.WAITING_FOR_CALL && mPhase != VoicePatrolPhase.STOPPED) {
             enterWaiting(namesOf(mCallSource.callingSessionsInBellOrder()));
+            if (closedByServer) {
+                speakWithoutFollowUp(CONNECTION_LOST_MESSAGE_JA);
+            }
         }
     }
 
@@ -227,10 +236,15 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
                 output = errorOutput("invalid_arguments");
             } else {
                 String sessionName = mCurrentCall.getSessionName();
-                mSessions.sendReply(sessionName, reply.getValue());
-                mExcludedSessionNames.add(sessionName);
-                output = statusOutput("sent");
-                advanceToNextCall = true;
+                if (mSessions.sendReply(sessionName, reply.getValue())) {
+                    mExcludedSessionNames.add(sessionName);
+                    output = statusOutput("sent");
+                    advanceToNextCall = true;
+                } else {
+                    mLog.warn("The reply to " + sessionName + " was not delivered to its terminal");
+                    output = errorOutput("reply_not_delivered");
+                    speakWithoutFollowUp(REPLY_NOT_DELIVERED_MESSAGE_JA);
+                }
             }
         } else if (LiveToolCalls.SESSION_SKIP.equals(event.getName())) {
             mExcludedSessionNames.add(mCurrentCall.getSessionName());

@@ -46,7 +46,8 @@ import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.voicepatrol.AndroidLogVoicePatrolLog;
 import com.termux.app.voicepatrol.TermuxVoicePatrolPorts;
-import com.termux.app.voicepatrol.VoicePatrolActivityBridge;
+import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
+import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
 import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
 import com.termux.app.voicepatrol.VoicePatrolCall;
 import com.termux.app.voicepatrol.VoicePatrolCallOrder;
@@ -152,6 +153,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Set;
 
 /**
@@ -164,7 +168,7 @@ import java.util.Set;
  * </ul>
  * about memory leaks.
  */
-public final class TermuxActivity extends AppCompatActivity implements ServiceConnection, VoicePatrolActivityBridge {
+public final class TermuxActivity extends AppCompatActivity implements ServiceConnection, VoicePatrolTerminalSessions {
 
     /**
      * The connection to the {@link TermuxService}. Requested in {@link #onCreate(Bundle)} with a call to
@@ -1419,58 +1423,60 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         ContextCompat.startForegroundService(this, VoicePatrolService.startIntent(this));
         AndroidLogVoicePatrolLog log = new AndroidLogVoicePatrolLog();
-        TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(this, log);
+        TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(new TermuxVoicePatrolActivityBridge(this), log);
         VoicePatrolRuntime.start(new VoicePatrolController(endpointUrl, ports,
             new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log));
     }
 
     @Override
-    public List<VoicePatrolCall> callingSessionsInBellOrder() {
-        List<VoicePatrolCall> calls = new ArrayList<>();
+    public List<String> sessionNames() {
         if (mTermuxSessionListViewController == null) {
-            return calls;
+            return new ArrayList<>();
         }
-        List<String> sessionNames = mTermuxSessionListViewController.getSessionNamesByIndex();
-        List<Integer> callingIndexes = VoicePatrolCallOrder.callingSessionIndexesInBellOrder(
-            mTermuxSessionListViewController.getOrderedSessionIndexes(),
-            sessionNames,
-            mTermuxSessionListViewController.getPendingCallToUserSessionNames());
-        for (int sessionIndex : callingIndexes) {
-            String sessionName = sessionNames.get(sessionIndex);
+        return mTermuxSessionListViewController.getSessionNamesByIndex();
+    }
+
+    @Override
+    public List<Integer> orderedSessionIndexes() {
+        if (mTermuxSessionListViewController == null) {
+            return new ArrayList<>();
+        }
+        return mTermuxSessionListViewController.getOrderedSessionIndexes();
+    }
+
+    @Override
+    public Set<String> pendingCallSessionNames() {
+        if (mTermuxSessionListViewController == null) {
+            return new HashSet<>();
+        }
+        return mTermuxSessionListViewController.getPendingCallToUserSessionNames();
+    }
+
+    @Override
+    public Map<String, String> unansweredCallBodiesBySessionName() {
+        Map<String, String> bodies = new HashMap<>();
+        for (String sessionName : pendingCallSessionNames()) {
             List<OwnerCall> unansweredCalls = unansweredOwnerCallsForSession(sessionName);
             if (!unansweredCalls.isEmpty()) {
-                calls.add(new VoicePatrolCall(sessionName, unansweredCalls.get(0).getBody()));
+                bodies.put(sessionName, unansweredCalls.get(0).getBody());
             }
         }
-        return calls;
+        return bodies;
     }
 
     @Override
-    public void showSession(String sessionName) {
-        if (!mVoicePatrolActivityVisible) {
-            return;
-        }
-        int sessionIndex = sessionIndexOfName(sessionName);
-        if (sessionIndex >= 0) {
-            mTermuxSessionListViewController.switchToSessionAtIndex(sessionIndex);
-        }
+    public boolean isActivityVisible() {
+        return mVoicePatrolActivityVisible;
     }
 
     @Override
-    public boolean sendReply(String sessionName, String replyText) {
-        int sessionIndex = sessionIndexOfName(sessionName);
-        if (sessionIndex < 0) {
-            return false;
-        }
+    public void switchToSessionAtIndex(int sessionIndex) {
         mTermuxSessionListViewController.switchToSessionAtIndex(sessionIndex);
-        return mVoicePatrolReplyEnterKeyController.submitVoiceReply(replyText);
     }
 
-    private int sessionIndexOfName(String sessionName) {
-        if (mTermuxSessionListViewController == null) {
-            return -1;
-        }
-        return mTermuxSessionListViewController.getSessionNamesByIndex().indexOf(sessionName);
+    @Override
+    public boolean submitVoiceReplyToCurrentSession(String replyText) {
+        return mVoicePatrolReplyEnterKeyController.submitVoiceReply(replyText);
     }
 
     private void jumpToTopmostCallingSession() {

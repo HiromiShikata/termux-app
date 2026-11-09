@@ -18,6 +18,7 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
 
     static final String ENGINE_ERROR_REASON = "tts_engine_error";
     static final String ENGINE_NOT_INITIALIZED_REASON = "tts_engine_not_initialized";
+    static final String TTS_INTERRUPTED_REASON = "tts_interrupted";
 
     private interface EngineWork {
         void runOn(TextToSpeech textToSpeech);
@@ -76,6 +77,11 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
             @Override
             public void onDone(String utteranceId) {
                 finishOnSpeechQueue(() -> mCompletions.finishSpoken(utteranceId));
+            }
+
+            @Override
+            public void onStop(String utteranceId, boolean interrupted) {
+                finishOnSpeechQueue(() -> mCompletions.finishFailed(utteranceId, TTS_INTERRUPTED_REASON));
             }
 
             @Override
