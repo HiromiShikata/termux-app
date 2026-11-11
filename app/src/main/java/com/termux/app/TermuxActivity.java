@@ -162,6 +162,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
@@ -279,13 +280,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final OwnerCallInbox mOwnerCallInbox = new OwnerCallInbox();
 
+    private final ExecutorService mVoicePatrolOwnerCallReadExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread reader = new Thread(runnable, "termux-voice-patrol-owner-calls");
+        reader.setDaemon(true);
+        return reader;
+    });
+
     private final VoicePatrolOwnerCallCache mVoicePatrolOwnerCallCache = new VoicePatrolOwnerCallCache(
         new OwnerCallFileReader(new HttpOwnerCallFileTransport())::readCallsOfSession,
-        Executors.newSingleThreadExecutor(runnable -> {
-            Thread reader = new Thread(runnable, "termux-voice-patrol-owner-calls");
-            reader.setDaemon(true);
-            return reader;
-        }),
+        mVoicePatrolOwnerCallReadExecutor,
         runnable -> new Handler(Looper.getMainLooper()).post(runnable),
         new AndroidLogVoicePatrolLog());
 
@@ -774,6 +777,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onDestroy() {
         VoicePatrolRuntime.removeListener(mVoicePatrolRunningListener);
+        mVoicePatrolOwnerCallCache.close();
+        mVoicePatrolOwnerCallReadExecutor.shutdownNow();
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");

@@ -228,4 +228,48 @@ public class VoicePatrolOwnerCallCacheTest {
         assertEquals("kept", afterUrlBack.get(0).getBody());
         assertEquals(List.of(FIRST_URL, FIRST_URL), source.readUrls);
     }
+
+    @Test
+    public void afterCloseNoCallsAreReturnedAndNothingIsRead() {
+        RecordingSource source = new RecordingSource();
+        source.callsByUrl.put(FIRST_URL, Collections.singletonList(call("voicetest1", "body")));
+        VoicePatrolOwnerCallCache cache = new VoicePatrolOwnerCallCache(source, Runnable::run, Runnable::run,
+            new RecordingLog());
+
+        cache.close();
+        List<OwnerCall> afterClose = cache.callsOf("voicetest1", FIRST_URL, 0L);
+
+        assertTrue(afterClose.isEmpty());
+        assertTrue(source.readUrls.isEmpty());
+    }
+
+    @Test
+    public void readCompletingAfterCloseIsIgnoredAndLogsNothing() {
+        RecordingSource source = new RecordingSource();
+        source.failingUrls.add(FIRST_URL);
+        RecordingLog log = new RecordingLog();
+        QueuedExecutor background = new QueuedExecutor();
+        VoicePatrolOwnerCallCache cache = new VoicePatrolOwnerCallCache(source, background, Runnable::run, log);
+        cache.callsOf("voicetest1", FIRST_URL, 0L);
+
+        cache.close();
+        background.runAll();
+
+        assertEquals(1, source.readUrls.size());
+        assertTrue(log.warnings.isEmpty());
+    }
+
+    @Test
+    public void closeDropsCachedCallsSoNothingSurvivesTheActivity() {
+        RecordingSource source = new RecordingSource();
+        source.callsByUrl.put(FIRST_URL, Collections.singletonList(call("voicetest1", "body")));
+        VoicePatrolOwnerCallCache cache = new VoicePatrolOwnerCallCache(source, Runnable::run, Runnable::run,
+            new RecordingLog());
+        cache.callsOf("voicetest1", FIRST_URL, 0L);
+
+        cache.close();
+
+        assertTrue(cache.callsOf("voicetest1", FIRST_URL, 1L).isEmpty());
+        assertEquals(1, source.readUrls.size());
+    }
 }

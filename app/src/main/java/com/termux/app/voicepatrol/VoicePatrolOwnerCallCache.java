@@ -30,6 +30,7 @@ public final class VoicePatrolOwnerCallCache {
     private final VoicePatrolLog mLog;
     private final Map<String, Entry> mEntriesBySessionName = new HashMap<>();
     private final Set<String> mReadsInFlight = new HashSet<>();
+    private boolean mClosed;
 
     public VoicePatrolOwnerCallCache(CallSource source, Executor background, Executor mainThread,
                                      VoicePatrolLog log) {
@@ -43,7 +44,16 @@ public final class VoicePatrolOwnerCallCache {
      * Returns the calls read for the session so far and starts a read when none has been made, the
      * file address changed, or the last read is older than the refresh interval. Main thread only.
      */
+    public void close() {
+        mClosed = true;
+        mEntriesBySessionName.clear();
+        mReadsInFlight.clear();
+    }
+
     public List<OwnerCall> callsOf(String sessionName, String fileUrl, long nowMillis) {
+        if (mClosed) {
+            return Collections.<OwnerCall>emptyList();
+        }
         if (fileUrl == null) {
             mEntriesBySessionName.remove(sessionName);
             return Collections.<OwnerCall>emptyList();
@@ -87,6 +97,9 @@ public final class VoicePatrolOwnerCallCache {
 
     private void finishRead(String sessionName, String fileUrl, long startedAtMillis,
                             List<OwnerCall> calls, Exception failure) {
+        if (mClosed) {
+            return;
+        }
         mReadsInFlight.remove(sessionName);
         if (failure != null) {
             mLog.warn("Reading the owner calls of " + sessionName + " failed: " + failure.getMessage());
