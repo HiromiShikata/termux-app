@@ -50,12 +50,14 @@ import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
 import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
 import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
 import com.termux.app.voicepatrol.VoicePatrolCall;
-import com.termux.app.voicepatrol.VoicePatrolCallBodies;
 import com.termux.app.voicepatrol.VoicePatrolCallOrder;
 import com.termux.app.voicepatrol.VoicePatrolController;
 import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
 import com.termux.app.voicepatrol.VoicePatrolRuntime;
+import com.termux.app.voicepatrol.VoicePatrolOwnerCallCache;
 import com.termux.app.voicepatrol.VoicePatrolService;
+import com.termux.app.voicepatrol.VoicePatrolToolbarLabel;
+import com.termux.app.voicepatrol.VoicePatrolUnansweredCallBodies;
 import com.termux.app.voicepatrol.WebRtcLiveVoiceConnectionFactory;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.appopen.InstalledAppLauncher;
@@ -85,6 +87,8 @@ import com.termux.app.ownercall.OwnerCallDialogPlacement;
 import com.termux.app.ownercall.OwnerCallDialogRelayoutWatcher;
 import com.termux.app.ownercall.OwnerCallDialogStoredPlacement;
 import com.termux.app.ownercall.OwnerCallDialogViewport;
+import com.termux.app.ownercall.OwnerCallFileReader;
+import com.termux.app.ownercall.HttpOwnerCallFileTransport;
 import com.termux.app.ownercall.OwnerCallFileUrl;
 import com.termux.app.ownercall.OwnerCallInbox;
 import com.termux.app.ownercall.OwnerCallUnansweredSelection;
@@ -158,6 +162,8 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * A terminal emulator activity.
@@ -273,6 +279,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionDefinitionRepository();
 
     private final OwnerCallInbox mOwnerCallInbox = new OwnerCallInbox();
+
+    private final ExecutorService mVoicePatrolOwnerCallReadExecutor = Executors.newSingleThreadExecutor(runnable -> {
+        Thread reader = new Thread(runnable, "termux-voice-patrol-owner-calls");
+        reader.setDaemon(true);
+        return reader;
+    });
+
+    private final VoicePatrolOwnerCallCache mVoicePatrolOwnerCallCache = new VoicePatrolOwnerCallCache(
+        new OwnerCallFileReader(new HttpOwnerCallFileTransport())::readCallsOfSession,
+        mVoicePatrolOwnerCallReadExecutor,
+        runnable -> new Handler(Looper.getMainLooper()).post(runnable),
+        new AndroidLogVoicePatrolLog());
 
     private static final int REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO = 4107;
 
@@ -702,6 +720,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onResume() {
         super.onResume();
         mVoicePatrolActivityVisible = true;
+        updateVoicePatrolButtonLabel();
 
         applyLeftHandedModeFromPreferences();
 
@@ -757,6 +776,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public void onDestroy() {
+        VoicePatrolRuntime.removeListener(mVoicePatrolRunningListener);
+        mVoicePatrolOwnerCallCache.close();
+        mVoicePatrolOwnerCallReadExecutor.shutdownNow();
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
@@ -1396,12 +1418,23 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setVoicePatrolButtonView() {
         findViewById(R.id.terminal_toolbar_voice_patrol_button).setOnClickListener(v -> toggleVoicePatrol());
+        VoicePatrolRuntime.addListener(mVoicePatrolRunningListener);
+        updateVoicePatrolButtonLabel();
+    }
+
+    private final VoicePatrolRuntime.Listener mVoicePatrolRunningListener =
+        running -> updateVoicePatrolButtonLabel();
+
+    private void updateVoicePatrolButtonLabel() {
+        findViewById(R.id.terminal_toolbar_voice_patrol_button).setContentDescription(getString(
+            VoicePatrolToolbarLabel.stringResourceFor(VoicePatrolRuntime.isRunning())));
     }
 
     private void toggleVoicePatrol() {
         if (VoicePatrolRuntime.isRunning()) {
             VoicePatrolRuntime.stop();
             stopService(new Intent(this, VoicePatrolService.class));
+            updateVoicePatrolButtonLabel();
             return;
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -1427,6 +1460,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(new TermuxVoicePatrolActivityBridge(this), log);
         VoicePatrolRuntime.start(new VoicePatrolController(endpointUrl, ports,
             new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log));
+        updateVoicePatrolButtonLabel();
     }
 
     @Override
@@ -1455,11 +1489,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public Map<String, String> unansweredCallBodiesBySessionName() {
-        Map<String, List<OwnerCall>> unansweredCallsBySessionName = new HashMap<>();
-        for (String sessionName : pendingCallSessionNames()) {
-            unansweredCallsBySessionName.put(sessionName, unansweredOwnerCallsForSession(sessionName));
-        }
-        return VoicePatrolCallBodies.firstBodyBySessionName(unansweredCallsBySessionName);
+        return VoicePatrolUnansweredCallBodies.bodiesBySessionName(pendingCallSessionNames(),
+            mVoicePatrolOwnerCallCache, this::ownerCallFileUrlForSession,
+            this::ownerCallAnsweredThroughTimeMillis, System.currentTimeMillis());
     }
 
     @Override
