@@ -3,11 +3,20 @@ package com.termux.app.voicepatrol;
 import android.os.Handler;
 import android.os.Looper;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 public final class VoicePatrolRuntime {
 
     static final long POLL_INTERVAL_MILLIS = 2000L;
 
+    public interface Listener {
+        void onPatrolRunningChanged(boolean running);
+    }
+
     private static VoicePatrolController sActiveController;
+
+    private static final List<Listener> sListeners = new CopyOnWriteArrayList<>();
 
     private static final Handler sMainHandler = new Handler(Looper.getMainLooper());
 
@@ -30,11 +39,20 @@ public final class VoicePatrolRuntime {
         return sActiveController != null;
     }
 
+    public static void addListener(Listener listener) {
+        sListeners.add(listener);
+    }
+
+    public static void removeListener(Listener listener) {
+        sListeners.remove(listener);
+    }
+
     public static void start(VoicePatrolController controller) {
         stop();
         sActiveController = controller;
         controller.start();
         sMainHandler.postDelayed(sPollCallingSessions, POLL_INTERVAL_MILLIS);
+        notifyListeners(true);
     }
 
     public static void stop() {
@@ -43,6 +61,13 @@ public final class VoicePatrolRuntime {
         sActiveController = null;
         if (controller != null) {
             controller.stop();
+            notifyListeners(false);
+        }
+    }
+
+    private static void notifyListeners(boolean running) {
+        for (Listener listener : sListeners) {
+            listener.onPatrolRunningChanged(running);
         }
     }
 }

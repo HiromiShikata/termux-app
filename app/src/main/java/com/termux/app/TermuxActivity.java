@@ -50,7 +50,6 @@ import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
 import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
 import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
 import com.termux.app.voicepatrol.VoicePatrolCall;
-import com.termux.app.voicepatrol.VoicePatrolCallBodies;
 import com.termux.app.voicepatrol.VoicePatrolCallOrder;
 import com.termux.app.voicepatrol.VoicePatrolController;
 import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
@@ -58,6 +57,7 @@ import com.termux.app.voicepatrol.VoicePatrolRuntime;
 import com.termux.app.voicepatrol.VoicePatrolOwnerCallCache;
 import com.termux.app.voicepatrol.VoicePatrolService;
 import com.termux.app.voicepatrol.VoicePatrolToolbarLabel;
+import com.termux.app.voicepatrol.VoicePatrolUnansweredCallBodies;
 import com.termux.app.voicepatrol.WebRtcLiveVoiceConnectionFactory;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.appopen.InstalledAppLauncher;
@@ -773,6 +773,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public void onDestroy() {
+        VoicePatrolRuntime.removeListener(mVoicePatrolRunningListener);
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
@@ -1412,8 +1413,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setVoicePatrolButtonView() {
         findViewById(R.id.terminal_toolbar_voice_patrol_button).setOnClickListener(v -> toggleVoicePatrol());
+        VoicePatrolRuntime.addListener(mVoicePatrolRunningListener);
         updateVoicePatrolButtonLabel();
     }
+
+    private final VoicePatrolRuntime.Listener mVoicePatrolRunningListener =
+        running -> updateVoicePatrolButtonLabel();
 
     private void updateVoicePatrolButtonLabel() {
         findViewById(R.id.terminal_toolbar_voice_patrol_button).setContentDescription(getString(
@@ -1479,17 +1484,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public Map<String, String> unansweredCallBodiesBySessionName() {
-        Set<String> callingSessionNames = pendingCallSessionNames();
-        long nowMillis = System.currentTimeMillis();
-        Map<String, List<OwnerCall>> unansweredCallsBySessionName = new HashMap<>();
-        for (String sessionName : callingSessionNames) {
-            List<OwnerCall> calls = mVoicePatrolOwnerCallCache.callsOf(sessionName,
-                ownerCallFileUrlForSession(sessionName), nowMillis);
-            unansweredCallsBySessionName.put(sessionName, OwnerCallUnansweredSelection.of(calls,
-                ownerCallAnsweredThroughTimeMillis(sessionName), nowMillis));
-        }
-        mVoicePatrolOwnerCallCache.retainOnly(callingSessionNames);
-        return VoicePatrolCallBodies.firstBodyBySessionName(unansweredCallsBySessionName);
+        return VoicePatrolUnansweredCallBodies.bodiesBySessionName(pendingCallSessionNames(),
+            mVoicePatrolOwnerCallCache, this::ownerCallFileUrlForSession,
+            this::ownerCallAnsweredThroughTimeMillis, System.currentTimeMillis());
     }
 
     @Override

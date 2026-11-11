@@ -44,6 +44,10 @@ public final class VoicePatrolOwnerCallCache {
      * file address changed, or the last read is older than the refresh interval. Main thread only.
      */
     public List<OwnerCall> callsOf(String sessionName, String fileUrl, long nowMillis) {
+        if (fileUrl == null) {
+            mEntriesBySessionName.remove(sessionName);
+            return Collections.<OwnerCall>emptyList();
+        }
         Entry entry = mEntriesBySessionName.get(sessionName);
         if (!mReadsInFlight.contains(sessionName) && isStale(entry, fileUrl, nowMillis)) {
             startRead(sessionName, fileUrl, nowMillis);
@@ -58,7 +62,7 @@ public final class VoicePatrolOwnerCallCache {
     }
 
     private static boolean isStale(Entry entry, String fileUrl, long nowMillis) {
-        if (entry == null || !entry.mFileUrl.equals(fileUrl)) {
+        if (entry == null || !fileUrl.equals(entry.mFileUrl)) {
             return true;
         }
         long sinceReadMillis = nowMillis - entry.mReadStartedAtMillis;
@@ -87,7 +91,7 @@ public final class VoicePatrolOwnerCallCache {
         if (failure != null) {
             mLog.warn("Reading the owner calls of " + sessionName + " failed: " + failure.getMessage());
             Entry previous = mEntriesBySessionName.get(sessionName);
-            boolean sameFile = previous != null && previous.mFileUrl.equals(fileUrl);
+            boolean sameFile = previous != null && fileUrl.equals(previous.mFileUrl);
             List<OwnerCall> kept = sameFile ? previous.mCalls : new ArrayList<OwnerCall>();
             mEntriesBySessionName.put(sessionName, new Entry(fileUrl, kept, startedAtMillis));
             return;

@@ -184,4 +184,48 @@ public class VoicePatrolOwnerCallCacheTest {
 
         assertEquals(List.of(FIRST_URL, SECOND_URL, FIRST_URL), source.readUrls);
     }
+
+    @Test
+    public void nullFileUrlReadsNothingAndReturnsNoCallsOnTheFirstPoll() {
+        RecordingSource source = new RecordingSource();
+        VoicePatrolOwnerCallCache cache = new VoicePatrolOwnerCallCache(source, Runnable::run, Runnable::run,
+            new RecordingLog());
+
+        List<OwnerCall> calls = cache.callsOf("voicetest1", null, 0L);
+
+        assertTrue(calls.isEmpty());
+        assertTrue(source.readUrls.isEmpty());
+    }
+
+    @Test
+    public void nullFileUrlOnLaterPollsStillReadsNothingAndDoesNotThrow() {
+        RecordingSource source = new RecordingSource();
+        source.callsByUrl.put(FIRST_URL, Collections.singletonList(call("voicetest1", "before")));
+        VoicePatrolOwnerCallCache cache = new VoicePatrolOwnerCallCache(source, Runnable::run, Runnable::run,
+            new RecordingLog());
+        cache.callsOf("voicetest1", FIRST_URL, 0L);
+
+        List<OwnerCall> firstNullPoll = cache.callsOf("voicetest1", null, 1L);
+        List<OwnerCall> secondNullPoll = cache.callsOf("voicetest1", null, 2L);
+
+        assertTrue(firstNullPoll.isEmpty());
+        assertTrue(secondNullPoll.isEmpty());
+        assertEquals(List.of(FIRST_URL), source.readUrls);
+    }
+
+    @Test
+    public void fileUrlBecomingNullDropsTheCallsAndReadsAgainWhenTheUrlReturns() {
+        RecordingSource source = new RecordingSource();
+        source.callsByUrl.put(FIRST_URL, Collections.singletonList(call("voicetest1", "kept")));
+        VoicePatrolOwnerCallCache cache = new VoicePatrolOwnerCallCache(source, Runnable::run, Runnable::run,
+            new RecordingLog());
+        cache.callsOf("voicetest1", FIRST_URL, 0L);
+
+        List<OwnerCall> afterUrlLost = cache.callsOf("voicetest1", null, 1L);
+        List<OwnerCall> afterUrlBack = cache.callsOf("voicetest1", FIRST_URL, 2L);
+
+        assertTrue(afterUrlLost.isEmpty());
+        assertEquals("kept", afterUrlBack.get(0).getBody());
+        assertEquals(List.of(FIRST_URL, FIRST_URL), source.readUrls);
+    }
 }
