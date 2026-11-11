@@ -56,6 +56,7 @@ import com.termux.app.voicepatrol.VoicePatrolController;
 import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
 import com.termux.app.voicepatrol.VoicePatrolRuntime;
 import com.termux.app.voicepatrol.VoicePatrolService;
+import com.termux.app.voicepatrol.VoicePatrolToolbarLabel;
 import com.termux.app.voicepatrol.WebRtcLiveVoiceConnectionFactory;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.appopen.InstalledAppLauncher;
@@ -702,6 +703,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onResume() {
         super.onResume();
         mVoicePatrolActivityVisible = true;
+        updateVoicePatrolButtonLabel();
 
         applyLeftHandedModeFromPreferences();
 
@@ -1396,12 +1398,19 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setVoicePatrolButtonView() {
         findViewById(R.id.terminal_toolbar_voice_patrol_button).setOnClickListener(v -> toggleVoicePatrol());
+        updateVoicePatrolButtonLabel();
+    }
+
+    private void updateVoicePatrolButtonLabel() {
+        findViewById(R.id.terminal_toolbar_voice_patrol_button).setContentDescription(getString(
+            VoicePatrolToolbarLabel.stringResourceFor(VoicePatrolRuntime.isRunning())));
     }
 
     private void toggleVoicePatrol() {
         if (VoicePatrolRuntime.isRunning()) {
             VoicePatrolRuntime.stop();
             stopService(new Intent(this, VoicePatrolService.class));
+            updateVoicePatrolButtonLabel();
             return;
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -1427,6 +1436,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(new TermuxVoicePatrolActivityBridge(this), log);
         VoicePatrolRuntime.start(new VoicePatrolController(endpointUrl, ports,
             new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log));
+        updateVoicePatrolButtonLabel();
     }
 
     @Override

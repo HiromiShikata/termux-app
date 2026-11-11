@@ -130,7 +130,7 @@ final class AndroidTextToSpeechSynthesizer implements TtsManager.SpeechSynthesiz
         if (queueMode == TextToSpeech.QUEUE_FLUSH) {
             failPendingAsInterrupted();
         }
-        String uniqueUtteranceId = utteranceId + "-" + mCompletions.register(outcome);
+        String uniqueUtteranceId = mCompletions.register(outcome);
         mEngineWorkExecutor.execute(() -> {
             TextToSpeech textToSpeech = mTextToSpeech;
             if (textToSpeech == null) {

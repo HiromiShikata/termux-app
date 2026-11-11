@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
+import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 
@@ -11,6 +12,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+
+import static org.robolectric.Shadows.shadowOf;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -38,6 +41,20 @@ public class AndroidTextToSpeechSynthesizerTest {
         assertEquals(1, speech.runnables.size());
         speech.runnables.get(0).run();
         speech.runnables.get(0).run();
+        assertEquals(1, outcome.spoken);
+        assertEquals(0, outcome.failed);
+        engine.shutdownNow();
+    }
+
+    @Test
+    public void spokenOutcomeFinishesWhenTheEngineReportsTheIdItWasGiven() throws Exception {
+        ExecutorService engine = new DirectExecutorService();
+        AndroidTextToSpeechSynthesizer synthesizer = new AndroidTextToSpeechSynthesizer(
+            RuntimeEnvironment.getApplication(), engine, Runnable::run);
+        RecordingOutcome outcome = new RecordingOutcome();
+        synthesizer.initialize(() -> { });
+        synthesizer.speak("hello", TextToSpeech.QUEUE_FLUSH, "utterance", outcome);
+        shadowOf(Looper.getMainLooper()).idle();
         assertEquals(1, outcome.spoken);
         assertEquals(0, outcome.failed);
         engine.shutdownNow();
@@ -143,8 +160,6 @@ public class AndroidTextToSpeechSynthesizerTest {
             RuntimeEnvironment.getApplication(), engine, Runnable::run);
         RecordingOutcome outcome = new RecordingOutcome();
         synthesizer.speak("hello", TextToSpeech.QUEUE_FLUSH, "utterance", outcome);
-        String registeredId = registeredId(synthesizer);
-        aliasRegisteredId(synthesizer, registeredId, "utterance-" + registeredId);
         engine.runNext();
         engine.shutdown();
         assertEquals(0, outcome.spoken);
@@ -159,17 +174,6 @@ public class AndroidTextToSpeechSynthesizerTest {
         Field map = TtsUtteranceCompletions.class.getDeclaredField("mOutcomesByUtteranceId");
         map.setAccessible(true);
         return (String) ((Map<String, ?>) map.get(completions.get(synthesizer))).keySet().iterator().next();
-    }
-
-    @SuppressWarnings("unchecked")
-    private void aliasRegisteredId(AndroidTextToSpeechSynthesizer synthesizer, String oldId, String newId)
-        throws Exception {
-        Field completions = AndroidTextToSpeechSynthesizer.class.getDeclaredField("mCompletions");
-        completions.setAccessible(true);
-        Field map = TtsUtteranceCompletions.class.getDeclaredField("mOutcomesByUtteranceId");
-        map.setAccessible(true);
-        Map<String, TtsUtteranceOutcome> outcomes = (Map<String, TtsUtteranceOutcome>) map.get(completions.get(synthesizer));
-        outcomes.put(newId, outcomes.remove(oldId));
     }
 
     @SuppressWarnings("unchecked")
