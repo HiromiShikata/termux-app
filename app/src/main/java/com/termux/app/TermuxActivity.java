@@ -55,6 +55,7 @@ import com.termux.app.voicepatrol.VoicePatrolCallOrder;
 import com.termux.app.voicepatrol.VoicePatrolController;
 import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
 import com.termux.app.voicepatrol.VoicePatrolRuntime;
+import com.termux.app.voicepatrol.VoicePatrolOwnerCallCache;
 import com.termux.app.voicepatrol.VoicePatrolService;
 import com.termux.app.voicepatrol.VoicePatrolToolbarLabel;
 import com.termux.app.voicepatrol.WebRtcLiveVoiceConnectionFactory;
@@ -86,6 +87,8 @@ import com.termux.app.ownercall.OwnerCallDialogPlacement;
 import com.termux.app.ownercall.OwnerCallDialogRelayoutWatcher;
 import com.termux.app.ownercall.OwnerCallDialogStoredPlacement;
 import com.termux.app.ownercall.OwnerCallDialogViewport;
+import com.termux.app.ownercall.OwnerCallFileReader;
+import com.termux.app.ownercall.HttpOwnerCallFileTransport;
 import com.termux.app.ownercall.OwnerCallFileUrl;
 import com.termux.app.ownercall.OwnerCallInbox;
 import com.termux.app.ownercall.OwnerCallUnansweredSelection;
@@ -159,6 +162,7 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 /**
  * A terminal emulator activity.
@@ -274,6 +278,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionDefinitionRepository();
 
     private final OwnerCallInbox mOwnerCallInbox = new OwnerCallInbox();
+
+    private final VoicePatrolOwnerCallCache mVoicePatrolOwnerCallCache = new VoicePatrolOwnerCallCache(
+        new OwnerCallFileReader(new HttpOwnerCallFileTransport())::readCallsOfSession,
+        Executors.newSingleThreadExecutor(runnable -> {
+            Thread reader = new Thread(runnable, "termux-voice-patrol-owner-calls");
+            reader.setDaemon(true);
+            return reader;
+        }),
+        runnable -> new Handler(Looper.getMainLooper()).post(runnable),
+        new AndroidLogVoicePatrolLog());
 
     private static final int REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO = 4107;
 
@@ -1465,10 +1479,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public Map<String, String> unansweredCallBodiesBySessionName() {
+        Set<String> callingSessionNames = pendingCallSessionNames();
+        long nowMillis = System.currentTimeMillis();
         Map<String, List<OwnerCall>> unansweredCallsBySessionName = new HashMap<>();
-        for (String sessionName : pendingCallSessionNames()) {
-            unansweredCallsBySessionName.put(sessionName, unansweredOwnerCallsForSession(sessionName));
+        for (String sessionName : callingSessionNames) {
+            List<OwnerCall> calls = mVoicePatrolOwnerCallCache.callsOf(sessionName,
+                ownerCallFileUrlForSession(sessionName), nowMillis);
+            unansweredCallsBySessionName.put(sessionName, OwnerCallUnansweredSelection.of(calls,
+                ownerCallAnsweredThroughTimeMillis(sessionName), nowMillis));
         }
+        mVoicePatrolOwnerCallCache.retainOnly(callingSessionNames);
         return VoicePatrolCallBodies.firstBodyBySessionName(unansweredCallsBySessionName);
     }
 

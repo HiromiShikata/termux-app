@@ -142,7 +142,7 @@ public final class OwnerCallInbox {
     }
 
     @NonNull
-    private static List<OwnerCall> callsOfSession(@NonNull List<OwnerCall> calls,
+    public static List<OwnerCall> callsOfSession(@NonNull List<OwnerCall> calls,
                                                   @NonNull String hostTmuxSessionName) {
         List<OwnerCall> callsOfSession = new ArrayList<>();
         for (OwnerCall call : calls) {
