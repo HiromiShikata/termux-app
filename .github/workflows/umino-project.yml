@@ -178,6 +178,10 @@ jobs:
         if: >-
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           github.event.pull_request.user.login != 'app/dependabot'
+        with:
+          # The step below receives the owner-wide app token, so it must run base-branch code, never the pull request head.
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: >-
           github.event.pull_request.user.login != 'dependabot[bot]' &&
