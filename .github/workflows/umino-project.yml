@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-slim
     timeout-minutes: 7
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: Generate hs-bot-gh-ap installation token
@@ -135,7 +135,7 @@ jobs:
         if: >-
           github.event_name == 'issues' &&
           github.event.action == 'opened'
-        uses: pozil/auto-assign-issue@af6beea6bdf1e8eb373f061c5bc168681fc6d011
+        uses: pozil/auto-assign-issue@d6e511896e5f1d2408e74db74416647d8ff80c8c # v4.1.0
         with:
           assignees: HiromiShikata
           repo-token: ${{ steps.app-token.outputs.token }}
@@ -143,7 +143,7 @@ jobs:
         if: >-
           github.event_name == 'pull_request' &&
           github.event.action == 'opened'
-        uses: pozil/auto-assign-issue@af6beea6bdf1e8eb373f061c5bc168681fc6d011
+        uses: pozil/auto-assign-issue@d6e511896e5f1d2408e74db74416647d8ff80c8c # v4.1.0
         with:
           assignees: HiromiShikata
           repo-token: ${{ steps.app-token.outputs.token }}
@@ -164,7 +164,7 @@ jobs:
       github.actor != 'app/dependabot' &&
       github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
-      - uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      - uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
       - name: Generate hs-bot-gh-ap installation token
