@@ -28,8 +28,6 @@ env:
   in_progress: In Progress
   user: HiromiShikata
   project_id: 48
-  project_v2_id: PVT_kwHOAGJHa84AFWnr
-  field_id: PVTF_lAHOAGJHa84AFWnrzgIk_H0
 
 jobs:
   umino-job:
@@ -67,6 +65,18 @@ jobs:
           (github.event.action == 'opened' || github.event.action == 'reopened')
         with:
           node-version: 24
+      - name: Select project board
+        id: board
+        run: |
+          bash scripts/project-board-selection.sh >> "$GITHUB_OUTPUT"
+        env:
+          REPOSITORY_VARIABLE_PROJECT_V2_ID: ${{ vars.PROJECT_V2_ID }}
+          REPOSITORY_VARIABLE_PROJECT_STATUS_FIELD_ID: ${{ vars.PROJECT_STATUS_FIELD_ID }}
+          REPOSITORY_VARIABLE_PROJECT_AWAITING_WORKSPACE_OPTION_ID: ${{ vars.PROJECT_AWAITING_WORKSPACE_OPTION_ID }}
+          REPOSITORY_VARIABLE_PROJECT_CLEAR_FIELD_ID: ${{ vars.PROJECT_CLEAR_FIELD_ID }}
+        if: >-
+          github.event_name == 'issues' && github.event.issue.state == 'open' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
       - name: Move issue to ${{ env.awaiting_workspace }}
         run: |
           bash scripts/ensure-repositories-management-scripts-typescript.sh
@@ -75,9 +85,9 @@ jobs:
           npx tsx src/adapter/entry-points/cli/add-project-board-item.ts
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          PROJECT_V2_ID: ${{ env.project_v2_id }}
-          STATUS_FIELD_ID: PVTSSF_lAHOAGJHa84AFWnrzgDFcxE
-          AWAITING_WORKSPACE_OPTION_ID: d1c19cce
+          PROJECT_V2_ID: ${{ steps.board.outputs.PROJECT_V2_ID }}
+          STATUS_FIELD_ID: ${{ steps.board.outputs.STATUS_FIELD_ID }}
+          AWAITING_WORKSPACE_OPTION_ID: ${{ steps.board.outputs.AWAITING_WORKSPACE_OPTION_ID }}
           EVENT_ACTION: ${{ github.event.action }}
           ISSUE_NODE_ID: ${{ github.event.issue.node_id }}
           PULL_REQUEST_NODE_ID: ${{ github.event.pull_request.node_id }}
@@ -85,6 +95,10 @@ jobs:
           github.event_name == 'issues' && github.event.issue.state == 'open' &&
           (github.event.action == 'opened' || github.event.action == 'reopened')
       - run: |
+          if [ -z "$CLEAR_FIELD_ID" ]; then
+            echo "The selected project board has no clear field; skipping the clear step"
+            exit 0
+          fi
           OWNER=$(echo ${{ github.repository }} | cut -d '/' -f 1)
           REPO=$(echo ${{ github.repository }} | cut -d '/' -f 2)
           ENTITY_TYPE=$(echo "$EVENT_NAME" | grep -q "pull_request" && echo "pullRequest" || echo "issue")
@@ -110,7 +124,7 @@ jobs:
             exit 1
           fi
 
-          CLEAR_FIELD_DATA="{\"query\":\"mutation { clearProjectV2ItemFieldValue(input: {projectId: \\\"${{ env.project_v2_id }}\\\", fieldId: \\\"${{ env.field_id }}\\\", itemId: \\\"$ITEM_ID\\\"}) { clientMutationId }}\"}"
+          CLEAR_FIELD_DATA="{\"query\":\"mutation { clearProjectV2ItemFieldValue(input: {projectId: \\\"$PROJECT_V2_ID\\\", fieldId: \\\"$CLEAR_FIELD_ID\\\", itemId: \\\"$ITEM_ID\\\"}) { clientMutationId }}\"}"
           CLEAR_RESPONSE=$(curl --request POST \
             --url https://api.github.com/graphql \
             --header "Authorization: Bearer $GH_PROJECT_TOKEN" \
@@ -127,6 +141,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PROJECT_V2_ID: ${{ steps.board.outputs.PROJECT_V2_ID }}
+          CLEAR_FIELD_ID: ${{ steps.board.outputs.CLEAR_FIELD_ID }}
         if: >-
           github.event_name == 'issues' && github.event.issue.state == 'open' &&
           (github.event.action == 'opened' || github.event.action == 'reopened')
