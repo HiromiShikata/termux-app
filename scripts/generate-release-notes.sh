@@ -10,7 +10,7 @@ previous_ref="$1"
 head_ref="$2"
 
 if [ -z "$previous_ref" ]; then
-  git log -1 --format=%s "$head_ref"
+  git log -1 --format='- %s' "$head_ref"
   exit 0
 fi
 
