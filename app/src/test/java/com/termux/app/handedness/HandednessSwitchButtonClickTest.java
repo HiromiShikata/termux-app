@@ -40,7 +40,8 @@ public class HandednessSwitchButtonClickTest {
         layoutActivity(root);
         LinearLayout bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
         View button = root.findViewById(R.id.terminal_toolbar_handedness_switch_button);
-        Assert.assertEquals(0, button.getLeft());
+        View column = root.findViewById(R.id.terminal_toolbar_left_column);
+        Assert.assertEquals(0, column.getLeft());
 
         TerminalToolbarHandednessPart.bindSwitchButton(button, preferences);
         button.performClick();
@@ -48,16 +49,16 @@ public class HandednessSwitchButtonClickTest {
         Assert.assertTrue(preferences.isLeftHandedModeEnabled());
         applier.applyHandedness(currentHandedness());
         layoutActivity(root);
-        Assert.assertSame(button, bottom.getChildAt(bottom.getChildCount() - 1));
-        Assert.assertEquals(bottom.getWidth(), button.getRight());
+        Assert.assertSame(column, bottom.getChildAt(bottom.getChildCount() - 1));
+        Assert.assertEquals(bottom.getWidth(), column.getRight());
 
         button.performClick();
 
         Assert.assertFalse(preferences.isLeftHandedModeEnabled());
         applier.applyHandedness(currentHandedness());
         layoutActivity(root);
-        Assert.assertSame(button, bottom.getChildAt(0));
-        Assert.assertEquals(0, button.getLeft());
+        Assert.assertSame(column, bottom.getChildAt(0));
+        Assert.assertEquals(0, column.getLeft());
     }
 
     private Handedness currentHandedness() {

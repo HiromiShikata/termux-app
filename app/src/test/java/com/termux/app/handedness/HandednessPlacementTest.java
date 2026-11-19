@@ -33,10 +33,9 @@ public class HandednessPlacementTest {
 
         LinearLayout bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
         assertChildren(bottom, R.id.terminal_toolbar_right_column, R.id.terminal_toolbar_view_pager,
-            R.id.terminal_toolbar_handedness_switch_button);
+            R.id.terminal_toolbar_left_column);
         LinearLayout iconRow = root.findViewById(R.id.terminal_toolbar_icon_button_row);
         assertChildren(iconRow, R.id.terminal_toolbar_right_drawer_toggle_button,
-            R.id.terminal_toolbar_voice_patrol_button,
             R.id.terminal_toolbar_session_sheet_button,
             R.id.terminal_toolbar_jump_to_calling_session_button,
             R.id.terminal_toolbar_next_session_button,

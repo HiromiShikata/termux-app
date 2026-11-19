@@ -23,11 +23,13 @@ import org.robolectric.RuntimeEnvironment;
 public class HandednessOffStatePinTest {
 
     @Test
-    public void terminalToolbarBottomContainerKeepsSwitchButtonThenExtraKeysBeforeRightColumn() {
+    public void terminalToolbarBottomContainerKeepsLeftColumnThenExtraKeysBeforeRightColumn() {
         View root = inflateActivityLayout();
         LinearLayout container = root.findViewById(R.id.terminal_toolbar_bottom_container);
 
-        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_handedness_switch_button), container.getChildAt(0));
+        Assert.assertSame(root.findViewById(R.id.terminal_toolbar_left_column), container.getChildAt(0));
+        assertChildren((LinearLayout) root.findViewById(R.id.terminal_toolbar_left_column),
+            R.id.terminal_toolbar_voice_patrol_button, R.id.terminal_toolbar_handedness_switch_button);
         Assert.assertSame(root.findViewById(R.id.terminal_toolbar_view_pager), container.getChildAt(1));
         Assert.assertSame(root.findViewById(R.id.terminal_toolbar_right_column), container.getChildAt(2));
     }
@@ -43,7 +45,6 @@ public class HandednessOffStatePinTest {
             R.id.terminal_toolbar_next_session_button,
             R.id.terminal_toolbar_jump_to_calling_session_button,
             R.id.terminal_toolbar_session_sheet_button,
-            R.id.terminal_toolbar_voice_patrol_button,
             R.id.terminal_toolbar_right_drawer_toggle_button);
         Assert.assertEquals(Gravity.END | Gravity.CENTER_VERTICAL, row.getGravity());
     }
