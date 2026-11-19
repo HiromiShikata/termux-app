@@ -6,6 +6,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Build;
 
 import androidx.core.app.NotificationCompat;
@@ -17,6 +18,8 @@ import com.termux.shared.logger.Logger;
 import com.termux.shared.notification.NotificationUtils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class ApkUpdateNotifier {
 
@@ -51,7 +54,7 @@ public final class ApkUpdateNotifier {
 
         ApkInstaller apkInstaller = new ApkInstaller(context);
         PendingIntent tapIntent = buildInstallPendingIntent(context,
-            buildTapDestinationIntent(apkInstaller, apkFile));
+            buildTapDestinationIntent(context, apkInstaller, apkFile));
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_service_notification)
             .setContentTitle(context.getString(R.string.apk_update_notification_title))
@@ -94,15 +97,35 @@ public final class ApkUpdateNotifier {
         return PendingIntent.getActivity(context, 0, installIntent, pendingIntentFlags());
     }
 
-    private static Intent buildTapDestinationIntent(ApkInstaller apkInstaller, File apkFile) {
+    private static Intent buildTapDestinationIntent(Context context, ApkInstaller apkInstaller, File apkFile) {
         switch (ApkUpdateTapDestination.forInstallPermission(apkInstaller.canRequestPackageInstalls())) {
             case INSTALL_CONFIRMATION:
-                return apkInstaller.buildInstallIntent(apkFile);
+                return installConfirmationIntent(context, apkInstaller, apkFile);
             case UNKNOWN_APPS_SETTINGS:
                 return apkInstaller.buildInstallUnknownAppsSettingsIntent();
             default:
                 throw new IllegalStateException("Unhandled tap destination");
         }
+    }
+
+    static Intent installConfirmationIntent(Context context, ApkInstaller apkInstaller, File apkFile) {
+        Intent installIntent = apkInstaller.buildInstallIntent(apkFile);
+        List<ResolveInfo> resolveInfos = context.getPackageManager().queryIntentActivities(installIntent, 0);
+        List<String> candidatePackageNames = new ArrayList<>();
+        for (ResolveInfo resolveInfo : resolveInfos) {
+            String packageName = resolveInfo.activityInfo.packageName;
+            if (!packageName.equals(context.getPackageName())) {
+                candidatePackageNames.add(packageName);
+            }
+        }
+        String installerPackageName = InstallerPackageSelector.select(candidatePackageNames);
+        if (installerPackageName == null) {
+            Logger.logWarn(LOG_TAG,
+                "No package installer resolved for the install intent; the tap will show an app chooser");
+            return installIntent;
+        }
+        installIntent.setPackage(installerPackageName);
+        return installIntent;
     }
 
     private static int pendingIntentFlags() {

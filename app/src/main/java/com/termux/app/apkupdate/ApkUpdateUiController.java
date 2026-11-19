@@ -139,20 +139,20 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    DOWNLOAD_IN_PROGRESS.set(false);
                     ApkUpdateAvailability downloadedAvailability =
                         availability.withDownloadedFilePath(apkFile.getAbsolutePath());
-                    pendingState.save(downloadedAvailability);
+                    DownloadFlagRelease.releaseAfter(DOWNLOAD_IN_PROGRESS,
+                        () -> pendingState.save(downloadedAvailability));
                     if (activity.isFinishing()) return;
                     promptController.onUpdateAvailable(downloadedAvailability);
                 }
 
                 @Override
                 public void onDownloadFailed(String message) {
-                    DOWNLOAD_IN_PROGRESS.set(false);
                     Logger.logError(LOG_TAG, "APK update pre-download failed: " + message);
                     ApkUpdateAvailability withoutDownloadedFile = availability.withDownloadedFilePath(null);
-                    pendingState.save(withoutDownloadedFile);
+                    DownloadFlagRelease.releaseAfter(DOWNLOAD_IN_PROGRESS,
+                        () -> pendingState.save(withoutDownloadedFile));
                     if (activity.isFinishing()) return;
                     promptController.onUpdateAvailable(withoutDownloadedFile);
                 }
@@ -201,8 +201,7 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    DOWNLOAD_IN_PROGRESS.set(false);
-                    pendingState.clear();
+                    DownloadFlagRelease.releaseAfter(DOWNLOAD_IN_PROGRESS, pendingState::clear);
                     launchInstall(availability, apkFile);
                 }
 

@@ -18,6 +18,7 @@ import com.termux.shared.logger.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -43,18 +44,28 @@ public final class ApkUpdateCheckWorker extends Worker {
         manager.checkForUpdate(new ApkUpdateManager.CheckListener() {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
-                if (!ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
-                    Logger.logInfo(LOG_TAG, "An APK update is already being prepared; skipping background download");
-                    latch.countDown();
-                    return;
-                }
                 new Thread(() -> {
+                    Optional<ApkUpdateBackgroundPreparation.Outcome> preparationOutcome = Optional.empty();
+                    boolean interrupted = false;
                     try {
-                        ApkUpdateBackgroundPreparation.Outcome preparationOutcome =
-                            prepare(context, manager, availability);
-                        outcome.set(resultOf(preparationOutcome));
+                        preparationOutcome =
+                            new BackgroundDownloadRun(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS,
+                                new DownloadSlotWaiter(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS::get,
+                                    (millis) -> Thread.sleep(millis), System::currentTimeMillis,
+                                    TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)))
+                                .runExclusively(() -> prepare(context, manager, availability));
+                        if (!preparationOutcome.isPresent()) {
+                            Logger.logError(LOG_TAG,
+                                "APK update was still being prepared after the timeout; skipping background download");
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        interrupted = true;
+                        Logger.logError(LOG_TAG, "APK update background preparation was interrupted");
                     } finally {
-                        ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
+                        outcome.set(BackgroundPreparationDecision.shouldRetry(preparationOutcome, interrupted)
+                            ? Result.retry()
+                            : Result.success());
                         latch.countDown();
                     }
                 }).start();
@@ -92,12 +103,6 @@ public final class ApkUpdateCheckWorker extends Worker {
             (notifiedAvailability, apkFile, changesText) ->
                 saveAndNotify(context, notifiedAvailability, apkFile, changesText));
         return preparation.run(availability);
-    }
-
-    private static Result resultOf(ApkUpdateBackgroundPreparation.Outcome outcome) {
-        return outcome.requestsRetry()
-            ? Result.retry()
-            : Result.success();
     }
 
     @Nullable
