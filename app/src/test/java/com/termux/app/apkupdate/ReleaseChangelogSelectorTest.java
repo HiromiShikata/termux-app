@@ -50,7 +50,7 @@ public class ReleaseChangelogSelectorTest {
             "preserves input order for interleaved newer releases",
             Arrays.asList("0.120.0", "0.118.0", "0.119.5", "0.119.4001", "0.119.4000"),
             "0.119.4000",
-            Arrays.asList("0.120.0", "0.119.5", "0.119.4001")),
+            Arrays.asList("0.120.0", "0.119.4001")),
         new SelectionCase(
             "compares build component numerically rather than lexically",
             Arrays.asList("0.119.10000", "0.119.9999"),
