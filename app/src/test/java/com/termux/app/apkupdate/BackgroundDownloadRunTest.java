@@ -134,7 +134,7 @@ public class BackgroundDownloadRunTest {
     }
 
     @Test
-    public void skipsActionWhenFlagIsClaimedBetweenIdleCheckAndCompareAndSet() throws InterruptedException {
+    public void reportsSlotLostAndSkipsActionWhenFlagIsReclaimedBetweenIdleCheckAndCompareAndSet() throws InterruptedException {
         AtomicBoolean downloadInProgress = new AtomicBoolean(false);
         FakeSleeper sleeper = new FakeSleeper(downloadInProgress, NEVER_RELEASED);
         DownloadSlotWaiter claimingSlotWaiter = new DownloadSlotWaiter(
@@ -147,12 +147,14 @@ public class BackgroundDownloadRunTest {
             TIMEOUT_MILLIS);
         AtomicInteger runs = new AtomicInteger();
 
-        Optional<String> result = new BackgroundDownloadRun(downloadInProgress, claimingSlotWaiter).runExclusively(() -> {
-            runs.incrementAndGet();
-            return RESULT;
-        });
+        BackgroundDownloadRun.Result<String> result = new BackgroundDownloadRun(downloadInProgress, claimingSlotWaiter)
+            .run(() -> {
+                runs.incrementAndGet();
+                return RESULT;
+            });
 
-        Assert.assertEquals(Optional.empty(), result);
+        Assert.assertEquals(BackgroundDownloadRun.Status.SLOT_LOST, result.getStatus());
+        Assert.assertFalse(result.getValue().isPresent());
         Assert.assertEquals(0, runs.get());
         Assert.assertTrue(downloadInProgress.get());
     }
