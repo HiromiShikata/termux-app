@@ -11,7 +11,7 @@ public final class ApkUpdateGuide {
         "https://api.github.com/repos/HiromiShikata/termux-app/releases/latest";
 
     public static final String RELEASES_LIST_API_URL =
-        "https://api.github.com/repos/HiromiShikata/termux-app/releases?per_page=30";
+        "https://api.github.com/repos/HiromiShikata/termux-app/releases?per_page=100";
 
     public static final String RELEASES_ATOM_FEED_URL =
         "https://github.com/HiromiShikata/termux-app/releases.atom";

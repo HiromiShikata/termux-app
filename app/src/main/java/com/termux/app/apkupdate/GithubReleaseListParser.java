@@ -21,7 +21,8 @@ public final class GithubReleaseListParser {
             }
             String tagName = release.getString("tag_name");
             String versionName = tagVersionNameResolver.resolveFromTag(tagName);
-            releases.add(new ApkRelease(versionName, tagName, parseAssets(release)));
+            String body = release.isNull("body") ? "" : release.getString("body");
+            releases.add(new ApkRelease(versionName, tagName, parseAssets(release), body));
         }
         return releases;
     }

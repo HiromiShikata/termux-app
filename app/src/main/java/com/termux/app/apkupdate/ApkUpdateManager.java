@@ -29,6 +29,12 @@ public class ApkUpdateManager {
         void onCheckFailed(String message, boolean rateLimited);
     }
 
+    public interface NewerReleasesListener {
+        void onNewerReleases(java.util.List<ApkRelease> newerReleases);
+
+        void onNewerReleasesFailed(String message, boolean rateLimited);
+    }
+
     public interface DownloadListener {
         void onDownloaded(File apkFile);
 
@@ -145,6 +151,24 @@ public class ApkUpdateManager {
             } catch (Exception exception) {
                 String message = messageOf(exception);
                 mainHandler.post(() -> listener.onPreviousBuildsFailed(message, false));
+            }
+        }).start();
+    }
+
+    public void fetchNewerReleases(String installedVersionName, NewerReleasesListener listener) {
+        new Thread(() -> {
+            try {
+                String json = releaseClient.fetchReleasesListJson(updateGuide.getReleasesListApiUrl());
+                java.util.List<ApkRelease> releases = releaseListParser.parseReleases(json);
+                java.util.List<ApkRelease> newerReleases =
+                    ReleaseChangelogSelector.selectNewerThan(releases, installedVersionName);
+                mainHandler.post(() -> listener.onNewerReleases(newerReleases));
+            } catch (GithubRateLimitedException rateLimitedException) {
+                String message = messageOf(rateLimitedException);
+                mainHandler.post(() -> listener.onNewerReleasesFailed(message, true));
+            } catch (Exception exception) {
+                String message = messageOf(exception);
+                mainHandler.post(() -> listener.onNewerReleasesFailed(message, false));
             }
         }).start();
     }
