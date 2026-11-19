@@ -16,4 +16,13 @@ public final class BackgroundPreparationDecision {
         }
         return false;
     }
+
+    public static boolean shouldRetryRun(BackgroundDownloadRun.Status status,
+                                         Optional<ApkUpdateBackgroundPreparation.Outcome> outcome,
+                                         boolean interrupted) {
+        if (status == BackgroundDownloadRun.Status.SLOT_LOST) {
+            return true;
+        }
+        return shouldRetry(outcome, interrupted);
+    }
 }

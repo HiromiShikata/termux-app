@@ -47,7 +47,7 @@ public final class ApkUpdateCheckWorker extends Worker {
                 new Thread(() -> {
                     Optional<ApkUpdateBackgroundPreparation.Outcome> preparationOutcome = Optional.empty();
                     boolean interrupted = false;
-                    boolean slotLost = false;
+                    BackgroundDownloadRun.Status status = BackgroundDownloadRun.Status.TIMED_OUT;
                     try {
                         BackgroundDownloadRun.Result<ApkUpdateBackgroundPreparation.Outcome> run =
                             new BackgroundDownloadRun(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS,
@@ -56,11 +56,11 @@ public final class ApkUpdateCheckWorker extends Worker {
                                     TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)))
                                 .run(() -> prepare(context, manager, availability));
                         preparationOutcome = run.getValue();
-                        if (run.getStatus() == BackgroundDownloadRun.Status.TIMED_OUT) {
+                        status = run.getStatus();
+                        if (status == BackgroundDownloadRun.Status.TIMED_OUT) {
                             Logger.logError(LOG_TAG,
                                 "APK update was still being prepared after the timeout; skipping background download");
-                        } else if (run.getStatus() == BackgroundDownloadRun.Status.SLOT_LOST) {
-                            slotLost = true;
+                        } else if (status == BackgroundDownloadRun.Status.SLOT_LOST) {
                             Logger.logInfo(LOG_TAG,
                                 "A foreground APK download took the slot again; retrying the background preparation soon");
                         }
@@ -69,7 +69,7 @@ public final class ApkUpdateCheckWorker extends Worker {
                         interrupted = true;
                         Logger.logError(LOG_TAG, "APK update background preparation was interrupted");
                     } finally {
-                        outcome.set(slotLost || BackgroundPreparationDecision.shouldRetry(preparationOutcome, interrupted)
+                        outcome.set(BackgroundPreparationDecision.shouldRetryRun(status, preparationOutcome, interrupted)
                             ? Result.retry()
                             : Result.success());
                         latch.countDown();

@@ -39,12 +39,7 @@ public final class BackgroundDownloadRun {
         this.slotWaiter = slotWaiter;
     }
 
-    /**
-     * Runs the action while holding the download slot. A foreground download can take the slot again between the
-     * idle wait and the compare-and-set; that case is reported as {@link Status#SLOT_LOST} rather than as a timeout,
-     * so the caller can retry soon instead of waiting for the next scheduled check.
-     */
-    public <T> Result<T> run(Supplier<T> action) throws InterruptedException {
+   public <T> Result<T> run(Supplier<T> action) throws InterruptedException {
         if (!slotWaiter.awaitIdle()) {
             return new Result<>(Status.TIMED_OUT, Optional.empty());
         }
