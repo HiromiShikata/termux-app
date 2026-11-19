@@ -16,6 +16,7 @@ import com.termux.BuildConfig;
 import com.termux.shared.logger.Logger;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +48,16 @@ public final class ApkUpdateCheckWorker extends Worker {
                     latch.countDown();
                     return;
                 }
-                downloadThenNotify(context, manager, availability, latch, outcome);
+                new Thread(() -> {
+                    try {
+                        ApkUpdateBackgroundPreparation.Outcome preparationOutcome =
+                            prepare(context, manager, availability);
+                        outcome.set(resultOf(preparationOutcome));
+                    } finally {
+                        ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
+                        latch.countDown();
+                    }
+                }).start();
             }
 
             @Override
@@ -72,27 +82,22 @@ public final class ApkUpdateCheckWorker extends Worker {
         return outcome.get();
     }
 
-    private void downloadThenNotify(Context context, ApkUpdateManager manager, ApkUpdateAvailability availability,
-                                    CountDownLatch latch, AtomicReference<Result> outcome) {
-        File cachedApkFile = findValidatedCachedApk(context, availability);
-        if (cachedApkFile != null) {
-            notifyWithNewerReleases(context, manager, availability, cachedApkFile, latch, outcome);
-            return;
-        }
-        manager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
-            availability.getExpectedSizeBytes(), new ApkUpdateManager.DownloadListener() {
-                @Override
-                public void onDownloaded(File apkFile) {
-                    notifyWithNewerReleases(context, manager, availability, apkFile, latch, outcome);
-                }
+    private static ApkUpdateBackgroundPreparation.Outcome prepare(Context context, ApkUpdateManager manager,
+                                                                  ApkUpdateAvailability availability) {
+        ApkUpdateBackgroundPreparation preparation = new ApkUpdateBackgroundPreparation(
+            BuildConfig.VERSION_NAME,
+            cachedAvailability -> findValidatedCachedApk(context, cachedAvailability),
+            downloadAvailability -> downloadBlocking(manager, downloadAvailability),
+            () -> fetchReleasesBlocking(manager),
+            (notifiedAvailability, apkFile, changesText) ->
+                saveAndNotify(context, notifiedAvailability, apkFile, changesText));
+        return preparation.run(availability);
+    }
 
-                @Override
-                public void onDownloadFailed(String message) {
-                    ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
-                    Logger.logError(LOG_TAG, "APK update background download failed: " + message);
-                    latch.countDown();
-                }
-            });
+    private static Result resultOf(ApkUpdateBackgroundPreparation.Outcome outcome) {
+        return outcome == ApkUpdateBackgroundPreparation.Outcome.RELEASE_LIST_FAILED
+            ? Result.retry()
+            : Result.success();
     }
 
     @Nullable
@@ -111,33 +116,62 @@ public final class ApkUpdateCheckWorker extends Worker {
             && first.getAssetName().equals(second.getAssetName());
     }
 
-    private static void notifyWithNewerReleases(Context context, ApkUpdateManager manager,
-                                                ApkUpdateAvailability availability, File apkFile,
-                                                CountDownLatch latch, AtomicReference<Result> outcome) {
-        manager.fetchNewerReleases(BuildConfig.VERSION_NAME, new ApkUpdateManager.NewerReleasesListener() {
-            @Override
-            public void onNewerReleases(List<ApkRelease> newerReleases) {
-                ApkUpdateAvailability downloadedAvailability =
-                    availability.withDownloadedFilePath(apkFile.getAbsolutePath());
-                ApkUpdatePendingState.Store store = new SharedPreferencesApkUpdatePendingStore(context);
-                new ApkUpdatePendingState(store).save(downloadedAvailability);
-                if (!new ApkInstaller(context).canRequestPackageInstalls()) {
-                    new ApkUpdateInstallResumeRequest(store).saveResumeRequest(downloadedAvailability);
+    private static File downloadBlocking(ApkUpdateManager manager, ApkUpdateAvailability availability)
+            throws IOException {
+        CountDownLatch downloadLatch = new CountDownLatch(1);
+        AtomicReference<File> downloadedFile = new AtomicReference<>();
+        AtomicReference<String> failureMessage = new AtomicReference<>();
+        manager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
+            availability.getExpectedSizeBytes(), new ApkUpdateManager.DownloadListener() {
+                @Override
+                public void onDownloaded(File apkFile) {
+                    downloadedFile.set(apkFile);
+                    downloadLatch.countDown();
                 }
-                ApkUpdateNotifier.notifyDownloadedUpdate(context, availability.getLatestVersionName(), apkFile,
-                    UpdateNotificationTextComposer.composeBigText(newerReleases));
-                ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
-                latch.countDown();
-            }
 
-            @Override
-            public void onNewerReleasesFailed(String message, boolean rateLimited) {
-                Logger.logError(LOG_TAG, "APK update release list fetch failed: " + message);
-                ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
-                outcome.set(Result.retry());
-                latch.countDown();
+                @Override
+                public void onDownloadFailed(String message) {
+                    failureMessage.set(message);
+                    downloadLatch.countDown();
+                }
+            });
+        try {
+            if (!downloadLatch.await(OUTCOME_TIMEOUT_MINUTES, TimeUnit.MINUTES)) {
+                throw failDownload("download did not finish in time");
             }
-        });
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw failDownload("download was interrupted");
+        }
+        if (failureMessage.get() != null) {
+            throw failDownload(failureMessage.get());
+        }
+        return downloadedFile.get();
+    }
+
+    private static IOException failDownload(String message) {
+        Logger.logError(LOG_TAG, "APK update background download failed: " + message);
+        return new IOException(message);
+    }
+
+    private static List<ApkRelease> fetchReleasesBlocking(ApkUpdateManager manager) throws IOException {
+        try {
+            return manager.fetchReleasesNewestFirstPaginated(BuildConfig.VERSION_NAME);
+        } catch (IOException exception) {
+            Logger.logError(LOG_TAG, "APK update release list fetch failed: " + exception.getMessage());
+            throw exception;
+        }
+    }
+
+    private static void saveAndNotify(Context context, ApkUpdateAvailability availability, File apkFile,
+                                      String changesText) {
+        ApkUpdateAvailability downloadedAvailability = availability.withDownloadedFilePath(apkFile.getAbsolutePath());
+        ApkUpdatePendingState.Store store = new SharedPreferencesApkUpdatePendingStore(context);
+        new ApkUpdatePendingState(store).save(downloadedAvailability);
+        if (!new ApkInstaller(context).canRequestPackageInstalls()) {
+            new ApkUpdateInstallResumeRequest(store).saveResumeRequest(downloadedAvailability);
+        }
+        ApkUpdateNotifier.notifyDownloadedUpdate(context, availability.getLatestVersionName(), apkFile, changesText);
     }
 
     public static void schedule(Context context) {

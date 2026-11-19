@@ -52,7 +52,7 @@ public final class ApkUpdateNotifier {
         ApkInstaller apkInstaller = new ApkInstaller(context);
         PendingIntent tapIntent = apkInstaller.canRequestPackageInstalls()
             ? buildInstallPendingIntent(context, apkInstaller.buildInstallIntent(apkFile))
-            : buildTermuxActivityIntent(context);
+            : buildInstallPendingIntent(context, apkInstaller.buildInstallUnknownAppsSettingsIntent());
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_service_notification)
             .setContentTitle(context.getString(R.string.apk_update_notification_title))

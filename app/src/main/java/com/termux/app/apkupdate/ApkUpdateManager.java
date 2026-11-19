@@ -11,7 +11,10 @@ import androidx.preference.PreferenceManager;
 
 import com.termux.BuildConfig;
 
+import org.json.JSONException;
+
 import java.io.File;
+import java.io.IOException;
 
 public class ApkUpdateManager {
 
@@ -27,12 +30,6 @@ public class ApkUpdateManager {
         void onUpToDate(String latestVersionName);
 
         void onCheckFailed(String message, boolean rateLimited);
-    }
-
-    public interface NewerReleasesListener {
-        void onNewerReleases(java.util.List<ApkRelease> newerReleases);
-
-        void onNewerReleasesFailed(String message, boolean rateLimited);
     }
 
     public interface DownloadListener {
@@ -155,22 +152,24 @@ public class ApkUpdateManager {
         }).start();
     }
 
-    public void fetchNewerReleases(String installedVersionName, NewerReleasesListener listener) {
-        new Thread(() -> {
+    public java.util.List<ApkRelease> fetchReleasesNewestFirstPaginated(String installedVersionName) throws IOException {
+        java.util.List<ApkRelease> releasesNewestFirst = new java.util.ArrayList<>();
+        int page = 1;
+        while (true) {
+            String json = releaseClient.fetchReleasesListJson(updateGuide.getReleasesListApiPageUrl(page));
+            java.util.List<ApkRelease> pageReleases;
             try {
-                String json = releaseClient.fetchReleasesListJson(updateGuide.getReleasesListApiUrl());
-                java.util.List<ApkRelease> releases = releaseListParser.parseReleases(json);
-                java.util.List<ApkRelease> newerReleases =
-                    ReleaseChangelogSelector.selectNewerThan(releases, installedVersionName);
-                mainHandler.post(() -> listener.onNewerReleases(newerReleases));
-            } catch (GithubRateLimitedException rateLimitedException) {
-                String message = messageOf(rateLimitedException);
-                mainHandler.post(() -> listener.onNewerReleasesFailed(message, true));
-            } catch (Exception exception) {
-                String message = messageOf(exception);
-                mainHandler.post(() -> listener.onNewerReleasesFailed(message, false));
+                pageReleases = releaseListParser.parseReleases(json);
+            } catch (JSONException exception) {
+                throw new IOException("Malformed release list page " + page, exception);
             }
-        }).start();
+            releasesNewestFirst.addAll(pageReleases);
+            if (!ReleasePagination.hasMorePagesToRead(pageReleases, ApkUpdateGuide.RELEASES_LIST_PAGE_SIZE,
+                installedVersionName)) {
+                return releasesNewestFirst;
+            }
+            page++;
+        }
     }
 
     public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes, DownloadListener listener) {
