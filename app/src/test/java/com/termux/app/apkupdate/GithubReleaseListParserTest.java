@@ -58,4 +58,21 @@ public class GithubReleaseListParserTest {
         Assert.assertEquals(1, releases.size());
         Assert.assertTrue(releases.get(0).getAssets().isEmpty());
     }
+
+    @Test
+    public void parsesReleaseBodyFieldAndUsesEmptyBodyWhenMissingOrNull() throws JSONException {
+        String[][] cases = {
+            {"\"body\":\"- Fix A\\n- Add B\"", "- Fix A\n- Add B"},
+            {"\"body\":null", ""},
+            {"\"name\":\"no body field\"", ""},
+        };
+        for (String[] testCase : cases) {
+            String json = "[{\"tag_name\":\"v0.119.0\"," + testCase[0] + "}]";
+
+            List<ApkRelease> releases = parser.parseReleases(json);
+
+            Assert.assertEquals(1, releases.size());
+            Assert.assertEquals(testCase[0], testCase[1], releases.get(0).getBody());
+        }
+    }
 }
