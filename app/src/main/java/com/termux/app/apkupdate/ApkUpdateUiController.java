@@ -230,6 +230,7 @@ public final class ApkUpdateUiController {
     private void launchInstall(ApkUpdateAvailability availability, File apkFile) {
         pendingState.markInstallLaunched(availability.getLatestVersionName(), System.currentTimeMillis());
         pendingInstallResume.clearResumeRequest();
-        activity.getApplicationContext().startActivity(apkInstaller.buildInstallIntent(apkFile));
+        activity.getApplicationContext().startActivity(
+            ApkUpdateNotifier.installConfirmationIntent(activity, apkInstaller, apkFile));
     }
 }
