@@ -18,6 +18,7 @@ import com.termux.shared.logger.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,20 +46,17 @@ public final class ApkUpdateCheckWorker extends Worker {
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
                 new Thread(() -> {
                     try {
-                        boolean idle = new DownloadSlotWaiter(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS::get,
-                            (millis) -> Thread.sleep(millis), System::currentTimeMillis,
-                            TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)).awaitIdle();
-                        if (!idle || !ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
+                        Optional<ApkUpdateBackgroundPreparation.Outcome> preparationOutcome =
+                            new BackgroundDownloadRun(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS,
+                                new DownloadSlotWaiter(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS::get,
+                                    (millis) -> Thread.sleep(millis), System::currentTimeMillis,
+                                    TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)))
+                                .runExclusively(() -> prepare(context, manager, availability));
+                        if (preparationOutcome.isPresent()) {
+                            outcome.set(resultOf(preparationOutcome.get()));
+                        } else {
                             Logger.logError(LOG_TAG,
                                 "APK update was still being prepared after the timeout; skipping background download");
-                            return;
-                        }
-                        try {
-                            ApkUpdateBackgroundPreparation.Outcome preparationOutcome =
-                                prepare(context, manager, availability);
-                            outcome.set(resultOf(preparationOutcome));
-                        } finally {
-                            ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.set(false);
                         }
                     } catch (InterruptedException exception) {
                         Thread.currentThread().interrupt();

@@ -204,8 +204,11 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    pendingState.clear();
-                    DOWNLOAD_IN_PROGRESS.set(false);
+                    try {
+                        pendingState.clear();
+                    } finally {
+                        DOWNLOAD_IN_PROGRESS.set(false);
+                    }
                     launchInstall(availability, apkFile);
                 }
 
