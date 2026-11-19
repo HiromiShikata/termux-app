@@ -16,10 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Integration test: executes scripts/generate-release-notes.sh as a real process against a
- * temporary git repository that this test creates.
- */
 public class ReleaseNotesScriptTest {
 
     private static final String SCRIPT_RELATIVE_PATH = "../scripts/generate-release-notes.sh";
