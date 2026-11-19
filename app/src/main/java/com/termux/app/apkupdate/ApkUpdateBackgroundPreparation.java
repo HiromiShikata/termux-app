@@ -26,7 +26,11 @@ public final class ApkUpdateBackgroundPreparation {
         NOTIFIED,
         NO_NEWER_RELEASE,
         DOWNLOAD_FAILED,
-        RELEASE_LIST_FAILED
+        RELEASE_LIST_FAILED;
+
+        public boolean requestsRetry() {
+            return this == RELEASE_LIST_FAILED;
+        }
     }
 
     private final String installedVersionName;

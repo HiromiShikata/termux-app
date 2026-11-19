@@ -175,41 +175,14 @@ jobs:
           done
           cp "$APK_DIR_PATH/${APK_BASENAME_PREFIX}_sha256sums" "$STABLE_DIR/termux-app_sha256sums"
 
-          if ! RECENT_RELEASE_TAGS="$(gh release list --exclude-drafts --limit 10 --json tagName --jq '.[].tagName')"; then
+          RECENT_TAGS_FILE="$RUNNER_TEMP/recent-release-tags-$RELEASE_TAG.txt"
+          if ! gh release list --exclude-drafts --limit 10 --json tagName --jq '.[].tagName' > "$RECENT_TAGS_FILE"; then
             exit_on_error "Failed to list recent releases."
-          fi
-          PREVIOUS_TAG=""
-          while IFS= read -r candidate_tag; do
-            if [ -n "$candidate_tag" ] && [ "$candidate_tag" != "$RELEASE_TAG" ]; then
-              PREVIOUS_TAG="$candidate_tag"
-              break
-            fi
-          done <<< "$RECENT_RELEASE_TAGS"
-
-          if ! CHANGE_LINES="$(scripts/generate-release-notes.sh "$PREVIOUS_TAG" "$GITHUB_SHA")"; then
-            exit_on_error "Failed to generate change lines for '$RELEASE_TAG'."
-          fi
-          if [ -n "$CHANGE_LINES" ]; then
-            CHANGE_LINES="$(printf '%s\n' "$CHANGE_LINES" | sed -e '/^- /!s/^/- /')"
-          fi
-
-          if [ -n "$PREVIOUS_TAG" ]; then
-            CHANGES_HEADING="## Changes since $PREVIOUS_TAG"
-          else
-            CHANGES_HEADING="## Changes since the first release"
-          fi
-          if [ -z "$CHANGE_LINES" ]; then
-            CHANGE_LINES="No changes since the previous release."
           fi
 
           RELEASE_NOTES_FILE="$RUNNER_TEMP/release-notes-$RELEASE_TAG.md"
-          if ! {
-            printf '%s\n' "Automated build of main at ${GITHUB_SHA:0:7} (version $RELEASE_VERSION_NAME, build $BUILD_VERSION_CODE)."
-            printf '\n%s\n' "Install the APK matching your device ABI; termux-app_arm64-v8a.apk is recommended. termux-app_universal.apk works on all ABIs. The in-app updater reads this release via the anonymous releases/latest API."
-            printf '\n%s\n\n' "$CHANGES_HEADING"
-            printf '%s\n' "$CHANGE_LINES"
-          } > "$RELEASE_NOTES_FILE"; then
-            exit_on_error "Failed to write release notes for '$RELEASE_TAG'."
+          if ! scripts/generate-release-body.sh "$RELEASE_TAG" "$GITHUB_SHA" "$RELEASE_VERSION_NAME" "$BUILD_VERSION_CODE" "$RECENT_TAGS_FILE" > "$RELEASE_NOTES_FILE"; then
+            exit_on_error "Failed to generate release notes for '$RELEASE_TAG'."
           fi
 
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then

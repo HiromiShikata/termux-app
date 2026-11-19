@@ -50,9 +50,8 @@ public final class ApkUpdateNotifier {
         }
 
         ApkInstaller apkInstaller = new ApkInstaller(context);
-        PendingIntent tapIntent = apkInstaller.canRequestPackageInstalls()
-            ? buildInstallPendingIntent(context, apkInstaller.buildInstallIntent(apkFile))
-            : buildInstallPendingIntent(context, apkInstaller.buildInstallUnknownAppsSettingsIntent());
+        PendingIntent tapIntent = buildInstallPendingIntent(context,
+            buildTapDestinationIntent(apkInstaller, apkFile));
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_service_notification)
             .setContentTitle(context.getString(R.string.apk_update_notification_title))
@@ -93,6 +92,17 @@ public final class ApkUpdateNotifier {
 
     private static PendingIntent buildInstallPendingIntent(Context context, Intent installIntent) {
         return PendingIntent.getActivity(context, 0, installIntent, pendingIntentFlags());
+    }
+
+    private static Intent buildTapDestinationIntent(ApkInstaller apkInstaller, File apkFile) {
+        switch (ApkUpdateTapDestination.forInstallPermission(apkInstaller.canRequestPackageInstalls())) {
+            case INSTALL_CONFIRMATION:
+                return apkInstaller.buildInstallIntent(apkFile);
+            case UNKNOWN_APPS_SETTINGS:
+                return apkInstaller.buildInstallUnknownAppsSettingsIntent();
+            default:
+                throw new IllegalStateException("Unhandled tap destination");
+        }
     }
 
     private static int pendingIntentFlags() {

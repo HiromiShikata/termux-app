@@ -95,7 +95,7 @@ public final class ApkUpdateCheckWorker extends Worker {
     }
 
     private static Result resultOf(ApkUpdateBackgroundPreparation.Outcome outcome) {
-        return outcome == ApkUpdateBackgroundPreparation.Outcome.RELEASE_LIST_FAILED
+        return outcome.requestsRetry()
             ? Result.retry()
             : Result.success();
     }
