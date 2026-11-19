@@ -2,6 +2,9 @@ package com.termux.app.apkupdate;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.ResolveInfo;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -9,12 +12,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowAlertDialog;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
@@ -67,6 +72,9 @@ public class ApkUpdateUiControllerTest {
             listener.onDownloaded(downloadedFile);
         }
     }
+
+    private static final String GOOGLE_INSTALLER = "com.google.android.packageinstaller";
+    private static final String FILE_VIEW_RECEIVER = "com.example.fileviewer";
 
     private static final class FakeApkInstaller extends ApkInstaller {
         final List<File> installedFiles = new ArrayList<>();
@@ -331,5 +339,38 @@ public class ApkUpdateUiControllerTest {
 
         Assert.assertEquals("an automatic check must not re-offer the update while the install it launched is live",
             checkCountAfterTheInstallLaunch, manager.checkCount);
+    }
+
+    @Test
+    public void foregroundInstallStartsTheResolvedInstallerPackageInsteadOfAChooser() throws IOException {
+        Activity activity = newActivity();
+        String ownPackage = activity.getPackageName();
+        FakeUpdateManager manager = new FakeUpdateManager(activity);
+        manager.downloadedFile = newValidApkFile();
+        FakeApkInstaller installer = new FakeApkInstaller(activity);
+        Intent installIntent = new Intent(Intent.ACTION_VIEW);
+        installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Shadows.shadowOf(activity.getPackageManager()).addResolveInfoForIntent(new Intent(installIntent),
+            Arrays.asList(resolveInfoFor(GOOGLE_INSTALLER), resolveInfoFor(ownPackage),
+                resolveInfoFor(FILE_VIEW_RECEIVER)));
+        ApkUpdateUiController controller = new ApkUpdateUiController(activity, manager, installer);
+
+        controller.checkAndShowFloatingIndicator(new RecordingIndicatorView());
+
+        Intent started = Shadows.shadowOf(activity.getApplication()).getNextStartedActivity();
+        Assert.assertNotNull("the foreground launch must start the install", started);
+        Assert.assertEquals("the foreground install must target the resolved installer package, not a chooser",
+            GOOGLE_INSTALLER, started.getPackage());
+    }
+
+    private static ResolveInfo resolveInfoFor(String packageName) {
+        ActivityInfo activityInfo = new ActivityInfo();
+        activityInfo.packageName = packageName;
+        activityInfo.name = packageName + ".InstallActivity";
+        activityInfo.applicationInfo = new ApplicationInfo();
+        activityInfo.applicationInfo.packageName = packageName;
+        ResolveInfo resolveInfo = new ResolveInfo();
+        resolveInfo.activityInfo = activityInfo;
+        return resolveInfo;
     }
 }
