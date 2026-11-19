@@ -45,23 +45,27 @@ public final class ApkUpdateCheckWorker extends Worker {
             @Override
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
                 new Thread(() -> {
+                    Optional<ApkUpdateBackgroundPreparation.Outcome> preparationOutcome = Optional.empty();
+                    boolean interrupted = false;
                     try {
-                        Optional<ApkUpdateBackgroundPreparation.Outcome> preparationOutcome =
+                        preparationOutcome =
                             new BackgroundDownloadRun(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS,
                                 new DownloadSlotWaiter(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS::get,
                                     (millis) -> Thread.sleep(millis), System::currentTimeMillis,
                                     TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)))
                                 .runExclusively(() -> prepare(context, manager, availability));
-                        if (preparationOutcome.isPresent()) {
-                            outcome.set(resultOf(preparationOutcome.get()));
-                        } else {
+                        if (!preparationOutcome.isPresent()) {
                             Logger.logError(LOG_TAG,
                                 "APK update was still being prepared after the timeout; skipping background download");
                         }
                     } catch (InterruptedException exception) {
                         Thread.currentThread().interrupt();
+                        interrupted = true;
                         Logger.logError(LOG_TAG, "APK update background preparation was interrupted");
                     } finally {
+                        outcome.set(BackgroundPreparationDecision.shouldRetry(preparationOutcome, interrupted)
+                            ? Result.retry()
+                            : Result.success());
                         latch.countDown();
                     }
                 }).start();
@@ -99,12 +103,6 @@ public final class ApkUpdateCheckWorker extends Worker {
             (notifiedAvailability, apkFile, changesText) ->
                 saveAndNotify(context, notifiedAvailability, apkFile, changesText));
         return preparation.run(availability);
-    }
-
-    private static Result resultOf(ApkUpdateBackgroundPreparation.Outcome outcome) {
-        return outcome.requestsRetry()
-            ? Result.retry()
-            : Result.success();
     }
 
     @Nullable
