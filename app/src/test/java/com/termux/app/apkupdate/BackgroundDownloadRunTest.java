@@ -132,4 +132,28 @@ public class BackgroundDownloadRunTest {
 
         Assert.assertEquals(Boolean.TRUE, observedInsideAction.get());
     }
+
+    @Test
+    public void skipsActionWhenFlagIsClaimedBetweenIdleCheckAndCompareAndSet() throws InterruptedException {
+        AtomicBoolean downloadInProgress = new AtomicBoolean(false);
+        FakeSleeper sleeper = new FakeSleeper(downloadInProgress, NEVER_RELEASED);
+        DownloadSlotWaiter claimingSlotWaiter = new DownloadSlotWaiter(
+            () -> {
+                downloadInProgress.set(true);
+                return false;
+            },
+            sleeper,
+            sleeper::clockMillis,
+            TIMEOUT_MILLIS);
+        AtomicInteger runs = new AtomicInteger();
+
+        Optional<String> result = new BackgroundDownloadRun(downloadInProgress, claimingSlotWaiter).runExclusively(() -> {
+            runs.incrementAndGet();
+            return RESULT;
+        });
+
+        Assert.assertEquals(Optional.empty(), result);
+        Assert.assertEquals(0, runs.get());
+        Assert.assertTrue(downloadInProgress.get());
+    }
 }
