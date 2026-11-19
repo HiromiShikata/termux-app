@@ -28,7 +28,6 @@ public final class ApkUpdateCheckWorker extends Worker {
     private static final String LOG_TAG = "ApkUpdateCheckWorker";
     private static final long INTERVAL_HOURS = 6L;
     private static final long OUTCOME_TIMEOUT_MINUTES = 10L;
-    private static final long DOWNLOAD_SLOT_POLL_MILLIS = 500L;
 
     public ApkUpdateCheckWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -46,7 +45,10 @@ public final class ApkUpdateCheckWorker extends Worker {
             public void onUpdateAvailable(ApkUpdateAvailability availability) {
                 new Thread(() -> {
                     try {
-                        if (!acquireDownloadSlot()) {
+                        boolean idle = new DownloadSlotWaiter(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS::get,
+                            (millis) -> Thread.sleep(millis), System::currentTimeMillis,
+                            TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)).awaitIdle();
+                        if (!idle || !ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
                             Logger.logError(LOG_TAG,
                                 "APK update was still being prepared after the timeout; skipping background download");
                             return;
@@ -87,17 +89,6 @@ public final class ApkUpdateCheckWorker extends Worker {
             return Result.retry();
         }
         return outcome.get();
-    }
-
-    private static boolean acquireDownloadSlot() throws InterruptedException {
-        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(OUTCOME_TIMEOUT_MINUTES);
-        while (!ApkUpdateUiController.DOWNLOAD_IN_PROGRESS.compareAndSet(false, true)) {
-            if (System.nanoTime() - deadlineNanos >= 0) {
-                return false;
-            }
-            Thread.sleep(DOWNLOAD_SLOT_POLL_MILLIS);
-        }
-        return true;
     }
 
     private static ApkUpdateBackgroundPreparation.Outcome prepare(Context context, ApkUpdateManager manager,

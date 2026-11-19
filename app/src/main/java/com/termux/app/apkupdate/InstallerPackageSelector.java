@@ -1,7 +1,9 @@
 package com.termux.app.apkupdate;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 final class InstallerPackageSelector {
 
@@ -18,6 +20,10 @@ final class InstallerPackageSelector {
             if (resolvingPackageNames.contains(preferredPackageName)) {
                 return preferredPackageName;
             }
+        }
+        Set<String> distinctPackageNames = new LinkedHashSet<>(resolvingPackageNames);
+        if (distinctPackageNames.size() == 1) {
+            return distinctPackageNames.iterator().next();
         }
         return null;
     }

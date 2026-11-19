@@ -100,7 +100,7 @@ public final class ApkUpdateNotifier {
     private static Intent buildTapDestinationIntent(Context context, ApkInstaller apkInstaller, File apkFile) {
         switch (ApkUpdateTapDestination.forInstallPermission(apkInstaller.canRequestPackageInstalls())) {
             case INSTALL_CONFIRMATION:
-                return buildInstallConfirmationIntent(context, apkInstaller, apkFile);
+                return installConfirmationIntent(context, apkInstaller, apkFile);
             case UNKNOWN_APPS_SETTINGS:
                 return apkInstaller.buildInstallUnknownAppsSettingsIntent();
             default:
@@ -108,10 +108,17 @@ public final class ApkUpdateNotifier {
         }
     }
 
-    private static Intent buildInstallConfirmationIntent(Context context, ApkInstaller apkInstaller, File apkFile) {
+    static Intent installConfirmationIntent(Context context, ApkInstaller apkInstaller, File apkFile) {
         Intent installIntent = apkInstaller.buildInstallIntent(apkFile);
-        String installerPackageName = InstallerPackageSelector.select(
-            resolveInstallActivityPackageNames(context, installIntent));
+        List<ResolveInfo> resolveInfos = context.getPackageManager().queryIntentActivities(installIntent, 0);
+        List<String> candidatePackageNames = new ArrayList<>();
+        for (ResolveInfo resolveInfo : resolveInfos) {
+            String packageName = resolveInfo.activityInfo.packageName;
+            if (!packageName.equals(context.getPackageName())) {
+                candidatePackageNames.add(packageName);
+            }
+        }
+        String installerPackageName = InstallerPackageSelector.select(candidatePackageNames);
         if (installerPackageName == null) {
             Logger.logWarn(LOG_TAG,
                 "No package installer resolved for the install intent; the tap will show an app chooser");
@@ -119,15 +126,6 @@ public final class ApkUpdateNotifier {
         }
         installIntent.setPackage(installerPackageName);
         return installIntent;
-    }
-
-    private static List<String> resolveInstallActivityPackageNames(Context context, Intent installIntent) {
-        List<ResolveInfo> resolveInfos = context.getPackageManager().queryIntentActivities(installIntent, 0);
-        List<String> packageNames = new ArrayList<>();
-        for (ResolveInfo resolveInfo : resolveInfos) {
-            packageNames.add(resolveInfo.activityInfo.packageName);
-        }
-        return packageNames;
     }
 
     private static int pendingIntentFlags() {

@@ -141,8 +141,11 @@ public final class ApkUpdateUiController {
                 public void onDownloaded(File apkFile) {
                     ApkUpdateAvailability downloadedAvailability =
                         availability.withDownloadedFilePath(apkFile.getAbsolutePath());
-                    pendingState.save(downloadedAvailability);
-                    DOWNLOAD_IN_PROGRESS.set(false);
+                    try {
+                        pendingState.save(downloadedAvailability);
+                    } finally {
+                        DOWNLOAD_IN_PROGRESS.set(false);
+                    }
                     if (activity.isFinishing()) return;
                     promptController.onUpdateAvailable(downloadedAvailability);
                 }
