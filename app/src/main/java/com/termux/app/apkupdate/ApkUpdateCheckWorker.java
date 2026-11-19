@@ -47,23 +47,29 @@ public final class ApkUpdateCheckWorker extends Worker {
                 new Thread(() -> {
                     Optional<ApkUpdateBackgroundPreparation.Outcome> preparationOutcome = Optional.empty();
                     boolean interrupted = false;
+                    BackgroundDownloadRun.Status status = BackgroundDownloadRun.Status.TIMED_OUT;
                     try {
-                        preparationOutcome =
+                        BackgroundDownloadRun.Result<ApkUpdateBackgroundPreparation.Outcome> run =
                             new BackgroundDownloadRun(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS,
                                 new DownloadSlotWaiter(ApkUpdateUiController.DOWNLOAD_IN_PROGRESS::get,
                                     (millis) -> Thread.sleep(millis), System::currentTimeMillis,
                                     TimeUnit.MINUTES.toMillis(OUTCOME_TIMEOUT_MINUTES)))
-                                .runExclusively(() -> prepare(context, manager, availability));
-                        if (!preparationOutcome.isPresent()) {
+                                .run(() -> prepare(context, manager, availability));
+                        preparationOutcome = run.getValue();
+                        status = run.getStatus();
+                        if (status == BackgroundDownloadRun.Status.TIMED_OUT) {
                             Logger.logError(LOG_TAG,
                                 "APK update was still being prepared after the timeout; skipping background download");
+                        } else if (status == BackgroundDownloadRun.Status.SLOT_LOST) {
+                            Logger.logInfo(LOG_TAG,
+                                "A foreground APK download took the slot again; retrying the background preparation soon");
                         }
                     } catch (InterruptedException exception) {
                         Thread.currentThread().interrupt();
                         interrupted = true;
                         Logger.logError(LOG_TAG, "APK update background preparation was interrupted");
                     } finally {
-                        outcome.set(BackgroundPreparationDecision.shouldRetry(preparationOutcome, interrupted)
+                        outcome.set(BackgroundPreparationDecision.shouldRetryRun(status, preparationOutcome, interrupted)
                             ? Result.retry()
                             : Result.success());
                         latch.countDown();
