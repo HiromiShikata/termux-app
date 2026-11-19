@@ -198,12 +198,12 @@ public class LeftHandedModeLiveSwitchInstrumentedTest {
         SwitchButtonLayout layout = new SwitchButtonLayout();
         scenario.onActivity(activity -> {
             LinearLayout bottom = activity.findViewById(R.id.terminal_toolbar_bottom_container);
-            View button = activity.findViewById(R.id.terminal_toolbar_handedness_switch_button);
+            View leftColumn = (View) activity.findViewById(R.id.terminal_toolbar_handedness_switch_button).getParent();
             layout.activity = activity;
             layout.bottomContainerIds = childIds(bottom);
             layout.containerWidth = bottom.getWidth();
-            layout.buttonLeft = button.getLeft();
-            layout.buttonRight = button.getRight();
+            layout.buttonLeft = leftColumn.getLeft();
+            layout.buttonRight = leftColumn.getRight();
         });
         return layout;
     }

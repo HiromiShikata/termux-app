@@ -18,14 +18,14 @@ public final class TerminalToolbarBottomContainer extends LinearLayout {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         View pager = findViewById(R.id.terminal_toolbar_view_pager);
         View column = findViewById(R.id.terminal_toolbar_right_column);
-        View switchButton = findViewById(R.id.terminal_toolbar_handedness_switch_button);
+        View leftColumn = findViewById(R.id.terminal_toolbar_left_column);
         int containerWidth = View.MeasureSpec.getSize(widthMeasureSpec);
-        int switchButtonWidth = switchButton.getLayoutParams().width;
+        int leftColumnWidth = leftColumn.getLayoutParams().width;
         boolean pagerShown = pager.getVisibility() != View.GONE;
         if (pagerShown) {
-            setFixedWidth(pager, containerWidth / 2 - switchButtonWidth);
+            setFixedWidth(pager, containerWidth / 2 - leftColumnWidth);
         }
-        setFixedWidth(column, pagerShown ? containerWidth / 2 : containerWidth - switchButtonWidth);
+        setFixedWidth(column, pagerShown ? containerWidth / 2 : containerWidth - leftColumnWidth);
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 

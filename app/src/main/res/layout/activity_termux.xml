@@ -583,16 +583,34 @@
             android:elevation="6dp"
             android:orientation="horizontal">
 
-            <ImageButton
-                android:id="@+id/terminal_toolbar_handedness_switch_button"
+            <LinearLayout
+                android:id="@+id/terminal_toolbar_left_column"
                 android:layout_width="36dp"
                 android:layout_height="match_parent"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_switch_handedness_layout"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="4dp"
-                android:src="@drawable/ic_handedness_switch"
-                android:tint="@color/white" />
+                android:orientation="vertical">
+
+                <ImageButton
+                    android:id="@+id/terminal_toolbar_voice_patrol_button"
+                    android:layout_width="36dp"
+                    android:layout_height="32dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/action_voice_patrol_start"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="4dp"
+                    android:src="@drawable/ic_toolbar_voice_patrol"
+                    android:tint="@color/white" />
+
+                <ImageButton
+                    android:id="@+id/terminal_toolbar_handedness_switch_button"
+                    android:layout_width="36dp"
+                    android:layout_height="32dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/action_switch_handedness_layout"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="8dp"
+                    android:src="@drawable/ic_handedness_switch"
+                    android:tint="@color/white" />
+            </LinearLayout>
 
             <androidx.viewpager.widget.ViewPager
                 android:id="@+id/terminal_toolbar_view_pager"
@@ -750,18 +768,6 @@
                             android:paddingHorizontal="8dp"
                             android:paddingVertical="4dp"
                             android:src="@drawable/ic_session_sheet_toggle"
-                            android:tint="@color/white" />
-
-                        <ImageButton
-                            android:id="@+id/terminal_toolbar_voice_patrol_button"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:background="?android:attr/selectableItemBackgroundBorderless"
-                            android:contentDescription="@string/action_voice_patrol_start"
-                            android:layout_gravity="center_vertical"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
-                            android:src="@drawable/ic_toolbar_voice_patrol"
                             android:tint="@color/white" />
 
                         <ImageButton

@@ -30,17 +30,17 @@ public class HandednessSwitchButtonPlacementTest {
         View root = inflateActivityLayout();
         applyWithExtraKeysVisible(root, Handedness.RIGHT_HANDED);
         LinearLayout bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
-        View button = root.findViewById(R.id.terminal_toolbar_handedness_switch_button);
+        View leftColumn = root.findViewById(R.id.terminal_toolbar_left_column);
         View pager = root.findViewById(R.id.terminal_toolbar_view_pager);
         View column = root.findViewById(R.id.terminal_toolbar_right_column);
 
-        Assert.assertSame(button, bottom.getChildAt(0));
+        Assert.assertSame(leftColumn, bottom.getChildAt(0));
         Assert.assertSame(pager, bottom.getChildAt(1));
         Assert.assertSame(column, bottom.getChildAt(2));
-        Assert.assertEquals(0, button.getLeft());
-        Assert.assertEquals(switchButtonWidthPx(root), button.getWidth());
-        Assert.assertEquals(column.getHeight(), button.getHeight());
-        Assert.assertEquals(button.getRight(), pager.getLeft());
+        Assert.assertEquals(0, leftColumn.getLeft());
+        Assert.assertEquals(switchButtonWidthPx(root), leftColumn.getWidth());
+        Assert.assertEquals(column.getHeight(), leftColumn.getHeight());
+        Assert.assertEquals(leftColumn.getRight(), pager.getLeft());
         Assert.assertEquals(pager.getRight(), column.getLeft());
     }
 
@@ -49,17 +49,17 @@ public class HandednessSwitchButtonPlacementTest {
         View root = inflateActivityLayout();
         applyWithExtraKeysVisible(root, Handedness.LEFT_HANDED);
         LinearLayout bottom = root.findViewById(R.id.terminal_toolbar_bottom_container);
-        View button = root.findViewById(R.id.terminal_toolbar_handedness_switch_button);
+        View leftColumn = root.findViewById(R.id.terminal_toolbar_left_column);
         View pager = root.findViewById(R.id.terminal_toolbar_view_pager);
         View column = root.findViewById(R.id.terminal_toolbar_right_column);
 
         Assert.assertSame(column, bottom.getChildAt(0));
         Assert.assertSame(pager, bottom.getChildAt(1));
-        Assert.assertSame(button, bottom.getChildAt(2));
-        Assert.assertEquals(bottom.getWidth(), button.getRight());
-        Assert.assertEquals(switchButtonWidthPx(root), button.getWidth());
-        Assert.assertEquals(column.getHeight(), button.getHeight());
-        Assert.assertEquals(button.getLeft(), pager.getRight());
+        Assert.assertSame(leftColumn, bottom.getChildAt(2));
+        Assert.assertEquals(bottom.getWidth(), leftColumn.getRight());
+        Assert.assertEquals(switchButtonWidthPx(root), leftColumn.getWidth());
+        Assert.assertEquals(column.getHeight(), leftColumn.getHeight());
+        Assert.assertEquals(leftColumn.getLeft(), pager.getRight());
         Assert.assertEquals(pager.getLeft(), column.getRight());
     }
 
@@ -119,7 +119,7 @@ public class HandednessSwitchButtonPlacementTest {
         bottom.setVisibility(View.GONE);
 
         Assert.assertEquals(View.VISIBLE, button.getVisibility());
-        Assert.assertSame(bottom, button.getParent());
+        Assert.assertSame(bottom, button.getParent().getParent());
         Assert.assertFalse(isEffectivelyVisible(button));
     }
 
