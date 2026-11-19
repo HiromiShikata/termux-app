@@ -81,7 +81,7 @@ public class ReleaseNotesScriptTest {
         new ScriptCase(
             "prints only the head subject when previous tag is empty",
             "", TAG_SECOND,
-            Collections.singletonList("Refactor gamma")),
+            Collections.singletonList("- Refactor gamma")),
         new ScriptCase(
             "prints nothing when previous tag and head resolve to the same commit",
             TAG_SECOND, TAG_SECOND,

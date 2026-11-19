@@ -76,7 +76,7 @@ public class ReleaseBodyScriptTest {
             TAG_CURRENT,
             TAG_CURRENT + "\n",
             "## Changes since the first release",
-            "Fix beta\n"),
+            "- Fix beta\n"),
         new BodyCase(
             "previous tag points at the head commit, so there are no changes",
             TAG_NEXT,
