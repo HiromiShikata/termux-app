@@ -171,4 +171,31 @@ public class ApkUpdateBackgroundPreparationTest {
             Assert.assertEquals(testCase.name, testCase.expectedChangesText, steps.notifiedChangesText);
         }
     }
+
+    private static final class RetryCase {
+        final ApkUpdateBackgroundPreparation.Outcome outcome;
+        final boolean expectedRequestsRetry;
+
+        RetryCase(ApkUpdateBackgroundPreparation.Outcome outcome, boolean expectedRequestsRetry) {
+            this.outcome = outcome;
+            this.expectedRequestsRetry = expectedRequestsRetry;
+        }
+    }
+
+    private static final RetryCase[] RETRY_CASES = {
+        new RetryCase(ApkUpdateBackgroundPreparation.Outcome.NOTIFIED, false),
+        new RetryCase(ApkUpdateBackgroundPreparation.Outcome.NO_NEWER_RELEASE, false),
+        new RetryCase(ApkUpdateBackgroundPreparation.Outcome.DOWNLOAD_FAILED, false),
+        new RetryCase(ApkUpdateBackgroundPreparation.Outcome.RELEASE_LIST_FAILED, true),
+    };
+
+    @Test
+    public void outcomeRequestsRetryOnlyWhenReleaseListFailed() {
+        for (RetryCase retryCase : RETRY_CASES) {
+            Assert.assertEquals(
+                retryCase.outcome.name(),
+                retryCase.expectedRequestsRetry,
+                retryCase.outcome.requestsRetry());
+        }
+    }
 }
