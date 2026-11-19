@@ -11,7 +11,12 @@ public final class ApkUpdateGuide {
         "https://api.github.com/repos/HiromiShikata/termux-app/releases/latest";
 
     public static final String RELEASES_LIST_API_URL =
-        "https://api.github.com/repos/HiromiShikata/termux-app/releases?per_page=30";
+        "https://api.github.com/repos/HiromiShikata/termux-app/releases?per_page=100";
+
+    public static final int RELEASES_LIST_PAGE_SIZE = 100;
+
+    public static final String RELEASES_LIST_API_PAGE_URL_FORMAT =
+        "https://api.github.com/repos/HiromiShikata/termux-app/releases?per_page=%d&page=%d";
 
     public static final String RELEASES_ATOM_FEED_URL =
         "https://github.com/HiromiShikata/termux-app/releases.atom";
@@ -37,6 +42,10 @@ public final class ApkUpdateGuide {
 
     public String getReleasesListApiUrl() {
         return RELEASES_LIST_API_URL;
+    }
+
+    public String getReleasesListApiPageUrl(int page) {
+        return String.format(RELEASES_LIST_API_PAGE_URL_FORMAT, RELEASES_LIST_PAGE_SIZE, page);
     }
 
     public String getReleasesAtomFeedUrl() {

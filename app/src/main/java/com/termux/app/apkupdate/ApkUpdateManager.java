@@ -11,7 +11,10 @@ import androidx.preference.PreferenceManager;
 
 import com.termux.BuildConfig;
 
+import org.json.JSONException;
+
 import java.io.File;
+import java.io.IOException;
 
 public class ApkUpdateManager {
 
@@ -147,6 +150,26 @@ public class ApkUpdateManager {
                 mainHandler.post(() -> listener.onPreviousBuildsFailed(message, false));
             }
         }).start();
+    }
+
+    public java.util.List<ApkRelease> fetchReleasesNewestFirstPaginated(String installedVersionName) throws IOException {
+        java.util.List<ApkRelease> releasesNewestFirst = new java.util.ArrayList<>();
+        int page = 1;
+        while (true) {
+            String json = releaseClient.fetchReleasesListJson(updateGuide.getReleasesListApiPageUrl(page));
+            java.util.List<ApkRelease> pageReleases;
+            try {
+                pageReleases = releaseListParser.parseReleases(json);
+            } catch (JSONException exception) {
+                throw new IOException("Malformed release list page " + page, exception);
+            }
+            releasesNewestFirst.addAll(pageReleases);
+            if (!ReleasePagination.hasMorePagesToRead(pageReleases, ApkUpdateGuide.RELEASES_LIST_PAGE_SIZE,
+                installedVersionName)) {
+                return releasesNewestFirst;
+            }
+            page++;
+        }
     }
 
     public void downloadApk(String downloadUrl, String assetName, long expectedSizeBytes, DownloadListener listener) {
