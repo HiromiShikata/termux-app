@@ -3,6 +3,7 @@ package com.termux.app.apkupdate;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
@@ -73,6 +74,11 @@ public final class ApkUpdateCheckWorker extends Worker {
 
     private void downloadThenNotify(Context context, ApkUpdateManager manager, ApkUpdateAvailability availability,
                                     CountDownLatch latch, AtomicReference<Result> outcome) {
+        File cachedApkFile = findValidatedCachedApk(context, availability);
+        if (cachedApkFile != null) {
+            notifyWithNewerReleases(context, manager, availability, cachedApkFile, latch, outcome);
+            return;
+        }
         manager.downloadApk(availability.getDownloadUrl(), availability.getAssetName(),
             availability.getExpectedSizeBytes(), new ApkUpdateManager.DownloadListener() {
                 @Override
@@ -87,6 +93,22 @@ public final class ApkUpdateCheckWorker extends Worker {
                     latch.countDown();
                 }
             });
+    }
+
+    @Nullable
+    private static File findValidatedCachedApk(Context context, ApkUpdateAvailability availability) {
+        ApkUpdateAvailability pendingAvailability =
+            new ApkUpdatePendingState(new SharedPreferencesApkUpdatePendingStore(context)).load();
+        if (pendingAvailability == null || !isSameReleaseAsset(pendingAvailability, availability)) {
+            return null;
+        }
+        return new ApkUpdateCachedFileResolver().resolveExistingFile(pendingAvailability);
+    }
+
+    private static boolean isSameReleaseAsset(ApkUpdateAvailability first, ApkUpdateAvailability second) {
+        return first.getLatestVersionName().equals(second.getLatestVersionName())
+            && first.getDownloadUrl().equals(second.getDownloadUrl())
+            && first.getAssetName().equals(second.getAssetName());
     }
 
     private static void notifyWithNewerReleases(Context context, ApkUpdateManager manager,
