@@ -139,10 +139,10 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    DOWNLOAD_IN_PROGRESS.set(false);
                     ApkUpdateAvailability downloadedAvailability =
                         availability.withDownloadedFilePath(apkFile.getAbsolutePath());
                     pendingState.save(downloadedAvailability);
+                    DOWNLOAD_IN_PROGRESS.set(false);
                     if (activity.isFinishing()) return;
                     promptController.onUpdateAvailable(downloadedAvailability);
                 }
@@ -201,8 +201,8 @@ public final class ApkUpdateUiController {
             new ApkUpdateManager.DownloadListener() {
                 @Override
                 public void onDownloaded(File apkFile) {
-                    DOWNLOAD_IN_PROGRESS.set(false);
                     pendingState.clear();
+                    DOWNLOAD_IN_PROGRESS.set(false);
                     launchInstall(availability, apkFile);
                 }
 
