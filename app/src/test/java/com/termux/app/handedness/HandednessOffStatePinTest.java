@@ -29,7 +29,7 @@ public class HandednessOffStatePinTest {
 
         Assert.assertSame(root.findViewById(R.id.terminal_toolbar_left_column), container.getChildAt(0));
         assertChildren((LinearLayout) root.findViewById(R.id.terminal_toolbar_left_column),
-            R.id.terminal_toolbar_voice_patrol_button, R.id.terminal_toolbar_handedness_switch_button);
+            R.id.terminal_toolbar_voice_console_button, R.id.terminal_toolbar_handedness_switch_button);
         Assert.assertSame(root.findViewById(R.id.terminal_toolbar_view_pager), container.getChildAt(1));
         Assert.assertSame(root.findViewById(R.id.terminal_toolbar_right_column), container.getChildAt(2));
     }

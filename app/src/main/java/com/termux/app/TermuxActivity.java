@@ -44,23 +44,6 @@ import com.termux.app.apkupdate.UpdateTagUpdateRunner;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
-import com.termux.app.voicepatrol.AndroidLogVoicePatrolLog;
-import com.termux.app.voicepatrol.ConsoleLiveToolCallForwarder;
-import com.termux.app.voicepatrol.HttpUrlLiveToolCallHttpClient;
-import com.termux.app.voicepatrol.TermuxVoicePatrolPorts;
-import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
-import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
-import com.termux.app.voicepatrol.TtsVoicePatrolSpeech;
-import com.termux.app.voicepatrol.VoicePatrolCall;
-import com.termux.app.voicepatrol.VoicePatrolCallOrder;
-import com.termux.app.voicepatrol.VoicePatrolController;
-import com.termux.app.voicepatrol.VoicePatrolEndpointUrl;
-import com.termux.app.voicepatrol.VoicePatrolRuntime;
-import com.termux.app.voicepatrol.VoicePatrolOwnerCallCache;
-import com.termux.app.voicepatrol.VoicePatrolService;
-import com.termux.app.voicepatrol.VoicePatrolToolbarLabel;
-import com.termux.app.voicepatrol.VoicePatrolUnansweredCallBodies;
-import com.termux.app.voicepatrol.WebRtcLiveVoiceConnectionFactory;
 import com.termux.app.appopen.AppOpenTagController;
 import com.termux.app.appopen.InstalledAppLauncher;
 import com.termux.app.browser.BrowserInboundViewUrl;
@@ -89,10 +72,15 @@ import com.termux.app.ownercall.OwnerCallDialogPlacement;
 import com.termux.app.ownercall.OwnerCallDialogRelayoutWatcher;
 import com.termux.app.ownercall.OwnerCallDialogStoredPlacement;
 import com.termux.app.ownercall.OwnerCallDialogViewport;
-import com.termux.app.ownercall.OwnerCallFileReader;
-import com.termux.app.ownercall.HttpOwnerCallFileTransport;
 import com.termux.app.ownercall.OwnerCallFileUrl;
 import com.termux.app.ownercall.OwnerCallInbox;
+import com.termux.app.voiceconsole.VoiceConsoleController;
+import com.termux.app.voiceconsole.VoiceConsoleEndpointUrl;
+import com.termux.app.voiceconsole.VoiceConsoleFailureMessages;
+import com.termux.app.voiceconsole.VoiceConsoleRuntime;
+import com.termux.app.voiceconsole.VoiceConsoleService;
+import com.termux.app.voiceconsole.VoiceConsoleToolbarLabel;
+import com.termux.app.voiceconsole.WebRtcLiveVoiceConnectionFactory;
 import com.termux.app.ownercall.OwnerCallUnansweredSelection;
 import com.termux.app.sessiondefinition.SessionDefinitionAutoReloadScheduler;
 import com.termux.app.sessiondefinition.SessionReconnectScheduler;
@@ -132,7 +120,6 @@ import com.termux.app.terminal.session.SessionDefinitionPrewarm;
 import com.termux.app.terminal.session.SessionEagerLoadPacer;
 import com.termux.app.terminal.session.SessionEagerLoader;
 import com.termux.app.terminal.TermuxSessionsListViewController;
-import com.termux.app.terminal.io.TerminalEnterKeyController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
@@ -160,12 +147,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * A terminal emulator activity.
@@ -177,7 +160,7 @@ import java.util.concurrent.Executors;
  * </ul>
  * about memory leaks.
  */
-public final class TermuxActivity extends AppCompatActivity implements ServiceConnection, VoicePatrolTerminalSessions {
+public final class TermuxActivity extends AppCompatActivity implements ServiceConnection {
 
     /**
      * The connection to the {@link TermuxService}. Requested in {@link #onCreate(Bundle)} with a call to
@@ -282,23 +265,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final OwnerCallInbox mOwnerCallInbox = new OwnerCallInbox();
 
-    private final ExecutorService mVoicePatrolOwnerCallReadExecutor = Executors.newSingleThreadExecutor(runnable -> {
-        Thread reader = new Thread(runnable, "termux-voice-patrol-owner-calls");
-        reader.setDaemon(true);
-        return reader;
-    });
-
-    private final VoicePatrolOwnerCallCache mVoicePatrolOwnerCallCache = new VoicePatrolOwnerCallCache(
-        new OwnerCallFileReader(new HttpOwnerCallFileTransport())::readCallsOfSession,
-        mVoicePatrolOwnerCallReadExecutor,
-        runnable -> new Handler(Looper.getMainLooper()).post(runnable),
-        new AndroidLogVoicePatrolLog());
-
-    private static final int REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO = 4107;
-
-    private final TerminalEnterKeyController mVoicePatrolReplyEnterKeyController = new TerminalEnterKeyController(this);
-
-    private boolean mVoicePatrolActivityVisible;
+    private static final int REQUEST_CODE_VOICE_CONSOLE_RECORD_AUDIO = 4107;
 
     private OwnerCallDialogController mOwnerCallDialogController;
 
@@ -511,7 +478,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mSessionSwitchPickerController = new SessionSwitchPickerController(this);
 
         setSessionNavigationButtonsView();
-        setVoicePatrolButtonView();
+        setVoiceConsoleButtonView();
 
         buildActivityComponents();
 
@@ -721,8 +688,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onResume() {
         super.onResume();
-        mVoicePatrolActivityVisible = true;
-        updateVoicePatrolButtonLabel();
+        updateVoiceConsoleButtonLabel();
 
         applyLeftHandedModeFromPreferences();
 
@@ -744,12 +710,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             component.onActivityResume();
 
         mIsOnResumeAfterOnCreate = false;
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mVoicePatrolActivityVisible = false;
     }
 
     @Override
@@ -778,9 +738,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public void onDestroy() {
-        VoicePatrolRuntime.removeListener(mVoicePatrolRunningListener);
-        mVoicePatrolOwnerCallCache.close();
-        mVoicePatrolOwnerCallReadExecutor.shutdownNow();
+        VoiceConsoleRuntime.removeListener(mVoiceConsoleRunningListener);
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
@@ -1418,108 +1376,59 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mJumpToCallingSessionButton.setOnClickListener(v -> jumpToTopmostCallingSession());
     }
 
-    private void setVoicePatrolButtonView() {
-        findViewById(R.id.terminal_toolbar_voice_patrol_button).setOnClickListener(v -> toggleVoicePatrol());
-        VoicePatrolRuntime.addListener(mVoicePatrolRunningListener);
-        updateVoicePatrolButtonLabel();
+    private void setVoiceConsoleButtonView() {
+        findViewById(R.id.terminal_toolbar_voice_console_button).setOnClickListener(v -> toggleVoiceConsole());
+        VoiceConsoleRuntime.addListener(mVoiceConsoleRunningListener);
+        updateVoiceConsoleButtonLabel();
     }
 
-    private final VoicePatrolRuntime.Listener mVoicePatrolRunningListener =
-        running -> updateVoicePatrolButtonLabel();
+    private final VoiceConsoleRuntime.Listener mVoiceConsoleRunningListener =
+        running -> updateVoiceConsoleButtonLabel();
 
-    private void updateVoicePatrolButtonLabel() {
-        findViewById(R.id.terminal_toolbar_voice_patrol_button).setContentDescription(getString(
-            VoicePatrolToolbarLabel.stringResourceFor(VoicePatrolRuntime.isRunning())));
+    private void updateVoiceConsoleButtonLabel() {
+        findViewById(R.id.terminal_toolbar_voice_console_button).setContentDescription(getString(
+            VoiceConsoleToolbarLabel.stringResourceFor(VoiceConsoleRuntime.isRunning())));
     }
 
-    private void toggleVoicePatrol() {
-        if (VoicePatrolRuntime.isRunning()) {
-            VoicePatrolRuntime.stop();
-            stopService(new Intent(this, VoicePatrolService.class));
-            updateVoicePatrolButtonLabel();
+    private void toggleVoiceConsole() {
+        if (VoiceConsoleRuntime.isRunning()) {
+            stopVoiceConsole();
             return;
         }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             == PackageManager.PERMISSION_GRANTED) {
-            startVoicePatrol();
+            startVoiceConsole();
         } else {
             ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO);
+                new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_CODE_VOICE_CONSOLE_RECORD_AUDIO);
         }
     }
 
-    private void startVoicePatrol() {
+    private void startVoiceConsole() {
         String endpointUrl;
-        String toolCallsUrl;
         try {
-            String sessionDefinitionUrl = getPreferences().getSessionDefinitionUrl();
-            endpointUrl = VoicePatrolEndpointUrl.resolve(sessionDefinitionUrl);
-            toolCallsUrl = VoicePatrolEndpointUrl.resolveToolCalls(sessionDefinitionUrl);
+            endpointUrl = VoiceConsoleEndpointUrl.resolve(getPreferences().getSessionDefinitionUrl());
         } catch (IllegalArgumentException unusableSessionDefinition) {
-            Logger.logWarn(LOG_TAG, "voice patrol cannot start: " + unusableSessionDefinition.getMessage());
-            Logger.showToast(this, getString(R.string.voice_patrol_no_session_definition), true);
+            Logger.logWarn(LOG_TAG, "voice console cannot start: " + unusableSessionDefinition.getMessage());
+            Logger.showToast(this, getString(R.string.voice_console_no_session_definition), true);
             return;
         }
-        ContextCompat.startForegroundService(this, VoicePatrolService.startIntent(this));
-        AndroidLogVoicePatrolLog log = new AndroidLogVoicePatrolLog();
-        TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(new TermuxVoicePatrolActivityBridge(this), log);
-        ExecutorService toolCallExecutor = Executors.newCachedThreadPool(runnable -> {
-            Thread worker = new Thread(runnable, "termux-voice-patrol-tool-calls");
-            worker.setDaemon(true);
-            return worker;
-        });
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        VoicePatrolRuntime.start(new VoicePatrolController(endpointUrl, ports,
-            new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log,
-            new ConsoleLiveToolCallForwarder(new HttpUrlLiveToolCallHttpClient(), toolCallsUrl),
-            toolCallExecutor, mainHandler::post));
-        updateVoicePatrolButtonLabel();
+        ContextCompat.startForegroundService(this, VoiceConsoleService.startIntent(this));
+        VoiceConsoleRuntime.start(new VoiceConsoleController(endpointUrl,
+            new WebRtcLiveVoiceConnectionFactory(this), this::onVoiceConsoleFailed));
+        updateVoiceConsoleButtonLabel();
     }
 
-    @Override
-    public List<String> sessionNames() {
-        if (mTermuxSessionListViewController == null) {
-            return new ArrayList<>();
-        }
-        return mTermuxSessionListViewController.getSessionNamesByIndex();
+    private void onVoiceConsoleFailed(String reason) {
+        Logger.logWarn(LOG_TAG, "voice console failed: " + reason);
+        Logger.showToast(this, getString(VoiceConsoleFailureMessages.stringResourceFor(reason)), true);
+        stopVoiceConsole();
     }
 
-    @Override
-    public List<Integer> orderedSessionIndexes() {
-        if (mTermuxSessionListViewController == null) {
-            return new ArrayList<>();
-        }
-        return mTermuxSessionListViewController.getOrderedSessionIndexes();
-    }
-
-    @Override
-    public Set<String> pendingCallSessionNames() {
-        if (mTermuxSessionListViewController == null) {
-            return new HashSet<>();
-        }
-        return mTermuxSessionListViewController.getPendingCallToUserSessionNames();
-    }
-
-    @Override
-    public Map<String, String> unansweredCallBodiesBySessionName() {
-        return VoicePatrolUnansweredCallBodies.bodiesBySessionName(pendingCallSessionNames(),
-            mVoicePatrolOwnerCallCache, this::ownerCallFileUrlForSession,
-            this::ownerCallAnsweredThroughTimeMillis, System.currentTimeMillis());
-    }
-
-    @Override
-    public boolean isActivityVisible() {
-        return mVoicePatrolActivityVisible;
-    }
-
-    @Override
-    public void switchToSessionAtIndex(int sessionIndex) {
-        mTermuxSessionListViewController.switchToSessionAtIndex(sessionIndex);
-    }
-
-    @Override
-    public boolean submitVoiceReplyToCurrentSession(String replyText) {
-        return mVoicePatrolReplyEnterKeyController.submitVoiceReply(replyText);
+    private void stopVoiceConsole() {
+        VoiceConsoleRuntime.stop();
+        stopService(new Intent(this, VoiceConsoleService.class));
+        updateVoiceConsoleButtonLabel();
     }
 
     private void jumpToTopmostCallingSession() {
@@ -1851,12 +1760,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CODE_VOICE_PATROL_RECORD_AUDIO) {
+        if (requestCode == REQUEST_CODE_VOICE_CONSOLE_RECORD_AUDIO) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted) {
-                startVoicePatrol();
+                startVoiceConsole();
             } else {
-                Logger.showToast(this, getString(R.string.voice_patrol_microphone_permission_required), true);
+                Logger.showToast(this, getString(R.string.voice_console_microphone_permission_required), true);
             }
         }
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: "  + Arrays.toString(permissions) + ", grantResults: "  + Arrays.toString(grantResults));

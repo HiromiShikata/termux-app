@@ -51,33 +51,6 @@ public class TerminalEnterKeyController {
         return ownerContentSubmitted;
     }
 
-    public boolean submitVoiceReply(String replyText) {
-        return VoiceReplySubmitter.submit(new VoiceReplySubmitter.ReplyTerminal() {
-            @Override
-            public boolean acceptsOwnerInput() {
-                return inputReachesTheProgramReadingTheTerminal();
-            }
-
-            @Override
-            public void pasteOwnerContent(String text) {
-                TerminalSession session = mActivity.getCurrentSession();
-                if (session != null) {
-                    session.getEmulator().paste(text);
-                }
-            }
-
-            @Override
-            public void sendEnterAfterOwnerContent() {
-                sendEnter(true);
-            }
-
-            @Override
-            public void recordGenuineReply() {
-                recordReplyOnSubmit();
-            }
-        }, replyText);
-    }
-
     private boolean reconnectAndDeliverAfterReconnect(@Nullable EditText editText) {
         TerminalSession session = mActivity.getCurrentSession();
         TermuxTerminalSessionActivityClient sessionClient = mActivity.getTermuxTerminalSessionClient();
