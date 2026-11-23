@@ -10,7 +10,17 @@ import java.nio.charset.StandardCharsets;
 public final class HttpUrlLiveToolCallHttpClient implements LiveToolCallHttpClient {
 
     private static final String JSON_CONTENT_TYPE = "application/json";
-    private static final int TIMEOUT_MILLIS = 15_000;
+    private static final int DEFAULT_TIMEOUT_MILLIS = 15_000;
+
+    private final int mTimeoutMillis;
+
+    public HttpUrlLiveToolCallHttpClient() {
+        this(DEFAULT_TIMEOUT_MILLIS);
+    }
+
+    HttpUrlLiveToolCallHttpClient(int timeoutMillis) {
+        mTimeoutMillis = timeoutMillis;
+    }
 
     @Override
     public LiveSessionHttpResponse post(String endpointUrl, String jsonBody) throws IOException {
@@ -18,8 +28,8 @@ public final class HttpUrlLiveToolCallHttpClient implements LiveToolCallHttpClie
         try {
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
-            connection.setConnectTimeout(TIMEOUT_MILLIS);
-            connection.setReadTimeout(TIMEOUT_MILLIS);
+            connection.setConnectTimeout(mTimeoutMillis);
+            connection.setReadTimeout(mTimeoutMillis);
             connection.setRequestProperty("Content-Type", JSON_CONTENT_TYPE);
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(jsonBody.getBytes(StandardCharsets.UTF_8));
