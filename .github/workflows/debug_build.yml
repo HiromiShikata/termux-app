@@ -93,6 +93,12 @@ jobs:
             fi
           done
 
+      - name: Generate sha256sums (builds not re-signed for main)
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        shell: bash {0}
+        run: |
+          exit_on_error() { echo "$1"; exit 1; }
+
           echo "Generating sha25sums file"
           if ! (cd "$APK_DIR_PATH"; sha256sum \
             "${APK_BASENAME_PREFIX}_universal.apk" \

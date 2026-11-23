@@ -14,6 +14,21 @@ die() {
   exit 1
 }
 
+# fail_with_output <message> <apksigner output>: reports a failed check and the full apksigner output of that run.
+# The output contains only public certificate digests and DNs.
+fail_with_output() {
+  echo "ERROR: $1" >&2
+  echo "apksigner path: $APKSIGNER" >&2
+  printf '%s\n' "$2" | sed 's/^/apksigner output: /' >&2
+  exit 1
+}
+
+# cert_sha_from_output <apksigner verify output>: prints the first certificate SHA-256 digest, whatever the
+# label before it (e.g. "Signer #1 certificate", "Signer (minSdkVersion=24) certificate"). Prints nothing when absent.
+cert_sha_from_output() {
+  awk '/certificate SHA-256 digest:/ { sub(/^.*digest: /, ""); sub(/[[:space:]]+$/, ""); print; exit }' <<<"$1"
+}
+
 if [ "$#" -ne 1 ]; then
   die "usage: $0 <apk>"
 fi
@@ -39,14 +54,14 @@ V3_OUT="$("$APKSIGNER" verify --print-certs -v "$APK" 2>&1)" \
 V2_OUT="$("$APKSIGNER" verify --print-certs -v --max-sdk-version 27 "$APK" 2>&1)" \
   || die "apksigner could not verify $APK (v2 scheme): $V2_OUT"
 
-V3_SHA="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<<"$V3_OUT" | sed -n '1p')"
-V2_SHA="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<<"$V2_OUT" | sed -n '1p')"
+V3_SHA="$(cert_sha_from_output "$V3_OUT")"
+V2_SHA="$(cert_sha_from_output "$V2_OUT")"
 
 if [ "$V2_SHA" != "$OLD_CERT_SHA256" ]; then
-  die "$APK: v2 signer SHA-256 is '${V2_SHA:-<none>}', expected $OLD_CERT_SHA256"
+  fail_with_output "$APK: v2 signer SHA-256 is '${V2_SHA:-<none>}', expected $OLD_CERT_SHA256" "$V2_OUT"
 fi
 if [ "$V3_SHA" != "$NEW_CERT_SHA256" ]; then
-  die "$APK: v3 signer SHA-256 is '${V3_SHA:-<none>}', expected $NEW_CERT_SHA256"
+  fail_with_output "$APK: v3 signer SHA-256 is '${V3_SHA:-<none>}', expected $NEW_CERT_SHA256" "$V3_OUT"
 fi
 
 echo "OK: $APK verifies; v2 signer $OLD_CERT_SHA256, v3 signer $NEW_CERT_SHA256"
