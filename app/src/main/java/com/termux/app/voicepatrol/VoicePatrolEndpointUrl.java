@@ -6,6 +6,7 @@ import java.net.URL;
 public final class VoicePatrolEndpointUrl {
 
     static final String LIVE_SESSIONS_PATH = "/api/live/sessions";
+    static final String LIVE_TOOL_CALLS_PATH = "/api/live/tool-calls";
 
     private static final String ACCESS_TOKEN_PARAMETER_PREFIX = "k=";
 
@@ -13,6 +14,14 @@ public final class VoicePatrolEndpointUrl {
     }
 
     public static String resolve(String sessionDefinitionUrl) {
+        return resolveForPath(sessionDefinitionUrl, LIVE_SESSIONS_PATH);
+    }
+
+    public static String resolveToolCalls(String sessionDefinitionUrl) {
+        return resolveForPath(sessionDefinitionUrl, LIVE_TOOL_CALLS_PATH);
+    }
+
+    private static String resolveForPath(String sessionDefinitionUrl, String path) {
         String trimmed = sessionDefinitionUrl == null ? "" : sessionDefinitionUrl.trim();
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException("the session definition URL is empty");
@@ -28,7 +37,7 @@ public final class VoicePatrolEndpointUrl {
             throw new IllegalArgumentException("the session definition URL has no authority");
         }
         String accessToken = accessTokenOf(sessionDefinition.getQuery());
-        return sessionDefinition.getProtocol() + "://" + authority + LIVE_SESSIONS_PATH
+        return sessionDefinition.getProtocol() + "://" + authority + path
             + (accessToken == null ? "" : "?k=" + accessToken);
     }
 

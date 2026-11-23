@@ -48,7 +48,10 @@ public class VoicePatrolRuntimeTest {
             },
             (endpointUrl, listener) -> null,
             text -> {
-            });
+            },
+            (toolName, argumentsJson, sessionName) -> "{}",
+            Runnable::run,
+            Runnable::run);
         VoicePatrolRuntime.start(controller);
         assertTrue(VoicePatrolRuntime.isRunning());
         ShadowLooper looper = Shadows.shadowOf(Looper.getMainLooper());

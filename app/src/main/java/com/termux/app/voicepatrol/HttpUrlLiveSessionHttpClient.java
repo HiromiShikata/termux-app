@@ -34,7 +34,7 @@ public final class HttpUrlLiveSessionHttpClient implements LiveSessionHttpClient
         }
     }
 
-    private static String readFully(InputStream stream) throws IOException {
+    static String readFully(InputStream stream) throws IOException {
         try (InputStream input = stream) {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             byte[] chunk = new byte[4096];

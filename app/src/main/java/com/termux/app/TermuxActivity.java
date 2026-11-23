@@ -45,6 +45,8 @@ import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.tts.TtsManager;
 import com.termux.app.voicepatrol.AndroidLogVoicePatrolLog;
+import com.termux.app.voicepatrol.ConsoleLiveToolCallForwarder;
+import com.termux.app.voicepatrol.HttpUrlLiveToolCallHttpClient;
 import com.termux.app.voicepatrol.TermuxVoicePatrolPorts;
 import com.termux.app.voicepatrol.TermuxVoicePatrolActivityBridge;
 import com.termux.app.voicepatrol.VoicePatrolTerminalSessions;
@@ -1448,8 +1450,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void startVoicePatrol() {
         String endpointUrl;
+        String toolCallsUrl;
         try {
-            endpointUrl = VoicePatrolEndpointUrl.resolve(getPreferences().getSessionDefinitionUrl());
+            String sessionDefinitionUrl = getPreferences().getSessionDefinitionUrl();
+            endpointUrl = VoicePatrolEndpointUrl.resolve(sessionDefinitionUrl);
+            toolCallsUrl = VoicePatrolEndpointUrl.resolveToolCalls(sessionDefinitionUrl);
         } catch (IllegalArgumentException unusableSessionDefinition) {
             Logger.logWarn(LOG_TAG, "voice patrol cannot start: " + unusableSessionDefinition.getMessage());
             Logger.showToast(this, getString(R.string.voice_patrol_no_session_definition), true);
@@ -1458,8 +1463,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         ContextCompat.startForegroundService(this, VoicePatrolService.startIntent(this));
         AndroidLogVoicePatrolLog log = new AndroidLogVoicePatrolLog();
         TermuxVoicePatrolPorts ports = new TermuxVoicePatrolPorts(new TermuxVoicePatrolActivityBridge(this), log);
+        ExecutorService toolCallExecutor = Executors.newCachedThreadPool(runnable -> {
+            Thread worker = new Thread(runnable, "termux-voice-patrol-tool-calls");
+            worker.setDaemon(true);
+            return worker;
+        });
+        Handler mainHandler = new Handler(Looper.getMainLooper());
         VoicePatrolRuntime.start(new VoicePatrolController(endpointUrl, ports,
-            new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log));
+            new TtsVoicePatrolSpeech(mTtsManager), ports, new WebRtcLiveVoiceConnectionFactory(this), log,
+            new ConsoleLiveToolCallForwarder(new HttpUrlLiveToolCallHttpClient(), toolCallsUrl),
+            toolCallExecutor, mainHandler::post));
         updateVoicePatrolButtonLabel();
     }
 

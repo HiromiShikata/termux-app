@@ -37,7 +37,10 @@ public class VoicePatrolRuntimeListenerTest {
             },
             (endpointUrl, listener) -> null,
             message -> {
-            });
+            },
+            (toolName, argumentsJson, sessionName) -> "{}",
+            Runnable::run,
+            Runnable::run);
     }
 
     @Test

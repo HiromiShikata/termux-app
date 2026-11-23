@@ -13,4 +13,5 @@ public class LiveToolCallsTest {
  @Test public void nonStringReplyTextIsInvalid(){assertFalse(LiveToolCalls.replyTextOf("{\"replyText\":3}").isValid());}
  @Test public void malformedArgumentsAreInvalid(){assertFalse(LiveToolCalls.replyTextOf("not json").isValid());assertFalse(LiveToolCalls.replyTextOf("[]").isValid());}
  @Test public void emptyReplyTextIsRepresentedForControllerValidation(){LiveToolCalls.ReplyText reply=LiveToolCalls.replyTextOf("{\"replyText\":\"\"}");assertTrue(reply.isValid());assertEquals("",reply.getValue());}
+ @Test public void localToolNamesAreLocalAndOthersAreNot(){String[][] c={{"session_reply_send","true"},{"session_skip","true"},{"owner_call_repeat","true"},{"example_read_tool","false"},{"","false"}};for(String[] x:c)assertEquals(x[0],Boolean.parseBoolean(x[1]),LiveToolCalls.isLocal(x[0]));}
 }

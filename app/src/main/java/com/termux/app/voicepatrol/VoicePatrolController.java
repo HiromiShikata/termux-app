@@ -3,9 +3,11 @@ package com.termux.app.voicepatrol;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 public class VoicePatrolController implements LiveVoiceConnectionListener {
 
@@ -16,6 +18,7 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
     private static final String CONTEXT_CONTENT_HEADER = "Session name: %s\nOwner call body (already read aloud to the owner; do not read it aloud):\n%s";
     private static final String CONTEXT_EVENT_ID_PREFIX = "patrol-context";
     private static final String EVENT_ID_PREFIX = "patrol-event-";
+    private static final String TOOL_CALL_FAILED_ERROR = "tool_call_failed";
 
     private final String mEndpointUrl;
     private final VoicePatrolCallSource mCallSource;
@@ -23,6 +26,9 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
     private final VoicePatrolSessionActions mSessions;
     private final LiveVoiceConnectionFactory mConnections;
     private final VoicePatrolLog mLog;
+    private final LiveToolCallForwarder mToolCalls;
+    private final Executor mBackground;
+    private final Executor mMainThread;
 
     private final Set<String> mExcludedSessionNames = new HashSet<>();
 
@@ -40,13 +46,19 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
                                  VoicePatrolSpeech speech,
                                  VoicePatrolSessionActions sessions,
                                  LiveVoiceConnectionFactory connections,
-                                 VoicePatrolLog log) {
+                                 VoicePatrolLog log,
+                                 LiveToolCallForwarder toolCalls,
+                                 Executor background,
+                                 Executor mainThread) {
         mEndpointUrl = endpointUrl;
         mCallSource = callSource;
         mSpeech = speech;
         mSessions = sessions;
         mConnections = connections;
         mLog = log;
+        mToolCalls = toolCalls;
+        mBackground = background;
+        mMainThread = mainThread;
     }
 
     public VoicePatrolPhase getPhase() {
@@ -223,6 +235,10 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
     }
 
     private void handleFunctionCall(LiveServerEvent event) {
+        if (!LiveToolCalls.isLocal(event.getName())) {
+            forwardToolCall(event);
+            return;
+        }
         String output;
         boolean advanceToNextCall = false;
         boolean repeatCurrentCall = false;
@@ -250,12 +266,9 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
             mExcludedSessionNames.add(mCurrentCall.getSessionName());
             output = statusOutput("skipped");
             advanceToNextCall = true;
-        } else if (LiveToolCalls.OWNER_CALL_REPEAT.equals(event.getName())) {
+        } else {
             output = statusOutput("repeating");
             repeatCurrentCall = true;
-        } else {
-            mLog.warn("Unknown tool call: " + event.getName());
-            output = errorOutput("unknown_tool");
         }
         sendEvent(LiveEvents.functionCallOutput(nextEventId(), event.getCallId(), output));
         sendEvent(LiveEvents.responseCreate(nextEventId()));
@@ -264,6 +277,34 @@ public class VoicePatrolController implements LiveVoiceConnectionListener {
         } else if (repeatCurrentCall) {
             beginRead(mCurrentCall, false);
         }
+    }
+
+    private void forwardToolCall(LiveServerEvent event) {
+        String toolName = event.getName();
+        String callId = event.getCallId();
+        String arguments = event.getArguments();
+        String sessionName = mCurrentCall == null ? null : mCurrentCall.getSessionName();
+        LiveVoiceConnection connection = mConnection;
+        mBackground.execute(() -> {
+            String output;
+            try {
+                output = mToolCalls.forward(toolName, arguments, sessionName);
+            } catch (IOException | RuntimeException failure) {
+                mLog.warn("Forwarding tool call " + toolName + " failed: " + failure.getMessage());
+                output = errorOutput(TOOL_CALL_FAILED_ERROR);
+            }
+            String answer = output;
+            mMainThread.execute(() -> sendForwardedOutput(connection, callId, answer));
+        });
+    }
+
+    private void sendForwardedOutput(LiveVoiceConnection connection, String callId, String output) {
+        if (connection == null || connection != mConnection) {
+            mLog.warn("A tool call answer arrived after its live connection closed: " + callId);
+            return;
+        }
+        sendEvent(LiveEvents.functionCallOutput(nextEventId(), callId, output));
+        sendEvent(LiveEvents.responseCreate(nextEventId()));
     }
 
     private void enterWaiting(Set<String> names) {
