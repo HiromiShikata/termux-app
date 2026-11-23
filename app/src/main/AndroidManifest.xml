@@ -316,7 +316,7 @@
             android:value="true" />
 
             <service
-            android:name="com.termux.app.voicepatrol.VoicePatrolService"
+            android:name="com.termux.app.voiceconsole.VoiceConsoleService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 

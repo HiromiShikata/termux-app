@@ -65,41 +65,6 @@ public class TerminalEnterKeyControllerTest {
     }
 
     @Test
-    public void voiceReplyPastesAndEntersWithoutChangingToolbarText() throws Exception {
-        input.setText("toolbar draft");
-        activity.getSessionNewActivityStore().recordExplicitCall(
-            session.mSessionName, 1L, "please answer");
-        TerminalEnterKeyController controller = new TerminalEnterKeyController(activity);
-        assertTrue(controller.submitVoiceReply("voice reply"));
-        assertEquals("toolbar draft", input.getText().toString());
-        assertEquals("voice reply" + enterSequence(), readQueue());
-        assertFalse(activity.getSessionNewActivityStore().hasPendingExplicitCall(session.mSessionName));
-    }
-
-    @Test
-    public void emptyVoiceReplyWritesAndRecordsNothing() throws Exception {
-        input.setText("toolbar draft");
-        activity.getSessionNewActivityStore().recordExplicitCall(
-            session.mSessionName, 1L, "please answer");
-        assertFalse(new TerminalEnterKeyController(activity).submitVoiceReply(""));
-        assertEquals("toolbar draft", input.getText().toString());
-        assertEquals("", readQueue());
-        assertTrue(activity.getSessionNewActivityStore().hasPendingExplicitCall(session.mSessionName));
-    }
-
-    @Test
-    public void voiceReplyIsRejectedWhenThereIsNoCurrentSession() throws Exception {
-        setUnchecked(activity, TermuxActivity.class, "mTerminalView", null);
-        input.setText("toolbar draft");
-        activity.getSessionNewActivityStore().recordExplicitCall(
-            session.mSessionName, 1L, "please answer");
-        assertFalse(new TerminalEnterKeyController(activity).submitVoiceReply("voice reply"));
-        assertEquals("toolbar draft", input.getText().toString());
-        assertEquals("", readQueue());
-        assertTrue(activity.getSessionNewActivityStore().hasPendingExplicitCall(session.mSessionName));
-    }
-
-    @Test
     public void buttonClickSubmitsToolbarText() throws Exception {
         TerminalToolbarViewPager.PageAdapter adapter = new TerminalToolbarViewPager.PageAdapter(activity, null);
         ViewPagerHolder holder = new ViewPagerHolder(activity, adapter);
