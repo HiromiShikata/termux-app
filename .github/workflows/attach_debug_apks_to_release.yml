@@ -21,7 +21,7 @@ jobs:
         with:
           ref: ${{ env.GITHUB_REF }}
 
-      - name: Build and attach APKs to release
+      - name: Build APKs for release
         shell: bash {0}
         env:
           PACKAGE_VARIANT: ${{ matrix.package_variant }}
@@ -44,6 +44,12 @@ jobs:
           APK_VERSION_TAG="$RELEASE_VERSION_NAME+${{ env.PACKAGE_VARIANT }}-github-debug"
           APK_BASENAME_PREFIX="termux-app_$APK_VERSION_TAG"
 
+          # Used by the signing, verification and attach steps later
+          echo "RELEASE_VERSION_NAME=$RELEASE_VERSION_NAME" >> $GITHUB_ENV
+          echo "APK_DIR_PATH=$APK_DIR_PATH" >> $GITHUB_ENV
+          echo "APK_VERSION_TAG=$APK_VERSION_TAG" >> $GITHUB_ENV
+          echo "APK_BASENAME_PREFIX=$APK_BASENAME_PREFIX" >> $GITHUB_ENV
+
           echo "Building APKs for 'APK_VERSION_TAG' release"
           export TERMUX_APK_VERSION_TAG="$APK_VERSION_TAG" # Used by app/build.gradle
           export TERMUX_PACKAGE_VARIANT="${{ env.PACKAGE_VARIANT }}" # Used by app/build.gradle
@@ -59,7 +65,44 @@ jobs:
             fi
           done
 
-          echo "Generating sha25sums file"
+      - name: Re-sign APKs with the rotated release signing key and verify signers
+        shell: bash {0}
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_SIGNING_LINEAGE_BASE64: ${{ secrets.RELEASE_SIGNING_LINEAGE_BASE64 }}
+        run: |
+          exit_on_error() {
+              echo "$1"
+              echo "Deleting '$RELEASE_VERSION_NAME' release and '$GITHUB_REF' tag"
+              hub release delete "$RELEASE_VERSION_NAME"
+              git push --delete origin "$GITHUB_REF"
+              exit 1
+          }
+
+          for abi in universal arm64-v8a armeabi-v7a x86_64 x86; do
+            apk="$APK_DIR_PATH/${APK_BASENAME_PREFIX}_$abi.apk"
+            if ! scripts/sign-release-apk.sh "$apk" "$apk.signed"; then
+              exit_on_error "Re-signing '$abi' APK failed for '$APK_VERSION_TAG' release."
+            fi
+            mv -f "$apk.signed" "$apk"
+            if ! scripts/verify-release-apk-signers.sh "$apk"; then
+              exit_on_error "Signer verification failed for '$abi' APK of '$APK_VERSION_TAG' release."
+            fi
+          done
+
+      - name: Generate sha256sums and attach APKs to release
+        shell: bash {0}
+        run: |
+          exit_on_error() {
+              echo "$1"
+              echo "Deleting '$RELEASE_VERSION_NAME' release and '$GITHUB_REF' tag"
+              hub release delete "$RELEASE_VERSION_NAME"
+              git push --delete origin "$GITHUB_REF"
+              exit 1
+          }
+
+          echo "Generating sha25sums file from re-signed APKs"
           if ! (cd "$APK_DIR_PATH"; sha256sum \
             "${APK_BASENAME_PREFIX}_universal.apk" \
             "${APK_BASENAME_PREFIX}_arm64-v8a.apk" \
@@ -82,3 +125,9 @@ jobs:
           "$RELEASE_VERSION_NAME"; then
             exit_on_error "Attach APKs to release failed for '$APK_VERSION_TAG' release."
           fi
+
+      - name: Remove decoded release signing files
+        if: always()
+        shell: bash {0}
+        run: |
+          rm -rf "$RUNNER_TEMP"/sign-release-apk.*
