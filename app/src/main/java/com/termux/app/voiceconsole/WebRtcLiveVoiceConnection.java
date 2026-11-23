@@ -159,8 +159,8 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
     private void applyAnswer(String answerSdp) {
         mPeerConnection.setRemoteDescription(new SetObserver(
-            () -> applyStep(mHandshake.onRemoteDescriptionApplied()),
-            reason -> applyStep(mHandshake.onRemoteDescriptionFailed())),
+            () -> postToMain(() -> applyStep(mHandshake.onRemoteDescriptionApplied())),
+            reason -> postToMain(() -> applyStep(mHandshake.onRemoteDescriptionFailed()))),
             new SessionDescription(SessionDescription.Type.ANSWER, answerSdp));
     }
 
@@ -178,8 +178,8 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
             postToMain(() -> {
                 mLocalOfferSdp = offer.description;
                 mPeerConnection.setLocalDescription(new SetObserver(
-                    () -> applyStep(mHandshake.onLocalDescriptionSet()),
-                    reason -> applyStep(mHandshake.onNegotiationFailed(LOCAL_DESCRIPTION_FAILED_REASON))),
+                    () -> postToMain(() -> applyStep(mHandshake.onLocalDescriptionSet())),
+                    reason -> postToMain(() -> applyStep(mHandshake.onNegotiationFailed(LOCAL_DESCRIPTION_FAILED_REASON)))),
                     offer);
             });
         }
