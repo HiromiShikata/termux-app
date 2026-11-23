@@ -14,6 +14,12 @@ public final class LiveToolCalls {
     private LiveToolCalls() {
     }
 
+    public static boolean isLocal(String toolName) {
+        return SESSION_REPLY_SEND.equals(toolName)
+            || SESSION_SKIP.equals(toolName)
+            || OWNER_CALL_REPEAT.equals(toolName);
+    }
+
     public static ReplyText replyTextOf(String argumentsJson) {
         try {
             Object replyText = new JSONObject(argumentsJson).opt(REPLY_TEXT_PROPERTY);

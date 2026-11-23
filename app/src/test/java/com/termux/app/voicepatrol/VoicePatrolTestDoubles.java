@@ -1,7 +1,9 @@
 package com.termux.app.voicepatrol;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 final class VoicePatrolTestDoubles {
     private VoicePatrolTestDoubles() {}
@@ -41,6 +43,23 @@ final class VoicePatrolTestDoubles {
     static final class Connections implements LiveVoiceConnectionFactory {
         final List<Connection> opened = new ArrayList<>();
         public LiveVoiceConnection open(String endpoint, LiveVoiceConnectionListener listener) { Connection c = new Connection(endpoint, listener); opened.add(c); return c; }
+    }
+    static final class Forwarder implements LiveToolCallForwarder {
+        final List<String> calls = new ArrayList<>();
+        String output = "{}";
+        IOException failure;
+        RuntimeException crash;
+        public String forward(String toolName, String argumentsJson, String sessionName) throws IOException {
+            calls.add(toolName + "|" + argumentsJson + "|" + sessionName);
+            if (failure != null) { throw failure; }
+            if (crash != null) { throw crash; }
+            return output;
+        }
+    }
+    static final class DeferredExecutor implements Executor {
+        final List<Runnable> tasks = new ArrayList<>();
+        public void execute(Runnable task) { tasks.add(task); }
+        void runAll() { while (!tasks.isEmpty()) { tasks.remove(0).run(); } }
     }
     static String event(String type) { return "{\"type\":\"" + type + "\"}"; }
     static String function(String id, String name, String arguments) { return "{\"type\":\"response.event\",\"event\":{\"type\":\"response.output_item.done\",\"item\":{\"type\":\"function_call\",\"call_id\":\"" + id + "\",\"name\":\"" + name + "\",\"arguments\":" + arguments + "}}}"; }
