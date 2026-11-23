@@ -99,13 +99,42 @@ run_sign() {
   (cd "$REPO_ROOT" && env -i PATH="$PATH" HOME="$HOME" "${java_env[@]}" ANDROID_HOME="$SDK_ROOT" \
     RUNNER_TEMP="$RUNNER_TMP_DIR" "$@" bash "$SIGN_SCRIPT" "$TMP/unsigned.apk" "$out") >"$log" 2>&1
 }
-# Signer certificate SHA-256 reported by the default verify, which is the v3 signer.
-v3_signer_sha() {
-  "$APKSIGNER" verify --print-certs -v "$1" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1
+# Signer certificate SHA-256 digest from `apksigner verify --print-certs -v`: the first line containing
+# "certificate SHA-256 digest:" with any prefix (e.g. "Signer #1 certificate", "Signer (minSdkVersion=24) certificate").
+# $1 APK, $2... extra apksigner verify arguments. Prints nothing when no such line exists.
+apksigner_cert_sha() {
+  local apk="$1"
+  shift
+  "$APKSIGNER" verify --print-certs -v "$@" "$apk" 2>/dev/null |
+    awk '/certificate SHA-256 digest:/ { sub(/^.*digest: /, ""); sub(/[[:space:]]+$/, ""); print; exit }'
 }
-# Signer certificate SHA-256 of the v2 scheme (max SDK 27 keeps verification on v2).
-v2_signer_sha() {
-  "$APKSIGNER" verify --print-certs -v --max-sdk-version 27 "$1" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1
+# Prints the full apksigner verify output of an APK to stderr, every line prefixed with "apksigner output:".
+# Contains only public certificate digests and DNs.
+# $1 APK, $2... extra apksigner verify arguments.
+print_apksigner_output() {
+  local apk="$1" out rc
+  shift
+  out="$("$APKSIGNER" verify --print-certs -v "$@" "$apk" 2>&1)"
+  rc=$?
+  echo "apksigner path: $APKSIGNER (exit $rc)" >&2
+  if [ -z "$out" ]; then
+    echo "apksigner output: <empty>" >&2
+  else
+    printf '%s\n' "$out" | sed 's/^/apksigner output: /' >&2
+  fi
+}
+# check_signer_cert <check name> <APK> <expected digest> [extra apksigner verify args...]
+# Passes when the extracted digest equals the expected one; otherwise fails and prints the apksigner output.
+check_signer_cert() {
+  local name="$1" apk="$2" expected="$3" got
+  shift 3
+  got="$(apksigner_cert_sha "$apk" "$@")"
+  if [ "$got" = "$expected" ]; then
+    pass "$name"
+  else
+    fail "$name" "expected ${expected}, got ${got:-<empty>}"
+    print_apksigner_output "$apk" "$@"
+  fi
 }
 apk_verifies() {
   local out
@@ -136,8 +165,8 @@ fi
 if [ -s "$OK_OUT" ]; then
   pass "signing script writes the output APK"
   if apk_verifies "$OK_OUT"; then pass "re-signed APK verifies"; else fail "re-signed APK verifies"; fi
-  check_eq "v2 signer certificate is the old throwaway certificate" "$(v2_signer_sha "$OK_OUT")" "$OLD_SHA"
-  check_eq "v3 signer certificate is the new throwaway certificate" "$(v3_signer_sha "$OK_OUT")" "$NEW_SHA"
+  check_signer_cert "v2 signer certificate is the old throwaway certificate" "$OK_OUT" "$OLD_SHA" --max-sdk-version 27
+  check_signer_cert "v3 signer certificate is the new throwaway certificate" "$OK_OUT" "$NEW_SHA"
 else
   fail "signing script writes the output APK" "$OK_OUT missing or empty"
 fi
@@ -206,9 +235,9 @@ if [ -n "$COMMITTED_PW" ] && [ -f "$COMMITTED_KEYSTORE" ]; then
     DEFAULT_RC=$?
     if [ "$DEFAULT_RC" -eq 0 ] && [ -s "$DEFAULT_OUT" ]; then
       pass "signing with the default old keystore succeeds"
-      check_eq "default old keystore: v2 signer is the committed public test certificate" \
-        "$(v2_signer_sha "$DEFAULT_OUT")" "$REAL_OLD_CERT_SHA256"
-      check_eq "default old keystore: v3 signer is the new certificate" "$(v3_signer_sha "$DEFAULT_OUT")" "$NEW_SHA"
+      check_signer_cert "default old keystore: v2 signer is the committed public test certificate" \
+        "$DEFAULT_OUT" "$REAL_OLD_CERT_SHA256" --max-sdk-version 27
+      check_signer_cert "default old keystore: v3 signer is the new certificate" "$DEFAULT_OUT" "$NEW_SHA"
     else
       fail "signing with the default old keystore succeeds" "exit $DEFAULT_RC"
       show_log_tail "$DEFAULT_LOG"
@@ -246,6 +275,7 @@ if grep -qF "$OLD_SHA" "$THROWAWAY_VERIFY" && grep -qF "$NEW_SHA" "$THROWAWAY_VE
       pass "verify script (throwaway constants) exits 0 on the correctly signed APK"
     else
       fail "verify script (throwaway constants) exits 0 on the correctly signed APK" "exit $VERIFY_OK_RC: $(printf '%s' "$VERIFY_OK_OUT" | tail -n 1)"
+      print_apksigner_output "$OK_OUT"
     fi
   else
     fail "verify script (throwaway constants) exits 0 on the correctly signed APK" "no signed APK from the signing case"
