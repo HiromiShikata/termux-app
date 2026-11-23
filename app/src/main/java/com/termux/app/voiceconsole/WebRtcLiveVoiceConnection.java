@@ -81,7 +81,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
     @Override
     public void sendEvent(String eventJson) {
-        if (mEventChannel == null || mEventChannel.state() != DataChannel.State.OPEN) {
+        if (mClosed || mEventChannel == null || mEventChannel.state() != DataChannel.State.OPEN) {
             Log.w(LOG_TAG, "dropping a live event because the event channel is not open");
             return;
         }
@@ -97,6 +97,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
         mClosed = true;
         mMainHandler.removeCallbacks(mGatheringTimeout);
         if (mEventChannel != null) {
+            mEventChannel.unregisterObserver();
             mEventChannel.close();
             mEventChannel.dispose();
         }
@@ -294,8 +295,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
         @Override
         public void onStateChange() {
-            DataChannel.State state = mEventChannel.state();
-            postToMain(() -> onEventChannelState(state));
+            postToMain(() -> onEventChannelState(mEventChannel.state()));
         }
 
         @Override
