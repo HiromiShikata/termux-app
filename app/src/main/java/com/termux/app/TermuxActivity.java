@@ -428,12 +428,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
         mPreferences = TermuxAppSharedPreferences.build(this, true);
-        SessionDefinitionHttpsUpgradeStarter.startOnce(mPreferences);
         if (mPreferences == null) {
             // An AlertDialog should have shown to kill the app, so we don't continue running activity code
             mIsInvalidState = true;
             return;
         }
+        SessionDefinitionHttpsUpgradeStarter.startOnce(mPreferences);
 
         mHandednessLayoutApplier.registerPart(new TerminalToolbarHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new MainScreenHandednessPart(findViewById(android.R.id.content)));
