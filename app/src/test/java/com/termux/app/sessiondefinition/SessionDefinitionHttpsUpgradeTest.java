@@ -183,6 +183,39 @@ public class SessionDefinitionHttpsUpgradeTest {
     }
 
     @Test
+    public void resolveUpgradesWhenHttpsBaseUrlHasTrailingSlash() {
+        assertEquals("https://a:8443/x?k=1",
+            SessionDefinitionHttpsUpgrade.resolve("http://a:9980/x?k=1", endpoint -> {
+                if (endpoint.equals("http://a:9980/api/console/https-endpoint")) {
+                    return "{\"httpsBaseUrl\":\"https://a:8443/\"}";
+                }
+                if (endpoint.equals("https://a:8443/api/console/https-endpoint")) {
+                    return "{\"httpsBaseUrl\":\"https://a:8443\"}";
+                }
+                return null;
+            }));
+    }
+
+    @Test
+    public void startGateAllowsOnlyFirstClaim() {
+        SessionDefinitionHttpsUpgrade.StartGate startGate =
+            new SessionDefinitionHttpsUpgrade.StartGate();
+        assertTrue(startGate.tryClaim());
+        assertFalse(startGate.tryClaim());
+        assertFalse(startGate.tryClaim());
+    }
+
+    @Test
+    public void startGatesAreIndependent() {
+        SessionDefinitionHttpsUpgrade.StartGate firstStartGate =
+            new SessionDefinitionHttpsUpgrade.StartGate();
+        SessionDefinitionHttpsUpgrade.StartGate secondStartGate =
+            new SessionDefinitionHttpsUpgrade.StartGate();
+        assertTrue(firstStartGate.tryClaim());
+        assertTrue(secondStartGate.tryClaim());
+    }
+
+    @Test
     public void parseHttpsBaseUrlReturnsOnlyValidJsonStringValues() {
         assertNull(SessionDefinitionHttpsUpgrade.parseHttpsBaseUrl(""));
         assertNull(SessionDefinitionHttpsUpgrade.parseHttpsBaseUrl("{}"));
@@ -198,6 +231,12 @@ public class SessionDefinitionHttpsUpgradeTest {
         assertNull(SessionDefinitionHttpsUpgrade.validatedHttpsBaseUrl("http://a:8080", "https://b:1"));
         assertEquals("https://a:8443",
             SessionDefinitionHttpsUpgrade.validatedHttpsBaseUrl("http://a:8080", "https://a:8443"));
+    }
+
+    @Test
+    public void validatedHttpsBaseUrlRemovesTrailingSlash() {
+        assertEquals("https://a:8443",
+            SessionDefinitionHttpsUpgrade.validatedHttpsBaseUrl("http://a:9980", "https://a:8443/"));
     }
 
     @Test
