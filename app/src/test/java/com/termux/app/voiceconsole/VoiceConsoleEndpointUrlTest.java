@@ -42,4 +42,17 @@ public class VoiceConsoleEndpointUrlTest {
         assertThrows(IllegalArgumentException.class,
             () -> VoiceConsoleEndpointUrl.resolve("https://console.example.com/definition?k=%ZZ"));
     }
+
+    @Test
+    public void resolveRejectsAccessTokensWithCharactersUnavailableToRequestHeaders() {
+        String[] unusableAccessTokens = {
+            "https://console.example.com/definition?k=a%20b",
+            "https://console.example.com/definition?k=a%0Ab",
+            "https://console.example.com/definition?k=%E3%81%82",
+        };
+        for (String input : unusableAccessTokens) {
+            assertThrows("input " + input, IllegalArgumentException.class,
+                () -> VoiceConsoleEndpointUrl.resolve(input));
+        }
+    }
 }
