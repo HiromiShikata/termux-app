@@ -4,16 +4,14 @@ import android.util.Log;
 
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 public final class SessionDefinitionHttpsUpgradeStarter {
-    private static final AtomicBoolean STARTED = new AtomicBoolean();
+    private static final SessionDefinitionHttpsUpgrade.StartGate START_GATE = new SessionDefinitionHttpsUpgrade.StartGate();
 
     private SessionDefinitionHttpsUpgradeStarter() {
     }
 
     public static void startOnce(TermuxAppSharedPreferences preferences) {
-        if (!STARTED.compareAndSet(false, true)) return;
+        if (!START_GATE.tryClaim()) return;
         Thread thread = new Thread(() -> {
             SessionDefinitionHttpsUpgrade.UrlStore store = new SessionDefinitionHttpsUpgrade.UrlStore() {
                 @Override

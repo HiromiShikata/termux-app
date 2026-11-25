@@ -8,11 +8,20 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class SessionDefinitionHttpsUpgrade {
     private static final int MAX_RESPONSE_BYTES = 4096;
 
     private SessionDefinitionHttpsUpgrade() {
+    }
+
+    public static final class StartGate {
+        private final AtomicBoolean claimed = new AtomicBoolean();
+
+        public boolean tryClaim() {
+            return claimed.compareAndSet(false, true);
+        }
     }
 
     public static boolean shouldPersist(String urlBeforeFetch, String upgradedUrl, String urlAfterFetch) {
@@ -77,7 +86,9 @@ public final class SessionDefinitionHttpsUpgrade {
                 || original.getHost() == null || !base.getHost().equalsIgnoreCase(original.getHost())
                 || base.getUserInfo() != null || base.getQuery() != null || base.getFragment() != null
                 || !(base.getPath().isEmpty() || "/".equals(base.getPath()))) return null;
-            return httpsBaseUrl;
+            return httpsBaseUrl.endsWith("/")
+                ? httpsBaseUrl.substring(0, httpsBaseUrl.length() - 1)
+                : httpsBaseUrl;
         } catch (URISyntaxException e) {
             return null;
         }
