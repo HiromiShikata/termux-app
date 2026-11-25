@@ -48,9 +48,23 @@ public final class VoiceConsoleEndpointUrl {
 
     private static String decode(String encodedAccessToken) {
         try {
-            return URLDecoder.decode(encodedAccessToken, "UTF-8");
+            String accessToken = URLDecoder.decode(encodedAccessToken, "UTF-8");
+            if (!accessToken.isEmpty() && !isSendableAsHeaderValue(accessToken)) {
+                throw new IllegalArgumentException("the access token has characters a request header cannot carry");
+            }
+            return accessToken;
         } catch (UnsupportedEncodingException unsupportedEncoding) {
             throw new IllegalArgumentException("the access token cannot be decoded", unsupportedEncoding);
         }
+    }
+
+    private static boolean isSendableAsHeaderValue(String accessToken) {
+        for (int index = 0; index < accessToken.length(); index++) {
+            char character = accessToken.charAt(index);
+            if (character < 0x21 || character > 0x7E) {
+                return false;
+            }
+        }
+        return true;
     }
 }
