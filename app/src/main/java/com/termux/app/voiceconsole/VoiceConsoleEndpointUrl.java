@@ -61,7 +61,7 @@ public final class VoiceConsoleEndpointUrl {
     private static boolean isSendableAsHeaderValue(String accessToken) {
         for (int index = 0; index < accessToken.length(); index++) {
             char character = accessToken.charAt(index);
-            if (character < 0x21 || character > 0x7E) {
+            if (character < 0x20 || character > 0x7E) {
                 return false;
             }
         }
