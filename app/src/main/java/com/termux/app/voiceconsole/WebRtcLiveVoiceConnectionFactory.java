@@ -24,9 +24,9 @@ public final class WebRtcLiveVoiceConnectionFactory implements LiveVoiceConnecti
     }
 
     @Override
-    public LiveVoiceConnection open(String endpointUrl, LiveVoiceConnectionListener listener) {
+    public LiveVoiceConnection open(VoiceConsoleEndpoint endpoint, LiveVoiceConnectionListener listener) {
         WebRtcLiveVoiceConnection connection = new WebRtcLiveVoiceConnection(
-            peerConnectionFactory(), mHttpExecutor, mOfferExchange, endpointUrl, listener);
+            peerConnectionFactory(), mHttpExecutor, mOfferExchange, endpoint, listener);
         connection.start();
         return connection;
     }

@@ -1,7 +1,9 @@
 package com.termux.app.voiceconsole;
 
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
 
 public final class VoiceConsoleEndpointUrl {
 
@@ -12,7 +14,7 @@ public final class VoiceConsoleEndpointUrl {
     private VoiceConsoleEndpointUrl() {
     }
 
-    public static String resolve(String sessionDefinitionUrl) {
+    public static VoiceConsoleEndpoint resolve(String sessionDefinitionUrl) {
         String trimmed = sessionDefinitionUrl == null ? "" : sessionDefinitionUrl.trim();
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException("the session definition URL is empty");
@@ -28,8 +30,8 @@ public final class VoiceConsoleEndpointUrl {
             throw new IllegalArgumentException("the session definition URL has no authority");
         }
         String accessToken = accessTokenOf(sessionDefinition.getQuery());
-        return sessionDefinition.getProtocol() + "://" + authority + LIVE_SESSIONS_PATH
-            + (accessToken == null ? "" : "?k=" + accessToken);
+        return new VoiceConsoleEndpoint(
+            sessionDefinition.getProtocol() + "://" + authority + LIVE_SESSIONS_PATH, accessToken);
     }
 
     private static String accessTokenOf(String query) {
@@ -38,9 +40,17 @@ public final class VoiceConsoleEndpointUrl {
         }
         for (String parameter : query.split("&")) {
             if (parameter.startsWith(ACCESS_TOKEN_PARAMETER_PREFIX)) {
-                return parameter.substring(ACCESS_TOKEN_PARAMETER_PREFIX.length());
+                return decode(parameter.substring(ACCESS_TOKEN_PARAMETER_PREFIX.length()));
             }
         }
         return null;
+    }
+
+    private static String decode(String encodedAccessToken) {
+        try {
+            return URLDecoder.decode(encodedAccessToken, "UTF-8");
+        } catch (UnsupportedEncodingException unsupportedEncoding) {
+            throw new IllegalArgumentException("the access token cannot be decoded", unsupportedEncoding);
+        }
     }
 }

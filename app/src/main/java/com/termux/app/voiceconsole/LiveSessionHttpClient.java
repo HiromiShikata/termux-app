@@ -4,5 +4,5 @@ import java.io.IOException;
 
 public interface LiveSessionHttpClient {
 
-    LiveSessionHttpResponse post(String endpointUrl, String offerSdp) throws IOException;
+    LiveSessionHttpResponse post(VoiceConsoleEndpoint endpoint, String offerSdp) throws IOException;
 }

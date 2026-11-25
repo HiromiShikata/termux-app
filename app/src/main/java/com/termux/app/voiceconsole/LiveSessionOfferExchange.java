@@ -12,9 +12,9 @@ public final class LiveSessionOfferExchange {
         mClient = client;
     }
 
-    public LiveSessionAnswer exchange(String endpointUrl, String offerSdp) {
+    public LiveSessionAnswer exchange(VoiceConsoleEndpoint endpoint, String offerSdp) {
         try {
-            LiveSessionHttpResponse response = mClient.post(endpointUrl, offerSdp);
+            LiveSessionHttpResponse response = mClient.post(endpoint, offerSdp);
             return LiveSessionAnswer.fromHttpResponse(response.getStatusCode(), response.getBody());
         } catch (IOException networkFailure) {
             return LiveSessionAnswer.failed(NETWORK_ERROR_REASON);
