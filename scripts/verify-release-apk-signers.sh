@@ -64,4 +64,36 @@ if [ "$V3_SHA" != "$NEW_CERT_SHA256" ]; then
   fail_with_output "$APK: v3 signer SHA-256 is '${V3_SHA:-<none>}', expected $NEW_CERT_SHA256" "$V3_OUT"
 fi
 
+# The v3 lineage must give the old certificate exactly one capability: installed data. Shared UID,
+# permission, rollback and auth must not be allowed, so a lineage that still trusts the public test key
+# for those capabilities fails the release.
+LINEAGE_OUT="$("$APKSIGNER" lineage --in "$APK" --print-certs -v 2>&1)" \
+  || die "apksigner could not read the lineage of $APK: $LINEAGE_OUT"
+
+# lineage_capability <lineage output> <certificate SHA-256> <capability name>: prints the true/false value
+# of that capability for the signer with that certificate. Prints nothing when the signer or capability is absent.
+lineage_capability() {
+  awk -v want="$2" -v cap="$3" '
+    /certificate SHA-256 digest:/ { signer = $0; sub(/^.*digest: /, "", signer); sub(/[[:space:]]+$/, "", signer); next }
+    /^Has .* capability/ {
+      name = $0; sub(/^Has /, "", name); sub(/ capability.*$/, "", name)
+      if (signer == want && name == cap) { value = $0; sub(/^.*: /, "", value); print value; exit }
+    }
+  ' <<<"$1"
+}
+
+# check_old_capability <capability name> <expected true|false>
+check_old_capability() {
+  local got
+  got="$(lineage_capability "$LINEAGE_OUT" "$OLD_CERT_SHA256" "$1")"
+  if [ "$got" != "$2" ]; then
+    fail_with_output "$APK: old certificate lineage capability '$1' is '${got:-<none>}', expected $2" "$LINEAGE_OUT"
+  fi
+}
+check_old_capability "installed data" true
+check_old_capability "shared UID" false
+check_old_capability "permission" false
+check_old_capability "rollback" false
+check_old_capability "auth" false
+
 echo "OK: $APK verifies; v2 signer $OLD_CERT_SHA256, v3 signer $NEW_CERT_SHA256"
