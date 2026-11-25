@@ -11,6 +11,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -75,15 +77,14 @@ public class SessionDefinitionHttpsUpgradeTest {
     }
 
     @Test
-    public void productionFetcherResolvesValidHttpsBaseUrl() throws IOException {
-        LocalHttpServer server = startServer(200, "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}", null);
-        try {
-            String url = "http://127.0.0.1:" + server.port() + "/s?k=SECRET";
-            assertEquals("https://127.0.0.1:8443/s?k=SECRET",
-                SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER));
-        } finally {
-            server.stop();
-        }
+    public void productionFetcherResolvesValidHttpsBaseUrl() {
+        String url = "http://127.0.0.1:8080/s?k=SECRET";
+        assertEquals("https://127.0.0.1:8443/s?k=SECRET",
+            SessionDefinitionHttpsUpgrade.resolve(url, endpoint ->
+                endpoint.startsWith("http://127.0.0.1:")
+                    || endpoint.equals("https://127.0.0.1:8443/api/console/https-endpoint")
+                    ? "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}"
+                    : null));
     }
 
     @Test
@@ -157,6 +158,31 @@ public class SessionDefinitionHttpsUpgradeTest {
     }
 
     @Test
+    public void resolveLeavesUrlUnchangedWhenHttpsProbeReturnsNull() {
+        String url = "http://a/definition?k=SECRET";
+        assertEquals(url, SessionDefinitionHttpsUpgrade.resolve(url, endpoint ->
+            endpoint.startsWith("http://a") ? "{\"httpsBaseUrl\":\"https://a:8443\"}" : null));
+    }
+
+    @Test
+    public void resolveLeavesUrlUnchangedWhenHttpsProbeReturnsDifferentBaseUrl() {
+        String url = "http://a/definition?k=SECRET";
+        assertEquals(url, SessionDefinitionHttpsUpgrade.resolve(url, endpoint ->
+            endpoint.startsWith("http://")
+                ? "{\"httpsBaseUrl\":\"https://a:8443\"}"
+                : "{\"httpsBaseUrl\":\"https://b:8443\"}"));
+    }
+
+    @Test
+    public void resolveLeavesUrlUnchangedWhenHttpsProbeThrowsIOException() {
+        String url = "http://a/definition?k=SECRET";
+        assertEquals(url, SessionDefinitionHttpsUpgrade.resolve(url, endpoint -> {
+            if (endpoint.startsWith("https://")) throw new IOException("failure");
+            return "{\"httpsBaseUrl\":\"https://a:8443\"}";
+        }));
+    }
+
+    @Test
     public void parseHttpsBaseUrlReturnsOnlyValidJsonStringValues() {
         assertNull(SessionDefinitionHttpsUpgrade.parseHttpsBaseUrl(""));
         assertNull(SessionDefinitionHttpsUpgrade.parseHttpsBaseUrl("{}"));
@@ -190,6 +216,76 @@ public class SessionDefinitionHttpsUpgradeTest {
     public void shouldPersistFalseWhenNothingWasUpgraded() {
         assertFalse(SessionDefinitionHttpsUpgrade.shouldPersist(
             "http://a/x?k=1", "http://a/x?k=1", "http://a/x?k=1"));
+    }
+
+    @Test
+    public void upgradeStoreSavesRewrittenUrlAndReturnsTrue() {
+        InMemoryUrlStore store = new InMemoryUrlStore("http://a:9980/x?k=1");
+        assertTrue(SessionDefinitionHttpsUpgrade.upgradeStore(store, endpoint ->
+            httpsEndpointResponseForHost(endpoint, "a")));
+        assertEquals("https://a:8443/x?k=1", store.get());
+        assertEquals(1, store.setCalls);
+    }
+
+    @Test
+    public void upgradeStoreDoesNotOverwriteUrlChangedDuringCheck() {
+        InMemoryUrlStore store = new InMemoryUrlStore("http://a:9980/x?k=1");
+        assertFalse(SessionDefinitionHttpsUpgrade.upgradeStore(store, endpoint -> {
+            if (endpoint.startsWith("http://a:")) store.value = "http://a:9980/other?k=2";
+            return httpsEndpointResponseForHost(endpoint, "a");
+        }));
+        assertEquals("http://a:9980/other?k=2", store.get());
+        assertEquals(0, store.setCalls);
+    }
+
+    @Test
+    public void upgradeStoreDoesNothingWhenNotUpgradable() {
+        InMemoryUrlStore store = new InMemoryUrlStore("http://a:9980/x?k=1");
+        assertFalse(SessionDefinitionHttpsUpgrade.upgradeStore(store, endpoint -> null));
+        assertEquals("http://a:9980/x?k=1", store.get());
+        assertEquals(0, store.setCalls);
+    }
+
+    @Test
+    public void upgradeStoreDoesNothingForHttpsUrl() {
+        InMemoryUrlStore store = new InMemoryUrlStore("https://a:8443/x");
+        AtomicInteger calls = new AtomicInteger();
+        assertFalse(SessionDefinitionHttpsUpgrade.upgradeStore(store, endpoint -> {
+            calls.incrementAndGet();
+            return "{\"httpsBaseUrl\":\"https://a:8443\"}";
+        }));
+        assertEquals("https://a:8443/x", store.get());
+        assertEquals(0, store.setCalls);
+        assertEquals(0, calls.get());
+    }
+
+    private static String httpsEndpointResponseForHost(String endpoint, String expectedHost) {
+        try {
+            URI uri = new URI(endpoint);
+            return expectedHost.equals(uri.getHost())
+                ? "{\"httpsBaseUrl\":\"https://a:8443\"}"
+                : null;
+        } catch (URISyntaxException exception) {
+            return null;
+        }
+    }
+
+    private static final class InMemoryUrlStore implements SessionDefinitionHttpsUpgrade.UrlStore {
+        private String value;
+        private int setCalls;
+
+        private InMemoryUrlStore(String value) {
+            this.value = value;
+        }
+
+        public String get() {
+            return value;
+        }
+
+        public void set(String url) {
+            value = url;
+            setCalls++;
+        }
     }
 
     private static void assertProductionResultUnchanged(int status, String responseBody, String location)
