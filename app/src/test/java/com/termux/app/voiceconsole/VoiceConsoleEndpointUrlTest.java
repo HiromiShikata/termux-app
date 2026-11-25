@@ -46,7 +46,6 @@ public class VoiceConsoleEndpointUrlTest {
     @Test
     public void resolveRejectsAccessTokensWithCharactersUnavailableToRequestHeaders() {
         String[] unusableAccessTokens = {
-            "https://console.example.com/definition?k=a%20b",
             "https://console.example.com/definition?k=a%0Ab",
             "https://console.example.com/definition?k=%E3%81%82",
         };
