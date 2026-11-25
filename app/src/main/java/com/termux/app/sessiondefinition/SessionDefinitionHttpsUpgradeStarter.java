@@ -4,7 +4,6 @@ import android.util.Log;
 
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class SessionDefinitionHttpsUpgradeStarter {
@@ -18,7 +17,7 @@ public final class SessionDefinitionHttpsUpgradeStarter {
         Thread thread = new Thread(() -> {
             String url = preferences.getSessionDefinitionUrl();
             String upgraded = SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER);
-            if (!Objects.equals(upgraded, url) && Objects.equals(url, preferences.getSessionDefinitionUrl())) {
+            if (SessionDefinitionHttpsUpgrade.shouldPersist(url, upgraded, preferences.getSessionDefinitionUrl())) {
                 preferences.setSessionDefinitionUrl(upgraded);
                 Log.i("SessionDefinitionHttps", "Session definition URL upgraded to HTTPS");
             }

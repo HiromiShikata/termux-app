@@ -7,11 +7,18 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.Objects;
 
 public final class SessionDefinitionHttpsUpgrade {
     private static final int MAX_RESPONSE_BYTES = 4096;
 
     private SessionDefinitionHttpsUpgrade() {
+    }
+
+    public static boolean shouldPersist(String urlBeforeFetch, String upgradedUrl, String urlAfterFetch) {
+        return upgradedUrl != null
+            && !Objects.equals(upgradedUrl, urlBeforeFetch)
+            && Objects.equals(urlAfterFetch, urlBeforeFetch);
     }
 
     public static boolean isPlainHttp(String url) {
