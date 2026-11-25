@@ -36,7 +36,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
     private final PeerConnectionFactory mFactory;
     private final ExecutorService mHttpExecutor;
     private final LiveSessionOfferExchange mOfferExchange;
-    private final String mEndpointUrl;
+    private final VoiceConsoleEndpoint mEndpoint;
     private final LiveVoiceConnectionListener mListener;
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
     private final LiveVoiceHandshake mHandshake = new LiveVoiceHandshake();
@@ -53,12 +53,12 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
     WebRtcLiveVoiceConnection(PeerConnectionFactory factory,
                               ExecutorService httpExecutor,
                               LiveSessionOfferExchange offerExchange,
-                              String endpointUrl,
+                              VoiceConsoleEndpoint endpoint,
                               LiveVoiceConnectionListener listener) {
         mFactory = factory;
         mHttpExecutor = httpExecutor;
         mOfferExchange = offerExchange;
-        mEndpointUrl = endpointUrl;
+        mEndpoint = endpoint;
         mListener = listener;
     }
 
@@ -153,7 +153,7 @@ final class WebRtcLiveVoiceConnection implements LiveVoiceConnection {
 
     private void sendOffer(String offerSdp) {
         mHttpExecutor.execute(() -> {
-            LiveSessionAnswer answer = mOfferExchange.exchange(mEndpointUrl, offerSdp);
+            LiveSessionAnswer answer = mOfferExchange.exchange(mEndpoint, offerSdp);
             postToMain(() -> applyStep(mHandshake.onAnswerReceived(answer)));
         });
     }

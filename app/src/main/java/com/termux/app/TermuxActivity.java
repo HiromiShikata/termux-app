@@ -75,6 +75,7 @@ import com.termux.app.ownercall.OwnerCallDialogViewport;
 import com.termux.app.ownercall.OwnerCallFileUrl;
 import com.termux.app.ownercall.OwnerCallInbox;
 import com.termux.app.voiceconsole.VoiceConsoleController;
+import com.termux.app.voiceconsole.VoiceConsoleEndpoint;
 import com.termux.app.voiceconsole.VoiceConsoleEndpointUrl;
 import com.termux.app.voiceconsole.VoiceConsoleFailureMessages;
 import com.termux.app.voiceconsole.VoiceConsoleRuntime;
@@ -1405,16 +1406,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void startVoiceConsole() {
-        String endpointUrl;
+        VoiceConsoleEndpoint endpoint;
         try {
-            endpointUrl = VoiceConsoleEndpointUrl.resolve(getPreferences().getSessionDefinitionUrl());
+            endpoint = VoiceConsoleEndpointUrl.resolve(getPreferences().getSessionDefinitionUrl());
         } catch (IllegalArgumentException unusableSessionDefinition) {
             Logger.logWarn(LOG_TAG, "voice console cannot start: " + unusableSessionDefinition.getMessage());
             Logger.showToast(this, getString(R.string.voice_console_no_session_definition), true);
             return;
         }
         ContextCompat.startForegroundService(this, VoiceConsoleService.startIntent(this));
-        VoiceConsoleRuntime.start(new VoiceConsoleController(endpointUrl,
+        VoiceConsoleRuntime.start(new VoiceConsoleController(endpoint,
             new WebRtcLiveVoiceConnectionFactory(this), this::onVoiceConsoleFailed));
         updateVoiceConsoleButtonLabel();
     }

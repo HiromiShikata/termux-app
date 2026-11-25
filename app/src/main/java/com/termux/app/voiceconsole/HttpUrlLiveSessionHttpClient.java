@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 public final class HttpUrlLiveSessionHttpClient implements LiveSessionHttpClient {
 
@@ -15,14 +16,19 @@ public final class HttpUrlLiveSessionHttpClient implements LiveSessionHttpClient
     private static final int READ_TIMEOUT_MILLIS = 30_000;
 
     @Override
-    public LiveSessionHttpResponse post(String endpointUrl, String offerSdp) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(endpointUrl).openConnection();
+    public LiveSessionHttpResponse post(VoiceConsoleEndpoint endpoint, String offerSdp) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) new URL(endpoint.getUrl()).openConnection();
+        connection.setInstanceFollowRedirects(false);
         try {
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
             connection.setConnectTimeout(CONNECT_TIMEOUT_MILLIS);
             connection.setReadTimeout(READ_TIMEOUT_MILLIS);
             connection.setRequestProperty("Content-Type", SDP_CONTENT_TYPE);
+            for (Map.Entry<String, String> header
+                    : ConsoleAccessTokenHeader.requestHeadersFor(endpoint.getAccessToken()).entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
             try (OutputStream output = connection.getOutputStream()) {
                 output.write(offerSdp.getBytes(StandardCharsets.UTF_8));
             }

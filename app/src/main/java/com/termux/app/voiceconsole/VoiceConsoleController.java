@@ -16,15 +16,15 @@ public final class VoiceConsoleController {
         CONNECTED
     }
 
-    private final String mEndpointUrl;
+    private final VoiceConsoleEndpoint mEndpoint;
     private final LiveVoiceConnectionFactory mFactory;
     private final FailureReporter mFailureReporter;
     private State mState = State.STOPPED;
     private LiveVoiceConnection mConnection;
 
-    public VoiceConsoleController(String endpointUrl, LiveVoiceConnectionFactory factory,
+    public VoiceConsoleController(VoiceConsoleEndpoint endpoint, LiveVoiceConnectionFactory factory,
                                   FailureReporter failureReporter) {
-        mEndpointUrl = endpointUrl;
+        mEndpoint = endpoint;
         mFactory = factory;
         mFailureReporter = failureReporter;
     }
@@ -42,7 +42,7 @@ public final class VoiceConsoleController {
             return;
         }
         mState = State.CONNECTING;
-        LiveVoiceConnection connection = mFactory.open(mEndpointUrl, new Listener());
+        LiveVoiceConnection connection = mFactory.open(mEndpoint, new Listener());
         if (mState == State.STOPPED) {
             closeSession(connection);
             return;

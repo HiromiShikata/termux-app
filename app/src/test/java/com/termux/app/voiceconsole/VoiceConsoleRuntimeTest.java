@@ -28,7 +28,8 @@ public class VoiceConsoleRuntimeTest {
     @Test
     public void startAndStopNotifyTheRunningStateOnce() {
         VoiceConsoleRuntime.addListener(listener);
-        VoiceConsoleController controller = new VoiceConsoleController("https://console.example.com/api/live/sessions",
+        VoiceConsoleController controller = new VoiceConsoleController(new VoiceConsoleEndpoint(
+            "https://console.example.com/api/live/sessions", "test-token"),
             new VoiceConsoleControllerTest.FakeFactory(), reasons -> { });
 
         VoiceConsoleRuntime.start(controller);
@@ -43,8 +44,9 @@ public class VoiceConsoleRuntimeTest {
     @Test
     public void failureWhileOpeningLeavesTheRuntimeStopped() {
         VoiceConsoleRuntime.addListener(listener);
-        VoiceConsoleController controller = new VoiceConsoleController("https://console.example.com/api/live/sessions",
-            (endpointUrl, connectionListener) -> {
+        VoiceConsoleController controller = new VoiceConsoleController(new VoiceConsoleEndpoint(
+            "https://console.example.com/api/live/sessions", "test-token"),
+            (endpoint, connectionListener) -> {
                 connectionListener.onConnectFailed("network_error");
                 return new VoiceConsoleControllerTest.FakeConnection();
             },

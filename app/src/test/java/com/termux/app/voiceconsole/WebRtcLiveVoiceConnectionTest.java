@@ -19,7 +19,7 @@ public class WebRtcLiveVoiceConnectionTest {
         LiveVoiceConnection connection;
         try {
             connection = new WebRtcLiveVoiceConnectionFactory(RuntimeEnvironment.getApplication()).open(
-                "http://127.0.0.1:9/api/live/sessions?k=test",
+                new VoiceConsoleEndpoint("https://console.example.com/api/live/sessions", "test-token"),
                 new LiveVoiceConnectionListener() {
                     public void onConnected() { }
                     public void onConnectFailed(String value) { failures.incrementAndGet(); reason.set(value); }
