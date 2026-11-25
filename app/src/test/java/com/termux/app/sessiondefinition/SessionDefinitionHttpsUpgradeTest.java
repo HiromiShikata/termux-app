@@ -5,13 +5,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Test;
 
 public class SessionDefinitionHttpsUpgradeTest {
@@ -71,32 +76,32 @@ public class SessionDefinitionHttpsUpgradeTest {
 
     @Test
     public void productionFetcherResolvesValidHttpsBaseUrl() throws IOException {
-        HttpServer server = startServer(200, "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}", null, null);
+        LocalHttpServer server = startServer(200, "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}", null);
         try {
-            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/s?k=SECRET";
+            String url = "http://127.0.0.1:" + server.port() + "/s?k=SECRET";
             assertEquals("https://127.0.0.1:8443/s?k=SECRET",
                 SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER));
         } finally {
-            server.stop(0);
+            server.stop();
         }
     }
 
     @Test
     public void productionFetcherSendsNoTokenOrQueryParameter() throws IOException {
-        AtomicReference<String> requestUri = new AtomicReference<>();
-        AtomicReference<String> tokenHeader = new AtomicReference<>();
-        AtomicReference<String> authorizationHeader = new AtomicReference<>();
-        HttpServer server = startServer(200, "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}",
-            requestUri, new AtomicReference[] {tokenHeader, authorizationHeader});
+        LocalHttpServer server = startServer(200, "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}", null);
         try {
-            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/s?k=SECRET";
+            String url = "http://127.0.0.1:" + server.port() + "/s?k=SECRET";
             SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER);
-            assertNull(tokenHeader.get());
-            assertNull(authorizationHeader.get());
-            assertFalse(requestUri.get().contains("k="));
-            assertFalse(requestUri.get().contains("SECRET"));
+            assertEquals(1, server.requests().size());
+            LocalRequest request = server.requests().get(0);
+            assertEquals("GET", request.method);
+            assertEquals("/api/console/https-endpoint", request.target);
+            assertNull(request.headers.get("x-pv-token"));
+            assertNull(request.headers.get("authorization"));
+            assertFalse(request.target.contains("k="));
+            assertFalse(request.target.contains("SECRET"));
         } finally {
-            server.stop(0);
+            server.stop();
         }
     }
 
@@ -122,7 +127,17 @@ public class SessionDefinitionHttpsUpgradeTest {
 
     @Test
     public void productionFetcherDoesNotFollowRedirects() throws IOException {
-        assertProductionResultUnchanged(308, "", "https://127.0.0.1:8443/redirected");
+        LocalHttpServer targetServer = startServer(200, "{\"httpsBaseUrl\":\"https://127.0.0.1:8443\"}", null);
+        LocalHttpServer server = startServer(308, "", "http://127.0.0.1:" + targetServer.port() + "/redirected");
+        try {
+            String url = "http://127.0.0.1:" + server.port() + "/s?k=SECRET";
+            assertEquals(url,
+                SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER));
+            assertEquals(0, targetServer.requests().size());
+        } finally {
+            server.stop();
+            targetServer.stop();
+        }
     }
 
     @Test
@@ -159,44 +174,129 @@ public class SessionDefinitionHttpsUpgradeTest {
             SessionDefinitionHttpsUpgrade.validatedHttpsBaseUrl("http://a:8080", "https://a:8443"));
     }
 
+    @Test
+    public void shouldPersistTrueWhenUpgradedAndUrlUnchangedDuringFetch() {
+        assertTrue(SessionDefinitionHttpsUpgrade.shouldPersist(
+            "http://a/x?k=1", "https://a:8443/x?k=1", "http://a/x?k=1"));
+    }
+
+    @Test
+    public void shouldPersistFalseWhenUserChangedUrlDuringFetch() {
+        assertFalse(SessionDefinitionHttpsUpgrade.shouldPersist(
+            "http://a/x?k=1", "https://a:8443/x?k=1", "http://a/y?k=2"));
+    }
+
+    @Test
+    public void shouldPersistFalseWhenNothingWasUpgraded() {
+        assertFalse(SessionDefinitionHttpsUpgrade.shouldPersist(
+            "http://a/x?k=1", "http://a/x?k=1", "http://a/x?k=1"));
+    }
+
     private static void assertProductionResultUnchanged(int status, String responseBody, String location)
         throws IOException {
-        HttpServer server = startServer(status, responseBody, null, null, location);
+        LocalHttpServer server = startServer(status, responseBody, location);
         try {
-            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/s?k=SECRET";
+            String url = "http://127.0.0.1:" + server.port() + "/s?k=SECRET";
             assertEquals(url,
                 SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER));
         } finally {
-            server.stop(0);
+            server.stop();
         }
     }
 
-    private static HttpServer startServer(int status, String responseBody, AtomicReference<String> requestUri,
-        AtomicReference<String>[] headers) throws IOException {
-        return startServer(status, responseBody, requestUri, headers, null);
-    }
-
-    private static HttpServer startServer(int status, String responseBody, AtomicReference<String> requestUri,
-        AtomicReference<String>[] headers, String location) throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/api/console/https-endpoint", exchange -> {
-            if (requestUri != null) {
-                requestUri.set(exchange.getRequestURI().toString());
-            }
-            if (headers != null) {
-                headers[0].set(exchange.getRequestHeaders().getFirst("x-pv-token"));
-                headers[1].set(exchange.getRequestHeaders().getFirst("Authorization"));
-            }
-            if (location != null) {
-                exchange.getResponseHeaders().set("Location", location);
-            }
-            byte[] body = responseBody.getBytes("UTF-8");
-            exchange.sendResponseHeaders(status, body.length);
-            try (OutputStream output = exchange.getResponseBody()) {
-                output.write(body);
-            }
-        });
+    private static LocalHttpServer startServer(int status, String responseBody, String location) throws IOException {
+        LocalHttpServer server = new LocalHttpServer(status, responseBody, location);
         server.start();
         return server;
+    }
+
+    private static final class LocalRequest {
+        private final String method;
+        private final String target;
+        private final Map<String, String> headers;
+
+        private LocalRequest(String method, String target, Map<String, String> headers) {
+            this.method = method;
+            this.target = target;
+            this.headers = headers;
+        }
+    }
+
+    private static final class LocalHttpServer {
+        private final int status;
+        private final byte[] responseBody;
+        private final String location;
+        private final ServerSocket serverSocket;
+        private final List<LocalRequest> requests = Collections.synchronizedList(new ArrayList<LocalRequest>());
+        private Thread thread;
+
+        private LocalHttpServer(int status, String responseBody, String location) throws IOException {
+            this.status = status;
+            this.responseBody = responseBody.getBytes("UTF-8");
+            this.location = location;
+            this.serverSocket = new ServerSocket(0, 50, java.net.InetAddress.getByName("127.0.0.1"));
+        }
+
+        private void start() {
+            thread = new Thread(() -> {
+                while (!serverSocket.isClosed()) {
+                    try {
+                        handle(serverSocket.accept());
+                    } catch (IOException exception) {
+                        if (!serverSocket.isClosed()) throw new RuntimeException(exception);
+                    }
+                }
+            });
+            thread.setDaemon(true);
+            thread.start();
+        }
+
+        private void handle(Socket socket) throws IOException {
+            try (Socket connection = socket) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
+                String requestLine = reader.readLine();
+                if (requestLine == null) return;
+                String[] requestParts = requestLine.split(" ", 3);
+                Map<String, String> headers = new java.util.HashMap<String, String>();
+                String headerLine;
+                while ((headerLine = reader.readLine()) != null && !headerLine.isEmpty()) {
+                    int separator = headerLine.indexOf(':');
+                    if (separator > 0) {
+                        headers.put(headerLine.substring(0, separator).toLowerCase(Locale.US),
+                            headerLine.substring(separator + 1).trim());
+                    }
+                }
+                requests.add(new LocalRequest(requestParts[0], requestParts[1], headers));
+                OutputStream output = connection.getOutputStream();
+                StringBuilder responseHeaders = new StringBuilder();
+                responseHeaders.append("HTTP/1.1 ").append(status).append(" OK\r\n");
+                responseHeaders.append("Content-Length: ").append(responseBody.length).append("\r\n");
+                if (location != null) responseHeaders.append("Location: ").append(location).append("\r\n");
+                responseHeaders.append("Connection: close\r\n\r\n");
+                output.write(responseHeaders.toString().getBytes("UTF-8"));
+                output.write(responseBody);
+                output.flush();
+            }
+        }
+
+        private int port() {
+            return serverSocket.getLocalPort();
+        }
+
+        private List<LocalRequest> requests() {
+            return requests;
+        }
+
+        private void stop() throws IOException {
+            serverSocket.close();
+            if (thread != null) {
+                try {
+                    thread.join(1000);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException(exception);
+                }
+            }
+        }
     }
 }
