@@ -15,7 +15,8 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 public class VoiceConsoleControllerTest {
 
-    private static final String ENDPOINT = "https://console.example.com/api/live/sessions?k=tok";
+    private static final VoiceConsoleEndpoint ENDPOINT = new VoiceConsoleEndpoint(
+        "https://console.example.com/api/live/sessions", "test-token");
 
     static final class FakeConnection implements LiveVoiceConnection {
         final List<String> sentEvents = new ArrayList<>();
@@ -34,12 +35,12 @@ public class VoiceConsoleControllerTest {
 
     static final class FakeFactory implements LiveVoiceConnectionFactory {
         final FakeConnection connection = new FakeConnection();
-        final List<String> openedEndpoints = new ArrayList<>();
+        final List<VoiceConsoleEndpoint> openedEndpoints = new ArrayList<>();
         LiveVoiceConnectionListener listener;
 
         @Override
-        public LiveVoiceConnection open(String endpointUrl, LiveVoiceConnectionListener connectionListener) {
-            openedEndpoints.add(endpointUrl);
+        public LiveVoiceConnection open(VoiceConsoleEndpoint endpoint, LiveVoiceConnectionListener connectionListener) {
+            openedEndpoints.add(endpoint);
             listener = connectionListener;
             return connection;
         }
@@ -54,6 +55,8 @@ public class VoiceConsoleControllerTest {
         assertTrue(controller.isRunning());
         assertFalse(controller.isConnected());
         assertEquals(Collections.singletonList(ENDPOINT), factory.openedEndpoints);
+        assertEquals("https://console.example.com/api/live/sessions", factory.openedEndpoints.get(0).getUrl());
+        assertEquals("test-token", factory.openedEndpoints.get(0).getAccessToken());
 
         factory.listener.onConnected();
         assertTrue(controller.isConnected());
@@ -172,7 +175,7 @@ public class VoiceConsoleControllerTest {
     public void failureDuringOpenEndsTheSessionAndClosesTheConnection() {
         FakeConnection connection = new FakeConnection();
         List<String> reasons = new ArrayList<>();
-        LiveVoiceConnectionFactory failingDuringOpen = (endpointUrl, listener) -> {
+        LiveVoiceConnectionFactory failingDuringOpen = (endpoint, listener) -> {
             listener.onConnectFailed("peer_connection_unavailable");
             return connection;
         };
