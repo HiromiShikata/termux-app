@@ -15,10 +15,18 @@ public final class SessionDefinitionHttpsUpgradeStarter {
     public static void startOnce(TermuxAppSharedPreferences preferences) {
         if (!STARTED.compareAndSet(false, true)) return;
         Thread thread = new Thread(() -> {
-            String url = preferences.getSessionDefinitionUrl();
-            String upgraded = SessionDefinitionHttpsUpgrade.resolve(url, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER);
-            if (SessionDefinitionHttpsUpgrade.shouldPersist(url, upgraded, preferences.getSessionDefinitionUrl())) {
-                preferences.setSessionDefinitionUrl(upgraded);
+            SessionDefinitionHttpsUpgrade.UrlStore store = new SessionDefinitionHttpsUpgrade.UrlStore() {
+                @Override
+                public String get() {
+                    return preferences.getSessionDefinitionUrl();
+                }
+
+                @Override
+                public void set(String url) {
+                    preferences.setSessionDefinitionUrl(url);
+                }
+            };
+            if (SessionDefinitionHttpsUpgrade.upgradeStore(store, SessionDefinitionHttpsUpgrade.PRODUCTION_FETCHER)) {
                 Log.i("SessionDefinitionHttps", "Session definition URL upgraded to HTTPS");
             }
         });

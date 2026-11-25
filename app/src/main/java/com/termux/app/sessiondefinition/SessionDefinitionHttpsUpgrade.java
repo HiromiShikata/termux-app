@@ -87,6 +87,11 @@ public final class SessionDefinitionHttpsUpgrade {
         String fetchBody(String endpointUrl) throws IOException;
     }
 
+    public interface UrlStore {
+        String get();
+        void set(String url);
+    }
+
     public static final Fetcher PRODUCTION_FETCHER = endpointUrl -> {
         HttpURLConnection connection = null;
         try {
@@ -118,10 +123,22 @@ public final class SessionDefinitionHttpsUpgrade {
         if (!isPlainHttp(url)) return url;
         try {
             String validated = validatedHttpsBaseUrl(url, parseHttpsBaseUrl(fetcher.fetchBody(endpointFor(url))));
-            return validated == null ? url : rewrite(url, validated);
+            if (validated == null) return url;
+            String probeBody = fetcher.fetchBody(validated + "/api/console/https-endpoint");
+            return Objects.equals(parseHttpsBaseUrl(probeBody), validated) ? rewrite(url, validated) : url;
         } catch (IOException | RuntimeException e) {
             return url;
         }
+    }
+
+    public static boolean upgradeStore(UrlStore store, Fetcher fetcher) {
+        String url = store.get();
+        String upgraded = resolve(url, fetcher);
+        if (shouldPersist(url, upgraded, store.get())) {
+            store.set(upgraded);
+            return true;
+        }
+        return false;
     }
 
     private static final class JsonStringParser {
