@@ -296,6 +296,54 @@ else
   fail "verify script hard-codes the expected certificate digests" "constants not found in $VERIFY_SCRIPT"
 fi
 
+# ---- Case 5: the verify script asserts the old certificate's lineage capabilities ----
+# Each row builds a lineage whose old signer has the given capabilities, signs an APK with it through the
+# signing script, and runs the verify script (throwaway digest constants). The last column is the expected
+# result: "pass", or the capability whose wrong value must be named in the failure message.
+LINEAGE_VERIFY="$TMP/verify-lineage-throwaway.sh"
+sed -e "s/$REAL_OLD_CERT_SHA256/$OLD_SHA/g" -e "s/$REAL_NEW_CERT_SHA256/$NEW_SHA/g" "$VERIFY_SCRIPT" >"$LINEAGE_VERIFY"
+CAPABILITY_CASES="allowed-installed-data-only|true|false|false|false|false|pass
+shared-uid-allowed|true|true|false|false|false|shared UID
+permission-allowed|true|false|true|false|false|permission
+rollback-allowed|true|false|false|true|false|rollback
+auth-allowed|true|false|false|false|true|auth
+installed-data-denied|false|false|false|false|false|installed data"
+while IFS='|' read -r case_name installed_data shared_uid permission rollback auth expected; do
+  lineage_bin="$TMP/cap-$case_name.bin"
+  env CAP_OLD="$OLD_PW" "$APKSIGNER" lineage --in "$TMP/lineage.bin" --out "$lineage_bin" \
+    --signer --ks "$TMP/old.jks" --ks-key-alias alias --ks-pass env:CAP_OLD --key-pass env:CAP_OLD \
+    --set-installed-data "$installed_data" --set-shared-uid "$shared_uid" --set-permission "$permission" \
+    --set-rollback "$rollback" --set-auth "$auth" >/dev/null 2>&1
+  if [ ! -s "$lineage_bin" ]; then
+    fail "$case_name: lineage variant created" "apksigner lineage failed"
+    continue
+  fi
+  cap_apk="$TMP/cap-$case_name.apk"
+  cap_log="$TMP/cap-$case_name-sign.log"
+  run_sign "$cap_log" "$cap_apk" \
+    OLD_KEYSTORE="$TMP/old.jks" OLD_KEYSTORE_PASSWORD="$OLD_PW" \
+    RELEASE_KEYSTORE_BASE64="$NEW_B64" RELEASE_KEYSTORE_PASSWORD="$NEW_PW" \
+    RELEASE_SIGNING_LINEAGE_BASE64="$(base64 -w0 "$lineage_bin")"
+  if [ ! -s "$cap_apk" ]; then
+    fail "$case_name: signing with this lineage succeeds"
+    show_log_tail "$cap_log"
+    continue
+  fi
+  cap_verify_out="$(env -i PATH="$PATH" HOME="$HOME" ANDROID_HOME="$SDK_ROOT" bash "$LINEAGE_VERIFY" "$cap_apk" 2>&1)"
+  cap_verify_rc=$?
+  if [ "$expected" = "pass" ]; then
+    if [ "$cap_verify_rc" -eq 0 ]; then
+      pass "$case_name: verify script accepts the required old-certificate capabilities"
+    else
+      fail "$case_name: verify script accepts the required old-certificate capabilities" "exit $cap_verify_rc"
+    fi
+  elif [ "$cap_verify_rc" -ne 0 ] && printf '%s' "$cap_verify_out" | grep -qF "$expected"; then
+    pass "$case_name: verify script rejects and names the '$expected' capability"
+  else
+    fail "$case_name: verify script rejects and names the '$expected' capability" "exit $cap_verify_rc"
+  fi
+done <<<"$CAPABILITY_CASES"
+
 echo
 if [ "$FAILURES" -eq 0 ]; then
   echo "ALL TESTS PASSED"
