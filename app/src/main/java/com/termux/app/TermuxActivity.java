@@ -90,6 +90,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
+import com.termux.app.sessiondefinition.SessionDefinitionHttpsUpgradeStarter;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
@@ -427,6 +428,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
         mPreferences = TermuxAppSharedPreferences.build(this, true);
+        SessionDefinitionHttpsUpgradeStarter.startOnce(mPreferences);
         if (mPreferences == null) {
             // An AlertDialog should have shown to kill the app, so we don't continue running activity code
             mIsInvalidState = true;
