@@ -71,10 +71,16 @@ OLD_SHA="$(cert_sha256 "$TMP/old.jks" alias "$OLD_PW")"
 NEW_SHA="$(cert_sha256 "$TMP/new.jks" release "$NEW_PW")"
 
 # ---- Rotation lineage old -> new ----
-env ROT_OLD="$OLD_PW" ROT_NEW="$NEW_PW" "$APKSIGNER" rotate --out "$TMP/lineage.bin" \
+env ROT_OLD="$OLD_PW" ROT_NEW="$NEW_PW" "$APKSIGNER" rotate --out "$TMP/lineage-rotated.bin" \
   --old-signer --ks "$TMP/old.jks" --ks-key-alias alias --ks-pass env:ROT_OLD \
   --new-signer --ks "$TMP/new.jks" --ks-key-alias release --ks-pass env:ROT_NEW >/dev/null 2>&1 \
   || { echo "FAIL: apksigner rotate could not create the lineage"; exit 1; }
+# The release lineage gives the old signer exactly the capability the verify script requires: installed data only.
+env LIN_OLD="$OLD_PW" "$APKSIGNER" lineage --in "$TMP/lineage-rotated.bin" --out "$TMP/lineage.bin" \
+  --signer --ks "$TMP/old.jks" --ks-key-alias alias --ks-pass env:LIN_OLD --key-pass env:LIN_OLD \
+  --set-installed-data true --set-shared-uid false --set-permission false --set-rollback false --set-auth false \
+  >/dev/null 2>&1 \
+  || { echo "FAIL: apksigner lineage could not restrict the old signer"; exit 1; }
 
 # ---- Throwaway APK: minimal manifest linked by aapt2 (minSdk 24 matches the app's signing shape) ----
 cat >"$TMP/AndroidManifest.xml" <<'EOF'
@@ -310,7 +316,7 @@ auth-allowed|true|false|false|false|true|auth
 installed-data-denied|false|false|false|false|false|installed data"
 while IFS='|' read -r case_name installed_data shared_uid permission rollback auth expected; do
   lineage_bin="$TMP/cap-$case_name.bin"
-  env CAP_OLD="$OLD_PW" "$APKSIGNER" lineage --in "$TMP/lineage.bin" --out "$lineage_bin" \
+  env CAP_OLD="$OLD_PW" "$APKSIGNER" lineage --in "$TMP/lineage-rotated.bin" --out "$lineage_bin" \
     --signer --ks "$TMP/old.jks" --ks-key-alias alias --ks-pass env:CAP_OLD --key-pass env:CAP_OLD \
     --set-installed-data "$installed_data" --set-shared-uid "$shared_uid" --set-permission "$permission" \
     --set-rollback "$rollback" --set-auth "$auth" >/dev/null 2>&1
