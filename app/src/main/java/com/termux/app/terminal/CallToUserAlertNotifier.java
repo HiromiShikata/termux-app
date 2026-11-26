@@ -23,6 +23,7 @@ import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.logger.Logger;
 
+import java.util.HashSet;
 import java.util.Set;
 
 public final class CallToUserAlertNotifier {
@@ -33,8 +34,9 @@ public final class CallToUserAlertNotifier {
     static final String EXTRA_CALL_TO_USER_SESSION_NAME = "com.termux.app.extra.CALL_TO_USER_SESSION_NAME";
 
     private static final String TAP_DATA_SCHEME = "termux-call-to-user";
-    private static final String PREFERENCES_NAME = "call_to_user_alerts";
+    static final String PREFERENCES_NAME = "call_to_user_alerts";
     private static final String PREFERENCES_KEY_ALERTED_IDENTITIES = "alerted_identities";
+    private static final String PREFERENCES_KEY_SHOWN_SESSION_NAMES = "shown_session_names";
     private static final long[] VIBRATION_PATTERN_MILLIS = {0L, 250L, 250L, 250L};
 
     private CallToUserAlertNotifier() {
@@ -53,8 +55,13 @@ public final class CallToUserAlertNotifier {
     }
 
     @NonNull
+    private static SharedPreferences preferences(@NonNull Context context) {
+        return context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
+    }
+
+    @NonNull
     public static CallToUserAlertLedger.Storage ledgerStorage(@NonNull Context context) {
-        SharedPreferences preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
+        SharedPreferences preferences = preferences(context);
         return new CallToUserAlertLedger.Storage() {
             @Override
             public String read() {
@@ -72,7 +79,8 @@ public final class CallToUserAlertNotifier {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
             && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) {
-            Logger.logInfo(LOG_TAG, "POST_NOTIFICATIONS permission not granted; skipping call alert");
+            Logger.logWarn(LOG_TAG, "Skipping the call alert for session \"" + sessionName
+                + "\": the POST_NOTIFICATIONS permission is not granted");
             return;
         }
         NotificationManager notificationManager = notificationManager(context);
@@ -92,25 +100,47 @@ public final class CallToUserAlertNotifier {
             .setAutoCancel(true)
             .build();
         notificationManager.notify(CallToUserNotificationTags.tagFor(sessionName), NOTIFICATION_ID, notification);
+        Set<String> shownSessionNames = readShownSessionNames(context);
+        shownSessionNames.add(sessionName);
+        writeShownSessionNames(context, shownSessionNames);
     }
 
-    public static void cancelAlertsNotPending(@NonNull Context context, @NonNull Set<String> pendingSessionNames,
-                                              @NonNull Set<String> previouslyPendingSessionNames) {
+    public static void cancelAlertsNotPending(@NonNull Context context, @NonNull Set<String> pendingSessionNames) {
         NotificationManager notificationManager = notificationManager(context);
         if (notificationManager == null) return;
-        for (String previouslyPending : previouslyPendingSessionNames) {
-            if (!pendingSessionNames.contains(previouslyPending)) {
-                notificationManager.cancel(CallToUserNotificationTags.tagFor(previouslyPending), NOTIFICATION_ID);
-            }
+        Set<String> knownSessionNames = readShownSessionNames(context);
+        knownSessionNames.addAll(activeAlertSessionNames(notificationManager));
+        Set<String> sessionNamesToCancel =
+            CallToUserAlertCancellation.sessionsToCancel(knownSessionNames, pendingSessionNames);
+        for (String sessionName : sessionNamesToCancel) {
+            notificationManager.cancel(CallToUserNotificationTags.tagFor(sessionName), NOTIFICATION_ID);
+            knownSessionNames.remove(sessionName);
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        writeShownSessionNames(context, knownSessionNames);
+    }
+
+    @NonNull
+    private static Set<String> activeAlertSessionNames(@NonNull NotificationManager notificationManager) {
+        Set<String> sessionNames = new HashSet<>();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return sessionNames;
         for (StatusBarNotification active : notificationManager.getActiveNotifications()) {
             String sessionName = CallToUserNotificationTags.sessionNameFromTag(active.getTag());
-            if (sessionName != null && active.getId() == NOTIFICATION_ID
-                && !pendingSessionNames.contains(sessionName)) {
-                notificationManager.cancel(active.getTag(), NOTIFICATION_ID);
+            if (sessionName != null && active.getId() == NOTIFICATION_ID) {
+                sessionNames.add(sessionName);
             }
         }
+        return sessionNames;
+    }
+
+    @NonNull
+    private static Set<String> readShownSessionNames(@NonNull Context context) {
+        Set<String> stored = preferences(context).getStringSet(PREFERENCES_KEY_SHOWN_SESSION_NAMES, null);
+        return stored == null ? new HashSet<>() : new HashSet<>(stored);
+    }
+
+    private static void writeShownSessionNames(@NonNull Context context, @NonNull Set<String> sessionNames) {
+        preferences(context).edit().putStringSet(PREFERENCES_KEY_SHOWN_SESSION_NAMES, new HashSet<>(sessionNames))
+            .commit();
     }
 
     @Nullable

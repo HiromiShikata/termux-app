@@ -122,7 +122,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     private CallToUserAlertLedger mCallToUserAlertLedger;
 
-    private Set<String> mLastPendingCallToUserSessionNames = new HashSet<>();
+    private Set<String> mLastPendingCallToUserSessionNames;
 
     /** Detects the explicit-call output tag for every session regardless of which session is currently
      * viewed or whether the activity is foregrounded, recording the explicit call into the shared
@@ -1146,8 +1146,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private void updateCallToUserAlertNotifications() {
         Set<String> pendingSessionNames = mSessionNewActivityStore.pendingCallToUserSessionNames();
         if (pendingSessionNames.equals(mLastPendingCallToUserSessionNames)) return;
-        CallToUserAlertNotifier.cancelAlertsNotPending(this, pendingSessionNames,
-            mLastPendingCallToUserSessionNames);
+        CallToUserAlertNotifier.cancelAlertsNotPending(this, pendingSessionNames);
         mLastPendingCallToUserSessionNames = pendingSessionNames;
     }
 
@@ -1318,6 +1317,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 liveSessionNames.add(sessionName);
         }
         mSessionNewActivityStore.pruneToSessionNames(liveSessionNames);
+        mCallToUserAlertLedger.pruneToSessionNames(liveSessionNames);
     }
 
     @NonNull

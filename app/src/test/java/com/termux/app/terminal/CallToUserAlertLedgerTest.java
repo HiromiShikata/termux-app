@@ -3,6 +3,10 @@ package com.termux.app.terminal;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+
 public class CallToUserAlertLedgerTest {
 
     private static final class InMemoryStorage implements CallToUserAlertLedger.Storage {
@@ -86,6 +90,46 @@ public class CallToUserAlertLedgerTest {
         Assert.assertTrue(restartedLedger.markAlertedIfNew("worker", "key-0"));
         Assert.assertFalse(restartedLedger.markAlertedIfNew("worker",
             "key-" + CallToUserAlertLedger.MAX_IDENTITIES));
+    }
+
+    @Test
+    public void pruningDropsOnlyTheIdentitiesOfSessionsThatNoLongerExist() {
+        InMemoryStorage storage = new InMemoryStorage();
+        CallToUserAlertLedger ledger = new CallToUserAlertLedger(storage);
+        ledger.markAlertedIfNew("ended", "key-1");
+        ledger.markAlertedIfNew("live", "key-2");
+
+        ledger.pruneToSessionNames(new HashSet<>(Collections.singletonList("live")));
+
+        CallToUserAlertLedger restartedLedger = new CallToUserAlertLedger(storage);
+        Assert.assertEquals(1, restartedLedger.size());
+        Assert.assertTrue(restartedLedger.markAlertedIfNew("ended", "key-1"));
+        Assert.assertFalse(restartedLedger.markAlertedIfNew("live", "key-2"));
+    }
+
+    @Test
+    public void pruningWithAllSessionsLiveKeepsEveryIdentity() {
+        InMemoryStorage storage = new InMemoryStorage();
+        CallToUserAlertLedger ledger = new CallToUserAlertLedger(storage);
+        ledger.markAlertedIfNew("a", "key-1");
+        ledger.markAlertedIfNew("b", "key-2");
+
+        ledger.pruneToSessionNames(new HashSet<>(Arrays.asList("a", "b")));
+
+        Assert.assertEquals(2, new CallToUserAlertLedger(storage).size());
+    }
+
+    @Test
+    public void pruningToAnEmptyLiveSetDropsEverythingAndPersistsIt() {
+        InMemoryStorage storage = new InMemoryStorage();
+        CallToUserAlertLedger ledger = new CallToUserAlertLedger(storage);
+        ledger.pruneToSessionNames(Collections.<String>emptySet());
+        Assert.assertEquals(0, ledger.size());
+
+        ledger.markAlertedIfNew("gone", "key-1");
+        ledger.pruneToSessionNames(Collections.<String>emptySet());
+
+        Assert.assertEquals(0, new CallToUserAlertLedger(storage).size());
     }
 
     private static final class IdentityCase {
