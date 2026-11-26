@@ -60,6 +60,7 @@ public class CallToUserAlertNotificationInstrumentedTest {
     private String mNameA;
     private String mNameB;
     private final List<TermuxActivity> mLaunchedActivities = new ArrayList<>();
+    private final List<TerminalSession> mCreatedSessions = new ArrayList<>();
 
     @Before
     public void setUp() throws Exception {
@@ -90,10 +91,15 @@ public class CallToUserAlertNotificationInstrumentedTest {
                 CallToUserAlertNotifier.NOTIFICATION_ID);
         }
         mInstrumentation.runOnMainSync(() -> {
+            for (TerminalSession session : mCreatedSessions) {
+                mService.removeTermuxSession(session);
+            }
+            mService.pruneSessionNewActivityStoreToLiveSessions();
             for (TermuxActivity activity : mLaunchedActivities) {
                 activity.finish();
             }
         });
+        mCreatedSessions.clear();
         mLaunchedActivities.clear();
     }
 
@@ -195,6 +201,7 @@ public class CallToUserAlertNotificationInstrumentedTest {
         assertNotNull(holder[0]);
         TerminalSession session = holder[0].getTerminalSession();
         assertEquals(name, session.mSessionName);
+        mCreatedSessions.add(session);
         byte[] echo = ("echo " + name + "\n").getBytes(StandardCharsets.UTF_8);
         session.write(echo, 0, echo.length);
         return session;
