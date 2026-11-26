@@ -78,14 +78,13 @@ public class SessionSwitchPickerLiveRegroupTest {
 
     @Test
     public void pickerShowsNewStoryAfterGroupingRefresh() throws Exception {
+        fetcher.documents.put(GROUP_URL, groupDocument("storyB"));
         SessionSwitchPickerController controller = activity.getSessionSwitchPickerController();
         controller.onVolumeKeyDirection(true);
         assertTrue(controller.isShowing());
         TextView structureView = activity.findViewById(R.id.session_switch_picker_structure);
         assertTrue(structureView.getText().toString().contains("storyA"));
 
-        fetcher.documents.put(GROUP_URL, groupDocument("storyB"));
-        activity.refreshSessionGroupingFromDefinition();
         long deadlineNanos = System.nanoTime() + 10000L * 1000000L;
         while (!structureView.getText().toString().contains("storyB")
             && System.nanoTime() < deadlineNanos) {
