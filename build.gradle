@@ -64,6 +64,7 @@ allprojects {
 
     tasks.withType(Test).configureEach {
         maxParallelForks = rootProject.ext.testJvmCount
+        maxHeapSize = "2g"
 
         testLogging {
             events "failed"
