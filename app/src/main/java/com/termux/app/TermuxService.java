@@ -1313,7 +1313,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (session == null || session.mSessionName == null) return;
         boolean newCallRecorded = mSessionNewActivityStore.recordExplicitCall(session.mSessionName,
             System.currentTimeMillis(), reason, callCycleKey);
-        if (newCallRecorded && newestInScan && mCallToUserAlertLedger.markAlertedIfNew(session.mSessionName, callCycleKey))
+        if (newCallRecorded && newestInScan
+            && mCallToUserAlertLedger.markAlertedIfNew(session.mSessionName, callCycleKey, reason))
             CallToUserAlertNotifier.postAlert(this, session.mSessionName, reason);
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)

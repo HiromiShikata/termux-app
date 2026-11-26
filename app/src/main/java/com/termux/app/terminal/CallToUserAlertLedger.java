@@ -37,12 +37,32 @@ public final class CallToUserAlertLedger {
     }
 
     public boolean markAlertedIfNew(@NonNull String sessionName, @NonNull String callCycleKey) {
-        Identity identity = new Identity(sessionName, callCycleKey);
-        if (mIdentities.contains(identity)) return false;
+        return markAlertedIfNew(sessionName, callCycleKey, callCycleKey);
+    }
+
+    public boolean markAlertedIfNew(@NonNull String sessionName, @NonNull String callCycleKey,
+                                    @NonNull String tagValue) {
+        Identity identity = new Identity(sessionName, callCycleKey, tagValue);
+        if (isBareKey(callCycleKey, tagValue)) {
+            if (hasAlertedTagValue(sessionName, tagValue)) return false;
+        } else if (mIdentities.contains(identity)) {
+            return false;
+        }
         mIdentities.add(identity);
         while (mIdentities.size() > MAX_IDENTITIES) mIdentities.remove(0);
         persist();
         return true;
+    }
+
+    private static boolean isBareKey(@NonNull String callCycleKey, @NonNull String tagValue) {
+        return callCycleKey.equals(tagValue);
+    }
+
+    private boolean hasAlertedTagValue(@NonNull String sessionName, @NonNull String tagValue) {
+        for (Identity identity : mIdentities) {
+            if (identity.mSessionName.equals(sessionName) && identity.mTagValue.equals(tagValue)) return true;
+        }
+        return false;
     }
 
     public void pruneToSessionNames(@NonNull Set<String> liveSessionNames) {
@@ -65,17 +85,17 @@ public final class CallToUserAlertLedger {
         StringBuilder builder = new StringBuilder();
         for (Identity identity : mIdentities) {
             builder.append(encode(identity.mSessionName)).append(FIELD_SEPARATOR)
-                .append(encode(identity.mCallCycleKey)).append(RECORD_SEPARATOR);
+                .append(encode(identity.mCallCycleKey)).append(FIELD_SEPARATOR)
+                .append(encode(identity.mTagValue)).append(RECORD_SEPARATOR);
         }
         mStorage.write(builder.toString());
     }
 
     @Nullable
     private static Identity decode(@NonNull String record) {
-        int separatorIndex = record.indexOf(FIELD_SEPARATOR);
-        if (separatorIndex < 0) return null;
-        return new Identity(unescape(record.substring(0, separatorIndex)),
-            unescape(record.substring(separatorIndex + 1)));
+        String[] fields = record.split(String.valueOf(FIELD_SEPARATOR), -1);
+        if (fields.length != 3) return null;
+        return new Identity(unescape(fields[0]), unescape(fields[1]), unescape(fields[2]));
     }
 
     @NonNull
@@ -120,22 +140,26 @@ public final class CallToUserAlertLedger {
     private static final class Identity {
         final String mSessionName;
         final String mCallCycleKey;
+        final String mTagValue;
 
-        Identity(String sessionName, String callCycleKey) {
+        Identity(String sessionName, String callCycleKey, String tagValue) {
             mSessionName = sessionName;
             mCallCycleKey = callCycleKey;
+            mTagValue = tagValue;
         }
 
         @Override
         public boolean equals(Object other) {
             if (!(other instanceof Identity)) return false;
             Identity identity = (Identity) other;
-            return mSessionName.equals(identity.mSessionName) && mCallCycleKey.equals(identity.mCallCycleKey);
+            return mSessionName.equals(identity.mSessionName)
+                && mCallCycleKey.equals(identity.mCallCycleKey)
+                && mTagValue.equals(identity.mTagValue);
         }
 
         @Override
         public int hashCode() {
-            return 31 * mSessionName.hashCode() + mCallCycleKey.hashCode();
+            return (31 * (31 * mSessionName.hashCode() + mCallCycleKey.hashCode())) + mTagValue.hashCode();
         }
     }
 }

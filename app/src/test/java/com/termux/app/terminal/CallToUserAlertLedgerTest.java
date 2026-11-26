@@ -132,6 +132,62 @@ public class CallToUserAlertLedgerTest {
         Assert.assertEquals(0, new CallToUserAlertLedger(storage).size());
     }
 
+    private static final class DegradedKeyCase {
+        final String priorSession;
+        final String priorKey;
+        final String probeSession;
+        final String probeKey;
+        final boolean expectNew;
+
+        DegradedKeyCase(String priorSession, String priorKey, String probeSession, String probeKey,
+                        boolean expectNew) {
+            this.priorSession = priorSession;
+            this.priorKey = priorKey;
+            this.probeSession = probeSession;
+            this.probeKey = probeKey;
+            this.expectNew = expectNew;
+        }
+    }
+
+    @Test
+    public void aBareTagValueAlertsOnlyWhenTheSessionHasNotAlertedThatValue() {
+        String tokenedKey = "call:10:00:01 out:10:00:02 reply:10:00:00 first";
+        DegradedKeyCase[] cases = {
+            new DegradedKeyCase("worker", tokenedKey, "worker", "first", false),
+            new DegradedKeyCase("worker", tokenedKey, "worker", "second", true),
+            new DegradedKeyCase("worker", tokenedKey, "other", "first", true),
+            new DegradedKeyCase("worker", tokenedKey, "worker", "call:10:01:01 out:10:01:02 reply:10:00:00 first",
+                true),
+            new DegradedKeyCase("worker", "first", "worker", "first", false),
+            new DegradedKeyCase("worker", "first", "worker", "second", true),
+            new DegradedKeyCase("worker", "first", "worker", tokenedKey, true),
+        };
+        for (DegradedKeyCase testCase : cases) {
+            InMemoryStorage storage = new InMemoryStorage();
+            CallToUserAlertLedger ledger = new CallToUserAlertLedger(storage);
+            Assert.assertTrue(ledger.markAlertedIfNew(testCase.priorSession, testCase.priorKey,
+                valueOf(testCase.priorKey)));
+            Assert.assertEquals(testCase.probeSession + " " + testCase.probeKey, testCase.expectNew,
+                ledger.markAlertedIfNew(testCase.probeSession, testCase.probeKey, valueOf(testCase.probeKey)));
+        }
+    }
+
+    @Test
+    public void aBlockedBareTagValueStaysBlockedAfterARestart() {
+        InMemoryStorage storage = new InMemoryStorage();
+        new CallToUserAlertLedger(storage).markAlertedIfNew("worker", "call:1 out:2 reply:0 first", "first");
+
+        CallToUserAlertLedger restartedLedger = new CallToUserAlertLedger(storage);
+
+        Assert.assertFalse(restartedLedger.markAlertedIfNew("worker", "first", "first"));
+        Assert.assertTrue(restartedLedger.markAlertedIfNew("worker", "second", "second"));
+    }
+
+    private static String valueOf(String key) {
+        int tokenEnd = key.lastIndexOf(' ');
+        return tokenEnd < 0 ? key : key.substring(tokenEnd + 1);
+    }
+
     private static final class IdentityCase {
         final String firstSession;
         final String firstKey;

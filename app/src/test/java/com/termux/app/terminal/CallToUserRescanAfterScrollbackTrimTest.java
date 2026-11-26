@@ -42,7 +42,7 @@ public class CallToUserRescanAfterScrollbackTrimTest {
         @Override
         public void onCallToUserInScan(String sessionKey, String reason, String callCycleKey,
                                        boolean newestInScan) {
-            if (newestInScan && mLedger.markAlertedIfNew(sessionKey, callCycleKey)) {
+            if (newestInScan && mLedger.markAlertedIfNew(sessionKey, callCycleKey, reason)) {
                 mAlerts.add(reason);
             }
         }
@@ -59,6 +59,20 @@ public class CallToUserRescanAfterScrollbackTrimTest {
         controller.onSessionTextChanged("worker", FIRST_CALL + SECOND_STATUSLINE + SECOND_CALL);
 
         Assert.assertEquals("a call re-keyed by scrollback trimming must not alert again: alerts="
+            + trigger.mAlerts, alertsAfterFirstScan, trigger.mAlerts.size());
+    }
+
+    @Test
+    public void aNewestCallRekeyedWithoutItsStatuslineNeverAlertsAgain() {
+        AlertingTrigger trigger = new AlertingTrigger();
+        CallToUserTagController controller = new CallToUserTagController(trigger);
+
+        controller.onSessionTextChanged("worker", FIRST_STATUSLINE + FIRST_CALL);
+        int alertsAfterFirstScan = trigger.mAlerts.size();
+
+        controller.onSessionTextChanged("worker", FIRST_CALL);
+
+        Assert.assertEquals("the newest call re-keyed without its statusline must not alert again: alerts="
             + trigger.mAlerts, alertsAfterFirstScan, trigger.mAlerts.size());
     }
 
