@@ -197,7 +197,8 @@ public class SessionGroupingRefreshTest {
     private void loadInitialDefinition() throws Exception {
         SessionDefinitionRepository repository = (SessionDefinitionRepository) get(
             activity, TermuxActivity.class, "mSessionDefinitionRepository");
-        repository.loadForRebuild(INDEX_URL, (result) -> adapter.setEntries(result.getEntries()),
+        repository.loadForRebuild(INDEX_URL, false,
+            (result) -> adapter.setEntries(result.getEntries()),
             (exception) -> { throw new AssertionError(exception); });
         flushMainLooper();
     }
@@ -241,9 +242,10 @@ public class SessionGroupingRefreshTest {
         return constructor.newInstance(terminalSession, new ExecutionCommand(), null, false);
     }
 
-    private void flushMainLooper() {
+    private void flushMainLooper() throws InterruptedException {
         for (int attempt = 0; attempt < 200; attempt++) {
             Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Thread.sleep(5);
         }
     }
 
