@@ -2,10 +2,18 @@ package com.termux.app.sessiondefinition;
 
 import static org.junit.Assert.assertEquals;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.Intent;
+import android.os.IBinder;
 import android.os.Looper;
 
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
+import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.shared.termux.shell.TermuxShellManager;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,6 +25,7 @@ import org.robolectric.android.controller.ActivityController;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -29,12 +38,19 @@ public class TermuxActivityGroupingLifecycleTest {
     @Test
     public void startRefreshesGroupingAndStopCancelsTheOneMinuteRefresh() throws Exception {
         ActivityController<TermuxActivity> controller = Robolectric.buildActivity(TermuxActivity.class);
-        controller.create();
         TermuxActivity activity = controller.get();
+        Context appContext = RuntimeEnvironment.getApplication();
+        TermuxService service = Robolectric.buildService(TermuxService.class).get();
+        set(service, TermuxService.class, "mShellManager", new TermuxShellManager(appContext));
+        set(service, TermuxService.class, "mProperties", TermuxAppSharedProperties.init(appContext));
+        IBinder binder = service.onBind(new Intent());
+        registerServiceBinder(activity, binder);
+
+        controller.create();
         set(activity, TermuxActivity.class, "mIsInvalidState", false);
 
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(
-            RuntimeEnvironment.getApplication(), true);
+            appContext, true);
         preferences.setSessionDefinitionUrl(INDEX_URL);
         set(activity, TermuxActivity.class, "mPreferences", preferences);
 
@@ -46,18 +62,25 @@ public class TermuxActivityGroupingLifecycleTest {
         set(activity, TermuxActivity.class, "mSessionDefinitionRepository", repository);
 
         controller.start();
-        activity.onStart();
         awaitFetch(fetcher);
         assertEquals(1, fetcher.indexFetchCalls);
 
         controller.stop();
-        controller.destroy();
-        try {
-            Shadows.shadowOf(Looper.getMainLooper()).idleFor(1, TimeUnit.MINUTES);
-        } catch (NullPointerException exception) {
-            assertEquals("Cannot read field \"service\" because \"service\" is null", exception.getMessage());
-        }
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(1, TimeUnit.MINUTES);
         assertEquals(1, fetcher.indexFetchCalls);
+    }
+
+    private static void registerServiceBinder(ContextWrapper context, IBinder binder) throws Exception {
+        Method getShadowInstrumentation = Class.forName("org.robolectric.shadows.ShadowContextWrapper")
+            .getDeclaredMethod("getShadowInstrumentation");
+        getShadowInstrumentation.setAccessible(true);
+        Object shadowInstrumentation = getShadowInstrumentation.invoke(null);
+        Method setComponentNameAndServiceForBindService = shadowInstrumentation.getClass()
+            .getDeclaredMethod("setComponentNameAndServiceForBindService", ComponentName.class, IBinder.class);
+        setComponentNameAndServiceForBindService.setAccessible(true);
+        setComponentNameAndServiceForBindService.invoke(shadowInstrumentation,
+            new ComponentName(context, TermuxService.class), binder);
     }
 
     private static void awaitFetch(RecordingFetcher fetcher) throws InterruptedException {
