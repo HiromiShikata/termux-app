@@ -113,12 +113,12 @@ public class SessionNewActivityStore {
         recordExplicitCall(sessionName, explicitCallTimeMillis, reason, reason);
     }
 
-    public void recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
-                                   @NonNull String reason, @NonNull String callCycleKey) {
+    public boolean recordExplicitCall(@NonNull String sessionName, long explicitCallTimeMillis,
+                                      @NonNull String reason, @NonNull String callCycleKey) {
         String cappedReason = SessionNewActivityStateCaps.capReason(reason);
         if (!cappedReason.trim().isEmpty()) {
             if (isAlreadyRecordedCallCycle(sessionName, callCycleKey)) {
-                return;
+                return false;
             }
             rememberRecordedCallCycleKey(sessionName, callCycleKey);
         }
@@ -135,6 +135,7 @@ public class SessionNewActivityStore {
             mUnacknowledgedCallReasonsRecordedTimeMillisByName.put(sessionName, explicitCallTimeMillis);
         }
         save();
+        return !cappedReason.trim().isEmpty();
     }
 
     private static void capTrailing(@NonNull List<String> reasons) {
@@ -517,13 +518,19 @@ public class SessionNewActivityStore {
     }
 
     public int pendingCallToUserSessionCount() {
-        int count = 0;
-        for (List<String> reasons : mUnacknowledgedCallReasonsByName.values()) {
+        return pendingCallToUserSessionNames().size();
+    }
+
+    @NonNull
+    public Set<String> pendingCallToUserSessionNames() {
+        Set<String> names = new HashSet<>();
+        for (Map.Entry<String, List<String>> entry : mUnacknowledgedCallReasonsByName.entrySet()) {
+            List<String> reasons = entry.getValue();
             if (reasons != null && !reasons.isEmpty()) {
-                count++;
+                names.add(entry.getKey());
             }
         }
-        return count;
+        return names;
     }
 
     public void setOnChangeListener(@Nullable OnChangeListener listener) {

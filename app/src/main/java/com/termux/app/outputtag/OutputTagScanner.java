@@ -80,6 +80,10 @@ public final class OutputTagScanner {
         this.occurrenceExtractor = occurrenceExtractor;
     }
 
+    public List<OutputTagOccurrence> extractOccurrences(String output) {
+        return occurrenceExtractor.extractOccurrences(output);
+    }
+
     public List<String> extractValues(String output) {
         List<String> values = new ArrayList<>();
         for (OutputTagOccurrence occurrence : occurrenceExtractor.extractOccurrences(output)) {

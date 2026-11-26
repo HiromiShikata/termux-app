@@ -108,6 +108,8 @@ import com.termux.app.handedness.BrowserTabStripHandednessPart;
 import com.termux.app.handedness.BrowserTabsListHandednessPart;
 import com.termux.app.handedness.TabDrawerEdge;
 import com.termux.app.handedness.TerminalToolbarHandednessPart;
+import com.termux.app.terminal.CallToUserAlertNotifier;
+import com.termux.app.terminal.CallToUserTapResolver;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.ExpandedProjectsAllowlistParser;
 import com.termux.app.terminal.ProjectActionToken;
@@ -246,6 +248,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Nullable
     private String mPendingInboundBrowserUrl;
+
+    private String mPendingCallToUserSessionName;
 
     SessionListBottomSheetController mSessionListBottomSheetController;
 
@@ -409,6 +413,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Logger.logDebug(LOG_TAG, "onCreate");
+        mPendingCallToUserSessionName = CallToUserAlertNotifier.sessionNameFromTapIntent(getIntent());
         ActivityWindowRecorderHolder.getInstance().recordActivityCreated();
         mIsOnResumeAfterOnCreate = true;
 
@@ -876,6 +881,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         eagerLoadAllSessions();
 
         routePendingInboundBrowserUrl();
+        routePendingCallToUserSession();
     }
 
     private void createStartupSessions(boolean launchFailsafe) {
@@ -896,6 +902,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        mPendingCallToUserSessionName = CallToUserAlertNotifier.sessionNameFromTapIntent(intent);
+        routePendingCallToUserSession();
         String inboundUrl = parseInboundBrowserUrl(intent);
         if (inboundUrl == null) return;
         mPendingInboundBrowserUrl = inboundUrl;
@@ -906,6 +914,28 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private String parseInboundBrowserUrl(@Nullable Intent intent) {
         if (intent == null) return null;
         return BrowserInboundViewUrl.resolveInAppBrowserUrl(intent.getAction(), intent.getDataString());
+    }
+
+    public void routePendingCallToUserSession() {
+        if (mPendingCallToUserSessionName == null) return;
+        if (mTermuxService == null || mTermuxTerminalSessionActivityClient == null) return;
+        String callingSessionName = mPendingCallToUserSessionName;
+        mPendingCallToUserSessionName = null;
+        switch (CallToUserTapResolver.resolve(callingSessionName, mTermuxService.liveTerminalSessionNames())) {
+            case SELECT_CALLING_SESSION:
+                TerminalSession callingSession = mTermuxService.getTerminalSessionForSessionName(callingSessionName);
+                if (callingSession != null) {
+                    mTermuxTerminalSessionActivityClient.setCurrentSession(callingSession);
+                    return;
+                }
+                Logger.showToast(this, getString(R.string.call_to_user_calling_session_ended_toast), true);
+                return;
+            case CALLING_SESSION_ENDED:
+                Logger.showToast(this, getString(R.string.call_to_user_calling_session_ended_toast), true);
+                return;
+            default:
+                return;
+        }
     }
 
     public void routePendingInboundBrowserUrl() {
