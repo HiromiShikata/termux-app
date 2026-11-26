@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.sessiondefinition.SessionGroupingRefreshGate;
 import com.termux.app.browser.TermuxBrowserController;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
@@ -292,6 +293,8 @@ public class SessionListBottomSheetController {
             .start();
         revealCurrentSessionRow(listController);
         startRelativeTimeRefresh();
+        SessionGroupingRefreshGate.refreshIfDefined(
+            mActivity.getPreferences().getSessionDefinitionUrl(), mActivity::refreshSessionGroupingFromDefinition);
     }
 
     private void onRelativeTimeRefreshTick() {

@@ -69,12 +69,42 @@ public final class SessionDefinitionController {
             } finally {
                 setLoadingProgressVisible(false);
             }
+            activity.setGroupingRefreshFailing(result.hasFailedGroups());
         }, exception -> {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
             try {
                 activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
             } finally {
                 setLoadingProgressVisible(false);
+            }
+            activity.setGroupingRefreshFailing(true);
+        });
+    }
+
+    public void refreshGroupingOnly() {
+        String baseUrl = activity.getPreferences().getSessionDefinitionUrl().trim();
+        if (!SessionGroupingRefreshGate.shouldRefreshGrouping(baseUrl)) {
+            return;
+        }
+        if (!repository.isLoaded()) {
+            return;
+        }
+
+        repository.loadForRebuild(baseUrl, true, result -> {
+            List<SessionDefinitionEntry> displayedEntries = result.hasFailedGroups()
+                ? mergeFailedGroupEntries(result.getEntries(), result) : result.getEntries();
+            activity.refreshSessionGroupingEntries(displayedEntries);
+            boolean wasFailing = activity.isGroupingRefreshFailing();
+            activity.setGroupingRefreshFailing(result.hasFailedGroups());
+            if (result.hasFailedGroups() && !wasFailing) {
+                notifyPartialLoad(result);
+            }
+        }, exception -> {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
+            boolean wasFailing = activity.isGroupingRefreshFailing();
+            activity.setGroupingRefreshFailing(true);
+            if (!wasFailing) {
+                activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
             }
         });
     }
@@ -155,6 +185,26 @@ public final class SessionDefinitionController {
         if (authoritativeLoad) {
             activity.refreshDisplayedSessionDefinitionEntries(entries);
         }
+    }
+
+    private List<SessionDefinitionEntry> mergeFailedGroupEntries(
+        List<SessionDefinitionEntry> entries, SessionDefinitionLoadResult result) {
+        Set<String> failedGroupLabels = new HashSet<>(result.getFailedGroupLabels());
+        List<SessionDefinitionEntry> displayedEntries = new ArrayList<>();
+        List<SessionDefinitionEntry> previousDisplayed = activity.getTermuxSessionListViewController() == null
+            ? Collections.emptyList() : activity.getTermuxSessionListViewController().getEntries();
+        for (SessionDefinitionEntry entry : entries) {
+            if (!failedGroupLabels.contains(entry.getGroupLabel())) {
+                displayedEntries.add(entry);
+            }
+        }
+
+        for (SessionDefinitionEntry entry : previousDisplayed) {
+            if (failedGroupLabels.contains(entry.getGroupLabel())) {
+                displayedEntries.add(entry);
+            }
+        }
+        return displayedEntries;
     }
 
     private Set<String> collectLiveSessionNames() {

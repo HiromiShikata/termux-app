@@ -27,6 +27,7 @@ import androidx.core.content.ContextCompat;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.sessiondefinition.SessionGroupingRefreshGate;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
 import java.util.List;
@@ -103,7 +104,15 @@ public class SessionSwitchPickerController {
             decision,
             this::switchToHighlightedSession,
             () -> renderStructure(listController),
-            () -> setShowing(true),
+            () -> {
+                boolean wasShowing = mShowing;
+                setShowing(true);
+                if (!wasShowing) {
+                    SessionGroupingRefreshGate.refreshIfDefined(
+                        mActivity.getPreferences().getSessionDefinitionUrl(),
+                        mActivity::refreshSessionGroupingFromDefinition);
+                }
+            },
             this::scheduleHide,
             this::scheduleCommit);
     }

@@ -32,7 +32,12 @@ public final class SessionDefinitionRepository {
 
     private final SessionDefinitionLoader loader;
 
-    private final List<OnEntriesLoadedListener> listenersAwaitingTheLoadInFlight = new ArrayList<>();
+    private interface InFlightWaiter {
+        void onLoaded(@NonNull SessionDefinitionLoadResult fetchedResult);
+        void onFailed(@NonNull Exception exception);
+    }
+
+    private final List<InFlightWaiter> inFlightWaiters = new ArrayList<>();
 
     private SessionDefinitionLoadResult result = EMPTY_RESULT;
 
@@ -69,36 +74,81 @@ public final class SessionDefinitionRepository {
             listener.onEntriesLoaded();
             return;
         }
-        listenersAwaitingTheLoadInFlight.add(listener);
+        inFlightWaiters.add(new InFlightWaiter() {
+            @Override
+            public void onLoaded(@NonNull SessionDefinitionLoadResult fetchedResult) {
+                listener.onEntriesLoaded();
+            }
+
+            @Override
+            public void onFailed(@NonNull Exception exception) {
+            }
+        });
         if (loading) {
             return;
         }
+        startFetch(baseUrl);
+    }
+
+    private void startFetch(@NonNull String baseUrl) {
         loading = true;
+        loadInFlight(baseUrl);
+    }
+
+    private void loadInFlight(@NonNull String baseUrl) {
         Handler mainThreadHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
             try {
                 SessionDefinitionLoadResult loadResult = loader.load(baseUrl);
                 mainThreadHandler.post(() -> {
-                    result = loadResult;
-                    loaded = true;
-                    loading = false;
-                    notifyListenersAwaitingTheLoadInFlight();
+                    finishSuccessfulLoad(loadResult);
                 });
             } catch (Exception exception) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition entries from " + baseUrl, exception);
                 mainThreadHandler.post(() -> {
-                    loading = false;
-                    listenersAwaitingTheLoadInFlight.clear();
+                    finishFailedLoad(exception);
                 });
             }
         }).start();
     }
 
-    private void notifyListenersAwaitingTheLoadInFlight() {
-        List<OnEntriesLoadedListener> listenersToNotify = new ArrayList<>(listenersAwaitingTheLoadInFlight);
-        listenersAwaitingTheLoadInFlight.clear();
-        for (OnEntriesLoadedListener listener : listenersToNotify) {
-            listener.onEntriesLoaded();
+    private void finishSuccessfulLoad(@NonNull SessionDefinitionLoadResult fetchedResult) {
+        if (fetchedResult.hasFailedGroups()) {
+            List<SessionDefinitionEntry> mergedEntries = new ArrayList<>();
+            for (SessionDefinitionEntry entry : fetchedResult.getEntries()) {
+                if (!fetchedResult.getFailedGroupLabels().contains(entry.getGroupLabel())) {
+                    mergedEntries.add(entry);
+                }
+            }
+            for (SessionDefinitionEntry entry : result.getEntries()) {
+                if (fetchedResult.getFailedGroupLabels().contains(entry.getGroupLabel())) {
+                    mergedEntries.add(entry);
+                }
+            }
+            result = new SessionDefinitionLoadResult(mergedEntries, fetchedResult.getTotalGroupCount(),
+                fetchedResult.getFailedGroupLabels());
+        } else {
+            result = fetchedResult;
+        }
+        loaded = true;
+        notifyInFlightWaiters(result, null);
+        loading = false;
+    }
+
+    private void finishFailedLoad(@NonNull Exception exception) {
+        loading = false;
+        notifyInFlightWaiters(null, exception);
+    }
+
+    private void notifyInFlightWaiters(SessionDefinitionLoadResult fetchedResult, Exception exception) {
+        List<InFlightWaiter> waiters = new ArrayList<>(inFlightWaiters);
+        inFlightWaiters.clear();
+        for (InFlightWaiter waiter : waiters) {
+            if (exception == null) {
+                waiter.onLoaded(fetchedResult);
+            } else {
+                waiter.onFailed(exception);
+            }
         }
     }
 
@@ -112,18 +162,21 @@ public final class SessionDefinitionRepository {
             mainThreadHandler.post(() -> onEntriesReady.onEntriesReady(result));
             return;
         }
-        new Thread(() -> {
-            try {
-                SessionDefinitionLoadResult loadResult = loader.load(baseUrl);
-                mainThreadHandler.post(() -> {
-                    result = loadResult;
-                    loaded = true;
-                    onEntriesReady.onEntriesReady(loadResult);
-                });
-            } catch (Exception exception) {
-                Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
-                mainThreadHandler.post(() -> onLoadFailed.onLoadFailed(exception));
+        InFlightWaiter waiter = new InFlightWaiter() {
+            @Override
+            public void onLoaded(@NonNull SessionDefinitionLoadResult fetchedResult) {
+                onEntriesReady.onEntriesReady(fetchedResult);
             }
-        }).start();
+
+            @Override
+            public void onFailed(@NonNull Exception exception) {
+                onLoadFailed.onLoadFailed(exception);
+            }
+        };
+        inFlightWaiters.add(waiter);
+        if (loading) {
+            return;
+        }
+        startFetch(baseUrl);
     }
 }
