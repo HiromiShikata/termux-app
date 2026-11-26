@@ -23,9 +23,6 @@ import java.util.Set;
 
 public final class SessionDefinitionController {
 
-    public interface GroupingRefreshPlanner {
-    }
-
     private static final String LOG_TAG = "SessionDefinitionController";
 
     private final TermuxActivity activity;
@@ -44,10 +41,6 @@ public final class SessionDefinitionController {
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
-    }
-
-    public SessionDefinitionController(TermuxActivity activity, GroupingRefreshPlanner planner) {
-        this(activity, activity.getSessionDefinitionRepository(), new SessionDefinitionPlanner());
     }
 
     public SessionDefinitionController(TermuxActivity activity, SessionDefinitionRepository repository, SessionDefinitionPlanner planner) {
