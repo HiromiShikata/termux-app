@@ -25,9 +25,6 @@ import org.robolectric.Shadows;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,6 +43,7 @@ public class SessionGroupingRefreshTest {
     private TermuxShellManager shellManager;
     private TermuxSessionsListViewController adapter;
     private MutableFetcher fetcher;
+    private RecordingSessionClient sessionClient;
 
     @Test
     public void shouldRefreshGroupingUsesOnlyNonBlankDefinitionUrls() {
@@ -66,45 +64,42 @@ public class SessionGroupingRefreshTest {
     @Test
     public void refreshGroupingOnlyUpdatesDisplayedGroupingWithoutPlanningOrChangingSessions()
         throws Exception {
-        RecordingPlanner planner = recordingPlanner();
         seedInitialDefinition();
         TermuxSession liveSession = session("https://example.test/live");
         shellManager.mTermuxSessions.add(liveSession);
         fetcher.documents.put(GROUP_ONE_URL, groupDocument("storyNew", "https://example.test/live"));
 
-        invokeRefreshGroupingOnly(planner);
+        invokeRefreshGroupingOnly();
 
         assertEquals(Collections.singletonList("storyNew"), entryLabels(adapter.getEntries()));
-        assertEquals(0, planner.planCalls);
         assertEquals(Collections.singletonList("https://example.test/live"), sessionNames());
+        assertEquals(Collections.emptyList(), sessionClient.calls);
     }
 
     @Test
     public void refreshGroupingOnlyKeepsPreviouslyDisplayedEntriesForFailedGroups()
         throws Exception {
-        RecordingPlanner planner = recordingPlanner();
         seedInitialDefinitionWithTwoGroups();
         fetcher.documents.put(GROUP_ONE_URL, groupDocument("storyNew", "https://example.test/new"));
         fetcher.failedUrls.add(GROUP_TWO_URL);
 
-        invokeRefreshGroupingOnly(planner);
+        invokeRefreshGroupingOnly();
 
         assertEquals(Arrays.asList("storyNew", "storyOld"), entryLabels(adapter.getEntries()));
-        assertEquals(0, planner.planCalls);
+        assertEquals(Collections.emptyList(), sessionClient.calls);
     }
 
     @Test
     public void refreshGroupingOnlyDoesNotRemoveASessionWhoseDefinitionDisappeared() throws Exception {
-        RecordingPlanner planner = recordingPlanner();
         seedInitialDefinition();
         TermuxSession disappearedSession = session("https://example.test/disappeared");
         shellManager.mTermuxSessions.add(disappearedSession);
         fetcher.documents.put(INDEX_URL, "{\"projects\":[]}");
 
-        invokeRefreshGroupingOnly(planner);
+        invokeRefreshGroupingOnly();
 
         assertEquals(Collections.singletonList("https://example.test/disappeared"), sessionNames());
-        assertEquals(0, planner.planCalls);
+        assertEquals(Collections.emptyList(), sessionClient.calls);
     }
 
     @Before
@@ -118,8 +113,8 @@ public class SessionGroupingRefreshTest {
             com.termux.shared.termux.settings.properties.TermuxAppSharedProperties.init(appContext));
         set(activity, TermuxActivity.class, "mTermuxService", service);
         set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
-            new com.termux.app.terminal.TermuxTerminalSessionActivityClient(activity));
-        service.setTermuxTerminalSessionClient(activity.getTermuxTerminalSessionClient());
+            sessionClient = new RecordingSessionClient(activity));
+        service.setTermuxTerminalSessionClient(sessionClient);
         adapter = new TermuxSessionsListViewController(activity, service.getTermuxSessions());
         set(activity, TermuxActivity.class, "mTermuxSessionListViewController", adapter);
         set(activity, TermuxActivity.class, "mPreferences",
@@ -153,20 +148,11 @@ public class SessionGroupingRefreshTest {
         flushMainLooper();
     }
 
-    private void invokeRefreshGroupingOnly(RecordingPlanner planner) throws Exception {
-        Constructor<?> constructor = null;
-        for (Constructor<?> candidate : SessionDefinitionController.class.getDeclaredConstructors()) {
-            if (candidate.getParameterTypes().length == 2) {
-                constructor = candidate;
-                break;
-            }
-        }
-        if (constructor == null) throw new AssertionError("the controller must accept a planner fake");
-        constructor.setAccessible(true);
-        Object controller = constructor.newInstance(activity, planner.value);
-        Method refresh = SessionDefinitionController.class.getDeclaredMethod("refreshGroupingOnly");
-        refresh.setAccessible(true);
-        refresh.invoke(controller);
+    private void invokeRefreshGroupingOnly() throws Exception {
+        SessionDefinitionRepository repository = (SessionDefinitionRepository) get(
+            activity, TermuxActivity.class, "mSessionDefinitionRepository");
+        new SessionDefinitionController(activity, repository, new SessionDefinitionPlanner())
+            .refreshGroupingOnly();
         flushMainLooper();
     }
 
@@ -234,28 +220,36 @@ public class SessionGroupingRefreshTest {
         }
     }
 
-    private RecordingPlanner recordingPlanner() throws Exception {
-        Constructor<?>[] constructors = SessionDefinitionController.class.getDeclaredConstructors();
-        for (Constructor<?> constructor : constructors) {
-            Class<?>[] parameterTypes = constructor.getParameterTypes();
-            if (parameterTypes.length == 2 && parameterTypes[1].isInterface()) {
-                RecordingPlanner recordingPlanner = new RecordingPlanner();
-                recordingPlanner.value = Proxy.newProxyInstance(parameterTypes[1].getClassLoader(),
-                    new Class<?>[]{parameterTypes[1]}, recordingPlanner);
-                return recordingPlanner;
-            }
-        }
-        throw new AssertionError("the controller must accept a planner fake");
-    }
+    private static final class RecordingSessionClient
+        extends com.termux.app.terminal.TermuxTerminalSessionActivityClient {
+        private final java.util.ArrayList<String> calls = new java.util.ArrayList<>();
 
-    private static final class RecordingPlanner implements InvocationHandler {
-        private Object value;
-        private int planCalls;
+        private RecordingSessionClient(TermuxActivity activity) {
+            super(activity);
+        }
 
         @Override
-        public Object invoke(Object proxy, Method method, Object[] arguments) {
-            if ("plan".equals(method.getName())) planCalls++;
-            return null;
+        public void addNewSession(boolean isFailSafe, String sessionName, boolean closeDrawerAfter) {
+            calls.add("addNewSession");
+            super.addNewSession(isFailSafe, sessionName, closeDrawerAfter);
+        }
+
+        @Override
+        public void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter) {
+            calls.add("addNewAutosshSession");
+            super.addNewAutosshSession(sessionName, command, closeDrawerAfter);
+        }
+
+        @Override
+        public void removeSessionForRebuild(TerminalSession sessionToRemove) {
+            calls.add("removeSession");
+            super.removeSessionForRebuild(sessionToRemove);
+        }
+
+        @Override
+        public void restoreDisplayedSessionAfterReloadIfStillLive(TerminalSession sessionBeforeReload) {
+            calls.add("restoreDisplayedSessionAfterReloadIfStillLive");
+            super.restoreDisplayedSessionAfterReloadIfStillLive(sessionBeforeReload);
         }
     }
 }
