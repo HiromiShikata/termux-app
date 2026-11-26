@@ -11,9 +11,13 @@ import android.os.Looper;
 
 import com.termux.app.TermuxActivity;
 import com.termux.app.TermuxService;
+import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.shared.shell.command.ExecutionCommand;
 import com.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import com.termux.shared.termux.shell.TermuxShellManager;
+import com.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
+import com.termux.terminal.TerminalSession;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -24,9 +28,13 @@ import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -42,13 +50,19 @@ public class TermuxActivityGroupingLifecycleTest {
         TermuxActivity activity = controller.get();
         Context appContext = RuntimeEnvironment.getApplication();
         TermuxService service = Robolectric.buildService(TermuxService.class).get();
-        set(service, TermuxService.class, "mShellManager", new TermuxShellManager(appContext));
+        TermuxShellManager shellManager = new TermuxShellManager(appContext);
+        set(service, TermuxService.class, "mShellManager", shellManager);
         set(service, TermuxService.class, "mProperties", TermuxAppSharedProperties.init(appContext));
         IBinder binder = service.onBind(new Intent());
         registerServiceBinder(activity, binder);
 
         controller.create();
         set(activity, TermuxActivity.class, "mIsInvalidState", false);
+        RecordingSessionClient sessionClient = new RecordingSessionClient(activity);
+        set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient", sessionClient);
+        service.setTermuxTerminalSessionClient(sessionClient);
+        shellManager.mTermuxSessions.add(session("https://example.test/live"));
+        List<String> sessionNamesBeforeStart = sessionNames(service);
 
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(
             appContext, true);
@@ -56,7 +70,9 @@ public class TermuxActivityGroupingLifecycleTest {
         set(activity, TermuxActivity.class, "mPreferences", preferences);
 
         RecordingFetcher fetcher = new RecordingFetcher();
-        fetcher.documents.put(INDEX_URL, "{\"projects\":[]}");
+        fetcher.documents.put(INDEX_URL, "{\"projects\":[\"groupOne\"]}");
+        fetcher.documents.put("https://example.test/groupOne.json",
+            "[{\"story\":\"storyNew\",\"urls\":[\"https://example.test/not-live\"]}]");
         SessionDefinitionRepository repository = new SessionDefinitionRepository(
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser()));
         set(repository, SessionDefinitionRepository.class, "loaded", true);
@@ -72,8 +88,10 @@ public class TermuxActivityGroupingLifecycleTest {
                 activity::refreshSessionGroupingFromDefinition));
 
         controller.start();
-        awaitFetch(fetcher);
+        awaitIndexFetchCount(fetcher, 1);
         assertEquals(1, fetcher.indexFetchCalls);
+        assertEquals(sessionNamesBeforeStart, sessionNames(service));
+        assertEquals(Collections.emptyList(), sessionClient.calls);
 
         Shadows.shadowOf(Looper.getMainLooper()).idleFor(1, TimeUnit.MINUTES);
         awaitIndexFetchCount(fetcher, 2);
@@ -96,12 +114,6 @@ public class TermuxActivityGroupingLifecycleTest {
         setComponentNameAndServiceForBindService.setAccessible(true);
         setComponentNameAndServiceForBindService.invoke(shadowInstrumentation,
             new ComponentName(context, TermuxService.class), binder);
-    }
-
-    private static void awaitFetch(RecordingFetcher fetcher) throws InterruptedException {
-        for (int attempt = 0; attempt < 100 && fetcher.indexFetchCalls == 0; attempt++) {
-            Thread.sleep(5);
-        }
     }
 
     private static void awaitIndexFetchCount(RecordingFetcher fetcher, int expectedCount)
@@ -128,6 +140,53 @@ public class TermuxActivityGroupingLifecycleTest {
             String document = documents.get(url);
             if (document == null) throw new IOException("missing document: " + url);
             return document;
+        }
+    }
+
+    private static List<String> sessionNames(TermuxService service) {
+        List<String> names = new ArrayList<>();
+        for (TermuxSession session : service.getTermuxSessions()) {
+            names.add(session.getTerminalSession().mSessionName);
+        }
+        return names;
+    }
+
+    private static TermuxSession session(String name) throws Exception {
+        TerminalSession terminalSession = new TerminalSession(null, null, null, null, null, null);
+        terminalSession.mSessionName = name;
+        Field shellPid = TerminalSession.class.getDeclaredField("mShellPid");
+        shellPid.setAccessible(true);
+        shellPid.setInt(terminalSession, -1);
+        Constructor<TermuxSession> constructor = TermuxSession.class.getDeclaredConstructor(
+            TerminalSession.class, ExecutionCommand.class, TermuxSession.TermuxSessionClient.class,
+            boolean.class);
+        constructor.setAccessible(true);
+        return constructor.newInstance(terminalSession, new ExecutionCommand(), null, false);
+    }
+
+    private static final class RecordingSessionClient extends TermuxTerminalSessionActivityClient {
+        private final List<String> calls = new ArrayList<>();
+
+        private RecordingSessionClient(TermuxActivity activity) {
+            super(activity);
+        }
+
+        @Override
+        public void addNewSession(boolean isFailSafe, String sessionName, boolean closeDrawerAfter) {
+            calls.add("addNewSession");
+            super.addNewSession(isFailSafe, sessionName, closeDrawerAfter);
+        }
+
+        @Override
+        public void addNewAutosshSession(String sessionName, String command, boolean closeDrawerAfter) {
+            calls.add("addNewAutosshSession");
+            super.addNewAutosshSession(sessionName, command, closeDrawerAfter);
+        }
+
+        @Override
+        public void removeSessionForRebuild(TerminalSession sessionToRemove) {
+            calls.add("removeSession");
+            super.removeSessionForRebuild(sessionToRemove);
         }
     }
 }

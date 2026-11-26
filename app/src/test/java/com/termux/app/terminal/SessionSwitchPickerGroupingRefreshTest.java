@@ -72,19 +72,19 @@ public class SessionSwitchPickerGroupingRefreshTest {
         SessionSwitchPickerController controller = new SessionSwitchPickerController(activity);
 
         controller.onVolumeKeyDirection(true);
-        drainMainLooper();
+        drainMainLooper(1);
         assertEquals(1, fetcher.indexFetchCalls);
 
         controller.onVolumeKeyDirection(true);
-        drainMainLooper();
+        drainMainLooper(1);
         assertEquals(1, fetcher.indexFetchCalls);
 
         controller.commitAndHide();
-        drainMainLooper();
+        drainMainLooper(1);
         assertEquals(1, fetcher.indexFetchCalls);
 
         controller.onVolumeKeyDirection(true);
-        drainMainLooper();
+        drainMainLooper(2);
         assertEquals(2, fetcher.indexFetchCalls);
     }
 
@@ -94,14 +94,19 @@ public class SessionSwitchPickerGroupingRefreshTest {
         repository.loadForRebuild(INDEX_URL, false, result -> { }, exception -> {
             throw new AssertionError(exception);
         });
-        drainMainLooper();
+        drainMainLooper(1);
         fetcher.indexFetchCalls = 0;
     }
 
-    private static void drainMainLooper() throws InterruptedException {
-        for (int attempt = 0; attempt < 100; attempt++) {
+    private void drainMainLooper(int expectedFetchCount) throws Exception {
+        SessionDefinitionRepository repository = (SessionDefinitionRepository) get(
+            activity, TermuxActivity.class, "mSessionDefinitionRepository");
+        long deadlineNanos = System.nanoTime() + 10000L * 1000000L;
+        while ((fetcher.indexFetchCalls < expectedFetchCount || !repository.isLoaded()
+            || repository.isLoading())
+            && System.nanoTime() < deadlineNanos) {
             Shadows.shadowOf(Looper.getMainLooper()).idle();
-            Thread.sleep(5);
+            Thread.sleep(10);
         }
     }
 
@@ -119,7 +124,7 @@ public class SessionSwitchPickerGroupingRefreshTest {
 
     private static final class MutableFetcher implements SessionDefinitionDocumentFetcher {
         private final Map<String, String> documents = new HashMap<>();
-        private int indexFetchCalls;
+        private volatile int indexFetchCalls;
 
         @Override
         public String fetch(String url) throws IOException {
