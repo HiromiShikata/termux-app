@@ -75,18 +75,18 @@ public class SessionDefinitionConfigActivityTest {
     }
 
     @Test
-    public void reloadIntervalDefaultValueIsZero() {
-        Assert.assertEquals(0,
+    public void reloadIntervalDefaultValueIsOneMinute() {
+        Assert.assertEquals(1,
             TermuxPreferenceConstants.TERMUX_APP.DEFAULT_VALUE_KEY_SESSION_DEFINITION_RELOAD_INTERVAL_MINUTES);
     }
 
     @Test
-    public void reloadIntervalGetReturnsDefaultWhenUnset() {
+    public void reloadIntervalGetReturnsOneMinuteWhenUnset() {
         SessionDefinitionConfigActivity activity = Robolectric.buildActivity(SessionDefinitionConfigActivity.class)
             .create().start().resume().get();
         TermuxAppSharedPreferences prefs = TermuxAppSharedPreferences.build(activity, true);
         Assert.assertNotNull(prefs);
-        Assert.assertEquals(0, prefs.getSessionDefinitionReloadIntervalMinutes());
+        Assert.assertEquals(1, prefs.getSessionDefinitionReloadIntervalMinutes());
     }
 
     @Test

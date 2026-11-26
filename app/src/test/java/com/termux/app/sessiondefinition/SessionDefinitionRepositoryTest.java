@@ -16,8 +16,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(RobolectricTestRunner.class)
 public class SessionDefinitionRepositoryTest {
@@ -28,6 +32,7 @@ public class SessionDefinitionRepositoryTest {
         private final Map<String, String> documents = new HashMap<>();
         private final AtomicInteger indexFetchCount = new AtomicInteger();
         private boolean fail;
+        private boolean failGroupTwo;
 
         void register(String url, String document) {
             documents.put(url, document);
@@ -37,6 +42,9 @@ public class SessionDefinitionRepositoryTest {
         public String fetch(String url) throws IOException {
             if (fail) {
                 throw new IOException("boom");
+            }
+            if (failGroupTwo && url.equals("https://example.test/base/groupTwo.json")) {
+                throw new IOException("groupTwo unavailable");
             }
             if (url.equals(INDEX_URL)) {
                 indexFetchCount.incrementAndGet();
@@ -210,5 +218,88 @@ public class SessionDefinitionRepositoryTest {
         assertTrue(repository.isLoaded());
         assertSame(cachedBeforeFailure, repository.getCachedEntries());
         assertEquals(2, repository.getCachedEntries().size());
+    }
+
+    @Test
+    public void partialForceRefreshMergesSuccessfulGroupsWithPreviousFailedGroupEntries() throws Exception {
+        CountingFetcher fetcher = fetcherWithTwoEntries();
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        repository.loadForRebuild(INDEX_URL, (entries) -> {}, (exception) -> {});
+        flushMainLooper();
+
+        fetcher.register("https://example.test/base/groupOne.json",
+            "[{\"story\":\"storyA-new\",\"urls\":[\"https://example.test/new\"]}]");
+        fetcher.failGroupTwo = true;
+
+        AtomicReference<SessionDefinitionLoadResult> partial = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, true, partial::set, (exception) -> {});
+        flushMainLooper();
+
+        assertEquals(Collections.singletonList("groupTwo"), partial.get().getFailedGroupLabels());
+        assertSessionNames(repository.getCachedEntries(),
+            "groupOne/storyA-new", "groupTwo/storyB");
+    }
+
+    @Test
+    public void concurrentForcedLoadsShareOneFetchAndNotifyBothListeners() throws Exception {
+        BlockingFetcher fetcher = new BlockingFetcher(fetcherWithTwoEntries());
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+        AtomicInteger firstListenerCalls = new AtomicInteger();
+        AtomicInteger secondListenerCalls = new AtomicInteger();
+
+        repository.loadForRebuild(INDEX_URL, true,
+            result -> firstListenerCalls.incrementAndGet(), exception -> {});
+        assertTrue(fetcher.indexFetchStarted.await(5, TimeUnit.SECONDS));
+        repository.loadForRebuild(INDEX_URL, true,
+            result -> secondListenerCalls.incrementAndGet(), exception -> {});
+
+        fetcher.releaseIndexFetch.countDown();
+        flushMainLooper();
+
+        assertEquals(1, fetcher.fetchCount(INDEX_URL));
+        assertEquals(1, fetcher.fetchCount("https://example.test/base/groupOne.json"));
+        assertEquals(1, fetcher.fetchCount("https://example.test/base/groupTwo.json"));
+        assertEquals(1, firstListenerCalls.get());
+        assertEquals(1, secondListenerCalls.get());
+    }
+
+    private static void assertSessionNames(List<SessionDefinitionEntry> entries, String... expected) {
+        List<String> sessionNames = new java.util.ArrayList<>();
+        for (SessionDefinitionEntry entry : entries) {
+            sessionNames.add(entry.getSessionName());
+        }
+        assertEquals(java.util.Arrays.asList(expected), sessionNames);
+    }
+
+    private static final class BlockingFetcher implements SessionDefinitionDocumentFetcher {
+        private final CountingFetcher delegate;
+        private final CountDownLatch indexFetchStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseIndexFetch = new CountDownLatch(1);
+        private final Map<String, AtomicInteger> fetchCounts = new ConcurrentHashMap<>();
+
+        BlockingFetcher(CountingFetcher delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String fetch(String url) throws IOException {
+            fetchCounts.computeIfAbsent(url, ignored -> new AtomicInteger()).incrementAndGet();
+            if (url.equals(INDEX_URL) && indexFetchStarted.getCount() > 0) {
+                indexFetchStarted.countDown();
+                try {
+                    releaseIndexFetch.await();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException(exception);
+                }
+            }
+            return delegate.fetch(url);
+        }
+
+        int fetchCount(String url) {
+            AtomicInteger count = fetchCounts.get(url);
+            return count == null ? 0 : count.get();
+        }
     }
 }
