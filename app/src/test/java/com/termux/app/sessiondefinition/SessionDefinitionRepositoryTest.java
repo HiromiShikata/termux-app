@@ -221,6 +221,66 @@ public class SessionDefinitionRepositoryTest {
     }
 
     @Test
+    public void loadCallsListenerImmediatelyWhileForcedRefreshIsInFlight() throws Exception {
+        SequencedBlockingFetcher fetcher = new SequencedBlockingFetcher(2);
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        repository.load(INDEX_URL, () -> {});
+        flushMainLooper();
+        assertEquals(1, fetcher.fetchCount(INDEX_URL));
+
+        repository.loadForRebuild(INDEX_URL, true, (result) -> {}, (exception) -> {});
+        assertTrue(fetcher.blockedIndexFetchStarted.await(5, TimeUnit.SECONDS));
+
+        AtomicInteger listenerCalls = new AtomicInteger();
+        repository.load(INDEX_URL, listenerCalls::incrementAndGet);
+
+        assertEquals(1, listenerCalls.get());
+        fetcher.releaseBlockedIndexFetch.countDown();
+        flushMainLooper();
+        assertEquals(2, fetcher.fetchCount(INDEX_URL));
+    }
+
+    @Test
+    public void forcedLoadDoesNotReuseEarlierInFlightFetch() throws Exception {
+        SequencedBlockingFetcher fetcher = new SequencedBlockingFetcher(1);
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        repository.load(INDEX_URL, () -> {});
+        assertTrue(fetcher.blockedIndexFetchStarted.await(5, TimeUnit.SECONDS));
+
+        AtomicReference<SessionDefinitionLoadResult> forcedResult = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, true, forcedResult::set, (exception) -> {});
+
+        fetcher.releaseBlockedIndexFetch.countDown();
+        flushMainLooper();
+
+        assertEquals(2, fetcher.fetchCount(INDEX_URL));
+        assertSessionNames(forcedResult.get().getEntries(), "second/secondStory");
+    }
+
+    @Test
+    public void forcedLoadsWhileInitialFetchIsInFlightShareTheSecondFetch() throws Exception {
+        SequencedBlockingFetcher fetcher = new SequencedBlockingFetcher(1);
+        SessionDefinitionRepository repository = repositoryWith(fetcher);
+
+        repository.load(INDEX_URL, () -> {});
+        assertTrue(fetcher.blockedIndexFetchStarted.await(5, TimeUnit.SECONDS));
+
+        AtomicReference<SessionDefinitionLoadResult> firstForcedResult = new AtomicReference<>();
+        AtomicReference<SessionDefinitionLoadResult> secondForcedResult = new AtomicReference<>();
+        repository.loadForRebuild(INDEX_URL, true, firstForcedResult::set, (exception) -> {});
+        repository.loadForRebuild(INDEX_URL, true, secondForcedResult::set, (exception) -> {});
+
+        fetcher.releaseBlockedIndexFetch.countDown();
+        flushMainLooper();
+
+        assertEquals(2, fetcher.fetchCount(INDEX_URL));
+        assertSessionNames(firstForcedResult.get().getEntries(), "second/secondStory");
+        assertSessionNames(secondForcedResult.get().getEntries(), "second/secondStory");
+    }
+
+    @Test
     public void partialForceRefreshMergesSuccessfulGroupsWithPreviousFailedGroupEntries() throws Exception {
         CountingFetcher fetcher = fetcherWithTwoEntries();
         SessionDefinitionRepository repository = repositoryWith(fetcher);
@@ -295,6 +355,49 @@ public class SessionDefinitionRepositoryTest {
                 }
             }
             return delegate.fetch(url);
+        }
+
+        int fetchCount(String url) {
+            AtomicInteger count = fetchCounts.get(url);
+            return count == null ? 0 : count.get();
+        }
+    }
+
+    private static final class SequencedBlockingFetcher implements SessionDefinitionDocumentFetcher {
+        private final int blockedIndexFetchNumber;
+        private final CountDownLatch blockedIndexFetchStarted = new CountDownLatch(1);
+        private final CountDownLatch releaseBlockedIndexFetch = new CountDownLatch(1);
+        private final Map<String, AtomicInteger> fetchCounts = new ConcurrentHashMap<>();
+
+        SequencedBlockingFetcher(int blockedIndexFetchNumber) {
+            this.blockedIndexFetchNumber = blockedIndexFetchNumber;
+        }
+
+        @Override
+        public String fetch(String url) throws IOException {
+            int fetchCount = fetchCounts.computeIfAbsent(url, ignored -> new AtomicInteger())
+                .incrementAndGet();
+            if (url.equals(INDEX_URL)) {
+                if (fetchCount == blockedIndexFetchNumber) {
+                    blockedIndexFetchStarted.countDown();
+                    try {
+                        releaseBlockedIndexFetch.await();
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new IOException(exception);
+                    }
+                }
+                return fetchCount == 1
+                    ? "{\"projects\":[\"first\"]}"
+                    : "{\"projects\":[\"second\"]}";
+            }
+            if (url.equals("https://example.test/base/first.json")) {
+                return "[{\"story\":\"firstStory\",\"urls\":[\"https://example.test/first\"]}]";
+            }
+            if (url.equals("https://example.test/base/second.json")) {
+                return "[{\"story\":\"secondStory\",\"urls\":[\"https://example.test/second\"]}]";
+            }
+            throw new IOException("No document registered for " + url);
         }
 
         int fetchCount(String url) {
