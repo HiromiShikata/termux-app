@@ -92,19 +92,21 @@ public class SessionGroupingRefreshTest {
     }
 
     @Test
-    public void refreshGroupingOnlyBeforeInitialLoadDelegatesToFirstLoad()
+    public void refreshGroupingOnlyBeforeInitialLoadDelegatesToFirstLoadWithoutChangingSessions()
         throws Exception {
         adapter.setEntries(Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "storyOld",
                 Collections.singletonList("https://example.test/live"))));
         TermuxSession liveSession = session("https://example.test/live");
         shellManager.mTermuxSessions.add(liveSession);
-        fetcher.documents.put(INDEX_URL, "{\"projects\":[]}");
+        fetcher.documents.put(INDEX_URL, "{\"projects\":[\"groupOne\"]}");
+        fetcher.documents.put(GROUP_ONE_URL,
+            groupDocument("storyNew", "https://example.test/live"));
 
         invokeRefreshGroupingOnly();
 
-        assertEquals(1, fetcher.fetchCalls);
-        assertEquals(Collections.singletonList(INDEX_URL), fetcher.fetchedUrls);
+        assertEquals(1, Collections.frequency(fetcher.fetchedUrls, INDEX_URL));
+        assertEquals(Collections.singletonList("storyNew"), entryLabels(adapter.getEntries()));
         assertEquals(Collections.singletonList("https://example.test/live"), sessionNames());
         assertEquals(Collections.emptyList(), sessionClient.calls);
     }
