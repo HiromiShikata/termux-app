@@ -84,15 +84,26 @@ public final class SessionDefinitionController {
         if (!SessionGroupingRefreshGate.shouldRefreshGrouping(baseUrl)) {
             return;
         }
+        if (!repository.isLoaded()) {
+            return;
+        }
+
+        boolean wasFailing = activity.isGroupingRefreshFailing();
 
         repository.loadForRebuild(baseUrl, true, result -> {
             List<SessionDefinitionEntry> displayedEntries = result.hasFailedGroups()
                 ? mergeFailedGroupEntries(result.getEntries(), result) : result.getEntries();
             activity.refreshSessionGroupingEntries(displayedEntries);
-            notifyPartialLoad(result);
+            activity.setGroupingRefreshFailing(result.hasFailedGroups());
+            if (result.hasFailedGroups() && !wasFailing) {
+                notifyPartialLoad(result);
+            }
         }, exception -> {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
-            activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
+            activity.setGroupingRefreshFailing(true);
+            if (!wasFailing) {
+                activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
+            }
         });
     }
 
@@ -169,9 +180,9 @@ public final class SessionDefinitionController {
         activity.getTermuxTerminalSessionClient()
             .restoreDisplayedSessionAfterReloadIfStillLive(displayedSessionBeforeReload);
 
-        List<SessionDefinitionEntry> displayedEntries = authoritativeLoad
-            ? entries : mergeFailedGroupEntries(entries, result);
-        activity.refreshDisplayedSessionDefinitionEntries(displayedEntries);
+        if (authoritativeLoad) {
+            activity.refreshDisplayedSessionDefinitionEntries(entries);
+        }
     }
 
     private List<SessionDefinitionEntry> mergeFailedGroupEntries(

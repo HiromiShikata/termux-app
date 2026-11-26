@@ -107,9 +107,11 @@ public class SessionSwitchPickerController {
             () -> {
                 boolean wasShowing = mShowing;
                 setShowing(true);
-                if (!wasShowing && SessionGroupingRefreshGate.shouldRefreshGrouping(
-                    mActivity.getPreferences().getSessionDefinitionUrl()))
-                    mActivity.refreshSessionGroupingFromDefinition();
+                if (!wasShowing) {
+                    SessionGroupingRefreshGate.refreshIfDefined(
+                        mActivity.getPreferences().getSessionDefinitionUrl(),
+                        mActivity::refreshSessionGroupingFromDefinition);
+                }
             },
             this::scheduleHide,
             this::scheduleCommit);

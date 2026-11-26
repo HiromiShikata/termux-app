@@ -1,5 +1,6 @@
 package com.termux.app.sessiondefinition;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 public final class SessionGroupingRefreshGate {
@@ -11,5 +12,11 @@ public final class SessionGroupingRefreshGate {
 
     public static boolean shouldRefreshGrouping(@Nullable String definitionUrl) {
         return definitionUrl != null && !definitionUrl.trim().isEmpty();
+    }
+
+    public static void refreshIfDefined(@Nullable String definitionUrl, @NonNull Runnable refresh) {
+        if (shouldRefreshGrouping(definitionUrl)) {
+            refresh.run();
+        }
     }
 }

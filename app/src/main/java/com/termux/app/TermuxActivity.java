@@ -303,6 +303,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private final SessionDefinitionAutoReloadScheduler mSessionGroupingAutoRefreshScheduler =
         new SessionDefinitionAutoReloadScheduler(this::refreshSessionGroupingFromDefinition);
 
+    private boolean mGroupingRefreshFailing = false;
+
     private final SessionReconnectScheduler mSessionReconnectScheduler =
         new SessionReconnectScheduler(this::reconnectDeadDisplayedSessions);
 
@@ -689,8 +691,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         requestPostNotificationsPermissionIfNeeded();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
-        if (SessionGroupingRefreshGate.shouldRefreshGrouping(mPreferences.getSessionDefinitionUrl()))
-            refreshSessionGroupingFromDefinition();
+        SessionGroupingRefreshGate.refreshIfDefined(
+            mPreferences.getSessionDefinitionUrl(), this::refreshSessionGroupingFromDefinition);
         mSessionGroupingAutoRefreshScheduler.onForeground(
             SessionGroupingRefreshGate.GROUPING_REFRESH_INTERVAL_MINUTES);
         mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
@@ -1991,6 +1993,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public boolean isSessionDefinitionListLoaded() {
         return mSessionDefinitionRepository.isLoaded();
+    }
+
+    public boolean isGroupingRefreshFailing() {
+        return mGroupingRefreshFailing;
+    }
+
+    public void setGroupingRefreshFailing(boolean failing) {
+        mGroupingRefreshFailing = failing;
     }
 
     @Nullable

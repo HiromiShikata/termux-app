@@ -293,8 +293,8 @@ public class SessionListBottomSheetController {
             .start();
         revealCurrentSessionRow(listController);
         startRelativeTimeRefresh();
-        if (SessionGroupingRefreshGate.shouldRefreshGrouping(mActivity.getPreferences().getSessionDefinitionUrl()))
-            mActivity.refreshSessionGroupingFromDefinition();
+        SessionGroupingRefreshGate.refreshIfDefined(
+            mActivity.getPreferences().getSessionDefinitionUrl(), mActivity::refreshSessionGroupingFromDefinition);
     }
 
     private void onRelativeTimeRefreshTick() {
