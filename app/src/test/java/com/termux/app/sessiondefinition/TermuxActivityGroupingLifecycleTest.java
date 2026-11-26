@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(RobolectricTestRunner.class)
 public class TermuxActivityGroupingLifecycleTest {
@@ -60,15 +61,29 @@ public class TermuxActivityGroupingLifecycleTest {
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser()));
         set(repository, SessionDefinitionRepository.class, "loaded", true);
         set(activity, TermuxActivity.class, "mSessionDefinitionRepository", repository);
+        AtomicInteger scheduledGroupingRefreshes = new AtomicInteger();
+        SessionDefinitionAutoReloadScheduler groupingScheduler =
+            new SessionDefinitionAutoReloadScheduler(() -> {
+                scheduledGroupingRefreshes.incrementAndGet();
+                activity.refreshSessionGroupingFromDefinition();
+            });
+        set(activity, TermuxActivity.class, "mSessionGroupingAutoRefresher",
+            new SessionGroupingAutoRefresher(groupingScheduler,
+                activity::refreshSessionGroupingFromDefinition));
 
         controller.start();
         awaitFetch(fetcher);
         assertEquals(1, fetcher.indexFetchCalls);
 
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(1, TimeUnit.MINUTES);
+        awaitIndexFetchCount(fetcher, 2);
+        assertEquals(2, fetcher.indexFetchCalls);
+        int scheduledGroupingRefreshesBeforeStop = scheduledGroupingRefreshes.get();
+
         controller.stop();
         Shadows.shadowOf(Looper.getMainLooper()).idle();
         Shadows.shadowOf(Looper.getMainLooper()).idleFor(1, TimeUnit.MINUTES);
-        assertEquals(1, fetcher.indexFetchCalls);
+        assertEquals(scheduledGroupingRefreshesBeforeStop, scheduledGroupingRefreshes.get());
     }
 
     private static void registerServiceBinder(ContextWrapper context, IBinder binder) throws Exception {
@@ -89,6 +104,14 @@ public class TermuxActivityGroupingLifecycleTest {
         }
     }
 
+    private static void awaitIndexFetchCount(RecordingFetcher fetcher, int expectedCount)
+        throws InterruptedException {
+        long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(2000);
+        while (fetcher.indexFetchCalls < expectedCount && System.nanoTime() < deadlineNanos) {
+            Thread.sleep(10);
+        }
+    }
+
     private static void set(Object target, Class<?> declaringClass, String fieldName, Object value) throws Exception {
         Field field = declaringClass.getDeclaredField(fieldName);
         field.setAccessible(true);
@@ -97,7 +120,7 @@ public class TermuxActivityGroupingLifecycleTest {
 
     private static final class RecordingFetcher implements SessionDefinitionDocumentFetcher {
         private final Map<String, String> documents = new HashMap<>();
-        private int indexFetchCalls;
+        private volatile int indexFetchCalls;
 
         @Override
         public String fetch(String url) throws IOException {
