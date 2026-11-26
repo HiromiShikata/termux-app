@@ -30,6 +30,8 @@ import com.termux.app.diagnostics.SessionCreationPathCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
+import com.termux.app.terminal.CallToUserAlertLedger;
+import com.termux.app.terminal.CallToUserAlertNotifier;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.NotificationRepostDecision;
 import com.termux.app.terminal.SessionNewActivityStore;
@@ -118,6 +120,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     private SessionNewActivityStore mSessionNewActivityStore = new SessionNewActivityStore();
 
+    private CallToUserAlertLedger mCallToUserAlertLedger;
+
+    private Set<String> mLastPendingCallToUserSessionNames = new HashSet<>();
+
     /** Detects the explicit-call output tag for every session regardless of which session is currently
      * viewed or whether the activity is foregrounded, recording the explicit call into the shared
      * {@link SessionNewActivityStore}. Owned by the service so a single per-session scanner survives
@@ -202,8 +208,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
         mSessionNewActivityStore = buildSessionNewActivityStore();
         setupPendingCallNotificationChannel();
+        CallToUserAlertNotifier.setupChannel(this);
+        mCallToUserAlertLedger = new CallToUserAlertLedger(CallToUserAlertNotifier.ledgerStorage(this));
         mSessionNewActivityStore.setOnChangeListener(store -> onSessionNewActivityStoreChanged());
         updatePendingCallNotification();
+        updateCallToUserAlertNotifications();
 
         TermuxAppSharedPreferences openTagPreferences = TermuxAppSharedPreferences.build(this, true);
         if (openTagPreferences != null) {
@@ -1129,8 +1138,17 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private void onSessionNewActivityStoreChanged() {
         mHandler.post(() -> {
             updatePendingCallNotification();
+            updateCallToUserAlertNotifications();
             updateNotification();
         });
+    }
+
+    private void updateCallToUserAlertNotifications() {
+        Set<String> pendingSessionNames = mSessionNewActivityStore.pendingCallToUserSessionNames();
+        if (pendingSessionNames.equals(mLastPendingCallToUserSessionNames)) return;
+        CallToUserAlertNotifier.cancelAlertsNotPending(this, pendingSessionNames,
+            mLastPendingCallToUserSessionNames);
+        mLastPendingCallToUserSessionNames = pendingSessionNames;
     }
 
     private void updatePendingCallNotification() {
@@ -1283,8 +1301,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                                                   String callCycleKey) {
         TerminalSession session = getTerminalSessionForHandle(sessionHandle);
         if (session == null || session.mSessionName == null) return;
-        mSessionNewActivityStore.recordExplicitCall(session.mSessionName, System.currentTimeMillis(),
-            reason, callCycleKey);
+        boolean newCallRecorded = mSessionNewActivityStore.recordExplicitCall(session.mSessionName,
+            System.currentTimeMillis(), reason, callCycleKey);
+        if (newCallRecorded && mCallToUserAlertLedger.markAlertedIfNew(session.mSessionName, callCycleKey))
+            CallToUserAlertNotifier.postAlert(this, session.mSessionName, reason);
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)
             activityClient.termuxSessionListNotifyUpdated();
@@ -1356,6 +1376,26 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 return i;
         }
         return -1;
+    }
+
+    @Nullable
+    public synchronized TerminalSession getTerminalSessionForSessionName(@NonNull String sessionName) {
+        for (int i = 0, len = mShellManager.mTermuxSessions.size(); i < len; i++) {
+            TerminalSession terminalSession = mShellManager.mTermuxSessions.get(i).getTerminalSession();
+            if (sessionName.equals(terminalSession.mSessionName))
+                return terminalSession;
+        }
+        return null;
+    }
+
+    @NonNull
+    public synchronized Set<String> liveTerminalSessionNames() {
+        Set<String> names = new HashSet<>();
+        for (int i = 0, len = mShellManager.mTermuxSessions.size(); i < len; i++) {
+            String sessionName = mShellManager.mTermuxSessions.get(i).getTerminalSession().mSessionName;
+            if (sessionName != null) names.add(sessionName);
+        }
+        return names;
     }
 
     public synchronized TerminalSession getTerminalSessionForHandle(String sessionHandle) {
