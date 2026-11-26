@@ -242,7 +242,7 @@ public class SessionDefinitionRepositoryTest {
     }
 
     @Test
-    public void forcedLoadDoesNotReuseEarlierInFlightFetch() throws Exception {
+    public void forcedLoadDuringInFlightFetchReusesIt() throws Exception {
         SequencedBlockingFetcher fetcher = new SequencedBlockingFetcher(1);
         SessionDefinitionRepository repository = repositoryWith(fetcher);
 
@@ -255,12 +255,12 @@ public class SessionDefinitionRepositoryTest {
         fetcher.releaseBlockedIndexFetch.countDown();
         flushMainLooper();
 
-        assertEquals(2, fetcher.fetchCount(INDEX_URL));
-        assertSessionNames(forcedResult.get().getEntries(), "second/secondStory");
+        assertEquals(1, fetcher.fetchCount(INDEX_URL));
+        assertSessionNames(forcedResult.get().getEntries(), "first/firstStory");
     }
 
     @Test
-    public void forcedLoadsWhileInitialFetchIsInFlightShareTheSecondFetch() throws Exception {
+    public void forcedLoadsWhileInitialFetchIsInFlightShareOneFetch() throws Exception {
         SequencedBlockingFetcher fetcher = new SequencedBlockingFetcher(1);
         SessionDefinitionRepository repository = repositoryWith(fetcher);
 
@@ -275,9 +275,9 @@ public class SessionDefinitionRepositoryTest {
         fetcher.releaseBlockedIndexFetch.countDown();
         flushMainLooper();
 
-        assertEquals(2, fetcher.fetchCount(INDEX_URL));
-        assertSessionNames(firstForcedResult.get().getEntries(), "second/secondStory");
-        assertSessionNames(secondForcedResult.get().getEntries(), "second/secondStory");
+        assertEquals(1, fetcher.fetchCount(INDEX_URL));
+        assertSessionNames(firstForcedResult.get().getEntries(), "first/firstStory");
+        assertSessionNames(secondForcedResult.get().getEntries(), "first/firstStory");
     }
 
     @Test
