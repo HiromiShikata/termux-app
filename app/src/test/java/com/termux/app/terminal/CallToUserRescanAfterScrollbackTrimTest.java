@@ -41,10 +41,15 @@ public class CallToUserRescanAfterScrollbackTrimTest {
 
         @Override
         public void onCallToUserInScan(String sessionKey, String reason, String callCycleKey,
-                                       boolean newestInScan) {
-            if (newestInScan && mLedger.markAlertedIfNew(sessionKey, callCycleKey, reason)) {
+                                       boolean mayAlert) {
+            if (CallToUserAlertGate.shouldAlert(mLedger, mayAlert, true, sessionKey, callCycleKey, reason)) {
                 mAlerts.add(reason);
             }
+        }
+
+        @Override
+        public boolean hasAlertedCall(String sessionKey, String callCycleKey, String tagValue) {
+            return mLedger.isAlreadyAlerted(sessionKey, callCycleKey, tagValue);
         }
     }
 

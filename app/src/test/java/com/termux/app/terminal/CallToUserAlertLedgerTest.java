@@ -132,55 +132,63 @@ public class CallToUserAlertLedgerTest {
         Assert.assertEquals(0, new CallToUserAlertLedger(storage).size());
     }
 
-    private static final class DegradedKeyCase {
-        final String priorSession;
-        final String priorKey;
+    private static final class AlreadyAlertedCase {
+        final String alertedSession;
+        final String alertedKey;
         final String probeSession;
         final String probeKey;
-        final boolean expectNew;
+        final String probeValue;
+        final boolean expectAlreadyAlerted;
 
-        DegradedKeyCase(String priorSession, String priorKey, String probeSession, String probeKey,
-                        boolean expectNew) {
-            this.priorSession = priorSession;
-            this.priorKey = priorKey;
+        AlreadyAlertedCase(String alertedSession, String alertedKey, String probeSession, String probeKey,
+                           String probeValue, boolean expectAlreadyAlerted) {
+            this.alertedSession = alertedSession;
+            this.alertedKey = alertedKey;
             this.probeSession = probeSession;
             this.probeKey = probeKey;
-            this.expectNew = expectNew;
+            this.probeValue = probeValue;
+            this.expectAlreadyAlerted = expectAlreadyAlerted;
         }
     }
 
     @Test
-    public void aBareTagValueAlertsOnlyWhenTheSessionHasNotAlertedThatValue() {
+    public void aBareTagValueIsAlreadyAlertedOnlyWhenTheSessionAlertedThatValue() {
         String tokenedKey = "call:10:00:01 out:10:00:02 reply:10:00:00 first";
-        DegradedKeyCase[] cases = {
-            new DegradedKeyCase("worker", tokenedKey, "worker", "first", false),
-            new DegradedKeyCase("worker", tokenedKey, "worker", "second", true),
-            new DegradedKeyCase("worker", tokenedKey, "other", "first", true),
-            new DegradedKeyCase("worker", tokenedKey, "worker", "call:10:01:01 out:10:01:02 reply:10:00:00 first",
-                true),
-            new DegradedKeyCase("worker", "first", "worker", "first", false),
-            new DegradedKeyCase("worker", "first", "worker", "second", true),
-            new DegradedKeyCase("worker", "first", "worker", tokenedKey, true),
+        AlreadyAlertedCase[] cases = {
+            new AlreadyAlertedCase("worker", tokenedKey, "worker", "first", "first", true),
+            new AlreadyAlertedCase("worker", tokenedKey, "worker", "second", "second", false),
+            new AlreadyAlertedCase("worker", tokenedKey, "other", "first", "first", false),
+            new AlreadyAlertedCase("worker", tokenedKey, "worker", tokenedKey, "first", true),
+            new AlreadyAlertedCase("worker", "first", "worker", "first", "first", true),
+            new AlreadyAlertedCase("worker", "first", "worker", "second", "second", false),
         };
-        for (DegradedKeyCase testCase : cases) {
-            InMemoryStorage storage = new InMemoryStorage();
-            CallToUserAlertLedger ledger = new CallToUserAlertLedger(storage);
-            Assert.assertTrue(ledger.markAlertedIfNew(testCase.priorSession, testCase.priorKey,
-                valueOf(testCase.priorKey)));
-            Assert.assertEquals(testCase.probeSession + " " + testCase.probeKey, testCase.expectNew,
-                ledger.markAlertedIfNew(testCase.probeSession, testCase.probeKey, valueOf(testCase.probeKey)));
+        for (AlreadyAlertedCase testCase : cases) {
+            CallToUserAlertLedger ledger = new CallToUserAlertLedger(new InMemoryStorage());
+            Assert.assertTrue(ledger.markAlertedIfNew(testCase.alertedSession, testCase.alertedKey,
+                valueOf(testCase.alertedKey)));
+            Assert.assertEquals(testCase.probeSession + " " + testCase.probeKey, testCase.expectAlreadyAlerted,
+                ledger.isAlreadyAlerted(testCase.probeSession, testCase.probeKey, testCase.probeValue));
         }
     }
 
     @Test
-    public void aBlockedBareTagValueStaysBlockedAfterARestart() {
+    public void aBareTagValueWithTheSameTextIsANewIdentityForMarking() {
+        CallToUserAlertLedger ledger = new CallToUserAlertLedger(new InMemoryStorage());
+        Assert.assertTrue(ledger.markAlertedIfNew("worker", "call:1 out:2 reply:0 first", "first"));
+
+        Assert.assertTrue(ledger.markAlertedIfNew("worker", "first", "first"));
+        Assert.assertFalse(ledger.markAlertedIfNew("worker", "first", "first"));
+    }
+
+    @Test
+    public void anAlreadyAlertedBareTagValueSurvivesARestart() {
         InMemoryStorage storage = new InMemoryStorage();
-        new CallToUserAlertLedger(storage).markAlertedIfNew("worker", "call:1 out:2 reply:0 first", "first");
+        new CallToUserAlertLedger(storage).recordAlerted("worker", "first", "first");
 
         CallToUserAlertLedger restartedLedger = new CallToUserAlertLedger(storage);
 
-        Assert.assertFalse(restartedLedger.markAlertedIfNew("worker", "first", "first"));
-        Assert.assertTrue(restartedLedger.markAlertedIfNew("worker", "second", "second"));
+        Assert.assertTrue(restartedLedger.isAlreadyAlerted("worker", "first", "first"));
+        Assert.assertFalse(restartedLedger.isAlreadyAlerted("worker", "second", "second"));
     }
 
     private static String valueOf(String key) {

@@ -43,15 +43,27 @@ public final class CallToUserAlertLedger {
     public boolean markAlertedIfNew(@NonNull String sessionName, @NonNull String callCycleKey,
                                     @NonNull String tagValue) {
         Identity identity = new Identity(sessionName, callCycleKey, tagValue);
-        if (isBareKey(callCycleKey, tagValue)) {
-            if (hasAlertedTagValue(sessionName, tagValue)) return false;
-        } else if (mIdentities.contains(identity)) {
-            return false;
-        }
+        if (mIdentities.contains(identity)) return false;
+        addIdentity(identity);
+        return true;
+    }
+
+    public void recordAlerted(@NonNull String sessionName, @NonNull String callCycleKey,
+                              @NonNull String tagValue) {
+        Identity identity = new Identity(sessionName, callCycleKey, tagValue);
+        if (!mIdentities.contains(identity)) addIdentity(identity);
+    }
+
+    public boolean isAlreadyAlerted(@NonNull String sessionName, @NonNull String callCycleKey,
+                                    @NonNull String tagValue) {
+        if (isBareKey(callCycleKey, tagValue)) return hasAlertedTagValue(sessionName, tagValue);
+        return mIdentities.contains(new Identity(sessionName, callCycleKey, tagValue));
+    }
+
+    private void addIdentity(@NonNull Identity identity) {
         mIdentities.add(identity);
         while (mIdentities.size() > MAX_IDENTITIES) mIdentities.remove(0);
         persist();
-        return true;
     }
 
     private static boolean isBareKey(@NonNull String callCycleKey, @NonNull String tagValue) {

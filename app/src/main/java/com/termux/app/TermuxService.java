@@ -30,6 +30,7 @@ import com.termux.app.diagnostics.SessionCreationPathCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
+import com.termux.app.terminal.CallToUserAlertGate;
 import com.termux.app.terminal.CallToUserAlertLedger;
 import com.termux.app.terminal.CallToUserAlertNotifier;
 import com.termux.app.terminal.CallToUserTagController;
@@ -138,8 +139,15 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
             @Override
             public void onCallToUserInScan(String sessionHandle, String reason, String callCycleKey,
-                                           boolean newestInScan) {
-                recordCallToUserForSessionHandleOnTheMainThread(sessionHandle, reason, callCycleKey, newestInScan);
+                                           boolean mayAlert) {
+                recordCallToUserForSessionHandleOnTheMainThread(sessionHandle, reason, callCycleKey, mayAlert);
+            }
+
+            @Override
+            public boolean hasAlertedCall(String sessionHandle, String callCycleKey, String tagValue) {
+                TerminalSession session = getTerminalSessionForHandle(sessionHandle);
+                return session != null && session.mSessionName != null
+                    && mCallToUserAlertLedger.isAlreadyAlerted(session.mSessionName, callCycleKey, tagValue);
             }
         });
 
@@ -1303,18 +1311,18 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     private void recordCallToUserForSessionHandleOnTheMainThread(String sessionHandle, String reason,
-                                                                 String callCycleKey, boolean newestInScan) {
-        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason, callCycleKey, newestInScan));
+                                                                 String callCycleKey, boolean mayAlert) {
+        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason, callCycleKey, mayAlert));
     }
 
     private void recordCallToUserForSessionHandle(String sessionHandle, String reason,
-                                                  String callCycleKey, boolean newestInScan) {
+                                                  String callCycleKey, boolean mayAlert) {
         TerminalSession session = getTerminalSessionForHandle(sessionHandle);
         if (session == null || session.mSessionName == null) return;
         boolean newCallRecorded = mSessionNewActivityStore.recordExplicitCall(session.mSessionName,
             System.currentTimeMillis(), reason, callCycleKey);
-        if (newCallRecorded && newestInScan
-            && mCallToUserAlertLedger.markAlertedIfNew(session.mSessionName, callCycleKey, reason))
+        if (CallToUserAlertGate.shouldAlert(mCallToUserAlertLedger, mayAlert, newCallRecorded,
+            session.mSessionName, callCycleKey, reason))
             CallToUserAlertNotifier.postAlert(this, session.mSessionName, reason);
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)

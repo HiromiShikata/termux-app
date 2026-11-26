@@ -22,6 +22,10 @@ public final class CallToUserTagScanner {
         return trimmed;
     }
 
+    public List<OutputTagOccurrence> visibleCalls(String output) {
+        return outputTagScanner.extractOccurrences(output);
+    }
+
     public List<OutputTagOccurrence> newCalls(String output) {
         return outputTagScanner.newOccurrences(output);
     }
