@@ -152,8 +152,29 @@ public final class SessionDefinitionController {
         activity.getTermuxTerminalSessionClient()
             .restoreDisplayedSessionAfterReloadIfStillLive(displayedSessionBeforeReload);
 
-        List<SessionDefinitionEntry> displayedEntries = authoritativeLoad ? entries : repository.getCachedEntries();
+        List<SessionDefinitionEntry> displayedEntries = authoritativeLoad
+            ? entries : mergeFailedGroupEntries(entries, result);
         activity.refreshDisplayedSessionDefinitionEntries(displayedEntries);
+    }
+
+    private List<SessionDefinitionEntry> mergeFailedGroupEntries(
+        List<SessionDefinitionEntry> entries, SessionDefinitionLoadResult result) {
+        Set<String> failedGroupLabels = new HashSet<>(result.getFailedGroupLabels());
+        List<SessionDefinitionEntry> displayedEntries = new ArrayList<>();
+        List<SessionDefinitionEntry> previousDisplayed = activity.getTermuxSessionListViewController() == null
+            ? Collections.emptyList() : activity.getTermuxSessionListViewController().getEntries();
+        for (SessionDefinitionEntry entry : entries) {
+            if (!failedGroupLabels.contains(entry.getGroupLabel())) {
+                displayedEntries.add(entry);
+            }
+        }
+
+        for (SessionDefinitionEntry entry : previousDisplayed) {
+            if (failedGroupLabels.contains(entry.getGroupLabel())) {
+                displayedEntries.add(entry);
+            }
+        }
+        return displayedEntries;
     }
 
     private Set<String> collectLiveSessionNames() {
