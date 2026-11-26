@@ -73,10 +73,19 @@ public class SessionSwitchPickerGroupingRefreshTest {
 
         controller.onVolumeKeyDirection(true);
         drainMainLooper();
+        assertEquals(1, fetcher.indexFetchCalls);
+
         controller.onVolumeKeyDirection(true);
         drainMainLooper();
-
         assertEquals(1, fetcher.indexFetchCalls);
+
+        controller.commitAndHide();
+        drainMainLooper();
+        assertEquals(1, fetcher.indexFetchCalls);
+
+        controller.onVolumeKeyDirection(true);
+        drainMainLooper();
+        assertEquals(2, fetcher.indexFetchCalls);
     }
 
     private void loadDefinition() throws Exception {
