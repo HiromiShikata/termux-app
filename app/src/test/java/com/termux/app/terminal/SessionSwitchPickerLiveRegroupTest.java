@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -34,8 +35,11 @@ import org.robolectric.Shadows;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(RobolectricTestRunner.class)
 public class SessionSwitchPickerLiveRegroupTest {
@@ -43,6 +47,7 @@ public class SessionSwitchPickerLiveRegroupTest {
     private static final String INDEX_URL = "https://example.test/index.json";
     private static final String GROUP_URL = "https://example.test/group.json";
     private static final String SESSION_URL = "https://example.test/live";
+    private static final String SECOND_SESSION_URL = "https://example.test/second";
 
     private TermuxActivity activity;
     private MutableFetcher fetcher;
@@ -98,6 +103,51 @@ public class SessionSwitchPickerLiveRegroupTest {
         assertTrue(controller.isShowing());
     }
 
+    @Test
+    public void pickerKeepsHighlightOnSessionIdentityAfterGroupingRefresh() throws Exception {
+        fetcher.documents.put(GROUP_URL, groupDocument("storyA", SESSION_URL, SECOND_SESSION_URL));
+        activity.getTermuxService().getTermuxSessions().add(session(SECOND_SESSION_URL));
+        SessionSwitchPickerController controller = activity.getSessionSwitchPickerController();
+        controller.onVolumeKeyDirection(true);
+
+        TextView structureView = activity.findViewById(R.id.session_switch_picker_structure);
+        waitForStructureText(structureView, SECOND_SESSION_URL);
+
+        fetcher.documents.put(GROUP_URL, groupDocument("storyA", SECOND_SESSION_URL, SESSION_URL));
+        activity.refreshSessionGroupingFromDefinition();
+
+        long deadlineNanos = System.nanoTime() + 10000L * 1000000L;
+        List<SessionPickerOverlayLine> lines = pickerLines(controller);
+        while ((!sessionNames(lines).equals(List.of(SECOND_SESSION_URL, SESSION_URL))
+            || !highlightedSessionName(lines).equals(SESSION_URL))
+            && System.nanoTime() < deadlineNanos) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Thread.sleep(10);
+            lines = pickerLines(controller);
+        }
+
+        assertEquals(List.of(SECOND_SESSION_URL, SESSION_URL), sessionNames(lines));
+        assertEquals(SESSION_URL, highlightedSessionName(lines));
+    }
+
+    @Test
+    public void pickerCommitTimerStillHidesAfterGroupingRefresh() throws Exception {
+        set(activity, TermuxActivity.class, "mTermuxTerminalSessionActivityClient",
+            new TermuxTerminalSessionActivityClient(activity));
+        SessionSwitchPickerController controller = activity.getSessionSwitchPickerController();
+        controller.onVolumeKeyDirection(true);
+        activity.getPreferences().setSessionSwitchPreviewFirstEnabled(false);
+        drainMainLooperForCommit();
+        assertFalse(controller.isShowing());
+
+        activity.getPreferences().setSessionSwitchPreviewFirstEnabled(true);
+        controller.onVolumeKeyDirection(true);
+        activity.getPreferences().setSessionSwitchPreviewFirstEnabled(false);
+        activity.refreshSessionGroupingFromDefinition();
+        drainMainLooperForCommit();
+        assertFalse(controller.isShowing());
+    }
+
     private void loadDefinition() throws Exception {
         SessionDefinitionRepository repository = (SessionDefinitionRepository) get(
             activity, TermuxActivity.class, "mSessionDefinitionRepository");
@@ -120,7 +170,60 @@ public class SessionSwitchPickerLiveRegroupTest {
     }
 
     private static String groupDocument(String story) {
-        return "[{\"story\":\"" + story + "\",\"urls\":[\"" + SESSION_URL + "\"]}]";
+        return groupDocument(story, SESSION_URL);
+    }
+
+    private static String groupDocument(String story, String... sessionUrls) {
+        StringBuilder document = new StringBuilder("[{\"story\":\"" + story + "\",\"urls\":[");
+        for (int index = 0; index < sessionUrls.length; index++) {
+            if (index > 0) document.append(',');
+            document.append("\"").append(sessionUrls[index]).append("\"");
+        }
+        return document.append("]}]").toString();
+    }
+
+    private void waitForStructureText(TextView structureView, String expectedText) throws Exception {
+        long deadlineNanos = System.nanoTime() + 10000L * 1000000L;
+        while (!structureView.getText().toString().contains(expectedText)
+            && System.nanoTime() < deadlineNanos) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Thread.sleep(10);
+        }
+        assertTrue(structureView.getText().toString().contains(expectedText));
+    }
+
+    private void drainMainLooperForCommit() {
+        Shadows.shadowOf(Looper.getMainLooper()).idleFor(
+            SessionSwitchPickerController.COMMIT_DELAY_MILLISECONDS + 100L,
+            TimeUnit.MILLISECONDS);
+    }
+
+    private List<SessionPickerOverlayLine> pickerLines(SessionSwitchPickerController controller)
+        throws Exception {
+        TermuxSessionsListViewController listController = activity.getTermuxSessionListViewController();
+        int highlightedSessionIndex = (int) get(controller,
+            SessionSwitchPickerController.class, "mHighlightedSessionIndex");
+        return SessionPickerOverlayRenderModel.build(listController.getVisibleRows(),
+            listController.getSessionRows(), highlightedSessionIndex);
+    }
+
+    private static List<String> sessionNames(List<SessionPickerOverlayLine> lines) {
+        List<String> names = new ArrayList<>();
+        for (SessionPickerOverlayLine line : lines) {
+            if (line.getKind() == SessionPickerOverlayLine.Kind.SESSION) {
+                names.add(line.getText());
+            }
+        }
+        return names;
+    }
+
+    private static String highlightedSessionName(List<SessionPickerOverlayLine> lines) {
+        for (SessionPickerOverlayLine line : lines) {
+            if (line.getKind() == SessionPickerOverlayLine.Kind.SESSION && line.isHighlighted()) {
+                return line.getText();
+            }
+        }
+        return "";
     }
 
     private static TermuxSession session(String name) throws Exception {
