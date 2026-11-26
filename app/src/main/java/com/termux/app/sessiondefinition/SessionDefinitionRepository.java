@@ -39,11 +39,15 @@ public final class SessionDefinitionRepository {
 
     private final List<InFlightWaiter> inFlightWaiters = new ArrayList<>();
 
+    private final List<InFlightWaiter> queuedForcedWaiters = new ArrayList<>();
+
     private SessionDefinitionLoadResult result = EMPTY_RESULT;
 
     private boolean loaded;
 
     private boolean loading;
+
+    private String inFlightBaseUrl;
 
     public SessionDefinitionRepository() {
         this(new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
@@ -70,6 +74,10 @@ public final class SessionDefinitionRepository {
         if (baseUrl.isEmpty()) {
             return;
         }
+        if (loaded) {
+            listener.onEntriesLoaded();
+            return;
+        }
         inFlightWaiters.add(new InFlightWaiter() {
             @Override
             public void onLoaded(@NonNull SessionDefinitionLoadResult fetchedResult) {
@@ -83,12 +91,12 @@ public final class SessionDefinitionRepository {
         if (loading) {
             return;
         }
-        if (loaded) {
-            inFlightWaiters.remove(inFlightWaiters.size() - 1);
-            listener.onEntriesLoaded();
-            return;
-        }
+        startFetch(baseUrl);
+    }
+
+    private void startFetch(@NonNull String baseUrl) {
         loading = true;
+        inFlightBaseUrl = baseUrl;
         loadInFlight(baseUrl);
     }
 
@@ -128,13 +136,23 @@ public final class SessionDefinitionRepository {
             result = fetchedResult;
         }
         loaded = true;
-        loading = false;
-        notifyInFlightWaiters(fetchedResult, null);
+        notifyInFlightWaiters(result, null);
+        startQueuedFetchOrFinish();
     }
 
     private void finishFailedLoad(@NonNull Exception exception) {
-        loading = false;
         notifyInFlightWaiters(null, exception);
+        startQueuedFetchOrFinish();
+    }
+
+    private void startQueuedFetchOrFinish() {
+        if (queuedForcedWaiters.isEmpty()) {
+            loading = false;
+            return;
+        }
+        inFlightWaiters.addAll(queuedForcedWaiters);
+        queuedForcedWaiters.clear();
+        startFetch(inFlightBaseUrl);
     }
 
     private void notifyInFlightWaiters(SessionDefinitionLoadResult fetchedResult, Exception exception) {
@@ -155,7 +173,11 @@ public final class SessionDefinitionRepository {
 
     public void loadForRebuild(@NonNull String baseUrl, boolean forceRefresh, @NonNull OnEntriesReadyListener onEntriesReady, @NonNull OnLoadFailedListener onLoadFailed) {
         Handler mainThreadHandler = new Handler(Looper.getMainLooper());
-        inFlightWaiters.add(new InFlightWaiter() {
+        if (loaded && !forceRefresh) {
+            mainThreadHandler.post(() -> onEntriesReady.onEntriesReady(result));
+            return;
+        }
+        InFlightWaiter waiter = new InFlightWaiter() {
             @Override
             public void onLoaded(@NonNull SessionDefinitionLoadResult fetchedResult) {
                 onEntriesReady.onEntriesReady(fetchedResult);
@@ -165,16 +187,16 @@ public final class SessionDefinitionRepository {
             public void onFailed(@NonNull Exception exception) {
                 onLoadFailed.onLoadFailed(exception);
             }
-        });
+        };
         if (loading) {
+            if (forceRefresh) {
+                queuedForcedWaiters.add(waiter);
+            } else {
+                inFlightWaiters.add(waiter);
+            }
             return;
         }
-        if (loaded && !forceRefresh) {
-            inFlightWaiters.remove(inFlightWaiters.size() - 1);
-            mainThreadHandler.post(() -> onEntriesReady.onEntriesReady(result));
-            return;
-        }
-        loading = true;
-        loadInFlight(baseUrl);
+        inFlightWaiters.add(waiter);
+        startFetch(baseUrl);
     }
 }
