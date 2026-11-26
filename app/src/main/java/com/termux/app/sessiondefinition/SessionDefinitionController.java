@@ -69,6 +69,7 @@ public final class SessionDefinitionController {
             } finally {
                 setLoadingProgressVisible(false);
             }
+            activity.setGroupingRefreshFailing(result.hasFailedGroups());
         }, exception -> {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
             try {
@@ -76,6 +77,7 @@ public final class SessionDefinitionController {
             } finally {
                 setLoadingProgressVisible(false);
             }
+            activity.setGroupingRefreshFailing(true);
         });
     }
 
@@ -85,6 +87,7 @@ public final class SessionDefinitionController {
             return;
         }
         if (!repository.isLoaded()) {
+            activity.loadSessionDefinitionEntriesForGrouping();
             return;
         }
 

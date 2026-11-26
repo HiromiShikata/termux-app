@@ -1043,7 +1043,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         loadSessionDefinitionEntriesForGrouping();
     }
 
-    private void loadSessionDefinitionEntriesForGrouping() {
+    public void loadSessionDefinitionEntriesForGrouping() {
         if (mTermuxSessionListViewController == null) return;
         List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionRepository.getCachedEntries();
         if (!cachedEntries.isEmpty()) {
@@ -1260,7 +1260,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void refreshSessionGroupingEntries(@NonNull List<SessionDefinitionEntry> entries) {
         if (mTermuxSessionListViewController != null) {
             mTermuxSessionListViewController.setEntries(entries);
-            applyPendingExpandedProjectsAllowlist();
         }
     }
 
