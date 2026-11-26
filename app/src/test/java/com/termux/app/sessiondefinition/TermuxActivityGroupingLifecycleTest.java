@@ -90,6 +90,8 @@ public class TermuxActivityGroupingLifecycleTest {
         controller.start();
         awaitIndexFetchCount(fetcher, 1);
         assertEquals(1, fetcher.indexFetchCalls);
+        Shadows.shadowOf(Looper.getMainLooper()).idle();
+        awaitRefreshPostedWork(repository);
         assertEquals(sessionNamesBeforeStart, sessionNames(service));
         assertEquals(Collections.emptyList(), sessionClient.calls);
 
@@ -121,6 +123,18 @@ public class TermuxActivityGroupingLifecycleTest {
         long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(2000);
         while (fetcher.indexFetchCalls < expectedCount && System.nanoTime() < deadlineNanos) {
             Thread.sleep(10);
+        }
+    }
+
+    private static void awaitRefreshPostedWork(SessionDefinitionRepository repository)
+        throws InterruptedException {
+        long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(2000);
+        while (repository.isLoading() && System.nanoTime() < deadlineNanos) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Thread.sleep(10);
+        }
+        if (repository.isLoading()) {
+            throw new AssertionError("Session definition refresh callback did not complete");
         }
     }
 
