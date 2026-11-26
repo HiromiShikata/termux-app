@@ -67,7 +67,7 @@ public class SessionDefinitionRepositoryTest {
         return fetcher;
     }
 
-    private SessionDefinitionRepository repositoryWith(CountingFetcher fetcher) {
+    private SessionDefinitionRepository repositoryWith(SessionDefinitionDocumentFetcher fetcher) {
         return new SessionDefinitionRepository(
             new SessionDefinitionLoader(fetcher, new SessionDefinitionParser()));
     }
