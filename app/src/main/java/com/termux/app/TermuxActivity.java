@@ -91,7 +91,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.sessiondefinition.SessionDefinitionPlainHttpRestoreStarter;
-import com.termux.app.sessiondefinition.SessionGroupingRefreshGate;
+import com.termux.app.sessiondefinition.SessionGroupingAutoRefresher;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
@@ -300,8 +300,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private final SessionDefinitionAutoReloadScheduler mSessionDefinitionAutoReloadScheduler =
         new SessionDefinitionAutoReloadScheduler(this::loadSessionsFromDefinition);
 
-    private final SessionDefinitionAutoReloadScheduler mSessionGroupingAutoRefreshScheduler =
-        new SessionDefinitionAutoReloadScheduler(this::refreshSessionGroupingFromDefinition);
+    private final SessionGroupingAutoRefresher mSessionGroupingAutoRefresher =
+        new SessionGroupingAutoRefresher(this::refreshSessionGroupingFromDefinition);
 
     private boolean mGroupingRefreshFailing = false;
 
@@ -691,10 +691,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         requestPostNotificationsPermissionIfNeeded();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
-        SessionGroupingRefreshGate.refreshIfDefined(
-            mPreferences.getSessionDefinitionUrl(), this::refreshSessionGroupingFromDefinition);
-        mSessionGroupingAutoRefreshScheduler.onForeground(
-            SessionGroupingRefreshGate.GROUPING_REFRESH_INTERVAL_MINUTES);
+        mSessionGroupingAutoRefresher.onForeground(mPreferences.getSessionDefinitionUrl());
         mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
     }
 
@@ -736,7 +733,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mIsVisible = false;
 
         mSessionDefinitionAutoReloadScheduler.onBackground();
-        mSessionGroupingAutoRefreshScheduler.onBackground();
+        mSessionGroupingAutoRefresher.onBackground();
 
         if (mTermuxService != null)
             mTermuxService.onActivityBackgrounded();
