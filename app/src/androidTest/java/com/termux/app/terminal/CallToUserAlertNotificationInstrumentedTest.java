@@ -59,6 +59,7 @@ public class CallToUserAlertNotificationInstrumentedTest {
     private TerminalSession mSessionB;
     private String mNameA;
     private String mNameB;
+    private final List<TermuxActivity> mLaunchedActivities = new ArrayList<>();
 
     @Before
     public void setUp() throws Exception {
@@ -73,6 +74,7 @@ public class CallToUserAlertNotificationInstrumentedTest {
         mNameB = "alert-b-" + suffix;
 
         mScenario = ActivityScenario.launch(TermuxActivity.class);
+        mScenario.onActivity(mLaunchedActivities::add);
         mService = waitFor(() -> serviceOf(mScenario));
         mSessionA = createSession(mNameA);
         mSessionB = createSession(mNameB);
@@ -87,9 +89,12 @@ public class CallToUserAlertNotificationInstrumentedTest {
             mNotificationManager.cancel(CallToUserNotificationTags.tagFor(mNameB),
                 CallToUserAlertNotifier.NOTIFICATION_ID);
         }
-        if (mScenario != null) {
-            mScenario.close();
-        }
+        mInstrumentation.runOnMainSync(() -> {
+            for (TermuxActivity activity : mLaunchedActivities) {
+                activity.finish();
+            }
+        });
+        mLaunchedActivities.clear();
     }
 
     @Test
@@ -248,6 +253,7 @@ public class CallToUserAlertNotificationInstrumentedTest {
         contentIntent.send();
         TermuxActivity activity = (TermuxActivity) mInstrumentation.waitForMonitorWithTimeout(monitor, WAIT_MILLIS);
         assertNotNull("tapping the notification must open the app", activity);
+        mLaunchedActivities.add(activity);
         waitUntil(() -> serviceOf(activity) != null);
         return activity;
     }

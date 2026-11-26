@@ -1317,7 +1317,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 liveSessionNames.add(sessionName);
         }
         mSessionNewActivityStore.pruneToSessionNames(liveSessionNames);
-        mCallToUserAlertLedger.pruneToSessionNames(liveSessionNames);
+        if (mCallToUserAlertLedger != null)
+            mCallToUserAlertLedger.pruneToSessionNames(liveSessionNames);
     }
 
     @NonNull
