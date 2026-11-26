@@ -92,23 +92,16 @@ public class SessionGroupingRefreshTest {
     }
 
     @Test
-    public void refreshGroupingOnlyBeforeInitialLoadDelegatesToFirstLoadWithoutChangingSessions()
+    public void refreshGroupingOnlyBeforeInitialLoadDoesNotFetchOrChangeDisplayedGrouping()
         throws Exception {
         adapter.setEntries(Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "storyOld",
                 Collections.singletonList("https://example.test/live"))));
-        TermuxSession liveSession = session("https://example.test/live");
-        shellManager.mTermuxSessions.add(liveSession);
-        fetcher.documents.put(INDEX_URL, "{\"projects\":[\"groupOne\"]}");
-        fetcher.documents.put(GROUP_ONE_URL,
-            groupDocument("storyNew", "https://example.test/live"));
 
         invokeRefreshGroupingOnly();
 
-        assertEquals(1, Collections.frequency(fetcher.fetchedUrls, INDEX_URL));
-        assertEquals(Collections.singletonList("storyNew"), entryLabels(adapter.getEntries()));
-        assertEquals(Collections.singletonList("https://example.test/live"), sessionNames());
-        assertEquals(Collections.emptyList(), sessionClient.calls);
+        assertEquals(0, fetcher.fetchCalls);
+        assertEquals(Collections.singletonList("storyOld"), entryLabels(adapter.getEntries()));
     }
 
     @Test
@@ -148,6 +141,19 @@ public class SessionGroupingRefreshTest {
         invokeRefreshGroupingOnly();
 
         assertEquals(2, ShadowToast.shownToastCount());
+    }
+
+    @Test
+    public void overlappingGroupingRefreshFailuresShowOneFailureToast() throws Exception {
+        seedInitialDefinition();
+        activity.setGroupingRefreshFailing(false);
+        fetcher.failedUrls.add(GROUP_ONE_URL);
+
+        invokeRefreshGroupingOnlyWithoutDrainingLooper();
+        invokeRefreshGroupingOnlyWithoutDrainingLooper();
+        flushMainLooper();
+
+        assertEquals(1, ShadowToast.shownToastCount());
     }
 
     @Test
@@ -211,11 +217,15 @@ public class SessionGroupingRefreshTest {
     }
 
     private void invokeRefreshGroupingOnly() throws Exception {
+        invokeRefreshGroupingOnlyWithoutDrainingLooper();
+        flushMainLooper();
+    }
+
+    private void invokeRefreshGroupingOnlyWithoutDrainingLooper() throws Exception {
         SessionDefinitionRepository repository = (SessionDefinitionRepository) get(
             activity, TermuxActivity.class, "mSessionDefinitionRepository");
         new SessionDefinitionController(activity, repository, new SessionDefinitionPlanner())
             .refreshGroupingOnly();
-        flushMainLooper();
     }
 
     private static String groupDocument(String story, String sessionName) {
