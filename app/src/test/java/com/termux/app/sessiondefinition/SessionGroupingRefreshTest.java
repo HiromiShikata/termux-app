@@ -103,6 +103,7 @@ public class SessionGroupingRefreshTest {
 
         invokeRefreshGroupingOnly();
 
+        assertEquals(1, fetcher.fetchCalls);
         assertEquals(Collections.singletonList(INDEX_URL), fetcher.fetchedUrls);
         assertEquals(Collections.singletonList("https://example.test/live"), sessionNames());
         assertEquals(Collections.emptyList(), sessionClient.calls);
