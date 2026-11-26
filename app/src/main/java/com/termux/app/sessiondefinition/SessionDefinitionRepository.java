@@ -39,15 +39,11 @@ public final class SessionDefinitionRepository {
 
     private final List<InFlightWaiter> inFlightWaiters = new ArrayList<>();
 
-    private final List<InFlightWaiter> queuedForcedWaiters = new ArrayList<>();
-
     private SessionDefinitionLoadResult result = EMPTY_RESULT;
 
     private boolean loaded;
 
     private boolean loading;
-
-    private String inFlightBaseUrl;
 
     public SessionDefinitionRepository() {
         this(new SessionDefinitionLoader(new HttpSessionDefinitionDocumentFetcher(), new SessionDefinitionParser()));
@@ -96,7 +92,6 @@ public final class SessionDefinitionRepository {
 
     private void startFetch(@NonNull String baseUrl) {
         loading = true;
-        inFlightBaseUrl = baseUrl;
         loadInFlight(baseUrl);
     }
 
@@ -137,22 +132,12 @@ public final class SessionDefinitionRepository {
         }
         loaded = true;
         notifyInFlightWaiters(result, null);
-        startQueuedFetchOrFinish();
+        loading = false;
     }
 
     private void finishFailedLoad(@NonNull Exception exception) {
+        loading = false;
         notifyInFlightWaiters(null, exception);
-        startQueuedFetchOrFinish();
-    }
-
-    private void startQueuedFetchOrFinish() {
-        if (queuedForcedWaiters.isEmpty()) {
-            loading = false;
-            return;
-        }
-        inFlightWaiters.addAll(queuedForcedWaiters);
-        queuedForcedWaiters.clear();
-        startFetch(inFlightBaseUrl);
     }
 
     private void notifyInFlightWaiters(SessionDefinitionLoadResult fetchedResult, Exception exception) {
@@ -188,15 +173,10 @@ public final class SessionDefinitionRepository {
                 onLoadFailed.onLoadFailed(exception);
             }
         };
+        inFlightWaiters.add(waiter);
         if (loading) {
-            if (forceRefresh) {
-                queuedForcedWaiters.add(waiter);
-            } else {
-                inFlightWaiters.add(waiter);
-            }
             return;
         }
-        inFlightWaiters.add(waiter);
         startFetch(baseUrl);
     }
 }
