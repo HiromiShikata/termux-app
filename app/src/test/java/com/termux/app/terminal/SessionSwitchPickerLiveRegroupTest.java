@@ -86,7 +86,12 @@ public class SessionSwitchPickerLiveRegroupTest {
 
         fetcher.documents.put(GROUP_URL, groupDocument("storyB"));
         activity.refreshSessionGroupingFromDefinition();
-        drainMainLooper(1);
+        long deadlineNanos = System.nanoTime() + 10000L * 1000000L;
+        while (!structureView.getText().toString().contains("storyB")
+            && System.nanoTime() < deadlineNanos) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle();
+            Thread.sleep(10);
+        }
 
         String structureText = structureView.getText().toString();
         assertTrue(structureText.contains("storyB"));
