@@ -153,15 +153,6 @@ public final class SessionDefinitionController {
             .restoreDisplayedSessionAfterReloadIfStillLive(displayedSessionBeforeReload);
 
         List<SessionDefinitionEntry> displayedEntries = authoritativeLoad ? entries : repository.getCachedEntries();
-        if (!authoritativeLoad && displayedEntries.isEmpty()
-            && activity.getTermuxSessionListViewController() != null) {
-            displayedEntries = new ArrayList<>(entries);
-            for (SessionDefinitionEntry existingEntry : activity.getTermuxSessionListViewController().getEntries()) {
-                if (result.getFailedGroupLabels().contains(existingEntry.getGroupLabel())) {
-                    displayedEntries.add(existingEntry);
-                }
-            }
-        }
         activity.refreshDisplayedSessionDefinitionEntries(displayedEntries);
     }
 
