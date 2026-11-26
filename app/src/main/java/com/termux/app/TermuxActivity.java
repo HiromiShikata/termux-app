@@ -91,6 +91,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.sessiondefinition.SessionDefinitionHttpsUpgradeStarter;
+import com.termux.app.sessiondefinition.SessionGroupingRefreshGate;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
 import com.termux.shared.termux.settings.preferences.HiddenSessionNameMatcher;
@@ -298,6 +299,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private final SessionDefinitionAutoReloadScheduler mSessionDefinitionAutoReloadScheduler =
         new SessionDefinitionAutoReloadScheduler(this::loadSessionsFromDefinition);
+
+    private final SessionDefinitionAutoReloadScheduler mSessionGroupingAutoRefreshScheduler =
+        new SessionDefinitionAutoReloadScheduler(this::refreshSessionGroupingFromDefinition);
 
     private final SessionReconnectScheduler mSessionReconnectScheduler =
         new SessionReconnectScheduler(this::reconnectDeadDisplayedSessions);
@@ -685,8 +689,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         requestPostNotificationsPermissionIfNeeded();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
-        if (mTermuxService != null && !mPreferences.getSessionDefinitionUrl().trim().isEmpty())
-            loadSessionsFromDefinition();
+        if (SessionGroupingRefreshGate.shouldRefreshGrouping(mPreferences.getSessionDefinitionUrl()))
+            refreshSessionGroupingFromDefinition();
+        mSessionGroupingAutoRefreshScheduler.onForeground(
+            SessionGroupingRefreshGate.GROUPING_REFRESH_INTERVAL_MINUTES);
         mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
     }
 
@@ -728,6 +734,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mIsVisible = false;
 
         mSessionDefinitionAutoReloadScheduler.onBackground();
+        mSessionGroupingAutoRefreshScheduler.onBackground();
 
         if (mTermuxService != null)
             mTermuxService.onActivityBackgrounded();
@@ -1160,6 +1167,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).loadAndBuildSessions(true);
     }
 
+    public void refreshSessionGroupingFromDefinition() {
+        new SessionDefinitionController(this, mSessionDefinitionRepository, new SessionDefinitionPlanner()).refreshGroupingOnly();
+    }
+
+    public SessionDefinitionRepository getSessionDefinitionRepository() {
+        return mSessionDefinitionRepository;
+    }
+
     public void reloadSessionsAndRefreshAllState() {
         loadSessionsFromDefinition();
         reconnectDeadDisplayedSessionsThenForceRescanStatusline();
@@ -1242,6 +1257,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.reapplyStartupDisplayedSessionAfterEntriesLoaded(!entries.isEmpty());
         showUnansweredOwnerCallsOfDisplayedSession();
+    }
+
+    public void refreshSessionGroupingEntries(@NonNull List<SessionDefinitionEntry> entries) {
+        if (mTermuxSessionListViewController != null) {
+            mTermuxSessionListViewController.setEntries(entries);
+            applyPendingExpandedProjectsAllowlist();
+        }
     }
 
     public void showUnansweredOwnerCallsOfDisplayedSession() {

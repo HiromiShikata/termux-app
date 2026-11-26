@@ -23,6 +23,9 @@ import java.util.Set;
 
 public final class SessionDefinitionController {
 
+    public interface GroupingRefreshPlanner {
+    }
+
     private static final String LOG_TAG = "SessionDefinitionController";
 
     private final TermuxActivity activity;
@@ -41,6 +44,10 @@ public final class SessionDefinitionController {
 
     public SessionDefinitionController(TermuxActivity activity) {
         this(activity, new SessionDefinitionRepository(), new SessionDefinitionPlanner());
+    }
+
+    public SessionDefinitionController(TermuxActivity activity, GroupingRefreshPlanner planner) {
+        this(activity, activity.getSessionDefinitionRepository(), new SessionDefinitionPlanner());
     }
 
     public SessionDefinitionController(TermuxActivity activity, SessionDefinitionRepository repository, SessionDefinitionPlanner planner) {
@@ -76,6 +83,23 @@ public final class SessionDefinitionController {
             } finally {
                 setLoadingProgressVisible(false);
             }
+        });
+    }
+
+    public void refreshGroupingOnly() {
+        String baseUrl = activity.getPreferences().getSessionDefinitionUrl().trim();
+        if (!SessionGroupingRefreshGate.shouldRefreshGrouping(baseUrl)) {
+            return;
+        }
+
+        repository.loadForRebuild(baseUrl, true, result -> {
+            List<SessionDefinitionEntry> displayedEntries = result.hasFailedGroups()
+                ? mergeFailedGroupEntries(result.getEntries(), result) : result.getEntries();
+            activity.refreshSessionGroupingEntries(displayedEntries);
+            notifyPartialLoad(result);
+        }, exception -> {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
+            activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);
         });
     }
 
