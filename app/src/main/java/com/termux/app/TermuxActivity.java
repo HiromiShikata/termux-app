@@ -90,7 +90,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionPlanner;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
-import com.termux.app.sessiondefinition.SessionDefinitionHttpsUpgradeStarter;
+import com.termux.app.sessiondefinition.SessionDefinitionPlainHttpRestoreStarter;
 import com.termux.app.sessiondefinition.SessionGroupingRefreshGate;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.shared.termux.crash.TermuxCrashUtils;
@@ -439,7 +439,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mIsInvalidState = true;
             return;
         }
-        SessionDefinitionHttpsUpgradeStarter.startOnce(mPreferences);
+        SessionDefinitionPlainHttpRestoreStarter.restoreStoredUrl(mPreferences);
 
         mHandednessLayoutApplier.registerPart(new TerminalToolbarHandednessPart(findViewById(android.R.id.content)));
         mHandednessLayoutApplier.registerPart(new MainScreenHandednessPart(findViewById(android.R.id.content)));
