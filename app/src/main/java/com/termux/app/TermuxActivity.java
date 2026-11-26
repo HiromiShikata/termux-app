@@ -1287,6 +1287,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void refreshSessionGroupingEntries(@NonNull List<SessionDefinitionEntry> entries) {
         if (mTermuxSessionListViewController != null) {
             mTermuxSessionListViewController.setEntries(entries);
+            if (mSessionSwitchPickerController != null)
+                mSessionSwitchPickerController.onSessionGroupingEntriesRefreshed();
         }
     }
 

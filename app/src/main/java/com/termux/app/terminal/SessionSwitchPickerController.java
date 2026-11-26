@@ -84,6 +84,17 @@ public class SessionSwitchPickerController {
         hide();
     }
 
+    public void onSessionGroupingEntriesRefreshed() {
+        if (!mShowing) {
+            return;
+        }
+        TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
+        if (listController == null) {
+            return;
+        }
+        renderStructure(listController);
+    }
+
     public void onVolumeKeyDirection(boolean forward) {
         TermuxService service = mActivity.getTermuxService();
         TermuxSessionsListViewController listController = mActivity.getTermuxSessionListViewController();
