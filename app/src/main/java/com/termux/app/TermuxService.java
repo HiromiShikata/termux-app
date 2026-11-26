@@ -130,7 +130,18 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * activity foreground/background transitions and both terminal session clients share the same
      * deduplication state. */
     private final CallToUserTagController mCallToUserTagController =
-        new CallToUserTagController(this::recordCallToUserForSessionHandleOnTheMainThread);
+        new CallToUserTagController(new CallToUserTagController.CallTrigger() {
+            @Override
+            public void onCallToUser(String sessionHandle, String reason, String callCycleKey) {
+                onCallToUserInScan(sessionHandle, reason, callCycleKey, true);
+            }
+
+            @Override
+            public void onCallToUserInScan(String sessionHandle, String reason, String callCycleKey,
+                                           boolean newestInScan) {
+                recordCallToUserForSessionHandleOnTheMainThread(sessionHandle, reason, callCycleKey, newestInScan);
+            }
+        });
 
     /** Detects the app-update output tag for every session. Owned by the service so detection runs in
      * any session and survives activity transitions; the actual update flow (download and install
@@ -1292,17 +1303,17 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     private void recordCallToUserForSessionHandleOnTheMainThread(String sessionHandle, String reason,
-                                                                 String callCycleKey) {
-        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason, callCycleKey));
+                                                                 String callCycleKey, boolean newestInScan) {
+        runOnTheMainThread(() -> recordCallToUserForSessionHandle(sessionHandle, reason, callCycleKey, newestInScan));
     }
 
     private void recordCallToUserForSessionHandle(String sessionHandle, String reason,
-                                                  String callCycleKey) {
+                                                  String callCycleKey, boolean newestInScan) {
         TerminalSession session = getTerminalSessionForHandle(sessionHandle);
         if (session == null || session.mSessionName == null) return;
         boolean newCallRecorded = mSessionNewActivityStore.recordExplicitCall(session.mSessionName,
             System.currentTimeMillis(), reason, callCycleKey);
-        if (newCallRecorded && mCallToUserAlertLedger.markAlertedIfNew(session.mSessionName, callCycleKey))
+        if (newCallRecorded && newestInScan && mCallToUserAlertLedger.markAlertedIfNew(session.mSessionName, callCycleKey))
             CallToUserAlertNotifier.postAlert(this, session.mSessionName, reason);
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)

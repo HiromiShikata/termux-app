@@ -2,6 +2,7 @@ package com.termux.app.terminal;
 
 import com.termux.app.outputtag.OutputTagOccurrence;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -9,6 +10,11 @@ public final class CallToUserTagController {
 
     public interface CallTrigger {
         void onCallToUser(String sessionKey, String reason, String callCycleKey);
+
+        default void onCallToUserInScan(String sessionKey, String reason, String callCycleKey,
+                                        boolean newestInScan) {
+            onCallToUser(sessionKey, reason, callCycleKey);
+        }
     }
 
     private final CallTrigger callTrigger;
@@ -23,8 +29,11 @@ public final class CallToUserTagController {
         if (sessionKey == null) return;
 
         CallToUserTagScanner scanner = scannerForSession(sessionKey);
-        for (OutputTagOccurrence call : scanner.newCalls(screenText)) {
-            callTrigger.onCallToUser(sessionKey, call.getValue(), call.getDeduplicationKey());
+        List<OutputTagOccurrence> newCalls = scanner.newCalls(screenText);
+        for (int index = 0; index < newCalls.size(); index++) {
+            OutputTagOccurrence call = newCalls.get(index);
+            callTrigger.onCallToUserInScan(sessionKey, call.getValue(), call.getDeduplicationKey(),
+                index == newCalls.size() - 1);
         }
     }
 

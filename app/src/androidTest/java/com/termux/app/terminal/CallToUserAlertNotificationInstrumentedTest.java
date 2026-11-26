@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.Instrumentation;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -115,9 +116,31 @@ public class CallToUserAlertNotificationInstrumentedTest {
         assertEquals(mNameA, built.extras.getCharSequence(Notification.EXTRA_TITLE).toString());
         assertEquals("Need approval for the release",
             built.extras.getCharSequence(Notification.EXTRA_TEXT).toString());
-        assertEquals(NotificationManager.IMPORTANCE_HIGH,
-            mNotificationManager.getNotificationChannel(CallToUserAlertNotifier.CHANNEL_ID).getImportance());
+        NotificationChannel channel = mNotificationManager.getNotificationChannel(CallToUserAlertNotifier.CHANNEL_ID);
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, channel.getImportance());
+        assertNotNull("the channel must carry a sound", channel.getSound());
+        assertTrue("the channel must vibrate", channel.shouldVibrate());
+        assertNotNull("the channel must carry a vibration pattern", channel.getVibrationPattern());
         captureShade();
+    }
+
+    @Test
+    public void twoSessionsCallingPostTwoNotificationsAndEachOpensItsOwnSession() throws Exception {
+        recordCall(mSessionA, "Call from A");
+        recordCall(mSessionB, "Call from B");
+        StatusBarNotification alertA = waitForAlert(mNameA, "Call from A");
+        StatusBarNotification alertB = waitForAlert(mNameB, "Call from B");
+
+        assertEquals(1, alertsFor(mNameA).size());
+        assertEquals(1, alertsFor(mNameB).size());
+
+        TermuxActivity openedByA = sendIntentAndAwaitActivity(alertA.getNotification().contentIntent);
+        waitUntil(() -> currentSessionOf(openedByA) == mSessionA);
+        assertEquals(mSessionA, currentSessionOf(openedByA));
+
+        TermuxActivity openedByB = sendIntentAndAwaitActivity(alertB.getNotification().contentIntent);
+        waitUntil(() -> currentSessionOf(openedByB) == mSessionB);
+        assertEquals(mSessionB, currentSessionOf(openedByB));
     }
 
     @Test
