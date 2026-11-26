@@ -87,22 +87,21 @@ public final class SessionDefinitionController {
             return;
         }
         if (!repository.isLoaded()) {
-            activity.loadSessionDefinitionEntriesForGrouping();
             return;
         }
-
-        boolean wasFailing = activity.isGroupingRefreshFailing();
 
         repository.loadForRebuild(baseUrl, true, result -> {
             List<SessionDefinitionEntry> displayedEntries = result.hasFailedGroups()
                 ? mergeFailedGroupEntries(result.getEntries(), result) : result.getEntries();
             activity.refreshSessionGroupingEntries(displayedEntries);
+            boolean wasFailing = activity.isGroupingRefreshFailing();
             activity.setGroupingRefreshFailing(result.hasFailedGroups());
             if (result.hasFailedGroups() && !wasFailing) {
                 notifyPartialLoad(result);
             }
         }, exception -> {
             Logger.logStackTraceWithMessage(LOG_TAG, "Failed to load session definition from " + baseUrl, exception);
+            boolean wasFailing = activity.isGroupingRefreshFailing();
             activity.setGroupingRefreshFailing(true);
             if (!wasFailing) {
                 activity.showToast(activity.getString(R.string.msg_session_definition_load_failed), true);

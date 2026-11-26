@@ -1043,7 +1043,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         loadSessionDefinitionEntriesForGrouping();
     }
 
-    public void loadSessionDefinitionEntriesForGrouping() {
+    private void loadSessionDefinitionEntriesForGrouping() {
         if (mTermuxSessionListViewController == null) return;
         List<SessionDefinitionEntry> cachedEntries = mSessionDefinitionRepository.getCachedEntries();
         if (!cachedEntries.isEmpty()) {
