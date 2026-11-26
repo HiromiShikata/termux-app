@@ -292,6 +292,8 @@ public class SessionListBottomSheetController {
             .start();
         revealCurrentSessionRow(listController);
         startRelativeTimeRefresh();
+        if (!mActivity.getPreferences().getSessionDefinitionUrl().trim().isEmpty())
+            mActivity.loadSessionsFromDefinition();
     }
 
     private void onRelativeTimeRefreshTick() {

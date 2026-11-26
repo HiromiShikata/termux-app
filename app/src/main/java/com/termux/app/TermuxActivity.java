@@ -685,6 +685,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         requestPostNotificationsPermissionIfNeeded();
 
         mSessionDefinitionAutoReloadScheduler.onForeground(mPreferences.getSessionDefinitionReloadIntervalMinutes());
+        if (mTermuxService != null && !mPreferences.getSessionDefinitionUrl().trim().isEmpty())
+            loadSessionsFromDefinition();
         mSessionReconnectScheduler.start(mPreferences.getBackgroundReconnectScanIntervalMinutes());
     }
 

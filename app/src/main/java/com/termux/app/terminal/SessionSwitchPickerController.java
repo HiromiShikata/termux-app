@@ -89,6 +89,8 @@ public class SessionSwitchPickerController {
         if (service == null || listController == null) {
             return;
         }
+        if (!mActivity.getPreferences().getSessionDefinitionUrl().trim().isEmpty())
+            mActivity.loadSessionsFromDefinition();
         int currentSessionIndex = service.getIndexOfSession(mActivity.getCurrentSession());
         List<Integer> orderedSessionIndexes = listController.getOrderedSessionIndexes();
         List<Integer> navigableSessionIndexes = listController.getNavigationCandidateSessionIndexes();
