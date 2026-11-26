@@ -1,6 +1,7 @@
 package com.termux.app.sessiondefinition;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import android.content.Context;
 import android.os.Looper;
@@ -21,6 +22,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
+import org.robolectric.shadows.ShadowToast;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -44,6 +46,19 @@ public class SessionGroupingRefreshTest {
     private TermuxSessionsListViewController adapter;
     private MutableFetcher fetcher;
     private RecordingSessionClient sessionClient;
+
+    @Test
+    public void refreshIfDefinedRunsExactlyOnceOnlyForDefinedUrls() {
+        String[] definitionUrls = {null, "", "   ", INDEX_URL};
+        boolean[] expectedRefresh = {false, false, false, true};
+
+        for (int index = 0; index < definitionUrls.length; index++) {
+            final int[] refreshCount = {0};
+            SessionGroupingRefreshGate.refreshIfDefined(definitionUrls[index],
+                () -> refreshCount[0]++);
+            assertEquals(expectedRefresh[index] ? 1 : 0, refreshCount[0]);
+        }
+    }
 
     @Test
     public void shouldRefreshGroupingUsesOnlyNonBlankDefinitionUrls() {
@@ -77,6 +92,19 @@ public class SessionGroupingRefreshTest {
     }
 
     @Test
+    public void refreshGroupingOnlyBeforeInitialLoadDoesNotFetchOrChangeDisplayedGrouping()
+        throws Exception {
+        adapter.setEntries(Collections.singletonList(
+            new SessionDefinitionEntry("groupOne", "storyOld",
+                Collections.singletonList("https://example.test/live"))));
+
+        invokeRefreshGroupingOnly();
+
+        assertEquals(0, fetcher.fetchCalls);
+        assertEquals(Collections.singletonList("storyOld"), entryLabels(adapter.getEntries()));
+    }
+
+    @Test
     public void refreshGroupingOnlyKeepsPreviouslyDisplayedEntriesForFailedGroups()
         throws Exception {
         seedInitialDefinitionWithTwoGroups();
@@ -87,6 +115,32 @@ public class SessionGroupingRefreshTest {
 
         assertEquals(Arrays.asList("storyNew", "storyOld"), entryLabels(adapter.getEntries()));
         assertEquals(Collections.emptyList(), sessionClient.calls);
+        assertEquals(1, ShadowToast.shownToastCount());
+
+        invokeRefreshGroupingOnly();
+
+        assertEquals(1, ShadowToast.shownToastCount());
+    }
+
+    @Test
+    public void refreshGroupingOnlyShowsFailureToastOnEachFailureTransition() throws Exception {
+        seedInitialDefinition();
+        activity.setGroupingRefreshFailing(false);
+        fetcher.failedUrls.add(GROUP_ONE_URL);
+
+        invokeRefreshGroupingOnly();
+        invokeRefreshGroupingOnly();
+
+        assertEquals(1, ShadowToast.shownToastCount());
+
+        fetcher.failedUrls.clear();
+        invokeRefreshGroupingOnly();
+        assertFalse(activity.isGroupingRefreshFailing());
+
+        fetcher.failedUrls.add(GROUP_ONE_URL);
+        invokeRefreshGroupingOnly();
+
+        assertEquals(2, ShadowToast.shownToastCount());
     }
 
     @Test
@@ -210,9 +264,11 @@ public class SessionGroupingRefreshTest {
     private static final class MutableFetcher implements SessionDefinitionDocumentFetcher {
         private final Map<String, String> documents = new HashMap<>();
         private final java.util.Set<String> failedUrls = new java.util.HashSet<>();
+        private int fetchCalls;
 
         @Override
         public String fetch(String url) throws IOException {
+            fetchCalls++;
             if (failedUrls.contains(url)) throw new IOException("simulated group failure");
             String document = documents.get(url);
             if (document == null) throw new IOException("missing document: " + url);

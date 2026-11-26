@@ -226,16 +226,14 @@ public class SessionDefinitionControllerWashReplaceTest {
     }
 
     @Test
-    public void buildSessionsRefreshesDisplayedEntriesWithMergedPartialReload() throws Exception {
+    public void buildSessionsDoesNotRefreshDisplayedEntriesOnPartialReload() throws Exception {
         TermuxSession liveSession = session("https://example.test/a");
         shellManager.mTermuxSessions.add(liveSession);
         attachCurrentSession(liveSession.getTerminalSession());
 
-        List<SessionDefinitionEntry> initialEntries = Arrays.asList(
+        List<SessionDefinitionEntry> initialEntries = Collections.singletonList(
             new SessionDefinitionEntry("projectOne", "storyA",
-                Collections.singletonList("https://example.test/a")),
-            new SessionDefinitionEntry("failedGroup", "storyOld",
-                Collections.singletonList("https://example.test/old")));
+                Collections.singletonList("https://example.test/a")));
         adapter.setEntries(initialEntries);
 
         List<SessionDefinitionEntry> partiallyLoadedEntries = Collections.singletonList(
@@ -247,7 +245,7 @@ public class SessionDefinitionControllerWashReplaceTest {
 
         invokeBuildSessions(partialResult);
 
-        assertEquals(Arrays.asList("storyNew", "storyOld"), entryLabels(adapter.getEntries()));
+        assertEquals(Collections.singletonList("storyA"), entryLabels(adapter.getEntries()));
     }
 
     @Test
