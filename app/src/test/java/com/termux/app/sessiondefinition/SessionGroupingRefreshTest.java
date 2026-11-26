@@ -92,16 +92,20 @@ public class SessionGroupingRefreshTest {
     }
 
     @Test
-    public void refreshGroupingOnlyBeforeInitialLoadDoesNotFetchOrChangeDisplayedGrouping()
+    public void refreshGroupingOnlyBeforeInitialLoadDelegatesToFirstLoad()
         throws Exception {
         adapter.setEntries(Collections.singletonList(
             new SessionDefinitionEntry("groupOne", "storyOld",
                 Collections.singletonList("https://example.test/live"))));
+        TermuxSession liveSession = session("https://example.test/live");
+        shellManager.mTermuxSessions.add(liveSession);
+        fetcher.documents.put(INDEX_URL, "{\"projects\":[]}");
 
         invokeRefreshGroupingOnly();
 
-        assertEquals(0, fetcher.fetchCalls);
-        assertEquals(Collections.singletonList("storyOld"), entryLabels(adapter.getEntries()));
+        assertEquals(Collections.singletonList(INDEX_URL), fetcher.fetchedUrls);
+        assertEquals(Collections.singletonList("https://example.test/live"), sessionNames());
+        assertEquals(Collections.emptyList(), sessionClient.calls);
     }
 
     @Test
@@ -266,11 +270,13 @@ public class SessionGroupingRefreshTest {
     private static final class MutableFetcher implements SessionDefinitionDocumentFetcher {
         private final Map<String, String> documents = new HashMap<>();
         private final java.util.Set<String> failedUrls = new java.util.HashSet<>();
+        private final java.util.ArrayList<String> fetchedUrls = new java.util.ArrayList<>();
         private int fetchCalls;
 
         @Override
         public String fetch(String url) throws IOException {
             fetchCalls++;
+            fetchedUrls.add(url);
             if (failedUrls.contains(url)) throw new IOException("simulated group failure");
             String document = documents.get(url);
             if (document == null) throw new IOException("missing document: " + url);
