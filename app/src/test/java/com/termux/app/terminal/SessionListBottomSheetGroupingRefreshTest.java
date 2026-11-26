@@ -62,26 +62,25 @@ public class SessionListBottomSheetGroupingRefreshTest {
     }
 
     @Test
-    public void showFetchesTheDefinitionIndexOnceForEachNonBlankUrl() throws Exception {
-        String[] definitionUrls = {INDEX_URL, null, "", "   "};
-        int[] expectedIndexFetches = {1, 0, 0, 0};
+    public void eachShowFetchesTheDefinitionIndexOnceForEachNonBlankUrl() throws Exception {
+        String[] definitionUrls = {INDEX_URL, INDEX_URL, "", INDEX_URL, null, "   ", INDEX_URL};
+        int expectedIndexFetches = 0;
 
-        for (int index = 0; index < definitionUrls.length; index++) {
+        for (String definitionUrl : definitionUrls) {
             TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(
                 RuntimeEnvironment.getApplication(), true);
-            if (definitionUrls[index] == null) {
+            if (definitionUrl == null) {
                 preferences.getSharedPreferences().edit().remove("session_definition_url").apply();
             } else {
-                preferences.setSessionDefinitionUrl(definitionUrls[index]);
+                preferences.setSessionDefinitionUrl(definitionUrl);
             }
             set(activity, TermuxActivity.class, "mPreferences", preferences);
-            fetcher.fetchCalls = 0;
-            fetcher.indexFetchCalls = 0;
 
             new SessionListBottomSheetController(activity).show();
             drainMainLooper();
 
-            assertEquals(expectedIndexFetches[index], fetcher.indexFetchCalls);
+            if (definitionUrl != null && !definitionUrl.trim().isEmpty()) expectedIndexFetches++;
+            assertEquals(expectedIndexFetches, fetcher.indexFetchCalls);
         }
     }
 
