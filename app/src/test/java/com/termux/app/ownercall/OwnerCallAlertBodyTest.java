@@ -1,5 +1,7 @@
 package com.termux.app.ownercall;
 
+import com.termux.app.terminal.CallToUserAlertText;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -102,6 +104,38 @@ public class OwnerCallAlertBodyTest {
             Assert.fail("a fetch failure must not be swallowed");
         } catch (IOException expected) {
             Assert.assertEquals("unreachable owner call file", expected.getMessage());
+        }
+    }
+
+    @Test
+    public void readOrNullReturnsTheBodyWhenTheFileIsReadable() {
+        String body = OwnerCallAlertBody.readOrNull(new FixedTransport(call("worker",
+            "2026-11-27T02:00:00Z", "🔴", "Readable body")), "worker", FILE_URL, ANSWERED_THROUGH_MILLIS,
+            NOW_MILLIS);
+
+        Assert.assertEquals("Readable body", body);
+    }
+
+    @Test
+    public void readOrNullSwallowsEveryFailureSoTheFirstAlertIsStillPostedWithTheCallText() {
+        OwnerCallFileTransport[] failingTransports = {
+            new FailingTransport(),
+            new OwnerCallFileTransport() {
+                @Override
+                public String fetch(String url) {
+                    throw new IllegalStateException("unexpected document shape");
+                }
+
+                @Override
+                public void delete(String url) {
+                }
+            },
+        };
+        for (OwnerCallFileTransport transport : failingTransports) {
+            String body = OwnerCallAlertBody.readOrNull(transport, "worker", FILE_URL, null, NOW_MILLIS);
+
+            Assert.assertNull(body);
+            Assert.assertEquals("🔴", CallToUserAlertText.forFirstPost(body, "🔴"));
         }
     }
 }
