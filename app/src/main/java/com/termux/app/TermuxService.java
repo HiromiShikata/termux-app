@@ -33,6 +33,7 @@ import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
 import com.termux.app.ownercall.HttpOwnerCallFileTransport;
 import com.termux.app.ownercall.OwnerCallAlertBody;
 import com.termux.app.ownercall.OwnerCallFileUrl;
+import com.termux.app.sessiondefinition.SessionDefinitionEntry;
 import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
 import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.terminal.CallToUserAlertGate;
@@ -83,7 +84,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -1373,6 +1373,17 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private void requestCallToUserAlertBody(@NonNull String sessionName, int generation, int attempt,
                                             @Nullable String firstPostCallText) {
         if (!isCurrentCallToUserAlertBodyRequest(sessionName, generation)) return;
+        try {
+            startCallToUserAlertBodyRead(sessionName, generation, attempt, firstPostCallText);
+        } catch (RuntimeException unstartableRead) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "The call alert body of " + sessionName
+                + " is not known yet: the body read could not be started", unstartableRead);
+            settleCallToUserAlertBody(sessionName, generation, attempt, firstPostCallText, null);
+        }
+    }
+
+    private void startCallToUserAlertBodyRead(@NonNull String sessionName, int generation, int attempt,
+                                              @Nullable String firstPostCallText) {
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this);
         if (preferences == null) {
             Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no preferences");
@@ -1387,17 +1398,25 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         }
         mCallToUserAlertDefinitionRepository.loadForRebuild(sessionDefinitionUrl,
             result -> {
-                String projectCode = new SessionDefinitionEntryMatcher()
-                    .findGroupLabelForSessionName(result.getEntries(), sessionName);
-                String fileUrl = OwnerCallFileUrl.resolve(sessionDefinitionUrl, projectCode, sessionName);
+                String fileUrl;
+                Long answeredThroughMillis;
+                try {
+                    fileUrl = ownerCallFileUrlOrNull(sessionDefinitionUrl, sessionName, result.getEntries());
+                    answeredThroughMillis = mSessionNewActivityStore.genuineReplyTimeMillis(sessionName);
+                } catch (RuntimeException unexpectedFailure) {
+                    Logger.logStackTraceWithMessage(LOG_TAG, "The call alert body of " + sessionName
+                        + " is not known yet: the owner call file could not be addressed", unexpectedFailure);
+                    fileUrl = null;
+                    answeredThroughMillis = null;
+                }
                 if (fileUrl == null) {
-                    Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no owner call file");
                     settleCallToUserAlertBody(sessionName, generation, attempt, firstPostCallText, null);
                     return;
                 }
-                Long answeredThroughMillis = mSessionNewActivityStore.genuineReplyTimeMillis(sessionName);
+                String readFileUrl = fileUrl;
+                Long readAnsweredThroughMillis = answeredThroughMillis;
                 new Thread(() -> readCallToUserAlertBody(sessionName, generation, attempt, firstPostCallText,
-                    fileUrl, answeredThroughMillis)).start();
+                    readFileUrl, readAnsweredThroughMillis)).start();
             },
             loadFailure -> {
                 Logger.logStackTraceWithMessage(LOG_TAG,
@@ -1407,10 +1426,28 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             });
     }
 
+    @Nullable
+    private static String ownerCallFileUrlOrNull(@NonNull String sessionDefinitionUrl, @NonNull String sessionName,
+                                                 @NonNull List<SessionDefinitionEntry> entries) {
+        try {
+            String projectCode = new SessionDefinitionEntryMatcher().findGroupLabelForSessionName(entries, sessionName);
+            String fileUrl = OwnerCallFileUrl.resolve(sessionDefinitionUrl, projectCode, sessionName);
+            if (fileUrl == null) {
+                Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no owner call file");
+            }
+            return fileUrl;
+        } catch (RuntimeException unresolvableOwnerCallFile) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "The call alert body of " + sessionName
+                + " is unknown: the owner call file address could not be resolved", unresolvableOwnerCallFile);
+            return null;
+        }
+    }
+
     private void readCallToUserAlertBody(@NonNull String sessionName, int generation, int attempt,
                                          @Nullable String firstPostCallText, @NonNull String fileUrl,
                                          @Nullable Long answeredThroughMillis) {
-        String body = unansweredCallBodyOrNull(sessionName, fileUrl, answeredThroughMillis);
+        String body = OwnerCallAlertBody.readOrNull(new HttpOwnerCallFileTransport(), sessionName, fileUrl,
+            answeredThroughMillis, System.currentTimeMillis());
         runOnTheMainThread(() -> settleCallToUserAlertBody(sessionName, generation, attempt, firstPostCallText, body));
     }
 
@@ -1443,19 +1480,6 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         Integer currentGeneration = mCallToUserAlertBodyGenerations.get(sessionName);
         return currentGeneration != null && currentGeneration == generation
             && mCallToUserAlertCalledAtMillis.containsKey(sessionName);
-    }
-
-    @Nullable
-    private static String unansweredCallBodyOrNull(@NonNull String sessionName, @NonNull String fileUrl,
-                                                   @Nullable Long answeredThroughMillis) {
-        try {
-            return OwnerCallAlertBody.resolve(new HttpOwnerCallFileTransport(), fileUrl,
-                HostTmuxSessionName.normalize(sessionName), answeredThroughMillis, System.currentTimeMillis());
-        } catch (IOException unreadableOwnerCallFile) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "The call alert body of " + sessionName
-                + " is not known yet: the owner call file could not be read", unreadableOwnerCallFile);
-            return null;
-        }
     }
 
     public synchronized void pruneSessionNewActivityStoreToLiveSessions() {
