@@ -1185,6 +1185,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     private void updateCallToUserAlertNotifications() {
+        seedRestoredCallToUserAlerts();
         mCallToUserAlertCalledAtMillis.keySet().retainAll(liveTerminalSessionNames());
         Map<String, Long> genuineReplyMillisBySession = new HashMap<>();
         for (String sessionName : mCallToUserAlertCalledAtMillis.keySet()) {
@@ -1537,6 +1538,22 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     @NonNull
+    /**
+     * After a restart the call-time map is empty while the alerts of the previous process are still shown.
+     * Each such alert is seeded with the store's last explicit call time, so it waits by the same rule as a
+     * new one, and its body is read once.
+     */
+    private void seedRestoredCallToUserAlerts() {
+        for (String sessionName : mSessionNewActivityStore.pendingCallToUserSessionNames()) {
+            if (mCallToUserAlertCalledAtMillis.containsKey(sessionName)) continue;
+            if (!CallToUserAlertNotifier.isAlertShown(this, sessionName)) continue;
+            Long lastCallMillis = mSessionNewActivityStore.getLastExplicitCallTimeMillis(sessionName);
+            if (lastCallMillis == null) continue;
+            mCallToUserAlertCalledAtMillis.put(sessionName, lastCallMillis);
+            loadCallToUserAlertBody(sessionName);
+        }
+    }
+
     public synchronized Set<String> liveTerminalSessionNames() {
         Set<String> names = new HashSet<>();
         for (int i = 0, len = mShellManager.mTermuxSessions.size(); i < len; i++) {

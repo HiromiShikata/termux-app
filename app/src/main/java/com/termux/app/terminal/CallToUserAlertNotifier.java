@@ -91,9 +91,13 @@ public final class CallToUserAlertNotifier {
      * call it is about. The alert keeps its place and its identity, and the update does not sound again.
      * Does nothing when no alert is shown for the session, for example because the owner answered it first.
      */
+    public static boolean isAlertShown(@NonNull Context context, @NonNull String sessionName) {
+        return readShownSessionNames(context).contains(sessionName);
+    }
+
     public static void updateAlertBody(@NonNull Context context, @NonNull String sessionName,
                                        @NonNull String callBody) {
-        if (!readShownSessionNames(context).contains(sessionName)) return;
+        if (!isAlertShown(context, sessionName)) return;
         if (!canPostAlerts(context, sessionName)) return;
         NotificationManager notificationManager = notificationManager(context);
         if (notificationManager == null) return;
