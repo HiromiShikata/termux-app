@@ -1185,6 +1185,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     private void updateCallToUserAlertNotifications() {
+        mCallToUserAlertCalledAtMillis.keySet().retainAll(liveTerminalSessionNames());
         Map<String, Long> genuineReplyMillisBySession = new HashMap<>();
         for (String sessionName : mCallToUserAlertCalledAtMillis.keySet()) {
             Long genuineReplyMillis = mSessionNewActivityStore.genuineReplyTimeMillis(sessionName);
