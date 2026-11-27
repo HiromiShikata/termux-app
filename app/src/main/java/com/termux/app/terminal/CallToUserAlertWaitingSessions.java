@@ -6,14 +6,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * The sessions whose call-to-user alert is still waiting for the owner's answer.
- *
- * <p>A call the alert was posted for is answered by a genuine reply at or after the moment of the call,
- * which is the same rule the owner call window uses to hide an answered call. Keystrokes do not answer
- * it. A session with no recorded call time has no such rule, so it waits while the store reports it
- * pending.
- */
 public final class CallToUserAlertWaitingSessions {
 
     private CallToUserAlertWaitingSessions() {

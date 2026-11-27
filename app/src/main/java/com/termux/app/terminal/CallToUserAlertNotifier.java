@@ -86,29 +86,28 @@ public final class CallToUserAlertNotifier {
         writeShownSessionNames(context, shownSessionNames);
     }
 
-    /** The sessions whose call alert is shown, as persisted, which survives a service restart. */
     @NonNull
     public static Set<String> shownSessionNames(@NonNull Context context) {
         return readShownSessionNames(context);
     }
 
-    public static boolean isAlertShown(@NonNull Context context, @NonNull String sessionName) {
-        return readShownSessionNames(context).contains(sessionName);
-    }
-
-    /**
-     * Replaces the text of the alert already shown for {@code sessionName} with the body of the owner
-     * call it is about. The alert keeps its place and its identity, and the update does not sound again.
-     * Does nothing when no alert is shown for the session, for example because the owner answered it first.
-     */
     public static void updateAlertBody(@NonNull Context context, @NonNull String sessionName,
                                        @NonNull String callBody) {
-        if (!isAlertShown(context, sessionName)) return;
         if (!canPostAlerts(context, sessionName)) return;
         NotificationManager notificationManager = notificationManager(context);
-        if (notificationManager == null) return;
+        if (notificationManager == null || !isAlertActive(notificationManager, sessionName)) return;
         notificationManager.notify(CallToUserNotificationTags.tagFor(sessionName), NOTIFICATION_ID,
             buildAlert(context, sessionName, callBody, true));
+    }
+
+    private static boolean isAlertActive(@NonNull NotificationManager notificationManager,
+                                         @NonNull String sessionName) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+        String tag = CallToUserNotificationTags.tagFor(sessionName);
+        for (StatusBarNotification active : notificationManager.getActiveNotifications()) {
+            if (active.getId() == NOTIFICATION_ID && tag.equals(active.getTag())) return true;
+        }
+        return false;
     }
 
     private static boolean canPostAlerts(@NonNull Context context, @NonNull String sessionName) {
