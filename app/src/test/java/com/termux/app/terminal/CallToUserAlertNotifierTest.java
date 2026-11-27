@@ -56,6 +56,17 @@ public class CallToUserAlertNotifierTest {
     }
 
     @Test
+    public void bodyUpdateDoesNotReplaceAnAlertTheOwnerSwipedAway() {
+        CallToUserAlertNotifier.postAlert(mContext, SESSION_NAME, "🔴");
+        ((NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE))
+            .cancel(CallToUserNotificationTags.tagFor(SESSION_NAME), CallToUserAlertNotifier.NOTIFICATION_ID);
+
+        CallToUserAlertNotifier.updateAlertBody(mContext, SESSION_NAME, BODY);
+
+        Assert.assertEquals(0, mNotifications.getAllNotifications().size());
+    }
+
+    @Test
     public void bodyUpdateIsIgnoredWhenNoAlertIsShownForTheSession() {
         CallToUserAlertNotifier.updateAlertBody(mContext, SESSION_NAME, BODY);
 
