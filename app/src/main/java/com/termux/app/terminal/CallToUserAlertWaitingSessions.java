@@ -1,0 +1,32 @@
+package com.termux.app.terminal;
+
+import androidx.annotation.NonNull;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+public final class CallToUserAlertWaitingSessions {
+
+    private CallToUserAlertWaitingSessions() {
+    }
+
+    @NonNull
+    public static Set<String> of(@NonNull Map<String, Long> callAlertedAtMillisBySession,
+                                 @NonNull Set<String> storePendingSessionNames,
+                                 @NonNull Map<String, Long> genuineReplyMillisBySession) {
+        Set<String> waiting = new HashSet<>();
+        for (String sessionName : storePendingSessionNames) {
+            if (!callAlertedAtMillisBySession.containsKey(sessionName)) {
+                waiting.add(sessionName);
+            }
+        }
+        for (Map.Entry<String, Long> alerted : callAlertedAtMillisBySession.entrySet()) {
+            Long genuineReplyMillis = genuineReplyMillisBySession.get(alerted.getKey());
+            if (genuineReplyMillis == null || genuineReplyMillis < alerted.getValue()) {
+                waiting.add(alerted.getKey());
+            }
+        }
+        return waiting;
+    }
+}

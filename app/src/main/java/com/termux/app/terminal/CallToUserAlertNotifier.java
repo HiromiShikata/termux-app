@@ -76,33 +76,67 @@ public final class CallToUserAlertNotifier {
     }
 
     public static void postAlert(@NonNull Context context, @NonNull String sessionName, @NonNull String callText) {
+        if (!canPostAlerts(context, sessionName)) return;
+        NotificationManager notificationManager = notificationManager(context);
+        if (notificationManager == null) return;
+        notificationManager.notify(CallToUserNotificationTags.tagFor(sessionName), NOTIFICATION_ID,
+            buildAlert(context, sessionName, callText, false));
+        Set<String> shownSessionNames = readShownSessionNames(context);
+        shownSessionNames.add(sessionName);
+        writeShownSessionNames(context, shownSessionNames);
+    }
+
+    @NonNull
+    public static Set<String> shownSessionNames(@NonNull Context context) {
+        return readShownSessionNames(context);
+    }
+
+    public static void updateAlertBody(@NonNull Context context, @NonNull String sessionName,
+                                       @NonNull String callBody) {
+        if (!canPostAlerts(context, sessionName)) return;
+        NotificationManager notificationManager = notificationManager(context);
+        if (notificationManager == null || !isAlertActive(notificationManager, sessionName)) return;
+        notificationManager.notify(CallToUserNotificationTags.tagFor(sessionName), NOTIFICATION_ID,
+            buildAlert(context, sessionName, callBody, true));
+    }
+
+    private static boolean isAlertActive(@NonNull NotificationManager notificationManager,
+                                         @NonNull String sessionName) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false;
+        String tag = CallToUserNotificationTags.tagFor(sessionName);
+        for (StatusBarNotification active : notificationManager.getActiveNotifications()) {
+            if (active.getId() == NOTIFICATION_ID && tag.equals(active.getTag())) return true;
+        }
+        return false;
+    }
+
+    private static boolean canPostAlerts(@NonNull Context context, @NonNull String sessionName) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
             && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) {
             Logger.logWarn(LOG_TAG, "Skipping the call alert for session \"" + sessionName
                 + "\": the POST_NOTIFICATIONS permission is not granted");
-            return;
+            return false;
         }
-        NotificationManager notificationManager = notificationManager(context);
-        if (notificationManager == null) return;
+        return true;
+    }
 
+    @NonNull
+    private static Notification buildAlert(@NonNull Context context, @NonNull String sessionName,
+                                           @NonNull String text, boolean onlyAlertOnce) {
         PendingIntent tapIntent = PendingIntent.getActivity(context, 0,
             buildTapIntent(context, sessionName), pendingIntentFlags());
-        Notification notification = new NotificationCompat.Builder(context, CHANNEL_ID)
+        return new NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_service_notification)
             .setContentTitle(sessionName)
-            .setContentText(callText)
-            .setStyle(new NotificationCompat.BigTextStyle().bigText(callText))
+            .setContentText(text)
+            .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setDefaults(NotificationCompat.DEFAULT_SOUND | NotificationCompat.DEFAULT_VIBRATE)
+            .setOnlyAlertOnce(onlyAlertOnce)
             .setContentIntent(tapIntent)
-            .setAutoCancel(true)
             .build();
-        notificationManager.notify(CallToUserNotificationTags.tagFor(sessionName), NOTIFICATION_ID, notification);
-        Set<String> shownSessionNames = readShownSessionNames(context);
-        shownSessionNames.add(sessionName);
-        writeShownSessionNames(context, shownSessionNames);
     }
 
     public static void cancelAlertsNotPending(@NonNull Context context, @NonNull Set<String> pendingSessionNames) {
