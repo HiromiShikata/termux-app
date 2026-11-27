@@ -86,11 +86,7 @@ public final class CallToUserAlertNotifier {
         writeShownSessionNames(context, shownSessionNames);
     }
 
-    /**
-     * Replaces the text of the alert already shown for {@code sessionName} with the body of the owner
-     * call it is about. The alert keeps its place and its identity, and the update does not sound again.
-     * Does nothing when no alert is shown for the session, for example because the owner answered it first.
-     */
+    /** The sessions whose call alert is shown, as persisted, which survives a service restart. */
     @NonNull
     public static Set<String> shownSessionNames(@NonNull Context context) {
         return readShownSessionNames(context);
@@ -100,6 +96,11 @@ public final class CallToUserAlertNotifier {
         return readShownSessionNames(context).contains(sessionName);
     }
 
+    /**
+     * Replaces the text of the alert already shown for {@code sessionName} with the body of the owner
+     * call it is about. The alert keeps its place and its identity, and the update does not sound again.
+     * Does nothing when no alert is shown for the session, for example because the owner answered it first.
+     */
     public static void updateAlertBody(@NonNull Context context, @NonNull String sessionName,
                                        @NonNull String callBody) {
         if (!isAlertShown(context, sessionName)) return;
