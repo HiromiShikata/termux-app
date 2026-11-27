@@ -1541,12 +1541,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /**
      * After a restart the call-time map is empty while the alerts of the previous process are still shown.
      * Each such alert is seeded with the store's last explicit call time, so it waits by the same rule as a
-     * new one, and its body is read once.
+     * new one, and its body is read once. The shown alerts are the source, not the store's pending reasons,
+     * because a keystroke before the restart clears those reasons while the alert still waits for an answer.
      */
     private void seedRestoredCallToUserAlerts() {
-        for (String sessionName : mSessionNewActivityStore.pendingCallToUserSessionNames()) {
+        for (String sessionName : CallToUserAlertNotifier.shownSessionNames(this)) {
             if (mCallToUserAlertCalledAtMillis.containsKey(sessionName)) continue;
-            if (!CallToUserAlertNotifier.isAlertShown(this, sessionName)) continue;
             Long lastCallMillis = mSessionNewActivityStore.getLastExplicitCallTimeMillis(sessionName);
             if (lastCallMillis == null) continue;
             mCallToUserAlertCalledAtMillis.put(sessionName, lastCallMillis);
