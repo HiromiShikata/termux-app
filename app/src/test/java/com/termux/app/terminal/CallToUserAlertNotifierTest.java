@@ -17,7 +17,7 @@ import org.robolectric.shadows.ShadowApplication;
 import org.robolectric.shadows.ShadowNotificationManager;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 34)
+@Config(sdk = 33)
 public class CallToUserAlertNotifierTest {
 
     private static final String SESSION_NAME = "worker";

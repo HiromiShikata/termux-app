@@ -30,10 +30,16 @@ import com.termux.app.diagnostics.SessionCreationPathCounterHolder;
 import com.termux.app.diagnostics.DiagnosticEventType;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorder;
 import com.termux.app.diagnostics.ReplacedSessionShellInputRecorderHolder;
+import com.termux.app.ownercall.HttpOwnerCallFileTransport;
+import com.termux.app.ownercall.OwnerCallAlertBody;
+import com.termux.app.ownercall.OwnerCallFileUrl;
+import com.termux.app.sessiondefinition.SessionDefinitionEntryMatcher;
+import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.terminal.CallToUserAlertGate;
 import com.termux.app.terminal.CallToUserAlertLedger;
 import com.termux.app.terminal.CallToUserAlertNotifier;
 import com.termux.app.terminal.CallToUserTagController;
+import com.termux.app.terminal.HostTmuxSessionName;
 import com.termux.app.terminal.NotificationRepostDecision;
 import com.termux.app.terminal.SessionNewActivityStore;
 import com.termux.app.terminal.TermuxForegroundNotificationContent;
@@ -75,6 +81,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.io.IOException;
 import java.util.Set;
 
 /**
@@ -124,6 +131,9 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private CallToUserAlertLedger mCallToUserAlertLedger;
 
     private Set<String> mLastPendingCallToUserSessionNames;
+
+    /** Session definitions used to find the owner call file of a session whose call alert is shown. */
+    private final SessionDefinitionRepository mCallToUserAlertDefinitionRepository = new SessionDefinitionRepository();
 
     /** Detects the explicit-call output tag for every session regardless of which session is currently
      * viewed or whether the activity is foregrounded, recording the explicit call into the shared
@@ -1322,11 +1332,71 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         boolean newCallRecorded = mSessionNewActivityStore.recordExplicitCall(session.mSessionName,
             System.currentTimeMillis(), reason, callCycleKey);
         if (CallToUserAlertGate.shouldAlert(mCallToUserAlertLedger, mayAlert, newCallRecorded,
-            session.mSessionName, callCycleKey, reason))
+            session.mSessionName, callCycleKey, reason)) {
             CallToUserAlertNotifier.postAlert(this, session.mSessionName, reason);
+            loadCallToUserAlertBody(session.mSessionName);
+        }
         TermuxTerminalSessionActivityClient activityClient = mTermuxTerminalSessionActivityClient;
         if (activityClient != null)
             activityClient.termuxSessionListNotifyUpdated();
+    }
+
+    /**
+     * Replaces the call text of the alert shown for {@code sessionName} with the body of the owner call
+     * it is about, read from the owner call file the same way the in-app owner call window reads it.
+     * The alert keeps its call text when the body cannot be read; the reason is logged.
+     */
+    private void loadCallToUserAlertBody(@NonNull String sessionName) {
+        TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this);
+        if (preferences == null) {
+            Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no preferences");
+            return;
+        }
+        String sessionDefinitionUrl = preferences.getSessionDefinitionUrl().trim();
+        if (sessionDefinitionUrl.isEmpty()) {
+            Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no session definition URL");
+            return;
+        }
+        mCallToUserAlertDefinitionRepository.loadForRebuild(sessionDefinitionUrl,
+            result -> {
+                String projectCode = new SessionDefinitionEntryMatcher()
+                    .findGroupLabelForSessionName(result.getEntries(), sessionName);
+                String fileUrl = OwnerCallFileUrl.resolve(sessionDefinitionUrl, projectCode, sessionName);
+                if (fileUrl == null) {
+                    Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no owner call file");
+                    return;
+                }
+                Long answeredThroughMillis = mSessionNewActivityStore.genuineReplyTimeMillis(sessionName);
+                new Thread(() -> readCallToUserAlertBody(sessionName, fileUrl, answeredThroughMillis)).start();
+            },
+            loadFailure -> Logger.logStackTraceWithMessage(LOG_TAG,
+                "The call alert body of " + sessionName + " is unknown: the session definitions did not load",
+                loadFailure));
+    }
+
+    private void readCallToUserAlertBody(@NonNull String sessionName, @NonNull String fileUrl,
+                                         @Nullable Long answeredThroughMillis) {
+        String body = unansweredCallBodyOrNull(sessionName, fileUrl, answeredThroughMillis);
+        if (body == null) return;
+        runOnTheMainThread(() -> CallToUserAlertNotifier.updateAlertBody(this, sessionName, body));
+    }
+
+    @Nullable
+    private static String unansweredCallBodyOrNull(@NonNull String sessionName, @NonNull String fileUrl,
+                                                   @Nullable Long answeredThroughMillis) {
+        try {
+            String body = OwnerCallAlertBody.resolve(new HttpOwnerCallFileTransport(), fileUrl,
+                HostTmuxSessionName.normalize(sessionName), answeredThroughMillis, System.currentTimeMillis());
+            if (body == null) {
+                Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: the owner call "
+                    + "file has no unanswered call of the session yet, so the alert keeps its call text");
+            }
+            return body;
+        } catch (IOException unreadableOwnerCallFile) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "The call alert body of " + sessionName
+                + " is unknown: the owner call file could not be read", unreadableOwnerCallFile);
+            return null;
+        }
     }
 
     public synchronized void pruneSessionNewActivityStoreToLiveSessions() {
