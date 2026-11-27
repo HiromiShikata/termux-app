@@ -52,7 +52,7 @@ public class OwnerCallAlertBodyTest {
     }
 
     @Test
-    public void resolveReturnsTheDisplayedBodyOfTheNewestUnansweredCallWithoutTheMarkerLine() throws IOException {
+    public void resolveReturnsTheDisplayedBodyOfTheOldestUnansweredCallTheWindowOpensOnWithoutTheMarkerLine() throws IOException {
         String[][] cases = {
             {
                 call("worker", "2026-11-27T00:00:00Z", "🔴", "Old question") + call("worker",
@@ -67,6 +67,11 @@ public class OwnerCallAlertBodyTest {
                 call("worker", "2026-11-27T00:30:00Z", "🔴", "Answered already")
                     + call("worker", "2026-11-27T02:00:00Z", "🔴", "Still waiting"),
                 "Still waiting",
+            },
+            {
+                call("worker", "2026-11-27T02:00:00Z", "🔴", "First waiting call")
+                    + call("worker", "2026-11-27T03:00:00Z", "🔴", "Second waiting call"),
+                "First waiting call",
             },
         };
         for (String[] testCase : cases) {
