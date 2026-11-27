@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * The text of the owner call a call-to-user alert is about: the same displayed body the in-app owner
- * call window shows for the newest call the owner has not answered yet.
+ * call window opens on, which is the oldest call the owner has not answered yet.
  */
 public final class OwnerCallAlertBody {
 
@@ -16,7 +16,7 @@ public final class OwnerCallAlertBody {
     }
 
     /**
-     * Reads the owner call file at {@code fileUrl} and returns the displayed body of the newest call of
+     * Reads the owner call file at {@code fileUrl} and returns the displayed body of the oldest call of
      * {@code hostTmuxSessionName} that is still unanswered, or {@code null} when there is none.
      *
      * @throws IOException when the file cannot be fetched, so the caller can log why the body is unknown
@@ -32,7 +32,7 @@ public final class OwnerCallAlertBody {
         if (unansweredCalls.isEmpty()) {
             return null;
         }
-        OwnerCall newestCall = unansweredCalls.get(unansweredCalls.size() - 1);
-        return OwnerCallBodyDisplayText.of(newestCall.getBody()).getText();
+        OwnerCall oldestUnansweredCall = unansweredCalls.get(0);
+        return OwnerCallBodyDisplayText.of(oldestUnansweredCall.getBody()).getText();
     }
 }

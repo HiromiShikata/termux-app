@@ -38,6 +38,7 @@ import com.termux.app.sessiondefinition.SessionDefinitionRepository;
 import com.termux.app.terminal.CallToUserAlertGate;
 import com.termux.app.terminal.CallToUserAlertLedger;
 import com.termux.app.terminal.CallToUserAlertNotifier;
+import com.termux.app.terminal.CallToUserAlertWaitingSessions;
 import com.termux.app.terminal.CallToUserTagController;
 import com.termux.app.terminal.HostTmuxSessionName;
 import com.termux.app.terminal.NotificationRepostDecision;
@@ -82,6 +83,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -134,6 +137,15 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     /** Session definitions used to find the owner call file of a session whose call alert is shown. */
     private final SessionDefinitionRepository mCallToUserAlertDefinitionRepository = new SessionDefinitionRepository();
+
+    /** The moment of the call each shown call-to-user alert is for, keyed by session name. Main thread only. */
+    private final Map<String, Long> mCallToUserAlertCalledAtMillis = new HashMap<>();
+
+    /** Bumped on every alert of a session so a body read started for an older alert is dropped. Main thread only. */
+    private final Map<String, Integer> mCallToUserAlertBodyGenerations = new HashMap<>();
+
+    private static final long CALL_ALERT_BODY_RETRY_DELAY_MILLIS = 10_000L;
+    private static final int CALL_ALERT_BODY_MAX_ATTEMPTS = 6;
 
     /** Detects the explicit-call output tag for every session regardless of which session is currently
      * viewed or whether the activity is foregrounded, recording the explicit call into the shared
@@ -1173,10 +1185,19 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     private void updateCallToUserAlertNotifications() {
-        Set<String> pendingSessionNames = mSessionNewActivityStore.pendingCallToUserSessionNames();
+        Map<String, Long> genuineReplyMillisBySession = new HashMap<>();
+        for (String sessionName : mCallToUserAlertCalledAtMillis.keySet()) {
+            Long genuineReplyMillis = mSessionNewActivityStore.genuineReplyTimeMillis(sessionName);
+            if (genuineReplyMillis != null) {
+                genuineReplyMillisBySession.put(sessionName, genuineReplyMillis);
+            }
+        }
+        Set<String> pendingSessionNames = CallToUserAlertWaitingSessions.of(mCallToUserAlertCalledAtMillis,
+            mSessionNewActivityStore.pendingCallToUserSessionNames(), genuineReplyMillisBySession);
         if (pendingSessionNames.equals(mLastPendingCallToUserSessionNames)) return;
         CallToUserAlertNotifier.cancelAlertsNotPending(this, pendingSessionNames);
         mLastPendingCallToUserSessionNames = pendingSessionNames;
+        mCallToUserAlertCalledAtMillis.keySet().retainAll(pendingSessionNames);
     }
 
     private void updatePendingCallNotification() {
@@ -1329,10 +1350,12 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                                                   String callCycleKey, boolean mayAlert) {
         TerminalSession session = getTerminalSessionForHandle(sessionHandle);
         if (session == null || session.mSessionName == null) return;
+        long callTimeMillis = System.currentTimeMillis();
         boolean newCallRecorded = mSessionNewActivityStore.recordExplicitCall(session.mSessionName,
-            System.currentTimeMillis(), reason, callCycleKey);
+            callTimeMillis, reason, callCycleKey);
         if (CallToUserAlertGate.shouldAlert(mCallToUserAlertLedger, mayAlert, newCallRecorded,
             session.mSessionName, callCycleKey, reason)) {
+            mCallToUserAlertCalledAtMillis.put(session.mSessionName, callTimeMillis);
             CallToUserAlertNotifier.postAlert(this, session.mSessionName, reason);
             loadCallToUserAlertBody(session.mSessionName);
         }
@@ -1344,9 +1367,18 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /**
      * Replaces the call text of the alert shown for {@code sessionName} with the body of the owner call
      * it is about, read from the owner call file the same way the in-app owner call window reads it.
-     * The alert keeps its call text when the body cannot be read; the reason is logged.
+     * A body that is not in the file yet is retried a bounded number of times; the alert keeps its call
+     * text meanwhile, and the reason is logged when the body stays unknown.
      */
     private void loadCallToUserAlertBody(@NonNull String sessionName) {
+        Integer previousGeneration = mCallToUserAlertBodyGenerations.get(sessionName);
+        int generation = previousGeneration == null ? 1 : previousGeneration + 1;
+        mCallToUserAlertBodyGenerations.put(sessionName, generation);
+        requestCallToUserAlertBody(sessionName, generation, 1);
+    }
+
+    private void requestCallToUserAlertBody(@NonNull String sessionName, int generation, int attempt) {
+        if (!isCurrentCallToUserAlertBodyRequest(sessionName, generation)) return;
         TermuxAppSharedPreferences preferences = TermuxAppSharedPreferences.build(this);
         if (preferences == null) {
             Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: no preferences");
@@ -1367,34 +1399,58 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                     return;
                 }
                 Long answeredThroughMillis = mSessionNewActivityStore.genuineReplyTimeMillis(sessionName);
-                new Thread(() -> readCallToUserAlertBody(sessionName, fileUrl, answeredThroughMillis)).start();
+                new Thread(() -> readCallToUserAlertBody(sessionName, generation, attempt, fileUrl,
+                    answeredThroughMillis)).start();
             },
-            loadFailure -> Logger.logStackTraceWithMessage(LOG_TAG,
-                "The call alert body of " + sessionName + " is unknown: the session definitions did not load",
-                loadFailure));
+            loadFailure -> {
+                Logger.logStackTraceWithMessage(LOG_TAG,
+                    "The call alert body of " + sessionName + " is not known yet: the session definitions did not load",
+                    loadFailure);
+                retryOrGiveUpCallToUserAlertBody(sessionName, generation, attempt);
+            });
     }
 
-    private void readCallToUserAlertBody(@NonNull String sessionName, @NonNull String fileUrl,
-                                         @Nullable Long answeredThroughMillis) {
+    private void readCallToUserAlertBody(@NonNull String sessionName, int generation, int attempt,
+                                         @NonNull String fileUrl, @Nullable Long answeredThroughMillis) {
         String body = unansweredCallBodyOrNull(sessionName, fileUrl, answeredThroughMillis);
-        if (body == null) return;
-        runOnTheMainThread(() -> CallToUserAlertNotifier.updateAlertBody(this, sessionName, body));
+        runOnTheMainThread(() -> {
+            if (!isCurrentCallToUserAlertBodyRequest(sessionName, generation)) return;
+            if (body == null) {
+                retryOrGiveUpCallToUserAlertBody(sessionName, generation, attempt);
+                return;
+            }
+            CallToUserAlertNotifier.updateAlertBody(this, sessionName, body);
+        });
     }
 
+    private void retryOrGiveUpCallToUserAlertBody(@NonNull String sessionName, int generation, int attempt) {
+        if (!isCurrentCallToUserAlertBodyRequest(sessionName, generation)) return;
+        if (attempt >= CALL_ALERT_BODY_MAX_ATTEMPTS) {
+            Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is still unknown after " + attempt
+                + " attempts, so the alert keeps its call text");
+            return;
+        }
+        mHandler.postDelayed(() -> requestCallToUserAlertBody(sessionName, generation, attempt + 1),
+            CALL_ALERT_BODY_RETRY_DELAY_MILLIS);
+    }
+
+    /** A body read still matters only while its alert is the latest one for the session and still waiting. */
+    private boolean isCurrentCallToUserAlertBodyRequest(@NonNull String sessionName, int generation) {
+        Integer currentGeneration = mCallToUserAlertBodyGenerations.get(sessionName);
+        return currentGeneration != null && currentGeneration == generation
+            && mCallToUserAlertCalledAtMillis.containsKey(sessionName);
+    }
+
+    /** Returns the body of the oldest unanswered call of the session, or null while the file has none yet. */
     @Nullable
     private static String unansweredCallBodyOrNull(@NonNull String sessionName, @NonNull String fileUrl,
                                                    @Nullable Long answeredThroughMillis) {
         try {
-            String body = OwnerCallAlertBody.resolve(new HttpOwnerCallFileTransport(), fileUrl,
+            return OwnerCallAlertBody.resolve(new HttpOwnerCallFileTransport(), fileUrl,
                 HostTmuxSessionName.normalize(sessionName), answeredThroughMillis, System.currentTimeMillis());
-            if (body == null) {
-                Logger.logWarn(LOG_TAG, "The call alert body of " + sessionName + " is unknown: the owner call "
-                    + "file has no unanswered call of the session yet, so the alert keeps its call text");
-            }
-            return body;
         } catch (IOException unreadableOwnerCallFile) {
             Logger.logStackTraceWithMessage(LOG_TAG, "The call alert body of " + sessionName
-                + " is unknown: the owner call file could not be read", unreadableOwnerCallFile);
+                + " is not known yet: the owner call file could not be read", unreadableOwnerCallFile);
             return null;
         }
     }
