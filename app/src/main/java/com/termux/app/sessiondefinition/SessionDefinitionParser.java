@@ -42,11 +42,18 @@ public final class SessionDefinitionParser {
             return references;
         }
         String projectFileSuffix = projectFileSuffix(indexUrl, version);
+        String indexQuery = indexQueryOf(indexUrl);
         for (int i = 0; i < projects.length(); i++) {
             String name = projects.getString(i);
-            references.add(new SessionDefinitionGroupReference(name, name + projectFileSuffix));
+            references.add(new SessionDefinitionGroupReference(name, name + projectFileSuffix + indexQuery));
         }
         return references;
+    }
+
+    private static String indexQueryOf(@Nullable String indexUrl) {
+        if (indexUrl == null) return "";
+        int queryStart = indexUrl.indexOf('?');
+        return queryStart >= 0 ? indexUrl.substring(queryStart) : "";
     }
 
     public List<SessionDefinitionEntry> parseGroup(String groupLabel, String json) throws JSONException {
