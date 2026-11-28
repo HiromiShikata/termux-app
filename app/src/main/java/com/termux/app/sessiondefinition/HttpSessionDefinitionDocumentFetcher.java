@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -15,7 +16,13 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
     @Override
     public String fetch(String url) throws IOException {
-        URLConnection urlConnection = new URL(url).openConnection();
+        URL parsedUrl;
+        try {
+            parsedUrl = new URL(url);
+        } catch (MalformedURLException malformed) {
+            throw new MalformedURLException("Malformed session definition URL: " + redactAccessToken(url));
+        }
+        URLConnection urlConnection = parsedUrl.openConnection();
         if (!(urlConnection instanceof HttpURLConnection)) {
             throw new IOException(unsupportedProtocolMessage(url));
         }

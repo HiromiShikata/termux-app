@@ -56,4 +56,17 @@ public class HttpSessionDefinitionDocumentFetcherTest {
             Assert.assertTrue(expected.getMessage(), expected.getMessage().contains("k=<redacted>"));
         }
     }
+
+    @Test
+    public void fetchOfMalformedUrlReportsTheRedactedUrl() {
+        try {
+            fetcher.fetch("example.test/alpha.v3.json?k=SECRET");
+            Assert.fail("Expected MalformedURLException for a URL without a scheme");
+        } catch (java.net.MalformedURLException expected) {
+            Assert.assertFalse(expected.getMessage(), expected.getMessage().contains("SECRET"));
+            Assert.assertTrue(expected.getMessage(), expected.getMessage().contains("k=<redacted>"));
+        } catch (IOException unexpected) {
+            Assert.fail("Expected MalformedURLException but got " + unexpected);
+        }
+    }
 }
