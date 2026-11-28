@@ -33,6 +33,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Use Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -58,8 +59,9 @@ jobs:
         if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          git log --format=%s "origin/${{ github.event.repository.default_branch }}..HEAD" > "$RUNNER_TEMP/commit-subjects.txt"
+          git log --format=%s "origin/$DEFAULT_BRANCH..HEAD" > "$RUNNER_TEMP/commit-subjects.txt"
           "$GITHUB_WORKSPACE/scripts/reject-bare-issue-number-references.sh" "$RUNNER_TEMP/commit-subjects.txt"
       - name: Check PR title follows conventional commit format
         uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
@@ -88,7 +90,11 @@ jobs:
           set -euo pipefail
           CLI_VERSION=$(npm view @commitlint/cli version)
           CONFIG_VERSION=$(npm view @commitlint/config-conventional version)
-          echo "key=${CLI_VERSION}-${CONFIG_VERSION}" >> "$GITHUB_OUTPUT"
+          {
+            echo "cli-version=${CLI_VERSION}"
+            echo "config-version=${CONFIG_VERSION}"
+            echo "key=${CLI_VERSION}-${CONFIG_VERSION}"
+          } >> "$GITHUB_OUTPUT"
       - name: Restore commitlint install
         if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -97,6 +103,9 @@ jobs:
           key: commitlint-${{ runner.os }}-${{ steps.commitlint-cache-key.outputs.key }}
       - name: Install commitlint
         if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
+        env:
+          CLI_VERSION: ${{ steps.commitlint-cache-key.outputs.cli-version }}
+          CONFIG_VERSION: ${{ steps.commitlint-cache-key.outputs.config-version }}
         run: |
           if [ -x /tmp/commitlint-run/node_modules/.bin/commitlint ]; then
             echo "commitlint restored from cache"
@@ -105,7 +114,7 @@ jobs:
           mkdir -p /tmp/commitlint-run
           cd /tmp/commitlint-run
           npm init -y
-          npm install --no-fund --save-dev @commitlint/cli @commitlint/config-conventional
+          npm install --no-fund --ignore-scripts --save-dev "@commitlint/cli@$CLI_VERSION" "@commitlint/config-conventional@$CONFIG_VERSION"
       - name: Lint commits
         if: github.head_ref != 'fleet-live' && github.head_ref != 'fleet-live-to-main'
         env:
