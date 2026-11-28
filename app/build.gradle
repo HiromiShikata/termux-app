@@ -138,17 +138,16 @@ android {
         }
     }
 
-    applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            if (variant.buildType.name == "debug") {
-                def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("termux-app_" + (apkVersionTag ? apkVersionTag : project.ext.packageVariant + "-" + "debug") + "_" + (abi ? abi : "universal") + ".apk")
-            } else if (variant.buildType.name == "release") {
-                def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("termux-app_" + (apkVersionTag ? apkVersionTag : project.ext.packageVariant + "-" + "release") + "_" + (abi ? abi : "universal") + ".apk")
+    def renameApkOutputs = { String buildTypeName ->
+        androidComponents.onVariants(androidComponents.selector().withBuildType(buildTypeName)) { variant ->
+            variant.outputs.each { output ->
+                def abi = output.filters.find { it.filterType == com.android.build.api.variant.FilterConfiguration.FilterType.ABI }?.identifier
+                output.outputFileName.set("termux-app_" + (apkVersionTag ? apkVersionTag : project.ext.packageVariant + "-" + buildTypeName) + "_" + (abi ? abi : "universal") + ".apk")
             }
         }
     }
+    renameApkOutputs("debug")
+    renameApkOutputs("release")
 
     buildFeatures {
         buildConfig true
@@ -304,8 +303,8 @@ task downloadBootstraps() {
     }
 }
 
-afterEvaluate {
-    android.applicationVariants.all { variant ->
-        variant.javaCompileProvider.get().dependsOn(downloadBootstraps)
+androidComponents.onVariants(androidComponents.selector().all()) { variant ->
+    variant.configureJavaCompileTask { javaCompile ->
+        javaCompile.dependsOn(downloadBootstraps)
     }
 }
