@@ -59,6 +59,8 @@ jobs:
         if: >-
           github.event_name == 'issues' && github.event.issue.state == 'open' &&
           (github.event.action == 'opened' || github.event.action == 'reopened')
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: >-
           github.event_name == 'issues' && github.event.issue.state == 'open' &&
@@ -77,11 +79,24 @@ jobs:
         if: >-
           github.event_name == 'issues' && github.event.issue.state == 'open' &&
           (github.event.action == 'opened' || github.event.action == 'reopened')
-      - name: Move issue to ${{ env.awaiting_workspace }}
+      - name: Fetch add-project-board-item script
         run: |
           bash scripts/ensure-repositories-management-scripts-typescript.sh
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        if: >-
+          github.event_name == 'issues' && github.event.issue.state == 'open' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+      - name: Install add-project-board-item dependencies
+        run: |
           cd scripts/typescript
-          npm i
+          npm i --ignore-scripts
+        if: >-
+          github.event_name == 'issues' && github.event.issue.state == 'open' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+      - name: Move issue to ${{ env.awaiting_workspace }}
+        run: |
+          cd scripts/typescript
           npx tsx src/adapter/entry-points/cli/add-project-board-item.ts
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -195,7 +210,6 @@ jobs:
           github.event.pull_request.user.login != 'dependabot[bot]' &&
           github.event.pull_request.user.login != 'app/dependabot'
         with:
-          # The step below receives the owner-wide app token, so it must run base-branch code, never the pull request head.
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
