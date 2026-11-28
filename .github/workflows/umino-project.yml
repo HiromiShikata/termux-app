@@ -205,6 +205,8 @@ jobs:
           client-id: ${{ secrets.HS_BOT_GH_AP_CLIENT_ID }}
           private-key: ${{ secrets.HS_BOT_GH_AP_PRIVATE_KEY }}
           owner: HiromiShikata
+          permission-contents: read
+          permission-issues: read
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: >-
           github.event.pull_request.user.login != 'dependabot[bot]' &&
