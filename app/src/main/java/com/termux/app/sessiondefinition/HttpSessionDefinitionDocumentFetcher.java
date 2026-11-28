@@ -17,7 +17,7 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
     public String fetch(String url) throws IOException {
         URLConnection urlConnection = new URL(url).openConnection();
         if (!(urlConnection instanceof HttpURLConnection)) {
-            throw new IOException("Unsupported protocol for session definition URL: " + url);
+            throw new IOException(unsupportedProtocolMessage(url));
         }
         HttpURLConnection connection = (HttpURLConnection) urlConnection;
         try {
@@ -27,7 +27,7 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
             int responseCode = connection.getResponseCode();
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new IOException("Unexpected HTTP response code " + responseCode + " for " + redactAccessToken(url));
+                throw new IOException(unexpectedResponseMessage(responseCode, url));
             }
 
             try (InputStream inputStream = connection.getInputStream()) {
@@ -40,6 +40,14 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
     static String redactAccessToken(String url) {
         return url.replaceAll("([?&]k=)[^&]*", "$1<redacted>");
+    }
+
+    static String unsupportedProtocolMessage(String url) {
+        return "Unsupported protocol for session definition URL: " + redactAccessToken(url);
+    }
+
+    static String unexpectedResponseMessage(int responseCode, String url) {
+        return "Unexpected HTTP response code " + responseCode + " for " + redactAccessToken(url);
     }
 
     private static String readAll(InputStream inputStream) throws IOException {

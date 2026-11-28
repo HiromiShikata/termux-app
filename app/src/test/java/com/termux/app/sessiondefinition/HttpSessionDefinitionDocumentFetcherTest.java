@@ -31,4 +31,29 @@ public class HttpSessionDefinitionDocumentFetcherTest {
                 HttpSessionDefinitionDocumentFetcher.redactAccessToken(testCase[0]));
         }
     }
+
+    @Test
+    public void errorMessagesNeverCarryTheAccessTokenValue() {
+        String[][] inputAndExpected = {
+            {"file:///etc/hostname?k=SECRET", "Unsupported protocol for session definition URL: file:///etc/hostname?k=<redacted>"},
+        };
+        for (String[] testCase : inputAndExpected) {
+            Assert.assertEquals("input " + testCase[0], testCase[1],
+                HttpSessionDefinitionDocumentFetcher.unsupportedProtocolMessage(testCase[0]));
+        }
+        Assert.assertEquals("Unexpected HTTP response code 401 for https://example.test:9443/in-tmux-by-human/alpha.v3.json?k=<redacted>",
+            HttpSessionDefinitionDocumentFetcher.unexpectedResponseMessage(401,
+                "https://example.test:9443/in-tmux-by-human/alpha.v3.json?k=SECRET"));
+    }
+
+    @Test
+    public void fetchOfUnsupportedProtocolReportsTheRedactedUrl() {
+        try {
+            fetcher.fetch("file:///etc/hostname?k=SECRET");
+            Assert.fail("Expected IOException for non-HTTP protocol");
+        } catch (IOException expected) {
+            Assert.assertFalse(expected.getMessage(), expected.getMessage().contains("SECRET"));
+            Assert.assertTrue(expected.getMessage(), expected.getMessage().contains("k=<redacted>"));
+        }
+    }
 }
