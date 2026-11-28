@@ -71,6 +71,16 @@ public class SessionDefinitionParserTest {
         Assert.assertEquals("alpha.v3.json", references.get(0).getUrl());
     }
 
+    @Test
+    public void parseIndexDoesNotCarryTheQueryOntoVersionTwoGroupReferences() throws JSONException {
+        String json = "{\"version\":2,\"projects\":[\"alpha\"]}";
+
+        List<SessionDefinitionGroupReference> references =
+            parser.parseIndex(json, "https://example.test:9443/in-tmux-by-human/index.v2.json?k=TESTKEY");
+
+        Assert.assertEquals("alpha.json", references.get(0).getUrl());
+    }
+
     @Test(expected = JSONException.class)
     public void parseIndexRejectsMissingProjects() throws JSONException {
         parser.parseIndex("{}");

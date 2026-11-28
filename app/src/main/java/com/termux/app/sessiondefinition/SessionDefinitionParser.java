@@ -42,10 +42,10 @@ public final class SessionDefinitionParser {
             return references;
         }
         String projectFileSuffix = projectFileSuffix(indexUrl, version);
-        String indexQuery = indexQueryOf(indexUrl);
+        String groupQuery = VERSION_THREE_INDEX_SUFFIX.equals(projectFileSuffix) ? indexQueryOf(indexUrl) : "";
         for (int i = 0; i < projects.length(); i++) {
             String name = projects.getString(i);
-            references.add(new SessionDefinitionGroupReference(name, name + projectFileSuffix + indexQuery));
+            references.add(new SessionDefinitionGroupReference(name, name + projectFileSuffix + groupQuery));
         }
         return references;
     }

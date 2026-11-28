@@ -27,7 +27,7 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
             int responseCode = connection.getResponseCode();
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new IOException("Unexpected HTTP response code " + responseCode + " for " + url);
+                throw new IOException("Unexpected HTTP response code " + responseCode + " for " + redactAccessToken(url));
             }
 
             try (InputStream inputStream = connection.getInputStream()) {
@@ -36,6 +36,10 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
         } finally {
             connection.disconnect();
         }
+    }
+
+    static String redactAccessToken(String url) {
+        return url.replaceAll("([?&]k=)[^&]*", "$1<redacted>");
     }
 
     private static String readAll(InputStream inputStream) throws IOException {
