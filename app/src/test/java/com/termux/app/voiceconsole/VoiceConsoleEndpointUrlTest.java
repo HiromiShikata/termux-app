@@ -16,6 +16,8 @@ public class VoiceConsoleEndpointUrlTest {
             {"https://console.example.com/definition", "https://console.example.com/api/live/sessions", null},
             {"https://console.example.com/definition?k=", "https://console.example.com/api/live/sessions", ""},
             {"  http://console.example.com:8080/definition?k=test-token  ", "http://console.example.com:8080/api/live/sessions", "test-token"},
+            {"https://console.example.com:9443/in-tmux-by-human/index.v3.json?k=test-token", "https://console.example.com:9443/api/live/sessions", "test-token"},
+            {"http://console.example.com:9980/in-tmux-by-human/index.v3.json?k=test-token", "http://console.example.com:9980/api/live/sessions", "test-token"},
         };
         for (String[] testCase : inputAndExpected) {
             VoiceConsoleEndpoint endpoint = VoiceConsoleEndpointUrl.resolve(testCase[0]);
