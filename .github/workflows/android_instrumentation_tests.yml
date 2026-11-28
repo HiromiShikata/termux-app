@@ -216,7 +216,7 @@ jobs:
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - name: Enable KVM for the Android emulator
         run: |
@@ -256,7 +256,7 @@ jobs:
 
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true' || steps.avd-validate.outputs.fallback == 'true'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ env.EMULATOR_API_LEVEL }}
           target: ${{ env.EMULATOR_TARGET }}
@@ -269,7 +269,7 @@ jobs:
 
       - name: Run app instrumentation tests on emulator
         timeout-minutes: 45
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ env.EMULATOR_API_LEVEL }}
           target: ${{ env.EMULATOR_TARGET }}
