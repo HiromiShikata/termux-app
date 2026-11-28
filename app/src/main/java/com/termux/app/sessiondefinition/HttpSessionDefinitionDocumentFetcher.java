@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
@@ -15,9 +16,15 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
     @Override
     public String fetch(String url) throws IOException {
-        URLConnection urlConnection = new URL(url).openConnection();
+        URL parsedUrl;
+        try {
+            parsedUrl = new URL(url);
+        } catch (MalformedURLException malformed) {
+            throw new MalformedURLException("Malformed session definition URL: " + redactAccessToken(url));
+        }
+        URLConnection urlConnection = parsedUrl.openConnection();
         if (!(urlConnection instanceof HttpURLConnection)) {
-            throw new IOException("Unsupported protocol for session definition URL: " + url);
+            throw new IOException(unsupportedProtocolMessage(url));
         }
         HttpURLConnection connection = (HttpURLConnection) urlConnection;
         try {
@@ -27,7 +34,7 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
 
             int responseCode = connection.getResponseCode();
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new IOException("Unexpected HTTP response code " + responseCode + " for " + url);
+                throw new IOException(unexpectedResponseMessage(responseCode, url));
             }
 
             try (InputStream inputStream = connection.getInputStream()) {
@@ -36,6 +43,18 @@ public final class HttpSessionDefinitionDocumentFetcher implements SessionDefini
         } finally {
             connection.disconnect();
         }
+    }
+
+    static String redactAccessToken(String url) {
+        return url.replaceAll("([?&]k=)[^&]*", "$1<redacted>");
+    }
+
+    static String unsupportedProtocolMessage(String url) {
+        return "Unsupported protocol for session definition URL: " + redactAccessToken(url);
+    }
+
+    static String unexpectedResponseMessage(int responseCode, String url) {
+        return "Unexpected HTTP response code " + responseCode + " for " + redactAccessToken(url);
     }
 
     private static String readAll(InputStream inputStream) throws IOException {

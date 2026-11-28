@@ -47,6 +47,40 @@ public class SessionDefinitionParserTest {
         Assert.assertEquals(1, entries.get(1).getUrls().size());
     }
 
+    @Test
+    public void parseIndexCarriesTheIndexUrlAccessTokenOntoVersionThreeGroupReferences() throws Exception {
+        String json = "{\"version\":3,\"projects\":[\"alpha\",\"beta\"]}";
+
+        List<SessionDefinitionGroupReference> references =
+            parser.parseIndex(json, "https://example.test:9443/in-tmux-by-human/index.v3.json?k=TESTKEY");
+
+        Assert.assertEquals("alpha.v3.json?k=TESTKEY", references.get(0).getUrl());
+        Assert.assertEquals("beta.v3.json?k=TESTKEY", references.get(1).getUrl());
+        Assert.assertEquals("https://example.test:9443/in-tmux-by-human/alpha.v3.json?k=TESTKEY",
+            parser.resolveUrl("https://example.test:9443/in-tmux-by-human/index.v3.json?k=TESTKEY",
+                references.get(0).getUrl()));
+    }
+
+    @Test
+    public void parseIndexKeepsVersionThreeGroupReferencesWithoutQueryWhenIndexHasNone() throws JSONException {
+        String json = "{\"version\":3,\"projects\":[\"alpha\"]}";
+
+        List<SessionDefinitionGroupReference> references =
+            parser.parseIndex(json, "http://example.test:9980/in-tmux-by-human/index.v3.json");
+
+        Assert.assertEquals("alpha.v3.json", references.get(0).getUrl());
+    }
+
+    @Test
+    public void parseIndexDoesNotCarryTheQueryOntoVersionTwoGroupReferences() throws JSONException {
+        String json = "{\"version\":2,\"projects\":[\"alpha\"]}";
+
+        List<SessionDefinitionGroupReference> references =
+            parser.parseIndex(json, "https://example.test:9443/in-tmux-by-human/index.v2.json?k=TESTKEY");
+
+        Assert.assertEquals("alpha.json", references.get(0).getUrl());
+    }
+
     @Test(expected = JSONException.class)
     public void parseIndexRejectsMissingProjects() throws JSONException {
         parser.parseIndex("{}");
